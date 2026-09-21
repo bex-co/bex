@@ -57,9 +57,19 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.SyncBlueprint":            "Blueprint sync delegates to the same maintenance effects or changed-service deploy rows",
 		"apps.ConfigureMaintenanceMode": "one atomic write records its typed field effects only after the patch succeeds",
 		"deploys.Trigger":               "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
-		"deploys.Restart":               "a restart opens a deploys row on the live commit (w1/m148); that row IS the deploy_started event, as for Trigger",
-		"apps.ResolveSSHSession":        "the dedicated ssh_sessions row records the real stream start/end; authorization may succeed before a channel opens",
-		"apps.CreateShellSession":       "mints a Browser Web Shell exec ticket only; the gateway's ssh_sessions row records the real stream when (and if) the terminal connects — mirrors apps.ResolveSSHSession",
+		// w4/m118: the same argument for cron runs. These three are INTENT;
+		// the run itself is recorded by the reconciler as a fact for scheduled
+		// and manual runs alike, and only the ended fact carries the terminal
+		// status. Mapping the verbs too would show every manual run twice —
+		// and while they WERE mapped and the facts were missing from
+		// allFactTypes, a schedule that started and failed on its own was
+		// invisible in Activity. Webhooks already resolved it this way.
+		"apps.TriggerCronRun":       "the run it requests IS the cron_job_run_started fact (scheduled and manual alike) — mapping the verb too would double-count",
+		"apps.CancelCronRun":        "the run it stops IS the cron_job_run_ended fact, which alone carries the canceled terminal status — mapping the verb too would double-count",
+		"apps.CancelCurrentCronRun": "same as apps.CancelCronRun, for the active run",
+		"deploys.Restart":           "a restart opens a deploys row on the live commit (w1/m148); that row IS the deploy_started event, as for Trigger",
+		"apps.ResolveSSHSession":    "the dedicated ssh_sessions row records the real stream start/end; authorization may succeed before a channel opens",
+		"apps.CreateShellSession":   "mints a Browser Web Shell exec ticket only; the gateway's ssh_sessions row records the real stream when (and if) the terminal connects — mirrors apps.ResolveSSHSession",
 		// w6/m20: new verbs from scratch (not a w6/m17 seam-collapse side
 		// effect — see below), deliberately deferred the same way their
 		// SetProjectID siblings were: postgres/keyvalue have no events feed

@@ -39,6 +39,42 @@ func TestPushDownRoutesEveryFactType(t *testing.T) {
 	}
 }
 
+// TestCronRunEventsComeFromObservedFactsNotIntentVerbs is the regression for
+// w4/m118, and the feed's copy of the invariant webhooks already hold (see
+// webhooks' TestCronWebhookEventsComeFromObservedFactsNotIntentVerbs).
+//
+// An every-minute cron whose first scheduled run failed after 10m 54s of
+// crash-loop backoff showed nothing in Activity — only the two deploy events —
+// while Recent Runs said Failed with a duration, webhooks fired, and push said
+// "Cron run failed". The feed mapped the three INTENT verbs (somebody asked for
+// a run, or asked for one to stop) and omitted both observed fact types from
+// allFactTypes, so it could only ever show manual actions.
+//
+// Both halves have to hold together. Re-adding the verbs would show every
+// manual run twice; dropping the facts brings back the invisible schedule.
+func TestCronRunEventsComeFromObservedFactsNotIntentVerbs(t *testing.T) {
+	for _, verb := range []string{"apps.TriggerCronRun", "apps.CancelCronRun", "apps.CancelCurrentCronRun"} {
+		if eventType, ok := eventTypes[verb]; ok {
+			t.Errorf("intent verb %q maps to %q — a manual run would appear twice", verb, eventType)
+		}
+		if slices.Contains(allVerbs, verb) {
+			t.Errorf("intent verb %q is still in the feed's audit-verb query", verb)
+		}
+	}
+	for _, ft := range []string{TypeCronJobRunStarted, TypeCronJobRunEnded} {
+		if !slices.Contains(allFactTypes, ft) {
+			t.Errorf("%s missing from allFactTypes — a scheduled run stays invisible in an unfiltered feed", ft)
+		}
+		verbs, phases, factTypes, ad := pushDown(ft)
+		if len(factTypes) != 1 || factTypes[0] != ft {
+			t.Errorf("%s: filtering by it must ask the store for exactly its fact rows, got %v", ft, factTypes)
+		}
+		if len(verbs) != 0 || len(phases) != 0 || ad != store.AutoDeployFilterNone {
+			t.Errorf("%s: filtering by it must not fall back to verbs/phases: %v %v %v", ft, verbs, phases, ad)
+		}
+	}
+}
+
 // TestLifecycleTypesInVocabulary pins the w7/m66 additions into the unfiltered
 // feed's fact-type set — omission would make them invisible to a "show all" read.
 func TestLifecycleTypesInVocabulary(t *testing.T) {

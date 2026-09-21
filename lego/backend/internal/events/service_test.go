@@ -134,7 +134,7 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeDeployEnded,
 		wantDetails: Details{DeployID: "dep-7", DeployStatus: "canceled"},
 	}, {
-		name:        "superseded cancel carries cancelReason + reasonCode (w4/089)",
+		name: "superseded cancel carries cancelReason + reasonCode (w4/089)",
 		row: store.ServiceEventRow{
 			Key: "dep-8:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded,
 			DeployID: "dep-8", Status: store.DeployCanceled,
@@ -675,4 +675,90 @@ func TestAutoDeployTypeFilterIsPushedDown(t *testing.T) {
 			t.Errorf("unfiltered AutoDeploy = %v, want AutoDeployFilterNone (no constraint)", st.got.AutoDeploy)
 		}
 	})
+}
+
+// TestScheduledCronRunReachesTheFeed is w4/m118's behavioral regression, at the
+// level the bug actually bit: what the service asks the store for, and what
+// comes back.
+//
+// Live on 2026-09-19 an every-minute cron's first scheduled run failed after
+// 10m 54s of crash-loop backoff. Recent Runs said Failed with a duration,
+// webhooks fired, push said "Cron run failed" — and Activity showed only the
+// two deploy events, because the unfiltered feed never asked for either cron
+// fact type and a filtered one fell through to the intent verbs.
+func TestScheduledCronRunReachesTheFeed(t *testing.T) {
+	// The unfiltered feed must ask for both cron fact types. Nothing else in
+	// this test can pass if it does not: the rows are never fetched.
+	st := &fakeStore{}
+	svc := newService(st, sampleApp("cron", "srv-1", "tea-a"))
+	if _, err := svc.List(context.Background(), "cron", Filter{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, ft := range []string{TypeCronJobRunStarted, TypeCronJobRunEnded} {
+		if !slices.Contains(st.got.FactTypes, ft) {
+			t.Fatalf("unfiltered feed did not ask for %s: %v", ft, st.got.FactTypes)
+		}
+	}
+
+	// A scheduled run leaves a started and an ended fact — no audit row at all,
+	// because nobody pressed anything. Both must surface, and the ended one
+	// must carry the terminal status: "it ran" without "it failed" is the
+	// difference between a feed you can act on and one you cannot.
+	st = &fakeStore{rows: []store.ServiceEventRow{{
+		Key: "cron:srv-1:run-a:started", At: now, Source: store.EventSourceFact,
+		FactType: TypeCronJobRunStarted,
+	}, {
+		Key: "cron:srv-1:run-a:ended", At: now, Source: store.EventSourceFact,
+		FactType: TypeCronJobRunEnded, FactStatus: "failed",
+	}}}
+	svc = newService(st, sampleApp("cron", "srv-1", "tea-a"))
+	out, err := svc.List(context.Background(), "cron", Filter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("feed returned %d events, want the run's start and end", len(out))
+	}
+	if out[0].Type != TypeCronJobRunStarted {
+		t.Errorf("first event = %q, want %q", out[0].Type, TypeCronJobRunStarted)
+	}
+	if out[1].Type != TypeCronJobRunEnded {
+		t.Errorf("second event = %q, want %q", out[1].Type, TypeCronJobRunEnded)
+	}
+	if got := out[1].Details.Status; got != "failed" {
+		t.Errorf("ended event status = %q, want failed", got)
+	}
+
+	// Filtering by either type asks for that fact type and nothing else — no
+	// fallback to the intent verbs, which is what made the filter useless.
+	for _, ft := range []string{TypeCronJobRunStarted, TypeCronJobRunEnded} {
+		st := &fakeStore{}
+		svc := newService(st, sampleApp("cron", "srv-1", "tea-a"))
+		if _, err := svc.List(context.Background(), "cron", Filter{Type: ft}); err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Equal(st.got.FactTypes, []string{ft}) {
+			t.Errorf("%s filter pushed fact types %v, want exactly [%s]", ft, st.got.FactTypes, ft)
+		}
+		if len(st.got.Verbs) != 0 {
+			t.Errorf("%s filter fell back to intent verbs %v", ft, st.got.Verbs)
+		}
+	}
+}
+
+// TestManualCronRunIsNotCountedTwice is the other half of w4/m118: the run a
+// person triggers is the SAME run the reconciler records a fact for
+// (recordCronRunFacts does not special-case how a run was requested), so the
+// feed must not also carry the intent verb. One press, one row.
+func TestManualCronRunIsNotCountedTwice(t *testing.T) {
+	st := &fakeStore{}
+	svc := newService(st, sampleApp("cron", "srv-1", "tea-a"))
+	if _, err := svc.List(context.Background(), "cron", Filter{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, verb := range []string{"apps.TriggerCronRun", "apps.CancelCronRun", "apps.CancelCurrentCronRun"} {
+		if slices.Contains(st.got.Verbs, verb) {
+			t.Errorf("unfiltered feed still queries intent verb %q — every manual run would appear twice", verb)
+		}
+	}
 }

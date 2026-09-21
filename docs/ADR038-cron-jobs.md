@@ -93,6 +93,14 @@ The `crr-…` id hides the Kubernetes Job name while staying stable across reads
 - **12-hour cap and persistent disks.** Render stops a run after 12h and disallows disks on crons. bex inherits Kubernetes' Job semantics; a hard `activeDeadlineSeconds` cap and disk rejection are the natural follow-ups if strict parity is wanted.
 - **Not the same as one-off jobs.** Render's `/services/{id}/jobs` (run an arbitrary command in the service context) is an execution surface deliberately off-roadmap (`DO_NOT_DO` §pillar 5) — separate from scheduled cron jobs. Likewise **pre-deploy commands** are one-shot `batch/v1.Job`s gating a rollout ([ADR004-app-deployment.md](ADR004-app-deployment.md)), a different mechanism from a CronJob.
 
+## Run visibility in the service Activity feed (w4/m118)
+
+A cron run reaches `GET /services/{id}/events` (and its GraphQL/MCP twins) as `cron_job_run_started` / `cron_job_run_ended`, sourced from the **observed facts** the reconciler projects out of `status.runs` — never from the intent verbs (`apps.TriggerCronRun`, `apps.CancelCronRun`, `apps.CancelCurrentCronRun`).
+
+That distinction is the whole design. `recordCronRunFacts` explicitly "does not special-case how a run was requested", so scheduled and manual runs both produce facts, and only the ended fact carries the terminal status (`succeeded|failed|canceled`). Mapping the verbs _as well_ would show every manual run twice — the same argument that keeps `deploys.Trigger` out of the vocabulary, since the deploys row it opens **is** the `deploy_started` event. Outbound webhooks had already settled it this way (`TestCronWebhookEventsComeFromObservedFactsNotIntentVerbs`); until w4/m118 the events feed had it exactly backwards — verbs mapped, facts missing from `allFactTypes` — so a schedule that started and failed on its own was **invisible in Activity** while Recent Runs, webhooks and push all reported it (live 2026-09-19: an every-minute cron whose first run failed after 10m 54s of crash-loop backoff showed only its two deploy events).
+
+The "who asked" record is not lost: it stays in the workspace audit log, which is where the other deliberately-unmapped verbs put it. No Render divergence — Render's vocabulary has these two types and no separate "someone pressed trigger" event.
+
 ## Evidence
 
-`cron_runs_test.go`, `service_types_test.go` (envtest), `cron-runs-section.test.tsx`; parity row [ADR018-render-parity.md](ADR018-render-parity.md) (Cron job); milestone `.pm/w1/done/m15` + `w2/m36`.
+`cron_runs_test.go`, `service_types_test.go` (envtest), `cron-runs-section.test.tsx`, `events/service_test.go` (`TestScheduledCronRunReachesTheFeed`, `TestManualCronRunIsNotCountedTwice`) + `events/lifecycle_vocab_test.go` (`TestCronRunEventsComeFromObservedFactsNotIntentVerbs`); parity row [ADR018-render-parity.md](ADR018-render-parity.md) (Cron job); milestone `.pm/w1/done/m15` + `w2/m36`.

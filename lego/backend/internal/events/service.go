@@ -43,8 +43,6 @@ limitations under the License.
 //	plan_changed                apps.SetPlan      (details.from/to = plan name strings)
 //	instance_count_changed      apps.Scale        (details.from/to = instance counts)
 //	autoscaling_config_changed  apps.SetAutoscaling / apps.DeleteAutoscaling (details.previous/current min+max)
-//	cron_job_run_started        apps.TriggerCronRun
-//	cron_job_run_ended          apps.CancelCronRun / apps.CancelCurrentCronRun
 //
 // and these bex-named types, for writes Render's vocabulary has no name for:
 //
@@ -104,6 +102,14 @@ limitations under the License.
 //	                                       (w1/m33); the ended details.status is
 //	                                       succeeded|failed (in addition to the
 //	                                       preDeployStatus still on deploy_ended)
+//	cron_job_run_started /                 the reconciler observing status.runs
+//	cron_job_run_ended                     (w4/m118) — every run, scheduled or
+//	                                       manually triggered, from the same
+//	                                       facts webhooks and push already use;
+//	                                       the ended details.status is
+//	                                       succeeded|failed|canceled. The intent
+//	                                       verbs are deliberately NOT mapped —
+//	                                       see eventTypes' doc comment
 //	job_run_ended                          internal/jobs observing a one-off job
 //	                                       finishing (details.status
 //	                                       succeeded|failed) — alongside the
@@ -283,6 +289,22 @@ const (
 //     workspace audit log, which is where "who deleted it" belongs.
 //   - deploys.Trigger — the deploys row it opens IS the deploy_started event;
 //     mapping the verb too would show every API deploy twice.
+//   - apps.TriggerCronRun / apps.CancelCronRun / apps.CancelCurrentCronRun —
+//     the same argument, one surface later (w4/m118). These three are INTENT:
+//     somebody asked for a run, or asked for one to stop. The run itself is
+//     recorded by the reconciler as a cron_job_run_started / cron_job_run_ended
+//     fact, for scheduled and manual runs alike (recordCronRunFacts explicitly
+//     "does not special-case how a run was requested"), and the ended fact is
+//     the only one of the two sources that carries the terminal status. While
+//     the verbs were mapped here and the facts were absent from allFactTypes,
+//     the feed showed a manual trigger and nothing else: a schedule that
+//     started and failed on its own was invisible in Activity even though
+//     Recent Runs, webhooks and push all reported it. Mapping BOTH would have
+//     traded that for showing every manual run twice. Webhooks already settled
+//     this the same way — see webhooks' TestCronWebhookEventsComeFromObserved-
+//     FactsNotIntentVerbs — so the feed now matches its sibling surface. The
+//     "who asked" record survives in the workspace audit log, exactly as it
+//     does for the deliberately-absent verbs above.
 var eventTypes = map[string]string{
 	"apps.Suspend":                          TypeSuspenderAdded,
 	"apps.Resume":                           TypeSuspenderRemoved,
@@ -291,9 +313,6 @@ var eventTypes = map[string]string{
 	"apps.Scale":                            TypeInstanceCountChanged,
 	"apps.SetAutoscaling":                   TypeAutoscalingConfigChanged,
 	"apps.DeleteAutoscaling":                TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":                   TypeCronJobRunStarted,
-	"apps.CancelCronRun":                    TypeCronJobRunEnded,
-	"apps.CancelCurrentCronRun":             TypeCronJobRunEnded,
 	"apps.SetAutoDeploy":                    TypeAutoDeployChanged,
 	"apps.SetNotifyOnFail":                  TypeNotifyOnFailChanged,
 	"apps.SetNotificationsToSend":           TypeNotifyOnFailChanged,
@@ -366,6 +385,14 @@ var (
 		TypePreDeployStarted,
 		TypePreDeployEnded,
 		TypeJobRunEnded,
+		// The reconciler records a fact for EVERY cron run, scheduled or
+		// manual (recordCronRunFacts, store/reconciler.go). Without these two
+		// the unfiltered feed showed only the audit verbs for a manual Trigger
+		// Run / Cancel, so a schedule that started and failed on its own was
+		// invisible in Activity while Recent Runs, webhooks and push all
+		// reported it (w4/m118, live 2026-09-19).
+		TypeCronJobRunStarted,
+		TypeCronJobRunEnded,
 	}
 )
 
@@ -399,7 +426,7 @@ func pushDown(eventType string) (verbs, phases, factTypes []string, autoDeploy s
 		TypeServerFailed, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
 		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded,
 		TypeBuildStarted, TypeBuildEnded, TypePreDeployStarted, TypePreDeployEnded,
-		TypeJobRunEnded:
+		TypeJobRunEnded, TypeCronJobRunStarted, TypeCronJobRunEnded:
 		return nil, nil, []string{eventType}, store.AutoDeployFilterNone
 	}
 	for _, verb := range allVerbs {
@@ -467,8 +494,11 @@ type Details struct {
 	// verdict: a deploy carrying one may still go live.
 	StallReason string
 	// Status is a lifecycle-step fact's terminal outcome (w7/m66): build_ended /
-	// pre_deploy_ended / job_run_ended carry succeeded|failed|canceled; empty for
-	// the started/observed kinds and every other type.
+	// pre_deploy_ended / job_run_ended / cron_job_run_ended carry
+	// succeeded|failed|canceled; empty for the started/observed kinds and every
+	// other type. On cron_job_run_ended it is the only place a run's outcome
+	// reaches the feed — the canceled value in particular, since the intent
+	// verb that asked for the cancel is deliberately not an event (w4/m118).
 	Status  string
 	Trigger *Trigger // deploy_started only
 	// Deploy details enriched for dashboard (w1/m47): deployed image, commit info, timing
