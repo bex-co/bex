@@ -653,9 +653,10 @@ func fakeHydraAdmin(t *testing.T) *httptest.Server {
 		case r.Method == http.MethodPost && r.URL.Path == "/admin/clients":
 			var c hydraClient
 			_ = json.NewDecoder(r.Body).Decode(&c)
-			wantScope := strings.Join(core.AdvertisedScopes(), " ")
+			// No capability-scope allowlist: a machine key must not be able to
+			// acquire a restriction it does not enforce (w4/112).
 			if len(c.GrantTypes) != 1 || c.GrantTypes[0] != "client_credentials" ||
-				c.AuthMethod != "client_secret_post" || c.Scope != wantScope || !isAPIKey(c) {
+				c.AuthMethod != "client_secret_post" || c.Scope != "" || !isAPIKey(c) {
 				http.Error(w, "unexpected client shape", http.StatusBadRequest)
 				return
 			}
@@ -752,13 +753,28 @@ func TestHydraAPIKeysStore(t *testing.T) {
 	}
 }
 
-// TestAPIKeyMintGrantsAdvertisedScopes pins w4/m105: every scope RFC 9728
-// discovery advertises must be grantable on a freshly minted API-key client,
-// otherwise a discovery-driven client_credentials exchange is refused with
-// invalid_scope. The token-exchange leg itself needs a live Hydra and is not
-// covered here; this asserts the Hydra admin create payload that would make
-// that exchange succeed.
-func TestAPIKeyMintGrantsAdvertisedScopes(t *testing.T) {
+// TestAPIKeyMintGrantsNoCapabilityScope pins w4/112, and inverts what w4/m105
+// asserted here.
+//
+// m105 made every RFC 9728-advertised scope grantable on a minted API-key
+// client, so a discovery-driven client_credentials exchange would not be
+// refused with invalid_scope. The exchange then succeeded — and the grant was
+// INERT. A machine key is CapabilityExempt by design (ADR012,
+// core.Identity.CanonicalScopes: capability scopes are a human-delegation
+// concept), so the token answered {"scope":"bex.read"} and immediately
+// performed a persisted write. Verified live: a service's
+// maxShutdownDelaySeconds moved 137 → 61 under a token whose granted scope said
+// read-only.
+//
+// m105's own definition of done offered both branches — "requesting the
+// advertised scopes succeeds, OR discovery stops advertising them to this
+// client class" — and took the first. This is the second, chosen because the
+// alternative is a credential that claims a restriction nothing enforces.
+//
+// The token-exchange leg needs a live Hydra and is not covered here; this
+// asserts the admin create payload that decides whether that exchange can grant
+// a capability at all.
+func TestAPIKeyMintGrantsNoCapabilityScope(t *testing.T) {
 	var gotScope string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/admin/clients" {
@@ -779,9 +795,14 @@ func TestAPIKeyMintGrantsAdvertisedScopes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	want := strings.Join(core.AdvertisedScopes(), " ")
-	if gotScope != want {
-		t.Fatalf("mint Scope = %q, want advertised %q", gotScope, want)
+	if gotScope != "" {
+		t.Fatalf("mint Scope = %q, want none — a machine key must not be able to hold a capability restriction it does not enforce", gotScope)
+	}
+	// Belt and braces: not one of the advertised capabilities may leak in.
+	for _, scope := range core.AdvertisedScopes() {
+		if strings.Contains(gotScope, scope) {
+			t.Errorf("minted key allowlists %q", scope)
+		}
 	}
 	if created.Secret == "" || created.ID != "minted-key" {
 		t.Fatalf("create response incomplete: %+v", created)
