@@ -30,6 +30,8 @@ Cross-check checkboxes against on-disk state (`ls .pm/<wN>/m*/ .pm/<wN>/*.md .pm
 
 **Order:** pending milestones by ascending number first, then open inbox notes by ascending number — unless a stated dependency forces otherwise, in which case say so.
 
+**Urgency may reorder, and never stops the loop.** You may pull a security or data-loss item ahead of the prescribed order — name the reason in one line and take it. What you must not do is stop to ask which to work first: an item further down the queue looking more important than the one in front of you is a reordering decision you are equipped to make, not a question for the user. They can always reorder by interrupting.
+
 If the queue is empty, go to **Exit**.
 
 ## The loop
@@ -117,15 +119,28 @@ Refresh the queue (the board changed) and loop back to triage the next item. The
 
 ## Exit
 
+**Before you write a final summary, refresh the queue.** If it returns open items, the user has not interrupted, and you can still do work — discard the summary and take the next item. Writing a summary is not a decision to stop; finishing the queue is.
+
 Stop and give a final summary when any of these holds:
 
-- **Drained:** no open items remain in `<wN>`. Report every item and its outcome, grouped: shipped, closed as already met, parked in `blocked/` (with each gate), deleted (with each reason).
+- **Drained:** a queue refresh returns **zero** open items in `<wN>`. Report every item and its outcome, grouped: shipped, closed as already met, parked in `blocked/` (with each gate), deleted (with each reason). "Drained" is measured against the queue as it stands at that refresh, never against the queue as it stood at invocation — items others filed while you worked are part of it, and a workstream under active filing may legitimately keep you working for a long time. That is the requested behavior.
 - **Run-level block:** a ship failure you can't resolve, or the tree is in a state you shouldn't push. Per-item blocks do **not** stop the run — they get parked and the loop continues.
-- **Budget/interrupt:** the user interrupts, or you've run long enough that a checkpoint is warranted — report progress (done, in-flight, remaining) so the run resumes cleanly.
+- **Interrupt:** the user sends a new message, or the context budget is genuinely exhausted — you cannot fit another item's work. **Running for a long time is not an exit**, and neither is a queue that keeps growing; both are checkpoints. See below.
 
 **Not exit conditions**, and never a reason to pause mid-drain: an item that is a record rather than a task; an item you yourself withdrew or filed earlier; a duplicate; an empty note; an item already fixed upstream; a verdict that feels unusual. Each of those has a row in the triage tables — apply it and keep going.
 
 Also **never** a reason to pause: **new work arriving while you drain.** A teammate session filing fresh milestones or notes into `<wN>` — uncommitted, half-written, or landing seconds ago — is the queue doing its job, not a hazard. A peer session showing `busy` against the same workstream changes nothing either. Refresh the queue, take the new items in order, and drain them. A backlog that grows during the run means the run continues; it does not mean the run stops to ask about it.
+
+## Checkpoints — these do NOT end the run
+
+There is a real need to tell the user things mid-drain: a blocker parked, a premise disproved, a milestone that turned out three times its estimate, a queue that doubled. Serve it with a **checkpoint**: a few lines of progress, then **immediately take the next item in the same turn**.
+
+A checkpoint is a report, not a stop. The distinction matters because the pull to stop arrives disguised as a duty to report — you finish an item, notice something the user should know, write it up, and the write-up reads like an ending. It is not. If workable items remain, the summary you just wrote is a checkpoint; post it and keep going.
+
+Two specific traps, both of which have actually happened:
+
+- **Re-surfacing parked blockers is a reminder, never a justification.** The final report is required to list every gate again, because a gate the user never reads is a gate that never clears. Listing them next to a decision to stop makes already-parked items look like live obstacles holding up the loop. They are not — they are parked precisely so the loop can continue past them.
+- **"This is unbounded" is not a finding.** A queue refilled by a concurrent worker, a backlog that outpaces you, a workstream that will not reach zero today — none of these is an exit condition. Note it in a checkpoint and take the next item.
 
 ## Guardrails
 
@@ -134,3 +149,4 @@ Also **never** a reason to pause: **new work arriving while you drain.** A teamm
 - **Stay in `<wN>`.** Only touch items from the requested workstream. Workers are general-purpose, but this run is scoped to the queue the user named.
 - **Deletion is a claim, not a shortcut.** Every deleted item costs you a sentence of evidence in the report. If you can't write that sentence, it isn't invalid.
 - **Report honestly.** If you skipped a task, mocked something, or a suite was flaky, say so in that item's summary — don't present partial work as complete.
+- **Never stop with workable items in the queue.** If a refresh returns open items, the user has not interrupted, and you can still do work, the run continues — whatever else is true about how long it has taken, how the backlog is trending, or how much you have to report. Ending a drain early with a full queue is the one failure this skill cannot recover from on its own, because the user has to notice and restart it.
