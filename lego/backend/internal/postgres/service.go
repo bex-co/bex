@@ -1140,33 +1140,33 @@ var operatorManagedParameters = map[string]bool{
 	"wal_keep_size":            true,
 	"recovery_min_apply_delay": true,
 	// Replication / HA / pod control.
-	"hot_standby":                 true,
-	"max_replication_slots":       true,
-	"synchronous_standby_names":   true,
-	"primary_conninfo":            true,
-	"primary_slot_name":           true,
-	"promote_trigger_file":        true,
-	"restart_after_crash":         true,
-	"listen_addresses":            true,
-	"port":                        true,
-	"cluster_name":                true,
-	"unix_socket_directories":     true,
-	"unix_socket_group":           true,
-	"unix_socket_permissions":     true,
-	"data_directory":              true,
-	"config_file":                 true,
-	"hba_file":                    true,
-	"ident_file":                  true,
-	"external_pid_file":           true,
-	"data_sync_retry":             true,
-	"allow_system_table_mods":     true,
+	"hot_standby":               true,
+	"max_replication_slots":     true,
+	"synchronous_standby_names": true,
+	"primary_conninfo":          true,
+	"primary_slot_name":         true,
+	"promote_trigger_file":      true,
+	"restart_after_crash":       true,
+	"listen_addresses":          true,
+	"port":                      true,
+	"cluster_name":              true,
+	"unix_socket_directories":   true,
+	"unix_socket_group":         true,
+	"unix_socket_permissions":   true,
+	"data_directory":            true,
+	"config_file":               true,
+	"hba_file":                  true,
+	"ident_file":                true,
+	"external_pid_file":         true,
+	"data_sync_retry":           true,
+	"allow_system_table_mods":   true,
 	// Not tenant configuration.
-	"allow_alter_system":         true,
-	"logging_collector":          true,
-	"log_destination":            true,
-	"log_rotation_age":           true,
-	"log_rotation_size":          true,
-	"log_truncate_on_rotation":   true,
+	"allow_alter_system":       true,
+	"logging_collector":        true,
+	"log_destination":          true,
+	"log_rotation_age":         true,
+	"log_rotation_size":        true,
+	"log_truncate_on_rotation": true,
 	// The insights surface's own switch: every reconcile projects
 	// pg_stat_statements.track=all (ADR009 § legacy query-insights
 	// convergence), and the merge above lets a tenant value overwrite it —
@@ -1261,6 +1261,12 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	}
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
+	}
+	// Protection reaches identity and availability, not only lifecycle (w4/m127).
+	if verb := protectedDatabasePatchVerb(patch); verb != "" {
+		if err := s.requireUnprotected(ctx, d, verb); err != nil {
+			return PostgresView{}, err
+		}
 	}
 	if patch.Plan != nil && core.PaidPlan(tiers.Postgres.CanonicalID(*patch.Plan)) {
 		if err := s.RequirePaymentMethod(ctx, d.Labels[core.LabelTenant]); err != nil {

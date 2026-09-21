@@ -81,10 +81,10 @@ func TestRetentionSweepPurgesOnlyEligibleTerminalRows(t *testing.T) {
 	old := now.AddDate(0, 0, -60)
 	recent := now.AddDate(0, 0, -1)
 	seedDelivery(st, "old-terminal", "wh-1", old, true)
-	seedDelivery(st, "old-pending", "wh-1", old, false)   // still retryable: never eligible
-	seedDelivery(st, "recent-1", "wh-1", recent, true)    // within age + count
-	seedDelivery(st, "recent-2", "wh-1", recent, true)    // within age + count
-	seedDelivery(st, "recent-3", "wh-1", recent, true)    // beyond keep=2 for this endpoint
+	seedDelivery(st, "old-pending", "wh-1", old, false) // still retryable: never eligible
+	seedDelivery(st, "recent-1", "wh-1", recent, true)  // within age + count
+	seedDelivery(st, "recent-2", "wh-1", recent, true)  // within age + count
+	seedDelivery(st, "recent-3", "wh-1", recent, true)  // beyond keep=2 for this endpoint
 	seedDelivery(st, "other-endpoint", "wh-2", recent, true)
 
 	if err := w.sweepRetention(context.Background()); err != nil {

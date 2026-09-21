@@ -486,21 +486,21 @@ func quotaForPlan(plan string) corev1.ResourceList {
 	}
 	caps := QuotaCapsForPlan(plan)
 	return corev1.ResourceList{
-		corev1.ResourceRequestsCPU:               resource.MustParse(cpuReq),
-		corev1.ResourceRequestsMemory:            resource.MustParse(memReq),
-		corev1.ResourceLimitsCPU:                 resource.MustParse(cpuLim),
-		corev1.ResourceLimitsMemory:              resource.MustParse(memLim),
-		corev1.ResourceRequestsEphemeralStorage:  resource.MustParse(ephReq),
-		corev1.ResourceLimitsEphemeralStorage:    resource.MustParse(ephLim),
-		corev1.ResourcePods:                      resource.MustParse(pods),
-		corev1.ResourceRequestsStorage:           resource.MustParse(storage),
-		corev1.ResourcePersistentVolumeClaims:    resource.MustParse(pvcs),
-		corev1.ResourceServicesLoadBalancers:     resource.MustParse("0"),
-		corev1.ResourceServicesNodePorts:         resource.MustParse("0"),
-		"count/jobs.batch":                       resource.MustParse(jobs),
-		AppsQuotaCountKey:                        *resource.NewQuantity(caps.Services, resource.DecimalSI),
-		DatabasesQuotaCountKey:                   *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
-		KeyValuesQuotaCountKey:                   *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
+		corev1.ResourceRequestsCPU:              resource.MustParse(cpuReq),
+		corev1.ResourceRequestsMemory:           resource.MustParse(memReq),
+		corev1.ResourceLimitsCPU:                resource.MustParse(cpuLim),
+		corev1.ResourceLimitsMemory:             resource.MustParse(memLim),
+		corev1.ResourceRequestsEphemeralStorage: resource.MustParse(ephReq),
+		corev1.ResourceLimitsEphemeralStorage:   resource.MustParse(ephLim),
+		corev1.ResourcePods:                     resource.MustParse(pods),
+		corev1.ResourceRequestsStorage:          resource.MustParse(storage),
+		corev1.ResourcePersistentVolumeClaims:   resource.MustParse(pvcs),
+		corev1.ResourceServicesLoadBalancers:    resource.MustParse("0"),
+		corev1.ResourceServicesNodePorts:        resource.MustParse("0"),
+		"count/jobs.batch":                      resource.MustParse(jobs),
+		AppsQuotaCountKey:                       *resource.NewQuantity(caps.Services, resource.DecimalSI),
+		DatabasesQuotaCountKey:                  *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
+		KeyValuesQuotaCountKey:                  *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
 	}
 }
 
@@ -524,8 +524,8 @@ func baseLimitRange(namespace string) *corev1.LimitRange {
 					corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 				},
 				Default: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("2"),
-					corev1.ResourceMemory: resource.MustParse("4Gi"),
+					corev1.ResourceCPU:              resource.MustParse("2"),
+					corev1.ResourceMemory:           resource.MustParse("4Gi"),
 					corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
 				},
 				Max: corev1.ResourceList{

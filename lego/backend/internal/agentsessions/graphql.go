@@ -87,7 +87,7 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"phase":       gqlutil.ReqStrField(func(v View) any { return v.Phase }),
 		"status":      gqlutil.ReqStrField(func(v View) any { return v.Status }),
 		"headSha":     gqlutil.StrField(func(v View) any { return v.HeadSHA }),
-		"prUrl":    gqlutil.StrField(func(v View) any { return v.PRURL }),
+		"prUrl":       gqlutil.StrField(func(v View) any { return v.PRURL }),
 		"prNumber": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any {
 			if v.PRNumber == 0 {
 				return nil

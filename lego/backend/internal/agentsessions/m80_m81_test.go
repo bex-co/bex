@@ -36,13 +36,13 @@ func TestDriverEnvInjectsTurnTimeout(t *testing.T) {
 
 	// Default: the Service injects the 30m default so an unset knob is never 4h.
 	def := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, rec)
-	if got := def["BEX_AGENT_TURN_TIMEOUT_MS"]; got != strconv.Itoa(int((30*time.Minute).Milliseconds())) {
+	if got := def["BEX_AGENT_TURN_TIMEOUT_MS"]; got != strconv.Itoa(int((30 * time.Minute).Milliseconds())) {
 		t.Fatalf("default turn timeout = %q, want 1800000ms", got)
 	}
 
 	// A configured value flows through verbatim (in ms).
 	set := (&Service{TurnTimeout: 12 * time.Minute}).driverEnv(AgentConfig{Agent: "claude"}, rec)
-	if got := set["BEX_AGENT_TURN_TIMEOUT_MS"]; got != strconv.Itoa(int((12*time.Minute).Milliseconds())) {
+	if got := set["BEX_AGENT_TURN_TIMEOUT_MS"]; got != strconv.Itoa(int((12 * time.Minute).Milliseconds())) {
 		t.Fatalf("configured turn timeout = %q, want 720000ms", got)
 	}
 	if want := int64(4 * 60 * 60 * 1000); set["BEX_AGENT_TURN_TIMEOUT_MS"] == strconv.FormatInt(want, 10) {

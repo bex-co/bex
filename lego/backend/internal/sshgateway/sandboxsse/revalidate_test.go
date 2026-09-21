@@ -131,12 +131,12 @@ func TestSandboxExecRedemptionRecheck(t *testing.T) {
 	secret := []byte("exec-secret")
 	exec := &countingExecutor{}
 	srv := &Server{
-		Secret: secret,
-		Executor:  exec,
-		Metrics:   sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Limits:    sshgateway.NewSessionLimiter(100, 5),
-		Nonces:    &sshgateway.NonceGuard{},
-		Revalidator: &ExecRevalidator{Base: &core.Base{Authz: relChecker{}}},
+		Secret:         secret,
+		Executor:       exec,
+		Metrics:        sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Limits:         sshgateway.NewSessionLimiter(100, 5),
+		Nonces:         &sshgateway.NonceGuard{},
+		Revalidator:    &ExecRevalidator{Base: &core.Base{Authz: relChecker{}}},
 		SessionTimeout: time.Minute,
 	}
 	httpSrv := httptest.NewServer(srv.Handler())
@@ -172,12 +172,12 @@ func TestSandboxExecRevocationEndsLiveStream(t *testing.T) {
 	flip := &flipRevalidator{deny: func() bool { return checks.Add(1) > 1 }}
 	exec := &blockingExecutor{}
 	srv := &Server{
-		Secret: secret,
-		Executor:  exec,
-		Metrics:   sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Limits:    sshgateway.NewSessionLimiter(100, 5),
-		Nonces:    &sshgateway.NonceGuard{},
-		Revalidator: flip,
+		Secret:             secret,
+		Executor:           exec,
+		Metrics:            sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Limits:             sshgateway.NewSessionLimiter(100, 5),
+		Nonces:             &sshgateway.NonceGuard{},
+		Revalidator:        flip,
 		SessionTimeout:     time.Minute,
 		RevalidateInterval: 20 * time.Millisecond,
 	}

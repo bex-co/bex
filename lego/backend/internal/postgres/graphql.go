@@ -385,11 +385,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return gqlutil.Page(p, out, func(pg PostgresView) string { return pg.ID }), nil
 			},
 		},
-		"database":               gqlutil.IDVerb(postgresGQLType, s.GetPostgres), // Render's dashboard query name
+		"database": gqlutil.IDVerb(postgresGQLType, s.GetPostgres), // Render's dashboard query name
 		// databaseActions projects the lifecycle verbs' per-database decisions
 		// (ADR087, w6/m136) — permission tri-state + blocking precondition from
 		// the same predicates setSuspended enforces. A bex extension.
-		"databaseActions": gqlutil.IDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
+		"databaseActions":        gqlutil.IDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
 		"databaseConnectionInfo": gqlutil.IDVerb(connectionInfoGQLType, s.PostgresConnectionInfo),
 		"databaseInstanceTypes": &graphql.Field{ // bex extension backing the create dialog's plan picker
 			Type:    graphql.NewList(databaseInstanceTypeGQLType),
@@ -541,9 +541,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// --- failover (HA only) — Render's POST /postgres/{id}/failover → 202 ---
 		"failoverDatabase": &graphql.Field{
 			Type: graphql.Boolean,
-			Args: gqlutil.IDArg(),
+			Args: graphql.FieldConfigArgument{
+				"id": gqlutil.ReqArg(graphql.String),
+				// The protected-environment phrase (w4/m127): a failover drops
+				// the current primary's connections.
+				"confirm": gqlutil.Arg(graphql.String),
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.Failover(p.Context, p.Args["id"].(string))
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				err := s.Failover(ctx, p.Args["id"].(string))
 				return err == nil, err
 			},
 		},
@@ -639,10 +645,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"id":          gqlutil.ReqArg(graphql.String),
 				"sql":         gqlutil.ReqArg(graphql.String),
 				"allowWrites": gqlutil.Arg(graphql.Boolean),
+				// The protected-environment phrase a WRITABLE query needs
+				// (w4/m127); a read-only query never asks for one.
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				allowWrites := gqlutil.Bool(p.Args, "allowWrites")
-				result, err := s.ExecuteQuery(p.Context, p.Args["id"].(string), p.Args["sql"].(string), allowWrites)
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				result, err := s.ExecuteQuery(ctx, p.Args["id"].(string), p.Args["sql"].(string), allowWrites)
 				if err != nil {
 					return nil, err
 				}

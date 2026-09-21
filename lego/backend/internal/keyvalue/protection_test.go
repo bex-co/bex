@@ -221,3 +221,68 @@ func TestProtectedKeyValueConfirmationAcrossAdapters(t *testing.T) {
 		}
 	})
 }
+
+// TestProtectedKeyValueDurabilityEvictionAndIdentity is the Key Value half of
+// w4/m127. On the same instance whose suspend was refused, the live matrix
+// found these accepted:
+//
+//	setKeyValuePersistenceMode("off")         → ACCEPTED
+//	setKeyValueMaxmemoryPolicy("allkeys_lru") → ACCEPTED
+//
+// Turning persistence off makes every key in the store ephemeral, and an
+// eviction policy decides which keys the server may throw away under memory
+// pressure. Both lose data on a member the tenant marked protected, and both
+// went through without a word while "pause it" did not.
+func TestProtectedKeyValueDurabilityEvictionAndIdentity(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		verb  string
+		patch KeyValuePatch
+	}{
+		{"durability off", "change durability of", KeyValuePatch{PersistenceMode: strPtr("off")}},
+		{"eviction policy", "change eviction on", KeyValuePatch{MaxmemoryPolicy: strPtr("allkeys-lru")}},
+		{"rename", "rename", KeyValuePatch{Name: strPtr("renamed")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			kv := keyValueForProtection("red-cache", "cache", true)
+			svc, cl, _ := protectedKeyValueService(kv)
+
+			_, err := svc.UpdateKeyValue(context.Background(), kv.Name, tc.patch)
+			if !errors.Is(err, core.ErrBadRequest) ||
+				!strings.Contains(err.Error(), `confirm="sudo `+tc.verb+` key value cache"`) {
+				t.Fatalf("blocked %s = %v", tc.name, err)
+			}
+			// Nothing may have moved on the way to the refusal.
+			var got appv1alpha1.KeyValue
+			if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &got); err != nil {
+				t.Fatalf("get: %v", err)
+			}
+			if got.Spec.PersistenceMode != kv.Spec.PersistenceMode || got.Spec.MaxmemoryPolicy != kv.Spec.MaxmemoryPolicy || got.Spec.Name != "cache" {
+				t.Fatalf("a refused %s still mutated the spec: %+v", tc.name, got.Spec)
+			}
+
+			ctx := core.WithConfirm(context.Background(), ProtectedConfirmation(tc.verb, "cache"))
+			if _, err := svc.UpdateKeyValue(ctx, kv.Name, tc.patch); err != nil {
+				t.Fatalf("confirmed %s: %v", tc.name, err)
+			}
+		})
+	}
+
+	// A plan change is billing, not durability — it must not acquire a
+	// ceremony, and neither may an unprotected store.
+	t.Run("unguarded fields and unprotected stores are untouched", func(t *testing.T) {
+		kv := keyValueForProtection("red-cache", "cache", true)
+		svc, _, _ := protectedKeyValueService(kv)
+		if _, err := svc.UpdateKeyValue(context.Background(), kv.Name, KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{}}); err != nil {
+			t.Fatalf("allow-list change on a protected store: %v", err)
+		}
+
+		plain := keyValueForProtection("red-plain", "plain", false)
+		svcPlain, _, _ := protectedKeyValueService(plain)
+		if _, err := svcPlain.UpdateKeyValue(context.Background(), plain.Name, KeyValuePatch{PersistenceMode: strPtr("off")}); err != nil {
+			t.Fatalf("durability change on an unprotected store: %v", err)
+		}
+	})
+}
+
+func strPtr(v string) *string { return &v }

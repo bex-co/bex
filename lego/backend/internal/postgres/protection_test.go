@@ -27,6 +27,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -56,6 +57,25 @@ func databaseForProtection(id, name string, protected bool) *appv1alpha1.Databas
 		ObjectMeta: metav1.ObjectMeta{Name: id, Namespace: "default", Labels: labels},
 		Spec:       appv1alpha1.DatabaseSpec{Name: name, Plan: "free"},
 	}
+}
+
+// queryableProtectedService is protectedPostgresService plus the connection
+// secret a query resolves, so a CONFIRMED write can be observed completing —
+// the refusal path never gets that far, and a test that could only show the
+// refusal would not prove the phrase actually unlocks anything.
+func queryableProtectedService(db *appv1alpha1.Database) (*Service, []string) {
+	db.Status.Phase = appv1alpha1.DBPhaseReady
+	db.Status.SecretName = db.Name + "-app"
+	svc, _, _ := protectedPostgresService(db, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-app", Namespace: "default"},
+		Data:       map[string][]byte{"uri": []byte("postgres://u:p@localhost:5432/db?sslmode=disable")},
+	})
+	ran := []string{}
+	svc.queryExecutor = func(_ context.Context, _, sql string, _ queryLimits, _ bool) (QueryResult, error) {
+		ran = append(ran, sql)
+		return QueryResult{}, nil
+	}
+	return svc, ran
 }
 
 func protectedPostgresService(objects ...client.Object) (*Service, client.Client, *fakeProtectionStore) {
@@ -222,3 +242,114 @@ func TestProtectedDatabaseConfirmationAcrossAdapters(t *testing.T) {
 		}
 	})
 }
+
+// TestProtectedDatabaseDataPlaneAndTopology is w4/m127. A live matrix against a
+// free Postgres in a fresh protected environment found the guard covering
+// exactly two verbs — suspend and delete — while everything that can actually
+// lose the data went through:
+//
+//	suspendDatabase  → REFUSED        (the control: the guard was armed)
+//	deleteDatabase   → REFUSED
+//	executeDatabaseQuery allowWrites DROP TABLE → ACCEPTED
+//	failoverDatabase → ACCEPTED
+//	renameDatabase   → ACCEPTED
+//
+// So a protected environment refused to pause the database and permitted
+// DROP TABLE inside it. w6/m19 and w6/m37 had both asked which RESOURCES the
+// guard covers; this is the first time anyone asked which OPERATIONS.
+func TestProtectedDatabaseDataPlaneAndTopology(t *testing.T) {
+	// The console is the headline: the writable SQL path is already gated on a
+	// strictly stronger authorization pair than anything else in the product,
+	// and still ran DROP TABLE on a protected member without a word.
+	t.Run("writable console blocks then accepts exact phrase", func(t *testing.T) {
+		db := databaseForProtection("dpg-orders", "orders", true)
+		svc, _ := queryableProtectedService(db)
+		var ran []string
+		svc.queryExecutor = func(_ context.Context, _, sql string, _ queryLimits, _ bool) (QueryResult, error) {
+			ran = append(ran, sql)
+			return QueryResult{}, nil
+		}
+
+		_, err := svc.ExecuteQuery(context.Background(), db.Name, "DROP TABLE qa_probe", true)
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `confirm="sudo write to database orders"`) {
+			t.Fatalf("DROP TABLE on a protected database = %v, want the confirmation refusal", err)
+		}
+		if len(ran) != 0 {
+			t.Fatalf("a refused write still reached the database: %v", ran)
+		}
+
+		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("write to", "orders"))
+		if _, err := svc.ExecuteQuery(ctx, db.Name, "DROP TABLE qa_probe", true); err != nil {
+			t.Fatalf("confirmed write: %v", err)
+		}
+		if len(ran) != 1 {
+			t.Fatalf("confirmed write did not execute: %v", ran)
+		}
+	})
+
+	// A READ is not a destructive operation and must not acquire a ceremony —
+	// the console stays usable on a protected database for exactly the thing
+	// protection has no reason to stop.
+	t.Run("read-only console is never gated", func(t *testing.T) {
+		db := databaseForProtection("dpg-orders", "orders", true)
+		svc, _ := queryableProtectedService(db)
+		if _, err := svc.ExecuteQuery(context.Background(), db.Name, "SELECT 1", false); err != nil {
+			t.Fatalf("read-only query on a protected database: %v", err)
+		}
+	})
+
+	t.Run("failover blocks then accepts exact phrase", func(t *testing.T) {
+		db := databaseForProtection("dpg-orders", "orders", true)
+		svc, cl, _ := protectedPostgresService(db)
+		if err := svc.Failover(context.Background(), db.Name); !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("blocked Failover = %v", err)
+		}
+		var got appv1alpha1.Database
+		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &got); err != nil || got.Spec.FailoverAt != "" {
+			t.Fatalf("a refused failover still stamped the spec: %q err=%v", got.Spec.FailoverAt, err)
+		}
+		ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("fail over", "orders"))
+		if err := svc.Failover(ctx, db.Name); err != nil {
+			t.Fatalf("confirmed Failover: %v", err)
+		}
+	})
+
+	t.Run("rename and version upgrade block then accept", func(t *testing.T) {
+		for _, tc := range []struct {
+			name  string
+			verb  string
+			patch PostgresPatch
+		}{
+			{"rename", "rename", PostgresPatch{Name: ptrTo("renamed")}},
+			{"version upgrade", "upgrade", PostgresPatch{Version: ptrTo("17")}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				db := databaseForProtection("dpg-orders", "orders", true)
+				svc, _, _ := protectedPostgresService(db)
+				_, err := svc.UpdatePostgres(context.Background(), db.Name, tc.patch)
+				if !errors.Is(err, core.ErrBadRequest) ||
+					!strings.Contains(err.Error(), `confirm="sudo `+tc.verb+` database orders"`) {
+					t.Fatalf("blocked %s = %v", tc.name, err)
+				}
+			})
+		}
+	})
+
+	// An unprotected database gains no ceremony at all — the guard must cost
+	// nothing to everyone who did not ask for it.
+	t.Run("unprotected database is untouched", func(t *testing.T) {
+		db := databaseForProtection("dpg-plain", "plain", false)
+		svc, _ := queryableProtectedService(db)
+		if _, err := svc.ExecuteQuery(context.Background(), db.Name, "DROP TABLE t", true); err != nil {
+			t.Fatalf("writable query on an unprotected database: %v", err)
+		}
+		if err := svc.Failover(context.Background(), db.Name); err != nil {
+			t.Fatalf("failover on an unprotected database: %v", err)
+		}
+		if _, err := svc.UpdatePostgres(context.Background(), db.Name, PostgresPatch{Name: ptrTo("plain2")}); err != nil {
+			t.Fatalf("rename on an unprotected database: %v", err)
+		}
+	})
+}
+
+func ptrTo[T any](v T) *T { return &v }

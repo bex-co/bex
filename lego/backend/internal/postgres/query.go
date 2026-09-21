@@ -146,6 +146,24 @@ func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrite
 		if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, db); err != nil {
 			return QueryResult{}, err
 		}
+		// Protection reaches the DATA plane, not only the control plane
+		// (w4/m127). A protected environment that refuses to pause a database
+		// while accepting DROP TABLE inside it is not protecting the thing the
+		// tenant meant. The writable console is already gated on a strictly
+		// stronger authorization pair than anything else in the product — both
+		// can_create and can_view_sensitive, re-asserted uncached above — so
+		// this adds no authority check; it adds the deliberate pause.
+		//
+		// Honest about what it is: an ACCIDENT guard, not a security boundary.
+		// A caller holding those two relations can read the connection string
+		// and run the same statement over the wire, where no bex-api guard
+		// exists. That makes the confirmation worth having (the dominant
+		// failure is a mis-aimed console tab, not an attacker) and worth
+		// describing accurately, which ADR032 now does rather than implying a
+		// containment it cannot deliver.
+		if err := s.requireUnprotected(ctx, db, "write to"); err != nil {
+			return QueryResult{}, err
+		}
 	}
 	return s.executeAuthorizedQuery(ctx, db, sql, !allowWrites)
 }

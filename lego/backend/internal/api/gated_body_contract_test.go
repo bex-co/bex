@@ -43,7 +43,7 @@ var gatedWriteDecoderFields = map[string][]string{
 	"POST /projects":                            {"name", "ownerId", "environments"},
 	"POST /services/{serviceId}/deploys":        {}, // no required properties
 	"POST /env-groups":                          {"name", "ownerId", "envVars"},
-	"PATCH /services/{serviceId}":               {}, // no required properties
+	"PATCH /services/{serviceId}":               {},               // no required properties
 	"PUT /services/{serviceId}/env-vars":        {"key", "value"}, // oneOf variant with value
 	"POST /services/{serviceId}/scale":          {"numInstances"},
 	"PUT /services/{serviceId}/headers":         {"path", "name", "value"},

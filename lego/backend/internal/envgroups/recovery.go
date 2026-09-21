@@ -61,12 +61,12 @@ func opNewFilesPath(gid, opID string) string {
 }
 
 type groupOpRecord struct {
-	id          string
-	kind        string
-	phase       string
-	generation  uint64
-	leaseUntil  time.Time
-	envChanged  bool
+	id           string
+	kind         string
+	phase        string
+	generation   uint64
+	leaseUntil   time.Time
+	envChanged   bool
 	filesChanged bool
 }
 
