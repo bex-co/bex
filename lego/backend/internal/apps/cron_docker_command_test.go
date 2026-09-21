@@ -298,3 +298,128 @@ func TestDockerWebServiceProjectionHasNoStartCommand(t *testing.T) {
 		t.Errorf("docker web projection gained a startCommand key: %#v", details)
 	}
 }
+
+// w9/068. The generalized guard: whatever a service READS BACK must be
+// re-sendable as a create. The defect it replaces was one plan-gated field
+// (`maintenanceMode` was refused on a free plan merely for being PRESENT, even
+// disabled — which is exactly what every read emits, since Render's schema
+// requires it on webServiceDetails), so `create --from <free web service>` was
+// impossible. Asserting the whole read shape rather than that one field is what
+// stops the next plan-gated field from reintroducing the class: w9/done/m93's
+// readback guard covers build-strategy shapes and does not reach this one.
+func TestFreeWebServiceReadShapeIsReSendableAsCreate(t *testing.T) {
+	app := sampleApp("freeweb")
+	app.Spec.Type = appv1alpha1.TypeWebService
+	app.Spec.Tier = "free"
+	app.Spec.Runtime = "image"
+	app.Spec.Replicas = 1 // the real shape of a free service; sampleApp defaults to 2
+	svc, _ := newService(nil, app)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/freeweb", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET free web service = %d: %s", rec.Code, rec.Body.String())
+	}
+	var read map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &read); err != nil {
+		t.Fatal(err)
+	}
+	details, ok := read["serviceDetails"].(map[string]any)
+	if !ok {
+		t.Fatalf("read has no serviceDetails: %s", rec.Body.Bytes())
+	}
+	if _, present := details["maintenanceMode"]; !present {
+		t.Fatalf("free web service read omits maintenanceMode; w4/125 requires it present: %v", details)
+	}
+
+	// Echo the read's serviceDetails back, exactly as `create --from` does.
+	clone := map[string]any{
+		"name":           "freeweb-clone",
+		"type":           read["type"],
+		"image":          map[string]any{"imagePath": "nginx:alpine", "ownerId": ""},
+		"serviceDetails": details,
+		"dryRun":         true,
+	}
+	body, err := json.Marshal(clone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(string(body))))
+	if rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
+		t.Fatalf("echoing a free web service's own read back as a create = %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// Enabling maintenance mode on a free plan is still refused, by the same named
+// error — only the inert value stopped being a refusal.
+func TestEnablingMaintenanceModeOnFreePlanStillRefused(t *testing.T) {
+	app := sampleApp("freeweb")
+	app.Spec.Type = appv1alpha1.TypeWebService
+	app.Spec.Tier = "free"
+	svc, _ := newService(nil, app)
+
+	if err := validateMaintenanceEligibility(appv1alpha1.TypeWebService, "free",
+		&MaintenanceModeView{Enabled: false}); err != nil {
+		t.Errorf("disabled maintenanceMode on free = %v, want accepted", err)
+	}
+	err := validateMaintenanceEligibility(appv1alpha1.TypeWebService, "free",
+		&MaintenanceModeView{Enabled: true})
+	if err == nil || !strings.Contains(err.Error(), "paid web service plan") {
+		t.Errorf("enabling maintenanceMode on free = %v, want the paid-plan refusal", err)
+	}
+	// The sibling branch has the same shape: a disabled mode on a non-web type
+	// is inert (GraphQL returns it for every type, w4/125), enabling is not.
+	if err := validateMaintenanceEligibility(appv1alpha1.TypeCronJob, "starter",
+		&MaintenanceModeView{Enabled: false}); err != nil {
+		t.Errorf("disabled maintenanceMode on a cron = %v, want accepted", err)
+	}
+	if err := validateMaintenanceEligibility(appv1alpha1.TypeCronJob, "starter",
+		&MaintenanceModeView{Enabled: true}); err == nil {
+		t.Error("enabling maintenanceMode on a cron was accepted")
+	}
+	_ = svc
+}
+
+// w9/069 (found while verifying w9/068 live): the same "refuses what it
+// emitted" class, one field over. A prebuilt-image service read back
+// branch:"main" — the CRD's default, meaningless without a repo — and bex's own
+// create refuses a branch on an image service (the deliberate
+// prebuiltImageSourceFields policy), so `create --from <image service>` could
+// never succeed. The read is what was wrong: AppView.Branch already documents
+// itself as "empty for an image-backed App".
+func TestImageBackedServiceReadsNoBranch(t *testing.T) {
+	image := sampleApp("imgweb")
+	image.Spec.Type = appv1alpha1.TypeWebService
+	image.Spec.Image = "nginx:alpine"
+	image.Spec.Branch = "main" // the CRD default, present even with no repo
+	repo := sampleApp("repoweb")
+	repo.Spec.Type = appv1alpha1.TypeWebService
+	repo.Spec.Repo = "https://github.com/bex-co/example"
+	repo.Spec.Branch = "release"
+	svc, _ := newService(nil, image, repo)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	for _, tc := range []struct{ name, want string }{
+		{"imgweb", ""},
+		{"repoweb", "release"},
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+tc.name, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d: %s", tc.name, rec.Code, rec.Body.String())
+		}
+		var read struct {
+			Branch string `json:"branch"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &read); err != nil {
+			t.Fatal(err)
+		}
+		if read.Branch != tc.want {
+			t.Errorf("%s read branch = %q, want %q", tc.name, read.Branch, tc.want)
+		}
+	}
+}

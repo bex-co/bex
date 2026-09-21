@@ -669,8 +669,26 @@ func validatedMaintenanceModeSpec(enabled bool, rawURI string) (*appv1alpha1.Mai
 	return &appv1alpha1.MaintenanceModeSpec{Enabled: enabled, URI: uri}, nil
 }
 
+// validateMaintenanceEligibility gates ENABLING maintenance mode, not carrying
+// the field. A disabled maintenance mode is a no-op on any plan and any service
+// type, and it is exactly what every read emits — Render's schema requires
+// maintenanceMode on webServiceDetails, so it is never omitted (w4/125,
+// render.go). Gating on presence therefore made the read shape un-echoable:
+// `services create --from <free web service>` sent back the inert
+// `{enabled:false, uri:""}` bex had just published and was refused with
+// "maintenanceMode requires a paid web service plan", so no free web service
+// could be cloned (w9/068). Enabling it still requires a paid web service.
+// imageBackedBranch reports the branch a service actually builds from: none
+// when it runs a prebuilt image, since a branch without a repo names nothing.
+func imageBackedBranch(a *appv1alpha1.App) string {
+	if a.Spec.Repo == "" && a.Spec.Image != "" {
+		return ""
+	}
+	return a.Spec.Branch
+}
+
 func validateMaintenanceEligibility(serviceType, tier string, mode *MaintenanceModeView) error {
-	if mode == nil {
+	if mode == nil || !mode.Enabled {
 		return nil
 	}
 	if serviceType != appv1alpha1.TypeWebService {
@@ -981,8 +999,16 @@ func view(a *appv1alpha1.App) AppView {
 		DockerContext:        a.Spec.DockerContext,
 		// Redact any legacy embedded userinfo before the URL reaches a viewer
 		// (round-6 #13); create/update now reject such URLs outright.
-		Repo:                  store.RedactRepoURL(a.Spec.Repo),
-		Branch:                a.Spec.Branch,
+		Repo: store.RedactRepoURL(a.Spec.Repo),
+		// A branch is the build-from-git source and is meaningless without a
+		// repo, which is what AppView.Branch already documents ("empty for an
+		// image-backed App"). The CRD defaults spec.branch to main regardless,
+		// so a prebuilt-image service used to READ BACK branch:"main" that its
+		// own create then refused ("prebuilt image services cannot declare
+		// branch" — the shared prebuiltImageSourceFields policy, which is
+		// correct), making `services create --from <image service>` impossible.
+		// Same class as w9/068: never publish a value the write side rejects.
+		Branch:                imageBackedBranch(a),
 		BuildFilter:           buildFilterView(a.Spec.BuildFilter),
 		Autoscaling:           asView,
 		Disk:                  serviceDiskView(a.Spec.Disk),
