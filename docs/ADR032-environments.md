@@ -65,6 +65,46 @@ The rule, so the next field is placed without another live matrix: **if the verb
 
 Mechanically it is the same shape as every other guarded verb: the phrase rides `core.WithConfirm` on the request context, `confirm` is an **optional** argument on the affected REST routes, GraphQL mutations and MCP tools (no verb gained a required one), and an unprotected resource is untouched. `gqlutil.PatchMutation`/`ArgMutation` thread it for every single-field setter, so a newly-guarded setter cannot ship without a way to confirm it.
 
+### What `protectedStatus` covers on a service — the verbs, not just the resource (w4/m126, 2026-09-21)
+
+`w4/m127` (above) settled _which operations_ the guard covers on a datastore. The same live hunt asked it of a service and found the mirror gap:
+
+```
+suspendService / deleteService                     → REFUSED   (the control: the guard was armed)
+setImage / setRepo / setBranch                      → ACCEPTED
+setStartCommand / setBuildCommand / setRootDir      → ACCEPTED
+setDockerfilePath / setPreDeployCommand             → ACCEPTED
+updateCronJob(command:)                             → ACCEPTED
+```
+
+A protected environment refused to pause the service and permitted anyone to replace the executable it runs. Worse than it reads: `setImage` mints **no** deploy — the image is staged and the documented "next deploy uses it" contract applies it later — so the change sits invisible in `imagePath` until an ungated `restartServer` or an automatic deploy rolls it out. And none of these verbs had a `confirm` argument at all, so the guard was not merely absent, it was unreachable.
+
+**Decision: the same rule as the data plane — if the verb can lose data, change what the resource IS, or take it offline, it needs the phrase.** For a service, "what it is" is the code it runs. Three confirmation verbs join `delete`, `suspend` and the direct-deploy override:
+
+| verb | covers |
+| --- | --- |
+| `repoint` | `image`, `repo`, `branch`, `registryCredentialId` — which code runs |
+| `redefine` | build/start/pre-deploy commands, a cron's `command`, `dockerfilePath`, `rootDir` — how it is built and what it executes |
+| `take offline` | **enabling** maintenance mode, which 503s every host |
+
+One phrase per class, not per setter. The per-verb design exists so a confirm typed for a cheap verb cannot arm an expensive one; within a class the stakes are identical, and eleven near-identical phrases would be a worse UI without being a stronger control.
+
+**The rule considered and rejected: "guard every verb that mints a release."** It is more mechanical — `patchFetched` already enumerates that set — and it fails on the finding that opened the milestone, because `setImage` mints no release. It would have missed the headline bug while gating a health-check-path edit that cannot hurt anyone.
+
+**Deliberately left out, with reasons, so the omissions are decisions:**
+
+- **`Resume`, `restartServer`, webhook auto-deploy** — unchanged, for the reasons already recorded above.
+- **Disabling maintenance mode, and a URI-only edit** — restoring availability, the same reason `Resume` is exempt.
+- **A cron `schedule`-only change** — _when_ the job runs, not _what_ it runs. The service layer already splits these two (`LifecycleOrCreate(command != nil)`), and the guard follows the same split.
+- **`scaleService`** — the minimum is 1 replica, so scaling can never take the service offline. It is capacity, and capacity is billing.
+- **`setPlan`, `setIdleTimeout`** — billing and an operational timer; neither redefines the service nor removes it.
+- **`healthCheckPath`, `port`, `ipAllowList`, `renderSubdomainPolicy`, `autoDeploy`, `buildFilter`, `displayName`, notification settings** — reversible configuration with nothing to lose. A firewall edit is a firewall, per the datastore rule above.
+- **Environment variables and secret files** — the honest borderline. They change the service's _configuration_, not its identity, and they are the single most-edited control in the product; gating them would mean a typed phrase on nearly every save in a protected environment, which trains people to type the phrase without reading it. Revisit only with evidence of a real incident, not on symmetry.
+
+Mechanically identical to every other guarded verb: the phrase rides `core.WithConfirm` on the request context, `confirm` is an **optional** argument on the GraphQL mutations, the REST `PATCH /v1/services/{id}` query string, and MCP `update_service`, and an unprotected service is byte-identical to before. The guard fails **closed** — a protection-lookup failure refuses the verb rather than waving it through, matching delete and suspend.
+
+**Dashboard.** The retry handshake `w5/m31` described for delete and suspend now lives in one mount (`common/providers/protected-retry-provider.tsx`) that every single-field Settings save reaches through `useFieldMutation`, plus the four hooks with their own bodies (registry credential, cron, maintenance mode). The constraint from `w5/m31` is unchanged and is the reason this is safe: the dashboard parses the phrase out of the server's error and never precomputes it, so adding or renaming a verb word cannot desynchronize the UI.
+
 ## w6/m20 extension: Databases and KeyValues join too
 
 The original scope above (and the dashboard UX added afterward, w5/m25) covered services only — the same services-only asymmetry `internal/projects` had before its own `w1/m31` extension added `DatabaseIndex`/`KeyValueIndex`. `w6/m20` closes the same gap here: `postgres.Service`/`keyvalue.Service` gained a `SetEnvironmentID` verb (mirroring `SetProjectID`) that stamps a new `core.LabelEnvironment` label on the Database/KeyValue CR — the same CR-label mechanism `LabelProject` already used, since these CRs have no control-plane row for `SetEnvironmentServices`' bulk-column approach to apply to. `environments.Service` gained `SetDatabases`/`SetKeyValues` (full-replace-by-name, diffing the label state like `projects.Service`'s own `SetDatabases`/`SetKeyValues`) and `EnvironmentView` now carries `databaseIds`/`keyValueIds` alongside `serviceIds`, surfaced identically over REST (`PUT /v1/environments/{id}/database-links`+`/keyvalue-links`), GraphQL (`setEnvironmentDatabases`/`setEnvironmentKeyValues` mutations, `databaseIds`/`keyValueIds` fields), and MCP (`update_environment`'s `databaseIds`/`keyValueIds` arguments, w1/m71's fold of the `set_environment_databases`/`set_environment_keyvalues` tools). Assigning a Database/KeyValue to an environment also joins it to the environment's project (mirroring `SetEnvironmentServices`' `apps.project_id` stamp); removing it from the environment does not unjoin the project, the same asymmetry `SetEnvironmentServices` already has for services. The dashboard's environment card and its "Manage resources" dialog (`dashboard/src/features/environments/`) were extended the same way Projects' own page already merges all three resource kinds (`use-grouped-resources.ts`).

@@ -1,19 +1,19 @@
 # w4 · m126 — A protected environment blocks suspend and delete but lets anyone swap the image a service runs, with no confirmation and no way to give one
 
-**Worker:** worker4 **Goal:** the protected-environment guard covers the verbs that redefine or roll a running service, not just the two that take it away — and every guarded verb accepts the confirmation phrase on REST, GraphQL and MCP so a caller who means it can proceed. **Status:** todo
+**Worker:** worker4 **Goal:** the protected-environment guard covers the verbs that redefine or roll a running service, not just the two that take it away — and every guarded verb accepts the confirmation phrase on REST, GraphQL and MCP so a caller who means it can proceed. **Status:** done 2026-09-21 (live re-probe of the deployed fix deferred to the next QA pass — no production access this session; maintenance mode additionally needs a paid fixture, per t001)
 
 ## Tasks (in order)
 
 | id   | title                                                                             | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Decide the guarded verb set and write the rule down in ADR032                        | 40m | —          |
-| t002 | Guard source repointing (`setImage` / `setRepo` / registry credential)               | 45m | t001       |
-| t003 | Apply the decision to the release-rolling settings verbs                             | 45m | t001       |
-| t004 | Dashboard: surface the confirmation for the newly guarded verbs                      | 30m | t002, t003 |
-| t005 | Render parity check (confirm argument + error shape across REST/GraphQL/MCP + UI)    | 30m | t002, t003, t004 |
-| t006 | Simplify (`/simplify` over the changed code)                                         | 30m | t005       |
-| t007 | Test coverage                                                                        | 45m | t005       |
-| t008 | Closeout                                                                             | 15m | t007       |
+| t001 | Decide the guarded verb set and write the rule down in ADR032                        | 40m | —          | — **DONE**
+| t002 | Guard source repointing (`setImage` / `setRepo` / registry credential)               | 45m | t001       | — **DONE**
+| t003 | Apply the decision to the release-rolling settings verbs                             | 45m | t001       | — **DONE**
+| t004 | Dashboard: surface the confirmation for the newly guarded verbs                      | 30m | t002, t003 | — **DONE**
+| t005 | Render parity check (confirm argument + error shape across REST/GraphQL/MCP + UI)    | 30m | t002, t003, t004 | — **DONE**
+| t006 | Simplify (`/simplify` over the changed code)                                         | 30m | t005       | — **DONE**
+| t007 | Test coverage                                                                        | 45m | t005       | — **DONE**
+| t008 | Closeout                                                                             | 15m | t007       | — **DONE**
 
 ## Definition of done
 

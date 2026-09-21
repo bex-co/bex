@@ -3,8 +3,12 @@
 # a DB migration); a non-zero exit fails the deploy. An empty command clears the
 # step. Backs the Settings tab's Build & Deploy section save flow
 # (backend/internal/apps/graphql.go).
-mutation SetPreDeployCommand($id: String!, $command: String!) {
-  setPreDeployCommand(id: $id, command: $command) {
+mutation SetPreDeployCommand(
+  $id: String!
+  $command: String!
+  $confirm: String
+) {
+  setPreDeployCommand(id: $id, command: $command, confirm: $confirm) {
     id
     preDeployCommand
     phase

@@ -53,6 +53,43 @@ func ProtectedConfirmation(verb, name string) string {
 	return "sudo " + verb + " service " + name
 }
 
+// The guarded set and the rule that generates it (w4/m126, recorded in
+// ADR032): a protected environment guards a verb that can lose data, change
+// what the resource IS, or take it offline — the same rule w4/m127 applied to
+// datastores. For a service, "what it is" is the code it runs, which yields
+// three confirmation verbs on top of delete/suspend/direct-deploy:
+//
+//   - "repoint"      — image, repo, branch, registry credential (which code)
+//   - "redefine"     — build/start/pre-deploy/cron commands, Dockerfile path,
+//     root dir (how it is built and what it executes)
+//   - "take offline" — enabling maintenance mode, which 503s every host
+//
+// One phrase per class, not per setter: the per-verb design exists so a confirm
+// typed for a cheap verb cannot arm an expensive one, and within a class the
+// stakes are identical.
+//
+// The alternative rule considered and rejected — "guard every verb that mints a
+// release" — is mechanically tidier and fails on the very finding that opened
+// the milestone: setImage mints NO release (the image is staged and applied by
+// the next deploy), so a release-based rule would have missed the headline bug
+// while guarding a health-check-path edit that cannot hurt anyone.
+//
+// protectedSourceVerb is that rule applied to a source patch: the confirmation
+// it needs on a protected member, or "" when it changes neither.
+func protectedSourceVerb(patch sourcePatch) string {
+	switch {
+	case patch.Image != nil || patch.Repo != nil:
+		// Repointing at different code. Worse than it looks: the change is
+		// invisible until an unrelated trigger applies it, so nobody watching
+		// the service sees a rollout at the moment the decision was made.
+		return "repoint"
+	case patch.Branch != nil || patch.RegistryCredentialID != nil:
+		return "repoint"
+	default:
+		return ""
+	}
+}
+
 // appProtected is the predicate half of requireUnprotected — shared with the
 // capability projection (ADR087, w6/m136) so what it reports and what the
 // guard enforces are structurally the same answer. False for: the store being
