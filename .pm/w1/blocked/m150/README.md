@@ -197,3 +197,16 @@ No screenshots were taken; the transcripts above are the evidence.
   Fixing it changes the edge for all HTTP traffic, so it needs a planned, ordered rollout rather than an incidental change.
 
 - **Render parity:** included. No REST, GraphQL, MCP or dashboard shape changes, but the user-visible behavior of a ✅ Render-parity row changes. t004 records the address semantics and the Cloudflare caveat on row 125.
+
+## Independent corroboration — `w4/m117` merged in (2026-09-21)
+
+`w4/m117` was filed from the `/qa-find-bugs-cli` loop, sweep 3, 2026-09-17, against a different fixture and a different surface, and reached the same wall. Its own README instructed "merge with any dashboard-loop filing of the same enforcement gap instead of fixing twice", so it is closed into this milestone rather than worked twice; nothing in it needs code this one is not already going to write. Its evidence, which this milestone did not have:
+
+- **The CLI write path is not at fault.** `bex services update <srv> --ip-allow-list cidr=…/32,description=qa-cli-probe --confirm` exits 0 and the entry round-trips on read-back. The gap is enforcement only — the same producer/consumer split t001 names.
+- **The denial is Traefik's, not the app's.** The body is a bare 9-byte `Forbidden` with no server headers — `ipAllowList`'s own refusal shape. The same service served its marker on `200` before the allow-list existed.
+- **IPv6 is denied identically, and that is new.** Pass 11's repro was IPv4 only. Sweep 3 listed the caller's exact v6 `/128` (egress confirmed via `ifconfig.me`, stable across the sweep) alongside the v4 `/32`; after 2+ minutes both `curl -4` and `curl -6` answered `403`. This **rules v6 handling out as a separate cause** — one address family cannot explain a symmetric denial — and confirms the single mechanism this milestone already named: the match runs against the load balancer's private address, so every listed client CIDR of either family is wrong by construction. t006's regression should cover both families; the PROXY-protocol fix covers both with no extra work.
+- **Datastore allow-lists were re-confirmed working in the same sweep** (a Postgres was probed through its own allow-list), which is the control that isolates this to the `:80`/`:443` listeners — exactly the split `w2/done/m57` t010 left behind.
+
+Fixture: `srv-dalpa0b00vpc73coftmg` (`qa-20260917-a735c9-web3`, free Docker web service, deleted after the sweep), workspace `bex-canary`, `bex v0.2.1`.
+
+One scope note carried over: services have no `--clear-ip-allow-list` flag, which matches render.com and is not a defect — the live re-verify in t007 must plan around it (clear through the dashboard or GraphQL).
