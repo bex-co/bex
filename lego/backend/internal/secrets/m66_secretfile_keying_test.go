@@ -169,7 +169,10 @@ func TestEveryStoreKeyIsCanonicalized(t *testing.T) {
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
 				if assign, ok := n.(*ast.AssignStmt); ok && len(assign.Rhs) == 1 && len(assign.Lhs) == 4 {
 					if call, ok := assign.Rhs[0].(*ast.CallExpr); ok {
-						if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "scope" {
+						// scopeForWrite is scope with the allowed-write audit
+						// deferred (w4/m122); it returns the same four results,
+						// so it canonicalizes identically and must be swept too.
+						if sel, ok := call.Fun.(*ast.SelectorExpr); ok && (sel.Sel.Name == "scope" || sel.Sel.Name == "scopeForWrite") {
 							authorizes = true
 							if id, ok := assign.Lhs[2].(*ast.Ident); ok && id.Name == "service" {
 								canonicalizes = true

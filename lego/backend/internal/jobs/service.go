@@ -176,7 +176,11 @@ func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID st
 	// in the service's image, which is attacker-chosen code execution — the same
 	// sink SetCommands is gated for. can_create (developer and up), not
 	// can_operate.
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, serviceID)
+	// Deferred audit (w4/m122): a service with no image yet is a 409, and the
+	// Kubernetes submit itself can be refused (w4/m116 taught this verb to
+	// report that instead of returning a corpse) — neither is a job that
+	// started.
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, serviceID)
 	if err != nil {
 		return JobView{}, err
 	}
@@ -220,6 +224,8 @@ func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID st
 		return view(j), jobSubmitError(j.ID, createErr)
 	}
 
+	// The Job is submitted: this one really started.
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbJobCreate)
 	return view(j), nil
 }
 
@@ -270,7 +276,9 @@ func (s *Service) Get(ctx context.Context, serviceID, jobID string) (JobView, er
 // Cancel cancels a running or pending job. It deletes the Kubernetes Job and
 // marks the record canceled. Canceling an already-terminal job is a 409.
 func (s *Service) Cancel(ctx context.Context, serviceID, jobID string) (JobView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, serviceID)
+	// Deferred audit (w4/m122): canceling an already-terminal job is a 409, and
+	// that is the common mistake — a UI showing a stale row.
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, serviceID)
 	if err != nil {
 		return JobView{}, err
 	}
@@ -305,6 +313,7 @@ func (s *Service) Cancel(ctx context.Context, serviceID, jobID string) (JobView,
 		}
 		return JobView{}, err
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbJobCancel)
 	return view(j), nil
 }
 

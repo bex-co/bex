@@ -78,7 +78,7 @@ type EnvironmentPatchResult struct {
 // If a later write or projection fails, already-written source/projection state
 // is restored best-effort and the compensation error is joined to the cause.
 func (s *Service) PatchEnvironment(ctx context.Context, service string, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
@@ -184,6 +184,8 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 			txn.casProjection = projection
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, projectionErr)
 		}
+		// The effective environment did not change: no App write, no roll, and
+		// so no event (w4/m122).
 		return result, nil
 	}
 	return s.finalizeEnvironmentPatch(ctx, a, txn, patch.SaveMode, env, nil, result)
@@ -293,12 +295,15 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		stagePendingProjectionReferences(a, txn.originalApp, env, files, txn.envChanged, txn.filesChanged)
 	}
 	if apiequality.Semantic.DeepEqual(txn.originalApp, a) {
+		// Nothing about the App changed — the maps were already what the patch
+		// asked for. No write, and so no event (w4/m122).
 		return result, nil
 	}
 	tracked := before.Stamp(a)
 	if err := s.Client.Patch(ctx, a, base); err != nil {
 		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbPatchEnvironment)
 	// save_only stages the projection references without touching release
 	// identity, so only the deploying mode opens a row — exactly the rollout the
 	// user just asked for, and nothing for the save they explicitly deferred.

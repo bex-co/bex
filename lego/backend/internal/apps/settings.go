@@ -83,8 +83,8 @@ type ServicePatch struct {
 	// Port is the listening port (w4/m121). Before it, the port was
 	// create-only on every surface, so bex's own PORT refusal — "change the
 	// service port instead" — named a setting no caller could reach.
-	Port *int32
-	NotifyOnFail                   *string
+	Port         *int32
+	NotifyOnFail *string
 	// NotificationsToSend: MCP-only today (divergence — see type comment).
 	NotificationsToSend   *string
 	RenderSubdomainPolicy *string

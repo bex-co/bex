@@ -681,7 +681,14 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 }
 
 func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
-	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
+	// Deferred audit (w4/m122). Verification FAILING is the normal first
+	// outcome — a Re-check before the TXT record propagates — so auditing at
+	// authorize time put a `custom_domain_verified` row in the feed on the
+	// common path. Live, five Re-checks on a domain that never verified
+	// produced five "Custom domain verified" rows while the domain's own row
+	// still read Pending. The row is now recorded at the one place a claim is
+	// actually promoted, below.
+	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
 	if err != nil {
 		return DomainView{}, err
 	}
@@ -748,6 +755,11 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 	if s.Kick != nil {
 		s.Kick()
 	}
+	// The one real verification path: the claim was pending, the TXT record
+	// checked out, and PromoteDomainClaim moved it to verified. Every other
+	// exit above — unmanaged passthrough, an already-verified no-op, the 409,
+	// a stale claim — leaves the feed untouched.
+	s.RecordDomainEffect(ctx, app, core.AuditVerbVerifyDomain)
 	return s.domainClaimView(ctx, app, claim, s.platformHost(app)), nil
 }
 
@@ -1063,10 +1075,27 @@ func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (Doma
 // denied caller must get ErrForbidden, never input-validation feedback. For
 // store-managed Apps the row is written first (same rationale as Suspend).
 func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName string) (view DomainView, added bool, err error) {
-	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
+	// Deferred audit (w4/m122): a denied caller still records a denial, but an
+	// ALLOWED add records nothing here — the events feed projects allowed audit
+	// rows into past-tense facts, so emitting at authorize time reported a
+	// refused add (a reserved platform hostname, a domain claimed elsewhere, a
+	// quota refusal) as `custom_domain_added` for a host that was never
+	// attached. Observed live: one refused add plus one accepted add produced
+	// two identical rows at the same second.
+	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
 	if err != nil {
 		return DomainView{}, false, err
 	}
+	// `added` is already this function's "did this call write a new host" —
+	// false for every refusal AND for the idempotent already-present path, which
+	// is the no-op case an error-vs-success flag alone would have missed. Riding
+	// the named return means no success path can be added later that forgets to
+	// record, or records without adding.
+	defer func() {
+		if err == nil && added {
+			s.RecordDomainEffect(ctx, app, core.AuditVerbAddDomain)
+		}
+	}()
 	// The create path and the Blueprint path both refuse a domain on a type that
 	// is never served at a public host; this verb did not, so the same unusable
 	// claim could be added a second after the service existed (w6/m46 t002).
@@ -1195,16 +1224,41 @@ func setHostRedirect(app *appv1alpha1.App, host, target string) {
 // then cascaded. The rule is claim-state agnostic and idempotent. For
 // store-managed Apps the authoritative rows are deleted first (same row-first
 // rationale as the other intent verbs).
-func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) error {
-	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
+func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (err error) {
+	// Deferred audit (w4/m122), same rule as its two siblings: a delete that
+	// removed nothing — an unknown host, the idempotent already-absent path —
+	// must leave no `custom_domain_removed` row behind.
+	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
 	if err != nil {
 		return err
 	}
+	// removedSomething is set only where a claim or host actually went away.
+	//
+	// It stays ONE row per delete call, not one per host: an add can attach a
+	// `www.` sibling alongside the primary, and deleting the primary takes the
+	// sibling with it. That add/delete pairing asymmetry is pre-existing and
+	// deliberately documented (.pm/w7/done/050.md:259); this milestone gates
+	// WHETHER a row is written, and does not change how many.
+	removedSomething := false
+	defer func() {
+		if err == nil && removedSomething {
+			s.RecordDomainEffect(ctx, app, core.AuditVerbDeleteDomain)
+		}
+	}()
 	hostname, err = canonicalHostname(hostname)
 	if err != nil {
 		return err
 	}
 	if claims, appID, managed := s.managedDomainClaims(app); managed {
+		// Asked before the remove, because RemoveDomain is idempotent and
+		// reports only an error — there is no other way to tell a real removal
+		// from a delete of something that was never there. The remove itself
+		// stays unconditional, so the cleanup semantics are untouched.
+		if _, getErr := claims.GetDomainClaim(ctx, appID, hostname); getErr == nil {
+			removedSomething = true
+		} else if !errors.Is(getErr, store.ErrNotFound) {
+			return getErr
+		}
 		if err := s.Store.RemoveDomain(ctx, appID, hostname); err != nil {
 			return fmt.Errorf("delete domain claim: %w", err)
 		}
@@ -1233,8 +1287,9 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 		}
 	}
 	if len(updated) == len(app.Spec.Hosts) {
-		return nil // not present — idempotent
+		return nil // not present — idempotent, and no event
 	}
+	removedSomething = true
 	if s.Store != nil {
 		if id := managedAppID(app); id != "" {
 			if err := s.Store.RemoveDomain(ctx, id, hostname); err != nil {

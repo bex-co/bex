@@ -142,6 +142,7 @@ func (s *Service) AddDisk(ctx context.Context, serviceID, name, mountPath string
 		// still needs to know the rollout has not happened yet.
 		return DiskView{}, fmt.Errorf("attach disk: %w", err)
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbAddDisk)
 	return diskView(disk), nil
 }
 
@@ -232,6 +233,7 @@ func (s *Service) UpdateDisk(ctx context.Context, diskID string, name, mountPath
 	}); err != nil {
 		return DiskView{}, fmt.Errorf("update disk: %w", err)
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbUpdateDisk)
 	return diskView(updated), nil
 }
 
@@ -251,6 +253,7 @@ func (s *Service) DeleteDisk(ctx context.Context, diskID string) error {
 	}); err != nil {
 		return fmt.Errorf("detach disk: %w", err)
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteDisk)
 	return nil
 }
 

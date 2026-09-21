@@ -142,6 +142,70 @@ const (
 	AuditVerbSetAutoscaling    = "apps.SetAutoscaling"
 	AuditVerbDeleteAutoscaling = "apps.DeleteAutoscaling"
 	AuditVerbSetAutoDeploy     = "apps.SetAutoDeploy"
+	// AuditVerbAddDomain / AuditVerbVerifyDomain / AuditVerbDeleteDomain are the
+	// three custom-domain verbs, spelled as callerVerb() derives them so the
+	// recording helpers below can name them without walking the stack.
+	//
+	// They are recorded ONLY after the claim actually changed (w4/m122). The
+	// events feed projects allowed audit rows into past-tense facts, so
+	// emitting them at authorize time reported attempts as accomplishments: a
+	// domain whose TXT record had not propagated produced a
+	// `custom_domain_verified` row on every Re-check — five of them, live, for
+	// a domain that never verified — and an add refused as a reserved platform
+	// hostname produced a `custom_domain_added` row for a domain that was never
+	// attached. Verification failing is the NORMAL first outcome, so this was
+	// the common path, not an edge case.
+	AuditVerbSuspend                        = "apps.Suspend"
+	AuditVerbResume                         = "apps.Resume"
+	AuditVerbSetSubdomainPolicy             = "apps.SetSubdomainPolicy"
+	AuditVerbSetRootDir                     = "apps.SetRootDir"
+	AuditVerbSetDockerfilePath              = "apps.SetDockerfilePath"
+	AuditVerbSetPort                        = "apps.SetPort"
+	AuditVerbSetBuildFilter                 = "apps.SetBuildFilter"
+	AuditVerbSetCommands                    = "apps.SetCommands"
+	AuditVerbSetSourceAndRegistryCredential = "apps.SetSourceAndRegistryCredential"
+	AuditVerbSetPreDeployCommand            = "apps.SetPreDeployCommand"
+	AuditVerbSetMaxShutdownDelay            = "apps.SetMaxShutdownDelay"
+	AuditVerbSetPublishPath                 = "apps.SetPublishPath"
+	AuditVerbSetRoutes                      = "apps.SetRoutes"
+	AuditVerbSetHeaders                     = "apps.SetHeaders"
+	// The environment write verbs (w4/m122). They share one authorize point
+	// (secrets.scope) and every one of them has a refusal or a no-op after it:
+	// a blueprint-owned key, a bad key name, the aggregate quota, an unknown
+	// key on delete, a revision conflict, and seed-once's "already present".
+	// The env-group link verbs (w4/m122): each is idempotent, so re-linking an
+	// already-linked service wrote nothing and still reported "Env group
+	// linked"; LinkEnvGroup additionally refuses an unknown group name after
+	// authorizing.
+	// The one-off job verbs (w4/m122): a create whose Kubernetes submit is
+	// refused (w4/m116 taught it to report that) and a cancel of an
+	// already-terminal job both used to report the job started or canceled.
+	// The disk verbs (w4/m122, secondary finding). These already deferred their
+	// allowed-write audit — but no recorder was ever written, so the deferral
+	// suppressed the row and nothing re-emitted it: disk_created, disk_updated,
+	// disk_deleted and disk_restored could never appear in any service's feed.
+	// The mirror image of this milestone's main defect, and true since the
+	// feature landed. Denials always recorded, so the workspace audit log was
+	// unaffected.
+	AuditVerbAddDisk             = "apps.AddDisk"
+	AuditVerbUpdateDisk          = "apps.UpdateDisk"
+	AuditVerbDeleteDisk          = "apps.DeleteDisk"
+	AuditVerbRestoreDiskSnapshot = "apps.RestoreDiskSnapshot"
+
+	AuditVerbJobCreate = "jobs.Create"
+	AuditVerbJobCancel = "jobs.Cancel"
+
+	AuditVerbLinkService      = "envgroups.LinkService"
+	AuditVerbUnlinkService    = "envgroups.UnlinkService"
+	AuditVerbLinkEnvGroup     = "envgroups.LinkEnvGroup"
+	AuditVerbSetEnvVars       = "secrets.SetEnvVars"
+	AuditVerbSetEnvVar        = "secrets.SetEnvVar"
+	AuditVerbDeleteEnvVar     = "secrets.DeleteEnvVar"
+	AuditVerbSeedEnvVars      = "secrets.SeedEnvVars"
+	AuditVerbPatchEnvironment = "secrets.PatchEnvironment"
+	AuditVerbAddDomain        = "apps.AddDomain"
+	AuditVerbVerifyDomain     = "apps.VerifyDomain"
+	AuditVerbDeleteDomain     = "apps.DeleteDomain"
 	// AuditVerbProjectServiceMoved / AuditVerbEnvironmentServiceMoved are the
 	// per-service effects of one successful bulk membership replacement
 	// (projects.SetServices / environments.SetServices, w6/m134). Like the
@@ -429,6 +493,82 @@ func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App
 	ev := b.verbAuditEvent(ctx, AuditVerbSetAutoDeploy, resource, canonicalAppTarget(app))
 	ev.AutoDeployEnabled = &enabled
 	b.recordAudit(ctx, ev)
+}
+
+// RecordDomainEffect records one custom-domain verb that actually changed a
+// claim. The caller authorizes under WithDeferredAllowedWriteAudit, so nothing
+// is written at authorize time; this is the only path that produces the row,
+// and it runs after the mutation succeeded (w4/m122).
+//
+// It deliberately carries NO hostname. The live evidence showed `details: {}`
+// and a bare "Custom domain verified", which on a multi-domain service says
+// little — but naming the domain means a new persisted detail column and its
+// migration, and the row being TRUE is the defect here. Recorded as a possible
+// follow-up rather than smuggled in: an event that names the wrong thing is a
+// different bug from an event that should not exist.
+func (b *Base) RecordDomainEffect(ctx context.Context, app *appv1alpha1.App, verb string) {
+	switch verb {
+	case AuditVerbAddDomain, AuditVerbVerifyDomain, AuditVerbDeleteDomain:
+	default:
+		log.Printf("audit: refusing to record %q as a domain effect", verb)
+		return
+	}
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve domain resource: %v", err)
+		return
+	}
+	b.recordAudit(ctx, b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app)))
+}
+
+// appConfigVerbs are the service-configuration verbs recorded after their write
+// lands rather than at authorize time (w4/m122). Fixed vocabulary, so a caller
+// cannot invent an action: RecordAppConfigChanged refuses anything not here.
+var appConfigVerbs = map[string]bool{
+	AuditVerbSuspend: true, AuditVerbResume: true,
+	AuditVerbSetSubdomainPolicy: true, AuditVerbSetRootDir: true,
+	AuditVerbSetDockerfilePath: true, AuditVerbSetPort: true,
+	AuditVerbSetBuildFilter: true, AuditVerbSetCommands: true,
+	AuditVerbSetSourceAndRegistryCredential: true,
+	AuditVerbSetPreDeployCommand:            true, AuditVerbSetMaxShutdownDelay: true,
+	AuditVerbSetPublishPath: true, AuditVerbSetRoutes: true, AuditVerbSetHeaders: true,
+	AuditVerbSetEnvVars: true, AuditVerbSetEnvVar: true, AuditVerbDeleteEnvVar: true,
+	AuditVerbSeedEnvVars: true, AuditVerbPatchEnvironment: true,
+	AuditVerbLinkService: true, AuditVerbUnlinkService: true, AuditVerbLinkEnvGroup: true,
+	AuditVerbJobCreate: true, AuditVerbJobCancel: true,
+	AuditVerbAddDisk: true, AuditVerbUpdateDisk: true, AuditVerbDeleteDisk: true,
+	AuditVerbRestoreDiskSnapshot: true,
+}
+
+// RecordAppConfigChanged records one service-configuration verb that actually
+// completed. Its callers authorize under WithDeferredAllowedWriteAudit, so a
+// denial still records but an allowed write records nothing until the mutation
+// succeeds — which is the whole point (w4/m122).
+//
+// These verbs all follow the repo's authorize-before-validate contract, so the
+// type gates and range checks they enforce run AFTER authorization: setting a
+// Dockerfile path on an image-backed service, a port on a static site, a
+// publish path on a web service, a start command on a static site. Every one of
+// those is an ordinary mistake an ordinary UI or CLI flow makes, and every one
+// of them used to land in the Activity feed as an accomplished fact.
+//
+// Scope note: this closes the FAILED-operation half. An unchanged re-save still
+// records — the verb ran, the write landed, and the resulting state does match
+// what the event says, which is a materially weaker inaccuracy than an event
+// for an operation that was refused. The verbs that also suppress a no-op
+// (SetPlan, Scale, the domain verbs, maintenance mode) do it by comparing
+// before/after themselves, because only they know what "changed" means.
+func (b *Base) RecordAppConfigChanged(ctx context.Context, app *appv1alpha1.App, verb string) {
+	if !appConfigVerbs[verb] {
+		log.Printf("audit: refusing to record %q as a service-configuration effect", verb)
+		return
+	}
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve %s resource: %v", verb, err)
+		return
+	}
+	b.recordAudit(ctx, b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app)))
 }
 
 // ServiceMove is one service's before/after project/environment placement —

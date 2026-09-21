@@ -168,6 +168,16 @@ func scopeApp(ctx context.Context, a *appv1alpha1.App, service string) (context.
 // anything. The parameter name is load-bearing too, but loudly: the static
 // guard in events/vocabulary_test.go propagates each verb's relation through
 // one hop by matching that exact identifier.
+// scopeForWrite is scope with the allowed-write audit deferred (w4/m122). Every
+// environment write verb refuses or no-ops after authorization — a
+// blueprint-owned key, a malformed key, the aggregate quota, an unknown key on
+// delete, a revision conflict, seed-once's "already present" — and the events
+// feed turns an allowed audit row into "Environment variables changed"
+// regardless. The verb records its own row once the write has landed.
+func (s *Service) scopeForWrite(ctx context.Context, relation, service string) (*appv1alpha1.App, context.Context, string, error) {
+	return s.scope(core.WithDeferredAllowedWriteAudit(ctx), relation, service)
+}
+
 func (s *Service) scope(ctx context.Context, relation, service string) (*appv1alpha1.App, context.Context, string, error) {
 	a, err := s.AuthorizeApp(ctx, relation, service)
 	if err != nil {
@@ -429,7 +439,7 @@ func refuseManifestKeys(a *appv1alpha1.App, keys ...string) error {
 // and the pods roll so the new values take effect.
 func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarView) ([]EnvVarView, error) {
 	// One App read: existence check + patch base.
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return nil, err
 	}
@@ -464,6 +474,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := s.materializeEnv(ctx, a, env); err != nil {
 		return nil, err
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVars)
 	// No manifest keys can be present: SetEnvVars refuses a write that names
 	// one, so everything it wrote is store-owned and editable.
 	return envVarViews(env, "", nil), nil
@@ -487,7 +498,7 @@ func resolveValue(key, value string, generate bool) (string, error) {
 // {value} or {generateValue:true}), merging it into the existing set rather than
 // replacing it. Returns the bare {key,value}. Manage-scope verb.
 func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvVarWrite) (EnvVarView, error) {
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return EnvVarView{}, err
 	}
@@ -526,13 +537,14 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err := s.materializeEnv(ctx, a, env); err != nil {
 		return EnvVarView{}, err
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVar)
 	return EnvVarView{Key: key, Value: value}, nil
 }
 
 // DeleteEnvVar removes one variable (Render's DELETE .../env-vars/{key}),
 // re-projecting the reduced set. Unknown key => core.ErrNotFound.
 func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
@@ -548,6 +560,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if !keyFound {
 		return core.ErrNotFound
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
 	return nil
 }
 
@@ -561,7 +574,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 // naturally overrides them later. A no-op when every key is already present: no
 // Secret write, no pod roll — the stack re-apply idempotency contract. Manage scope.
 func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[string]string, generates []string) error {
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
@@ -609,7 +622,13 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return err
 	}
-	return s.materializeEnv(ctx, a, env)
+	if err := s.materializeEnv(ctx, a, env); err != nil {
+		return err
+	}
+	// Past seed-once's "every key already present" return above, so a blueprint
+	// re-apply that seeded nothing records nothing.
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSeedEnvVars)
+	return nil
 }
 
 // --- core.EnvVarReader: the seam apps' GraphQL uses to nest env vars ------------
