@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -185,7 +186,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 		}
 		if changed {
 			action.Operation = BlueprintPlanUpdate
-			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields)
+			live := r.services[resource.Name].Spec
+			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields, func(name string) (bool, error) {
+				probe := *live.DeepCopy()
+				return ApplyBlueprintServiceSpec(&probe, want, oneField(svc.fields, name))
+			})
 			return action, nil
 		}
 	case BlueprintResourcePostgres:
@@ -203,7 +208,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 		}
 		if changed {
 			action.Operation = BlueprintPlanUpdate
-			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields)
+			live := r.databases[resource.Name].Spec
+			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields, func(name string) (bool, error) {
+				probe := *live.DeepCopy()
+				return ApplyBlueprintDatabaseSpec(&probe, database.spec, oneField(database.fields, name))
+			})
 			return action, nil
 		}
 	case BlueprintResourceKeyValue:
@@ -214,7 +223,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 		probe := r.keyValues[resource.Name].Spec
 		if ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, keyValue.fields) {
 			action.Operation = BlueprintPlanUpdate
-			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields)
+			live := r.keyValues[resource.Name].Spec
+			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields, func(name string) (bool, error) {
+				probe := *live.DeepCopy()
+				return ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, oneField(keyValue.fields, name)), nil
+			})
 			return action, nil
 		}
 	case BlueprintResourceEnvVarGroup:
@@ -222,7 +235,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 		// an existing group must be represented as a possible update rather than
 		// a false no-op; field paths are safe and values remain omitted.
 		action.Operation = BlueprintPlanUpdate
-		action.ChangedFields = blueprintPlanFieldChanges(resource.Fields)
+		action.ChangedFields = blueprintDeclaredFieldChanges(resource.Fields)
 		return action, nil
 	}
 	action.Operation = BlueprintPlanNoop
@@ -256,10 +269,58 @@ func parsedBlueprintKeyValue(st parsedStack, name string) (parsedKeyValue, bool)
 	return parsedKeyValue{}, false
 }
 
-func blueprintPlanFieldChanges(fields map[string]BlueprintField) []BlueprintFieldChange {
+// blueprintPlanFieldChanges reports which of a manifest's declared fields
+// actually differ from the live resource — not, as it did until w4/m124, every
+// field the manifest happens to declare.
+//
+// The old behavior made the plan unreadable in the way that matters: two
+// key-value manifests differing in `maxmemoryPolicy` produced byte-identical
+// output, and a service manifest reported all ten of its declared paths
+// whatever the difference was. A field list that does not depend on the diff is
+// not a diff.
+//
+// It is computed by applying each declared field ALONE to a copy of the live
+// spec and asking whether the spec moved, so the answer comes from the very
+// appliers a real sync would run. A diff derived any other way can disagree
+// with what apply does, which is the failure this whole milestone is about.
+//
+// applyOne returns whether applying just `name` changed the resource.
+func blueprintPlanFieldChanges(fields map[string]BlueprintField, applyOne func(name string) (bool, error)) []BlueprintFieldChange {
+	changes := make([]BlueprintFieldChange, 0, len(fields))
+	for name := range fields {
+		changed, err := applyOne(name)
+		if err != nil {
+			// A field that cannot be applied in isolation is reported rather
+			// than dropped: the plan must not claim a resource is unaffected by
+			// something it could not evaluate.
+			changes = append(changes, BlueprintFieldChange{Path: name})
+			continue
+		}
+		if changed {
+			changes = append(changes, BlueprintFieldChange{Path: name})
+		}
+	}
+	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
+	return changes
+}
+
+// blueprintDeclaredFieldChanges is the fallback for a resource kind with no
+// per-field applier to probe (env groups, whose values are write-only): report
+// the declared set, sorted, as before.
+func blueprintDeclaredFieldChanges(fields map[string]BlueprintField) []BlueprintFieldChange {
 	changes := make([]BlueprintFieldChange, 0, len(fields))
 	for name := range fields {
 		changes = append(changes, BlueprintFieldChange{Path: name})
 	}
+	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
 	return changes
+}
+
+// oneField narrows a declared field set to a single entry, so an applier can be
+// run in isolation.
+func oneField(fields map[string]BlueprintField, name string) map[string]BlueprintField {
+	if f, ok := fields[name]; ok {
+		return map[string]BlueprintField{name: f}
+	}
+	return nil
 }

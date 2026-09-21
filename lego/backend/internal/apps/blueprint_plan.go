@@ -102,6 +102,46 @@ func blueprintServiceOmission(name string) BlueprintOmission {
 // member is declared (domains|domain, autoDeploy|autoDeployTrigger). Fields
 // whose omission or interplay carries meaning (buildFilter, scaling and
 // numInstances) stay inline in ApplyBlueprintServiceSpec.
+// canonicalSlice keeps a projected list's ZERO VALUE canonical: nil, never an
+// empty non-nil slice.
+//
+// This is the single shape behind a whole family of "an exported manifest
+// re-plans as update forever" bugs (w4/m124). Kubernetes drops an empty slice
+// when a CR round-trips, so a live spec's empty list reads back as nil — while
+// slices.Clone of a manifest's declared `[]` returns an empty NON-nil slice,
+// and reflect.DeepEqual(nil, []T{}) is false. The planner then reports a change
+// that does not exist, on every re-plan, for a field the manifest is required
+// to declare. The `domains` applier above had spotted exactly this for Hosts
+// and written the reason down; every other list applier needed the same
+// treatment, and ipAllowList on a Key Value was the one QA caught.
+func canonicalSlice[T any](values []T) []T {
+	if len(values) == 0 {
+		return nil
+	}
+	return slices.Clone(values)
+}
+
+// applyBlueprintCommand routes a manifest's startCommand/dockerCommand to the
+// field that service type actually stores it in. specFromCreate has already
+// made the same split on `want` (a cron's Command, everything else's
+// StartCommand), so this reads whichever one carries a value.
+func applyBlueprintCommand(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+	if dst.Type == appv1alpha1.TypeCronJob {
+		dst.Command = blueprintDeclaredCommand(want)
+		return
+	}
+	dst.StartCommand = blueprintDeclaredCommand(want)
+}
+
+// blueprintDeclaredCommand is the command a compiled manifest declared,
+// wherever specFromCreate put it.
+func blueprintDeclaredCommand(want appv1alpha1.AppSpec) string {
+	if want.Command != "" {
+		return want.Command
+	}
+	return want.StartCommand
+}
+
 var blueprintServiceFieldAppliers = []struct {
 	names []string
 	apply func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec)
@@ -123,8 +163,16 @@ var blueprintServiceFieldAppliers = []struct {
 	{names: []string{"builder"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Builder = want.Builder }},
 	{names: []string{"rootDir"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.RootDir = want.RootDir }},
 	{names: []string{"buildCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.BuildCommand = want.BuildCommand }},
-	{names: []string{"startCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.StartCommand = want.StartCommand }},
-	{names: []string{"dockerCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.StartCommand = want.StartCommand }},
+	// A cron job's command lives in Spec.Command, not Spec.StartCommand —
+	// SetCommands has always known that, and so does the exporter, which writes
+	// Spec.Command out as `startCommand` (or `dockerCommand` for a docker
+	// runtime). These two appliers did not: they wrote every declared command
+	// into StartCommand, so an exported cron gained a StartCommand it never had
+	// while keeping its Command, and re-planned as `update` forever. Found by
+	// w4/m124's round-trip guard, not by the QA pass that opened the milestone
+	// — the same exporter/planner disagreement as `domains`, one field over.
+	{names: []string{"startCommand"}, apply: applyBlueprintCommand},
+	{names: []string{"dockerCommand"}, apply: applyBlueprintCommand},
 	{names: []string{"dockerfilePath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.DockerfilePath = want.DockerfilePath }},
 	{names: []string{"dockerContext"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.DockerContext = want.DockerContext }},
 	{names: []string{"registryCredential"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
@@ -151,18 +199,38 @@ var blueprintServiceFieldAppliers = []struct {
 		dst.SetIPAllowListEntries(want.EffectiveIPAllowListEntries())
 	}},
 	{names: []string{"domains", "domain"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
-		dst.Host = want.Host
-		// Keep the zero value canonical. Kubernetes drops an empty slice when it
-		// round-trips the CR, so preserving [] here would make an identical
-		// Blueprint look changed on every re-apply.
-		dst.Hosts = nil
-		if len(want.Hosts) > 0 {
-			dst.Hosts = slices.Clone(want.Hosts)
+		// A manifest declares ONE flat `domains:` list; the spec stores the same
+		// set in TWO fields, Host (the primary) plus Hosts (the rest). The
+		// create path has no Host field at all, so the whole declared list
+		// arrives in want.Hosts — and copying the two fields across verbatim
+		// therefore moved a service's primary domain out of Host and into
+		// Hosts, making an identical Blueprint re-plan as `update` forever
+		// (w4/m124). Exporting `domains: [blockeden.xyz]` and immediately
+		// re-planning it was an `update` on every run; deleting that one line
+		// was what turned it back into a `noop`.
+		//
+		// So compare the SETS, not the fields. When the manifest describes the
+		// hosts the service already serves, leave the existing split exactly as
+		// it is — the same "keep the zero value canonical" instinct the Hosts
+		// branch below already had, applied one field over. Only a genuine
+		// change rewrites the split, and then into the canonical shape
+		// blueprintAppDomains reads back: first entry primary, remainder extra.
+		declared := want.Host
+		var rest []string
+		if declared == "" && len(want.Hosts) > 0 {
+			declared, rest = want.Hosts[0], want.Hosts[1:]
+		} else {
+			rest = want.Hosts
 		}
+		if slices.Equal(blueprintDomainList(*dst), blueprintDomainList(appv1alpha1.AppSpec{Host: declared, Hosts: rest})) {
+			return
+		}
+		dst.Host = declared
+		dst.Hosts = canonicalSlice(rest)
 	}},
 	{names: []string{"staticPublishPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PublishPath = want.PublishPath }},
-	{names: []string{"routes"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Routes = slices.Clone(want.Routes) }},
-	{names: []string{"headers"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Headers = slices.Clone(want.Headers) }},
+	{names: []string{"routes"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Routes = canonicalSlice(want.Routes) }},
+	{names: []string{"headers"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Headers = canonicalSlice(want.Headers) }},
 	{names: []string{"renderSubdomainPolicy"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.SubdomainPolicy = want.SubdomainPolicy
 	}},
@@ -323,10 +391,10 @@ func ApplyBlueprintDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.
 		dst.Pooler = want.Pooler
 	}
 	if present("ipAllowList") {
-		dst.IPAllowList = slices.Clone(want.IPAllowList)
+		dst.IPAllowList = canonicalSlice(want.IPAllowList)
 	}
 	if present("readReplicas") {
-		dst.ReadReplicas = slices.Clone(want.ReadReplicas)
+		dst.ReadReplicas = canonicalSlice(want.ReadReplicas)
 	}
 	if present("highAvailability") {
 		dst.HighAvailability = want.HighAvailability
@@ -344,7 +412,7 @@ func ApplyBlueprintKeyValueSpec(dst *appv1alpha1.KeyValueSpec, want appv1alpha1.
 		dst.Plan = want.Plan
 	}
 	if present("ipAllowList") {
-		dst.IPAllowList = slices.Clone(want.IPAllowList)
+		dst.IPAllowList = canonicalSlice(want.IPAllowList)
 	}
 	if present("maxmemoryPolicy") {
 		dst.MaxmemoryPolicy = want.MaxmemoryPolicy
