@@ -145,7 +145,10 @@ func meterObservation(raw osSandbox, observedAt time.Time) (store.SandboxMeterOb
 	}
 	return store.SandboxMeterObservation{
 		WorkspaceID: raw.Metadata[metadataWorkspace],
-		SandboxID:   raw.ID,
+		// The canonical (tenant-facing) id, so a usage row names the sandbox the
+		// same way the API does. Agent-session sandboxes are unstamped, so their
+		// rows keep the substrate id the `agent_sessions` display-name join uses.
+		SandboxID:   canonicalID(raw),
 		Phase:       canonicalMeterPhase(raw.Status.State),
 		Tier:        raw.Metadata[metadataPlan],
 		WeightMilli: weight,

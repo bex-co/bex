@@ -98,7 +98,10 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	if err != nil {
 		return nil, err
 	}
-	return s.mintAndDial(ctx, ws, req.SandboxID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
+	// The ticket binds the SUBSTRATE id, not the caller's: the gateway derives
+	// the pod name as `<id>-0`, and a caller may address the sandbox by its
+	// public `sbx-` id (w9/m94).
+	return s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
 }
 
 // authorizeExecTarget is the exec gate shared by the direct exec verbs and the

@@ -136,10 +136,13 @@ func (c *ExecConfig) connectTTL() time.Duration {
 // gets no token. baseURL is the public API origin the returned URI is built
 // on (the pinned client follows it verbatim).
 func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL string) (ConnectResponse, error) {
-	ws, _, err := s.authorizeExecTarget(ctx, ExecRequest{OwnerID: req.OwnerID, SandboxID: req.SandboxID, Command: req.Command})
+	ws, raw, err := s.authorizeExecTarget(ctx, ExecRequest{OwnerID: req.OwnerID, SandboxID: req.SandboxID, Command: req.Command})
 	if err != nil {
 		return ConnectResponse{}, err
 	}
+	// Bind and advertise the canonical id whichever form the caller used, so the
+	// token, the stream URI, and every other surface name one sandbox one way.
+	sandboxID := canonicalID(raw)
 	if req.Operation != ConnectOperationStream {
 		return ConnectResponse{}, fmt.Errorf("%w: unsupported run operation %q (only %q is supported)", core.ErrBadRequest, req.Operation, ConnectOperationStream)
 	}
@@ -152,7 +155,7 @@ func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL st
 	claims := connectClaims{
 		Subject:     idn.Subject,
 		Workspace:   ws,
-		SandboxID:   req.SandboxID,
+		SandboxID:   sandboxID,
 		ExecutionID: id.New(id.SandboxExecution),
 		Operation:   req.Operation,
 		Command:     req.Command,
@@ -171,7 +174,7 @@ func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL st
 		ExpiresAt:   time.Unix(claims.ExpiresAt, 0).UTC(),
 		Method:      http.MethodPost,
 		Token:       token,
-		URI:         connectStreamURI(baseURL, req.SandboxID, claims.ExecutionID),
+		URI:         connectStreamURI(baseURL, sandboxID, claims.ExecutionID),
 	}, nil
 }
 
