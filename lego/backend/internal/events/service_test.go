@@ -109,10 +109,14 @@ func TestViewMapsEverySource(t *testing.T) {
 		wantType:    TypeDeployEnded,
 		wantDetails: Details{DeployID: "dep-1", DeployStatus: "succeeded", TriggeredByUser: "user-x"},
 	}, {
-		name:        "unattributed deploy (git/hook) leaves triggeredByUser empty",
+		// A deploy-hook POST is nobody's click: typically a CI system hitting a
+		// secret URL. It used to report Manual, which said a person pressed
+		// something (w4/104); it now carries bex's own deployHook flag, and
+		// Manual stays exclusively the API/dashboard trigger.
+		name:        "deploy-hook deploy is a hook, not a manual deploy, and leaves triggeredByUser empty",
 		row:         store.ServiceEventRow{Key: "dep-hook:started", Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-hook", Trigger: store.TriggerDeployHook},
 		wantType:    TypeDeployStarted,
-		wantDetails: Details{DeployID: "dep-hook", Trigger: &Trigger{Manual: true}},
+		wantDetails: Details{DeployID: "dep-hook", Trigger: &Trigger{DeployHook: true}},
 	}, {
 		name:        "deploy failed",
 		row:         store.ServiceEventRow{Key: "dep-3:ended", Source: store.EventSourceDeploy, Phase: store.EventPhaseEnded, DeployID: "dep-3", Status: store.DeployUpdateFailed},
@@ -760,5 +764,56 @@ func TestManualCronRunIsNotCountedTwice(t *testing.T) {
 		if slices.Contains(st.got.Verbs, verb) {
 			t.Errorf("unfiltered feed still queries intent verb %q — every manual run would appear twice", verb)
 		}
+	}
+}
+
+// TestDeployTriggerNamesTheCauseItActuallyHad pins w4/100 and w4/104 together:
+// the events feed and the deploys list must name one deploy's trigger the same
+// way, and neither may claim a cause that did not happen.
+//
+// Live on 2026-09-19 the same deploy read "Config Change" in the Deploys tab and
+// "Environment updated" in Events (a Settings command edit, where no environment
+// value changed), and a deploy-hook POST read "Deploy Hook" in Deploys and
+// "Manual deploy" in Events (a CI system hitting a secret URL — nobody clicked).
+// w4/100's half is a dashboard relabel; this is the backend half it rests on.
+func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
+	for _, tc := range []struct {
+		trigger string
+		want    Trigger
+	}{
+		// A config change is every Settings/env/secret-file/env-group write.
+		// EnvUpdated is the nearest flag Render's vocabulary has; the dashboard
+		// renders it as "Config Change" so the two surfaces agree (w4/100).
+		{store.TriggerConfigChange, Trigger{EnvUpdated: true}},
+		// Manual is now exclusively the API/dashboard trigger.
+		{store.TriggerAPI, Trigger{Manual: true}},
+		{store.TriggerDeployHook, Trigger{DeployHook: true}},
+		{store.TriggerCreate, Trigger{FirstBuild: true}},
+		{store.TriggerRollback, Trigger{Rollback: true}},
+	} {
+		t.Run(tc.trigger, func(t *testing.T) {
+			ev := view(store.ServiceEventRow{
+				Key: "dep-x:started", Source: store.EventSourceDeploy,
+				Phase: store.EventPhaseStarted, DeployID: "dep-x", Trigger: tc.trigger,
+			}, "srv-1")
+			got := ev.Details.Trigger
+			if got == nil {
+				t.Fatalf("%s produced no trigger object", tc.trigger)
+			}
+			if *got != tc.want {
+				t.Errorf("trigger = %+v, want %+v", *got, tc.want)
+			}
+			// The object documents its flags as mutually exclusive: two true
+			// flags would just relocate the false statement rather than fix it.
+			set := 0
+			for _, flag := range []bool{got.FirstBuild, got.EnvUpdated, got.Manual, got.DeployedByRender, got.ClearCache, got.Rollback, got.DeployHook} {
+				if flag {
+					set++
+				}
+			}
+			if set != 1 {
+				t.Errorf("%s set %d flags, want exactly one: %+v", tc.trigger, set, *got)
+			}
+		})
 	}
 }

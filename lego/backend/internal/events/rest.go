@@ -126,8 +126,8 @@ type autoscalingState struct {
 	MaxInstances *int32 `json:"maxInstances,omitempty"`
 }
 
-// renderTrigger is deploy_started's trigger object — all six booleans always
-// present, as Render marks them required.
+// renderTrigger is deploy_started's trigger object — Render's six booleans
+// always present, as Render marks them required, plus bex's deployHook.
 type renderTrigger struct {
 	FirstBuild       bool `json:"firstBuild"`
 	EnvUpdated       bool `json:"envUpdated"`
@@ -135,6 +135,9 @@ type renderTrigger struct {
 	DeployedByRender bool `json:"deployedByRender"`
 	ClearCache       bool `json:"clearCache"`
 	Rollback         bool `json:"rollback"`
+	// DeployHook is additive — a Render client ignores the unknown key, and
+	// every Render-named flag keeps its Render meaning. See Trigger.DeployHook.
+	DeployHook bool `json:"deployHook"`
 }
 
 func toRenderEvent(e Event) renderEvent {
@@ -166,6 +169,7 @@ func toRenderEvent(e Event) renderEvent {
 			DeployedByRender: t.DeployedByRender,
 			ClearCache:       t.ClearCache,
 			Rollback:         t.Rollback,
+			DeployHook:       t.DeployHook,
 		}
 	}
 	switch e.Type {

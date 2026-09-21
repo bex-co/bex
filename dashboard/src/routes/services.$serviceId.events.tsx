@@ -65,12 +65,18 @@ type TriggerFlags = {
   deployedByRender?: boolean | null;
   clearCache?: boolean | null;
   rollback?: boolean | null;
+  /** bex extension — Render's trigger vocabulary has no hook flag (w4/104). */
+  deployHook?: boolean | null;
 } | null;
 
 function triggerKey(trigger: TriggerFlags): string | null {
   if (!trigger) return null;
   if (trigger.rollback) return "services.eventsTriggerRollback";
   if (trigger.firstBuild) return "services.eventsTriggerFirstBuild";
+  // Before deployHook existed, a hook POST arrived as `manual` and read
+  // "Manual deploy" for a rollout nobody clicked (w4/104). It is checked ahead
+  // of manual so a server that still sets both cannot resurrect the old label.
+  if (trigger.deployHook) return "services.eventsTriggerDeployHook";
   if (trigger.manual) return "services.eventsTriggerManual";
   if (trigger.envUpdated) return "services.eventsTriggerEnvUpdated";
   if (trigger.clearCache) return "services.eventsTriggerClearCache";

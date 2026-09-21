@@ -644,6 +644,7 @@ export type DeployHook = {
 export type DeployTrigger = {
   __typename: 'DeployTrigger';
   clearCache: Maybe<Scalars['Boolean']['output']>;
+  deployHook: Maybe<Scalars['Boolean']['output']>;
   deployedByRender: Maybe<Scalars['Boolean']['output']>;
   envUpdated: Maybe<Scalars['Boolean']['output']>;
   firstBuild: Maybe<Scalars['Boolean']['output']>;
@@ -1150,6 +1151,7 @@ export type Mutation = {
   setBuildFilter: Maybe<Service>;
   setDatabaseIpAllowList: Maybe<Database>;
   setDatabaseParameterOverrides: Maybe<Database>;
+  setDatabasePublic: Maybe<Database>;
   setDisplayName: Maybe<Service>;
   setDockerfilePath: Maybe<Service>;
   setEnvGroupSecretFile: Maybe<Scalars['Boolean']['output']>;
@@ -1168,6 +1170,7 @@ export type Mutation = {
   setKeyValueIpAllowList: Maybe<KeyValue>;
   setKeyValueMaxmemoryPolicy: Maybe<KeyValue>;
   setKeyValuePersistenceMode: Maybe<KeyValue>;
+  setKeyValuePublic: Maybe<KeyValue>;
   setMaintenanceMode: Maybe<Service>;
   setMaxShutdownDelay: Maybe<Service>;
   setNotificationsToSend: Maybe<Service>;
@@ -1924,6 +1927,12 @@ export type MutationSetDatabaseParameterOverridesArgs = {
 };
 
 
+export type MutationSetDatabasePublicArgs = {
+  id: Scalars['String']['input'];
+  public: Scalars['Boolean']['input'];
+};
+
+
 export type MutationSetDisplayNameArgs = {
   displayName: Scalars['String']['input'];
   id: Scalars['String']['input'];
@@ -2041,6 +2050,12 @@ export type MutationSetKeyValuePersistenceModeArgs = {
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   persistenceMode: Scalars['String']['input'];
+};
+
+
+export type MutationSetKeyValuePublicArgs = {
+  id: Scalars['String']['input'];
+  public: Scalars['Boolean']['input'];
 };
 
 

@@ -3514,8 +3514,13 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Deploy event trigger: manual",
   },
   "services.eventsTriggerEnvUpdated": {
-    message: "环境已更新",
-    description: "Deploy event trigger: environment update",
+    // See the en copy — w4/100.
+    message: "配置变更",
+    description: "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
+  },
+  "services.eventsTriggerDeployHook": {
+    message: "部署钩子",
+    description: "Deploy event trigger: a POST to the service's secret deploy-hook URL",
   },
   "services.eventsTriggerClearCache": {
     message: "已清除缓存",

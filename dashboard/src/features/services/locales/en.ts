@@ -3589,8 +3589,17 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Deploy event trigger: manual",
   },
   "services.eventsTriggerEnvUpdated": {
-    message: "Environment updated",
-    description: "Deploy event trigger: environment update",
+    // Matches deploys.triggerConfigChange word for word (w4/100): the backend
+    // maps EVERY config write — a Settings field, an env var, a secret file, an
+    // env-group link — onto Render's envUpdated flag, so "Environment updated"
+    // told a reader who had just edited a start command that their environment
+    // had changed. The deploys list had already settled the wording.
+    message: "Config Change",
+    description: "Deploy event trigger: a config change (Settings, env var, secret file, or env-group edit)",
+  },
+  "services.eventsTriggerDeployHook": {
+    message: "Deploy Hook",
+    description: "Deploy event trigger: a POST to the service's secret deploy-hook URL",
   },
   "services.eventsTriggerClearCache": {
     message: "Cache cleared",

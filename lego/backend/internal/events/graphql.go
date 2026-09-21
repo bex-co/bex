@@ -43,6 +43,8 @@ var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"deployedByRender": gqlutil.BoolField(func(t Trigger) any { return t.DeployedByRender }),
 		"clearCache":       gqlutil.BoolField(func(t Trigger) any { return t.ClearCache }),
 		"rollback":         gqlutil.BoolField(func(t Trigger) any { return t.Rollback }),
+		// bex extension — see Trigger.DeployHook (w4/104).
+		"deployHook": gqlutil.BoolField(func(t Trigger) any { return t.DeployHook }),
 	},
 })
 
