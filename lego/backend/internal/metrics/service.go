@@ -27,6 +27,7 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -991,6 +992,38 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		// request-logs-liveness probe, not by manufacturing an error here that a
 		// quiet host would also trigger.
 		return s.readRequestSeries(ctx, s.RequestLogMetrics, q, app, nil)
+	}
+	// An unfiltered http_requests read prefers the request-log store too, for a
+	// different reason: EXACTNESS (w4/m119). Traefik's Prometheus counter can
+	// only be turned back into a per-bucket count with increase(), and
+	// increase() extrapolates a partial-window counter — so 25 bursty requests
+	// read back 27.8 in one query alignment and 6.67 in another (live
+	// 2026-09-20), while the access log showed exactly 25. There is no
+	// extrapolation-free counter-increase in PromQL; count_over_time on the
+	// access-log lines is exact by construction, and it is the same data the
+	// Logs tab shows, so the chart and the log finally reconcile — which is
+	// what w4/m108 promised and could not deliver from a counter.
+	//
+	// Only the count. http_latency stays on Prometheus (its percentiles come
+	// from a histogram, and rate() is the right primitive there), and bandwidth
+	// has no per-request line to count.
+	//
+	// A quiet service and a stopped log pipeline are indistinguishable from
+	// here — the same limitation the host/path branch above already
+	// dispositions, caught out of band by the scheduled request-logs-liveness
+	// probe rather than by manufacturing an error a genuinely idle service
+	// would also raise.
+	if q.Metric == MetricHTTPRequests && s.RequestLogMetrics != nil {
+		series, err := s.readRequestSeries(ctx, s.RequestLogMetrics, q, app, nil)
+		if err == nil {
+			return series, nil
+		}
+		// Loki is wired but did not answer. Fall back to the counter rather
+		// than blanking a chart that works today: the approximation IS the
+		// pre-w4/m119 behavior, so the fallback is never worse than what it
+		// replaces, while a 503 here would be strictly worse. Unlike the
+		// host/path branch, Prometheus CAN answer this read.
+		log.Printf("metrics: request-log count for %s/%s failed, falling back to the Traefik counter (approximate for bursty traffic): %v", app.Namespace, app.Name, err)
 	}
 	if s.RequestMetrics == nil {
 		return nil, core.ErrMetricsUnavailable
