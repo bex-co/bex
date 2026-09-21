@@ -96,7 +96,12 @@ func TestBlueprintOwnershipStampAndConflictAndTakeover(t *testing.T) {
 		t.Fatalf("refused create must not change ownership, got %q", owner)
 	}
 
-	// The takeover confirmation transfers ownership to B and proceeds.
+	// The takeover confirmation transfers ownership to B and proceeds. The
+	// refused attempt above left B's own row behind (admission precedes the
+	// resource preflight), so this retry also exercises w4/m125's rule that
+	// re-connecting the SAME path is not a replacement — otherwise a create
+	// whose apply failed could never be retried, since one Confirm cannot
+	// carry both a resource and a connection phrase.
 	b, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/b", Branch: "main", Confirm: phrase})
 	if err != nil {
 		t.Fatalf("takeover create: %v", err)
@@ -122,7 +127,7 @@ func TestBlueprintOwnershipPreviewSurfacesConflict(t *testing.T) {
 
 	// Previewing a DIFFERENT repo that names the owned service reports the
 	// conflict as a validation entry (no verb error).
-	p, err := svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/acme/b", "main", "")
+	p, err := svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/acme/b", "main", "", "")
 	if err != nil {
 		t.Fatalf("preview: %v", err)
 	}
@@ -132,7 +137,7 @@ func TestBlueprintOwnershipPreviewSurfacesConflict(t *testing.T) {
 	}
 
 	// The owning blueprint's own preview does not conflict with itself.
-	p, err = svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/acme/a", "main", "")
+	p, err = svc.PreviewBlueprint(ctx, "tea-a", "https://github.com/acme/a", "main", "", a.ID)
 	if err != nil || p.Validation == nil || !p.Validation.Valid {
 		t.Fatalf("self preview must stay valid: %+v err=%v", p.Validation, err)
 	}

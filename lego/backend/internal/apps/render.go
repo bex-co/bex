@@ -103,6 +103,10 @@ type renderService struct {
 	// makes the automatic parent-project join observable without another list.
 	ProjectID     string `json:"projectId,omitempty"`
 	EnvironmentID string `json:"environmentId,omitempty"`
+	// BlueprintID names the Blueprint managing this service (w4/m125). A bex
+	// extension: Render does not enforce Blueprint ownership, so it has no
+	// field to mirror.
+	BlueprintID string `json:"blueprintId,omitempty"`
 
 	// bex-native superset (ignored by Render clients).
 	// PublicRoutingNotice explains why an exposed service has no public address
@@ -348,6 +352,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		OwnerID:              a.OwnerID,
 		ProjectID:            a.ProjectID,
 		EnvironmentID:        a.EnvironmentID,
+		BlueprintID:          a.BlueprintID,
 		Phase:                a.Phase,
 		PublicRoutingNotice:  a.PublicRoutingNotice,
 		Replicas:             a.Replicas,

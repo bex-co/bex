@@ -21,6 +21,15 @@ describe("protectedConfirmationFromError", () => {
     );
   });
 
+  it("extracts the blueprint connection phrase (w4/m125)", () => {
+    const err = new Error(
+      'blueprint blp-1 ("bpA") already tracks https://github.com/o/r@main from "a.yaml"; update it with updateBlueprint to change its path, or retry with confirm="takeover blueprint blp-1" to replace it',
+    );
+    expect(protectedConfirmationFromError(err)).toBe(
+      "takeover blueprint blp-1",
+    );
+  });
+
   it("ignores unrelated errors", () => {
     expect(protectedConfirmationFromError(new Error("boom"))).toBeNull();
   });

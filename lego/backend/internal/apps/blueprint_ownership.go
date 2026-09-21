@@ -333,7 +333,107 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 			}
 		}
 	}
-	return nil
+	return s.releaseUndeclaredClaims(ctx, tenantID, blueprintID, st)
+}
+
+// releaseUndeclaredClaims drops this blueprint's claim on every resource its
+// manifest no longer declares (w4/m125).
+//
+// w8/m23 promised that a managed resource "records A as its managing blueprint,
+// visible on the blueprint's resources[]". Half of that held: the claim was
+// durable, but resources[] is derived from the CURRENT manifest
+// (resolveBlueprintResourcesFromIR walks the IR), so anything a sync stopped
+// declaring vanished from the list while keeping the claim. Live, one blueprint
+// id said both "I do not manage static-site" and "static-site is managed by me"
+// at the same moment, and the only way to free it was to disconnect the
+// surviving blueprint — a workflow nobody would find.
+//
+// The release frees the claim and the marker, nothing else: the resource keeps
+// running, which is deliberate (w4/119 — an orphan is not deleted). It runs
+// inside stampBlueprintOwnership's fenced window, after the same
+// AssertBlueprintExecution the stamps use, so a retired worker cannot release
+// claims a successor just took.
+func (s *Service) releaseUndeclaredClaims(ctx context.Context, tenantID, blueprintID string, st parsedStack) error {
+	if s.Blueprints == nil || tenantID == "" || blueprintID == "" {
+		return nil
+	}
+	claims, err := s.Blueprints.ListBlueprintResourceClaims(ctx, tenantID, blueprintID)
+	if err != nil {
+		return fmt.Errorf("listing Blueprint resource claims: %w", err)
+	}
+	declared := map[string]bool{}
+	for _, svc := range st.services {
+		declared["service/"+svc.req.Name] = true
+	}
+	for _, db := range st.databases {
+		declared["database/"+db.name] = true
+	}
+	for _, kv := range st.keyValues {
+		declared["key_value/"+kv.name] = true
+	}
+	released := map[string]bool{}
+	for _, c := range claims {
+		if declared[c.Kind+"/"+c.Name] {
+			continue
+		}
+		if err := s.Blueprints.ReleaseBlueprintResourceClaim(ctx, tenantID, c.Kind, c.Name, blueprintID); err != nil {
+			return fmt.Errorf("releasing Blueprint claim on %s %q: %w", c.Kind, c.Name, err)
+		}
+		released[c.Kind+"/"+c.Name] = true
+	}
+	if len(released) == 0 {
+		return nil
+	}
+	return s.clearBlueprintMarkers(ctx, tenantID, blueprintID, released)
+}
+
+// clearBlueprintMarkers removes core.LabelBlueprint from the resources named in
+// released — the CR-label mirror of the claims releaseUndeclaredClaims just
+// dropped. The claim is the writer of truth (replicas coordinate through it),
+// so a marker that outlives its claim is stale rather than authoritative; the
+// first failure is returned so a sync reports the incomplete cleanup instead of
+// inferring success, the same posture clearBlueprintOwnership takes.
+func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprintID string, released map[string]bool) error {
+	owned := []client.ListOption{client.MatchingLabels{core.LabelTenant: tenantID, core.LabelBlueprint: blueprintID}}
+	var firstErr error
+	clear := func(key string, obj client.Object) {
+		if !released[key] {
+			return
+		}
+		base := obj.DeepCopyObject().(client.Object)
+		labels := obj.GetLabels()
+		if labels == nil {
+			return
+		}
+		delete(labels, core.LabelBlueprint)
+		obj.SetLabels(labels)
+		if err := s.Client.Patch(ctx, obj, client.MergeFrom(base)); err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("clearing Blueprint marker on %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+		}
+	}
+
+	var apps appv1alpha1.AppList
+	if err := s.Client.List(ctx, &apps, owned...); err != nil {
+		return fmt.Errorf("listing owned apps: %w", err)
+	}
+	for i := range apps.Items {
+		clear("service/"+appServiceName(&apps.Items[i]), &apps.Items[i])
+	}
+	var databases appv1alpha1.DatabaseList
+	if err := s.Client.List(ctx, &databases, owned...); err != nil {
+		return fmt.Errorf("listing owned databases: %w", err)
+	}
+	for i := range databases.Items {
+		clear("database/"+databases.Items[i].Spec.Name, &databases.Items[i])
+	}
+	var keyValues appv1alpha1.KeyValueList
+	if err := s.Client.List(ctx, &keyValues, owned...); err != nil {
+		return fmt.Errorf("listing owned key values: %w", err)
+	}
+	for i := range keyValues.Items {
+		clear("key_value/"+keyValues.Items[i].Spec.Name, &keyValues.Items[i])
+	}
+	return firstErr
 }
 
 // clearBlueprintOwnership removes the marker from every resource the
@@ -422,4 +522,26 @@ func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch st
 		})
 	}
 	return entries
+}
+
+// previewConnectionConflict reports, as a validation entry, that a live
+// blueprint already tracks this repo+branch — the row-level twin of
+// previewOwnershipConflicts (w4/m125). forBlueprintID is the previewing
+// blueprint's own id; the pre-sync dialog passes it and never conflicts with
+// itself, while `/blueprints/new` passes "" and sees the conflict before it
+// presses Deploy. A store failure is swallowed the same way the resource
+// preview swallows a scan failure: CreateBlueprint's own check is the
+// enforcement point and fails closed there.
+func (s *Service) previewConnectionConflict(ctx context.Context, tenantID, repo, branch, path, forBlueprintID string) *BlueprintValidationError {
+	if s.Blueprints == nil || tenantID == "" {
+		return nil
+	}
+	existing, err := s.blueprintConnectionConflict(ctx, tenantID, repo, branch, path)
+	if err != nil || existing.ID == "" || existing.ID == forBlueprintID {
+		return nil
+	}
+	return &BlueprintValidationError{
+		Code:  "BLUEPRINT_CONNECTION_CONFLICT",
+		Error: errBlueprintAlreadyConnected(existing).Error(),
+	}
 }

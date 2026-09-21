@@ -172,6 +172,10 @@ func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaims(context.Context, 
 	return nil
 }
 
+func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaim(context.Context, string, string, string, string) error {
+	return nil
+}
+
 func (f *blueprintFixtureStore) ListBlueprintResourceClaims(context.Context, string, string) ([]store.BlueprintResourceClaim, error) {
 	return nil, nil
 }

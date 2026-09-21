@@ -68,6 +68,9 @@ type renderKeyValue struct {
 	ExternalHost  string                  `json:"externalHost,omitempty"`
 	Public        bool                    `json:"public"`
 	ProjectID     string                  `json:"projectId,omitempty"`
+	// BlueprintID names the Blueprint managing this instance (w4/m125); a bex
+	// extension, since Render does not enforce Blueprint ownership.
+	BlueprintID string `json:"blueprintId,omitempty"`
 }
 
 func toRenderKeyValue(kv KeyValueView) renderKeyValue {
@@ -95,6 +98,7 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 		ExternalHost:  kv.ExternalHost,
 		Public:        kv.Public,
 		ProjectID:     kv.ProjectID,
+		BlueprintID:   kv.BlueprintID,
 	}
 }
 

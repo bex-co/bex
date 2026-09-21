@@ -105,10 +105,14 @@ type BlueprintStore interface {
 	// ReleaseBlueprintResourceClaims drops every durable claim for a
 	// disconnected Blueprint (w8/m40).
 	ReleaseBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) error
-	// ListBlueprintResourceClaims lists durable claims owned by blueprintID.
+	// ListBlueprintResourceClaims lists durable claims owned by blueprintID —
+	// also what a sync diffs against the manifest's declarations (w4/m125).
 	ListBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) ([]store.BlueprintResourceClaim, error)
 	// GetBlueprintResourceOwner returns the owning blueprint id, or "" if none.
 	GetBlueprintResourceOwner(ctx context.Context, tenantID, kind, name string) (string, error)
+	// ReleaseBlueprintResourceClaim drops one claim, and only while this
+	// blueprint still holds it (w4/m125).
+	ReleaseBlueprintResourceClaim(ctx context.Context, tenantID, kind, name, blueprintID string) error
 }
 
 // errBlueprintSyncBusy is the one documented 409 for every lifecycle fencing
@@ -185,6 +189,68 @@ func matchReviewedBlueprintSource(b store.Blueprint, reviewed *ReviewedBlueprint
 			})
 	}
 	return nil
+}
+
+// errBlueprintAlreadyConnected is the documented 409 when a create names a
+// (repo, branch) a live blueprint in this workspace already tracks (w4/m125).
+//
+// The storage key is UNIQUE (tenant_id, repo, branch) and w8/m21 settled branch
+// as the read-only identity key with name and path editable, so one blueprint
+// per repo+branch is the design — this error is the design saying so. Before
+// it, the second create ran the upsert's conflict arm and returned the FIRST
+// blueprint's id carrying the second one's name, path and manifest: a
+// successful-looking create that destroyed a blueprint and orphaned its stack.
+//
+// Deliberately the same shape as BLUEPRINT_RESOURCE_CONFLICT one level down —
+// coded conflict, the owning id, and BlueprintTakeoverConfirmation as the
+// phrase — because it is the same guarantee applied to the row rather than to
+// the resources: bex refuses instead of clobbering (ADR018 Blueprint row). The
+// message names updateBlueprint because repointing the existing blueprint is
+// what a caller attempting a second connect usually wants.
+func errBlueprintAlreadyConnected(existing store.Blueprint) error {
+	phrase := BlueprintTakeoverConfirmation(existing.ID)
+	return core.NewConflictError("BLUEPRINT_CONNECTION_CONFLICT",
+		fmt.Sprintf("blueprint %s (%q) already tracks %s@%s from %q; update it with updateBlueprint to change its path, or retry with confirm=%q to replace it",
+			existing.ID, existing.Name, existing.Repo, existing.Branch, existing.Path, phrase),
+		map[string]any{
+			"blueprintId":   existing.ID,
+			"blueprintName": existing.Name,
+			"repo":          existing.Repo,
+			"branch":        existing.Branch,
+			"path":          existing.Path,
+			"confirm":       phrase,
+		})
+}
+
+// blueprintConnectionConflict returns the live blueprint that a create for
+// (repo, branch, path) would REPLACE, or a zero Blueprint when there is none.
+//
+// Two cases are deliberately not conflicts:
+//
+//   - A disconnected row. GetBlueprintByRepo filters it out, and re-establishing
+//     one under a fresh generation is deliberate (w8/m37 t001).
+//   - A row already pointing at this exact path. That create re-connects the
+//     same manifest rather than repointing the blueprint at a different one;
+//     it may update the name, which `updateBlueprint` lets anyone do anyway
+//     since w8/m21 made branch — not name — the identity key. This is also the
+//     path a retry takes after a create whose apply failed, and refusing it
+//     would deadlock: the failed attempt leaves the row behind, so the retry
+//     would need a second confirmation that the first call had no way to carry
+//     alongside a resource-takeover phrase.
+func (s *Service) blueprintConnectionConflict(ctx context.Context, tenantID, repo, branch, path string) (store.Blueprint, error) {
+	existing, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, repo, branch)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return store.Blueprint{}, nil
+		}
+		// Fail closed. An unreadable blueprint table must not be read as
+		// "nothing is connected", which is exactly the overwrite this guards.
+		return store.Blueprint{}, err
+	}
+	if existing.Path == path {
+		return store.Blueprint{}, nil
+	}
+	return existing, nil
 }
 
 // errBlueprintExecutionLost is the busy conflict for a mid-apply assert that
@@ -418,6 +484,10 @@ type BlueprintSyncView struct {
 	StartedAt    string  `json:"startedAt"`
 	CompletedAt  *string `json:"completedAt,omitempty"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
+	// Note says what the run did when its state cannot: today, that a
+	// confirmed takeover replaced a named blueprint on this repo+branch
+	// (w4/m125). Absent when there is nothing to report.
+	Note string `json:"note,omitempty"`
 }
 
 // BlueprintValidationError is Render's validation-error shape.
@@ -647,7 +717,13 @@ func blueprintDisplayPath(pointer string) string {
 // manifest without creating or applying anything — Render's pre-create
 // "Review Blueprint configurations" step. Repository contents are private
 // source material, so preview requires the sensitive-read role.
-func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, filePath string) (BlueprintPreview, error) {
+// forBlueprintID names the blueprint this preview is on behalf of — the detail
+// page's pre-sync dialog passes its own id, `/blueprints/new` passes "". It is
+// what lets the same query report a connection conflict for a create while an
+// existing blueprint previewing its own repo+branch does not conflict with
+// itself (w4/m125), exactly as previewOwnershipConflicts already resolves self
+// for resources.
+func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, filePath, forBlueprintID string) (BlueprintPreview, error) {
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
@@ -675,6 +751,13 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 	validation, err := s.blueprintValidationFor(ctx, repo, branch, contents)
 	if err != nil {
 		return BlueprintPreview{}, err
+	}
+	if entry := s.previewConnectionConflict(ctx, tenantID, repo, branch, discoveredPath, forBlueprintID); entry != nil {
+		// A create onto an occupied repo+branch is refused at apply time, so
+		// saying it here is the difference between a review step that warns
+		// and one that lets the user discover it by pressing Deploy.
+		validation.Valid = false
+		validation.Errors = append(validation.Errors, *entry)
 	}
 	preview := BlueprintPreview{Found: true, Manifest: contents, CommitID: commitSHA, Validation: &validation}
 	if filePath == "" && discoveredPath == LegacyBlueprintFilename {
@@ -713,6 +796,26 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	}
 	req.Path = discoveredPath
 
+	// w4/m125: refuse before any workload side effect. The admission below is
+	// an upsert whose conflict arm overwrites name, path and manifest, so
+	// without this check a second connect to the same repo+branch reported a
+	// successful create while destroying the blueprint that was there and
+	// orphaning its stack. Confirmed replacement proceeds and says so on the
+	// run. The fetch above is read-only, which is why the check sits after it:
+	// the path a create actually lands on is the DISCOVERED one, and comparing
+	// the requested path would refuse a plain `render.yaml` re-connect.
+	existing, err := s.blueprintConnectionConflict(ctx, tenantID, req.Repo, req.Branch, req.Path)
+	if err != nil {
+		return BlueprintView{}, err
+	}
+	var takeoverNote string
+	if existing.ID != "" {
+		if req.Confirm != BlueprintTakeoverConfirmation(existing.ID) {
+			return BlueprintView{}, errBlueprintAlreadyConnected(existing)
+		}
+		takeoverNote = fmt.Sprintf("replaced blueprint %s (%q), which tracked %s@%s from %q", existing.ID, existing.Name, existing.Repo, existing.Branch, existing.Path)
+	}
+
 	prepareReq := DeployRequest{Repo: req.Repo, Branch: req.Branch, Manifest: contents, EnvVarValues: req.EnvVarValues}
 	parsed, ir, parseErr := compileStack(prepareReq)
 	if parseErr != nil {
@@ -742,6 +845,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		CommitID:  commitSHA,
 		State:     store.BlueprintSyncStateRunning,
 		StartedAt: now,
+		Note:      takeoverNote,
 	})
 	if err != nil {
 		if isBlueprintBusy(err) {
@@ -1629,6 +1733,7 @@ func toBlueprintSyncView(r store.BlueprintSync) BlueprintSyncView {
 		State:        r.State,
 		StartedAt:    r.StartedAt.UTC().Format(time.RFC3339),
 		ErrorMessage: r.ErrorMessage,
+		Note:         r.Note,
 	}
 	if r.CompletedAt != nil {
 		s := r.CompletedAt.UTC().Format(time.RFC3339)

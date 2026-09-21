@@ -389,6 +389,10 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ownerId":       gqlutil.StrField(func(a AppView) any { return a.OwnerID }),
 		"projectId":     gqlutil.OptionalStrField(func(a AppView) any { return a.ProjectID }),
 		"environmentId": gqlutil.OptionalStrField(func(a AppView) any { return a.EnvironmentID }),
+		// blueprintId: the Git-connected Blueprint managing this service, null
+		// when nothing does (w4/m125). A bex extension — Render has no field
+		// for it because Render does not enforce Blueprint ownership.
+		"blueprintId": gqlutil.OptionalStrField(func(a AppView) any { return a.BlueprintID }),
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
 		"rootDir":      gqlutil.StrField(func(a AppView) any { return a.RootDir }),
@@ -817,6 +821,9 @@ var blueprintSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"startedAt":    gqlutil.StrField(func(r BlueprintSyncView) any { return r.StartedAt }),
 		"completedAt":  gqlutil.StrField(func(r BlueprintSyncView) any { return r.CompletedAt }),
 		"errorMessage": gqlutil.StrField(func(r BlueprintSyncView) any { return r.ErrorMessage }),
+		// note says what a run did that its state cannot — a confirmed
+		// takeover naming the blueprint it replaced (w4/m125).
+		"note": gqlutil.StrField(func(r BlueprintSyncView) any { return r.Note }),
 	},
 })
 
@@ -1180,10 +1187,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"branch":  gqlutil.ReqArg(graphql.String),
 				"path":    gqlutil.Arg(graphql.String),
 				"ownerId": gqlutil.Arg(graphql.String),
+				// blueprintId previews on behalf of an existing blueprint, so
+				// its own repo+branch is not a connection conflict (w4/m125).
+				"blueprintId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.PreviewBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"),
-					p.Args["repo"].(string), p.Args["branch"].(string), gqlutil.Str(p.Args, "path"))
+					p.Args["repo"].(string), p.Args["branch"].(string), gqlutil.Str(p.Args, "path"),
+					gqlutil.Str(p.Args, "blueprintId"))
 			},
 		},
 		// blueprintSyncs: sync run history for a blueprint (w2/m62).

@@ -227,7 +227,7 @@ func TestPreviewBlueprintCarriesEstimatedPricing(t *testing.T) {
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default"},
 		GitFetcher: fakeBlueprintFetcher{contents: beancountManifest, sha: "abc1234"},
 	}
-	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "")
+	p, err := svc.PreviewBlueprint(context.Background(), "", "https://github.com/a/app", "main", "", "")
 	if err != nil {
 		t.Fatalf("PreviewBlueprint: %v", err)
 	}

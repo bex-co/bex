@@ -35,6 +35,7 @@ import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-p
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
+import { isTakeoverOnlyConflict } from "@/features/blueprints/lib/views";
 
 export const Route = createFileRoute("/blueprints/new")({
   staticData: { chrome: true },
@@ -103,8 +104,13 @@ export function NewBlueprintPage() {
   // Render parity: Deploy stays disabled until the file fetches + parses. A
   // transport-level preview failure does not block — the backend re-validates
   // on create anyway.
+  const previewConflictOnly = isTakeoverOnlyConflict(
+    (preview?.validation?.errors ?? []).filter((e): e is string => !!e),
+  );
   const previewBlocks =
-    preview != null && (!preview.found || preview.validation?.valid !== true);
+    preview != null &&
+    (!preview.found ||
+      (preview.validation?.valid !== true && !previewConflictOnly));
   const canSubmit =
     sourceValid &&
     branch.trim() !== "" &&
@@ -343,7 +349,13 @@ export function NewBlueprintPage() {
                 ) : preview && !preview.found ? null : preview &&
                   preview.validation?.valid !== true ? (
                   <Alert variant="destructive">
-                    <AlertTitle>{t("blueprints.previewInvalid")}</AlertTitle>
+                    <AlertTitle>
+                      {t(
+                        previewConflictOnly
+                          ? "blueprints.previewConflict"
+                          : "blueprints.previewInvalid",
+                      )}
+                    </AlertTitle>
                     <AlertDescription>
                       <ul className="list-disc space-y-1 pl-4">
                         {validationErrors.map((e, i) => (

@@ -474,6 +474,19 @@ type AppView struct {
 	// labels so Render REST clients can hydrate and filter service membership.
 	ProjectID     string `json:"projectId,omitempty"`
 	EnvironmentID string `json:"environmentId,omitempty"`
+	// BlueprintID names the Git-connected Blueprint that manages this service,
+	// or is absent when nothing does (w4/m125). A bex extension — Render's
+	// Blueprint model does not enforce single ownership at all, which ADR018
+	// records as a deliberate divergence, so there is no Render field to match.
+	//
+	// Projected from the CR label rather than read from blueprint_resource_
+	// claims, which is why it is on the LIST read as well as the single read:
+	// the label is the claim's mirror, written inside the same fenced window as
+	// the claim and cleared alongside it, so the projection costs nothing per
+	// resource. A per-resource store lookup would have made lists N queries and
+	// forced the single-vs-list split Service.pushDeliveryMethod has for a real
+	// reason (a GitHub round-trip); this has no such reason.
+	BlueprintID string `json:"blueprintId,omitempty"`
 	// RootDir is the subdirectory of the repo this App builds from (Render's
 	// Root Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
 	RootDir        string `json:"rootDir,omitempty"`
@@ -994,6 +1007,7 @@ func view(a *appv1alpha1.App) AppView {
 		OwnerID:              a.Labels[core.LabelTenant],
 		ProjectID:            a.Labels[core.LabelProject],
 		EnvironmentID:        a.Labels[core.LabelEnvironment],
+		BlueprintID:          a.Labels[core.LabelBlueprint],
 		RootDir:              a.Spec.RootDir,
 		DockerfilePath:       a.Spec.DockerfilePath,
 		DockerContext:        a.Spec.DockerContext,

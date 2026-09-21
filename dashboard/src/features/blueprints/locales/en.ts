@@ -129,7 +129,8 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.previewFileNotFoundTitle": {
     message: "Blueprint file not found",
-    description: "Preview failure title: the repo and branch resolved, the file did not",
+    description:
+      "Preview failure title: the repo and branch resolved, the file did not",
   },
   "blueprints.previewFileNotFoundBody": {
     message:
@@ -167,7 +168,8 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "Preview failure title for rate_limited",
   },
   "blueprints.previewRateLimitedBody": {
-    message: "Too many requests to GitHub right now. Try again in a few minutes.",
+    message:
+      "Too many requests to GitHub right now. Try again in a few minutes.",
     description: "Preview failure body for rate_limited",
   },
   "blueprints.previewAmbiguousTitle": {
@@ -200,6 +202,11 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.previewRetry": {
     message: "Retry",
     description: "Review section retry button after a failed manifest fetch",
+  },
+  "blueprints.previewConflict": {
+    message: "Already connected — deploying will take it over",
+    description:
+      "Alert title on /blueprints/new when the only preview problem is a blueprint ownership or connection conflict an explicit takeover confirmation resolves (w4/m125)",
   },
   "blueprints.previewInvalid": {
     message: "Blueprint file has errors",

@@ -367,6 +367,9 @@ type previewBlueprintArgs struct {
 	Repo   string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
 	Branch string `json:"branch" jsonschema:"branch holding render.yaml"`
 	Path   string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
+	// blueprintId previews on behalf of an existing blueprint, so its own
+	// repo+branch is not reported as a connection conflict (w4/m125).
+	BlueprintID string `json:"blueprintId,omitempty" jsonschema:"preview on behalf of this existing blueprint (blp-…); omit when previewing before a create"`
 }
 
 // generateBlueprintArgs is generate_blueprint's input (w8/m22 + w4/040).
@@ -384,7 +387,7 @@ type createBlueprintArgs struct {
 	Path         string            `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
 	Name         string            `json:"name,omitempty" jsonschema:"human-readable name (default: repo basename)"`
 	EnvVarValues map[string]string `json:"envVarValues,omitempty" jsonschema:"values for sync:false Blueprint env-var prompts; never returned"`
-	Confirm      string            `json:"confirm,omitempty" jsonschema:"confirmation phrase for protected-environment overrides"`
+	Confirm      string            `json:"confirm,omitempty" jsonschema:"confirmation phrase for a protected-environment override, a resource takeover, or replacing the blueprint that already tracks this repo+branch. Do not guess it: make the call without this argument and copy the exact phrase out of the refusal"`
 }
 
 // listBlueprintSyncsArgs is list_blueprint_syncs's input (w2/m62).
@@ -995,7 +998,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		Name:        "preview_blueprint",
 		Description: "Fetch a repo's render.yaml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Empty path discovers render.yaml first, then the legacy bex.yml alias (with a warning); both files require an explicit path. Returns {found, manifest?, commitId?, warning?, error?, validation?: {valid, errors, plan, estimatedPricing?}}; estimatedPricing is the always-on monthly cost projection on bex's price sheet. A missing file reports found=false with the fetch error instead of failing. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in previewBlueprintArgs) (*mcp.CallToolResult, BlueprintPreview, error) {
-		p, err := s.PreviewBlueprint(ctx, core.NamedWorkspace(ctx), in.Repo, in.Branch, in.Path)
+		p, err := s.PreviewBlueprint(ctx, core.NamedWorkspace(ctx), in.Repo, in.Branch, in.Path, in.BlueprintID)
 		return nil, p, err
 	})
 

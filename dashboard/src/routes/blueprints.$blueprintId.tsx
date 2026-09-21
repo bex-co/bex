@@ -219,6 +219,9 @@ export function BlueprintDetailPage() {
     confirming && blueprint ? blueprint.repo : "",
     confirming && blueprint ? blueprint.branch : "",
     confirming ? (blueprint?.path ?? "") : "",
+    // On behalf of this blueprint: previewing its own repo+branch must not
+    // report the connection conflict a create would get (w4/m125).
+    blueprint?.id,
   );
   const [disconnecting, setDisconnecting] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<

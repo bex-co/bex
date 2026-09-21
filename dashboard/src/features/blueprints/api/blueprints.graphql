@@ -69,12 +69,14 @@ query BlueprintPreview(
   $branch: String!
   $path: String
   $ownerId: String
+  $blueprintId: String
 ) {
   blueprintPreview(
     repo: $repo
     branch: $branch
     path: $path
     ownerId: $ownerId
+    blueprintId: $blueprintId
   ) {
     found
     commitId

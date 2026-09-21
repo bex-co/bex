@@ -61,6 +61,9 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ownerId":                 gqlutil.StrField(func(v PostgresView) any { return v.OwnerID }),
 		"projectId":               gqlutil.OptionalStrField(func(v PostgresView) any { return v.ProjectID }),
 		"environmentId":           gqlutil.OptionalStrField(func(v PostgresView) any { return v.EnvironmentID }),
+		// blueprintId: the Blueprint managing this database, null when nothing
+		// does (w4/m125, bex extension).
+		"blueprintId": gqlutil.OptionalStrField(func(v PostgresView) any { return v.BlueprintID }),
 	},
 })
 

@@ -127,10 +127,12 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.previewFileNotFoundTitle": {
     message: "未找到 Blueprint 文件",
-    description: "Preview failure title: the repo and branch resolved, the file did not",
+    description:
+      "Preview failure title: the repo and branch resolved, the file did not",
   },
   "blueprints.previewFileNotFoundBody": {
-    message: "分支 {branch} 上不存在 {path}。请检查路径，或将该文件提交到该分支。",
+    message:
+      "分支 {branch} 上不存在 {path}。请检查路径，或将该文件提交到该分支。",
     description: "Preview failure body for file_not_found",
   },
   "blueprints.previewBranchNotFoundTitle": {
@@ -188,12 +190,18 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Inline path-field error for invalid_path, wrong extension",
   },
   "blueprints.previewInvalidPathShape": {
-    message: "Blueprint 路径必须是干净的仓库相对路径（不能以斜杠开头，不能包含 ..）。",
+    message:
+      "Blueprint 路径必须是干净的仓库相对路径（不能以斜杠开头，不能包含 ..）。",
     description: "Inline path-field error for invalid_path, bad shape",
   },
   "blueprints.previewRetry": {
     message: "重试",
     description: "Review section retry button after a failed manifest fetch",
+  },
+  "blueprints.previewConflict": {
+    message: "已被占用 — 部署将接管",
+    description:
+      "Alert title on /blueprints/new when the only preview problem is a blueprint ownership or connection conflict an explicit takeover confirmation resolves (w4/m125)",
   },
   "blueprints.previewInvalid": {
     message: "蓝图文件存在错误",

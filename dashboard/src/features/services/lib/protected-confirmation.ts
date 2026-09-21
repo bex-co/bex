@@ -13,11 +13,14 @@ export type ProtectedActionResult =
 export function protectedConfirmationFromError(err: unknown): string | null {
   const message = graphQLErrorMessage(err);
   if (!message) return null;
-  // Two server handshakes share the confirm-phrase convention: the
-  // protected-environment guard and the blueprint ownership takeover (w8/m23).
+  // Three server handshakes share the confirm-phrase convention: the
+  // protected-environment guard, the blueprint ownership takeover (w8/m23),
+  // and the blueprint connection takeover (w4/m125 — a create naming a
+  // repo+branch a live blueprint already tracks).
   if (
     !message.includes("protected environment") &&
-    !message.includes("is managed by blueprint")
+    !message.includes("is managed by blueprint") &&
+    !message.includes("already tracks")
   ) {
     return null;
   }
