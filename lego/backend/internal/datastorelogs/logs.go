@@ -99,7 +99,10 @@ func Collect(ctx context.Context, in Instance, q Query) ([]Entry, error) {
 	}
 
 	searchLower := strings.ToLower(q.Search)
-	var out []Entry
+	// Empty-but-non-nil: a datastore with no matching log lines answers a
+	// declared array, so it must be [] on every surface that nests this result
+	// rather than `null` (w4/m116/t006).
+	out := []Entry{}
 	for _, pod := range in.Pods {
 		if len(q.Instance) > 0 && !slices.Contains(q.Instance, pod) {
 			continue

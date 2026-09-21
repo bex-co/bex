@@ -634,19 +634,10 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAll
 // descriptions) to a Traefik ipAllowList middleware on the SNI route — the
 // same gate managed Postgres uses.
 func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (KeyValueView, error) {
-	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
-	if err != nil {
-		return KeyValueView{}, err
-	}
-	if err := core.ValidateAllowList(entries); err != nil {
-		return KeyValueView{}, err
-	}
-	kv.Spec.IPAllowList = core.AllowListToSpec(entries)
-	resourcemeta.Touch(kv, s.Now())
-	if err := s.Client.Update(ctx, kv); err != nil {
-		return KeyValueView{}, err
-	}
-	return s.view(kv), nil
+	// Routed through the shared patch so this dedicated route cannot drift from
+	// PATCH /v1/key-value/{id}: before w4/m116 it wrote Spec.IPAllowList itself
+	// and so was the one allowlist entry point that never published the store.
+	return s.UpdateKeyValue(ctx, name, KeyValuePatch{IPAllowList: &entries})
 }
 
 // SetPlan changes the managed key-value store's instance type (spec.plan).
@@ -737,7 +728,21 @@ type KeyValuePatch struct {
 	// a non-nil empty slice CLEARS it (what `keyvalues update --clear-ip-allow-list`
 	// sends). Mirrors PostgresPatch.IPAllowList; the same field the dedicated
 	// PUT .../ip-allow-list route writes, so both entry points converge.
+	//
+	// A NONEMPTY list also publishes the store (w4/m116): Render treats adding an
+	// inbound rule as the event that enables external access, and bex already
+	// honored that at create — but never on update, so a store born private could
+	// never become public on any surface. See Public below for the asymmetry on
+	// clear.
 	IPAllowList *[]core.IPAllowListEntry
+	// Public is the explicit external-endpoint control (w4/m116): nil = unchanged.
+	// It exists because the implicit rule above is deliberately ONE-WAY —
+	// clearing the allowlist does NOT unpublish. Clearing is how a tenant opens
+	// the endpoint to all source IPs (`--clear-ip-allow-list`), and Render's own
+	// empty-list semantic is "open", not "off"; tearing down a live external
+	// endpoint out of what reads as a firewall edit would break running clients
+	// silently. Unpublishing is therefore always a named, explicit act.
+	Public *bool
 }
 
 // validate checks every field present in the patch before any write; shared by
@@ -783,6 +788,16 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 	}
 	if patch.IPAllowList != nil {
 		kv.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)
+		// Adding an inbound rule is the enabling event (Render semantic, ADR021).
+		// One-way on purpose — see KeyValuePatch.Public.
+		if len(*patch.IPAllowList) > 0 {
+			kv.Spec.Public = true
+		}
+	}
+	// An explicit public wins over the implicit rule above, in either direction,
+	// so a caller can publish without an allowlist or unpublish while keeping one.
+	if patch.Public != nil {
+		kv.Spec.Public = *patch.Public
 	}
 }
 

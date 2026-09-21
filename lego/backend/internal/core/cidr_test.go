@@ -63,9 +63,16 @@ func TestAllowListSpecConversionsRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(lifted, []IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}, {CIDRBlock: "192.0.2.0/24"}}) {
 		t.Fatalf("AllowListFromCIDRs = %+v", lifted)
 	}
-	// Empty stays nil on every projection — no fabricated empty entries.
-	if AllowListToSpec(nil) != nil || AllowListFromSpec(nil) != nil || AllowListCIDRs(nil) != nil || AllowListFromCIDRs(nil) != nil {
-		t.Fatal("nil list must project to nil everywhere")
+	// Empty stays nil on the CR-spec projections — no fabricated empty entries
+	// on a resource's desired state.
+	if AllowListToSpec(nil) != nil || AllowListFromSpec(nil) != nil || AllowListFromCIDRs(nil) != nil {
+		t.Fatal("nil list must project to a nil spec everywhere")
+	}
+	// AllowListCIDRs is the exception, and deliberately so: it is a read-side
+	// RESPONSE projection whose value is served as {"cidrs": …}, where a nil
+	// would print `null` against a declared array (w4/m116/t006).
+	if got := AllowListCIDRs(nil); got == nil || len(got) != 0 {
+		t.Fatalf("AllowListCIDRs(nil) = %#v, want an empty non-nil []string", got)
 	}
 }
 

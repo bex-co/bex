@@ -357,7 +357,10 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		ConnectionPool     *string                  `json:"connectionPool,omitempty"`
 		IPAllowList        *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
 		ParameterOverrides *map[string]string       `json:"parameterOverrides,omitempty"`
-		DryRun             bool                     `json:"dryRun,omitempty"`
+		// Public is bex's explicit external-endpoint control (w4/m116). Render
+		// clients never send it; omitted leaves the endpoint as it is.
+		Public *bool `json:"public,omitempty"`
+		DryRun bool  `json:"dryRun,omitempty"`
 	}
 	if !decodeOr400(w, r, &req) {
 		return
@@ -379,6 +382,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		Pooler:             pooler,
 		IPAllowList:        req.IPAllowList,
 		ParameterOverrides: req.ParameterOverrides,
+		Public:             req.Public,
 	}
 	if core.DryRunRequested(r, req.DryRun) {
 		pg, err := s.PreviewUpdatePostgres(r.Context(), id, patch)

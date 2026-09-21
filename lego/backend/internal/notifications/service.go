@@ -484,6 +484,12 @@ func normalizePushSettings(view PushSettingsView) (PushSettingsView, error) {
 	if len(view.ServiceOverrides) > maxPushPolicyOverrides {
 		return PushSettingsView{}, badPushPolicy("serviceOverrides may contain at most %d entries", maxPushPolicyOverrides)
 	}
+	if view.ServiceOverrides == nil {
+		// Same normalization the three lists above already get: serviceOverrides
+		// is a declared (GraphQL non-null) array, so "no per-service overrides"
+		// must round-trip as [] rather than `null` (w4/m116/t006).
+		view.ServiceOverrides = []PushServiceOverrideView{}
+	}
 	seenServices := make(map[string]bool, len(view.ServiceOverrides))
 	for index := range view.ServiceOverrides {
 		override := &view.ServiceOverrides[index]

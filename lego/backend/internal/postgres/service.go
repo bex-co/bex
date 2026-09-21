@@ -920,6 +920,14 @@ type PostgresPatch struct {
 	Pooler             *bool
 	IPAllowList        *[]core.IPAllowListEntry // nil = unchanged; non-nil empty slice clears it
 	ParameterOverrides *map[string]string       // nil = unchanged; non-nil empty map clears it
+	// Public is the explicit external-endpoint control (w4/m116): nil = unchanged.
+	// Postgres defaults to public at create, so this is the less urgent half of
+	// the datastore symmetry the KeyValue fix restores — but without it a
+	// deliberately private database could never be published, on any surface.
+	// Unlike KeyValue, an allowlist write here does NOT publish: a private
+	// Postgres is an explicit choice at create (the default is public), so
+	// flipping it from a firewall edit would be a surprise, not a convenience.
+	Public *bool
 }
 
 // validate checks every field present in the patch (plan enum, CIDR syntax)
@@ -1022,6 +1030,9 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	}
 	if patch.ParameterOverrides != nil {
 		d.Spec.Parameters = normalizeParameterOverrides(*patch.ParameterOverrides)
+	}
+	if patch.Public != nil {
+		d.Spec.Public = *patch.Public
 	}
 }
 

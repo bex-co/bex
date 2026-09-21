@@ -203,8 +203,13 @@ func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID st
 		return JobView{}, err
 	}
 
-	// Create the Kubernetes Job. Failure here is logged but not fatal: the
-	// record exists and can be seen as pending; the caller may cancel it.
+	// Create the Kubernetes Job. A failure here used to be swallowed: the record
+	// was flipped to `failed` and returned as a successful 200, so `bex jobs
+	// create` reported a bare `failed` ~12-16ms after create with no reason on
+	// any surface (live 2026-09-17 and 2026-09-21 — the submit is refused at
+	// admission because bex-api's grant on batch/jobs is get,list only). The
+	// record still lands, so the job's history survives, but the caller is now
+	// told what went wrong at create time instead of being handed a corpse.
 	if createErr := s.createK8sJob(ctx, j.ID, a.Namespace, image, startCommand, tenantID); createErr != nil {
 		// Mark the job failed immediately so it doesn't hang in "pending".
 		_, _ = s.Store.UpdateJobStatus(ctx, j.ID, store.JobFailed)
@@ -212,9 +217,28 @@ func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID st
 		now := s.Now()
 		j.FinishedAt = &now
 		s.recordJobRunEnded(ctx, store.ManagedAppID(a.Labels), j)
+		return view(j), jobSubmitError(j.ID, createErr)
 	}
 
 	return view(j), nil
+}
+
+// jobSubmitError turns the Kubernetes rejection that killed a one-off job at
+// submit time into an error the caller can act on. The k8s message is preserved
+// verbatim — it is the only place the actual cause (RBAC refusal, admission
+// policy, quota) is stated — and the job id is named so the caller can find the
+// failed record in `jobs list`.
+//
+// An RBAC refusal is a PLATFORM misconfiguration, not the caller's fault: the
+// tenant is authorized (AuthorizeApp already passed) and bex-api simply lacks
+// the grant to submit. It therefore maps to the Unavailable class (503), not
+// Forbidden, so a caller is never told they lack permission they in fact hold.
+func jobSubmitError(jobID string, err error) error {
+	if apierrors.IsForbidden(err) {
+		return fmt.Errorf("%w: job %s could not be submitted — the platform is not permitted to create it: %v",
+			core.ErrUnavailable, jobID, err)
+	}
+	return fmt.Errorf("%w: job %s could not be submitted: %v", core.ErrUnavailable, jobID, err)
 }
 
 // Get fetches a single job by id, syncing status from the cluster if non-terminal.

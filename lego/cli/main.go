@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/branding"
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
 	"github.com/bex-co/bex/lego/cli/internal/code"
+	"github.com/bex-co/bex/lego/cli/internal/pgtrust"
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
 	"github.com/bex-co/bex/lego/cli/internal/update"
 	"github.com/bex-co/bex/lego/cli/internal/upgrade"
@@ -59,10 +61,48 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Own the Postgres session paths the same way: a bex external connection
+	// string pins sslmode=verify-full against a private CA, which upstream
+	// cannot provision because it has no notion of the bex CA field.
+	releaseTrust, err := provisionPostgresTrust(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bex: %v\n", err)
+		os.Exit(1)
+	}
+
 	notice := startUpdateCheck()
 	exitCode := cmd.Execute()
+	releaseTrust()
 	printUpdateNotice(os.Stderr, notice)
 	os.Exit(exitCode)
+}
+
+// provisionPostgresTrust points a `psql`/`pgcli` invocation at its database's
+// TLS server CA. It resolves the target command through cobra's own lookup, so
+// which invocations count is decided by the upstream command tree rather than
+// by a second parser that could disagree with it.
+//
+// The returned release is never nil; it removes the temporary CA once the
+// delegated command has exited.
+func provisionPostgresTrust(args []string) (func(), error) {
+	target, rest, err := cmd.RootCmd.Find(args)
+	if err != nil || target == nil || !pgtrust.IsProvisionedTool(target.Name()) {
+		return func() {}, nil
+	}
+	// Budgeted: this read sits in front of an interactive session, so a stalled
+	// control plane must not hang the terminal — it falls back to today's
+	// behavior, where the delegated command reports the failure itself.
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return pgtrust.Provision(ctx, pgtrust.Options{
+		Tool:   target.Name(),
+		Args:   rest,
+		Arity:  pgtrust.ArityOf(cmd.RootCmd.PersistentFlags(), target.InheritedFlags(), target.Flags()),
+		Fetch:  pgtrust.NewFetcher(),
+		Lookup: os.LookupEnv,
+		Setenv: os.Setenv,
+		Home:   os.UserHomeDir,
+	})
 }
 
 // printVersion prints bex's identity and, when permitted, the result of an

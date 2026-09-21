@@ -130,7 +130,15 @@ func (s *Service) previewForSubject(ctx context.Context, subject string) (Previe
 	if err != nil {
 		return Preview{}, nil, err
 	}
-	var out Preview
+	// The three buckets start empty-but-non-nil: every one of them is a declared
+	// array on the wire, and a `var out Preview` leaves the unused ones nil,
+	// which encoding/json prints as `null` (w4/m116/t006). A preview with
+	// nothing to delete is the COMMON case, not an edge one.
+	out := Preview{
+		Delete:  []store.AccountWorkspaceDisposition{},
+		Leave:   []store.AccountWorkspaceDisposition{},
+		Blocked: []store.AccountWorkspaceDisposition{},
+	}
 	for _, row := range rows {
 		switch row.Action {
 		case store.AccountWorkspaceDelete:

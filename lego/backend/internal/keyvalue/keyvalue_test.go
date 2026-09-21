@@ -1672,3 +1672,218 @@ func TestMCPRenameKeyValue(t *testing.T) {
 		t.Fatalf("update_key_value(name) should patch only spec.name, got metadata.name=%q spec.name=%q", got.Name, got.Spec.Name)
 	}
 }
+
+// seedPrivateKeyValue is seedKeyValue's private twin: a store born with the
+// product's default (public:false, no allowlist) and no external host yet —
+// exactly the shape the 2026-09-17 CLI sweep could never publish.
+func seedPrivateKeyValue(t *testing.T, cl client.Client, name string) {
+	t.Helper()
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", Public: false},
+		Status: appv1alpha1.KeyValueStatus{
+			Phase: appv1alpha1.KVPhaseReady, Host: name + ".default.svc", Port: 6379,
+			SecretName: name,
+		},
+	}
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Data: map[string][]byte{
+			"username": []byte("default"),
+			"password": []byte("s3cret"),
+			"host":     []byte(name + ".default.svc"),
+			"port":     []byte("6379"),
+			"uri":      []byte("redis://default:s3cret@" + name + ".default.svc:6379"),
+		},
+	}
+	if err := cl.Create(context.Background(), kv); err != nil {
+		t.Fatalf("seed private kv: %v", err)
+	}
+	if err := cl.Create(context.Background(), sec); err != nil {
+		t.Fatalf("seed private kv secret: %v", err)
+	}
+}
+
+func kvSpec(t *testing.T, cl client.Client, name string) appv1alpha1.KeyValueSpec {
+	t.Helper()
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &kv); err != nil {
+		t.Fatalf("get %s: %v", name, err)
+	}
+	return kv.Spec
+}
+
+// TestAllowListWritePublishesAPrivateStore pins w4/m116/t002. A Key Value born
+// private (the product default) could never become public: every allowlist
+// entry point wrote Spec.IPAllowList and left Spec.Public false, so
+// connection-info kept returning only the in-cluster `.svc` host and
+// `bex kv-cli` dialed an unroutable name from outside the cluster. Render
+// treats adding an inbound rule as the event that enables external access, and
+// bex honored that at create only.
+//
+// Every entry point must converge: the core verb, REST PATCH, the dedicated PUT
+// route, GraphQL setKeyValueIpAllowList, and MCP update_key_value.
+func TestAllowListWritePublishesAPrivateStore(t *testing.T) {
+	entries := []core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32", Description: "qa-cli-probe"}}
+
+	t.Run("SetIPAllowList", func(t *testing.T) {
+		svc, cl := newService()
+		seedPrivateKeyValue(t, cl, "pub-core")
+		if _, err := svc.SetIPAllowList(context.Background(), "pub-core", entries); err != nil {
+			t.Fatalf("SetIPAllowList => %v", err)
+		}
+		if spec := kvSpec(t, cl, "pub-core"); !spec.Public || len(spec.IPAllowList) != 1 {
+			t.Fatalf("allowlist write did not publish: %+v", spec)
+		}
+	})
+
+	t.Run("UpdateKeyValue", func(t *testing.T) {
+		svc, cl := newService()
+		seedPrivateKeyValue(t, cl, "pub-patch")
+		if _, err := svc.UpdateKeyValue(context.Background(), "pub-patch", KeyValuePatch{IPAllowList: &entries}); err != nil {
+			t.Fatalf("UpdateKeyValue => %v", err)
+		}
+		if spec := kvSpec(t, cl, "pub-patch"); !spec.Public {
+			t.Fatalf("PATCH allowlist did not publish: %+v", spec)
+		}
+	})
+
+	t.Run("REST PATCH", func(t *testing.T) {
+		svc, cl := newService()
+		seedPrivateKeyValue(t, cl, "pub-rest")
+		w := serveREST(svc, "PATCH", "/v1/key-value/pub-rest",
+			`{"ipAllowList":[{"cidrBlock":"203.0.113.7/32","description":"qa-cli-probe"}]}`)
+		if w.Code != 200 {
+			t.Fatalf("PATCH => %d: %s", w.Code, w.Body.String())
+		}
+		if spec := kvSpec(t, cl, "pub-rest"); !spec.Public {
+			t.Fatalf("REST PATCH allowlist did not publish: %+v", spec)
+		}
+	})
+
+	t.Run("REST PUT ip-allow-list", func(t *testing.T) {
+		svc, cl := newService()
+		seedPrivateKeyValue(t, cl, "pub-put")
+		w := serveREST(svc, "PUT", "/v1/key-value/pub-put/ip-allow-list", `{"cidrs":["203.0.113.7/32"]}`)
+		if w.Code != 200 {
+			t.Fatalf("PUT => %d: %s", w.Code, w.Body.String())
+		}
+		if spec := kvSpec(t, cl, "pub-put"); !spec.Public {
+			t.Fatalf("PUT allowlist did not publish: %+v", spec)
+		}
+	})
+
+	t.Run("MCP update_key_value", func(t *testing.T) {
+		svc, cl := newService()
+		seedPrivateKeyValue(t, cl, "pub-mcp")
+		list := entries
+		if _, err := svc.UpdateKeyValue(context.Background(), "pub-mcp", KeyValuePatch{IPAllowList: &list}); err != nil {
+			t.Fatalf("MCP-shaped patch => %v", err)
+		}
+		if spec := kvSpec(t, cl, "pub-mcp"); !spec.Public {
+			t.Fatalf("MCP allowlist did not publish: %+v", spec)
+		}
+	})
+}
+
+// TestPublishIsOneWayUntilExplicitlyWithdrawn pins the deliberate asymmetry.
+// Clearing the allowlist is how a tenant opens the endpoint to ALL source IPs
+// (`keyvalues update --clear-ip-allow-list`) — Render's empty list means "open",
+// not "off" — so it must not tear down a live external endpoint that running
+// clients are using. Withdrawing is therefore always explicit.
+func TestPublishIsOneWayUntilExplicitlyWithdrawn(t *testing.T) {
+	svc, cl := newService()
+	seedPrivateKeyValue(t, cl, "sticky")
+	ctx := context.Background()
+	entries := []core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}
+	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{IPAllowList: &entries}); err != nil {
+		t.Fatalf("publish => %v", err)
+	}
+
+	// Clearing keeps it published — and open.
+	empty := []core.IPAllowListEntry{}
+	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{IPAllowList: &empty}); err != nil {
+		t.Fatalf("clear => %v", err)
+	}
+	if spec := kvSpec(t, cl, "sticky"); !spec.Public || len(spec.IPAllowList) != 0 {
+		t.Fatalf("clearing the allowlist must not unpublish: %+v", spec)
+	}
+
+	// Withdrawing is explicit, and keeps whatever allowlist is on file.
+	again := []core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}
+	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{IPAllowList: &again}); err != nil {
+		t.Fatalf("re-publish => %v", err)
+	}
+	off := false
+	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{Public: &off}); err != nil {
+		t.Fatalf("withdraw => %v", err)
+	}
+	if spec := kvSpec(t, cl, "sticky"); spec.Public || len(spec.IPAllowList) != 1 {
+		t.Fatalf("explicit withdraw should take the endpoint down and keep the list: %+v", spec)
+	}
+
+	// An explicit public:true wins even with no allowlist at all.
+	on := true
+	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{Public: &on, IPAllowList: &empty}); err != nil {
+		t.Fatalf("explicit publish => %v", err)
+	}
+	if spec := kvSpec(t, cl, "sticky"); !spec.Public || len(spec.IPAllowList) != 0 {
+		t.Fatalf("explicit public must win over the implicit rule: %+v", spec)
+	}
+}
+
+// TestPublishedStoreGetsAnExternalConnectionString closes the loop the sweep
+// actually hit: publishing must change what `bex kv-cli` runs. The CLI executes
+// connectionInfo.cliCommand verbatim, and while the store was private that
+// command targeted the in-cluster `.svc` host, which does not resolve outside
+// the cluster.
+func TestPublishedStoreGetsAnExternalConnectionString(t *testing.T) {
+	svc, cl := newService()
+	seedPrivateKeyValue(t, cl, "connkv")
+	ctx := context.Background()
+
+	info, err := svc.KeyValueConnectionInfo(ctx, "connkv")
+	if err != nil {
+		t.Fatalf("private connection-info => %v", err)
+	}
+	if info.ExternalConnectionString != "" {
+		t.Fatalf("a private store must have no external string: %q", info.ExternalConnectionString)
+	}
+	if !strings.Contains(info.CLICommand, ".svc") {
+		t.Fatalf("private cliCommand should target the internal host: %q", info.CLICommand)
+	}
+
+	entries := []core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}
+	if _, err := svc.UpdateKeyValue(ctx, "connkv", KeyValuePatch{IPAllowList: &entries}); err != nil {
+		t.Fatalf("publish => %v", err)
+	}
+	// The operator reports the external host once the spec asks for it; the
+	// connection-info read is what must then hand it to the CLI.
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "connkv"}, &kv); err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	kv.Status.ExternalHost = "connkv.kv.bex.co"
+	if err := cl.Update(ctx, &kv); err != nil {
+		t.Fatalf("status update: %v", err)
+	}
+	sec := &corev1.Secret{}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "connkv"}, sec); err != nil {
+		t.Fatalf("get secret: %v", err)
+	}
+	sec.Data["externalUri"] = []byte("rediss://default:s3cret@connkv.kv.bex.co:6379")
+	if err := cl.Update(ctx, sec); err != nil {
+		t.Fatalf("update secret: %v", err)
+	}
+
+	info, err = svc.KeyValueConnectionInfo(ctx, "connkv")
+	if err != nil {
+		t.Fatalf("published connection-info => %v", err)
+	}
+	if !strings.HasPrefix(info.ExternalConnectionString, "rediss://") {
+		t.Fatalf("published store needs an external rediss:// string, got %q", info.ExternalConnectionString)
+	}
+	if !strings.Contains(info.CLICommand, "connkv.kv.bex.co") {
+		t.Fatalf("cliCommand must target the external host once published: %q", info.CLICommand)
+	}
+}

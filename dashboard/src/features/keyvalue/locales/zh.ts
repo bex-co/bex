@@ -301,7 +301,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Connection-info field label (public rediss:// URL)",
   },
   "keyvalue.connExternalUnavailable": {
-    message: "尚未公开访问。启用公网访问后可获得外部 URL。",
+    message: "未公开。在「网络」中添加入站 IP 规则即可启用外部访问。",
     description:
       "Shown instead of the external URL when the store isn't public",
   },

@@ -102,10 +102,14 @@ func AllowListOrEmpty(entries []IPAllowListEntry) []IPAllowListEntry {
 // AllowListCIDRs projects entries down to their CIDR strings — the
 // product-neutral string-list shape GraphQL/MCP's legacy arguments and the
 // bex-native {"cidrs"} REST routes keep speaking.
+//
+// Empty in, EMPTY (never nil) out, for AllowListOrEmpty's reason one level
+// down: this is a read-side projection, and its only REST consumers wrap it in
+// {"cidrs": …} — a nil would have made an unrestricted datastore answer
+// {"cidrs":null} where an array is declared (w4/m116/t006). The nested field is
+// past core.WriteJSON's nil-slice guard, so the normalization has to happen at
+// the one place both datastores' handlers share: here.
 func AllowListCIDRs(entries []IPAllowListEntry) []string {
-	if len(entries) == 0 {
-		return nil
-	}
 	out := make([]string, len(entries))
 	for i, e := range entries {
 		out[i] = e.CIDRBlock

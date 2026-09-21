@@ -166,12 +166,20 @@ class Handler(BaseHTTPRequestHandler):
                     "message": "public datastore endpoint unavailable: configure BEX_DB_DOMAIN",
                 })
                 return
-            uri = f"postgresql://planted_user:{SECRET}@db.nonprod.invalid:5432/psql_test?sslmode=require"
+            # verify-full plus the server CA is the contract w4/m95 shipped:
+            # the private CNPG root is part of the response, not something the
+            # client is expected to already hold.
+            uri = f"postgresql://planted_user:{SECRET}@db.nonprod.invalid:5432/psql_test?sslmode=verify-full"
             self.send_json(200, {
                 "externalConnectionString": uri,
                 "internalConnectionString": "",
                 "password": SECRET,
                 "psqlCommand": "",
+                "serverCaCertificate": (
+                    "-----BEGIN CERTIFICATE-----\n"
+                    "ZmFrZS1jbnBnLXRlc3QtY2VydGlmaWNhdGUtZm9yLXRoZS1oZXJtZXRpYy1ydW4=\n"
+                    "-----END CERTIFICATE-----\n"
+                ),
             })
             return
 
@@ -217,6 +225,10 @@ conn="${1:-}"
 [[ "$conn" == postgresql://* || "$conn" == postgres://* ]] || { echo "bad conn" >&2; exit 71; }
 [[ "${2:-}" == "-c" ]] || { echo "missing -c" >&2; exit 72; }
 [[ "${3:-}" == 'SELECT 1 AS bex_psql_probe;' ]] || { echo "unexpected sql" >&2; exit 73; }
+# verify-full is unsatisfiable without a trust root, so the child must inherit
+# one; a real psql would fail with `root certificate file … does not exist`.
+[[ -n "${PGSSLROOTCERT:-}" && -r "$PGSSLROOTCERT" ]] || { echo "no trust root provisioned" >&2; exit 74; }
+grep -Fq 'BEGIN CERTIFICATE' "$PGSSLROOTCERT" || { echo "trust root is not a certificate" >&2; exit 75; }
 conn=""
 printf ' bex_psql_probe \n----------------\n              1\n(1 row)\n'
 exit "${BEX_FAKE_PSQL_EXIT:-0}"

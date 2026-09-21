@@ -316,6 +316,7 @@ type updatePostgresArgs struct {
 	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
 	IPAllowListCidrs      *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
+	Public                *bool                    `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint. Unlike key-value stores, a Postgres allowlist write never changes this on its own — a private Postgres is an explicit choice at create, so publishing and withdrawing are both named acts"`
 	DryRun                bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
 }
 
@@ -346,7 +347,9 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, allowListResult{}, err
 		}
-		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: list}, nil
+		// Both fields are declared arrays: an empty allowlist must read as [],
+		// never null (w4/m116/t006). AllowListCIDRs already guarantees its half.
+		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: core.AllowListOrEmpty(list)}, nil
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "update_postgres",
@@ -366,6 +369,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 			EnableDiskAutoscaling: in.EnableDiskAutoscaling,
 			ParameterOverrides:    in.ParameterOverrides,
 			IPAllowList:           allowList,
+			Public:                in.Public,
 		}
 		if in.DryRun {
 			v, err := s.PreviewUpdatePostgres(ctx, in.PostgresID, patch)
