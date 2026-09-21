@@ -943,7 +943,13 @@ func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
 	// settings.go, w1/m78); this handler only maps the wire body onto the
 	// neutral ServicePatch. A body with no supported field runs no ops and
 	// reflects current state — the read-only no-op, as before.
-	app, err := s.ApplyServicePatch(r.Context(), id, req.toServicePatch(f, maintenanceMode))
+	// ?confirm=<phrase> rides the context for the patch ops a protected
+	// environment guards — source repointing, the build/run commands, and
+	// enabling maintenance mode (w4/m126) — the same query parameter the
+	// delete and suspend routes already take, and a harmless no-op for the
+	// rest of the table.
+	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+	app, err := s.ApplyServicePatch(ctx, id, req.toServicePatch(f, maintenanceMode))
 	if err != nil {
 		core.WriteErr(w, err)
 		return

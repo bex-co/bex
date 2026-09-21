@@ -1365,10 +1365,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"id":       gqlutil.ReqArg(graphql.String),
 				"schedule": gqlutil.ReqArg(graphql.String),
 				"command":  gqlutil.Arg(graphql.String),
+				"confirm":  gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				sched := p.Args["schedule"].(string)
-				return s.SetCronJob(p.Context, p.Args["id"].(string), &sched, gqlutil.StrPtr(p.Args, "command"))
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				return s.SetCronJob(ctx, p.Args["id"].(string), &sched, gqlutil.StrPtr(p.Args, "command"))
 			},
 		},
 		// runCronJob returns the deterministic pending run, matching REST's
@@ -1461,12 +1463,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setBranch": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":     gqlutil.ReqArg(graphql.String),
-				"branch": gqlutil.ReqArg(graphql.String),
+				"id":      gqlutil.ReqArg(graphql.String),
+				"branch":  gqlutil.ReqArg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				branch := p.Args["branch"].(string)
-				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), sourcePatch{Branch: &branch})
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				return s.SetSourceAndRegistryCredential(ctx, p.Args["id"].(string), sourcePatch{Branch: &branch})
 			},
 		},
 		// setRepo switches the Git repository a service builds from (Render's
@@ -1476,14 +1480,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setRepo": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":     gqlutil.ReqArg(graphql.String),
-				"repo":   gqlutil.ReqArg(graphql.String),
-				"branch": gqlutil.Arg(graphql.String),
+				"id":      gqlutil.ReqArg(graphql.String),
+				"repo":    gqlutil.ReqArg(graphql.String),
+				"branch":  gqlutil.Arg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				repo := p.Args["repo"].(string)
 				patch := sourcePatch{Repo: &repo, Branch: gqlutil.StrPtr(p.Args, "branch")}
-				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), patch)
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				return s.SetSourceAndRegistryCredential(ctx, p.Args["id"].(string), patch)
 			},
 		},
 		// setImage switches a service to a prebuilt container image (Render's
@@ -1499,6 +1505,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"id":                   gqlutil.ReqArg(graphql.String),
 				"image":                gqlutil.ReqArg(graphql.String),
 				"registryCredentialId": gqlutil.Arg(graphql.String),
+				"confirm":              gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				image := p.Args["image"].(string)
@@ -1506,7 +1513,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if cred, ok := p.Args["registryCredentialId"].(string); ok {
 					patch.RegistryCredentialID = &cred
 				}
-				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), patch)
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				return s.SetSourceAndRegistryCredential(ctx, p.Args["id"].(string), patch)
 			},
 		},
 		// setBuildCommand changes the build command for a repo-backed service.
@@ -1518,10 +1526,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":      gqlutil.ReqArg(graphql.String),
 				"command": gqlutil.ReqArg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				command := p.Args["command"].(string)
-				return s.SetCommands(p.Context, p.Args["id"].(string), &command, nil)
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				return s.SetCommands(ctx, p.Args["id"].(string), &command, nil)
 			},
 		},
 		// setStartCommand changes the command used to start an existing service.
@@ -1532,10 +1542,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":      gqlutil.ReqArg(graphql.String),
 				"command": gqlutil.ReqArg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				command := p.Args["command"].(string)
-				return s.SetCommands(p.Context, p.Args["id"].(string), nil, &command)
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				return s.SetCommands(ctx, p.Args["id"].(string), nil, &command)
 			},
 		},
 		// setDockerfilePath changes Render's Dockerfile Path on an existing
@@ -1565,10 +1577,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":              gqlutil.ReqArg(graphql.String),
 				"maintenanceMode": gqlutil.ReqArg(maintenanceModeInputType),
+				"confirm":         gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				in := gqlMaintenanceModeInput(p.Args, "maintenanceMode")
-				return s.SetMaintenanceMode(p.Context, p.Args["id"].(string), *in)
+				ctx := core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm"))
+				return s.SetMaintenanceMode(ctx, p.Args["id"].(string), *in)
 			},
 		},
 		// setHealthCheckPath: the Settings → Health & Alerts health-check path

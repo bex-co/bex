@@ -1226,6 +1226,7 @@ export type MutationAcceptWorkspaceInviteArgs = {
 
 
 export type MutationAddCustomDomainArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
@@ -1373,6 +1374,7 @@ export type MutationCreateDatabaseExportArgs = {
 
 
 export type MutationCreateDatabaseUserArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
@@ -1638,12 +1640,14 @@ export type MutationDisconnectGitArgs = {
 
 export type MutationExecuteDatabaseQueryArgs = {
   allowWrites?: InputMaybe<Scalars['Boolean']['input']>;
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   sql: Scalars['String']['input'];
 };
 
 
 export type MutationFailoverDatabaseArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
 };
 
@@ -1678,6 +1682,7 @@ export type MutationMarkPushNotificationReadArgs = {
 
 
 export type MutationMoveEnvGroupArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   environmentId: Scalars['String']['input'];
   id: Scalars['String']['input'];
 };
@@ -1754,6 +1759,7 @@ export type MutationRemoveWorkspaceMemberArgs = {
 
 
 export type MutationRenameDatabaseArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
@@ -1761,18 +1767,21 @@ export type MutationRenameDatabaseArgs = {
 
 
 export type MutationRenameEnvGroupArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
 
 
 export type MutationRenameEnvironmentArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
 
 
 export type MutationRenameKeyValueArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
@@ -1780,12 +1789,14 @@ export type MutationRenameKeyValueArgs = {
 
 
 export type MutationRenameProjectArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
 
 
 export type MutationRenameWorkspaceArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
@@ -1899,12 +1910,14 @@ export type MutationSetAutoscalingArgs = {
 
 export type MutationSetBranchArgs = {
   branch: Scalars['String']['input'];
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
 };
 
 
 export type MutationSetBuildCommandArgs = {
   command: Scalars['String']['input'];
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
 };
 
@@ -1935,12 +1948,14 @@ export type MutationSetDatabasePublicArgs = {
 
 
 export type MutationSetDisplayNameArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   displayName: Scalars['String']['input'];
   id: Scalars['String']['input'];
 };
 
 
 export type MutationSetDockerfilePathArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dockerfilePath: Scalars['String']['input'];
   id: Scalars['String']['input'];
 };
@@ -2015,6 +2030,7 @@ export type MutationSetEnvironmentServicesArgs = {
 
 
 export type MutationSetHealthCheckPathArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   path: Scalars['String']['input'];
 };
@@ -2027,6 +2043,7 @@ export type MutationSetIdleTimeoutArgs = {
 
 
 export type MutationSetImageArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   image: Scalars['String']['input'];
   registryCredentialId?: InputMaybe<Scalars['String']['input']>;
@@ -2041,6 +2058,7 @@ export type MutationSetKeyValueIpAllowListArgs = {
 
 
 export type MutationSetKeyValueMaxmemoryPolicyArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   maxmemoryPolicy: Scalars['String']['input'];
@@ -2048,6 +2066,7 @@ export type MutationSetKeyValueMaxmemoryPolicyArgs = {
 
 
 export type MutationSetKeyValuePersistenceModeArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   persistenceMode: Scalars['String']['input'];
@@ -2061,6 +2080,7 @@ export type MutationSetKeyValuePublicArgs = {
 
 
 export type MutationSetMaintenanceModeArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   maintenanceMode: MaintenanceModeInput;
 };
@@ -2073,12 +2093,14 @@ export type MutationSetMaxShutdownDelayArgs = {
 
 
 export type MutationSetNotificationsToSendArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   value: Scalars['String']['input'];
 };
 
 
 export type MutationSetNotifyOnFailArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   value: Scalars['String']['input'];
 };
@@ -2092,6 +2114,7 @@ export type MutationSetPortArgs = {
 
 export type MutationSetPreDeployCommandArgs = {
   command: Scalars['String']['input'];
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
 };
 
@@ -2115,12 +2138,14 @@ export type MutationSetProjectServicesArgs = {
 
 
 export type MutationSetPublishPathArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   publishPath: Scalars['String']['input'];
 };
 
 
 export type MutationSetRegistryCredentialArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   registryCredentialId: Scalars['String']['input'];
 };
@@ -2128,12 +2153,14 @@ export type MutationSetRegistryCredentialArgs = {
 
 export type MutationSetRepoArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   repo: Scalars['String']['input'];
 };
 
 
 export type MutationSetRootDirArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   rootDir: Scalars['String']['input'];
 };
@@ -2155,6 +2182,7 @@ export type MutationSetServiceIpAllowListArgs = {
 
 export type MutationSetStartCommandArgs = {
   command: Scalars['String']['input'];
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
 };
 
@@ -2172,6 +2200,7 @@ export type MutationSetStaticRoutesArgs = {
 
 
 export type MutationSetSubdomainPolicyArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   policy: Scalars['String']['input'];
 };
@@ -2267,6 +2296,7 @@ export type MutationUpdateBlueprintArgs = {
 
 export type MutationUpdateCronJobArgs = {
   command?: InputMaybe<Scalars['String']['input']>;
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   schedule: Scalars['String']['input'];
 };
@@ -2279,6 +2309,7 @@ export type MutationUpdateDatabaseDiskAutoscalingArgs = {
 
 
 export type MutationUpdateDatabasePlanArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   plan: Scalars['String']['input'];
@@ -2286,6 +2317,7 @@ export type MutationUpdateDatabasePlanArgs = {
 
 
 export type MutationUpdateDatabaseVersionArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   version: Scalars['String']['input'];
 };
@@ -2310,6 +2342,7 @@ export type MutationUpdateEnvironmentArgs = {
 
 
 export type MutationUpdateKeyValuePlanArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   plan: Scalars['String']['input'];
@@ -2349,6 +2382,7 @@ export type MutationUpdateRouterKeyArgs = {
 
 
 export type MutationUpdateServicePlanArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   plan: Scalars['String']['input'];
@@ -2366,6 +2400,7 @@ export type MutationUpdateWebhookEndpointArgs = {
 
 
 export type MutationVerifyCustomDomainArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
@@ -2749,6 +2784,7 @@ export type QueryCronJobRunsArgs = {
 
 
 export type QueryCustomDomainArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
@@ -2903,12 +2939,14 @@ export type QueryEnvGroupArgs = {
 
 
 export type QueryEnvGroupSecretFileArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
 };
 
 
 export type QueryEnvGroupVarArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   key: Scalars['String']['input'];
 };

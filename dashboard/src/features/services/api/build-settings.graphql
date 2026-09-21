@@ -5,24 +5,32 @@
 # a repo-backed Dockerfile build; an empty value restores the default Dockerfile.
 # startCommand maps to Render's Start Command for native runtimes and Docker
 # Command for Docker services.
-mutation SetBuildCommand($id: String!, $command: String!) {
-  setBuildCommand(id: $id, command: $command) {
+mutation SetBuildCommand($id: String!, $command: String!, $confirm: String) {
+  setBuildCommand(id: $id, command: $command, confirm: $confirm) {
     id
     buildCommand
     phase
   }
 }
 
-mutation SetStartCommand($id: String!, $command: String!) {
-  setStartCommand(id: $id, command: $command) {
+mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {
+  setStartCommand(id: $id, command: $command, confirm: $confirm) {
     id
     startCommand
     phase
   }
 }
 
-mutation SetDockerfilePath($id: String!, $dockerfilePath: String!) {
-  setDockerfilePath(id: $id, dockerfilePath: $dockerfilePath) {
+mutation SetDockerfilePath(
+  $id: String!
+  $dockerfilePath: String!
+  $confirm: String
+) {
+  setDockerfilePath(
+    id: $id
+    dockerfilePath: $dockerfilePath
+    confirm: $confirm
+  ) {
     id
     dockerfilePath
     phase

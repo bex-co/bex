@@ -5,6 +5,7 @@ import { VisualViewportHeight } from "@/common/providers/visual-viewport-height"
 import { WorkspaceProvider } from "@/features/workspaces/context";
 import { CapabilitiesProvider } from "@/features/capabilities/context/capabilities-provider";
 import { PaymentRequiredProvider } from "@/features/usage/context/payment-required";
+import { ProtectedRetryProvider } from "@/common/providers/protected-retry-provider";
 import { getActiveI18n } from "@/i18n/request-scope";
 
 // Lazy so react-intl/formatjs (only OryToaster needs it) ships as its own async
@@ -40,7 +41,9 @@ export const RootProvider = ({
           onWorkspaceChange={onWorkspaceChange}
         >
           <CapabilitiesProvider>
-            <PaymentRequiredProvider>{children}</PaymentRequiredProvider>
+            <PaymentRequiredProvider>
+              <ProtectedRetryProvider>{children}</ProtectedRetryProvider>
+            </PaymentRequiredProvider>
           </CapabilitiesProvider>
         </WorkspaceProvider>
         <VisualViewportHeight />

@@ -3,8 +3,8 @@
 # source verb persists it (spec.branch), so the next deploy builds the new
 # branch and push-to-deploy matches it; the REST PATCH `branch` field and MCP
 # update_service(branch) are the sibling surfaces (backend/internal/apps/graphql.go).
-mutation SetBranch($id: String!, $branch: String!) {
-  setBranch(id: $id, branch: $branch) {
+mutation SetBranch($id: String!, $branch: String!, $confirm: String) {
+  setBranch(id: $id, branch: $branch, confirm: $confirm) {
     id
     repo
     branch
@@ -15,8 +15,13 @@ mutation SetBranch($id: String!, $branch: String!) {
 # setRepo switches the Git repository a service builds from (Render's editable
 # Source field, w5/m54). Shares the backend's source verb with setBranch, so a
 # repo+branch switch is atomic and saved for the next deploy.
-mutation SetRepo($id: String!, $repo: String!, $branch: String) {
-  setRepo(id: $id, repo: $repo, branch: $branch) {
+mutation SetRepo(
+  $id: String!
+  $repo: String!
+  $branch: String
+  $confirm: String
+) {
+  setRepo(id: $id, repo: $repo, branch: $branch, confirm: $confirm) {
     id
     repo
     branch

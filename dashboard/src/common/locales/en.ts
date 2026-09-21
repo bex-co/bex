@@ -36,6 +36,11 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Monthly USD price shown on a resource plan card; price is an API-supplied decimal without the currency symbol",
   },
+  "common.protectedConfirmationRetry": {
+    message: "Confirm and save",
+    description:
+      "Confirm button in the protected environment retry dialog raised by a settings save",
+  },
   "common.protectedConfirmationCancel": {
     message: "Cancel",
     description:

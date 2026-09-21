@@ -3434,6 +3434,11 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
+	// What gets built is what runs, so this is the same identity change that
+	// repointing the source is (w4/m126).
+	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+		return AppView{}, err
+	}
 	if err := requireRepoBacked(a, name, "root directory only applies to build-from-git"); err != nil {
 		return AppView{}, err
 	}
@@ -3458,6 +3463,11 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath string) (AppView, error) {
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
+		return AppView{}, err
+	}
+	// What gets built is what runs, so this is the same identity change that
+	// repointing the source is (w4/m126).
+	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
 		return AppView{}, err
 	}
 	if err := requireRepoBacked(a, name, "dockerfile path only applies to Dockerfile builds"); err != nil {
@@ -3520,6 +3530,12 @@ func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string)
 	if err != nil {
 		return AppView{}, err
 	}
+	// Same class as the build/start commands below: attacker-chosen code the
+	// service runs with its own identity, so a protected environment asks
+	// (w4/m126).
+	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+		return AppView{}, err
+	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeStaticSite {
 		return AppView{}, fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, a.Spec.Type)
 	}
@@ -3538,6 +3554,11 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 	// lifecycle — gate on can_create (developer and up), not can_operate.
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
 	if err != nil {
+		return AppView{}, err
+	}
+	// What gets built is what runs, so this is the same identity change that
+	// repointing the source is (w4/m126).
+	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
 		return AppView{}, err
 	}
 	if a.Spec.Type == appv1alpha1.TypeStaticSite && startCommand != nil {
@@ -3602,6 +3623,15 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		ownerID := strings.TrimSpace(*patch.ImageOwnerID)
 		if ownerID != "" && ownerID != a.Labels[core.LabelTenant] {
 			return AppView{}, fmt.Errorf("%w: image.ownerId does not match the service owner", core.ErrBadRequest)
+		}
+	}
+	// A protected environment guards what the service RUNS, not only whether it
+	// runs (w4/m126). Placed before resolveSourcePatch's own no-op return, so a
+	// caller cannot learn whether a change would have applied by watching which
+	// error comes back.
+	if verb := protectedSourceVerb(patch); verb != "" {
+		if err := s.requireUnprotected(ctx, a, verb); err != nil {
+			return AppView{}, err
 		}
 	}
 	next, err := resolveSourcePatch(a, patch)
@@ -3795,6 +3825,14 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(command != nil), name)
 	if err != nil {
 		return AppView{}, err
+	}
+	// The same split one line down: changing what the cron runs is the identity
+	// change a protected environment asks about (w4/m126); rescheduling when it
+	// runs is not.
+	if command != nil {
+		if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+			return AppView{}, err
+		}
 	}
 	if schedule != nil {
 		trimmed := strings.TrimSpace(*schedule)
@@ -4079,6 +4117,16 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 	current := maintenanceModeView(a.Spec.MaintenanceMode)
 	if current == in {
 		return s.view(a), nil
+	}
+	// Turning maintenance mode ON takes availability away exactly as Suspend
+	// does — every host answers 503 — so it is guarded on the same rule
+	// (w4/m126). Turning it OFF restores availability, which is why Resume is
+	// ungated, and a URI-only edit changes neither. The confirmation phrase is
+	// distinct from suspend's so neither can arm the other.
+	if in.Enabled && !current.Enabled {
+		if err := s.requireUnprotected(ctx, a, "take offline"); err != nil {
+			return AppView{}, err
+		}
 	}
 	uriChanged := current.URI != in.URI
 	var enabledChanged *bool

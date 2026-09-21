@@ -716,7 +716,13 @@ type recordingStore struct {
 	// an id absent from the map reports "unprotected", matching the store's
 	// own default for an App outside any environment.
 	protectedStatus map[string]string
-	environments    map[string]store.Environment
+	// protectedErr is the protection lookup's own failure, deliberately separate
+	// from err: err stands for "a row write failed", and several verbs are
+	// specified to survive that (the spec patch already landed). A protection
+	// lookup that fails is the opposite — it must fail the verb closed — so a
+	// test asking for one has to ask for it explicitly (w4/m126).
+	protectedErr error
+	environments map[string]store.Environment
 }
 
 func (r *recordingStore) GetEnvironment(_ context.Context, id string) (store.Environment, error) {
@@ -730,8 +736,8 @@ func (r *recordingStore) GetEnvironment(_ context.Context, id string) (store.Env
 }
 
 func (r *recordingStore) GetAppProtectedStatus(_ context.Context, id string) (string, error) {
-	if r.err != nil {
-		return "", r.err
+	if r.protectedErr != nil {
+		return "", r.protectedErr
 	}
 	if status, ok := r.protectedStatus[id]; ok {
 		return status, nil

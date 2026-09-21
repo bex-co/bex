@@ -65,8 +65,18 @@ mutation DeleteService($id: String!, $confirm: String) {
 # private_service bind one, so the wizard omits it for every other type.
 # updateCronJob: change a cron_job's schedule and/or command (w5/m18).
 # schedule is required; command is optional (empty clears the entrypoint override).
-mutation UpdateCronJob($id: String!, $schedule: String!, $command: String) {
-  updateCronJob(id: $id, schedule: $schedule, command: $command) {
+mutation UpdateCronJob(
+  $id: String!
+  $schedule: String!
+  $command: String
+  $confirm: String
+) {
+  updateCronJob(
+    id: $id
+    schedule: $schedule
+    command: $command
+    confirm: $confirm
+  ) {
     id
     schedule
     command
@@ -138,8 +148,16 @@ mutation CreateService(
 # Existing-image and repository-Docker services can bind one stored workspace
 # registry credential. The backend uses an explicit empty string to clear the
 # binding; omission is not a clear operation.
-mutation SetRegistryCredential($id: String!, $registryCredentialId: String!) {
-  setRegistryCredential(id: $id, registryCredentialId: $registryCredentialId) {
+mutation SetRegistryCredential(
+  $id: String!
+  $registryCredentialId: String!
+  $confirm: String
+) {
+  setRegistryCredential(
+    id: $id
+    registryCredentialId: $registryCredentialId
+    confirm: $confirm
+  ) {
     id
     registryCredentialId
   }
