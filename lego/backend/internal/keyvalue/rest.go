@@ -352,14 +352,17 @@ func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 		MaxmemoryPolicy *string                  `json:"maxmemoryPolicy,omitempty"`
 		PersistenceMode *string                  `json:"persistenceMode,omitempty"`
 		IPAllowList     *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
-		DryRun          bool                     `json:"dryRun,omitempty"`
+		// Public is bex's explicit external-endpoint control (w4/m116). Render
+		// clients never send it; a nonempty ipAllowList publishes on its own.
+		Public *bool `json:"public,omitempty"`
+		DryRun bool  `json:"dryRun,omitempty"`
 	}
 	if err := core.DecodeJSON(r, &req); err != nil {
 		writeBadRequestBody(w, err)
 		return
 	}
 	id := r.PathValue("id")
-	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan, MaxmemoryPolicy: req.MaxmemoryPolicy, PersistenceMode: req.PersistenceMode, IPAllowList: req.IPAllowList}
+	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan, MaxmemoryPolicy: req.MaxmemoryPolicy, PersistenceMode: req.PersistenceMode, IPAllowList: req.IPAllowList, Public: req.Public}
 	apply := s.UpdateKeyValue
 	if core.DryRunRequested(r, req.DryRun) {
 		apply = s.PreviewUpdateKeyValue

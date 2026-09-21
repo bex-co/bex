@@ -522,6 +522,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"renameDatabase": gqlutil.PatchMutation(postgresGQLType, "name",
 			func(name string) PostgresPatch { return PostgresPatch{Name: &name} },
 			s.UpdatePostgres, s.PreviewUpdatePostgres),
+		// setDatabasePublic is the explicit external-endpoint control (w4/m116),
+		// the mirror of setKeyValuePublic. A Postgres allowlist write never
+		// publishes on its own — private is an explicit choice here, unlike the
+		// key-value default.
+		"setDatabasePublic": &graphql.Field{
+			Type: postgresGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":     gqlutil.ReqArg(graphql.String),
+				"public": gqlutil.ReqArg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				public := p.Args["public"].(bool)
+				return s.UpdatePostgres(p.Context, p.Args["id"].(string), PostgresPatch{Public: &public})
+			},
+		},
 
 		// --- failover (HA only) — Render's POST /postgres/{id}/failover → 202 ---
 		"failoverDatabase": &graphql.Field{

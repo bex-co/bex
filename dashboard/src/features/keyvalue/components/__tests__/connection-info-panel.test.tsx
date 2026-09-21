@@ -88,12 +88,15 @@ describe("ConnectionInfoPanel", () => {
       screen.getByText("redis://default:s3cr3t@kv.default.svc:6379"),
     ).toBeInTheDocument();
     expect(screen.getByText("Valkey CLI command")).toBeInTheDocument();
-    // Not public: the external field is replaced by the "enable public access" note.
+    // Not public: the external field is replaced by a note naming the control
+    // that actually publishes the store — adding an inbound IP rule under
+    // Networking (w4/m116). The old copy promised an "enable public access"
+    // control that did not exist anywhere in the UI.
     expect(
       screen.queryByText("External Key Value URL"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(/Enable public access to get an external URL/i),
+      screen.getByText(/Add an inbound IP rule under Networking/i),
     ).toBeInTheDocument();
   });
 

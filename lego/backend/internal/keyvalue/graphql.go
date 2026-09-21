@@ -245,6 +245,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"resumeKeyValue": gqlutil.IDVerb(keyValueGQLType, s.Resume),
+		// setKeyValuePublic is the explicit external-endpoint control (w4/m116).
+		// Adding a nonempty allowlist below already publishes a private store —
+		// Render's enabling event — but clearing it deliberately does not
+		// withdraw the endpoint, so taking it down is always a named act.
+		"setKeyValuePublic": &graphql.Field{
+			Type: keyValueGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":     gqlutil.ReqArg(graphql.String),
+				"public": gqlutil.ReqArg(graphql.Boolean),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				public := p.Args["public"].(bool)
+				return s.UpdateKeyValue(p.Context, p.Args["id"].(string), KeyValuePatch{Public: &public})
+			},
+		},
 		"setKeyValueIpAllowList": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
