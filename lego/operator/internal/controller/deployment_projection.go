@@ -421,6 +421,23 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
 	dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
+	// No legacy Docker-link variables (w4/m123). With Kubernetes' default
+	// (true), the kubelet injects a <NAME>_SERVICE_HOST / <NAME>_SERVICE_PORT /
+	// <NAME>_PORT_<n>_TCP_* set for EVERY Service in the pod's namespace — live,
+	// a tenant web service with four configured variables received 185, of which
+	// 174 were these. They named every sibling resource in the workspace,
+	// including managed Postgres primaries by id and cert-manager's own ACME
+	// solver Service, and — the actual footgun — a <NAME>_PORT variable shadows
+	// the same name an application expects to configure itself with, handing it
+	// `tcp://10.x.x.x:6379` where it expected its own value. Nothing in bex
+	// reads a service link; the supported way to reach a sibling is its private
+	// address, `<slug>:<port>` (ADR041 D4).
+	//
+	// This is a bex CHOICE, so it belongs here and not in
+	// applyPodSpecServerDefaults, which exists to mirror what Kubernetes would
+	// have chosen. Writing it moves the stored pod template, so every tenant
+	// pod rolls once when this ships — see the milestone's t002.
+	dep.Spec.Template.Spec.EnableServiceLinks = new(false)
 	// Last, always: above is what bex chooses, this is what Kubernetes would have
 	// chosen for the rest. See server_defaults.go.
 	applyPodSpecServerDefaults(&dep.Spec.Template.Spec)

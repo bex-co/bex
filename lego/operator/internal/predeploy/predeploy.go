@@ -156,10 +156,12 @@ func Job(o Options) *batchv1.Job {
 	podLabels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	podLabels[LabelService] = o.Name
 	podSpec := corev1.PodSpec{
-		RestartPolicy:    corev1.RestartPolicyNever,
-		Containers:       []corev1.Container{container},
-		ImagePullSecrets: o.ImagePullSecrets,
-		Volumes:          o.Volumes,
+		// No legacy Docker-link env vars (w4/m123) — the pre-deploy command — tenant code.
+		EnableServiceLinks: new(false),
+		RestartPolicy:      corev1.RestartPolicyNever,
+		Containers:         []corev1.Container{container},
+		ImagePullSecrets:   o.ImagePullSecrets,
+		Volumes:            o.Volumes,
 	}
 	execution.HardenPod(&podSpec)
 
