@@ -614,6 +614,12 @@ var envVarGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"key":      gqlutil.StrField(func(v core.EnvVar) any { return v.Key }),
 		"value":    gqlutil.StrField(func(v core.EnvVar) any { return v.Value }),
 		"revision": gqlutil.StrField(func(v core.EnvVar) any { return v.Revision }),
+		// managedBy is empty for the ordinary mutable variable and "blueprint"
+		// for a literal a render.yaml manifest owns — read-only here, and a
+		// write to it is refused rather than silently shadowed (w4/m120). It
+		// rides the KEY list too, so the dashboard knows a row is read-only
+		// before anyone reveals its value.
+		"managedBy": gqlutil.StrField(func(v core.EnvVar) any { return v.ManagedBy }),
 	},
 })
 

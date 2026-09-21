@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -21,6 +22,10 @@ const toastSuccess = vi.fn();
 const toastError = vi.fn();
 // Mutable so individual tests can render the secret-files empty state.
 let fileNames: Array<{ id: string; name: string }> = [];
+// Mutable so individual tests can flag a key as manifest-managed (w4/m120) or
+// hold the keys read open while the flag has not arrived.
+let envKeys: Array<{ id: string; key: string; managedBy?: string | null }> = [];
+let envKeysLoading = false;
 
 vi.mock("sonner", () => ({
   toast: {
@@ -31,11 +36,8 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/features/services/hooks/use-env-vars", () => ({
   useEnvVarKeys: () => ({
-    keys: [
-      { id: "ALPHA", key: "ALPHA" },
-      { id: "BETA", key: "BETA" },
-    ],
-    loading: false,
+    keys: envKeys,
+    loading: envKeysLoading,
     error: undefined,
     refetch: refetchEnv,
   }),
@@ -82,6 +84,11 @@ function renderEditor() {
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   fileNames = [{ id: "token.txt", name: "token.txt" }];
+  envKeys = [
+    { id: "ALPHA", key: "ALPHA", managedBy: "" },
+    { id: "BETA", key: "BETA", managedBy: "" },
+  ];
+  envKeysLoading = false;
   toastSuccess.mockReset();
   toastError.mockReset();
   revealEnv
@@ -532,5 +539,121 @@ describe("ServiceEnvironmentEditor", () => {
     await user.type(nameInput, "bad/name");
     expect(await screen.findByRole("alert")).toHaveTextContent(rule);
     expect(nameInput).toHaveAttribute("aria-invalid", "true");
+  });
+  // w4/m120 t003: a blueprint service's render.yaml literals live on the App
+  // spec, and bex-api refuses every write to them. The row has to say so
+  // *before* anyone reveals its value, and offer no control that would produce
+  // the refused write.
+  it("renders a manifest-managed variable read-only with no edit or delete affordance", async () => {
+    envKeys = [
+      { id: "MESSAGE", key: "MESSAGE", managedBy: "blueprint" },
+      { id: "BETA", key: "BETA", managedBy: "" },
+    ];
+    const user = userEvent.setup();
+    renderEditor();
+
+    // Read mode names the owner and still allows copying the value.
+    expect(await screen.findByText("Managed by blueprint")).toBeInTheDocument();
+    expect(
+      screen.getByText(/declared in the service's render.yaml manifest/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy MESSAGE" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+
+    // Draft mode: no key field, no value field, no delete for the flagged row.
+    expect(screen.queryByDisplayValue("MESSAGE")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Value for MESSAGE" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete MESSAGE" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Managed by blueprint")).toBeInTheDocument();
+
+    // The ordinary row beside it is untouched.
+    expect(screen.getByDisplayValue("BETA")).toBeEnabled();
+    expect(
+      screen.getByRole("textbox", { name: "Value for BETA" }),
+    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Delete BETA" })).toBeEnabled();
+  });
+
+  it("never derives a write for a manifest-managed row from the draft", async () => {
+    envKeys = [
+      { id: "MESSAGE", key: "MESSAGE", managedBy: "blueprint" },
+      { id: "BETA", key: "BETA", managedBy: "" },
+    ];
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+
+    // A .env import naming the manifest key must not smuggle the write in.
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Import from .env" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Dotenv contents" }),
+      "MESSAGE=hijacked",
+    );
+    await user.click(screen.getByRole("button", { name: "Add variables" }));
+    expect(screen.queryByDisplayValue("hijacked")).not.toBeInTheDocument();
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for BETA" }),
+      "replacement",
+    );
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][1]).toEqual({
+      envVars: [{ key: "BETA", value: "replacement" }],
+      secretFiles: [],
+    });
+  });
+
+  it("fails closed on a row whose manifest flag has not arrived yet", async () => {
+    // Old cached data (pre-w4/m120) mid-refetch: the field is absent, not empty.
+    envKeys = [{ id: "ALPHA", key: "ALPHA" }];
+    envKeysLoading = true;
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    expect(
+      screen.queryByRole("textbox", { name: "Value for ALPHA" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete ALPHA" }),
+    ).not.toBeInTheDocument();
+  });
+
+  // The dashboard invents no copy of its own for this refusal — the server names
+  // the manifest and the remedy, and that text is what the user reads
+  // (mutation-error-toast-invariant.test.ts guards the passthrough).
+  it("surfaces the server's manifest refusal verbatim", async () => {
+    const refusal =
+      "BETA is declared in this service's render.yaml manifest, which owns its value — edit the manifest and sync the blueprint, or declare the variable with `sync: false` so the dashboard owns it instead";
+    save.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: refusal,
+            extensions: { code: "ENV_VAR_MANIFEST_MANAGED" },
+          },
+        ],
+      } as never),
+    );
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for BETA" }),
+      "replacement",
+    );
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(refusal));
   });
 });

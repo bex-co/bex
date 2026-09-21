@@ -317,6 +317,28 @@ export type ServiceTypeKey =
 export interface EnvVarKey {
   id: string;
   key: string;
+  /**
+   * Who owns the value, when it is not the mutable secret store:
+   * `MANAGED_BY_BLUEPRINT` for a literal a blueprint's `render.yaml` manifest
+   * declares (w4/m120). Empty/null for an ordinary editable variable;
+   * `undefined` when the server answer predates the field — the editor treats
+   * that as "not yet known" and fails closed while the read is still in flight.
+   */
+  managedBy?: string | null;
+}
+
+/**
+ * `core.ManagedByBlueprint` on the wire — a `render.yaml` manifest owns this
+ * variable's value, so every write path (set/delete/rename/bulk replace) is
+ * refused by bex-api with `ENV_VAR_MANIFEST_MANAGED`.
+ */
+export const MANAGED_BY_BLUEPRINT = "blueprint";
+
+/** True for a variable whose value a blueprint manifest owns. */
+export function isManifestManaged(
+  managedBy: string | null | undefined,
+): boolean {
+  return managedBy === MANAGED_BY_BLUEPRINT;
 }
 
 /**

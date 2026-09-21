@@ -154,7 +154,7 @@ func TestSyncBlueprintReviewedPathMismatchConflicts(t *testing.T) {
 		},
 	}
 	svc := &Service{
-		Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints: fs, DomainOwnership: allowDomainOwnership{}, GitFetcher: fetcher,
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
@@ -180,7 +180,7 @@ func TestSyncBlueprintReviewedWithBexYAMLIsBadRequest(t *testing.T) {
 		Status: "active", Name: "app",
 	})
 	svc := &Service{
-		Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints: fs, DomainOwnership: allowDomainOwnership{},
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest},
 	}

@@ -62,6 +62,11 @@ type EnvVarView struct {
 	Value    string `json:"value"`
 	Generate bool   `json:"generateValue,omitempty"`
 	Revision string `json:"revision,omitempty"`
+	// ManagedBy names the owner of a value bex does not hold the pen for —
+	// core.ManagedByBlueprint for a literal a render.yaml manifest declares.
+	// Omitted (and empty) for the ordinary mutable case, so the Render wire
+	// shape is unchanged for every service that has no manifest (w4/m120).
+	ManagedBy string `json:"managedBy,omitempty"`
 }
 
 // EnvVarWrite is the mutually exclusive value-or-generate input accepted by a
@@ -188,42 +193,109 @@ func (s *Service) readMap(ctx context.Context, path string) (map[string]string, 
 	return cur, nil
 }
 
+// manifestEnv returns the literal environment a render.yaml manifest owns on
+// this App's spec, keyed by name.
+//
+// A blueprint's plain `envVars:` literals deliberately stay on spec.Env rather
+// than moving into the mutable store the way an interactively-created
+// service's do (the w6/m45 carve-out: the manifest is the writer, and a sync
+// must be able to converge them). The operator feeds spec.Env straight to the
+// container, where Kubernetes `env` beats the `envFrom` projection — so these
+// are the values the process ACTUALLY has, and until w4/m120 no env read
+// mentioned them: a blueprint service's Environment tab was empty while its
+// process ran the manifest's values.
+//
+// ValueFrom entries are skipped: they are Secret-key references the operator
+// resolves, not values, and have no representation in an env-var view — the
+// same rule takeCreateEnvLiterals applies on the interactive path.
+func manifestEnv(a *appv1alpha1.App) map[string]string {
+	if a == nil || len(a.Spec.Env) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(a.Spec.Env))
+	for _, item := range a.Spec.Env {
+		if item.ValueFrom == nil {
+			out[item.Name] = item.Value
+		}
+	}
+	return out
+}
+
+// mergeManifestEnv overlays the manifest's literals onto the store's map and
+// reports which keys the manifest owns.
+//
+// The manifest WINS a collision, because the runtime does: Kubernetes `env`
+// beats `envFrom`, so the manifest value is what the process holds. A
+// collision should not exist — the write guards refuse one — but a store write
+// that landed before those guards shipped would otherwise make the read report
+// a value no process ever sees, which is the exact failure this milestone is
+// about.
+func mergeManifestEnv(env map[string]string, a *appv1alpha1.App) (map[string]string, map[string]bool) {
+	manifest := manifestEnv(a)
+	if len(manifest) == 0 {
+		return env, nil
+	}
+	merged := make(map[string]string, len(env)+len(manifest))
+	for k, v := range env {
+		merged[k] = v
+	}
+	owned := make(map[string]bool, len(manifest))
+	for k, v := range manifest {
+		merged[k] = v
+		owned[k] = true
+	}
+	return merged, owned
+}
+
 // ListEnvVars returns a service's environment variables, sorted by key for a
 // stable response (Render's GET /v1/services/{id}/env-vars). Reading secret
 // values is sensitive, gated like connection strings (RelCanViewSensitive).
+//
+// The set is the union of the mutable store and the manifest literals — see
+// manifestEnv for why the latter live somewhere else and why omitting them was
+// a lie about the running process.
 func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView, error) {
-	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
+	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
 	if err != nil {
 		return nil, err
 	}
-	return envVarViews(env, revision), nil
+	merged, owned := mergeManifestEnv(env, a)
+	return envVarViews(merged, revision, owned), nil
 }
 
-// readAuthorizedEnvMap is the one sensitive-read boundary for the masked list,
+// readAuthorizedEnv is the one sensitive-read boundary for the masked list,
 // explicit single-key reveal, and the legacy REST list/get verbs. A versioned
 // store returns one opaque whole-map revision alongside the snapshot; legacy
 // SecretKV implementations keep returning an empty revision so old callers and
 // test doubles remain compatible.
-func (s *Service) readAuthorizedEnvMap(ctx context.Context, service string) (map[string]string, string, error) {
+//
+// It returns the App alongside the store's map because the store is not the
+// only source of a service's environment: a blueprint manifest owns literals
+// on spec.Env that every read must also report (w4/m120, see manifestEnv).
+func (s *Service) readAuthorizedEnv(ctx context.Context, service string) (map[string]string, *appv1alpha1.App, string, error) {
 	a, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, "", err
 	}
 	// codex round-8 #8: every env value is a secret reveal, so re-assert the
 	// relation uncached before reading OpenBao — a member revoked within the
 	// last PositiveTTL must not reveal one last value off a stale positive.
 	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewSensitive, a); err != nil {
-		return nil, "", err
+		return nil, nil, "", err
 	}
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
 		env, err := s.readMap(ctx, envPath(service))
 		if err != nil {
-			return nil, "", err
+			return nil, nil, "", err
 		}
-		return env, "", nil
+		return env, a, "", nil
 	}
-	return s.readVersionedEnvMap(ctx, envPath(service), versioned)
+	env, revision, err := s.readVersionedEnvMap(ctx, envPath(service), versioned)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return env, a, revision, nil
 }
 
 // readVersionedEnvMap reads one atomic snapshot from the already tenant-scoped
@@ -282,15 +354,73 @@ func applyPageLimits[T any](items []T, after string, limit int, cursorOf func(T)
 // GetEnvVar returns a single variable (Render's GET .../env-vars/{key}), the bare
 // {key,value}. Unknown service or key => core.ErrNotFound. Sensitive read.
 func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarView, error) {
-	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
+	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
 	if err != nil {
 		return EnvVarView{}, err
 	}
-	v, ok := env[key]
+	merged, owned := mergeManifestEnv(env, a)
+	v, ok := merged[key]
 	if !ok {
 		return EnvVarView{}, core.ErrNotFound
 	}
-	return EnvVarView{Key: key, Value: v, Revision: revision}, nil
+	return EnvVarView{Key: key, Value: v, Revision: revision, ManagedBy: managedBy(owned, key)}, nil
+}
+
+// managedBy names a key's owner for the views: the blueprint manifest, or
+// nothing at all when the mutable store holds the pen.
+func managedBy(owned map[string]bool, key string) string {
+	if owned[key] {
+		return core.ManagedByBlueprint
+	}
+	return ""
+}
+
+// CodeEnvVarManifestManaged is the stable signal for a write aimed at a key a
+// render.yaml manifest owns.
+const CodeEnvVarManifestManaged = "ENV_VAR_MANIFEST_MANAGED"
+
+// refuseManifestKeys refuses a write that names any key the App's manifest
+// owns, and says what to do instead.
+//
+// Without this guard the write SUCCEEDS and does nothing the user can observe:
+// it lands in the mutable store, the store is projected into the `<name>-env`
+// Secret, and the container reads that Secret through `envFrom` — which
+// Kubernetes lets the manifest's own `env` entry beat. So the API reports 200,
+// the Environment tab shows the new value, and the process keeps the old one,
+// forever. That is the hazard takeCreateEnvLiterals already documents for the
+// interactive path (apps/service.go); a blueprint service had no equivalent
+// protection until w4/m120.
+//
+// Bulk writes are all-or-nothing: one manifest key refuses the whole patch,
+// naming every offender, rather than applying the innocent half of a request
+// the caller wrote as one unit.
+func refuseManifestKeys(a *appv1alpha1.App, keys ...string) error {
+	owned := manifestEnv(a)
+	if len(owned) == 0 {
+		return nil
+	}
+	seen := map[string]bool{}
+	var offenders []string
+	for _, key := range keys {
+		key = strings.TrimSpace(key)
+		if key == "" || seen[key] {
+			continue
+		}
+		if _, owns := owned[key]; owns {
+			seen[key] = true
+			offenders = append(offenders, key)
+		}
+	}
+	if len(offenders) == 0 {
+		return nil
+	}
+	sort.Strings(offenders)
+	return core.NewConflictError(
+		CodeEnvVarManifestManaged,
+		fmt.Sprintf("%s is declared in this service's render.yaml manifest, which owns its value — edit the manifest and sync the blueprint, or declare the variable with `sync: false` so the dashboard owns it instead",
+			strings.Join(offenders, ", ")),
+		map[string]any{"keys": offenders},
+	)
 }
 
 // SetEnvVars replaces a service's whole env set (Render's PUT semantics) and
@@ -301,6 +431,13 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	// One App read: existence check + patch base.
 	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
+		return nil, err
+	}
+	keys := make([]string, 0, len(vars))
+	for _, v := range vars {
+		keys = append(keys, v.Key)
+	}
+	if err := refuseManifestKeys(a, keys...); err != nil {
 		return nil, err
 	}
 	env := make(map[string]string, len(vars))
@@ -327,7 +464,9 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := s.materializeEnv(ctx, a, env); err != nil {
 		return nil, err
 	}
-	return envVarViews(env, ""), nil
+	// No manifest keys can be present: SetEnvVars refuses a write that names
+	// one, so everything it wrote is store-owned and editable.
+	return envVarViews(env, "", nil), nil
 }
 
 // resolveValue applies Render's generateValue semantics to one env-var write:
@@ -354,6 +493,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	}
 	key = strings.TrimSpace(key)
 	if err := core.CheckEnvKey(key); err != nil {
+		return EnvVarView{}, err
+	}
+	if err := refuseManifestKeys(a, key); err != nil {
 		return EnvVarView{}, err
 	}
 	value, err := resolveValue(key, write.Value, write.GenerateValue)
@@ -392,6 +534,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
+		return err
+	}
+	if err := refuseManifestKeys(a, key); err != nil {
 		return err
 	}
 	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, func(current map[string]string) error {
@@ -472,29 +617,35 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 // EnvVarKeys lists a service's env-var keys only (value empty), the Render
 // dashboard shape (`service{ envVarKeys{ id key } }`). id == key.
 func (s *Service) EnvVarKeys(ctx context.Context, service string) ([]core.EnvVar, error) {
-	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
+	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
 	if err != nil {
 		return nil, err
 	}
-	keys := core.SortedKeys(env)
+	merged, owned := mergeManifestEnv(env, a)
+	keys := core.SortedKeys(merged)
 	out := make([]core.EnvVar, 0, len(keys))
 	for _, key := range keys {
-		out = append(out, core.EnvVar{ID: key, Key: key, Revision: revision}) // keys only; value fetched on demand
+		// keys only; value fetched on demand. ManagedBy rides the KEY list on
+		// purpose: the dashboard has to know a row is read-only before anyone
+		// reveals its value, or it renders an editable field for a variable no
+		// write can change.
+		out = append(out, core.EnvVar{ID: key, Key: key, Revision: revision, ManagedBy: managedBy(owned, key)})
 	}
 	return out, nil
 }
 
 // EnvVarValue reads one variable's value (the dashboard's "Show secret").
 func (s *Service) EnvVarValue(ctx context.Context, service, key string) (core.EnvVar, error) {
-	env, revision, err := s.readAuthorizedEnvMap(ctx, service)
+	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
 	if err != nil {
 		return core.EnvVar{}, err
 	}
-	value, ok := env[key]
+	merged, owned := mergeManifestEnv(env, a)
+	value, ok := merged[key]
 	if !ok {
 		return core.EnvVar{}, core.ErrNotFound
 	}
-	return core.EnvVar{ID: key, Key: key, Value: value, Revision: revision}, nil
+	return core.EnvVar{ID: key, Key: key, Value: value, Revision: revision, ManagedBy: managedBy(owned, key)}, nil
 }
 
 // storeMap writes the whole map to the source of truth at path, deleting the path
@@ -686,10 +837,10 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 }
 
 // envVarViews renders an env map as a key-sorted slice.
-func envVarViews(env map[string]string, revision string) []EnvVarView {
+func envVarViews(env map[string]string, revision string, owned map[string]bool) []EnvVarView {
 	out := make([]EnvVarView, 0, len(env))
 	for k, v := range env {
-		out = append(out, EnvVarView{Key: k, Value: v, Revision: revision})
+		out = append(out, EnvVarView{Key: k, Value: v, Revision: revision, ManagedBy: managedBy(owned, k)})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
 	return out

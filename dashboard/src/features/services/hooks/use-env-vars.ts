@@ -18,8 +18,17 @@ import type { EnvVarKey } from "@/features/services/types";
 
 const PAGE_SIZE = 100;
 
+type RawEnvVar = {
+  id: string | null;
+  key: string | null;
+  // Optional on the type, not just nullable: a response cached before w4/m120
+  // has no such field at all, and "absent" is a different state from "empty"
+  // (see EnvVarKey.managedBy).
+  managedBy?: string | null;
+};
+
 type RawPageItem = {
-  envVar: { id: string | null; key: string | null } | null;
+  envVar: RawEnvVar | null;
   cursor: string | null;
 } | null;
 
@@ -30,10 +39,13 @@ function mapPage(raw: Array<RawPageItem> | null | undefined) {
   const keys = items
     .map((item) => item.envVar)
     .filter(
-      (envVar): envVar is { id: string | null; key: string } =>
-        envVar?.key != null,
+      (envVar): envVar is RawEnvVar & { key: string } => envVar?.key != null,
     )
-    .map((envVar) => ({ id: envVar.id ?? envVar.key, key: envVar.key }));
+    .map((envVar) => ({
+      id: envVar.id ?? envVar.key,
+      key: envVar.key,
+      ...("managedBy" in envVar ? { managedBy: envVar.managedBy } : {}),
+    }));
   return { items, keys };
 }
 

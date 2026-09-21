@@ -39,6 +39,14 @@ export interface EnvDraftRow {
   valueChanged: boolean;
   /** Server-side generation intent; the literal value remains absent. */
   generateValue?: boolean;
+  /**
+   * The row's value belongs to someone other than the dashboard — today a
+   * blueprint's `render.yaml` manifest (w4/m120). A read-only row is rendered
+   * without edit/rename/delete controls *and* contributes no operation to the
+   * patch, so no code path can send a write bex-api would refuse with
+   * `ENV_VAR_MANIFEST_MANAGED`.
+   */
+  readOnly?: boolean;
   deleted: boolean;
 }
 
@@ -88,6 +96,7 @@ export interface DraftValidation {
 export function createEnvironmentDraft(
   envKeys: readonly string[],
   fileNames: readonly string[],
+  readOnlyEnvKeys: ReadonlySet<string> = new Set(),
 ): EnvironmentDraft {
   return {
     envVars: envKeys.map((key) => ({
@@ -97,6 +106,7 @@ export function createEnvironmentDraft(
       value: null,
       valueChanged: false,
       generateValue: false,
+      readOnly: readOnlyEnvKeys.has(key),
       deleted: false,
     })),
     secretFiles: fileNames.map((name) => ({
@@ -120,6 +130,8 @@ interface RowLens<R> {
   value: (row: R) => string | null;
   changed: (row: R) => boolean;
   generated: (row: R) => boolean;
+  /** True when no write may be derived from this row at all. */
+  readOnly: (row: R) => boolean;
 }
 
 const ENV_LENS: RowLens<EnvDraftRow> = {
@@ -128,6 +140,7 @@ const ENV_LENS: RowLens<EnvDraftRow> = {
   value: (row) => row.value,
   changed: (row) => row.valueChanged,
   generated: (row) => row.generateValue === true,
+  readOnly: (row) => row.readOnly === true,
 };
 
 const FILE_LENS: RowLens<SecretFileDraftRow> = {
@@ -136,6 +149,7 @@ const FILE_LENS: RowLens<SecretFileDraftRow> = {
   value: (row) => row.content,
   changed: (row) => row.contentChanged,
   generated: () => false,
+  readOnly: () => false,
 };
 
 function validateRows<
@@ -264,6 +278,10 @@ function patchRows<R extends { deleted: boolean }>(
 ): RowPatch[] {
   const patch: RowPatch[] = [];
   for (const row of rows) {
+    // A value the dashboard does not own contributes nothing — not a set, not
+    // a delete, not the delete half of a rename. This is the enforcement the
+    // hidden controls are only the visible half of (w4/m120).
+    if (lens.readOnly(row)) continue;
     const original = lens.original(row);
     const name = lens.name(row).trim();
     const value = lens.value(row) ?? "";
