@@ -178,7 +178,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--build-command` — round-trips (build not exercised)
     - [x] `--start-command`
     - [x] `--pre-deploy-command`
-    - [x] `--cron-command` — on `cron_job`
+    - [x] `--cron-command` — on `cron_job`, on **every runtime**. A cron's command is runtime-independent on the wire: the pinned client's cron builder emits it as `envSpecificDetails.startCommand` for all runtimes (`pkg/service/create.go buildCronEnvSpecificDetails`, no docker branch) and its clone path reads it back the same single way (`pkg/service/clone.go:143,328-334` → `AsNativeEnvironmentDetails().StartCommand`). bex therefore **accepts either spelling** on write (`dockerCommand` wins when both are sent) and **emits both** on read for a docker cron — `dockerCommand` for the runtime-keyed readers (dashboard, blueprint generation) and `startCommand` for the client that re-sends it. Before **w9/m165** the docker path dropped the command on create and projected an empty `dockerCommand`, so `services update --cron-command` printed a no-op it had not performed and `create --from` cloned an empty command; verified live on dev-9 2026-09-21 across create → read → update → clone, and guarded by the `docker-cron-create`/`docker-cron-update`/`docker-cron-clone` legs of `scripts/cli-services-parity-verify.sh`.
     - [x] `--cron-schedule` — on `cron_job`
     - [x] `--health-check-path`
     - [x] `--auto-deploy`

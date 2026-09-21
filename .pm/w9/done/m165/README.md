@@ -1,19 +1,19 @@
 # w9 · m165 — A Docker cron job's command is dropped on create and invisible on read
 
-**Worker:** worker9 **Goal:** the command a user gives a Docker-runtime cron job is the command it runs, and every surface reads back the value that is actually stored **Status:** todo
+**Worker:** worker9 **Goal:** the command a user gives a Docker-runtime cron job is the command it runs, and every surface reads back the value that is actually stored **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------- | --- | ---------- |
-| t001 | Create: stop the docker branch from discarding the cron's startCommand  | 45m | —          |
-| t002 | Read-back: project a cron's command into `envSpecificDetails`           | 45m | —          |
-| t003 | Decide and document the cron command's canonical wire spelling          | 30m | t001, t002 |
-| t004 | Close m56's hole: cover the **docker** cron command in the verifier     | 60m | t003       |
-| t005 | Render parity across the touched surfaces                               | 45m | t003, t004 |
-| t006 | Simplify the code this milestone changed                                | 30m | t005       |
-| t007 | Test coverage for the shipped behavior                                  | 45m | t005       |
-| t008 | Closeout                                                                | 30m | t007       |
+| t001 | Create: stop the docker branch from discarding the cron's startCommand  | 45m | —          | — **DONE** |
+| t002 | Read-back: project a cron's command into `envSpecificDetails`           | 45m | —          | — **DONE** |
+| t003 | Decide and document the cron command's canonical wire spelling          | 30m | t001, t002 | — **DONE** |
+| t004 | Close m56's hole: cover the **docker** cron command in the verifier     | 60m | t003       | — **DONE** |
+| t005 | Render parity across the touched surfaces                               | 45m | t003, t004 | — **DONE** |
+| t006 | Simplify the code this milestone changed                                | 30m | t005       | — **DONE** |
+| t007 | Test coverage for the shipped behavior                                  | 45m | t005       | — **DONE** |
+| t008 | Closeout                                                                | 30m | t007       | — **DONE** |
 
 ## Definition of done
 
@@ -80,3 +80,47 @@ A `web_service` on the same runtime does **not** have this problem — the same 
 - Whether the scheduled run actually executes the image entrypoint when `command` is empty. The next fire was 5 minutes out and the fixture was deleted first; the claim here is about configuration round-trip, which is proven at the wire, not about the executed process.
 - GraphQL and MCP were not probed for the same projection — t005 covers them.
 - Whether Render itself accepts a native-shaped `envSpecificDetails` on a docker cron (i.e. whether upstream's no-runtime-branch cron builder is an upstream defect or relies on server-side leniency). t003 should answer it, because it decides whether bex should be liberal in what it accepts or upstream should be reported.
+
+## Closeout 2026-09-21 (`/loopx w9`)
+
+**Done, and verified live — not only in tests.** Three halves, the third of
+which only appeared once the first two were exercised end to end:
+
+1. **Create** (`rest.go`) — the docker branch no longer discards the cron's
+   `startCommand`; either spelling is accepted for a cron, `dockerCommand` wins
+   when both are sent, and every non-cron docker service keeps the prior rule.
+2. **Read-back** (`render.go`) — a docker cron's `dockerCommand` is folded from
+   `Spec.Command`, the same fold the native branch and blueprint generation
+   already did.
+3. **Clone** — with 1 and 2 shipped, every bex-side read looked right and
+   `create --from` *still* cloned an empty command: the pinned client resolves a
+   cron's command only through `AsNativeEnvironmentDetails().StartCommand`
+   (`pkg/service/clone.go:143,328-334`), mirroring its create path having no
+   docker branch. A docker cron now emits the command in **both** spellings.
+
+**Live evidence (dev-9, pinned CLI, 2026-09-21):**
+
+```text
+1. after create                 command: './job docker-create'  dockerCommand: './job docker-create'  startCommand: './job docker-create'
+2. after update --cron-command  command: './job docker-update'  dockerCommand: './job docker-update'  startCommand: './job docker-update'
+3. create --from (clone)        command: './job docker-update'  dockerCommand: './job docker-update'  startCommand: './job docker-update'
+```
+
+Before the fix the same journey produced `command: None` / `dockerCommand: ''`
+on create, and a clone with an empty command.
+
+**Guards:** `internal/apps/cron_docker_command_test.go` (mutation-checked — each
+revert fails a distinct test) plus three new verifier legs
+(`docker-cron-create`, `docker-cron-update`, `docker-cron-clone`) registered in
+the leg census, closing the docker-shaped hole in `w9/done/m56`'s "never a
+silent no-op" claim. Full backend suite + `make lint-backend` (0 issues) green.
+
+**Decision recorded** (t003): a cron's command is runtime-independent on the
+wire — `docs/ADR006-bex-api.md` and the `--cron-command` row of
+`docs/cli-compatibility-checklist.md`.
+
+**Not claimed:** whether a scheduled run executes the image entrypoint when the
+command is empty (the note's own open question) — this milestone is about the
+configuration round trip, which is proven at the wire. Pre-existing docker crons
+created before this fix still have an empty stored command and need it re-set;
+the fix does not backfill them.

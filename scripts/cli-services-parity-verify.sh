@@ -18,7 +18,9 @@ esac
 BASELINE_LEGS=(
   image-create image-update image-healthcheck image-delete repo-delete-during-build
   web-builder-roundtrip
-  web-create web-update cron-create cron-update static-create static-update
+  web-create web-update cron-create cron-update
+  docker-cron-create docker-cron-update docker-cron-clone
+  static-create static-update
   clone region-guard runtime-guard preview-update preview-create
 )
 CONFIGURED_LEGS=(configured-env-secret registry-credential)
@@ -359,6 +361,54 @@ assert_service "$CRON_ID" '
   .serviceDetails.envSpecificDetails.startCommand == "./job update"
 ' "native cron update preserves cron command and other mutable fields"
 complete_leg cron-update
+
+# w9/m165: the DOCKER cron command. m56's DoD is that no supported flag is ever
+# a silent no-op, but its cron legs only ever exercised the NATIVE runtime, and
+# the docker path was dropping the command on create and projecting an empty
+# dockerCommand on read — so `services update --cron-command` reported a change
+# it had not made, and `create --from` cloned an empty command. The pinned CLI's
+# cron builder emits the native envSpecificDetails.startCommand shape for every
+# runtime, so these two legs are what catch a regression to either half.
+DCRON_NAME="${PREFIX}-dcron"
+DCRON_ID="$("$RENDER_BIN" services create --name "$DCRON_NAME" --type cron_job \
+  --repo https://github.com/render-examples/go-cron.git --branch main --runtime docker \
+  --region frankfurt --plan starter --dockerfile-path Dockerfile \
+  --cron-command "./job docker-create" --cron-schedule '*/15 * * * *' --auto-deploy=false \
+  --confirm -o json | service_id)"
+remember "$DCRON_ID" "$DCRON_NAME"
+assert_service "$DCRON_ID" '
+  .type == "cron_job" and .serviceDetails.runtime == "docker" and
+  .serviceDetails.schedule == "*/15 * * * *" and
+  .serviceDetails.command == "./job docker-create" and
+  .serviceDetails.envSpecificDetails.dockerCommand == "./job docker-create" and
+  .serviceDetails.envSpecificDetails.startCommand == "./job docker-create"
+' "docker cron create stores the command and reads it back in both spellings"
+complete_leg docker-cron-create
+
+"$RENDER_BIN" services update "$DCRON_ID" --cron-command "./job docker-update" \
+  --cron-schedule '7 * * * *' --confirm -o json >/dev/null
+assert_service "$DCRON_ID" '
+  .serviceDetails.schedule == "7 * * * *" and
+  .serviceDetails.command == "./job docker-update" and
+  .serviceDetails.envSpecificDetails.dockerCommand == "./job docker-update" and
+  .serviceDetails.envSpecificDetails.startCommand == "./job docker-update"
+' "docker cron update changes the command and says so in its own read-back"
+complete_leg docker-cron-update
+
+# The clone is the leg that caught the third half live: the pinned client
+# resolves a cron's command ONLY through the native startCommand spelling
+# (pkg/service/clone.go:143,328-334), so a docker cron that published the docker
+# spelling alone cloned an empty command while every bex-side read looked right.
+DCLONE_NAME="${PREFIX}-dclone"
+DCLONE_ID="$("$RENDER_BIN" services create --from "$DCRON_ID" --name "$DCLONE_NAME" \
+  --region frankfurt --confirm -o json | service_id)"
+remember "$DCLONE_ID" "$DCLONE_NAME"
+assert_service "$DCLONE_ID" '
+  .type == "cron_job" and .serviceDetails.runtime == "docker" and
+  .serviceDetails.command == "./job docker-update" and
+  .serviceDetails.envSpecificDetails.dockerCommand == "./job docker-update"
+' "docker cron clone carries the source command, not an empty one"
+complete_leg docker-cron-clone
 
 STATIC_ID="$("$RENDER_BIN" services create --name "$STATIC_NAME" --type static_site \
   --repo https://github.com/render-examples/static-site.git --branch main \
