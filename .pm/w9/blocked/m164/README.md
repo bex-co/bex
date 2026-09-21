@@ -1,20 +1,20 @@
 # w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF
 
-**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** todo
+**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** blocked (live production session + the AAAA decision)
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------- | --- | ---------- |
-| t001 | Prove or disprove the Key Value half of the same trap, live             | 45m | —          |
-| t002 | Decide the fix: drop AAAA, make the denial legible, or surface both     | 45m | t001       |
-| t003 | Implement the decision across Postgres and Key Value                    | 90m | t002       |
-| t004 | Re-point `w4/m116/t004` at this cause and correct its "ruled out" line  | 30m | t001       |
-| t005 | Give the verifiers a data-path deny leg they can actually fail on       | 60m | t003       |
-| t006 | Render parity across the touched surfaces                               | 45m | t003, t005 |
-| t007 | Simplify the code this milestone changed                                | 30m | t006       |
-| t008 | Test coverage for the shipped behavior                                  | 45m | t006       |
-| t009 | Closeout                                                                | 30m | t008       |
+| t001 | Prove or disprove the Key Value half of the same trap, live             | 45m | —          | — **BLOCKED** (live session) |
+| t002 | Decide the fix: drop AAAA, make the denial legible, or surface both     | 45m | t001       | — research **DONE**; decision yours |
+| t003 | Implement the decision across Postgres and Key Value                    | 90m | t002       | — **BLOCKED** (decision + live) |
+| t004 | Re-point `w4/m116/t004` at this cause and correct its "ruled out" line  | 30m | t001       | — **DONE** |
+| t005 | Give the verifiers a data-path deny leg they can actually fail on       | 60m | t003       | — **BLOCKED** (needs a pre-fix failing run) |
+| t006 | Render parity across the touched surfaces                               | 45m | t003, t005 | — **BLOCKED** (follows t003) |
+| t007 | Simplify the code this milestone changed                                | 30m | t006       | — **BLOCKED** (no code changed yet) |
+| t008 | Test coverage for the shipped behavior                                  | 45m | t006       | — **BLOCKED** (follows t003) |
+| t009 | Closeout                                                                | 30m | t008       | — **BLOCKED** |
 
 ## Definition of done
 
@@ -65,3 +65,88 @@ Not a duplicate of the service-allow-list work: `w1/m150` (and `w4/m117`, closed
 - The Key Value half. `kv-sni-proxy/main.go:145` calls the same `sniproxy.AllowedBy` and `red-<id>.kv.bex.co` resolves to the same dual A/AAAA pair, so it is very likely affected — but `bex kv-cli` is interactive-only at this pin and the bounded-PTY control was inconclusive. t001 exists to settle it.
 - Which DNS layer publishes the AAAA (`lego/operator/config/manager/manager.yaml:208-211` documents the wildcard as DNS-only to a node IP; the Cloudflare/Hetzner records were not inspected).
 - Whether Render publishes AAAA for its own datastore hosts.
+
+## t002 research, 2026-09-21 (`/loopx w9`) — three of the four open questions are now answered
+
+**1. Does Render publish AAAA for datastore hosts? No — it is IPv4-only.** So
+candidate (a) is **parity**, not divergence:
+
+```text
+oregon-postgres.render.com      A=35.227.164.209                               AAAA=(none)
+frankfurt-postgres.render.com   A=18.196.138.205,3.120.236.187,3.65.142.85     AAAA=(none)
+singapore-postgres.render.com   A=13.214.97.86,3.0.216.9,18.142.152.125        AAAA=(none)
+ohio-postgres.render.com        A=3.129.155.172,18.118.220.241,3.143.61.25     AAAA=(none)
+oregon-keyvalue.render.com      A=34.83.228.231                                AAAA=(none)
+oregon-redis.render.com         A=34.83.228.231                                AAAA=(none)
+```
+
+bex, by contrast, answers both families at the wildcard — including for a name
+that does not exist, confirming it is the wildcard and not a per-resource record:
+
+```text
+dpg-daods0p2dbts73fi2k2g.db.bex.co   A=49.12.20.236   AAAA=2a01:4f8:c01e:3d1f::1
+probe-does-not-exist.db.bex.co       A=49.12.20.236   AAAA=2a01:4f8:c01e:3d1f::1
+probe.kv.bex.co                                       AAAA=2a01:4f8:c01e:3d1f::1
+```
+
+**2. Who publishes the AAAA?** [`scripts/datastore-dns-cloudflare.sh`](../../../scripts/datastore-dns-cloudflare.sh),
+by design: it reconciles `*.$BEX_DB_DOMAIN` and `*.$BEX_KV_DOMAIN` to the
+Terraform-owned `bex-traefik` load balancer's **exact A/AAAA set** with
+`proxied:false` (ADR009 §"Production DNS reconciliation", ADR021:57). The LB is
+dual-stack (`infra/terraform/outputs.tf:31` exports `traefik_load_balancer_ipv6`),
+so the AAAA follows automatically. Candidate (a) is therefore a change to that
+script plus one reconcile run — not a console edit, and it stays inside the
+mechanism that already owns the record.
+
+**3. Is candidate (b) feasible at the proxy? Not in the general case.** The deny
+decision cannot be made before TLS is already in flight:
+`cmd/pg-sni-proxy/main.go:443-448` answers the SSLRequest with `'S'` **before**
+reading the ClientHello, and the allow-list check only happens after
+`ExtractSNI` at `main.go:471` → `router.resolve(sni, source)`. The proxy never
+terminates TLS (it forwards the ClientHello to the backend and relays the
+encrypted stream — ADR021 states this explicitly), so at deny time it holds no
+key to encrypt a PostgreSQL `ErrorResponse` with, and anything written in the
+clear is read by the client's TLS stack as a malformed record: the very
+`unexpected eof` class being complained about. Making (b) work in general means
+terminating TLS at the proxy, which contradicts the end-to-end-TLS design.
+
+**A narrow (b′) that IS feasible, and preserves anti-enumeration.** The
+PostgreSQL protocol allows the server to answer an SSLRequest with an
+`ErrorResponse` instead of `'S'`/`'N'`, and that response is in the clear,
+before any TLS. At that moment the proxy does not know the target (no SNI yet)
+but it does know the **source**. If the source matches **no** allow list on the
+whole endpoint, a legible error can be emitted there — it names only the
+caller's own address and reveals nothing about which resources exist, so the
+`main.go:240-242` anti-enumeration property is untouched. It does not cover the
+"allowed for A, not for B" case, which stays a silent close.
+
+**Still unanswered (needs the live gate below):** the Key Value half (t001).
+
+## Status 2026-09-21 — BLOCKED
+
+**Done without live access:**
+
+- **t002 research** — the three findings above. The Render-parity question the
+  task called out as "answer with evidence, not assumed" is answered.
+- **t004** — `w4/m116/t004` corrected and closed as **not-reproduced**: its
+  "Ruled out: allow-list intact" line checked an IPv4 `/32` against an IPv6
+  failure, and its premise (resume lies about `available`) did not reproduce
+  under a both-families allow list. `w4/blocked/m116/README.md`'s status line,
+  task row, and blocker list agree; `w9/done/063.md`'s "transient EOF … not
+  filed" line is annotated with the real cause.
+
+**Two gates remain, both yours:**
+
+1. **A live production CLI session.** `bex`'s stored token is expired (`your
+   token is expired; run render login`), and re-minting it is an interactive
+   browser device ceremony. t001 (the Key Value half), t003's live verification,
+   and t005's "prove the new leg fails pre-fix" all need it.
+2. **The (a) decision — stop publishing AAAA for the datastore wildcards.** It
+   is parity with Render and makes the pinned CLI's IPv4-only gate correct by
+   construction, but it **removes IPv6 reachability for datastore endpoints**,
+   which is a product capability. Any tenant connecting over IPv6 today with a
+   listed `/128` would break (the third control row proves that path works).
+   That is a call for you, not for this drain. Recommendation: take (a) — it is
+   the only candidate that closes the trap for an unmodified pinned client —
+   plus (b′) above as the independent legibility fix, and keep (c) (surface both
+   families in the API/dashboard) as the human-facing complement.
