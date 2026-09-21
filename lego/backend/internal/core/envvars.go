@@ -34,7 +34,17 @@ type EnvVar struct {
 	// may echo it into the one-key CAS mutation without learning the backend's
 	// native KV version.
 	Revision string
+	// ManagedBy names the owner of a value bex does not hold the pen for.
+	// Empty for the ordinary case — a mutable variable in the secret store.
+	// ManagedByBlueprint means the value is a literal on the App spec, written
+	// by a render.yaml manifest: it is what the process actually receives
+	// (Kubernetes `env` beats `envFrom`), it is READ-ONLY here, and a write to
+	// that key is refused rather than silently shadowed (w4/m120).
+	ManagedBy string
 }
+
+// ManagedByBlueprint marks an env var whose value a render.yaml manifest owns.
+const ManagedByBlueprint = "blueprint"
 
 // EnvVarReader is the seam apps' Service GraphQL type uses to nest a service's
 // env vars: EnvVarKeys lists keys only (value empty — Render fetches values on

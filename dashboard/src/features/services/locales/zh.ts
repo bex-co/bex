@@ -615,6 +615,17 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "值",
     description: "Environment table column header (variable value)",
   },
+  "services.envManifestManaged": {
+    message: "由蓝图管理",
+    description:
+      "Badge on an environment row whose value the service's render.yaml manifest owns",
+  },
+  "services.envManifestManagedBody": {
+    message:
+      "该变量在此服务的 render.yaml 清单中声明，其值由清单拥有。请修改清单并同步蓝图来更改它，或将其声明为 `sync: false`，改由控制台拥有。",
+    description:
+      "Explanation under a manifest-managed environment row: why it cannot be edited here and what to do instead",
+  },
   "services.envShowSecret": {
     message: "显示值",
     description: "Environment row button to reveal a masked value",

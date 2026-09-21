@@ -736,6 +736,7 @@ export type EnvVar = {
   __typename: 'EnvVar';
   id: Maybe<Scalars['String']['output']>;
   key: Maybe<Scalars['String']['output']>;
+  managedBy: Maybe<Scalars['String']['output']>;
   revision: Maybe<Scalars['String']['output']>;
   value: Maybe<Scalars['String']['output']>;
 };
@@ -750,6 +751,7 @@ export type EnvVarListValue = {
   __typename: 'EnvVarListValue';
   id: Maybe<Scalars['String']['output']>;
   key: Maybe<Scalars['String']['output']>;
+  managedBy: Maybe<Scalars['String']['output']>;
   value: Maybe<Scalars['String']['output']>;
 };
 
