@@ -1115,8 +1115,17 @@ function SensitiveViewItem({
       ) : (
         <code className="min-w-0 break-all text-sm font-medium">{name}</code>
       )}
+      {/* whitespace-pre-wrap, because a secret FILE is a file: a PEM key, a
+          service-account JSON, a certificate chain. The default `normal`
+          collapsed every newline, so a 20-line key revealed as one unreadable
+          run-on line on the single screen where a user can check a secret they
+          cannot see anywhere else (w4/108). The bytes were always correct —
+          only the rendering was not. break-all stays for long unbroken base64
+          runs, and the height is bounded so a 40-line PEM scrolls inside its
+          row instead of pushing the page. Env VALUES share this component and
+          have supported line breaks since w2/m95, so they gain it too. */}
       <code
-        className="min-w-0 break-all text-sm"
+        className="block max-h-48 min-w-0 overflow-auto whitespace-pre-wrap break-all text-sm"
         aria-label={visible ? value : t("services.environmentMaskedValue")}
       >
         {visible ? value : MASKED_VALUE}

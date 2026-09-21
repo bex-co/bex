@@ -225,6 +225,30 @@ describe("ServiceEnvironmentEditor", () => {
     expect(revealFile).not.toHaveBeenCalled();
   });
 
+  // A secret file IS a file — a PEM key, a service-account JSON, a certificate
+  // chain — and Reveal is the one screen where a user can check a secret they
+  // cannot see anywhere else. Rendering it with the default `white-space:
+  // normal` collapsed every newline, so a 20-line key showed as one run-on
+  // line (w4/108). The bytes were always right; only the rendering was not.
+  // Env values share this component and have supported line breaks since
+  // w2/m95, so the assertion covers the class, not one field.
+  it("reveals a multi-line value with its line breaks intact", async () => {
+    const user = userEvent.setup();
+    revealEnv.mockResolvedValue("line-one\nline-two pass109\n");
+    renderEditor();
+    await screen.findAllByText("••••••••••••");
+
+    const alpha = screen.getByText("ALPHA").closest("div");
+    await user.click(within(alpha!).getByRole("button", { name: "Reveal" }));
+    const revealed = await screen.findByText(/line-two pass109/);
+
+    // The element must PRESERVE the newlines rather than collapse them.
+    expect(revealed.textContent).toBe("line-one\nline-two pass109\n");
+    expect(revealed.className).toContain("whitespace-pre-wrap");
+    // And a 40-line PEM must scroll inside its row, not push the page.
+    expect(revealed.className).toContain("overflow-auto");
+  });
+
   it("keeps edits local and Cancel restores the server snapshot", async () => {
     const user = userEvent.setup();
     renderEditor();
