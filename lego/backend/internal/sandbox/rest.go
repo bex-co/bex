@@ -41,12 +41,28 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Region         string         `json:"region"`
 			TimeoutSeconds int            `json:"timeoutSeconds"`
 			NetworkPolicy  *NetworkPolicy `json:"networkPolicy"`
+			// Env and SnapshotID are DECLARED so they can be REFUSED BY NAME.
+			// The pinned client sends `env` for `--env-var`/`--env-file` and
+			// `snapshotId` for `--snapshot-id`; with the fields absent, strict
+			// decoding answered `unknown field "env"`, which names an internal
+			// wire key rather than the flag the user typed and reads like a
+			// malformed request rather than an unsupported feature (w9/067).
+			// Declaring them costs nothing at runtime — neither is ever read
+			// into CreateRequest — and lets the refusal below say what bex does
+			// not support, the way SANDBOX_NETWORK_POLICY_UNSUPPORTED already
+			// does for a policy bex will not claim to enforce.
+			Env        map[string]string `json:"env"`
+			SnapshotID string            `json:"snapshotId"`
 		}
 		// A missing/empty body is fine — template+plan fall back to defaults —
 		// but malformed or unknown nested policy fields must never be ignored.
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
 		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if err := refuseUnsupportedCreateOptions(len(body.Env) > 0, body.SnapshotID != ""); err != nil {
+			core.WriteErr(w, err)
 			return
 		}
 		// The Render CLI sends ownerId in the BODY; the query param is the REST

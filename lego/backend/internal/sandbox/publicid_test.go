@@ -331,3 +331,67 @@ func firstSandboxID(t *testing.T, raw []byte) string {
 	t.Fatalf("MCP list payload not understood: %s", raw)
 	return ""
 }
+
+// w9/067: `--env-var`/`--env-file` and `--snapshot-id` are documented flags on
+// `ea sandboxes create` that bex does not serve. Strict decoding used to refuse
+// them with `unknown field "env"` — an internal wire key, not the flag the user
+// typed — which reads as a malformed request rather than an unsupported
+// feature. They now refuse by name, like SANDBOX_NETWORK_POLICY_UNSUPPORTED.
+func TestCreateRefusesUnsupportedOptionsByName(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, wantCode, wantFlag string
+	}{
+		{"env vars", `{"plan":"starter","env":{"QA":"1"}}`, "SANDBOX_ENV_UNSUPPORTED", "--env-var"},
+		{"snapshot", `{"plan":"starter","snapshotId":"snp-1"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--snapshot-id"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
+				t.Error("an unsupported create option must not reach OpenSandbox")
+				w.WriteHeader(http.StatusInternalServerError)
+			})
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(tc.body)).WithContext(callerCtx())
+			mux.ServeHTTP(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
+			}
+			var body struct {
+				Message string `json:"message"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode refusal: %v (%s)", err, rec.Body.String())
+			}
+			// The machine code rides the payload the same way the sibling
+			// networkPolicy refusal's does (adapters_test.go asserts it as a
+			// body substring), and the human half must name the flag.
+			if !strings.Contains(rec.Body.String(), tc.wantCode) {
+				t.Errorf("body %s does not carry %s", rec.Body.String(), tc.wantCode)
+			}
+			if !strings.Contains(body.Message, tc.wantFlag) {
+				t.Errorf("message %q does not name the flag %q", body.Message, tc.wantFlag)
+			}
+			if strings.Contains(body.Message, "unknown field") {
+				t.Errorf("message still leaks the wire key: %q", body.Message)
+			}
+		})
+	}
+}
+
+// A create with no unsupported option is untouched — the pinned client only
+// sends `env` when non-empty, which is why plain creates always worked.
+func TestCreateWithoutUnsupportedOptionsStillSucceeds(t *testing.T) {
+	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"os-1","status":{"state":"Running"}}`))
+	})
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(`{"plan":"starter","template":"node"}`)).WithContext(callerCtx())
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("plain create = %d: %s", rec.Code, rec.Body.String())
+	}
+}

@@ -163,6 +163,31 @@ func normalizeNetworkPolicy(policy *NetworkPolicy) (*NetworkPolicy, error) {
 	return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
 }
 
+// refuseUnsupportedCreateOptions names the create options bex does not serve, in
+// the same shape as the networkPolicy refusal above: the feature and the CLI
+// flag that produced it, never the wire key. `--env-var`/`--env-file` are
+// documented on `ea sandboxes create` and send `env`; `--snapshot-id` sends
+// `snapshotId` and is an explicitly graded non-goal (the ea snapshot surface).
+// Both previously fell through strict decoding as `unknown field "env"`, which
+// tells a user nothing about what to do (w9/067).
+func refuseUnsupportedCreateOptions(hasEnv, hasSnapshot bool) error {
+	if hasEnv {
+		return core.NewBadRequestError(
+			"SANDBOX_ENV_UNSUPPORTED",
+			"sandbox environment variables are not supported (--env-var/--env-file); create the sandbox without them and set what you need inside it",
+			map[string]any{"field": "env", "flags": []string{"--env-var", "--env-file"}},
+		)
+	}
+	if hasSnapshot {
+		return core.NewBadRequestError(
+			"SANDBOX_SNAPSHOTS_UNSUPPORTED",
+			"sandbox snapshots are not supported (--snapshot-id); create a sandbox from a template instead",
+			map[string]any{"field": "snapshotId", "flags": []string{"--snapshot-id"}},
+		)
+	}
+	return nil
+}
+
 func validateCreateMetadata(region string, timeout int) error {
 	if region != "" && len(validation.IsValidLabelValue(region)) != 0 {
 		return core.NewBadRequestError(
