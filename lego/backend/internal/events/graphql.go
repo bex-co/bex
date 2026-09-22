@@ -21,6 +21,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -146,9 +147,17 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type: eventGQLType,
 			Args: graphql.FieldConfigArgument{
 				"id": gqlutil.ReqArg(graphql.String),
+				// Same optional selector REST's GET /v1/events/{eventId} already
+				// binds: an evt-… id is global, but the lookup is workspace-scoped,
+				// so a webhook subscriber hydrating an event that belongs to a
+				// non-default workspace must be able to name it rather than fall
+				// back to their oldest membership and read EVENT_NOT_FOUND (w4/128).
+				// Membership is still validated in Service.Get's Authorize.
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Get(p.Context, p.Args["id"].(string))
+				ctx := core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				return s.Get(ctx, p.Args["id"].(string))
 			},
 		},
 		"serviceEvents": &graphql.Field{

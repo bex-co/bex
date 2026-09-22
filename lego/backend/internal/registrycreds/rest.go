@@ -17,6 +17,7 @@ limitations under the License.
 package registrycreds
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -105,6 +106,14 @@ func parseExpiresAt(s string) (*time.Time, error) {
 	return &t, nil
 }
 
+// ownerScoped binds `?ownerId` for the by-id routes, so a credential created
+// with `ownerId: B` stays readable, updatable and deletable in B. Omitting the
+// parameter keeps the caller's default workspace, exactly as before; the
+// membership check rides core.Base's named-workspace resolution (w4/128).
+func restOwnerScoped(r *http.Request) context.Context {
+	return core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
+}
+
 // RegisterREST mounts Render's canonical registrycredentials CRUD surface.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/registrycredentials", func(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +148,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("GET /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.Get(r.Context(), r.PathValue("id"))
+		v, err := s.Get(restOwnerScoped(r), r.PathValue("id"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -163,7 +172,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			upd.ExpiresAtSet = true
 			upd.ExpiresAt = expiresAt
 		}
-		v, err := s.Update(r.Context(), r.PathValue("id"), upd)
+		v, err := s.Update(restOwnerScoped(r), r.PathValue("id"), upd)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -172,7 +181,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("DELETE /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Delete(r.Context(), r.PathValue("id")); err != nil {
+		if err := s.Delete(restOwnerScoped(r), r.PathValue("id")); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
