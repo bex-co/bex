@@ -123,10 +123,10 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 1. [058 — CLI-only commits must not suppress platform deployment](done/058.md) — done 2026-09-21; path exclusion aligned, all 19 real-Git cases pass.
 2. [m151 — Coherent datastore placement after moves and deletion](blocked/m151/README.md) — 8 tasks, ~4h55m total; implementation starts at t001, live acceptance requires m148/t007.
 3. [m152 — Validate grouping mutations before changing members](done/m152/README.md) — done 2026-09-21 with the filed local acceptance matrix; no live dev-7 verification claimed.
-4. [059 — Resolve the legacy Blueprint ownership question](059.md) — 60m diagnostic; requires read access to the named control-plane records and cluster metadata.
+4. [059 — Resolve the legacy Blueprint ownership question](done/059.md) — read-only diagnosis completed 2026-09-21: legacy claim/label gap confirmed; any repair needs authoritative ownership evidence or owner-reviewed reassignment.
 
 - [x] **058** — platform supersession filter corrected 2026-09-21; CLI-only/digest-only changes excluded, mixed platform and substantive manifest changes still supersede.
-- [ ] **059** — legacy Blueprint ownership diagnosis, no resource mutation authorized.
+- [x] **059** — legacy Blueprint ownership diagnosed 2026-09-21 from production claims, CR metadata, sync history, and cutover records; no resources changed or adopted.
 
 ## Inbox
 
