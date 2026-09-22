@@ -32,12 +32,13 @@ export function isSuspended(suspended: string | null): boolean {
  * `schedule`/`runs`, so those are read defensively (list rows leave them empty).
  */
 export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
-  const immutableName = s.name ?? s.id ?? "";
+  const name = s.name ?? s.id ?? "";
   const displayName = s.displayName?.trim() || null;
   return {
     id: s.id ?? "",
-    name: displayName ?? immutableName,
+    name: displayName ?? name,
     slug: "slug" in s ? (s.slug ?? null) : null,
+    immutableName: "immutableName" in s ? (s.immutableName ?? null) : null,
     displayName,
     type: s.type ?? "web_service",
     suspended: isSuspended(s.suspended),

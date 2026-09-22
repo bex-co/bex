@@ -9,9 +9,11 @@ export interface ServiceView {
   id: string;
   /** Human-facing label: displayName when set, otherwise the immutable App name. */
   name: string;
+  /** Workspace-unique Blueprint resource name; selected by the detail query. */
+  immutableName?: string | null;
   /**
    * The globally-unique platform-host segment (Render's "slug" field;
-   * `spec.subdomain`, minted w4/m19) — distinct from `name`, which is only
+   * `spec.subdomain`, minted w4/m19) — distinct from `immutableName`, which is only
    * workspace-unique. Null when not selected (only the detail `server` query
    * fetches it).
    */
