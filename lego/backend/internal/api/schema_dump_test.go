@@ -26,6 +26,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 )
 
@@ -38,12 +39,13 @@ func TestDumpGraphQLSchema(t *testing.T) {
 	if path == "" {
 		t.Skip("set SCHEMA_DUMP_PATH to dump the introspection JSON")
 	}
-	// Usage and Audit register their GraphQL fields only when wired (they are
-	// store-gated at runtime), so pass empty services to dump the FULL schema.
+	// Usage, Audit, and Sandbox register fields only when their dependencies
+	// are wired. Empty test dependencies include their schema without live calls.
 	base := &core.Base{Namespace: "default"}
 	srv := NewServer(base, Deps{
-		Usage: &usage.Service{Base: base},
-		Audit: &audit.Service{Base: base},
+		Usage:         &usage.Service{Base: base},
+		SandboxClient: &sandbox.Client{},
+		Audit:         &audit.Service{Base: base},
 	})
 	schema, err := srv.newSchema()
 	if err != nil {

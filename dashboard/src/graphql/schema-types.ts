@@ -1084,6 +1084,7 @@ export type Mutation = {
   createRegistryCredential: Maybe<RegistryCredential>;
   createRouterKey: Maybe<Scalars['Boolean']['output']>;
   createSSHKey: Maybe<SshKey>;
+  createSandbox: Maybe<Sandbox>;
   createService: Maybe<Service>;
   createShellSession: Maybe<ShellSession>;
   createWebhookEndpoint: Maybe<WebhookEndpoint>;
@@ -1202,6 +1203,7 @@ export type Mutation = {
   suspendKeyValue: Maybe<KeyValue>;
   suspendService: Maybe<Service>;
   syncBlueprint: Maybe<SyncBlueprintResult>;
+  terminateSandbox: Scalars['Boolean']['output'];
   triggerDeploy: Maybe<Deploy>;
   unarchiveAgentSession: Maybe<AgentSession>;
   unlinkEnvGroup: Maybe<Scalars['Boolean']['output']>;
@@ -1453,6 +1455,16 @@ export type MutationCreateRouterKeyArgs = {
 export type MutationCreateSshKeyArgs = {
   name: Scalars['String']['input'];
   publicKey: Scalars['String']['input'];
+};
+
+
+export type MutationCreateSandboxArgs = {
+  networkPolicy?: InputMaybe<SandboxNetworkPolicyInput>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  plan?: InputMaybe<Scalars['String']['input']>;
+  region?: InputMaybe<Scalars['String']['input']>;
+  template?: InputMaybe<Scalars['String']['input']>;
+  timeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2255,6 +2267,12 @@ export type MutationSyncBlueprintArgs = {
 };
 
 
+export type MutationTerminateSandboxArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationTriggerDeployArgs = {
   clearCache?: InputMaybe<Scalars['String']['input']>;
   commitId?: InputMaybe<Scalars['String']['input']>;
@@ -2668,6 +2686,8 @@ export type Query = {
   repos: Maybe<Array<Maybe<Repo>>>;
   routerAvailable: Maybe<Scalars['Boolean']['output']>;
   routerOverview: Maybe<RouterOverview>;
+  sandbox: Maybe<Sandbox>;
+  sandboxes: Maybe<Array<Maybe<Sandbox>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
   serverActions: Array<ActionDecision>;
@@ -3189,6 +3209,17 @@ export type QueryRouterOverviewArgs = {
 };
 
 
+export type QuerySandboxArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySandboxesArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QuerySecretFilesArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -3463,6 +3494,28 @@ export type SshKey = {
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   publicKey: Scalars['String']['output'];
+};
+
+export type Sandbox = {
+  __typename: 'Sandbox';
+  id: Scalars['String']['output'];
+  image: Maybe<Scalars['String']['output']>;
+  networkPolicy: Maybe<SandboxNetworkPolicy>;
+  owner: Maybe<Scalars['String']['output']>;
+  plan: Maybe<Scalars['String']['output']>;
+  region: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
+  timeoutSeconds: Maybe<Scalars['Int']['output']>;
+  workspace: Maybe<Scalars['String']['output']>;
+};
+
+export type SandboxNetworkPolicy = {
+  __typename: 'SandboxNetworkPolicy';
+  default: Scalars['String']['output'];
+};
+
+export type SandboxNetworkPolicyInput = {
+  default?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SecretFile = {
