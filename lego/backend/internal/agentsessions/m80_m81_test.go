@@ -22,11 +22,14 @@ import (
 	"errors"
 	"strconv"
 	"testing"
+	"testing/synctest"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 )
 
 // --- w5/m80 t002: turn timeout is injected, never the driver's 4h fallback ---
@@ -120,13 +123,31 @@ func TestCompleterObservesTurnAndProvisionMetrics(t *testing.T) {
 	}
 
 	// The Service records provisioning latency on a create failure.
-	svc, _, _, lc := fixture()
-	svc.Metrics = metrics
-	lc.createErr = errors.New("pod schedule timeout")
-	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
-		t.Fatal(err)
-	}
-	if n := testutil.CollectAndCount(metrics.provisionLatency); n != 1 {
-		t.Fatalf("provision-latency series after a create failure = %d, want 1", n)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		svc, _, _, lc := fixture()
+		svc.Metrics = metrics
+		svc.Sandbox = timedProvisionFailure{SandboxLifecycle: lc}
+		if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+			t.Fatal(err)
+		}
+		if n := testutil.CollectAndCount(metrics.provisionLatency); n != 1 {
+			t.Fatalf("provision-latency series after a create failure = %d, want 1", n)
+		}
+		var sample dto.Metric
+		if err := metrics.provisionLatency.WithLabelValues("failed").(prometheus.Metric).Write(&sample); err != nil {
+			t.Fatal(err)
+		}
+		if h := sample.GetHistogram(); h.GetSampleCount() != 1 || h.GetSampleSum() != 1 {
+			t.Fatalf("provision latency = %v, want one 1-second sample", h)
+		}
+	})
+}
+
+type timedProvisionFailure struct{ SandboxLifecycle }
+
+func (timedProvisionFailure) CreateAgentSessionSandbox(context.Context, string, string, string, string, string, string, string, []string, map[string]string) (sandbox.Sandbox, error) {
+	// Virtual time models provisioning work. An instant fake can take zero clock
+	// ticks, which observeProvision deliberately excludes from the histogram.
+	time.Sleep(time.Second)
+	return sandbox.Sandbox{}, errors.New("pod schedule timeout")
 }

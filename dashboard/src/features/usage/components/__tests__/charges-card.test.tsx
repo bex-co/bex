@@ -221,10 +221,13 @@ describe("ChargesCard", () => {
     expect(screen.queryByText("api")).not.toBeInTheDocument();
   });
 
-  it("falls back to the resource id when it has no display name", () => {
+  it("marks a nameless deleted resource while keeping a nameless live resource unmarked", () => {
     render(
       <ChargesCard
-        estimatedCost={estimate([resource({ serviceName: "" })])}
+        estimatedCost={estimate([
+          resource({ serviceId: "srv-gone", serviceName: "", deleted: true }),
+          resource({ serviceId: "srv-live", serviceName: "" }),
+        ])}
         invoicedUsd={null}
         loading={false}
         period=""
@@ -232,7 +235,48 @@ describe("ChargesCard", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Services/ }));
-    expect(screen.getByText("srv-a")).toBeInTheDocument();
+    const deleted = screen.getByText("srv-gone");
+    expect(deleted).toHaveTextContent("(deleted)");
+    expect(deleted).toHaveAttribute("title", "srv-gone");
+    const live = screen.getByText("srv-live");
+    expect(live).not.toHaveTextContent("(deleted)");
+    expect(live).toHaveAttribute("title", "srv-live");
+  });
+
+  it("shows a sandbox's synthesized tier name and retained compute charge", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([
+          resource({
+            serviceId: "sbx-gone",
+            serviceName: "basic sandbox",
+            resourceKind: "sandbox",
+            deleted: true,
+            charges: [
+              {
+                kind: "sandbox_compute_seconds",
+                tier: "basic",
+                unit: "hr",
+                rateUsd: "0.10",
+                quantity: "49.00",
+                costUsd: "4.90",
+              },
+            ],
+          }),
+        ])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Sandboxes/ }));
+    const label = screen.getByText("basic sandbox");
+    expect(label).toHaveTextContent("(deleted)");
+    expect(label).toHaveAttribute("title", "basic sandbox (sbx-gone)");
+    fireEvent.click(screen.getByRole("button", { name: /basic sandbox/ }));
+    expect(screen.getByText("49.00 hr")).toBeInTheDocument();
+    expect(screen.getByText("basic")).toBeInTheDocument();
   });
 
   // w2/m96 t003: a charge outlives its resource. A deleted resource keeps the

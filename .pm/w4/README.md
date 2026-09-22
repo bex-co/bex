@@ -276,3 +276,4 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **133** — [Keep unsaved membership drafts across Manage resources tabs](done/133.md) — the four drafts moved to the form that survives tab changes and `ResourceChecklist` became controlled; reopen still reseeds from persisted membership, and a poll tick no longer stomps a draft. Live browser re-probe still owed.
 
 - [x] **134** — [Name the project and environment rename fields](done/134.md) — visible labels on both rename dialogs, the Settings card heading associated with its editable and read-only inputs, and the Radix missing-description warning opted out of at the two callers; the three existing tests moved onto name-based queries. Live accessibility-tree re-probe still owed.
+- [x] **m135** — [Keep usage attribution after resource deletion](done/m135/README.md) (6 tasks) ← promoted from 129; collector name retention and independent lifecycle evidence.
