@@ -1,6 +1,6 @@
 # w2 · m162 — One GitHub account, many workspaces: the N:N connection model
 
-**Worker:** worker2 **Goal:** the same GitHub account can back more than one workspace, and every GitHub-connect path that used to dead-end now completes or says exactly why **Status:** t001–t009 done 2026-09-16; t010 closeout open (live two-workspace walk outstanding)
+**Worker:** worker2 **Goal:** the same GitHub account can back more than one workspace, and every GitHub-connect path that used to dead-end now completes or says exactly why **Status:** blocked — t001–t009 done; t010 needs the operator to configure the GitHub App OAuth client ID and secret for the live two-workspace walk (rechecked 2026-09-21)
 
 ## Tasks (in order)
 
