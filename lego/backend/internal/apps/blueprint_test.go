@@ -364,11 +364,28 @@ func (f *fakeBlueprintStore) AdmitBlueprintSyncRun(_ context.Context, blueprintI
 	return b, run, nil
 }
 
-func (f *fakeBlueprintStore) AdmitBlueprintCreate(_ context.Context, b store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
+func (f *fakeBlueprintStore) SetBlueprintSyncNote(_ context.Context, runID, note string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	run, ok := f.syncs[runID]
+	if !ok {
+		return store.ErrNotFound
+	}
+	run.Note = note
+	f.syncs[runID] = run
+	for i := range f.insertedSyncs {
+		if f.insertedSyncs[i].ID == runID {
+			f.insertedSyncs[i].Note = note
+		}
+	}
+	return nil
+}
+
+func (f *fakeBlueprintStore) AdmitBlueprintCreate(_ context.Context, b store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.insertSyncErr != nil {
-		return store.Blueprint{}, store.BlueprintSync{}, f.insertSyncErr
+		return store.Blueprint{}, store.BlueprintSync{}, false, f.insertSyncErr
 	}
 	if run.ID == "" {
 		run.ID = fmt.Sprintf("bsr-fake-%d", len(f.insertedSyncs))
@@ -376,7 +393,13 @@ func (f *fakeBlueprintStore) AdmitBlueprintCreate(_ context.Context, b store.Blu
 	for id, existing := range f.blueprints {
 		if existing.TenantID == b.TenantID && existing.Repo == b.Repo && existing.Branch == b.Branch {
 			if existing.ActiveRunID != "" {
-				return store.Blueprint{}, store.BlueprintSync{}, fakeBusy()
+				return store.Blueprint{}, store.BlueprintSync{}, false, fakeBusy()
+			}
+			// w4/120: reviving a disconnected row is a NEW connection, so it
+			// gets a new created_at; re-applying a live row keeps its own.
+			revived := existing.Status == "disconnected"
+			if revived {
+				existing.CreatedAt = time.Now().UTC()
 			}
 			existing.Name = b.Name
 			existing.Path = b.Path
@@ -390,7 +413,7 @@ func (f *fakeBlueprintStore) AdmitBlueprintCreate(_ context.Context, b store.Blu
 			run.ExecutionGeneration = existing.ExecutionGeneration
 			f.syncs[run.ID] = run
 			f.insertedSyncs = append(f.insertedSyncs, run)
-			return existing, run, nil
+			return existing, run, revived, nil
 		}
 	}
 	if b.ID == "" {
@@ -404,7 +427,7 @@ func (f *fakeBlueprintStore) AdmitBlueprintCreate(_ context.Context, b store.Blu
 	run.ExecutionGeneration = 1
 	f.syncs[run.ID] = run
 	f.insertedSyncs = append(f.insertedSyncs, run)
-	return b, run, nil
+	return b, run, false, nil
 }
 
 func (f *fakeBlueprintStore) StageBlueprintManifest(_ context.Context, id, tenantID string, generation int64, runID, manifest string) (store.Blueprint, error) {

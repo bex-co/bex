@@ -395,7 +395,7 @@ func TestPGCompleteProjection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// AdmitBlueprintCreate carries the requested automation flag.
-			bp, run, err := st.AdmitBlueprintCreate(ctx, Blueprint{
+			bp, run, _, err := st.AdmitBlueprintCreate(ctx, Blueprint{
 				TenantID: tenant.ID, Name: tc.name, Repo: "example/" + tc.name, Branch: "main",
 				Manifest: "services: []", AutoSync: tc.autoSync,
 			}, BlueprintSync{State: BlueprintSyncStateRunning, StartedAt: now})
@@ -559,5 +559,65 @@ func TestPGAssertBlueprintExecution(t *testing.T) {
 	}
 	if gen != run.ExecutionGeneration+1 {
 		t.Fatalf("generation after abandon = %d, want %d (bumped)", gen, run.ExecutionGeneration+1)
+	}
+}
+
+// TestPGCreatedAtIsTheConnectionsOwn is w4/120: disconnect is a soft-detach and
+// createBlueprint on the same repo+branch revives the row — deliberate since
+// w8/m37 — but `created_at` was simply absent from the upsert's DO UPDATE SET,
+// so a connection made seconds ago reported the age of whoever connected that
+// repo first. Live, a blueprint created in the same minute read `createdAt`
+// two days earlier, and the dashboard rendered it as "Created 1d".
+func TestPGCreatedAtIsTheConnectionsOwn(t *testing.T) {
+	st := openLifecyclePG(t)
+	tenant := lifecycleTenant(t, st, "createdat")
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	admit := func(name string) (Blueprint, bool) {
+		t.Helper()
+		bp, run, revived, err := st.AdmitBlueprintCreate(ctx, Blueprint{
+			TenantID: tenant.ID, Name: name, Repo: "example/createdat", Branch: "main",
+			Path: "render.yaml", Manifest: "services: []", AutoSync: true,
+		}, BlueprintSync{State: BlueprintSyncStateRunning, StartedAt: now})
+		if err != nil {
+			t.Fatalf("admit %s: %v", name, err)
+		}
+		// Release the claim so the next admission is not the busy case.
+		if _, err := st.CompleteBlueprintSync(ctx, bp.ID, tenant.ID, run.ID, run.ExecutionGeneration,
+			BlueprintSyncStateSuccess, time.Now().UTC(), nil); err != nil {
+			t.Fatalf("complete %s: %v", name, err)
+		}
+		return bp, revived
+	}
+
+	first, revived := admit("first")
+	if revived {
+		t.Fatal("a brand-new connection is not a revive")
+	}
+
+	// Re-applying a LIVE row is not a new connection: it keeps its created_at.
+	reapplied, revived := admit("reapplied")
+	if revived {
+		t.Fatal("re-applying a live row is not a revive")
+	}
+	if !reapplied.CreatedAt.Equal(first.CreatedAt) {
+		t.Fatalf("re-apply created_at = %v, want the row's own %v", reapplied.CreatedAt, first.CreatedAt)
+	}
+
+	// Disconnect, then connect again: a NEW connection on an old row.
+	if err := st.DisconnectBlueprint(ctx, first.ID, tenant.ID); err != nil {
+		t.Fatalf("disconnect: %v", err)
+	}
+	time.Sleep(10 * time.Millisecond)
+	revivedBP, revived := admit("revived")
+	if !revived {
+		t.Fatal("connecting over a disconnected row must report a revive")
+	}
+	if revivedBP.ID != first.ID {
+		t.Fatalf("revive id = %s, want the same row %s — reviving is deliberate (w8/m37)", revivedBP.ID, first.ID)
+	}
+	if !revivedBP.CreatedAt.After(first.CreatedAt) {
+		t.Fatalf("revived created_at = %v, want later than the previous connection's %v", revivedBP.CreatedAt, first.CreatedAt)
 	}
 }

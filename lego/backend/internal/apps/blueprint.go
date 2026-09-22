@@ -75,7 +75,11 @@ type BlueprintStore interface {
 	// claims its initial sync, reviving disconnected rows under a fresh
 	// generation (w8/m37 t001). A conflicting live claim reports
 	// store.ErrBlueprintSyncBusy.
-	AdmitBlueprintCreate(ctx context.Context, b store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error)
+	// The bool reports that a DISCONNECTED row was revived — a new connection
+	// on an old row, which keeps its id and its sync history (w4/120).
+	AdmitBlueprintCreate(ctx context.Context, b store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, bool, error)
+	// SetBlueprintSyncNote annotates an already-admitted run (w4/120).
+	SetBlueprintSyncNote(ctx context.Context, runID, note string) error
 	// StageBlueprintManifest stores the admitted sync's preflighted manifest,
 	// fencing on the admitted generation (w8/m37 t002/t005).
 	StageBlueprintManifest(ctx context.Context, id, tenantID string, generation int64, runID, manifest string) (store.Blueprint, error)
@@ -852,7 +856,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	// live claim loses with the documented busy conflict, and a disconnected
 	// row is deliberately re-established under a fresh generation.
 	now := s.Now().UTC()
-	b, run, err := s.Blueprints.AdmitBlueprintCreate(ctx, store.Blueprint{
+	b, run, revived, err := s.Blueprints.AdmitBlueprintCreate(ctx, store.Blueprint{
 		TenantID: tenantID,
 		Name:     req.Name,
 		Repo:     req.Repo,
@@ -871,6 +875,20 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 			return BlueprintView{}, errBlueprintSyncBusy("another sync is already running for this blueprint; retry after it settles")
 		}
 		return BlueprintView{}, err
+	}
+
+	// w4/120: a revived row keeps its id and its whole sync history, so the
+	// history a reader sees under this blueprint's new name is partly someone
+	// else's. Saying so on the admitting run puts the boundary exactly where
+	// the inherited entries are read, rather than leaving them to read as this
+	// connection's own.
+	if revived && takeoverNote == "" {
+		takeoverNote = "re-established a previously disconnected connection to " + req.Repo + "@" + req.Branch + "; earlier sync history below belongs to that connection"
+		if err := s.Blueprints.SetBlueprintSyncNote(ctx, run.ID, takeoverNote); err != nil {
+			// The connection is real either way; an unrecorded note is worth a
+			// line in the log, not a failed create.
+			log.Printf("blueprint %s: recording the reconnection note: %v", b.ID, err)
+		}
 	}
 
 	prepareReq.Confirm = req.Confirm
