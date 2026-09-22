@@ -561,67 +561,106 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	return s.view(kv), nil
 }
 
-// SetProjectID assigns (or, with an empty projectID, clears) this KeyValue's
-// project (w1/m31 extension) — the internal/projects feature's write path,
-// mirroring postgres.Service.SetProjectID. Authorized the same as the other
-// tenant-mutating verbs on a named KeyValue (RelCanCreate, matching DeleteKeyValue).
+// SetProjectID assigns the project and atomically drops the former
+// environment and its inherited rules when the project changes.
 func (s *Service) SetProjectID(ctx context.Context, name, projectID string) error {
 	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
-	_, err = s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
-		if projectID == "" {
-			delete(kv.Labels, core.LabelProject)
-			return
-		}
+	return s.setProjectID(ctx, kv, projectID)
+}
+
+// ClearProjectID removes only the placement observed by the caller. A
+// reassignment since the caller listed the resource is left intact.
+func (s *Service) ClearProjectID(ctx context.Context, name, expectedProjectID string) error {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if kv.Labels[core.LabelProject] != expectedProjectID {
+		return nil
+	}
+	return s.setProjectID(ctx, kv, "")
+}
+
+func (s *Service) setProjectID(ctx context.Context, kv *appv1alpha1.KeyValue, projectID string) error {
+	if kv.Labels[core.LabelProject] == projectID && (projectID != "" || (kv.Labels[core.LabelEnvironment] == "" && len(kv.Spec.EnvironmentIPAllowList) == 0)) {
+		return nil
+	}
+	// A concurrent assignment must conflict, never lose its environment or rules.
+	patch := client.MergeFromWithOptions(kv.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	delete(kv.Labels, core.LabelEnvironment)
+	kv.Spec.EnvironmentIPAllowList = nil
+	if projectID == "" {
+		delete(kv.Labels, core.LabelProject)
+	} else {
 		if kv.Labels == nil {
 			kv.Labels = map[string]string{}
 		}
 		kv.Labels[core.LabelProject] = projectID
-	})
-	return err
+	}
+	resourcemeta.Touch(kv, s.Now())
+	return s.Client.Patch(ctx, kv, patch)
 }
 
 // SetEnvironmentIPAllowList projects (or, with nil, clears) the environment
 // inbound-IP layer onto this KeyValue (w4/m28) — the internal/environments
 // fan-out's write path, mirroring postgres.Service.SetEnvironmentIPAllowList.
 // The store's OWN IPAllowList is never touched.
-func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error {
+// A departed member must not inherit rules from a delayed fan-out.
+func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error {
 	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
-	if slices.Equal(kv.Spec.EnvironmentIPAllowList, cidrs) {
-		return nil // unchanged layer: no write, no resourceVersion churn
+	if kv.Labels[core.LabelEnvironment] != expectedEnvironmentID || slices.Equal(kv.Spec.EnvironmentIPAllowList, cidrs) {
+		return nil
 	}
-	_, err = s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
-		kv.Spec.EnvironmentIPAllowList = cidrs
-	})
-	return err
+	patch := client.MergeFromWithOptions(kv.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	kv.Spec.EnvironmentIPAllowList = cidrs
+	resourcemeta.Touch(kv, s.Now())
+	return s.Client.Patch(ctx, kv, patch)
 }
 
-// SetEnvironmentID assigns (or, with an empty environmentID, clears) this
-// KeyValue's environment (w6/m20 extension) — the internal/environments
-// feature's write path, mirroring postgres.Service.SetEnvironmentID and
-// SetProjectID above. Authorized the same as the other tenant-mutating verbs
-// on a named KeyValue (RelCanCreate, matching DeleteKeyValue).
+// SetEnvironmentID changes the environment without retaining rules inherited
+// from its predecessor. The parent project and resource-owned rules stay intact.
 func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID string) error {
 	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
-	_, err = s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
-		if environmentID == "" {
-			delete(kv.Labels, core.LabelEnvironment)
-			return
-		}
+	return s.setEnvironmentID(ctx, kv, environmentID)
+}
+
+// ClearEnvironmentID removes only the environment observed by the caller.
+func (s *Service) ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if kv.Labels[core.LabelEnvironment] != expectedEnvironmentID {
+		return nil
+	}
+	return s.setEnvironmentID(ctx, kv, "")
+}
+
+func (s *Service) setEnvironmentID(ctx context.Context, kv *appv1alpha1.KeyValue, environmentID string) error {
+	if kv.Labels[core.LabelEnvironment] == environmentID && (environmentID != "" || len(kv.Spec.EnvironmentIPAllowList) == 0) {
+		return nil
+	}
+	patch := client.MergeFromWithOptions(kv.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	if environmentID == "" {
+		delete(kv.Labels, core.LabelEnvironment)
+	} else {
 		if kv.Labels == nil {
 			kv.Labels = map[string]string{}
 		}
 		kv.Labels[core.LabelEnvironment] = environmentID
-	})
-	return err
+	}
+	kv.Spec.EnvironmentIPAllowList = nil
+	resourcemeta.Touch(kv, s.Now())
+	return s.Client.Patch(ctx, kv, patch)
 }
 
 // GetIPAllowList returns the allowlist gating the external endpoint (empty

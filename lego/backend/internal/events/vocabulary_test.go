@@ -74,12 +74,16 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// effect — see below), deliberately deferred the same way their
 		// SetProjectID siblings were: postgres/keyvalue have no events feed
 		// integration at all yet.
-		"postgres.SetEnvironmentID": "mirrors postgres.SetProjectID; postgres has no events feed integration yet",
-		"postgres.ExecuteQuery":     "managed Postgres has no events feed; confirmed writes remain visible in the workspace audit log without recording SQL text",
-		"postgres.UpdatePostgres":   "REST's general PATCH handler (rename-rejection/disk/HA/ip-allow-list/version, supersedes dedicated setters for that surface); postgres has no events feed integration yet",
-		"postgres.SetVersion":       "managed Postgres has no events feed integration yet; the workspace audit log still records the targeted write",
-		"keyvalue.SetEnvironmentID": "mirrors keyvalue.SetProjectID; keyvalue has no events feed integration yet",
-		"keyvalue.UpdateKeyValue":   "REST's general PATCH handler (rename/plan, mirrors postgres.UpdatePostgres); keyvalue has no events feed integration yet",
+		"postgres.SetEnvironmentID":   "mirrors postgres.SetProjectID; postgres has no events feed integration yet",
+		"postgres.ClearProjectID":     "conditional grouping cleanup mirrors SetProjectID; workspace audit records the targeted write",
+		"postgres.ClearEnvironmentID": "conditional grouping cleanup mirrors SetEnvironmentID; workspace audit records the targeted write",
+		"postgres.ExecuteQuery":       "managed Postgres has no events feed; confirmed writes remain visible in the workspace audit log without recording SQL text",
+		"postgres.UpdatePostgres":     "REST's general PATCH handler (rename-rejection/disk/HA/ip-allow-list/version, supersedes dedicated setters for that surface); postgres has no events feed integration yet",
+		"postgres.SetVersion":         "managed Postgres has no events feed integration yet; the workspace audit log still records the targeted write",
+		"keyvalue.SetEnvironmentID":   "mirrors keyvalue.SetProjectID; keyvalue has no events feed integration yet",
+		"keyvalue.ClearProjectID":     "conditional grouping cleanup mirrors SetProjectID; workspace audit records the targeted write",
+		"keyvalue.ClearEnvironmentID": "conditional grouping cleanup mirrors SetEnvironmentID; workspace audit records the targeted write",
+		"keyvalue.UpdateKeyValue":     "REST's general PATCH handler (rename/plan, mirrors postgres.UpdatePostgres); keyvalue has no events feed integration yet",
 		// w6/m19: these environment verbs call AuthorizeApp per MEMBER App as a
 		// fan-out side effect of an environment-level action (syncing
 		// core.LabelNetworkIsolation for NetworkPolicy scoping, SetACL's

@@ -512,11 +512,11 @@ func TestClearMembersForProject_ClearsEveryChildEnvironmentsMembers(t *testing.T
 		t.Fatalf("SetServices: %v", err)
 	}
 	dbs.dbs["indb"] = postgres.PostgresView{ID: "indb", OwnerID: "tea-a", EnvironmentID: e.ID}
-	if err := dbs.SetEnvironmentIPAllowList(context.Background(), "indb", []string{"10.0.0.0/8"}); err != nil {
+	if err := dbs.SetEnvironmentIPAllowList(context.Background(), "indb", e.ID, []string{"10.0.0.0/8"}); err != nil {
 		t.Fatalf("seed db layer: %v", err)
 	}
 	kvs.kvs["inkv"] = keyvalue.KeyValueView{ID: "inkv", OwnerID: "tea-a", EnvironmentID: e.ID}
-	if err := kvs.SetEnvironmentIPAllowList(context.Background(), "inkv", []string{"10.0.0.0/8"}); err != nil {
+	if err := kvs.SetEnvironmentIPAllowList(context.Background(), "inkv", e.ID, []string{"10.0.0.0/8"}); err != nil {
 		t.Fatalf("seed kv layer: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.EnvironmentIPAllowList; len(got) != 1 {

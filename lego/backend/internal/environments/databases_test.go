@@ -78,6 +78,20 @@ func (f *fakeDatabaseIndex) SetEnvironmentID(_ context.Context, name, environmen
 	return nil
 }
 
+func (f *fakeDatabaseIndex) ClearEnvironmentID(_ context.Context, name, expectedEnvironmentID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d := f.dbs[name]
+	if d.EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
+	f.setEnvCalls++
+	d.EnvironmentID = ""
+	f.dbs[name] = d
+	delete(f.envLayers, name)
+	return nil
+}
+
 func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, projectID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -89,9 +103,12 @@ func (f *fakeDatabaseIndex) SetProjectID(_ context.Context, name, projectID stri
 
 // SetEnvironmentIPAllowList (w4/m28) records the projected environment layer
 // so a test can assert the fan-out reached this member.
-func (f *fakeDatabaseIndex) SetEnvironmentIPAllowList(_ context.Context, name string, cidrs []string) error {
+func (f *fakeDatabaseIndex) SetEnvironmentIPAllowList(_ context.Context, name, expectedEnvironmentID string, cidrs []string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.dbs[name].EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
 	if f.envLayers == nil {
 		f.envLayers = map[string][]string{}
 	}
@@ -141,6 +158,20 @@ func (f *fakeKeyValueIndex) SetEnvironmentID(_ context.Context, name, environmen
 	return nil
 }
 
+func (f *fakeKeyValueIndex) ClearEnvironmentID(_ context.Context, name, expectedEnvironmentID string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	kv := f.kvs[name]
+	if kv.EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
+	f.setEnvCalls++
+	kv.EnvironmentID = ""
+	f.kvs[name] = kv
+	delete(f.envLayers, name)
+	return nil
+}
+
 func (f *fakeKeyValueIndex) SetProjectID(_ context.Context, name, projectID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -153,9 +184,12 @@ func (f *fakeKeyValueIndex) SetProjectID(_ context.Context, name, projectID stri
 // SetIPAllowList (w6/m19) is fakeDatabaseIndex.SetIPAllowList's KeyValue-CR
 // counterpart.
 // SetEnvironmentIPAllowList (w4/m28) — fakeDatabaseIndex's counterpart.
-func (f *fakeKeyValueIndex) SetEnvironmentIPAllowList(_ context.Context, name string, cidrs []string) error {
+func (f *fakeKeyValueIndex) SetEnvironmentIPAllowList(_ context.Context, name, expectedEnvironmentID string, cidrs []string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.kvs[name].EnvironmentID != expectedEnvironmentID {
+		return nil
+	}
 	if f.envLayers == nil {
 		f.envLayers = map[string][]string{}
 	}

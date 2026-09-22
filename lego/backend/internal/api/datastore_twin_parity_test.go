@@ -92,10 +92,10 @@ func TestDatastoreTwinsShareWriteMechanics(t *testing.T) {
 		{
 			verb: "SetEnvironmentIPAllowList",
 			pg: func(s *postgres.Service) error {
-				return s.SetEnvironmentIPAllowList(t.Context(), name, []string{"10.0.0.0/8"})
+				return s.SetEnvironmentIPAllowList(t.Context(), name, "evm-existing", []string{"10.0.0.0/8"})
 			},
 			kv: func(s *keyvalue.Service) error {
-				return s.SetEnvironmentIPAllowList(t.Context(), name, []string{"10.0.0.0/8"})
+				return s.SetEnvironmentIPAllowList(t.Context(), name, "evm-existing", []string{"10.0.0.0/8"})
 			},
 		},
 	}
@@ -103,6 +103,12 @@ func TestDatastoreTwinsShareWriteMechanics(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.verb, func(t *testing.T) {
 			db, kv := twinObjects(name)
+			// Clearing must remove an actual assignment; an already-unassigned
+			// resource is intentionally a no-op.
+			db.Labels[core.LabelProject] = "prj-existing"
+			kv.Labels[core.LabelProject] = "prj-existing"
+			db.Labels[core.LabelEnvironment] = "evm-existing"
+			kv.Labels[core.LabelEnvironment] = "evm-existing"
 
 			var pgWrites twinWrites
 			pgClient := recordingClient(&pgWrites, db)
@@ -139,20 +145,22 @@ func TestDatastoreTwinsSkipUnchangedEnvironmentAllowList(t *testing.T) {
 	const name = "same"
 	cidrs := []string{"10.0.0.0/8"}
 	db, kv := twinObjects(name)
+	db.Labels[core.LabelEnvironment] = "evm-existing"
+	kv.Labels[core.LabelEnvironment] = "evm-existing"
 	db.Spec.EnvironmentIPAllowList = cidrs
 	kv.Spec.EnvironmentIPAllowList = cidrs
 
 	var pgWrites twinWrites
 	pgClient := recordingClient(&pgWrites, db)
 	if err := (&postgres.Service{Base: &core.Base{Client: pgClient, Namespace: "default"}}).
-		SetEnvironmentIPAllowList(t.Context(), name, cidrs); err != nil {
+		SetEnvironmentIPAllowList(t.Context(), name, "evm-existing", cidrs); err != nil {
 		t.Fatal(err)
 	}
 
 	var kvWrites twinWrites
 	kvClient := recordingClient(&kvWrites, kv)
 	if err := (&keyvalue.Service{Base: &core.Base{Client: kvClient, Namespace: "default"}}).
-		SetEnvironmentIPAllowList(t.Context(), name, cidrs); err != nil {
+		SetEnvironmentIPAllowList(t.Context(), name, "evm-existing", cidrs); err != nil {
 		t.Fatal(err)
 	}
 

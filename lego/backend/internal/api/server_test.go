@@ -922,6 +922,8 @@ func (sweepProjectResources) ListKeyValues(context.Context, string) ([]keyvalue.
 
 func (sweepProjectResources) SetProjectID(context.Context, string, string) error { return nil }
 
+func (sweepProjectResources) ClearProjectID(context.Context, string, string) error { return nil }
+
 func (sweepProjectStore) CreateProject(_ context.Context, tenantID, name string) (store.Project, error) {
 	return store.Project{ID: "prj-sweep", TenantID: tenantID, Name: name}, nil
 }
@@ -1182,7 +1184,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 337 // +1: sandbox.Service ConnectFile (w7/m150)
+const wantSweptVerbs = 341 // +4: datastore conditional placement clears (w7/m151)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()

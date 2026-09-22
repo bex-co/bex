@@ -45,8 +45,8 @@ const (
 	datastoreReasonConnectionSecretRebuilding = "ConnectionSecretRebuilding"
 )
 
-// recordDatastoreObservations runs the App observation path over every managed
-// Database and KeyValue in the cluster (w3/m82).
+// reconcileDatastores repairs provably stale grouping references and runs the
+// App observation path over managed Database and KeyValue CRs.
 //
 // Unlike Apps, datastore CRs are NOT projected by this reconciler — bex-api's
 // postgres/keyvalue features create them directly — so they carry no
@@ -54,7 +54,7 @@ const (
 // tenant stamp, which is both the ownership proof and the workspace an
 // observed fact is scoped to; a CR without it is hand-applied and has no
 // workspace to attribute an event to, so it is skipped.
-func (r *Reconciler) recordDatastoreObservations(ctx context.Context) error {
+func (r *Reconciler) reconcileDatastores(ctx context.Context) error {
 	var databases appv1alpha1.DatabaseList
 	if err := r.Client.List(ctx, &databases); err != nil {
 		return fmt.Errorf("list Database CRs: %w", err)
@@ -64,6 +64,8 @@ func (r *Reconciler) recordDatastoreObservations(ctx context.Context) error {
 		return fmt.Errorf("list KeyValue CRs: %w", err)
 	}
 
+	// Observation queries do not spend the separate placement-repair budget.
+	repairErr := r.repairDatastorePlacements(ctx, databases.Items, keyValues.Items)
 	seen := make(map[string]bool, len(databases.Items)+len(keyValues.Items))
 	for i := range databases.Items {
 		obs, ok := observedDatabaseStateFor(&databases.Items[i])
@@ -89,7 +91,7 @@ func (r *Reconciler) recordDatastoreObservations(ctx context.Context) error {
 			delete(r.datastoreUnhealthyOnce, id)
 		}
 	}
-	return nil
+	return repairErr
 }
 
 // recordDatastoreObservation applies the two guards the App path applies, in
