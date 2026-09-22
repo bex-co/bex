@@ -24,6 +24,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -34,7 +35,20 @@ import (
 
 const BetaWorkspace = "tea-d98210cbbpdc73dcrkvg"
 
+// ErrUnavailable is an upstream OUTAGE: the router answered unusably. It stays
+// an unwrapped sentinel, so it reaches the caller as a 5xx, which is what it is.
 var ErrUnavailable = errors.New("router is unavailable")
+
+// ErrNotEnabled is the router not being turned on for this workspace — a
+// capability the caller does not have, not a failure (w4/116).
+//
+// The three write verbs never consulted Available, so a caller outside the beta
+// workspace reached the upstream call and got ErrUnavailable's generic
+// "internal error" where a named refusal belongs. The wording deliberately says
+// nothing about WHICH workspace has the router: a refusal that named the beta
+// workspace, or that differed between "not you" and "no such feature", would be
+// an existence oracle for it.
+var ErrNotEnabled = fmt.Errorf("%w: the router is not enabled for this workspace", core.ErrForbidden)
 
 type MemberStore interface {
 	GetTenantMember(context.Context, string, string) (store.TenantMember, error)
@@ -84,8 +98,27 @@ func (s *Service) Available(ctx context.Context) (bool, error) {
 	return ok && tenant == BetaWorkspace && s.URL != "" && len(s.Secret) >= 32 && s.Members != nil && s.Authz != nil, nil
 }
 
+// requireEnabled is the gate every router verb past the availability query
+// shares: routerAvailable exists precisely to say whether this workspace has
+// the router, and the verbs used to answer a different question by reaching
+// upstream anyway (w4/116). An Available error is the authorization error it
+// already returns; false is the named refusal.
+func (s *Service) requireEnabled(ctx context.Context) error {
+	available, err := s.Available(ctx)
+	if err != nil {
+		return err
+	}
+	if !available {
+		return ErrNotEnabled
+	}
+	return nil
+}
+
 func (s *Service) Overview(ctx context.Context) (*Overview, error) {
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
+		return nil, err
+	}
+	if err := s.requireEnabled(ctx); err != nil {
 		return nil, err
 	}
 
@@ -133,6 +166,9 @@ func (s *Service) Create(ctx context.Context, name string) (bool, error) {
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return false, err
 	}
+	if err := s.requireEnabled(ctx); err != nil {
+		return false, err
+	}
 	if len(name) == 0 || len(name) > 200 {
 		return false, core.ErrForbidden
 	}
@@ -149,6 +185,9 @@ func (s *Service) Create(ctx context.Context, name string) (bool, error) {
 
 func (s *Service) Update(ctx context.Context, keyID, name string, options Options) (bool, error) {
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
+		return false, err
+	}
+	if err := s.requireEnabled(ctx); err != nil {
 		return false, err
 	}
 	if len(name) == 0 || len(name) > 200 {
@@ -178,6 +217,9 @@ func (s *Service) Update(ctx context.Context, keyID, name string, options Option
 
 func (s *Service) Delete(ctx context.Context, keyID string) (bool, error) {
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
+		return false, err
+	}
+	if err := s.requireEnabled(ctx); err != nil {
 		return false, err
 	}
 	_, keys, err := s.keys(ctx)

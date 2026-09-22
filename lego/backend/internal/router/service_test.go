@@ -258,3 +258,71 @@ func TestQuotaFailurePreservesKeysAndKeyMutations(t *testing.T) {
 		t.Fatal("GraphQL ignored ownerId")
 	}
 }
+
+// otherWorkspace resolves a caller into a real workspace that is not the beta
+// one. workspaceResolver cannot express it — it answers BetaWorkspace or
+// nothing, which is the single-membership shape that hid this.
+type otherWorkspace struct{}
+
+func (otherWorkspace) Tenant(context.Context, core.Identity) (string, bool) {
+	return "tea-someone-else", true
+}
+
+func (otherWorkspace) IsMember(_ context.Context, _ core.Identity, tenant string) (bool, error) {
+	return tenant == "tea-someone-else", nil
+}
+
+// TestUnavailableWorkspaceGetsANamedRefusal is w4/116: routerAvailable exists
+// precisely to say whether this workspace has the router, and the three write
+// verbs never consulted it — so a caller outside the beta workspace reached the
+// upstream call and got a generic "internal error" where a named refusal
+// belongs. The impact is small (the router is beta-gated and the dashboard
+// hides the surface), but the error class was simply wrong.
+func TestUnavailableWorkspaceGetsANamedRefusal(t *testing.T) {
+	reached := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached++
+		w.Write([]byte(`{"data":{}}`))
+	}))
+	defer server.Close()
+
+	s, ctx, _ := testService(server.URL)
+	// A caller who is a full member of a workspace that simply is not the beta
+	// one — the case routerAvailable answers false for, and the one the write
+	// verbs used to send upstream anyway.
+	const other = "tea-someone-else"
+	ctx = core.WithWorkspace(ctx, other)
+	s.Workspace = otherWorkspace{}
+
+	if available, err := s.Available(ctx); err != nil || available {
+		t.Fatalf("Available = %v (%v), want false — the premise of the test", available, err)
+	}
+
+	for _, tc := range []struct {
+		name string
+		run  func() error
+	}{
+		{"create", func() error { _, err := s.Create(ctx, "qa-key"); return err }},
+		{"update", func() error { _, err := s.Update(ctx, "key-one", "qa-key", Options{}); return err }},
+		{"delete", func() error { _, err := s.Delete(ctx, "key-one"); return err }},
+		{"overview", func() error { _, err := s.Overview(ctx); return err }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.run()
+			if !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("%s on an unavailable workspace = %v, want a forbidden-class refusal", tc.name, err)
+			}
+			if errors.Is(err, ErrUnavailable) {
+				t.Errorf("%s reported an upstream outage for a feature that is simply off: %v", tc.name, err)
+			}
+			// The refusal must not say which workspace has the router.
+			if strings.Contains(err.Error(), BetaWorkspace) {
+				t.Errorf("%s named the beta workspace in its refusal: %v", tc.name, err)
+			}
+		})
+	}
+
+	if reached != 0 {
+		t.Fatalf("the upstream was called %d times for a workspace with no router", reached)
+	}
+}
