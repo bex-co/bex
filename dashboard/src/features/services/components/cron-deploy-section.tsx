@@ -85,8 +85,13 @@ export function CronDeploySection({
               ? t("services.deploySchedulePreview", { description })
               : null;
           }}
+          // Schedule save replays the stored command when there is one, and
+          // sends null when there is not — null means "keep", so a commandless
+          // reschedule stays a plain can_operate settings change rather than
+          // becoming an explicit command write (w4/137). Sending "" here would
+          // silently turn every reschedule into a clear.
           onSave={(value) =>
-            updateCronJob(serviceId, value, (command ?? "").trim())
+            updateCronJob(serviceId, value, hasCommand ? command!.trim() : null)
           }
         />
         <EditableFieldRow
@@ -100,6 +105,8 @@ export function CronDeploySection({
           busy={busy}
           disabled={loading || !canCreate}
           disabledReason={commandReason}
+          // The Command row forwards exactly what the user left behind,
+          // including "" — the blank the field's hint invites.
           onSave={(value) =>
             updateCronJob(serviceId, (schedule ?? "").trim(), value)
           }
