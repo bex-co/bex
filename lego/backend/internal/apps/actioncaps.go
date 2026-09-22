@@ -67,7 +67,12 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	out := []core.ActionDecision{
 		core.DecideAction(core.ActionRestart, operate, ""),
 		core.DecideAction(core.ActionSuspend, operate, precond(func() string { return s.suspendPrecondition(ctx, a) })),
-		core.DecideAction(core.ActionResume, operate, precond(billing)),
+		core.DecideAction(core.ActionResume, operate, precond(func() string {
+			if !a.Spec.Suspended { // state, then billing — TriggerCronRun's documented order
+				return core.PrecondNotSuspended
+			}
+			return billing()
+		})),
 	}
 	if a.Spec.Type == appv1alpha1.TypeCronJob {
 		out = append(out,
@@ -88,10 +93,18 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	return out, nil
 }
 
-// suspendPrecondition mirrors setSuspended(true)'s guard: the
-// protected-environment confirmation, by the same appProtected predicate
-// requireUnprotected consults and the same classification the datastore
-// projections use.
+// suspendPrecondition mirrors setSuspended(true)'s guard: the resource's own
+// state first, then the protected-environment confirmation, by the same
+// appProtected predicate requireUnprotected consults and the same
+// classification the datastore projections use.
+//
+// State first for the same reason the cron branch takes that order: a suspended
+// resource cannot be suspended again whatever the protection answer is, and
+// asking protection first would report a confirmation phrase for a verb that
+// would no-op even after the user typed it (w4/132).
 func (s *Service) suspendPrecondition(ctx context.Context, a *appv1alpha1.App) string {
+	if a.Spec.Suspended {
+		return core.PrecondSuspended
+	}
 	return core.ProtectionPrecondition(s.appProtected(ctx, a))
 }

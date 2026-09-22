@@ -132,6 +132,12 @@ const (
 	PrecondProtectedConfirmation = "protected_confirmation_required"
 	// The resource's current state does not admit the verb (e.g. suspended).
 	PrecondSuspended = "suspended"
+	// The mirror of PrecondSuspended, for a verb that only means something on a
+	// suspended resource: `resume` on something already running has nothing to
+	// do. It is a separate term rather than a reuse of PrecondSuspended, whose
+	// meaning is the opposite — a client rendering "this is suspended" as the
+	// reason Resume is unavailable would be exactly backwards (w4/132).
+	PrecondNotSuspended = "not_suspended"
 	// Nothing for the verb to act on right now.
 	PrecondNoActiveDeploy           = "no_active_deploy"
 	PrecondNoActiveRun              = "no_active_run"

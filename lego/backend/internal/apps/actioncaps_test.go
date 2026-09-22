@@ -179,3 +179,61 @@ func TestActionCapabilities_ForeignWorkspaceResourceReadsAbsent(t *testing.T) {
 		t.Fatalf("foreign-workspace resource = %v, want ErrNotFound", err)
 	}
 }
+
+// TestActionCapabilities_SuspendResumeReadTheResourceState is w4/132: the two
+// lifecycle decisions used to compute protection and billing only, so they read
+// `allowed` in every state — live, three readings across three distinct states
+// produced byte-identical output, while `resumeService` on a running service
+// and `suspendService` on a suspended one were both accepted no-ops. A
+// projection whose whole job is to say which buttons do something must not
+// enable one that does nothing.
+func TestActionCapabilities_SuspendResumeReadTheResourceState(t *testing.T) {
+	t.Run("running", func(t *testing.T) {
+		svc, _ := newService(&recordingStore{}, managedApp("web", "srv-1"))
+		acts, err := svc.ActionCapabilities(context.Background(), "web")
+		if err != nil {
+			t.Fatalf("ActionCapabilities: %v", err)
+		}
+		// Suspend is the verb that does something here, so it stays ready.
+		if s := actionByID(t, acts, core.ActionSuspend); s.Precondition != "" {
+			t.Errorf("running suspend precondition = %q, want none", s.Precondition)
+		}
+		if r := actionByID(t, acts, core.ActionResume); r.Precondition != core.PrecondNotSuspended {
+			t.Errorf("running resume = %+v, want the not_suspended precondition", r)
+		}
+	})
+
+	t.Run("suspended", func(t *testing.T) {
+		asleep := managedApp("web", "srv-1")
+		asleep.Spec.Suspended = true
+		svc, _ := newService(&recordingStore{}, asleep)
+		acts, err := svc.ActionCapabilities(context.Background(), "web")
+		if err != nil {
+			t.Fatalf("ActionCapabilities: %v", err)
+		}
+		if s := actionByID(t, acts, core.ActionSuspend); s.Precondition != core.PrecondSuspended {
+			t.Errorf("suspended suspend = %+v, want the suspended precondition", s)
+		}
+		if r := actionByID(t, acts, core.ActionResume); r.Precondition != "" {
+			t.Errorf("suspended resume precondition = %q, want none", r.Precondition)
+		}
+	})
+
+	// State is checked before protection, the order the cron branch documents
+	// and the verbs themselves take: a suspended resource cannot be suspended
+	// again whatever protection answers, so reporting a confirmation phrase for
+	// it would demand a phrase for a call that would no-op anyway.
+	t.Run("suspended and protected reports state, not the phrase", func(t *testing.T) {
+		asleep := managedApp("web", "srv-1")
+		asleep.Spec.Suspended = true
+		rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
+		svc, _ := newService(rec, asleep)
+		acts, err := svc.ActionCapabilities(context.Background(), "web")
+		if err != nil {
+			t.Fatalf("ActionCapabilities: %v", err)
+		}
+		if s := actionByID(t, acts, core.ActionSuspend); s.Precondition != core.PrecondSuspended {
+			t.Errorf("suspended+protected suspend = %+v, want the suspended precondition", s)
+		}
+	})
+}

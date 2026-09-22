@@ -49,6 +49,10 @@ const zhCapabilities: Record<string, TranslationEntry> = {
     message: "服务已暂停，无法执行此操作。请先恢复服务。",
     description: "Blocked reason for suspended precondition",
   },
+  "capabilities.blockedNotSuspended": {
+    message: "该资源正在运行中，无需恢复。",
+    description: "Blocked reason for not_suspended precondition",
+  },
   "capabilities.blockedNoActiveDeploy": {
     message: "当前没有可取消的部署。",
     description: "Blocked reason for no_active_deploy",
