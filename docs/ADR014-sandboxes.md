@@ -80,6 +80,12 @@ Every sandbox is mutually untrusted, including two sandboxes in the same workspa
 
 The gateway persists reserved owner and workspace metadata and checks it after the ordinary workspace authorization on list/get/lifecycle/exec. An owner or explicit workspace administrator may operate the sandbox; every other caller receives the same not-found result as for an absent id. The lifecycle server and controller have cluster-wide informer-only RBAC (the controller cannot read Secrets cluster-wide); Kubernetes mutations come from RoleBindings scoped to provisioned `<ws>-sandbox` namespaces, and ingress to lifecycle TCP 8077 plus exec-gateway TCP 8081 selects the exact bex-api Pod and ServiceAccount identity rather than trusting its whole namespace.
 
+#### Explicit workspace selection on GraphQL (w4/122)
+
+The standalone sandbox GraphQL surface accepts `ownerId` consistently: `sandboxes(ownerId:)`, `sandbox(id:, ownerId:)`, and `terminateSandbox(id:, ownerId:)` select the same workspace as `createSandbox(ownerId:)`. Omitting it retains the caller's default-workspace behavior. REST uses `?ownerId`, and MCP list/stop tools use the shared `workspaceId` middleware; MCP has no separate by-ID sandbox read tool.
+
+Resolvers only bind the requested workspace. The shared service still enforces workspace membership, sandbox ownership and the administrator override. A workspace selector does not grant access. The GraphQL by-ID query is classified as a read operation by the OAuth scope gate. The dashboard manages agent sessions through their own surface and has no standalone sandbox query to migrate; its generated schema still reflects these arguments. These are bex sandbox API semantics, not Render compatibility endpoints.
+
 ### D4 — Idle-hibernate = gateway-observed autoPause
 
 The gateway tracks per-sandbox **last-activity** (every connect/exec resets it). A background sweeper pauses sandboxes past their idle window (opensandbox `Pause`); the next connect/exec on a paused sandbox **resumes first** (opensandbox `Resume`) — wake-on-connect. This reuses the `spec.idleTTLSeconds` semantics (declared but unread today, per [ADR007-restart-suspend-and-resume.md](ADR007-restart-suspend-and-resume.md)) and maps 1:1 to E2B's `autoPause`. Idle state is **soft** — the sweeper's timers are rebuildable by listing opensandbox sandboxes on startup, since the opensandbox store is the source of truth.

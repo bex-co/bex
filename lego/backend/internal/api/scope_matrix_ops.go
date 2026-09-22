@@ -275,6 +275,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.repos":                                                  core.OpClassRead,
 	"GQL Query.routerAvailable":                                        core.OpClassRead,
 	"GQL Query.routerOverview":                                         core.OpClassSensitive,
+	"GQL Query.sandbox":                                                core.OpClassRead,
 	"GQL Query.sandboxes":                                              core.OpClassRead,
 	"GQL Query.secretFiles":                                            core.OpClassSensitive,
 	"GQL Query.server":                                                 core.OpClassRead,

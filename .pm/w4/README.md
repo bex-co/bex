@@ -252,3 +252,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **058** — Reject blank environment renames; direct environment creates and sibling project names are guarded too. Closed 2026-09-08; see [done/058.md](done/058.md).
 
 - [x] **121** — [Expose the immutable Blueprint service name](done/121.md) — shared detail header shows it when different from the display label; explicit query/mapping and suffixed-slug regression verified.
+
+- [x] **122** — [Scope GraphQL sandbox reads and termination to the selected workspace](done/122.md) — added by-ID query and ownerId bindings, adapter and composed OAuth/MCP coverage, and complete generated sandbox schema.
