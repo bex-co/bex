@@ -1199,6 +1199,11 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// and command, is single-use, and expires within 60s.
 	if s.Sandbox != nil {
 		mux.Handle(sandbox.ConnectStreamPattern, s.deployHookLookupRateLimitMiddleware()(bodyLimit(s.Sandbox.ConnectStreamHandler())))
+		// File bodies have their own streaming bounds; the JSON request limit
+		// would truncate otherwise valid uploads before they reach the gateway.
+		files := s.deployHookLookupRateLimitMiddleware()(s.Sandbox.ConnectFileHandler())
+		mux.Handle(sandbox.ConnectFileUploadPattern, files)
+		mux.Handle(sandbox.ConnectFileDownloadPattern, files)
 	}
 	// All three adapters sit behind the same auth gate, with rate limiting inside
 	// the auth wrapper so the limiter keys on the resolved caller Identity. The

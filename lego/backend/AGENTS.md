@@ -9,10 +9,10 @@ One package per feature: service (business logic) + models + REST/GraphQL/MCP fr
 - `cmd/api/` — bex-api entrypoint (`api mcp-stdio` / `BEX_MCP_STDIO=1` → MCP over stdio)
 - `cmd/ssh-gateway/` — isolated public-key SSH entrypoint; only Deployment with `pods/exec`
 - `internal/core/` — leaf kernel: `Base` + `Identity` + sentinels + `Authorize` gates + `TTLCache` + `Poll` workers. Imports CRD types only.
-- `internal/hmacticket/` — one HMAC envelope for `shellticket`/`sandboxexec`/`agentsessionticket`; each flavor owns only `Claims`. Leaf.
+- `internal/hmacticket/` — one HMAC envelope for `shellticket`/`sandboxexec`/`sandboxfiles`/`agentsessionticket`; each flavor owns only `Claims`. Leaf.
 - `internal/id/` — typed ids `<prefix>-<xid>` (`id.New(kind)`, `id.WellFormed`). Leaf. [ADR020](../../docs/ADR020-identifiers.md)
 - `internal/<feature>/` — `apps`, `logs`, `metrics`, `apikeys`, `sshkeys`, `postgres`, `secrets`, `deploys`, `events` (read VIEW over `deploys`+`audit_events`). Each `service.go` + `rest.go`/`graphql.go`/`mcp.go`.
-  - `sshgateway` — protocol→exec boundary; shared `Executor/SessionLimiter/NonceGuard/TargetResolver` + `nativessh/webshell/sandboxsse/agentattach/agentcred`; one limiter/guard across transports.
+  - `sshgateway` — protocol→exec boundary; shared `Executor/SessionLimiter/NonceGuard/TargetResolver` + `nativessh/webshell/sandboxsse/sandboxfiles/agentattach/agentcred`; one limiter/guard across transports.
   - `authz` (OpenFGA `core.Checker`), `gqlutil` helper.
 - `internal/store/` — control-plane Postgres + App-CR projector, opt-in via `BEX_CP_DB_URI` ([ADR003](../../docs/ADR003-control-plane.md))
 - `internal/billing/` — Stripe Billing (opt-in `BEX_STRIPE_SECRET_KEY`), sealed `usage_hourly` → Customers/Subscriptions, invoices, webhooks.
@@ -34,7 +34,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 
 | Component | Variable | Purpose (default → disabled/unset behavior) |
 | --- | --- | --- |
-| bex-api | `BEX_API_ADDR` `:8090`, `BEX_API_NAMESPACE`, `BEX_API_CORS_ORIGIN`, `BEX_API_PUBLIC_URL` | listen, watched ns, CORS allowlist, public API origin (deploy-hook URLs + agent `streamUrl` + the sandbox run connect-token `uri`, w7/m147; unset → relative/omitted) |
+| bex-api | `BEX_API_ADDR` `:8090`, `BEX_API_NAMESPACE`, `BEX_API_CORS_ORIGIN`, `BEX_API_PUBLIC_URL` | listen, watched ns, CORS allowlist, public API origin (deploy-hook URLs + agent `streamUrl` + the sandbox run/file connect-token `uri`, w7/m147+m150; unset → relative/omitted) |
 | bex-api | `BEX_ROUTER_URL`, `BEX_ROUTER_ASSERTION_SECRET` | private Router GraphQL URL and ≥32-byte BIA signing key; unset → Router hidden; session-only beta for `tea-d98210cbbpdc73dcrkvg` |
 | bex-api | `BEX_REGION` | placement name on Service/DB/KV metadata (e.g. `fsn1`); unset → omitted |
 | bex-api | `BEX_SSH_HOST` | public SSH hostname `ssh.bex.co` for `serviceDetails.sshAddress` + `agentSession.sshAddress` |
@@ -47,11 +47,11 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE` | live sandbox cap per workspace (default `5`, 409 `AGENT_SESSION_LIVE_LIMIT`) |
 | bex-api | `BEX_AGENT_SNAPSHOT_S3_*` (ENDPOINT/BUCKET/REGION/PREFIX/ACCESS_KEY/SECRET_KEY) | hibernation object store; all set → hibernate/rehydrate, any unset → off (bucket needs SSE) |
 | bex-api | `BEX_AGENT_SNAPSHOT_RETENTION`, `BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE` | retention `168h` (7d, 2× if dirty git) + pin cap `10` (409 `AGENT_SESSION_PIN_LIMIT`) |
-| bex-api | `BEX_SANDBOX_EXEC_SECRET`, `BEX_SANDBOX_EXEC_URL` | `sandbox exec` HMAC + gateway `http://…:8081/sandbox-exec`; unset → exec 503 |
+| bex-api | `BEX_SANDBOX_EXEC_SECRET`, `BEX_SANDBOX_EXEC_URL` | sandbox exec/file HMAC + gateway `http://…:8081/sandbox-exec`; files use `/sandbox-files` on the same origin; unset → exec/files 503; files also require the shared nonce store |
 | bex-api | `BEX_OPS_WORKSPACE`, `BEX_OPS_ROLE_TOKEN` | ops-workspace gate for the obs OIDC client (docs/ADR088): pinned `tea-*` id + static bearer for `GET /internal/ops-role` (machine-to-machine, dashboard consent acceptor only); either unset → route absent, workspace guards inert |
 | ssh-gateway | `BEX_SSH_ADDR` `:2222`, `BEX_SSH_METRICS_ADDR` `:9090`, `BEX_SSH_HOST_KEY_PATH` | SSH listen, metrics, required host private key |
 | ssh-gateway | `BEX_SHELL_WS_ADDR` `:8080`, `BEX_SHELL_TICKET_SECRET` | Web Shell gateway transport; unset secret → disabled |
-| ssh-gateway | `BEX_SANDBOX_EXEC_ADDR` `:8081`, `BEX_SANDBOX_EXEC_SECRET` | sandbox exec gateway transport (internal-only); unset → disabled |
+| ssh-gateway | `BEX_SANDBOX_EXEC_ADDR` `:8081`, `BEX_SANDBOX_EXEC_SECRET` | sandbox exec + bounded file gateway transports (internal-only); unset → disabled |
 | ssh-gateway | `BEX_AGENT_CREDENTIAL_ADDR` `:8082`, `BEX_AGENT_CREDENTIAL_API_URL` | Git smart-HTTP proxy + bex-api mint URL; disabled if exec secret unset |
 | ssh-gateway | `BEX_AGENT_MODEL_PROXY_ADDR` `:8084` + `…_CREDENTIAL_API_URL`, `…_MAX_CONNS`, `…_PER_POD`, `…_READ_TIMEOUT`, `…_MAX_DURATION` | model proxy gateway transport; caps `32/2`, `2m`, `2h`; shares exec secret |
 | ssh-gateway | `BEX_AGENT_MODEL_MAX_REQUESTS_PER_SESSION/…_WORKSPACE` | cumulative exchange budgets `1000/5000`, 429 when exhausted |
@@ -62,7 +62,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | ssh-gateway | `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS` | CIDRs allowed to assert PROXY v1/v2 client IP |
 | ssh-gateway | `BEX_SSH_MAX_CHANNELS_PER_CONN` `16` | Zed multiplexing cap per conn for `ags-*` |
 | ssh-gateway | `BEX_SSH_MAX_CHANNELS` `512`, `…_PER_IDENTITY` `32` | process-wide exec-stream caps |
-| ssh-gateway | `BEX_SSH_REVALIDATE_INTERVAL` `1m` | live-stream fresh re-auth tick (SSH/webshell/agent/sandbox exec) |
+| ssh-gateway | `BEX_SSH_REVALIDATE_INTERVAL` `1m` | live-stream fresh re-auth tick (SSH/webshell/agent/sandbox exec/files) |
 | ssh-gateway | `BEX_AGENT_GIT/MODEL_*_PREAUTH_CONNS` + `…_MAX_CONNS/PER_POD/READ_TIMEOUT/MAX_DURATION/MAX_REQUESTS_*` | Git/model proxy admission bounds (global 128/16, per-pod 64/4, `10m`, budgets `1000/5000`) |
 | ssh-gateway | `BEX_AGENT_GIT_MAX_RESPONSE_BYTES` | one streamed Git upstream response's byte budget (default 4 GiB); exceeding it aborts loudly (`git_proxy_upstream_failures_total{cause="response_cap"}`), never truncates silently |
 | bex-api | `BEX_BUILD_NAMESPACE` | build Job ns (must match operator); logs `type=build`. Pre-deploy Jobs are co-located with the App (ADR043 D8), so `type=predeploy` logs read from the App's own namespace |

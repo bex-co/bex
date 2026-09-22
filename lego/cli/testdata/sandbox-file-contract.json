@@ -53,7 +53,8 @@
       "/",
       ""
     ],
-    "escapingSymlinkRejected": true,
+    "escapingSymlinkCreatedButTraversalRejected": true,
+    "symlinkPolicy": "The pinned upload preserves symlink targets. Download extraction may create an outward-pointing symlink, but os.Root refuses a later read/write through it. Bex's server policy below is deliberately stricter.",
     "skipsNonRegularNonSymlink": "sockets and devices are skipped rather than aborting the archive",
     "entryTypesHandled": [
       "dir",
@@ -61,7 +62,22 @@
       "symlink",
       "hardlink"
     ],
-    "truncationDetected": "a truncated archive must not read as success; archive/tar stops at the end-of-archive marker, so the client wraps the body in a terminatedReader and a gzip trailer check catches a short body"
+    "truncationDetected": "a truncated archive must not read as success; archive/tar stops at the end-of-archive marker, so the client wraps the body in a terminatedReader and drains after tar EOF to verify the gzip trailer. Raw gzip downloads also verify the trailer before atomically replacing the local destination."
+  },
+  "bexServerPolicy": {
+    "_comment": "Bex's bounded supported subset, separate from the pinned client's more permissive archive/path behavior. Limits mirror lego/backend/internal/sandboxfiles; server and fixture must change together.",
+    "maxTransferBytes": 268435456,
+    "maxArchiveEntries": 10000,
+    "maxPathBytes": 4096,
+    "maxPathDepth": 64,
+    "transferTimeoutSeconds": 300,
+    "byteLimitAppliesTo": "Wire bytes and expanded archive/raw bytes are bounded separately; archive framing counts toward the expanded budget.",
+    "paths": "Clean absolute non-root paths only. Relative/home paths, traversal, control characters, backslashes, excessive length and depth, pre-existing symlink ancestors and symlink source/destination entries are refused rather than normalized.",
+    "rawUpload": "application/octet-stream, no Content-Encoding (identity is accepted). Nonempty raw uploads require Content-Length; an empty chunked stream is accepted because the pinned Go client sends zero-byte files that way. A completed upload atomically replaces a regular file; existing directories and symlinks are refused.",
+    "directoryUpload": "application/x-tar, identity or gzip, unknown Content-Length accepted. Destination must not exist; existing directory trees are refused, never merged.",
+    "archiveEntries": "Only regular files and directories. Symlinks, hardlinks, special entries, duplicate names, escaping paths, missing preceding parents and non-padding trailing bytes are refused. Ownership and special permission bits are stripped.",
+    "downloads": "Files and directories always use Content-Encoding: gzip. The gateway writes the success trailer only after validation and a successful executor exit. Missing or interrupted sources produce a status error or failed body read, never clean truncated success.",
+    "partialUploads": "A private sibling stage is published only after complete validation and executor success. Cancellation joins cleanup under a separate five-second cap; if the sandbox disappears, a hidden stage may remain but the requested destination is not replaced."
   },
   "nonGoals": {
     "_comment": "Recorded so a later reader does not re-litigate them.",

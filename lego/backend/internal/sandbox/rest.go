@@ -160,6 +160,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, out)
 	})
+	// The pinned file-copy client sends no JSON body: both ownerId and path
+	// are query parameters, and operation is part of the mint route.
+	mux.HandleFunc("POST /v1/sandboxes/{id}/files/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.ConnectFile(r.Context(), FileConnectRequest{
+			OwnerID: r.URL.Query().Get("ownerId"), SandboxID: r.PathValue("id"),
+			Operation: r.PathValue("operation"), Path: r.URL.Query().Get("path"),
+		}, s.connectBaseURL(r))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, out)
+	})
 	// Render CLI `stop` → terminate.
 	mux.HandleFunc("POST /v1/sandboxes/{id}/terminate", func(w http.ResponseWriter, r *http.Request) {
 		s.lifecycleREST(w, r, s.Terminate)
