@@ -1,8 +1,12 @@
 package main
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -62,6 +66,7 @@ type sandboxExecContract struct {
 type recordedRequest struct {
 	method, path, query, body string
 	header                    http.Header
+	contentLength             int64
 }
 
 // contractBexServer replays the golden as bex-api would: it answers the
@@ -231,6 +236,16 @@ func loadSandboxFileContract(t *testing.T) sandboxFileContract {
 // fileContractServer answers the file connect mint, then serves the transfer
 // at the uri it returned — the same two-step handshake bex-api must implement.
 func fileContractServer(t *testing.T, c sandboxFileContract, operation string, payload []byte) (*httptest.Server, *sync.Map) {
+	return fileContractServerWithTransfer(t, c, operation, func(w http.ResponseWriter, _ *http.Request) {
+		if operation == "download" {
+			_, _ = w.Write(payload)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+}
+
+func fileContractServerWithTransfer(t *testing.T, c sandboxFileContract, operation string, transfer http.HandlerFunc) (*httptest.Server, *sync.Map) {
 	t.Helper()
 	var seen sync.Map
 	const token = "file-connect-token-fixture"
@@ -244,7 +259,7 @@ func fileContractServer(t *testing.T, c sandboxFileContract, operation string, p
 	mux := http.NewServeMux()
 	record := func(name string, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		seen.Store(name, recordedRequest{method: r.Method, path: r.URL.Path, query: r.URL.RawQuery, body: string(body), header: r.Header.Clone()})
+		seen.Store(name, recordedRequest{method: r.Method, path: r.URL.Path, query: r.URL.RawQuery, body: string(body), header: r.Header.Clone(), contentLength: r.ContentLength})
 	}
 	mux.HandleFunc(connectPath, func(w http.ResponseWriter, r *http.Request) {
 		record("connect", r)
@@ -264,11 +279,7 @@ func fileContractServer(t *testing.T, c sandboxFileContract, operation string, p
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		if operation == "download" {
-			_, _ = w.Write(payload)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
+		transfer(w, r)
 	})
 	srv := httptest.NewServer(mux)
 	base = srv.URL
@@ -350,4 +361,181 @@ func TestPinnedSandboxFileTransportMatchesBexContract(t *testing.T) {
 			t.Fatal("the pinned client never redeemed the download token")
 		}
 	})
+}
+
+func TestPinnedSandboxDirectoryTransferContract(t *testing.T) {
+	c := loadSandboxFileContract(t)
+	t.Setenv("RENDER_WORKSPACE", c.Workspace)
+	source := t.TempDir()
+	want := map[string][]byte{
+		"nested/binary.dat": {0, 1, 255, '\n', 0},
+		"empty.txt":         {},
+		"space ü.txt":       []byte("directory contract\n"),
+	}
+	for name, data := range want {
+		path := filepath.Join(source, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink("nested/binary.dat", filepath.Join(source, "relative-link")); err != nil {
+		t.Fatal(err)
+	}
+	upload, seen := fileContractServer(t, c, "upload", nil)
+	api, err := client.NewClientWithResponses(upload.URL + "/v1/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sandbox.NewService(sandbox.NewRepo(api)).Upload(context.Background(), c.SandboxID, source, "/workspace/tree"); err != nil {
+		t.Fatal(err)
+	}
+	recorded, ok := seen.Load("transfer")
+	if !ok {
+		t.Fatal("directory upload did not reach transfer")
+	}
+	transfer := recorded.(recordedRequest)
+	if transfer.header.Get("Content-Type") != c.Upload.DirectoryContentType || transfer.header.Get("Content-Encoding") != c.Upload.DirectoryContentEncoding || transfer.contentLength != -1 {
+		t.Fatalf("directory headers=%v length=%d, want x-tar/gzip with unknown length", transfer.header, transfer.contentLength)
+	}
+	download, _ := fileContractServerWithTransfer(t, c, "download", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", c.Upload.DirectoryContentType)
+		w.Header().Set("Content-Encoding", c.Upload.DirectoryContentEncoding)
+		_, _ = io.WriteString(w, transfer.body)
+	})
+	api, err = client.NewClientWithResponses(download.URL + "/v1/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(t.TempDir(), "downloaded")
+	if _, err := sandbox.NewService(sandbox.NewRepo(api)).Download(context.Background(), c.SandboxID, "/workspace/tree", dest); err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range want {
+		got, err := os.ReadFile(filepath.Join(dest, name))
+		if err != nil || !bytes.Equal(got, data) {
+			t.Errorf("round trip %s: bytes=%q err=%v, want %q", name, got, err, data)
+		}
+	}
+	if link, err := os.Readlink(filepath.Join(dest, "relative-link")); err != nil || link != "nested/binary.dat" {
+		t.Errorf("round-trip symlink=%q err=%v", link, err)
+	}
+}
+
+func TestPinnedSandboxDownloadRejectsIncompleteSuccessBodies(t *testing.T) {
+	c := loadSandboxFileContract(t)
+	t.Setenv("RENDER_WORKSPACE", c.Workspace)
+	var archive bytes.Buffer
+	tw := tar.NewWriter(&archive)
+	if err := tw.WriteHeader(&tar.Header{Name: "complete.txt", Mode: 0o600, Size: 3}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(tw, "yes"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	gzipBytes := func(payload []byte) []byte {
+		var wire bytes.Buffer
+		gz := gzip.NewWriter(&wire)
+		if _, err := gz.Write(payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := gz.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return wire.Bytes()
+	}
+	fileGzip := gzipBytes([]byte("complete file bytes"))
+	tarGzip := gzipBytes(archive.Bytes())
+	for _, tc := range []struct {
+		name, contentType, encoding string
+		payload                     []byte
+		contentLength               string
+	}{
+		{"raw short Content-Length", sandbox.FileContentTypeOctetStream, "", []byte("short"), "20"},
+		{"raw complete bytes without gzip footer", sandbox.FileContentTypeOctetStream, "gzip", fileGzip[:len(fileGzip)-8], ""},
+		{"tar stops on a block boundary before end marker", sandbox.FileContentTypeTar, "", archive.Bytes()[:archive.Len()-1024], ""},
+		{"complete tar without gzip footer", sandbox.FileContentTypeTar, "gzip", tarGzip[:len(tarGzip)-8], ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv, _ := fileContractServerWithTransfer(t, c, "download", func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", tc.contentType)
+				if tc.encoding != "" {
+					w.Header().Set("Content-Encoding", tc.encoding)
+				}
+				if tc.contentLength != "" {
+					w.Header().Set("Content-Length", tc.contentLength)
+				}
+				_, _ = w.Write(tc.payload)
+			})
+			api, err := client.NewClientWithResponses(srv.URL + "/v1/")
+			if err != nil {
+				t.Fatal(err)
+			}
+			dest := filepath.Join(t.TempDir(), "destination")
+			if tc.contentType != sandbox.FileContentTypeTar {
+				if err := os.WriteFile(dest, []byte("existing contents"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, err = sandbox.NewService(sandbox.NewRepo(api)).Download(context.Background(), c.SandboxID, c.RemotePath, dest)
+			if err == nil {
+				t.Fatal("truncated transfer reported success")
+			}
+			if tc.contentType != sandbox.FileContentTypeTar {
+				got, err := os.ReadFile(dest)
+				if err != nil || string(got) != "existing contents" {
+					t.Errorf("failed download replaced existing file: %q err=%v", got, err)
+				}
+				partials, err := filepath.Glob(filepath.Join(filepath.Dir(dest), ".render-partial-*"))
+				if err != nil || len(partials) != 0 {
+					t.Errorf("failed download left partials=%v err=%v", partials, err)
+				}
+			}
+		})
+	}
+}
+
+func TestPinnedSandboxFileTransferReportsRefusals(t *testing.T) {
+	c := loadSandboxFileContract(t)
+	t.Setenv("RENDER_WORKSPACE", c.Workspace)
+	for _, operation := range c.Connect.Operations {
+		for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusConflict, http.StatusRequestEntityTooLarge} {
+			t.Run(operation+"/"+http.StatusText(status), func(t *testing.T) {
+				srv, _ := fileContractServerWithTransfer(t, c, operation, func(w http.ResponseWriter, _ *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(status)
+					_, _ = io.WriteString(w, `{"message":"transfer refused"}`)
+				})
+				api, err := client.NewClientWithResponses(srv.URL + "/v1/")
+				if err != nil {
+					t.Fatal(err)
+				}
+				repo := sandbox.NewRepo(api)
+				if operation == "upload" {
+					err = repo.UploadFile(context.Background(), c.SandboxID, c.RemotePath, sandbox.FileContentTypeOctetStream, "", 0, strings.NewReader(""))
+				} else {
+					_, err = repo.DownloadFile(context.Background(), c.SandboxID, c.RemotePath)
+				}
+				switch status {
+				case http.StatusUnauthorized:
+					if !errors.Is(err, client.ErrUnauthorized) {
+						t.Fatalf("error=%v, want unauthorized", err)
+					}
+				case http.StatusForbidden:
+					if !errors.Is(err, client.ErrForbidden) {
+						t.Fatalf("error=%v, want forbidden", err)
+					}
+				default:
+					if err == nil || !strings.Contains(err.Error(), "transfer refused") {
+						t.Fatalf("error=%v lost refusal message", err)
+					}
+				}
+			})
+		}
+	}
 }

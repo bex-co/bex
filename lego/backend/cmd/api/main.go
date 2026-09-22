@@ -32,6 +32,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -72,6 +73,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
@@ -1066,11 +1068,18 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 		// 503s (create/list/stop are unaffected).
 		if cfg.SandboxExecSecret != "" {
 			if gwURL := cfg.SandboxExecURL; gwURL != "" {
+				fileURL, err := url.Parse(gwURL)
+				if err != nil {
+					log.Fatal("bex-api: invalid sandbox gateway URL")
+				}
+				fileURL.Path, fileURL.RawPath = sandboxfiles.GatewayPath, ""
+				fileURL.RawQuery, fileURL.Fragment = "", ""
 				deps.SandboxExec = &sandbox.ExecConfig{
-					Secret:     []byte(cfg.SandboxExecSecret),
-					GatewayURL: gwURL,
-					Client:     &http.Client{}, // no timeout: the exec stream is long-lived
-					TTL:        60 * time.Second,
+					Secret:         []byte(cfg.SandboxExecSecret),
+					GatewayURL:     gwURL,
+					FileGatewayURL: fileURL.String(),
+					Client:         &http.Client{}, // no timeout: the exec stream is long-lived
+					TTL:            60 * time.Second,
 					// The pinned CLI's run connect-token handshake (w7/m147): the
 					// minted `uri` is on the public API origin, and the token is
 					// single-use across both replicas through the shared store (the

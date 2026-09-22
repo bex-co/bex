@@ -47,12 +47,14 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/proxyproto"
+	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/dbrole"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
+	sandboxfilegateway "github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -325,6 +327,18 @@ func main() {
 	if sandbox.Enabled() {
 		execMux := http.NewServeMux()
 		execMux.Handle("POST /sandbox-exec", sandbox.Handler())
+		files := &sandboxfilegateway.Server{
+			Secret:             sandbox.Secret,
+			Executor:           executor,
+			Metrics:            metrics,
+			Limits:             limits,
+			Nonces:             nonces,
+			Revalidator:        &sandboxfilegateway.ExecRevalidator{Base: base},
+			RevalidateInterval: revalidateInterval,
+		}
+		fileHandler := files.Handler()
+		execMux.Handle("PUT "+sandboxfiles.GatewayPath, fileHandler)
+		execMux.Handle("GET "+sandboxfiles.GatewayPath, fileHandler)
 		defer startAuxListener("sandbox-exec", "sandbox exec", envOr("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop, metrics)()
 	}
 

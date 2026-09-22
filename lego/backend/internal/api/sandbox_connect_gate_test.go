@@ -26,6 +26,8 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 )
 
 // TestSandboxConnectTokenIsNotAnAPIBearer pins the two halves of the run
@@ -46,7 +48,7 @@ func TestSandboxConnectTokenIsNotAnAPIBearer(t *testing.T) {
 	t.Cleanup(upstream.Close)
 	srv := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Workspace: fakeWorkspace{"identity-1": "tea-a"}, Authz: &fakeChecker{allow: true}}, Deps{
 		SandboxClient: sandbox.NewClient(upstream.URL),
-		SandboxExec:   &sandbox.ExecConfig{Secret: []byte("exec-secret"), GatewayURL: "http://127.0.0.1:1", TTL: time.Minute},
+		SandboxExec:   &sandbox.ExecConfig{Secret: []byte("exec-secret"), GatewayURL: "http://127.0.0.1:1", FileGatewayURL: "http://127.0.0.1:1/sandbox-files", TTL: time.Minute, Nonces: &sshgateway.NonceGuard{Store: &gatewaytest.FakeStore{}}},
 	})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	handler, err := srv.Handler()
@@ -63,30 +65,43 @@ func TestSandboxConnectTokenIsNotAnAPIBearer(t *testing.T) {
 		t.Fatalf("ConnectRun: %v", err)
 	}
 
-	// (1) The connect token is not an API bearer: the gated exec route 401s.
-	req, _ := http.NewRequest(http.MethodPost, root.URL+"/v1/sandboxes/os-1/exec", strings.NewReader(`{"command":"true"}`))
-	req.Header.Set("Authorization", "Bearer "+minted.Token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
+	cases := map[string]sandbox.ConnectResponse{"run": minted}
+	for _, operation := range []string{"upload", "download"} {
+		file, err := srv.Sandbox.ConnectFile(ctx, sandbox.FileConnectRequest{
+			OwnerID: "tea-a", SandboxID: "os-1", Operation: operation, Path: "/workspace/data.txt",
+		}, root.URL)
+		if err != nil {
+			t.Fatalf("ConnectFile(%s): %v", operation, err)
+		}
+		cases[operation] = file
 	}
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("connect token at the gated exec route = %d, want 401", resp.StatusCode)
-	}
+	for name, connect := range cases {
+		t.Run(name, func(t *testing.T) {
+			// A connect token never becomes an API credential on another route.
+			req, _ := http.NewRequest(http.MethodPost, root.URL+"/v1/sandboxes/os-1/exec", strings.NewReader(`{"command":"true"}`))
+			req.Header.Set("Authorization", "Bearer "+connect.Token)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("connect token at gated exec route = %d, want 401", resp.StatusCode)
+			}
 
-	// (2) An OAuth-shaped bearer is not a connect token: the redeem route 401s
-	// with a JSON {message} body, and never reaches the gateway.
-	req, _ = http.NewRequest(http.MethodPost, minted.URI, strings.NewReader(`{"command":"true"}`))
-	req.Header.Set("Authorization", "Bearer "+testToken)
-	resp, err = http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	var body map[string]any
-	_ = json.NewDecoder(resp.Body).Decode(&body)
-	if resp.StatusCode != http.StatusUnauthorized || body["message"] == "" {
-		t.Fatalf("oauth bearer at the redeem route = %d %v, want 401 with a message", resp.StatusCode, body)
+			// Nor does an OAuth credential authorize a token redemption route.
+			req, _ = http.NewRequest(connect.Method, connect.URI, strings.NewReader(`{"command":"true"}`))
+			req.Header.Set("Authorization", "Bearer "+testToken)
+			resp, err = http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+			var body map[string]any
+			_ = json.NewDecoder(resp.Body).Decode(&body)
+			if resp.StatusCode != http.StatusUnauthorized || body["message"] == "" {
+				t.Fatalf("oauth bearer at redeem route = %d %v, want 401 with message", resp.StatusCode, body)
+			}
+		})
 	}
 }
