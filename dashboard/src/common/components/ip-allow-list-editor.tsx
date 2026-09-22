@@ -28,6 +28,21 @@ interface IPAllowListEditorLabels {
   moveDown: (cidr: string) => string;
 }
 
+/**
+ * One draft row: a stable editor-local identity plus the public entry shape.
+ *
+ * The identity is deliberately a WRAPPER rather than a field on the entry.
+ * `IPAllowListEntryDraft` is the wire shape — the three save hooks forward
+ * these objects straight into GraphQL variables, and `ipAllowListEntryKey`
+ * compares them with JSON.stringify — so an id living on the entry would both
+ * corrupt the dirty check and send an input field the schema does not declare.
+ */
+interface IPAllowListRow {
+  /** Editor-local only. Never projected into onSave or the dirty comparison. */
+  id: number;
+  entry: IPAllowListEntryDraft;
+}
+
 /** Shared ordered CIDR + description editor for service and datastore ACLs. */
 export function IPAllowListEditor({
   entries,
@@ -40,28 +55,55 @@ export function IPAllowListEditor({
   saving: boolean;
   onSave: (entries: IPAllowListEntryDraft[]) => Promise<boolean>;
 }) {
-  const [draft, setDraft] = useState(entries);
+  // Rows carry their own identity because React reconciles by key, and the key
+  // used to be `${index}-${entry.cidrBlock}` — the editable value itself. One
+  // Backspace in a CIDR field therefore changed the row's identity, so React
+  // deleted the old row's DOM subtree and mounted a new one; the focused input
+  // went with it and every keystroke after the first was dropped on the floor.
+  // Description edits did not touch the key, which is exactly why they worked
+  // and made the failure look field-specific (w4/135).
+  //
+  // Index alone cannot serve either: `move` reorders rows, and a render-time
+  // generated value is new on every render, which is the same bug again.
+  const [draft, setDraft] = useState<IPAllowListRow[]>(() =>
+    entries.map((entry, index) => ({ id: index, entry })),
+  );
+  /**
+   * Next free identity, derived from the rows themselves rather than held in a
+   * ref — a ref cannot be read during render, and deriving it keeps `add` pure.
+   * Monotonic against the CURRENT rows, so an id is never reused by a row added
+   * after an earlier one was removed.
+   */
+  const nextRowID = (rows: IPAllowListRow[]) =>
+    rows.reduce((max, row) => Math.max(max, row.id), -1) + 1;
+  /** The public, ordered entries — what dirty, validation and Save all see. */
+  const draftEntries = draft.map((row) => row.entry);
   const [cidr, setCIDR] = useState("");
   const [description, setDescription] = useState("");
   const [invalid, setInvalid] = useState(false);
 
-  const dirty = ipAllowListEntryKey(draft) !== ipAllowListEntryKey(entries);
+  const dirty =
+    ipAllowListEntryKey(draftEntries) !== ipAllowListEntryKey(entries);
   const draftInvalid =
-    draft.some((entry) => !isValidCIDR(entry.cidrBlock)) ||
-    new Set(draft.map((entry) => entry.cidrBlock.trim())).size !== draft.length;
+    draftEntries.some((entry) => !isValidCIDR(entry.cidrBlock)) ||
+    new Set(draftEntries.map((entry) => entry.cidrBlock.trim())).size !==
+      draftEntries.length;
 
   function add() {
     const nextCIDR = cidr.trim();
     if (
       !isValidCIDR(nextCIDR) ||
-      draft.some((entry) => entry.cidrBlock === nextCIDR)
+      draftEntries.some((entry) => entry.cidrBlock === nextCIDR)
     ) {
       setInvalid(true);
       return;
     }
     setDraft([
       ...draft,
-      { cidrBlock: nextCIDR, description: description.trim() },
+      {
+        id: nextRowID(draft),
+        entry: { cidrBlock: nextCIDR, description: description.trim() },
+      },
     ]);
     setCIDR("");
     setDescription("");
@@ -74,8 +116,10 @@ export function IPAllowListEditor({
     value: string,
   ) {
     setDraft(
-      draft.map((entry, entryIndex) =>
-        entryIndex === index ? { ...entry, [field]: value } : entry,
+      draft.map((row, rowIndex) =>
+        rowIndex === index
+          ? { ...row, entry: { ...row.entry, [field]: value } }
+          : row,
       ),
     );
   }
@@ -95,9 +139,9 @@ export function IPAllowListEditor({
         <span className="text-sm text-muted-foreground">{labels.open}</span>
       ) : (
         <div className="space-y-2">
-          {draft.map((entry, index) => (
+          {draft.map(({ id, entry }, index) => (
             <div
-              key={`${index}-${entry.cidrBlock}`}
+              key={id}
               className="flex flex-wrap items-center gap-2 rounded-md border p-2"
             >
               <Input
@@ -193,7 +237,7 @@ export function IPAllowListEditor({
         <Button
           type="button"
           size="sm"
-          onClick={() => void onSave(draft)}
+          onClick={() => void onSave(draftEntries)}
           disabled={!dirty || saving || draftInvalid}
         >
           {saving ? <Loader2 className="animate-spin" /> : null}
