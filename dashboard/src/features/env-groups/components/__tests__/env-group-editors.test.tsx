@@ -18,22 +18,25 @@ const revealFile = vi.fn();
 const save = vi.fn();
 const retryRollout = vi.fn();
 
-vi.mock("@/features/env-groups/hooks/use-env-groups", async (importOriginal) => {
-  const actual =
-    await importOriginal<
-      typeof import("@/features/env-groups/hooks/use-env-groups")
-    >();
-  return {
-    ...actual,
-    useRevealEnvGroupVar: () => revealEnv,
-    useRevealEnvGroupSecretFile: () => revealFile,
-    useEnvGroupEnvironmentPatch: () => ({
-      save,
-      retryRollout,
-      saving: false,
-    }),
-  };
-});
+vi.mock(
+  "@/features/env-groups/hooks/use-env-groups",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/features/env-groups/hooks/use-env-groups")
+      >();
+    return {
+      ...actual,
+      useRevealEnvGroupVar: () => revealEnv,
+      useRevealEnvGroupSecretFile: () => revealFile,
+      useEnvGroupEnvironmentPatch: () => ({
+        save,
+        retryRollout,
+        saving: false,
+      }),
+    };
+  },
+);
 
 const GROUP: EnvGroupView = {
   id: "eg-1",
@@ -111,5 +114,47 @@ describe("EnvGroupEditors — role-gated writes", () => {
     await user.click(value);
     await user.paste("first\nsecond\nthird");
     expect((value as HTMLTextAreaElement).value).toBe("first\nsecond\nthird");
+  });
+});
+
+// w4/139's pass-5 retest reproduced the same coupled rows on an environment
+// GROUP, which is the editor's second production caller. The fix lives in the
+// shared editor, so this asserts the group wrapper reaches it — including that
+// the group's persisted row (FOO) is untouched, as the live retest observed.
+describe("EnvGroupEditors restored-draft row identity (w4/139)", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("keeps a restored variable independent of one added afterwards", async () => {
+    const user = userEvent.setup();
+    const first = renderEditors();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add variable" }),
+    );
+    const initialKeys = screen.getAllByRole("textbox", { name: "Key" });
+    await user.type(initialKeys[initialKeys.length - 1]!, "QA_FIRST");
+
+    first.unmount();
+    renderEditors();
+    expect(await screen.findByText("Restored unsaved changes")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add variable" }),
+    );
+    const keys = screen.getAllByRole("textbox", { name: "Key" });
+    await user.type(keys[keys.length - 1]!, "QA_SECOND");
+
+    const values = keys.map((input) => (input as HTMLInputElement).value);
+    expect(values).toContain("QA_FIRST");
+    expect(values).toContain("QA_SECOND");
+    // The group's saved row stays as it was — the live retest's control.
+    expect(
+      screen.getByRole("textbox", { name: "Value for FOO" }),
+    ).toBeInTheDocument();
   });
 });
