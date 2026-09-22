@@ -834,7 +834,7 @@ const enDatabases: Record<string, TranslationEntry> = {
     // actually do it — the same shape databases.recoveryDisabled uses for a
     // feature this page cannot turn on.
     message:
-      "Connection pooling isn't enabled for this database, so there are no pooled connection strings. Turn it on through the API — PATCH /v1/postgres/{id} with {\"pooler\": true} — and the pooled strings appear here.",
+      'Connection pooling isn\'t enabled for this database, so there are no pooled connection strings. Turn it on through the API — PATCH /v1/postgres/{id} with {"pooler": true} — and the pooled strings appear here.',
     description:
       "Access panel shown when no pooler is provisioned; names the API that enables one, since the dashboard has no pooler control (w4/107)",
   },
@@ -1044,6 +1044,31 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.insightsNoTableScans": {
     message: "No user tables with scan stats yet.",
     description: "Insights table-scans empty state",
+  },
+  "databases.insightsParamsDeclaredValue": {
+    message: "Declared value",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsObservedValue": {
+    message: "Observed setting",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsNoObservation": {
+    message: "No observation for this value yet.",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsObservedHint": {
+    message:
+      "Live setting; this does not confirm the requested value was applied.",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsNotObserved": {
+    message: "Requested override not observed. It may be pending or invalid.",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsObservationUnavailable": {
+    message: "Cannot verify this override right now.",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
   },
   "databases.insightsParamsTitle": {
     message: "Parameter overrides",

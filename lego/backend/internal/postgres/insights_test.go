@@ -381,9 +381,9 @@ func TestParameterSpecIsTheDeclaredSet(t *testing.T) {
 	}
 	// Name-sorted, so an editor bound to it does not reshuffle between reads.
 	want := []ParameterSpecView{
-		{Name: "default_statistics_target", Value: "200"},
-		{Name: "effective_cache_size", Value: "1GB"},
-		{Name: "work_mem", Value: "8MB"},
+		{Name: "default_statistics_target", Value: "200", ObservationStatus: "unavailable"},
+		{Name: "effective_cache_size", Value: "1GB", ObservationStatus: "unavailable"},
+		{Name: "work_mem", Value: "8MB", ObservationStatus: "unavailable"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("ParameterSpec = %v, want %v", got, want)

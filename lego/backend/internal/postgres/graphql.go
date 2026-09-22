@@ -298,8 +298,11 @@ var parameterOverrideViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 var parameterSpecViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseParameterSpec",
 	Fields: graphql.Fields{
-		"name":  gqlutil.StrField(func(v ParameterSpecView) any { return v.Name }),
-		"value": gqlutil.StrField(func(v ParameterSpecView) any { return v.Value }),
+		"name":              gqlutil.StrField(func(v ParameterSpecView) any { return v.Name }),
+		"value":             gqlutil.StrField(func(v ParameterSpecView) any { return v.Value }),
+		"observationStatus": gqlutil.ReqStrField(func(v ParameterSpecView) any { return v.ObservationStatus }),
+		"observedSetting":   gqlutil.StrField(func(v ParameterSpecView) any { return v.ObservedSetting }),
+		"observedUnit":      gqlutil.StrField(func(v ParameterSpecView) any { return v.ObservedUnit }),
 	},
 })
 
