@@ -3,7 +3,7 @@
 # ships:
 #
 #   type=app      — tenant App pod logs (label app.bex.co/app), labelled
-#                   namespace/app/pod/container + `level` (parsed from JSON lines).
+#                   namespace/app/pod/container + `level` (JSON or logfmt severity).
 #   type=platform — platform UI pods in namespace `dashboard` (no fake App label),
 #                   labelled namespace/service/pod/container + `level` (w4/m88).
 #   type=postgres — managed tenant CNPG logs, labelled by the immutable Database
@@ -205,21 +205,24 @@ spec:
                 forward_to = [loki.process.app_logs.receiver]
               }
 
-              // `level` on App logs, honestly: parsed from the line's own JSON
+              // `level` on App logs: parsed from the line's own JSON or logfmt
               // severity field, NEVER guessed from substring matching (a line
-              // containing the word "error" is not an error). A non-JSON line —
-              // or JSON without a severity key — is labelled `unknown`, which is
-              // the truth: bex does not know. Tenants who want level=error to
-              // isolate their errors log JSON (recommended, never required).
+              // containing the word "error" is not an error). Lines without a
+              // recognized structured severity are labelled `unknown`.
               loki.process "app_logs" {
                 // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan
                 // via "level", pino numeric aside) and `severity` (OTel/GCP).
-                // A non-JSON line leaves both empty -> unknown, below.
                 stage.json {
                   expressions = {
                     level    = "level",
                     severity = "severity",
                   }
+                }
+
+                // slog's TextHandler and logrus's TextFormatter emit logfmt.
+                // Extract only explicit severity keys, never message substrings.
+                stage.logfmt {
+                  mapping = { level = "", severity = "" }
                 }
 
                 // Normalize the vocabulary to Render's five buckets. Anything not
@@ -236,11 +239,8 @@ spec:
                 // The `unknown` bucket, and Render's type vocabulary (app | request
                 // | build) so list_log_label_values(label="type") discovers real
                 // values. These are DEFAULTS: they must precede stage.labels, which
-                // overwrites `level` whenever the line actually carried one. A
-                // plaintext line never reaches the template above (a stage whose
-                // source key was never extracted is skipped), so `unknown` is what
-                // it keeps — the honest answer, and the reason it is seeded here
-                // rather than emitted there.
+                // overwrites `level` with the normalized severity. Lines without
+                // a recognized severity retain the honest `unknown` bucket.
                 stage.static_labels {
                   values = {
                     type  = "app",
