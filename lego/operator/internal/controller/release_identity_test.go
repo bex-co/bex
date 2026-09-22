@@ -513,3 +513,29 @@ func TestSettingsCommandEditsDemandAFreshArtifact(t *testing.T) {
 		})
 	}
 }
+
+func TestSuccessfulReleaseGenerationLegacyBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name                                       string
+		active, release, artifact, releaseArtifact string
+		want                                       int64
+	}{
+		{name: "legacy image", want: 4},
+		{name: "modern release attempt", release: "release", want: 0},
+		{name: "modern artifact attempt", artifact: "artifact", want: 0},
+		{name: "modern release artifact", releaseArtifact: "artifact", want: 0},
+		{name: "legacy revision name", active: "old-revision", release: "release", want: 4},
+		{name: "served revision wins", active: "rev-2", release: "release", want: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{Status: appv1alpha1.AppStatus{
+				Image: "image", ObservedGeneration: 4, ActiveRevision: tc.active,
+				ReleaseFingerprint: tc.release, ArtifactFingerprint: tc.artifact,
+				ReleaseArtifactFingerprint: tc.releaseArtifact,
+			}}
+			if got := successfulReleaseGeneration(app); got != tc.want {
+				t.Fatalf("successful generation = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
