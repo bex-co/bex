@@ -598,6 +598,13 @@ type AppView struct {
 	// LatestDeployID is the id of the first deploy row, populated by Create only
 	// (w3/m14). The dashboard uses it to navigate to the in-flight deploy page
 	// immediately after a git-sourced service is created. Empty on Get/List.
+	//
+	// Both surfaces must keep that emptiness INVISIBLE rather than render it as
+	// a value: `omitempty` drops the key from REST (which carries the id in the
+	// serviceAndDeploy create envelope instead), and the GraphQL resolver
+	// returns null rather than "" for the same reason — an empty string reads as
+	// "this service has no deploy", which is false for every service that has
+	// ever deployed (w4/131).
 	LatestDeployID string `json:"latestDeployId,omitempty"`
 }
 
