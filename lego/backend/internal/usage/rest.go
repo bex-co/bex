@@ -42,8 +42,7 @@ type usageRow struct {
 type usageServiceEntry struct {
 	ServiceID   string `json:"serviceId"`
 	ServiceName string `json:"serviceName,omitempty"`
-	// Deleted: the resource is gone but bex retained the name its usage
-	// accrued under (w2/m96). Omitted for a live resource.
+	// Deleted reports confirmed absence; omitted for live or unknown state.
 	Deleted      bool       `json:"deleted,omitempty"`
 	ResourceKind string     `json:"resourceKind,omitempty"`
 	Rows         []usageRow `json:"rows"`

@@ -35,10 +35,9 @@ type ResourceDisplayName struct {
 func ResourceDisplayNameKey(kind, id string) string { return kind + "/" + id }
 
 // RecordResourceDisplayNames upserts a batch of retained names for one tenant.
-// It is called while the resources are alive: at service create and rename, and
-// from the usage read that is by construction the one place every *metered*
-// resource is enumerated. Blank kinds, ids and names are skipped rather than
-// stored, so a resource bex never knew the name of leaves no misleading row.
+// It is called at service create and rename, before datastore collection,
+// and during usage reads to refresh known names. Blank kinds, ids and names
+// are skipped, so a resource bex never knew leaves no misleading name record.
 //
 // Upsert, not insert: a rename must move the retained name forward, which is
 // what makes a live renamed resource bill under its current name.
@@ -125,21 +124,22 @@ func (s *PGStore) ResourceDisplayNames(ctx context.Context, tenantID string, ref
 	return out, nil
 }
 
-// SandboxLabels derives a human label for each sandbox id from the agent
-// session that owns (or owned) it: "<repo>" or "<repo> (<branch>)".
-//
-// A sandbox has no name of its own, and it is reaped long before its charges
-// stop mattering — but the session outlives it (sessions are archived, never
-// dropped), and a rehydrated session records the sandbox it came from on its
-// dispatch. So this resolves labels for sandbox UUIDs that no live `sandboxes`
-// query lists any more, which was the whole reason those rows billed as bare
-// UUIDs.
-func (s *PGStore) SandboxLabels(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]string, error) {
+// SandboxUsageMetadata keeps historical session labels separate from the last
+// observed lifecycle. An empty Phase means unknown; a label never proves liveness.
+type SandboxUsageMetadata struct {
+	Name  string
+	Phase string
+	Tier  string
+}
+
+// SandboxUsageMetadata resolves labels for both current and previous session
+// sandboxes, which outlive their workloads, alongside durable meter observations.
+func (s *PGStore) SandboxUsageMetadata(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]SandboxUsageMetadata, error) {
 	if tenantID == "" || len(sandboxIDs) == 0 {
 		return nil, nil
 	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT DISTINCT ON (sandbox) sandbox, label FROM (
+		`WITH labels AS (SELECT DISTINCT ON (sandbox) sandbox, label FROM (
 		     SELECT s.sandbox_id AS sandbox,
 		            CASE WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label,
 		            s.updated_at
@@ -153,60 +153,29 @@ func (s *PGStore) SandboxLabels(ctx context.Context, tenantID string, sandboxIDs
 		     JOIN agent_sessions s ON s.id = d.session_id
 		     WHERE s.workspace_id = $1 AND s.repo <> '' AND d.previous_sandbox_id = ANY($2::text[])
 		 ) AS labelled
-		 ORDER BY sandbox, updated_at DESC`,
+		 ORDER BY sandbox, updated_at DESC), meters AS (
+		 SELECT sandbox_id, phase, tier FROM sandbox_meter_states
+		 WHERE workspace_id = $1 AND sandbox_id = ANY($2::text[])
+		 )
+		 SELECT COALESCE(l.sandbox, m.sandbox_id), COALESCE(l.label, ''),
+		        COALESCE(m.phase, ''), COALESCE(m.tier, '')
+		 FROM labels l FULL JOIN meters m ON m.sandbox_id = l.sandbox`,
 		tenantID, sandboxIDs)
 	if err != nil {
-		return nil, classify("sandbox label", err)
+		return nil, classify("sandbox usage metadata", err)
 	}
 	defer rows.Close()
-	out := make(map[string]string, len(sandboxIDs))
-	for rows.Next() {
-		var id, label string
-		if err := rows.Scan(&id, &label); err != nil {
-			return nil, classify("sandbox label", err)
-		}
-		out[id] = label
-	}
-	if err := rows.Err(); err != nil {
-		return nil, classify("sandbox label", err)
-	}
-	return out, nil
-}
-
-// LiveSandboxes reports which of the given sandbox ids are still running, read
-// from the compute meter's own per-sandbox phase cursor (migration 0061).
-//
-// SandboxLabels deliberately answers for dead sandboxes — that is its whole
-// point — so a label is evidence of ownership, never of liveness. The meter
-// state is the durable signal: the poller writes phase 'terminated' when
-// OpenSandbox reports the sandbox gone, and every sandbox that ever accrued
-// usage has a row here by construction, because the same poller opens it.
-// A sandbox with no row at all is absent from the result: it never metered, so
-// there is nothing to claim about it either way (w4/129).
-func (s *PGStore) LiveSandboxes(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]bool, error) {
-	if tenantID == "" || len(sandboxIDs) == 0 {
-		return nil, nil
-	}
-	rows, err := s.Pool.Query(ctx,
-		`SELECT sandbox_id, phase <> 'terminated'
-		 FROM sandbox_meter_states
-		 WHERE workspace_id = $1 AND sandbox_id = ANY($2::text[])`,
-		tenantID, sandboxIDs)
-	if err != nil {
-		return nil, classify("sandbox meter state", err)
-	}
-	defer rows.Close()
-	out := make(map[string]bool, len(sandboxIDs))
+	out := make(map[string]SandboxUsageMetadata, len(sandboxIDs))
 	for rows.Next() {
 		var id string
-		var live bool
-		if err := rows.Scan(&id, &live); err != nil {
-			return nil, classify("sandbox meter state", err)
+		var metadata SandboxUsageMetadata
+		if err := rows.Scan(&id, &metadata.Name, &metadata.Phase, &metadata.Tier); err != nil {
+			return nil, classify("sandbox usage metadata", err)
 		}
-		out[id] = live
+		out[id] = metadata
 	}
 	if err := rows.Err(); err != nil {
-		return nil, classify("sandbox meter state", err)
+		return nil, classify("sandbox usage metadata", err)
 	}
 	return out, nil
 }

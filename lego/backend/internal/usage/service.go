@@ -69,10 +69,7 @@ type UsageStore interface {
 	// here while it is still alive.
 	ResourceDisplayNames(ctx context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error)
 	RecordResourceDisplayNames(ctx context.Context, tenantID string, records []store.ResourceDisplayName) error
-	SandboxLabels(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]string, error)
-	// LiveSandboxes is the liveness half SandboxLabels deliberately does not
-	// provide: a label resolves for a reaped sandbox, the meter phase does not.
-	LiveSandboxes(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]bool, error)
+	SandboxUsageMetadata(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]store.SandboxUsageMetadata, error)
 }
 
 // Service is the usage feature. Base carries the Kubernetes client, namespace,
@@ -173,11 +170,8 @@ type ServiceUsage struct {
 	// only when bex never recorded a name for the id at all, in which case
 	// presenters fall back to ServiceID.
 	ServiceName string
-	// Deleted reports that no live resource carries this id: the thing being
-	// billed for is gone. It is independent of ServiceName — a row can be
-	// deleted and unnamed at once (w4/129) — and stays false when the relevant
-	// live enumeration could not be performed, so a transient listing failure
-	// never tombstones a healthy workspace.
+	// Deleted reports confirmed absence or a terminated sandbox meter state,
+	// independently of name retention. Unknown inventory remains false.
 	Deleted      bool
 	ResourceKind string // store.ResourceKind* — "service", "postgres", "key_value", "sandbox"
 	Rows         []store.UsageSummaryRow
@@ -300,88 +294,49 @@ func (s *Service) readBilling(ctx context.Context, tenantID string, now time.Tim
 	return b
 }
 
-// resolveServiceNames fills each ServiceUsage's display name and its Deleted
-// flag.
-//
-// A billing line outlives the resource it bills for, so names cannot come from
-// live resources alone — that is exactly why a deleted service used to collapse
-// to a bare `srv-…` id and a sandbox, which has no name at all, was always a
-// bare UUID (w1/088). Resolution is therefore two-sided:
-//
-//  1. Live resources — Apps from the store, Database/KeyValue from their CRs,
-//     sandboxes from the compute meter's phase cursor. A live name always wins,
-//     so a renamed resource bills under its new name.
-//  2. The retained record — the last name bex knew for the id, plus the agent
-//     session that owned a sandbox. Used when the resource is gone.
-//
-// The name and the Deleted flag are resolved INDEPENDENTLY, which is w4/129's
-// fix. They used to share one branch — Deleted was set only where a retained
-// name happened to exist — so the two failed together: a resource created and
-// deleted between two usage reads was never captured, and came back as an
-// unnamed row claiming `deleted: false`, indistinguishable from a live service
-// whose name merely failed to resolve. That was 42 of 54 rows in one real
-// workspace. A usage row is proof the resource existed, so absence from a
-// live enumeration is itself the tombstone; the name is a separate, best-effort
-// lookup that may legitimately come back empty (presenters already fall back to
-// the id).
-//
-// Deletion is only ever claimed from an enumeration that actually answered. A
-// failed or unavailable listing yields no live set for that kind, and its rows
-// keep Deleted false rather than mass-tombstoning a healthy workspace on a
-// transient store or API-server error.
-//
-// It also writes step 1's names back into the retained record. This read is by
-// construction the one place every *metered* resource is enumerated, so
-// capturing here cannot miss a create path the way hooking four packages'
-// create verbs could — and "the name it had while the usage accrued" is
-// precisely the value the charge line wants. The write is best-effort: a
-// failure is logged and never fails the usage read.
-//
-// Keys pair ResourceKind with the id because different kinds may legally share
-// an id.
+// resolveServiceNames keeps attribution separate from existence: retained names
+// survive deletion, while only successful inventory reads establish absence.
+// Read-time capture refreshes names; collectors retain datastore names before
+// recording usage so deletion before the first billing read cannot lose them.
 func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs []ServiceUsage) {
 	if len(svcs) == 0 {
 		return
 	}
-	// names holds display names from any source; live holds ids an enumeration
-	// positively reported as still existing. A sandbox label is in the first and
-	// not the second on purpose — SandboxLabels answers for reaped sandboxes by
-	// design, so it names them without vouching for them.
+	wanted := map[string]bool{}
+	for _, svc := range svcs {
+		wanted[svc.ResourceKind] = true
+	}
 	names := map[string]string{}
 	live := map[string]bool{}
-	// enumerated records which kinds we can make a deletion claim about at all.
-	enumerated := map[string]bool{}
-	// sandboxPhase is per-id rather than per-kind: running / terminated /
-	// absent-because-never-metered are three distinct answers, and only the
-	// middle one is a tombstone.
-	var sandboxPhase map[string]bool
-
-	if apps, err := s.Store.ListApps(ctx); err != nil {
-		log.Printf("usage: resolve names: list apps: %v", err)
-	} else {
-		enumerated[store.ResourceKindService] = true
-		for _, app := range apps {
-			key := store.ResourceDisplayNameKey(store.ResourceKindService, app.ID)
-			names[key] = app.Name
-			live[key] = true
-		}
-	}
-	// listDatastores answers (nil, nil) with no Kubernetes client, which is an
-	// unwired store rather than an empty cluster — not evidence of deletion.
-	if s.Client != nil {
-		if datastores, err := s.listDatastores(ctx); err != nil {
-			log.Printf("usage: resolve names: list datastores: %v", err)
+	known := map[string]bool{}
+	if wanted[store.ResourceKindService] {
+		if apps, err := s.Store.ListApps(ctx); err != nil {
+			log.Printf("usage: resolve names: list apps: %v", err)
 		} else {
-			enumerated[store.ResourceKindPostgres] = true
-			enumerated[store.ResourceKindKeyValue] = true
-			for _, ds := range datastores {
-				key := store.ResourceDisplayNameKey(ds.Kind, ds.ID)
-				names[key] = ds.Display
-				live[key] = true
+			known[store.ResourceKindService] = true
+			for _, app := range apps {
+				if app.TenantID == tenantID {
+					key := store.ResourceDisplayNameKey(store.ResourceKindService, app.ID)
+					live[key] = true
+					names[key] = app.Name
+				}
 			}
 		}
 	}
-
+	if s.Client != nil && (wanted[store.ResourceKindPostgres] || wanted[store.ResourceKindKeyValue]) {
+		if datastores, err := s.listDatastores(ctx); err != nil {
+			log.Printf("usage: resolve names: list datastores: %v", err)
+		} else {
+			known[store.ResourceKindPostgres], known[store.ResourceKindKeyValue] = true, true
+			for _, ds := range datastores {
+				if ds.TenantID == tenantID {
+					key := store.ResourceDisplayNameKey(ds.Kind, ds.ID)
+					live[key] = true
+					names[key] = ds.Display
+				}
+			}
+		}
+	}
 	refs := make([]store.ResourceDisplayName, 0, len(svcs))
 	var sandboxIDs []string
 	for _, svc := range svcs {
@@ -390,52 +345,56 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 			sandboxIDs = append(sandboxIDs, svc.ServiceID)
 		}
 	}
+	sandboxMetadata := map[string]store.SandboxUsageMetadata{}
 	if len(sandboxIDs) > 0 {
-		if labels, err := s.Store.SandboxLabels(ctx, tenantID, sandboxIDs); err != nil {
-			log.Printf("usage: resolve names: sandbox labels: %v", err)
+		if metadata, err := s.Store.SandboxUsageMetadata(ctx, tenantID, sandboxIDs); err != nil {
+			log.Printf("usage: resolve names: sandbox metadata: %v", err)
 		} else {
-			for id, label := range labels {
-				names[store.ResourceDisplayNameKey(store.ResourceKindSandbox, id)] = label
+			sandboxMetadata = metadata
+			for id, m := range metadata {
+				key := store.ResourceDisplayNameKey(store.ResourceKindSandbox, id)
+				names[key] = m.Name
+				live[key] = m.Phase != "" && m.Phase != "terminated"
 			}
 		}
-		var err error
-		if sandboxPhase, err = s.Store.LiveSandboxes(ctx, tenantID, sandboxIDs); err != nil {
-			log.Printf("usage: resolve names: sandbox meter states: %v", err)
-		}
 	}
-
 	retained, err := s.Store.ResourceDisplayNames(ctx, tenantID, refs)
 	if err != nil {
 		log.Printf("usage: resolve names: retained names: %v", err)
 	}
-
-	capture := make([]store.ResourceDisplayName, 0, len(svcs))
+	var capture []store.ResourceDisplayName
 	for i := range svcs {
-		key := store.ResourceDisplayNameKey(svcs[i].ResourceKind, svcs[i].ServiceID)
-		if svcs[i].ResourceKind == store.ResourceKindSandbox {
-			running, known := sandboxPhase[svcs[i].ServiceID]
-			svcs[i].Deleted = known && !running
-			live[key] = running
-		} else {
-			// Gone unless an enumeration that ran says otherwise.
-			svcs[i].Deleted = enumerated[svcs[i].ResourceKind] && !live[key]
+		svc := &svcs[i]
+		key := store.ResourceDisplayNameKey(svc.ResourceKind, svc.ServiceID)
+		svc.ServiceName = names[key]
+		if svc.ServiceName == "" {
+			svc.ServiceName = retained[key]
+		} else if live[key] && retained[key] != svc.ServiceName {
+			capture = append(capture, store.ResourceDisplayName{Kind: svc.ResourceKind, ID: svc.ServiceID, Name: svc.ServiceName})
 		}
-		if name, ok := names[key]; ok && name != "" {
-			svcs[i].ServiceName = name
-			// Retain only names of resources still standing: capturing a dead
-			// sandbox's session label would keep rewriting the record long after
-			// the sandbox it describes is gone.
-			if live[key] && retained[key] != name {
-				capture = append(capture, store.ResourceDisplayName{
-					Kind: svcs[i].ResourceKind, ID: svcs[i].ServiceID, Name: name,
-				})
+		svc.Deleted = known[svc.ResourceKind] && !live[key]
+		if svc.ResourceKind == store.ResourceKindSandbox {
+			svc.Deleted = sandboxMetadata[svc.ServiceID].Phase == "terminated"
+			if svc.ServiceName == "" {
+				tier := sandboxMetadata[svc.ServiceID].Tier
+				if tier == "" {
+					candidates := map[string]bool{}
+					for _, row := range svc.Rows {
+						if row.Tier != "" {
+							candidates[row.Tier] = true
+						}
+					}
+					if len(candidates) == 1 {
+						for candidate := range candidates {
+							tier = candidate
+						}
+					}
+				}
+				if tier != "" {
+					svc.ServiceName = tier + " sandbox"
+				}
 			}
-			continue
 		}
-		// Nothing current names it: the retained record is the last name bex
-		// knew. Empty here means bex never recorded one, and the row bills under
-		// its bare id — correct, and now correctly marked deleted besides.
-		svcs[i].ServiceName = retained[key]
 	}
 	if len(capture) > 0 {
 		if err := s.Store.RecordResourceDisplayNames(ctx, tenantID, capture); err != nil {
@@ -803,9 +762,7 @@ func (s *Service) catchUp(ctx context.Context) {
 		log.Printf("usage: catch-up: list datastores: %v", err)
 		return
 	}
-	for _, ds := range datastores {
-		s.catchUpDatastoreThrough(ctx, ds, last)
-	}
+	s.meterDatastoresThrough(ctx, datastores, last)
 	s.reconcileSourceInventory(ctx, apps, datastores, last.Add(time.Hour))
 }
 
@@ -829,12 +786,55 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 		log.Printf("usage: rollup: list datastores: %v", err)
 		return
 	}
-	for _, ds := range datastores {
-		s.catchUpDatastoreThrough(ctx, ds, window)
-	}
+	s.meterDatastoresThrough(ctx, datastores, window)
 	s.reconcileSourceInventory(ctx, apps, datastores, window.Add(time.Hour))
 	log.Printf("usage: rolled up window %s for %d services + %d datastores",
 		window.Format(time.RFC3339), len(apps), len(datastores))
+}
+
+// meterDatastoresThrough retains attribution before writing usage. A failed
+// workspace is left retryable without stopping other workspaces' meters.
+func (s *Service) meterDatastoresThrough(ctx context.Context, datastores []datastoreEntry, last time.Time) {
+	byTenant := map[string][]datastoreEntry{}
+	for _, ds := range datastores {
+		byTenant[ds.TenantID] = append(byTenant[ds.TenantID], ds)
+	}
+	for tenant, entries := range byTenant {
+		var captureErr error
+		records := make([]store.ResourceDisplayName, 0, len(entries))
+		for _, ds := range entries {
+			if ds.Display == "" {
+				captureErr = fmt.Errorf("datastore %s/%s has no display name", ds.Kind, ds.ID)
+				break
+			}
+			records = append(records, store.ResourceDisplayName{Kind: ds.Kind, ID: ds.ID, Name: ds.Display})
+		}
+		if captureErr == nil {
+			captureErr = s.Store.RecordResourceDisplayNames(ctx, tenant, records)
+		}
+		if captureErr != nil {
+			log.Printf("usage: retain datastore names for workspace %s before metering: %v", tenant, captureErr)
+		}
+		var health []store.UsageSourceRecord
+		for _, ds := range entries {
+			if captureErr == nil {
+				s.catchUpDatastoreThrough(ctx, ds, last)
+				continue
+			}
+			egressSource := store.UsageSourcePostgres
+			if ds.Kind == store.ResourceKindKeyValue {
+				egressSource = store.UsageSourceKeyValue
+			}
+			for kind, source := range map[string]string{store.UsageKindInstanceSeconds: store.UsageSourceInstance, store.UsageKindStorageGBSeconds: store.UsageSourceStorage, store.UsageKindEgressBytes: egressSource} {
+				health = append(health, store.UsageSourceRecord{WorkspaceID: tenant, ResourceKind: ds.Kind, ServiceID: ds.ID, Kind: kind, WindowStart: last, UsageSourceObservation: store.UsageSourceObservation{Source: source, State: store.UsageSourceUnavailable, ExpectedFrom: usageExpectedFrom(ds.CreatedAt)}})
+			}
+		}
+		if len(health) > 0 {
+			if err := s.Store.RecordUsageSourceHealth(ctx, health); err != nil {
+				log.Printf("usage: record unavailable datastore health for workspace %s: %v", tenant, err)
+			}
+		}
+	}
 }
 
 func (s *Service) reconcileSourceInventory(ctx context.Context, apps []store.App, datastores []datastoreEntry, through time.Time) {

@@ -64,15 +64,15 @@ type memUsageStore struct {
 	// the capture happens (and happens only for changed names).
 	retained map[string]map[string]string
 	recorded []store.ResourceDisplayName
-	// sandboxLabels stands in for the agent-session join.
-	sandboxLabels map[string]string
-	// liveSandboxes stands in for the compute meter's phase cursor: true means
-	// still running, false means terminated, absent means never metered. Nil
-	// leaves every sandbox unknown, which is the pre-w4/129 shape.
-	liveSandboxes map[string]bool
-	// listAppsErr makes the live-App enumeration fail, so a test can assert the
-	// resolver claims no deletions it could not verify.
-	listAppsErr error
+	// sandboxMetadata carries session labels and independently observed meter state.
+	sandboxMetadata map[string]store.SandboxUsageMetadata
+	namesErr        error
+	namesFailTenant string
+	healthRecords   []store.UsageSourceRecord
+	healthWrites    int
+	appsLists       int
+	appsErr         error
+	sandboxErr      error
 }
 
 func (m *memUsageStore) ResourceDisplayNames(_ context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error) {
@@ -89,6 +89,9 @@ func (m *memUsageStore) ResourceDisplayNames(_ context.Context, tenantID string,
 }
 
 func (m *memUsageStore) RecordResourceDisplayNames(_ context.Context, tenantID string, records []store.ResourceDisplayName) error {
+	if m.namesErr != nil && (m.namesFailTenant == "" || m.namesFailTenant == tenantID) {
+		return m.namesErr
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.retained == nil {
@@ -104,25 +107,16 @@ func (m *memUsageStore) RecordResourceDisplayNames(_ context.Context, tenantID s
 	return nil
 }
 
-func (m *memUsageStore) LiveSandboxes(_ context.Context, _ string, sandboxIDs []string) (map[string]bool, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	out := map[string]bool{}
-	for _, id := range sandboxIDs {
-		if live, ok := m.liveSandboxes[id]; ok {
-			out[id] = live
-		}
+func (m *memUsageStore) SandboxUsageMetadata(_ context.Context, _ string, sandboxIDs []string) (map[string]store.SandboxUsageMetadata, error) {
+	if m.sandboxErr != nil {
+		return nil, m.sandboxErr
 	}
-	return out, nil
-}
-
-func (m *memUsageStore) SandboxLabels(_ context.Context, _ string, sandboxIDs []string) (map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	out := map[string]string{}
+	out := map[string]store.SandboxUsageMetadata{}
 	for _, id := range sandboxIDs {
-		if label := m.sandboxLabels[id]; label != "" {
-			out[id] = label
+		if metadata, ok := m.sandboxMetadata[id]; ok {
+			out[id] = metadata
 		}
 	}
 	return out, nil
@@ -152,7 +146,11 @@ func (m *memUsageStore) LatestUsageWindowForKind(_ context.Context, kind string)
 	return latest, found, nil
 }
 
-func (m *memUsageStore) RecordUsageSourceHealth(_ context.Context, _ []store.UsageSourceRecord) error {
+func (m *memUsageStore) RecordUsageSourceHealth(_ context.Context, records []store.UsageSourceRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.healthRecords = append(m.healthRecords, records...)
+	m.healthWrites++
 	return nil
 }
 
@@ -219,8 +217,11 @@ func TestEgressQuerySourcesMatchPersistedVocabulary(t *testing.T) {
 }
 
 func (m *memUsageStore) ListApps(_ context.Context) ([]store.App, error) {
-	if m.listAppsErr != nil {
-		return nil, m.listAppsErr
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.appsLists++
+	if m.appsErr != nil {
+		return nil, m.appsErr
 	}
 	return m.apps, nil
 }
@@ -1204,7 +1205,7 @@ func buildFakeClientWithDatastores(t *testing.T) client.Client {
 				core.LabelTenant: "tea-ds",
 			},
 		},
-		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-256mb"},
+		Spec: appv1alpha1.DatabaseSpec{Name: "orders-db", Plan: "basic-256mb"},
 	}
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1214,7 +1215,7 @@ func buildFakeClientWithDatastores(t *testing.T) client.Client {
 				core.LabelTenant: "tea-ds",
 			},
 		},
-		Spec: appv1alpha1.KeyValueSpec{Plan: "starter"},
+		Spec: appv1alpha1.KeyValueSpec{Name: "cache", Plan: "starter"},
 	}
 	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(db, kv).Build()
 }

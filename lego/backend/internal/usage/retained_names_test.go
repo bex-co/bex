@@ -19,6 +19,8 @@ package usage
 import (
 	"context"
 	"errors"
+	"maps"
+	"reflect"
 	"testing"
 	"time"
 
@@ -156,7 +158,7 @@ func TestFailedEnumerationNeverTombstones(t *testing.T) {
 		{Kind: store.ResourceKindService, ID: "srv-live"},
 		{Kind: store.ResourceKindPostgres, ID: "dpg-live"},
 	})
-	st.listAppsErr = errors.New("control-plane unavailable")
+	st.appsErr = errors.New("control-plane unavailable")
 
 	// No Kubernetes client either, so the datastore listing cannot run.
 	got := namedByID(t, monthToDate(t, svcWithTenant(st, tenant)))
@@ -172,7 +174,7 @@ func TestFailedEnumerationNeverTombstones(t *testing.T) {
 // owned) it — which is what names the UUIDs no live sandbox query lists. Its
 // liveness is a separate question, answered by the compute meter's phase cursor:
 // a session label resolves for a reaped sandbox by design (that is the whole
-// point of SandboxLabels), so it can never stand in for one (w4/129).
+// point of historical attribution), so it can never stand in for one (w4/129).
 func TestSandboxRowsAreLabelledNotBareUUIDs(t *testing.T) {
 	const tenant = "tea-001"
 	st := meteredStore(t, tenant, []store.ResourceDisplayName{
@@ -181,20 +183,23 @@ func TestSandboxRowsAreLabelledNotBareUUIDs(t *testing.T) {
 		{Kind: store.ResourceKindSandbox, ID: "reaped-with-session-label"},
 		{Kind: store.ResourceKindSandbox, ID: "unknowable"},
 	})
-	st.sandboxLabels = map[string]string{
-		"271ec9ce-a32b-4128-bb43-02a9e57b01b6": "bex-co/bex (main)",
-		"reaped-with-session-label":            "acme/api (main)",
+	st.sandboxMetadata = map[string]store.SandboxUsageMetadata{
+		"271ec9ce-a32b-4128-bb43-02a9e57b01b6": {Name: "bex-co/bex (main)", Phase: "running"},
+		"reaped-with-session-label":            {Name: "acme/api (main)", Phase: "terminated"},
+		"reaped-with-retained-name":            {Phase: "terminated"},
 	}
+
 	st.retained = map[string]map[string]string{tenant: {
 		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "reaped-with-retained-name"): "acme/site (fix-nav)",
 	}}
-	st.liveSandboxes = map[string]bool{
-		"271ec9ce-a32b-4128-bb43-02a9e57b01b6": true,
-		"reaped-with-retained-name":            false,
-		"reaped-with-session-label":            false,
-	}
 
 	got := namedByID(t, monthToDate(t, svcWithTenant(st, tenant)))
+
+	for _, record := range st.recorded {
+		if record.ID != "271ec9ce-a32b-4128-bb43-02a9e57b01b6" {
+			t.Fatalf("rewrote retained attribution for a deleted or unknown sandbox: %+v", record)
+		}
+	}
 
 	if svc := got["271ec9ce-a32b-4128-bb43-02a9e57b01b6"]; svc.ServiceName != "bex-co/bex (main)" || svc.Deleted {
 		t.Errorf("running session-owned sandbox = %q deleted=%v, want the repo label and deleted=false", svc.ServiceName, svc.Deleted)
@@ -206,14 +211,13 @@ func TestSandboxRowsAreLabelledNotBareUUIDs(t *testing.T) {
 	if svc := got["reaped-with-session-label"]; svc.ServiceName != "acme/api (main)" || !svc.Deleted {
 		t.Errorf("reaped labelled sandbox = %q deleted=%v, want the label and deleted=true", svc.ServiceName, svc.Deleted)
 	}
-	// Never metered, so the phase cursor has no row: nothing is claimed.
-	if svc := got["unknowable"]; svc.ServiceName != "" || svc.Deleted {
-		t.Errorf("sandbox bex never knew = %q deleted=%v, want empty and deleted=false", svc.ServiceName, svc.Deleted)
+	// No phase cursor exists: billing tier can label it, but deletion is unknown.
+	if svc := got["unknowable"]; svc.ServiceName != "starter sandbox" || svc.Deleted {
+		t.Errorf("sandbox bex never knew = %q deleted=%v, want tier fallback and deleted=false", svc.ServiceName, svc.Deleted)
 	}
 }
 
-// The usage read is the capture point: it enumerates every metered resource, so
-// a name recorded here cannot miss a create path.
+// Usage reads refresh changed names for resources confirmed still present.
 func TestUsageReadRetainsLiveNamesAndSkipsUnchangedOnes(t *testing.T) {
 	const tenant = "tea-001"
 	renamed := store.App{ID: "srv-renamed", TenantID: tenant, Name: "new-name", Tier: "starter"}
@@ -272,9 +276,7 @@ func TestResourceEstimatesCarryTheNameAndDeletedFlag(t *testing.T) {
 }
 
 // TestShortLivedResourceIsTombstonedWithoutARetainedName reproduces w4/129
-// directly: a resource created and deleted between two usage reads is never
-// captured by the retained-name record, because the usage read is the capture
-// point and it never saw the resource alive. Before the fix that row came back
+// directly for historical usage without retained attribution. Before the fix it came back
 // `serviceName: ""` and `deleted: false` — a bare id indistinguishable from a
 // live service whose name failed to resolve. In one real workspace 42 of 54
 // rows looked like this, against 2 correctly tombstoned ones.
@@ -309,5 +311,158 @@ func TestShortLivedResourceIsTombstonedWithoutARetainedName(t *testing.T) {
 		if s.ServiceName != "" {
 			t.Errorf("%s = %q, want empty (presenters fall back to the id)", id, s.ServiceName)
 		}
+	}
+}
+
+type failedNameInventoryClient struct{ client.Client }
+
+func (failedNameInventoryClient) List(context.Context, client.ObjectList, ...client.ListOption) error {
+	return errors.New("inventory unavailable")
+}
+
+func TestNameResolutionSeparatesAbsenceFromAttribution(t *testing.T) {
+	const tenant = "tea-001"
+	for _, fail := range []bool{false, true} {
+		st := newMemUsageStore(store.App{ID: "foreign", TenantID: "tea-other", Name: "private-name"})
+		st.retained = map[string]map[string]string{tenant: {"service/gone": "old-api", "postgres/db": "old-db", "sandbox/old": "repo/retained"}}
+		st.sandboxMetadata = map[string]store.SandboxUsageMetadata{
+			"old": {Tier: "standard", Phase: "terminated"}, "active": {Name: "repo/live", Phase: "running"}, "paused": {Tier: "starter", Phase: "suspended"}, "historic": {Name: "repo/history"},
+		}
+		svc := svcWithTenant(st, tenant)
+		svc.Client = buildFakeClientWithDatastores(t) // only another tenant's CRs
+		if fail {
+			st.appsErr = errors.New("apps unavailable")
+			st.sandboxErr = errors.New("metadata unavailable")
+			svc.Client = failedNameInventoryClient{svc.Client}
+		}
+		rows := []ServiceUsage{{ServiceID: "gone", ResourceKind: "service"}, {ServiceID: "foreign", ResourceKind: "service"}, {ServiceID: "db", ResourceKind: "postgres"}, {ServiceID: "old", ResourceKind: "sandbox"}, {ServiceID: "active", ResourceKind: "sandbox"}, {ServiceID: "paused", ResourceKind: "sandbox"}, {ServiceID: "historic", ResourceKind: "sandbox"}}
+		svc.resolveServiceNames(context.Background(), tenant, rows)
+		for _, row := range rows {
+			wantDeleted := !fail && (row.ResourceKind != "sandbox" || row.ServiceID == "old")
+			if row.Deleted != wantDeleted {
+				t.Errorf("failure=%v row=%+v wantdeleted=%v", fail, row, wantDeleted)
+			}
+			if row.ServiceName == "private-name" {
+				t.Fatal("foreign workspace name leaked")
+			}
+		}
+		if rows[0].ServiceName != "old-api" || rows[2].ServiceName != "old-db" || rows[3].ServiceName != "repo/retained" {
+			t.Fatalf("retained attribution lost: %+v", rows)
+		}
+		if !fail && rows[5].ServiceName != "starter sandbox" {
+			t.Fatalf("meter tier fallback absent: %+v", rows[5])
+		}
+	}
+}
+
+func TestDatastoreCollectorRetainsNamesBeforeFirstUsageRead(t *testing.T) {
+	for _, captureFails := range []bool{false, true} {
+		t.Run(map[bool]string{false: "meter-delete-read", true: "capture-failure"}[captureFails], func(t *testing.T) {
+			st := newMemUsageStore()
+			if captureFails {
+				st.namesErr = errors.New("name store unavailable")
+			}
+			svc := svcWithTenant(st, "tea-ds")
+			svc.Client = buildFakeClientWithDatastores(t)
+			prom := fakeProm(1)
+			defer prom.Close()
+			svc.PromBase = prom.URL
+			svc.rollup(context.Background(), time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC))
+			if captureFails {
+				if len(st.rows) != 0 {
+					t.Fatalf("capture failure wrote %d usage rows", len(st.rows))
+				}
+				return
+			}
+			if len(st.rows) == 0 {
+				t.Fatal("collector recorded no usage")
+			}
+			if st.retained["tea-ds"]["postgres/mydb"] != "orders-db" || st.retained["tea-ds"]["key_value/mykv"] != "cache" {
+				t.Fatalf("collector did not retain inventory names: %+v", st.retained)
+			}
+			rowsBefore := maps.Clone(st.rows)
+			var dbs appv1alpha1.DatabaseList
+			var kvs appv1alpha1.KeyValueList
+			if err := svc.Client.List(context.Background(), &dbs); err != nil {
+				t.Fatal(err)
+			}
+			if err := svc.Client.List(context.Background(), &kvs); err != nil {
+				t.Fatal(err)
+			}
+			for i := range dbs.Items {
+				if err := svc.Client.Delete(context.Background(), &dbs.Items[i]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for i := range kvs.Items {
+				if err := svc.Client.Delete(context.Background(), &kvs.Items[i]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			got := namedByID(t, monthToDate(t, svc))
+			for id, name := range map[string]string{"mydb": "orders-db", "mykv": "cache"} {
+				if got[id].ServiceName != name || !got[id].Deleted {
+					t.Fatalf("deleted datastore %s = %+v", id, got[id])
+				}
+			}
+			if !reflect.DeepEqual(rowsBefore, st.rows) {
+				t.Fatal("name resolution changed usage quantities")
+			}
+		})
+	}
+}
+
+func TestDatastoreNameCaptureFailureIsIsolatedByWorkspace(t *testing.T) {
+	st := newMemUsageStore()
+	st.namesErr = errors.New("tenant name write failed")
+	st.namesFailTenant = "tea-bad"
+	svc := svcWithTenant(st, "tea-good")
+	prom := fakeProm(1)
+	defer prom.Close()
+	svc.PromBase = prom.URL
+	last := time.Date(2026, 7, 10, 8, 0, 0, 0, time.UTC)
+	svc.meterDatastoresThrough(context.Background(), []datastoreEntry{
+		{ID: "bad", Name: "bad", Display: "bad database", TenantID: "tea-bad", Kind: store.ResourceKindPostgres, Plan: "basic-256mb"},
+		{ID: "good", Name: "good", Display: "good database", TenantID: "tea-good", Kind: store.ResourceKindPostgres, Plan: "basic-256mb"},
+	}, last)
+	if len(st.rows) == 0 {
+		t.Fatal("healthy workspace was not metered")
+	}
+	for _, row := range st.rows {
+		if row.WorkspaceID != "tea-good" {
+			t.Fatalf("failed retention wrote usage: %+v", row)
+		}
+	}
+	if len(st.healthRecords) != 3 || st.healthWrites != 1 {
+		t.Fatalf("failed meter health records=%+v", st.healthRecords)
+	}
+	for _, record := range st.healthRecords {
+		if record.WorkspaceID != "tea-bad" || record.State != store.UsageSourceUnavailable {
+			t.Fatalf("wrong failure evidence: %+v", record)
+		}
+	}
+}
+
+type unexpectedNameInventoryClient struct {
+	client.Client
+	t *testing.T
+}
+
+func (c unexpectedNameInventoryClient) List(context.Context, client.ObjectList, ...client.ListOption) error {
+	c.t.Error("irrelevant Kubernetes inventory scan")
+	return errors.New("unexpected scan")
+}
+func TestSandboxOnlyNameResolutionSkipsUnrelatedInventory(t *testing.T) {
+	st := newMemUsageStore()
+	st.sandboxMetadata = map[string]store.SandboxUsageMetadata{"sbx": {Name: "repo/sandbox", Phase: "terminated"}}
+	svc := svcWithTenant(st, "tea-a")
+	svc.Client = unexpectedNameInventoryClient{t: t}
+	rows := []ServiceUsage{{ServiceID: "sbx", ResourceKind: store.ResourceKindSandbox}}
+	svc.resolveServiceNames(context.Background(), "tea-a", rows)
+	if st.appsLists != 0 {
+		t.Fatalf("sandbox-only summary listed apps %d times", st.appsLists)
+	}
+	if rows[0].ServiceName != "repo/sandbox" || !rows[0].Deleted {
+		t.Fatalf("sandbox attribution=%+v", rows[0])
 	}
 }

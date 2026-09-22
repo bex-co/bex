@@ -82,9 +82,7 @@ var resourceEstimateGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"serviceId":   gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.ServiceID }),
 		"serviceName": gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.ServiceName }),
-		// deleted: the resource is gone but bex retained the name the charge
-		// accrued under (w2/m96). Empty serviceName + deleted:false is the
-		// pre-retention row that has no name at all.
+		// deleted reports confirmed absence independently of name retention.
 		"deleted":      gqlutil.BoolField(func(r pricing.ResourceEstimate) any { return r.Deleted }),
 		"resourceKind": gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.ResourceKind }),
 		"costUsd":      gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.CostUSD }),

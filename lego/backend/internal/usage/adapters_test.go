@@ -715,14 +715,15 @@ func TestRetainedNamesAgreeAcrossAdapters(t *testing.T) {
 	st := meteredStore(t, tenant, []store.ResourceDisplayName{
 		{Kind: store.ResourceKindService, ID: "srv-gone"},
 		{Kind: store.ResourceKindSandbox, ID: "sbx-gone"},
+		{Kind: store.ResourceKindService, ID: "srv-unnamed"},
+		{Kind: store.ResourceKindSandbox, ID: "sbx-session-ended"},
+		{Kind: store.ResourceKindSandbox, ID: "sbx-unknown"},
 	})
 	st.retained = map[string]map[string]string{tenant: {
 		store.ResourceDisplayNameKey(store.ResourceKindService, "srv-gone"): "checkout-api",
 		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "sbx-gone"): "bex-co/bex (main)",
 	}}
-	// The sandbox's tombstone comes from the compute meter's phase cursor, not
-	// from its retained name (w4/129).
-	st.liveSandboxes = map[string]bool{"sbx-gone": false}
+	st.sandboxMetadata = map[string]store.SandboxUsageMetadata{"sbx-gone": {Phase: "terminated"}, "sbx-session-ended": {Name: "repo/deleted", Phase: "terminated"}, "sbx-unknown": {Name: "repo/history"}}
 	svc := svcWithTenant(st, tenant)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
 
@@ -745,10 +746,16 @@ func TestRetainedNamesAgreeAcrossAdapters(t *testing.T) {
 	restNamed := map[string]named{}
 	for _, e := range restResp.Services {
 		restNamed[e.ResourceKind+"/"+e.ServiceID] = named{e.ServiceName, e.Deleted}
+		if len(e.Rows) != 1 || e.Rows[0].Total != 3600 {
+			t.Fatalf("attribution changed quantities: %+v", e)
+		}
 	}
 	want := map[string]named{
-		store.ResourceKindService + "/srv-gone": {"checkout-api", true},
-		store.ResourceKindSandbox + "/sbx-gone": {"bex-co/bex (main)", true},
+		store.ResourceKindService + "/srv-gone":          {"checkout-api", true},
+		store.ResourceKindSandbox + "/sbx-gone":          {"bex-co/bex (main)", true},
+		store.ResourceKindService + "/srv-unnamed":       {"", true},
+		store.ResourceKindSandbox + "/sbx-session-ended": {"repo/deleted", true},
+		store.ResourceKindSandbox + "/sbx-unknown":       {"repo/history", false},
 	}
 	if !reflect.DeepEqual(restNamed, want) {
 		t.Fatalf("REST = %+v, want %+v", restNamed, want)

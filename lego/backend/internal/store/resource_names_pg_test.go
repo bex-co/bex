@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -155,10 +156,10 @@ func TestResourceDisplayNamesPG(t *testing.T) {
 	}
 }
 
-// SandboxLabels is what names a metered sandbox UUID: the agent session that
+// SandboxUsageMetadata is what names a metered sandbox UUID: the agent session that
 // owns it, or — once it has been rehydrated onto a new sandbox — the dispatch
 // that records the one it came from.
-func TestSandboxLabelsPG(t *testing.T) {
+func TestSandboxUsageMetadataPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
 		t.Skip("BEX_TEST_DB_URI not set")
@@ -193,28 +194,75 @@ func TestSandboxLabelsPG(t *testing.T) {
 		t.Fatalf("seed dispatch: %v", err)
 	}
 
-	got, err := st.SandboxLabels(ctx, tenant.ID, []string{"sbx-current", "sbx-previous", "sbx-nobranch", "sbx-unknown"})
+	other, err := st.CreateWorkspace(ctx, "other-labels", PlanPro, "identity-other")
 	if err != nil {
-		t.Fatalf("SandboxLabels: %v", err)
+		t.Fatal(err)
 	}
-	for id, want := range map[string]string{
-		"sbx-current":  "bex-co/bex (main)",
-		"sbx-previous": "bex-co/bex (main)",
-		"sbx-nobranch": "acme/site",
+	at := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	for _, obs := range []SandboxMeterObservation{
+		{WorkspaceID: tenant.ID, SandboxID: "sbx-current", Phase: "running", Tier: "starter"},
+		{WorkspaceID: tenant.ID, SandboxID: "sbx-previous", Phase: "terminated", Tier: "starter"},
+		{WorkspaceID: tenant.ID, SandboxID: "sbx-suspended", Phase: "suspended", Tier: "standard"},
+		{WorkspaceID: tenant.ID, SandboxID: "sbx-deleted", Phase: "running", Tier: "standard"},
+		// Same ID in a different tenant must not supply a lifecycle or tier.
+		{WorkspaceID: other.ID, SandboxID: "sbx-nobranch", Phase: "terminated", Tier: "pro"},
+		{WorkspaceID: other.ID, SandboxID: "sbx-unknown", Phase: "running", Tier: "pro"},
 	} {
-		if got[id] != want {
-			t.Errorf("%s = %q, want %q", id, got[id], want)
+		obs.WeightMilli, obs.ObservedAt = 553, at
+		if err := st.ObserveSandboxMeter(ctx, obs); err != nil {
+			t.Fatal(err)
 		}
 	}
-	if label, ok := got["sbx-unknown"]; ok {
-		t.Errorf("a sandbox with no session resolved to %q, want absent", label)
+	// Complete-list disappearance is durable even for a sandbox with no session.
+	if err := st.TerminateMissingSandboxMeters(ctx, tenant.ID,
+		[]string{"sbx-current", "sbx-suspended"}, at.Add(time.Minute)); err != nil {
+		t.Fatal(err)
 	}
+
+	got, err := st.SandboxUsageMetadata(ctx, tenant.ID, []string{"sbx-current", "sbx-previous", "sbx-nobranch", "sbx-unknown", "sbx-suspended", "sbx-deleted"})
+	if err != nil {
+		t.Fatalf("SandboxUsageMetadata: %v", err)
+	}
+	if label, ok := got["sbx-unknown"]; ok {
+		t.Errorf("an unknown sandbox resolved to %+v, want absent", label)
+	}
+	for sandboxID, want := range map[string]SandboxUsageMetadata{
+		"sbx-current":   {Name: "bex-co/bex (main)", Phase: "running", Tier: "starter"},
+		"sbx-previous":  {Name: "bex-co/bex (main)", Phase: "terminated", Tier: "starter"},
+		"sbx-nobranch":  {Name: "acme/site"},
+		"sbx-suspended": {Phase: "suspended", Tier: "standard"},
+		"sbx-deleted":   {Phase: "terminated", Tier: "standard"},
+	} {
+		if got[sandboxID] != want {
+			t.Errorf("metadata %s = %+v, want %+v", sandboxID, got[sandboxID], want)
+		}
+	}
+	foreign, err := st.SandboxUsageMetadata(ctx, other.ID, []string{"sbx-current", "sbx-nobranch"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := foreign["sbx-current"]; exists {
+		t.Fatal("foreign session name or meter leaked")
+	}
+	if foreign["sbx-nobranch"] != (SandboxUsageMetadata{Phase: "terminated", Tier: "pro"}) {
+		t.Fatalf("foreign metadata = %+v", foreign)
+	}
+	for _, args := range []struct {
+		tenant string
+		ids    []string
+	}{{tenant: tenant.ID}, {ids: []string{"sbx-current"}}} {
+		metadata, err := st.SandboxUsageMetadata(ctx, args.tenant, args.ids)
+		if err != nil || len(metadata) != 0 {
+			t.Fatalf("empty lookup = %+v, %v", metadata, err)
+		}
+	}
+
 }
 
-// LiveSandboxes answers the question SandboxLabels deliberately cannot: whether
+// Meter phases answer the question historical session labels cannot: whether
 // the sandbox behind a charge line still exists. Three outcomes, not two —
 // running, terminated, and never metered (w4/129).
-func TestLiveSandboxesPG(t *testing.T) {
+func TestSandboxUsageMetadataMeterOnlyPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
 		t.Skip("BEX_TEST_DB_URI not set")
@@ -250,16 +298,16 @@ func TestLiveSandboxesPG(t *testing.T) {
 		t.Fatalf("seed meter states: %v", err)
 	}
 
-	got, err := st.LiveSandboxes(ctx, tenant.ID,
+	got, err := st.SandboxUsageMetadata(ctx, tenant.ID,
 		[]string{"sbx-running", "sbx-terminated", "sbx-never-metered", "sbx-other-workspace"})
 	if err != nil {
-		t.Fatalf("LiveSandboxes: %v", err)
+		t.Fatalf("SandboxUsageMetadata: %v", err)
 	}
-	if live, ok := got["sbx-running"]; !ok || !live {
-		t.Errorf("sbx-running = %v (present %v), want true", live, ok)
+	if metadata, ok := got["sbx-running"]; !ok || metadata != (SandboxUsageMetadata{Phase: "running", Tier: "standard"}) {
+		t.Errorf("sbx-running = %+v (present %v), want running standard", metadata, ok)
 	}
-	if live, ok := got["sbx-terminated"]; !ok || live {
-		t.Errorf("sbx-terminated = %v (present %v), want false", live, ok)
+	if metadata, ok := got["sbx-terminated"]; !ok || metadata != (SandboxUsageMetadata{Phase: "terminated", Tier: "standard"}) {
+		t.Errorf("sbx-terminated = %+v (present %v), want terminated standard", metadata, ok)
 	}
 	// Absent, not false: nothing is known, so nothing may be claimed.
 	if live, ok := got["sbx-never-metered"]; ok {
