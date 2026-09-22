@@ -44,47 +44,7 @@ type bexTool struct {
 func enumerateBexTools(t *testing.T) []bexTool {
 	t.Helper()
 
-	// Populate every feature-service field so features() surfaces all of them.
-	// The inner *core.Base staying nil is fine: registration only reads the
-	// pointer. Mirrors the reflection walk in TestAuthzGuardsEveryVerb.
-	baseType := reflect.TypeOf(&core.Base{})
-	embedsBase := func(st reflect.Type) bool {
-		for i := 0; i < st.NumField(); i++ {
-			if f := st.Field(i); f.Anonymous && f.Type == baseType {
-				return true
-			}
-		}
-		return false
-	}
-	srv := &Server{}
-	v := reflect.ValueOf(srv).Elem()
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		if f.Kind() != reflect.Ptr || f.Type().Elem().Kind() != reflect.Struct || !f.CanSet() {
-			continue
-		}
-		if embedsBase(f.Type().Elem()) {
-			f.Set(reflect.New(f.Type().Elem()))
-		}
-	}
-
-	ctx := context.Background()
-	serverT, clientT := mcp.NewInMemoryTransports()
-	go func() { _ = srv.MCPServer().Run(ctx, serverT) }()
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "bex-parity-guard", Version: "0"}, nil).
-		Connect(ctx, clientT, nil)
-	if err != nil {
-		t.Fatalf("connect to in-process MCP server: %v", err)
-	}
-	t.Cleanup(func() { _ = cs.Close() })
-
-	res, err := cs.ListTools(ctx, nil)
-	if err != nil {
-		t.Fatalf("ListTools: %v", err)
-	}
-	if len(res.Tools) == 0 {
-		t.Fatal("no tools registered — the guard would be vacuous")
-	}
+	res := listBexTools(t, fullyWiredServer())
 
 	out := make([]bexTool, 0, len(res.Tools))
 	for _, x := range res.Tools {
@@ -313,4 +273,56 @@ func TestMCPDivergenceMessage(t *testing.T) {
 	if safe.breaksCompatibility() {
 		t.Errorf("extra optional args must not break compatibility: %s", safe)
 	}
+}
+
+// listBexTools runs the fully-wired server in process and returns its own
+// tools/list. Shared with the tool-identity guard (w4/113), which needs the
+// descriptions and raw schemas enumerateBexTools deliberately drops.
+func listBexTools(t *testing.T, srv *Server) *mcp.ListToolsResult {
+	t.Helper()
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	go func() { _ = srv.MCPServer().Run(ctx, serverT) }()
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "bex-parity-guard", Version: "0"}, nil).
+		Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("connect to in-process MCP server: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+
+	res, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+	if len(res.Tools) == 0 {
+		t.Fatal("no tools registered — the guard would be vacuous")
+	}
+	return res
+}
+
+// fullyWiredServer populates every feature-service field so features() surfaces
+// all of them. The inner *core.Base staying nil is fine: registration only
+// reads the pointer. Mirrors the reflection walk in TestAuthzGuardsEveryVerb.
+func fullyWiredServer() *Server {
+	baseType := reflect.TypeOf(&core.Base{})
+	embedsBase := func(st reflect.Type) bool {
+		for i := 0; i < st.NumField(); i++ {
+			if f := st.Field(i); f.Anonymous && f.Type == baseType {
+				return true
+			}
+		}
+		return false
+	}
+	srv := &Server{}
+	v := reflect.ValueOf(srv).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.Kind() != reflect.Ptr || f.Type().Elem().Kind() != reflect.Struct || !f.CanSet() {
+			continue
+		}
+		if embedsBase(f.Type().Elem()) {
+			f.Set(reflect.New(f.Type().Elem()))
+		}
+	}
+	return srv
 }
