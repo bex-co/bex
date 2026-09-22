@@ -256,3 +256,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **122** — [Scope GraphQL sandbox reads and termination to the selected workspace](done/122.md) — added by-ID query and ownerId bindings, adapter and composed OAuth/MCP coverage, and complete generated sandbox schema.
 
 - [x] **123** — [Enforce disk constraints before plan, scaling, and autoscaling writes](done/123.md) — shared preview guard; all three API surfaces preserve stored intent on refusal.
+
+- [x] **126** — [Host suggestion investigation](done/126.md) — extra hosts confirmed as documented hand-applied Ingresses outside the App spec; proposed status/discovery fix withdrawn, QA record retained.
