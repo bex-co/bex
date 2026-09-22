@@ -152,7 +152,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		"serviceEvents": &graphql.Field{
-			Type: graphql.NewList(eventGQLType),
+			Type:        graphql.NewList(eventGQLType),
+			Description: "Service activity, newest first. Without startTime, returns the last hour; pass an explicit range for older history.",
 			Args: graphql.FieldConfigArgument{
 				"serviceId": gqlutil.ReqArg(graphql.String),
 				"type":      gqlutil.Arg(graphql.String),

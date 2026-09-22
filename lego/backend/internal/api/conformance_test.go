@@ -94,7 +94,7 @@ type conformEventStore struct {
 	rows []store.ServiceEventRow
 }
 
-func (s *conformEventStore) ListServiceEvents(_ context.Context, _, _, _ string, _ store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
+func (s *conformEventStore) ListServiceEvents(_ context.Context, _, _ string, _ store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
 	return s.rows, nil
 }
 

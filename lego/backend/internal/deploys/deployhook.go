@@ -159,7 +159,7 @@ func (s *Service) RegenerateDeployHook(ctx context.Context, service string) (Dep
 	if err := s.AuthorizeMintClass(ctx); err != nil {
 		return DeployHookView{}, err
 	}
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
 	if err != nil {
 		return DeployHookView{}, err
 	}
@@ -170,6 +170,7 @@ func (s *Service) RegenerateDeployHook(ctx context.Context, service string) (Dep
 	if err != nil {
 		return DeployHookView{}, err
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbRegenerateDeployHook)
 	return DeployHookView{URL: s.deployHookURL(token)}, nil
 }
 

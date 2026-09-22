@@ -3442,16 +3442,26 @@ const MaxIdleTTLSeconds int32 = 7 * 24 * 60 * 60
 // effect only if the App is both a web service and free. The dashboard gates
 // the control on that same policy and the operator is the final authority.
 func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	if seconds < 0 || seconds > MaxIdleTTLSeconds {
 		return AppView{}, fmt.Errorf("%w: idleTTLSeconds must be 0-%d", core.ErrBadRequest, MaxIdleTTLSeconds)
 	}
-	return s.writeThroughStoreFetched(ctx, a,
+	previous := a.Spec.IdleTTLSeconds
+	view, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppIdleTTL(ctx, id, seconds) },
 		func(a *appv1alpha1.App) { a.Spec.IdleTTLSeconds = seconds })
+	if err != nil {
+		return AppView{}, err
+	}
+	// Re-saving the same intent is not an idle_timeout_changed effect. Keep
+	// the write-through path so it can still repair a stale row or projection.
+	if previous != seconds {
+		s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetIdleTTL)
+	}
+	return view, nil
 }
 
 // SetRootDir changes the subdirectory of Repo a build-from-git App builds
@@ -4192,14 +4202,22 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 // every webhook and push notification for a renamed service reports the
 // immutable creation-time name.
 func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	trimmed := strings.TrimSpace(displayName)
-	return s.writeThroughStoreFetched(ctx, a,
+	previous := a.Spec.DisplayName
+	view, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppDisplayName(ctx, id, trimmed) },
 		func(a *appv1alpha1.App) { a.Spec.DisplayName = trimmed })
+	if err != nil {
+		return AppView{}, err
+	}
+	if previous != trimmed {
+		s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetDisplayName)
+	}
+	return view, nil
 }
 
 // setSuspended flips suspension with the row as the single writer of intent.

@@ -709,22 +709,14 @@ const appDisplayLabel = `COALESCE(NULLIF(a.display_name, ''), a.name)`
 // (see events.go for the composition's rationale). Differences, each forced
 // by the dispatcher's shape:
 //
-//   - JOIN apps: the per-service query takes appID/target/ownerWorkspace as
-//     parameters; here every service's transitions stream through one cursor,
-//     so the join recovers each row's tenant + app name. The audit arm joins
-//     on the target name scoped to the app's own tenant (or the default
-//     workspace — the same two-workspace set the per-service feed allows, and
-//     with the same caveat: a default-workspace caller's write on a name two
-//     tenants share attributes to both, exactly as it appears in both their
-//     per-service feeds).
+//   - JOIN apps: each source uses its immutable app id. Audit ownership comes
+//     from service_event_index, the same insertion-time association used by
+//     the list and by-id reads, so deleted services cannot lend their history
+//     to a new service with the same name.
 //   - Datastore audit rows need no control-plane join: their typed target holds
 //     the immutable dpg-/red- id and target_name holds the display name. The
 //     observed datastore facts (w3/m82) join nothing for the same reason — the
 //     fact row already carries both its workspace and that same typed id.
-//   - the target matches every supported service spelling: the current CR name
-//     "<tenantID>-<appName>", the legacy "<tenantName>-<appName>", or the bare
-//     app-name fallback. The per-service feed is handed the caller's spelling;
-//     this workspace-wide query must recognize all of them itself.
 //   - ascending keyset from the watermark, bounded above by $3 (now minus the
 //     dispatcher's safety lag, so a row committed slightly out of timestamp
 //     order can't be skipped forever by an already-advanced watermark).
@@ -786,15 +778,10 @@ WITH feed AS (
 	       e.auto_deploy_enabled,
            a.id
     FROM audit_events e
-    JOIN apps a ON a.tenant_id = ANY($5)
-     AND (e.workspace_id = a.tenant_id OR e.workspace_id = '` + core.DefaultTenant + `')
+    JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = e.id
+    JOIN apps a ON a.id = i.app_id AND a.tenant_id = i.workspace_id
     JOIN tenants t ON t.id = a.tenant_id
-     AND e.target IN (
-         'service:' || a.tenant_id || '-' || a.name,
-         'service:' || t.name || '-' || a.name,
-         'service:' || a.name
-     )
-    WHERE e.outcome = 'allowed' AND e.verb = ANY($4)
+    WHERE e.outcome = 'allowed' AND e.verb = ANY($4) AND a.tenant_id = ANY($5)
   UNION ALL
     SELECT e.at,
            e.id || ':',

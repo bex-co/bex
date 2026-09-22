@@ -169,6 +169,9 @@ const (
 	AuditVerbSetPublishPath                 = "apps.SetPublishPath"
 	AuditVerbSetRoutes                      = "apps.SetRoutes"
 	AuditVerbSetHeaders                     = "apps.SetHeaders"
+	AuditVerbSetIdleTTL                     = "apps.SetIdleTTL"
+	AuditVerbSetDisplayName                 = "apps.SetDisplayName"
+	AuditVerbRegenerateDeployHook           = "deploys.RegenerateDeployHook"
 	// The environment write verbs (w4/m122). They share one authorize point
 	// (secrets.scope) and every one of them has a refusal or a no-op after it:
 	// a blueprint-owned key, a bad key name, the aggregate quota, an unknown
@@ -359,14 +362,13 @@ func (b *Base) RecordMaintenanceModeEffects(
 // dimension the audit log lacked until w3/m7 (Resource is the OpenFGA object,
 // i.e. the WORKSPACE a verb was authorized against, which cannot say WHICH
 // service was suspended). With it, the per-service events feed (internal/events)
-// is a pure VIEW over audit_events + deploys: no second write path, and the
-// structural redaction holds — a target is a resource name, never a value.
+// projects audit_events + deploys through the immutable service-event ownership
+// index. The target is an identifier, never a configuration value.
 //
-// Note the App CR name is globally unique (all Apps live in one namespace), so
-// a service target is unambiguous across tenants; internal/events still scopes
-// its read by workspace so a cross-tenant caller cannot inject rows into
-// someone else's feed (see store.ListServiceEvents).
-func ServiceTarget(name string) string { return "service:" + name }
+// canonicalAppTarget uses the public srv- id for a managed App. Legacy and
+// bare-CR targets fall back to the Kubernetes name; persisted event ownership
+// is captured in the index, so later service-name reuse never rebinds history.
+func ServiceTarget(identifier string) string { return "service:" + identifier }
 
 // DatabaseTarget is ServiceTarget's sibling for a managed Postgres Database
 // (AuthorizeDatabase).
@@ -532,7 +534,9 @@ var appConfigVerbs = map[string]bool{
 	AuditVerbSetSourceAndRegistryCredential: true,
 	AuditVerbSetPreDeployCommand:            true, AuditVerbSetMaxShutdownDelay: true,
 	AuditVerbSetPublishPath: true, AuditVerbSetRoutes: true, AuditVerbSetHeaders: true,
-	AuditVerbSetEnvVars: true, AuditVerbSetEnvVar: true, AuditVerbDeleteEnvVar: true,
+	AuditVerbSetIdleTTL: true, AuditVerbSetDisplayName: true,
+	AuditVerbRegenerateDeployHook: true,
+	AuditVerbSetEnvVars:           true, AuditVerbSetEnvVar: true, AuditVerbDeleteEnvVar: true,
 	AuditVerbSeedEnvVars: true, AuditVerbPatchEnvironment: true,
 	AuditVerbLinkService: true, AuditVerbUnlinkService: true, AuditVerbLinkEnvGroup: true,
 	AuditVerbJobCreate: true, AuditVerbJobCancel: true,
@@ -556,8 +560,9 @@ var appConfigVerbs = map[string]bool{
 // records — the verb ran, the write landed, and the resulting state does match
 // what the event says, which is a materially weaker inaccuracy than an event
 // for an operation that was refused. The verbs that also suppress a no-op
-// (SetPlan, Scale, the domain verbs, maintenance mode) do it by comparing
-// before/after themselves, because only they know what "changed" means.
+// (SetPlan, Scale, SetIdleTTL, SetDisplayName, the domain verbs, maintenance
+// mode) compare before/after themselves, because only they know what "changed"
+// means.
 func (b *Base) RecordAppConfigChanged(ctx context.Context, app *appv1alpha1.App, verb string) {
 	if !appConfigVerbs[verb] {
 		log.Printf("audit: refusing to record %q as a service-configuration effect", verb)

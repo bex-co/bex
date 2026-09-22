@@ -151,7 +151,7 @@ import (
 // EventStore is the Service's seam to the control-plane store: one composed list
 // and one owner-indexed source lookup. *store.PGStore satisfies it.
 type EventStore interface {
-	ListServiceEvents(ctx context.Context, appID, target, ownerWorkspace string, f store.ServiceEventFilter) ([]store.ServiceEventRow, error)
+	ListServiceEvents(ctx context.Context, appID, ownerWorkspace string, f store.ServiceEventFilter) ([]store.ServiceEventRow, error)
 	GetServiceEvent(ctx context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error)
 }
 
@@ -322,11 +322,14 @@ const (
 //     apps.DeleteAutoscaling, the disk verbs, the eleven apps.Set… config
 //     verbs, apps.Suspend/Resume, apps.SetSourceAndRegistryCredential, the five
 //     secrets environment verbs, the three env-group link verbs, and the two
-//     one-off job verbs. What remains unGATED is deliberate: a verb that
-//     validates BEFORE it authorizes (apps.SetIPAllowList, apps.SetNotifyOnFail,
-//     apps.SetNotificationsToSend), or that has no validation, type gate or
-//     no-op path at all (apps.SetIdleTTL, apps.SetDisplayName,
-//     deploys.RegenerateDeployHook — a rotation always rotates).
+//     one-off job verbs, apps.SetIdleTTL, apps.SetDisplayName, and
+//     deploys.RegenerateDeployHook. Idle-timeout and display-name re-saves
+//     still repair projections but emit no event unless their value changed.
+//     A hook rotation always replaces the token, but its fresh authorization
+//     check or token write can fail after the first authorization.
+//     What remains unGATED is deliberate: a verb that validates BEFORE it
+//     authorizes (apps.SetIPAllowList, apps.SetNotifyOnFail,
+//     apps.SetNotificationsToSend).
 //
 //     One mapping is live only in a degraded mode, and that is correct rather
 //     than dead: apps.Restart maps to server_restarted, but with a control-plane
@@ -717,22 +720,17 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if appID == "" {
 		return []Event{}, nil
 	}
-	legacyTarget := ""
-	if publicName := a.Labels[core.LabelServiceName]; publicName != "" && publicName != a.Name {
-		legacyTarget = core.ServiceTarget(publicName)
-	}
 	verbs, phases, factTypes, autoDeploy := pushDown(filter.Type)
-	rows, err := s.Store.ListServiceEvents(ctx, appID, core.ServiceTarget(a.Name), a.Labels[core.LabelTenant], store.ServiceEventFilter{
-		Since:        since,
-		Until:        until,
-		AfterAt:      after.At,
-		AfterKey:     after.Key,
-		Verbs:        verbs,
-		Phases:       phases,
-		FactTypes:    factTypes,
-		AutoDeploy:   autoDeploy,
-		LegacyTarget: legacyTarget,
-		Limit:        filter.Limit,
+	rows, err := s.Store.ListServiceEvents(ctx, appID, a.Labels[core.LabelTenant], store.ServiceEventFilter{
+		Since:      since,
+		Until:      until,
+		AfterAt:    after.At,
+		AfterKey:   after.Key,
+		Verbs:      verbs,
+		Phases:     phases,
+		FactTypes:  factTypes,
+		AutoDeploy: autoDeploy,
+		Limit:      filter.Limit,
 	})
 	if err != nil {
 		return nil, err

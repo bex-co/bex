@@ -2170,6 +2170,21 @@ func TestBlueprintRecreationFencesOldExecution(t *testing.T) {
 	}
 }
 
+// admissionBarrierStore keeps each admitted apply active until all competing
+// admission decisions finish. Otherwise a delayed racer can start after the
+// first apply completes and legitimately win a second, sequential admission.
+type admissionBarrierStore struct {
+	*fakeBlueprintStore
+	attempts sync.WaitGroup
+}
+
+func (s *admissionBarrierStore) AdmitBlueprintSyncRun(ctx context.Context, blueprintID, tenantID string, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
+	b, admitted, err := s.fakeBlueprintStore.AdmitBlueprintSyncRun(ctx, blueprintID, tenantID, run)
+	s.attempts.Done()
+	s.attempts.Wait()
+	return b, admitted, err
+}
+
 // TestSyncAdmissionRaceAdmitsOne pins t002: N replicas racing one Blueprint
 // admit exactly one apply; every loser gets the coded busy conflict and
 // applies nothing.
@@ -2181,10 +2196,12 @@ func TestSyncAdmissionRaceAdmitsOne(t *testing.T) {
 		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
 		Status: "active", Name: "app", AutoSync: true,
 	})
+	barrier := &admissionBarrierStore{fakeBlueprintStore: fs}
+	barrier.attempts.Add(racers)
 	newSvc := func() *Service {
 		return &Service{
 			Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
-			Blueprints:      fs,
+			Blueprints:      barrier,
 			DomainOwnership: allowDomainOwnership{},
 		}
 	}

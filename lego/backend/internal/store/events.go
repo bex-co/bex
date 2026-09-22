@@ -205,10 +205,6 @@ type ServiceEventFilter struct {
 	Phases []string
 	// FactTypes are the closed service_event_facts kinds requested by the caller.
 	FactTypes []string
-	// LegacyTarget is the old workspace-unique service:<public-name> audit key.
-	// It is matched only inside ownerWorkspace, never workspace:default; current
-	// writes use the namespace-unique CR-name target passed to ListServiceEvents.
-	LegacyTarget string
 	// AutoDeploy pushes down the auto-deploy boolean discrimination into SQL when
 	// the Verbs set includes apps.SetAutoDeploy. AutoDeployFilterNone (zero value)
 	// means no additional constraint on auto_deploy_enabled.
@@ -221,22 +217,10 @@ type ServiceEventFilter struct {
 // `audit_events`, and one of `service_event_facts`, ordered by the feed's total
 // order and paged by keyset.
 //
-// Two predicates on the audit arm are NOT caller-supplied, because they are what
-// make the feed truthful rather than merely filtered:
-//
-//   - outcome='allowed' — a DENIED authorize is audit-log material (who TRIED
-//     what), not something that happened to the service.
-//   - workspace_id = ANY(owner, default) — core.Base.AuthorizeTarget records the
-//     target BEFORE the App is fetched, so a cross-tenant caller who names
-//     someone else's service writes an allowed-looking row for a verb that then
-//     403s and never happened. Their row carries THEIR workspace, so scoping to
-//     the service's own tenant (plus the no-resolved-tenant default caller — the
-//     platform bootstrap, and the authz-off dev mode) is what keeps a stranger
-//     from injecting entries into someone else's activity feed.
-//
-// Both live here, in the only query that reads by target, rather than in the
-// feature — a future reader of `target` (a Database feed, an export) inherits
-// them instead of having to remember them.
+// Audit ownership is captured once in service_event_index, just as the by-id
+// read uses it. Rejoining reusable target names would assign a deleted app's
+// history to its replacement. Unindexed legacy rows remain audit-log evidence;
+// they cannot safely be attributed to a current service.
 const serviceEventsQuery = `
 WITH feed AS (
     SELECT d.id || ':` + EventPhaseStarted + `' AS key,
@@ -290,7 +274,7 @@ WITH feed AS (
            ''::text                            AS commit_url,
            ''::text                            AS fact_status
     FROM deploys d
-    WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($5)
+    WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($4)
   UNION ALL
     SELECT d.id || ':` + EventPhaseEnded + `',
            d.finished_at,
@@ -338,7 +322,7 @@ WITH feed AS (
            ''::text,
            ''::text
     FROM deploys d
-    WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($5)
+    WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($4)
   UNION ALL
     SELECT a.id || ':',
            a.at,
@@ -386,14 +370,14 @@ WITH feed AS (
            ''::text,
            ''::text
     FROM audit_events a
-    WHERE ((a.target = $2 AND a.workspace_id = ANY($3))
-           OR ($13::text <> '' AND a.target = $13 AND a.workspace_id = $14))
+    JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = a.id
+    WHERE i.app_id = $1 AND i.workspace_id = $2
       AND a.outcome = 'allowed'
-      AND a.verb = ANY($4)
-      AND ($11::smallint IS NULL
-           OR ($11 = 1 AND a.auto_deploy_enabled = true)
-           OR ($11 = 2 AND a.auto_deploy_enabled = false)
-           OR ($11 = 3 AND a.auto_deploy_enabled IS NULL))
+      AND a.verb = ANY($3)
+      AND ($10::smallint IS NULL
+           OR ($10 = 1 AND a.auto_deploy_enabled = true)
+           OR ($10 = 2 AND a.auto_deploy_enabled = false)
+           OR ($10 = 3 AND a.auto_deploy_enabled IS NULL))
   UNION ALL
     SELECT 'fact:' || f.source_key,
            f.at,
@@ -442,7 +426,7 @@ WITH feed AS (
            f.status
     FROM service_event_facts f
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
-    WHERE f.app_id = $1 AND f.fact_type = ANY($12)
+    WHERE f.app_id = $1 AND f.fact_type = ANY($11)
 )
 SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, failure_reason, cancel_reason, stall_reason, verb, caller,
        plan_from, plan_to, instance_count_from, instance_count_to,
@@ -453,37 +437,23 @@ SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, fa
        fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
        branch_from, branch_to, commit_url, fact_status
 FROM feed
-WHERE ($6::timestamptz IS NULL OR at >= $6)
-  AND ($7::timestamptz IS NULL OR at <= $7)
-  AND ($8::timestamptz IS NULL OR (at, key) < ($8, $9))
+WHERE ($5::timestamptz IS NULL OR at >= $5)
+  AND ($6::timestamptz IS NULL OR at <= $6)
+  AND ($7::timestamptz IS NULL OR (at, key) < ($7, $8))
 ORDER BY at DESC, key DESC
-LIMIT $10`
+LIMIT $9`
 
 // ListServiceEvents returns one service's composed activity feed, newest first.
-//
-// appID is the app's control-plane row id (deploys are keyed by it); target is
-// core.ServiceTarget(appName) (audit rows are keyed by it) — the two sources key
-// on different identifiers for the same service, which is why both are passed
-// rather than derived here. ownerWorkspace is the tenant that OWNS the service:
-// the query scopes audit rows to it (see serviceEventsQuery), so it is a
-// parameter of the read, not an option a caller may forget to set.
-func (s *PGStore) ListServiceEvents(ctx context.Context, appID, target, ownerWorkspace string, f ServiceEventFilter) ([]ServiceEventRow, error) {
+// Audit, deploy, and fact rows all use the immutable control-plane app id.
+func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace string, f ServiceEventFilter) ([]ServiceEventRow, error) {
 	limit := f.Limit
 	if limit < 1 || limit > core.MaxPageLimit {
 		limit = core.DefaultPageLimit
 	}
-	// The default workspace is always allowed: it is where a caller with no
-	// resolved tenant lands (the platform bootstrap, and the authz-off dev mode),
-	// and core.Base.GetApp lets such a caller act on the service — so its writes
-	// belong in the feed of the service it changed.
-	workspaces := []string{core.DefaultTenant}
-	if ownerWorkspace != "" && ownerWorkspace != core.DefaultTenant {
-		workspaces = append(workspaces, ownerWorkspace)
-	}
 	rows, err := s.Pool.Query(ctx, serviceEventsQuery,
-		appID, target, workspaces, f.Verbs, f.Phases,
+		appID, ownerWorkspace, f.Verbs, f.Phases,
 		nullTime(f.Since), nullTime(f.Until), nullTime(f.AfterAt), f.AfterKey,
-		limit, nullAutoDeployFilter(f.AutoDeploy), f.FactTypes, f.LegacyTarget, ownerWorkspace)
+		limit, nullAutoDeployFilter(f.AutoDeploy), f.FactTypes)
 	if err != nil {
 		return nil, fmt.Errorf("list service events: %w", err)
 	}

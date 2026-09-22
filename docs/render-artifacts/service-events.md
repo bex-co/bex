@@ -133,3 +133,11 @@ bex adds **`service_moved`** (deliberately not `service_environment_changed`, wh
 The enclosing `environments.SetServices`/`projects.SetServices` fan-out verbs remain excused non-events — their per-member `AuthorizeApp` rows are isolation-label plumbing, not placement facts.
 
 The official API specification is explicitly unversioned, so this comparison records the capture date and should be refreshed when Render changes its enum.
+
+## Immutable service ownership (2026-09-21, w4/m129)
+
+Service lists, by-id reads, and the webhook projection now use the audit row's existing `service_event_index.app_id` association. Deleting an app removes that association; retaining the raw workspace audit row does not lend its history to a replacement service with the same name. Managed writes target the fetched `srv-` id, preventing delayed writes from resolving a replacement by name. Legacy tenant-id-prefixed, tenant-name-prefixed, and bare names are resolved at insertion only, and only when the live app already existed at the event timestamp. A migration removes impossible pre-creation historical associations without deleting raw audit evidence or guessing owners for unindexed rows. New typed writes remove the default-workspace shared-name ambiguity; historical name-only rows retain their recorded associations.
+
+Idle-timeout and display-name re-saves emit no change event when the effective stored value is unchanged. Validation failures, failed persistence, and refused hook rotations likewise emit no successful change event; denied authorization attempts remain in the audit log.
+
+The one-hour API default remains deliberate and is now documented on the GraphQL field. Events continues to request its explicit 30-day window and earlier pages. [Render's list endpoint](https://api-docs.render.com/reference/list-events) still documents the one-hour default (checked 2026-09-21); [its webhook contract](https://render.com/docs/webhooks) identifies the corresponding service by its unique id. Payload fields and event vocabulary are unchanged. The name-reuse and no-op corrections implement bex's truthful-event contract; authenticated Render behavior for these edge cases was not probed. Local Postgres and adapter tests cover ownership and transport parity; the production delete/recreate walk remains a separate deployment verification.

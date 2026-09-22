@@ -1164,12 +1164,13 @@ func NotFoundIfDeleting(obj client.Object) error {
 	return ErrNotFound
 }
 
-// canonicalAppTarget keeps one service activity stream regardless of whether
-// a client addressed the App by mutable public name, internal CR name, or its
-// stable srv-… id. The CR name is namespace-unique; LabelServiceName is only
-// workspace-unique, so using it here would merge every tenant's "web" audit
-// rows whenever an unbound platform caller writes from workspace:default.
+// canonicalAppTarget binds managed audit writes to the fetched service even if
+// its name is reused before the audit insert completes. Hand-applied CRs have
+// no control-plane id and retain the namespace-unique name fallback.
 func canonicalAppTarget(a *appv1alpha1.App) string {
+	if appID := a.Labels[LabelAppID]; appID != "" {
+		return ServiceTarget(appID)
+	}
 	return ServiceTarget(a.Name)
 }
 
