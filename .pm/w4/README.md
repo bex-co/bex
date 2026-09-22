@@ -279,3 +279,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **m135** — [Keep usage attribution after resource deletion](done/m135/README.md) (6 tasks) ← promoted from 129; collector name retention and independent lifecycle evidence.
 
 - [x] **135** — [Give CIDR editor rows a stable identity](done/135.md) — the row key was the editable value, so one keystroke remounted the row and dropped focus; rows now carry an editor-local id kept out of the wire shape, with sequential-keystroke regression coverage. Live browser re-probe still owed.
+
+- [x] **136** — [Adopt the accepted rows after a static edge-rule save](done/136.md) — the setters now return the canonical rows from the refetch they were already discarding, so a whitespace-normalized save no longer leaves the editor permanently dirty; a later draft typed mid-flight is preserved. Live re-probe still owed.
