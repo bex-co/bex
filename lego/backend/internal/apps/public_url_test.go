@@ -212,3 +212,54 @@ func TestM125_MaintenanceModeIsNullOffAWebService(t *testing.T) {
 		})
 	}
 }
+
+// TestM131_LatestDeployIDIsNullOnReads is w4/131, the third member of this same
+// family. REST puts the id in Render's serviceAndDeploy CREATE envelope
+// (w2/m47), so GET /v1/services/{id} has no deploy key at all — the service
+// object never claims to know its latest deploy. GraphQL hung it on Service,
+// where only Create ever assigns it, so every ordinary read answered "" — live,
+// seven services for seven, including five long-lived production services with
+// real deploy history and the two whose create call had just returned the id.
+//
+// "" is not "unset": it reads as "there is no deploy". Null is.
+func TestM131_LatestDeployIDIsNullOnReads(t *testing.T) {
+	svc, _ := newService(nil, typedApp("svc", appv1alpha1.TypeWebService))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	for _, q := range []struct{ name, query, root string }{
+		{"service", `{ service(id: "svc") { latestDeployId } }`, "service"},
+		{"services", `{ services { latestDeployId } }`, "services"},
+	} {
+		t.Run(q.name, func(t *testing.T) {
+			res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: q.query})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql: %v", res.Errors)
+			}
+			data := res.Data.(map[string]any)[q.root]
+			entry, ok := data.(map[string]any)
+			if !ok {
+				list, isList := data.([]any)
+				if !isList || len(list) == 0 {
+					t.Fatalf("%s returned %v", q.root, data)
+				}
+				entry = list[0].(map[string]any)
+			}
+			if got := entry["latestDeployId"]; got != nil {
+				t.Errorf("latestDeployId = %#v on a read, want null — \"\" claims the service has no deploy", got)
+			}
+		})
+	}
+
+	// The control that keeps the fix honest: the create path, the one place the
+	// id is knowable, still answers it. Only Create assigns LatestDeployID, so
+	// this asserts the resolver passes a populated value straight through.
+	view := AppView{LatestDeployID: "dep-1"}
+	if got := latestDeployIDOf(view); got != "dep-1" {
+		t.Errorf("populated latestDeployId = %#v, want dep-1", got)
+	}
+}
