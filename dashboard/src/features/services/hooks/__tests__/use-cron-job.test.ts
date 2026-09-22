@@ -16,12 +16,18 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const ask = vi.fn();
+vi.mock("@/common/providers/protected-retry-context", () => ({
+  useAskForProtectedConfirmation: () => ask,
+}));
+
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
 
 beforeEach(() => {
   mockUseMutation.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
+  ask.mockReset();
 });
 
 describe("useCronJob", () => {
@@ -51,13 +57,31 @@ describe("useCronJob", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
-  it("converts an empty command to null in the mutation variables", async () => {
+  // w4/137: this used to assert the defect. `command || null` collapsed an
+  // explicit clear into "keep the existing command", so emptying the field
+  // saved successfully, preserved the old command, and toasted success — the
+  // backend's nil-means-keep / empty-means-clear contract was never reached.
+  it('sends an explicit empty command through as "", which clears the override', async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useCronJob());
     await act(async () => {
       await result.current.updateCronJob("nightly", "0 6 * * *", "");
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "nightly", schedule: "0 6 * * *", command: "" },
+    });
+  });
+
+  it("still sends null when the caller means keep-the-existing-command", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCronJob());
+    await act(async () => {
+      await result.current.updateCronJob("nightly", "0 6 * * *", null);
     });
 
     expect(mutate).toHaveBeenCalledWith({
@@ -144,5 +168,65 @@ describe("useCronJob", () => {
       await pending;
     });
     expect(result.current.busy).toBe(false);
+  });
+});
+
+// w4/137: a protected cron's clear must survive the confirmation round trip.
+// The retry re-sends the SAME variables with only `confirm` added, so if the
+// clear intent were lost anywhere it would be lost here too — the retry is the
+// call that actually persists.
+describe("useCronJob protected retry preserves an explicit clear", () => {
+  const REFUSAL = new Error(
+    '"nightly" is a member of a protected environment; retry with confirm="sudo repoint service nightly" to repoint it',
+  );
+
+  it("retries the empty command with only the confirmation added", async () => {
+    const mutate = vi
+      .fn()
+      .mockRejectedValueOnce(REFUSAL)
+      .mockResolvedValueOnce({});
+    mockUseMutation.mockReturnValue([mutate]);
+    ask.mockResolvedValue("sudo repoint service nightly");
+
+    const { result } = renderHook(() => useCronJob());
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await result.current.updateCronJob("nightly", "0 6 * * *", "");
+    });
+
+    expect(ok).toBe(true);
+    expect(mutate).toHaveBeenCalledTimes(2);
+    expect(mutate.mock.calls[0]?.[0]).toEqual({
+      variables: {
+        id: "nightly",
+        schedule: "0 6 * * *",
+        command: "",
+        confirm: undefined,
+      },
+    });
+    expect(mutate.mock.calls[1]?.[0]).toEqual({
+      variables: {
+        id: "nightly",
+        schedule: "0 6 * * *",
+        command: "",
+        confirm: "sudo repoint service nightly",
+      },
+    });
+  });
+
+  it("reports failure without a success toast when the dialog is dismissed", async () => {
+    const mutate = vi.fn().mockRejectedValue(REFUSAL);
+    mockUseMutation.mockReturnValue([mutate]);
+    ask.mockResolvedValue(null);
+
+    const { result } = renderHook(() => useCronJob());
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await result.current.updateCronJob("nightly", "0 6 * * *", "");
+    });
+
+    expect(ok).toBe(false);
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
   });
 });

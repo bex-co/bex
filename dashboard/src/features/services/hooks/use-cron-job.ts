@@ -11,11 +11,24 @@ import {
 } from "@/features/services/lib/protected-confirmation";
 
 export interface UseCronJobResult {
-  /** Fires updateCronJob; resolves true on success (toasted either way). */
+  /**
+   * Fires updateCronJob; resolves true on success (toasted either way).
+   *
+   * `command` carries three distinct intents and all three reach the wire
+   * unchanged, because the backend distinguishes them: `null` keeps the stored
+   * command, a nonempty string replaces it, and an explicit `""` **clears** the
+   * override so the job runs its image's own command (`apps/service.go`'s
+   * nil-means-keep / empty-means-clear contract, and the field's own hint says
+   * to leave it blank for exactly that).
+   *
+   * This used to send `command || null`, which collapsed the third intent into
+   * the first: clearing the field saved successfully, preserved the old
+   * command, and toasted success (w4/137).
+   */
   updateCronJob: (
     id: string,
     schedule: string,
-    command: string,
+    command: string | null,
   ) => Promise<boolean>;
   busy: boolean;
 }
@@ -34,14 +47,14 @@ export function useCronJob(): UseCronJobResult {
   const askForConfirmation = useAskForProtectedConfirmation();
 
   const updateCronJob = useCallback(
-    async (id: string, schedule: string, command: string) => {
+    async (id: string, schedule: string, command: string | null) => {
       setBusy(true);
       try {
         // Changing the command changes what the job runs, which a protected
         // environment guards; rescheduling alone does not (w4/m126).
         await withProtectedRetry(askForConfirmation, (confirm) =>
           mutate({
-            variables: { id, schedule, command: command || null, confirm },
+            variables: { id, schedule, command, confirm },
           }),
         );
         toast.success(t("services.deploySuccess"), {
