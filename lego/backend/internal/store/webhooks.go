@@ -58,10 +58,12 @@ type WebhookEndpoint struct {
 	CreatedBy      string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-	// Latest* is populated only by ListWebhookEndpoints. It is the newest
-	// completed immutable attempt for this endpoint and the state of that
-	// attempt's logical notification, fetched in the list query rather than by
-	// one history query per endpoint.
+	// Latest* is the newest completed immutable attempt for this endpoint and
+	// the state of that attempt's logical notification, fetched in the same
+	// query as the endpoint rather than by one history query per endpoint.
+	// Populated by every read and every mutation response since w4/117 — it was
+	// list-only, so a single-endpoint read reported an endpoint with four
+	// successful deliveries as having never delivered anything.
 	LatestAttemptStatus string
 	LatestAttemptAt     *time.Time
 	LatestParentStatus  string
@@ -70,17 +72,45 @@ type WebhookEndpoint struct {
 // webhookEndpointColumns deliberately omits `secret` — see WebhookEndpoint.
 const webhookEndpointColumns = `id, tenant_id, name, url, event_types, enabled, disabled_reason, created_by, created_at, updated_at`
 
+// webhookEndpointColumnsQualified is the same list against an aliased `e`, for
+// the reads that join the latest-delivery lateral below.
+const webhookEndpointColumnsQualified = `e.id, e.tenant_id, e.name, e.url, e.event_types, e.enabled, e.disabled_reason, e.created_by, e.created_at, e.updated_at`
+
+// webhookEndpointLatestColumns and webhookEndpointLatestJoin compute the newest
+// completed attempt for an endpoint and the state of that attempt's logical
+// notification.
+//
+// They exist as constants because the list read had them inline and the three
+// single-row reads did not, so `webhookEndpoint(id:)` reported an endpoint with
+// four successful deliveries as having never delivered anything, in the same
+// request where the list said otherwise (w4/117). Every read of an endpoint now
+// composes these, which is what keeps the two answers the same answer.
+const webhookEndpointLatestColumns = `COALESCE(latest.status, ''), latest.sent_at, COALESCE(latest.parent_status, '')`
+
+const webhookEndpointLatestJoin = `
+		 LEFT JOIN LATERAL (
+		   SELECT a.status, a.sent_at,
+		          CASE
+		            WHEN EXISTS (
+		              SELECT 1 FROM webhook_delivery_attempts pending
+		              WHERE pending.notification_id = d.id AND pending.status = 'pending'
+		            ) THEN 'pending'
+		            WHEN d.delivered_at IS NOT NULL THEN 'delivered'
+		            WHEN d.failed_at IS NOT NULL THEN 'failed'
+		            ELSE 'pending'
+		          END AS parent_status
+		   FROM webhook_delivery_attempts a
+		   JOIN webhook_deliveries d ON d.id = a.notification_id
+		   WHERE a.endpoint_id = e.id AND a.sent_at IS NOT NULL
+		   ORDER BY a.sent_at DESC, a.id DESC
+		   LIMIT 1
+		 ) latest ON true`
+
 func webhookEndpointScanTargets(e *WebhookEndpoint) []any {
 	return []any{
 		&e.ID, &e.TenantID, &e.Name, &e.URL, &e.EventTypes, &e.Enabled,
 		&e.DisabledReason, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt,
 	}
-}
-
-func scanWebhookEndpoint(row pgx.Row) (WebhookEndpoint, error) {
-	var e WebhookEndpoint
-	err := row.Scan(webhookEndpointScanTargets(&e)...)
-	return e, err
 }
 
 func scanWebhookEndpointWithLatest(row pgx.Row) (WebhookEndpoint, error) {
@@ -185,28 +215,8 @@ func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url
 func (s *PGStore) ListWebhookEndpoints(ctx context.Context, tenantIDs []string, afterAt time.Time, afterKey string, limit int) ([]WebhookEndpoint, error) {
 	limit = core.PageLimitOrAbsent(limit)
 	rows, err := s.Pool.Query(ctx,
-		`SELECT e.id, e.tenant_id, e.name, e.url, e.event_types, e.enabled,
-		        e.disabled_reason, e.created_by, e.created_at, e.updated_at,
-		        COALESCE(latest.status, ''), latest.sent_at,
-		        COALESCE(latest.parent_status, '')
-		 FROM webhook_endpoints e
-		 LEFT JOIN LATERAL (
-		   SELECT a.status, a.sent_at,
-		          CASE
-		            WHEN EXISTS (
-		              SELECT 1 FROM webhook_delivery_attempts pending
-		              WHERE pending.notification_id = d.id AND pending.status = 'pending'
-		            ) THEN 'pending'
-		            WHEN d.delivered_at IS NOT NULL THEN 'delivered'
-		            WHEN d.failed_at IS NOT NULL THEN 'failed'
-		            ELSE 'pending'
-		          END AS parent_status
-		   FROM webhook_delivery_attempts a
-		   JOIN webhook_deliveries d ON d.id = a.notification_id
-		   WHERE a.endpoint_id = e.id AND a.sent_at IS NOT NULL
-		   ORDER BY a.sent_at DESC, a.id DESC
-		   LIMIT 1
-		 ) latest ON true
+		`SELECT `+webhookEndpointColumnsQualified+`, `+webhookEndpointLatestColumns+`
+		 FROM webhook_endpoints e`+webhookEndpointLatestJoin+`
 		 WHERE e.tenant_id = ANY($1)
 		   AND ($2::timestamptz IS NULL OR (e.created_at, e.id) < ($2, $3))
 		 ORDER BY e.created_at DESC, e.id DESC
@@ -230,8 +240,10 @@ func (s *PGStore) ListWebhookEndpoints(ctx context.Context, tenantIDs []string, 
 // tenantID so a caller can never fetch another workspace's row by guessing
 // its id.
 func (s *PGStore) GetWebhookEndpoint(ctx context.Context, tenantID, id string) (WebhookEndpoint, error) {
-	e, err := scanWebhookEndpoint(s.Pool.QueryRow(ctx,
-		`SELECT `+webhookEndpointColumns+` FROM webhook_endpoints WHERE id = $1 AND tenant_id = $2`, id, tenantID))
+	e, err := scanWebhookEndpointWithLatest(s.Pool.QueryRow(ctx,
+		`SELECT `+webhookEndpointColumnsQualified+`, `+webhookEndpointLatestColumns+`
+		 FROM webhook_endpoints e`+webhookEndpointLatestJoin+`
+		 WHERE e.id = $1 AND e.tenant_id = $2`, id, tenantID))
 	if err != nil {
 		return WebhookEndpoint{}, classify("webhook endpoint", err)
 	}
@@ -245,10 +257,17 @@ func (s *PGStore) SetWebhookEndpointEnabled(ctx context.Context, tenantID, id st
 	if enabled {
 		reason = ""
 	}
-	e, err := scanWebhookEndpoint(s.Pool.QueryRow(ctx,
-		`UPDATE webhook_endpoints SET enabled = $3, disabled_reason = $4, updated_at = now(),
-		     notified_at = CASE WHEN $3 THEN NULL ELSE notified_at END
-		 WHERE id = $1 AND tenant_id = $2 RETURNING `+webhookEndpointColumns, id, tenantID, enabled, reason))
+	// The latest-delivery columns cannot be joined in a RETURNING clause, so the
+	// update feeds a CTE the same lateral the reads use — the write's response
+	// and a read of the same endpoint then agree (w4/117).
+	e, err := scanWebhookEndpointWithLatest(s.Pool.QueryRow(ctx,
+		`WITH updated AS (
+		   UPDATE webhook_endpoints SET enabled = $3, disabled_reason = $4, updated_at = now(),
+		       notified_at = CASE WHEN $3 THEN NULL ELSE notified_at END
+		   WHERE id = $1 AND tenant_id = $2 RETURNING `+webhookEndpointColumns+`
+		 )
+		 SELECT `+webhookEndpointColumnsQualified+`, `+webhookEndpointLatestColumns+`
+		 FROM updated e`+webhookEndpointLatestJoin, id, tenantID, enabled, reason))
 	if err != nil {
 		return WebhookEndpoint{}, classify("webhook endpoint", err)
 	}
@@ -276,14 +295,18 @@ func (s *PGStore) UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name,
 	if len(url) > MaxWebhookURLBytes {
 		return WebhookEndpoint{}, fmt.Errorf("%w: webhook url exceeds %d bytes", ErrInvalid, MaxWebhookURLBytes)
 	}
-	e, err := scanWebhookEndpoint(s.Pool.QueryRow(ctx,
-		`UPDATE webhook_endpoints
-		 SET name = $3, url = $4, event_types = $5, enabled = $6,
-		     disabled_reason = CASE WHEN $6 THEN '' ELSE disabled_reason END,
-		     notified_at = CASE WHEN $6 THEN NULL ELSE notified_at END,
-		     updated_at = now()
-		 WHERE id = $1 AND tenant_id = $2
-		 RETURNING `+webhookEndpointColumns, id, tenantID, name, url, eventTypes, enabled))
+	e, err := scanWebhookEndpointWithLatest(s.Pool.QueryRow(ctx,
+		`WITH updated AS (
+		   UPDATE webhook_endpoints
+		   SET name = $3, url = $4, event_types = $5, enabled = $6,
+		       disabled_reason = CASE WHEN $6 THEN '' ELSE disabled_reason END,
+		       notified_at = CASE WHEN $6 THEN NULL ELSE notified_at END,
+		       updated_at = now()
+		   WHERE id = $1 AND tenant_id = $2
+		   RETURNING `+webhookEndpointColumns+`
+		 )
+		 SELECT `+webhookEndpointColumnsQualified+`, `+webhookEndpointLatestColumns+`
+		 FROM updated e`+webhookEndpointLatestJoin, id, tenantID, name, url, eventTypes, enabled))
 	if err != nil {
 		return WebhookEndpoint{}, classify("webhook endpoint", err)
 	}
