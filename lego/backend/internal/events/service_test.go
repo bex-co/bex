@@ -70,7 +70,7 @@ type fakeStore struct {
 	gotEventID        string
 }
 
-func (f *fakeStore) ListServiceEvents(_ context.Context, _, _, ownerWorkspace string, fil store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
+func (f *fakeStore) ListServiceEvents(_ context.Context, _, ownerWorkspace string, fil store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
 	f.gotOwner = ownerWorkspace
 	f.got = fil
 	return f.rows, nil

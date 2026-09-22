@@ -470,23 +470,23 @@ func (s *maintenanceAuditSink) Record(_ context.Context, event core.AuditEvent) 
 	return nil
 }
 
-type maintenancePatchClient struct {
+type auditPatchClient struct {
 	client.Client
 	patches int
-	fail    bool
+	err     error
 }
 
-func (c *maintenancePatchClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (c *auditPatchClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	c.patches++
-	if c.fail {
-		return errors.New("injected maintenance patch failure")
+	if c.err != nil {
+		return c.err
 	}
 	return c.Client.Patch(ctx, obj, patch, opts...)
 }
 
 func TestMaintenanceModeChangedFieldsAuditOnceAndNoopDoesNotAudit(t *testing.T) {
 	svc, _ := newService(nil, paidWebApp("web"))
-	patches := &maintenancePatchClient{Client: svc.Client}
+	patches := &auditPatchClient{Client: svc.Client}
 	svc.Client = patches
 	sink := &maintenanceAuditSink{}
 	svc.Audit = sink
@@ -536,7 +536,7 @@ func TestMaintenanceModeChangedFieldsAuditOnceAndNoopDoesNotAudit(t *testing.T) 
 
 func TestMaintenanceModePatchFailureIsAtomicAndEmitsNothing(t *testing.T) {
 	svc, backing := newService(nil, paidWebApp("web"))
-	patches := &maintenancePatchClient{Client: svc.Client, fail: true}
+	patches := &auditPatchClient{Client: svc.Client, err: errors.New("injected maintenance patch failure")}
 	svc.Client = patches
 	sink := &maintenanceAuditSink{}
 	svc.Audit = sink

@@ -19,6 +19,7 @@ limitations under the License.
 package keyvalue
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"os"
@@ -81,24 +82,59 @@ func TestRunPTYCommand(t *testing.T) {
 		}
 	})
 
-	t.Run("kills the bounded process group on timeout", func(t *testing.T) {
-		pidFile := filepath.Join(t.TempDir(), "pid")
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
-		_, err := runPTYCommand(ctx, "/bin/sh", []string{"-c", `echo $$ > "$1"; trap '' TERM; while :; do :; done`, "sh", pidFile}, os.Environ())
-		if !errors.Is(err, context.DeadlineExceeded) {
-			t.Fatalf("error = %v, want deadline", err)
+	t.Run("kills the bounded process group on cancellation", func(t *testing.T) {
+		// A deadline started before exec can kill a slow-starting child before
+		// it reports its PID. Both deadlines and cancellation use ctx.Done;
+		// synchronize on child readiness before canceling that same path.
+		pidPath := filepath.Join(t.TempDir(), "pid")
+		if err := syscall.Mkfifo(pidPath, 0o600); err != nil {
+			t.Fatal(err)
 		}
-		rawPID, readErr := os.ReadFile(pidFile)
-		if readErr != nil {
-			t.Fatalf("read child pid: %v", readErr)
+		pidPipe, err := os.OpenFile(pidPath, os.O_RDWR, 0)
+		if err != nil {
+			t.Fatal(err)
 		}
-		pid, parseErr := strconv.Atoi(strings.TrimSpace(string(rawPID)))
+		defer pidPipe.Close()
+		ctx, cancel := context.WithCancel(context.Background())
+		commandDone := make(chan struct{})
+		var runErr error
+		go func() {
+			_, runErr = runPTYCommand(ctx, "/bin/sh", []string{"-c", `trap '' TERM; echo $$ > "$1"; while :; do :; done`, "sh", pidPath}, os.Environ())
+			close(commandDone)
+		}()
+		t.Cleanup(func() {
+			cancel()
+			<-commandDone
+		})
+		type pidResult struct {
+			line string
+			err  error
+		}
+		ready := make(chan pidResult, 1)
+		go func() {
+			line, err := bufio.NewReader(pidPipe).ReadString('\n')
+			ready <- pidResult{line: line, err: err}
+		}()
+		var result pidResult
+		select {
+		case result = <-ready:
+			if result.err != nil {
+				t.Fatalf("read child pid: %v", result.err)
+			}
+		case <-commandDone:
+			t.Fatalf("command exited before reporting readiness: %v", runErr)
+		}
+		pid, parseErr := strconv.Atoi(strings.TrimSpace(result.line))
 		if parseErr != nil {
 			t.Fatalf("parse child pid: %v", parseErr)
 		}
+		cancel()
+		<-commandDone
+		if !errors.Is(runErr, context.Canceled) {
+			t.Fatalf("error = %v, want cancellation", runErr)
+		}
 		if killErr := syscall.Kill(pid, 0); !errors.Is(killErr, syscall.ESRCH) {
-			t.Fatalf("timed-out child still exists: %v", killErr)
+			t.Fatalf("canceled child still exists: %v", killErr)
 		}
 	})
 }

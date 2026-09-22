@@ -307,30 +307,30 @@ func TestBuildTailReEmitsOnlyWhenTheWaitReasonChanges(t *testing.T) {
 	}, app, pending)
 	svc.BuildNamespace = "builds"
 	svc.BuildPodWaitInterval = 5 * time.Millisecond
+	// Advance only after the tail has polled each reason three times. A timed
+	// writer can overwrite a transient reason before a loaded reader sees it;
+	// this synchronous source seam proves deduplication across actual polls.
+	polls := 0
 	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
+		polls++
+		switch polls {
+		case 4:
+			setWaitReason(t, svc, "web", appv1alpha1.ReasonBuildQueued, "workspace has 1/2 concurrent builds active; waiting for a slot")
+		case 7:
+			setWaitReason(t, svc, "web", appv1alpha1.ReasonRegistryCredsPending, "Waiting for the registry to accept this app's build credential")
+		case 10:
+			started := buildPodFor("web", pending.Name, "builds", "buildkit", time.Unix(1, 0))
+			var cur corev1.Pod
+			if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "builds", Name: pending.Name}, &cur); err != nil {
+				t.Fatalf("get build pod: %v", err)
+			}
+			started.ResourceVersion = cur.ResourceVersion
+			if err := svc.Client.Status().Update(context.Background(), started); err != nil {
+				t.Fatalf("flip pod to Running: %v", err)
+			}
+		}
 		return []DeployProgress{queuedWaitDeploy()}, nil
 	}
-
-	// Many ticks pass on the first reason (proving no per-poll spam), then the
-	// reason changes twice, then the pod starts and ends the tail.
-	go func() {
-		time.Sleep(60 * time.Millisecond)
-		setWaitReason(t, svc, "web", appv1alpha1.ReasonBuildQueued, "workspace has 1/2 concurrent builds active; waiting for a slot")
-		time.Sleep(40 * time.Millisecond)
-		setWaitReason(t, svc, "web", appv1alpha1.ReasonRegistryCredsPending, "Waiting for the registry to accept this app's build credential")
-		time.Sleep(40 * time.Millisecond)
-		started := buildPodFor("web", pending.Name, "builds", "buildkit", time.Unix(1, 0))
-		started.ResourceVersion = ""
-		var cur corev1.Pod
-		if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "builds", Name: pending.Name}, &cur); err != nil {
-			t.Errorf("get build pod: %v", err)
-			return
-		}
-		started.ResourceVersion = cur.ResourceVersion
-		if err := svc.Client.Status().Update(context.Background(), started); err != nil {
-			t.Errorf("flip pod to Running: %v", err)
-		}
-	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
