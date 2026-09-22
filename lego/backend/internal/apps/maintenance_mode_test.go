@@ -175,7 +175,7 @@ func TestMaintenanceModeBlueprintValidateApplyAndResync(t *testing.T) {
       enabled: true
       uri: https://status.example.com/maintenance
 `
-	validation, err := svc.ValidateBlueprint(context.Background(), "", custom)
+	validation, err := svc.ValidateBlueprint(context.Background(), "", custom, "")
 	if err != nil || !validation.Valid {
 		t.Fatalf("ValidateBlueprint = %+v, %v", validation, err)
 	}
@@ -260,7 +260,7 @@ func TestMaintenanceModeBlueprintInvalidStackWritesNothing(t *testing.T) {
       enabled: true
       uri: https://invalid.onbex.co/maintenance
 `
-	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || validation.Valid || len(validation.Errors) == 0 || !strings.Contains(validation.Errors[0].Error, "same service") {
 		t.Fatalf("ValidateBlueprint = %+v, %v", validation, err)
 	}
@@ -325,7 +325,7 @@ func TestMaintenanceModeBlueprintRejectsInvalidPlacementAndURIWithoutWrites(t *t
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, cl := newService(nil)
-			validation, err := svc.ValidateBlueprint(context.Background(), "", tc.manifest)
+			validation, err := svc.ValidateBlueprint(context.Background(), "", tc.manifest, "")
 			if err != nil || validation.Valid || len(validation.Errors) != 1 || !strings.Contains(validation.Errors[0].Error, tc.want) {
 				t.Fatalf("ValidateBlueprint = %+v, %v", validation, err)
 			}

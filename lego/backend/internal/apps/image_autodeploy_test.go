@@ -164,7 +164,7 @@ func TestDeployStackDisabledImageAutoDeploy(t *testing.T) {
 		if getApp(t, cl, "image").Spec.AutoDeploy {
 			t.Fatal("Blueprint enabled image automation")
 		}
-		validation, err := svc.ValidateBlueprint(context.Background(), "", raw)
+		validation, err := svc.ValidateBlueprint(context.Background(), "", raw, "")
 		if err != nil || !validation.Valid || validation.Plan == nil || len(validation.Plan.Actions) != 1 {
 			t.Fatalf("existing-image plan: %+v, %v", validation, err)
 		}

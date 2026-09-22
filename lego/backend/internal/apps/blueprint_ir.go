@@ -91,6 +91,7 @@ const (
 	BlueprintPlanUpdate BlueprintPlanOperation = "update"
 	BlueprintPlanNoop   BlueprintPlanOperation = "noop"
 	BlueprintPlanError  BlueprintPlanOperation = "error"
+	BlueprintPlanDetach BlueprintPlanOperation = "detach"
 )
 
 // BlueprintFieldChange carries only the changed field path. It deliberately

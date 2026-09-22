@@ -141,7 +141,7 @@ func TestGeneratedBlueprintRePlansAsNoop(t *testing.T) {
 		}
 	}
 
-	v, err := svc.ValidateBlueprint(ctx, "", out.Manifest)
+	v, err := svc.ValidateBlueprint(ctx, "", out.Manifest, "")
 	if err != nil || !v.Valid {
 		t.Fatalf("bex's own export must validate: %+v err=%v", v, err)
 	}
@@ -188,7 +188,7 @@ func TestPlanNamesOnlyTheFieldThatChanged(t *testing.T) {
 				t.Skipf("export does not contain %q; nothing to perturb", tc.from)
 			}
 			changed := strings.Replace(out.Manifest, tc.from, tc.to, 1)
-			v, err := svc.ValidateBlueprint(ctx, "", changed)
+			v, err := svc.ValidateBlueprint(ctx, "", changed, "")
 			if err != nil || v.Plan == nil {
 				t.Fatalf("ValidateBlueprint: %+v err=%v", v, err)
 			}

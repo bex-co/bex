@@ -546,9 +546,9 @@ func (s *PGStore) AbandonBlueprintSync(ctx context.Context, runID string, now ti
 // row is a new connection on an old row, and the sync history below it belongs
 // to the previous one).
 //
-// Deliberately unconditional on the run's state: it records what the admission
-// was, not what the apply became, and an in-flight run is exactly when this is
-// known.
+// Admission notes can be written while the run is in flight. Detachment
+// notices are written only after successful completion; that ordering belongs
+// to the service, which knows whether the apply actually succeeded.
 func (s *PGStore) SetBlueprintSyncNote(ctx context.Context, runID, note string) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE blueprint_syncs SET note = $2 WHERE id = $1`, runID, note)
 	return err

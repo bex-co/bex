@@ -121,7 +121,7 @@ func TestBlueprintWorkerPlanResolution(t *testing.T) {
 
 	const free = planless + "    plan: free\n"
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), "", free)
+	v, err := svc.ValidateBlueprint(context.Background(), "", free, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}

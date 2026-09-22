@@ -3256,6 +3256,7 @@ export type QueryUsageArgs = {
 
 export type QueryValidateBlueprintArgs = {
   bexYaml: Scalars['String']['input'];
+  blueprintId?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3676,6 +3677,7 @@ export type SyncBlueprintResult = {
   __typename: 'SyncBlueprintResult';
   blueprint: Maybe<Blueprint>;
   databases: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+  detachedResources: Maybe<Array<Maybe<BlueprintResource>>>;
   envGroups: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   keyValues: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   services: Maybe<Array<Maybe<Service>>>;

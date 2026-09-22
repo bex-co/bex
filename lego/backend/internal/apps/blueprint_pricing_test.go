@@ -54,7 +54,7 @@ databases:
 
 func TestValidateBlueprintEstimatedPricingBeancountFixture(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), "", beancountManifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", beancountManifest, "")
 	if err != nil || !v.Valid {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
 	}
@@ -103,7 +103,7 @@ databases:
   - name: db
     plan: free
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !v.Valid {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
 	}
@@ -116,7 +116,7 @@ databases:
 
 func TestValidateBlueprintEstimatedPricingInvalidManifestHasNone(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), "", "services:\n  - name: web\n    type: web\n    runtime: image\n    image: {url: nginx:1}\n    plan: mega\n")
+	v, err := svc.ValidateBlueprint(context.Background(), "", "services:\n  - name: web\n    type: web\n    runtime: image\n    image: {url: nginx:1}\n    plan: mega\n", "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
@@ -147,7 +147,7 @@ databases:
     readReplicas:
       - name: db-reader
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !v.Valid || v.EstimatedPricing == nil {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
 	}
@@ -189,7 +189,7 @@ func TestValidateBlueprintEstimatedPricingExplicitDiskOverridesFloor(t *testing.
     plan: basic-1gb
     diskSizeGB: 20
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !v.Valid || v.EstimatedPricing == nil {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
 	}
@@ -211,7 +211,7 @@ func TestValidateBlueprintEstimatedPricingStaticSitesUnpriced(t *testing.T) {
     repo: https://github.com/bex/site
     staticPublishPath: dist
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !v.Valid || v.EstimatedPricing == nil {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
 	}

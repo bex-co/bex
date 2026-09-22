@@ -511,10 +511,27 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Completed",
     description: "Sync history table column — sync run completion time",
   },
-  "blueprints.syncColError": {
-    message: "Error",
+  "blueprints.detachPreviewTitle": {
+    message: "Resources will stop being managed",
+    description: "Blueprint resource detachment notice.",
+  },
+  "blueprints.detachSuccessTitle": {
+    message: "Sync complete — resources detached",
+    description: "Blueprint resource detachment notice.",
+  },
+  "blueprints.detachEstimateNote": {
+    message: "Their costs are not included in the estimate below.",
     description:
-      "Sync history table column — failure reason for an error-state run",
+      "Detached resources are outside the proposed manifest estimate.",
+  },
+  "blueprints.detachWarning": {
+    message:
+      "These resources remain running and may continue to incur charges. This Blueprint will no longer manage them.",
+    description: "Blueprint resource detachment notice.",
+  },
+  "blueprints.syncColError": {
+    message: "Details",
+    description: "Sync history table column — errors and durable sync notes",
   },
   "blueprints.manifestTitle": {
     message: "render.yaml manifest",

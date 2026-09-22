@@ -66,7 +66,13 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
         const result = res.data?.syncBlueprint
           ? toSyncBlueprintResult(res.data.syncBlueprint)
           : null;
-        toast.success(t("blueprints.syncSuccess"));
+        if (result?.detachedResources.length) {
+          toast.warning(t("blueprints.detachSuccessTitle"), {
+            description: `${t("blueprints.detachWarning")} ${result.detachedResources.map((resource) => `${resource.name} (${resource.id})`).join(", ")}`,
+          });
+        } else {
+          toast.success(t("blueprints.syncSuccess"));
+        }
         return { status: "success", result };
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return { status: "error" };

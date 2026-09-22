@@ -339,6 +339,7 @@ describe("BlueprintDetailPage", () => {
           startedAt: "2026-08-20T00:00:00Z",
           completedAt: "2026-08-20T00:01:00Z",
           errorMessage: null,
+          note: null,
         },
       ];
       renderDetailPage();
@@ -351,6 +352,30 @@ describe("BlueprintDetailPage", () => {
     });
   });
 
+  it("shows a durable detachment note on an otherwise successful sync", async () => {
+    blueprintDetailState.blueprint = bp();
+    blueprintSyncsState.syncs = [
+      {
+        id: "bsr-detach",
+        commitId: "abc12345",
+        state: "success",
+        startedAt: null,
+        completedAt: null,
+        errorMessage: null,
+        note: "Detached old-api (srv-old); it remains running and may continue to incur charges.",
+      },
+    ];
+    renderDetailPage();
+    expect(
+      await screen.findByText(
+        "Detached old-api (srv-old); it remains running and may continue to incur charges.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Details" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the failure reason for an error-state sync row and nothing extraneous for a success row (w6/m50)", async () => {
     blueprintDetailState.blueprint = bp();
     blueprintSyncsState.syncs = [
@@ -361,6 +386,7 @@ describe("BlueprintDetailPage", () => {
         startedAt: "2026-08-20T00:00:00Z",
         completedAt: "2026-08-20T00:01:00Z",
         errorMessage: "quota exceeded: workspace at service limit",
+        note: null,
       },
       {
         id: "bsr-2",
@@ -369,6 +395,7 @@ describe("BlueprintDetailPage", () => {
         startedAt: "2026-08-21T00:00:00Z",
         completedAt: "2026-08-21T00:01:00Z",
         errorMessage: null,
+        note: null,
       },
     ];
     renderDetailPage();

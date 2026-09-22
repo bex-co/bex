@@ -631,7 +631,7 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	if err != nil {
 		return StackResult{}, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, st); err != nil {
+	if _, _, err := s.blueprintActionPlan(ctx, ir, st, ""); err != nil {
 		return StackResult{}, err
 	}
 	return s.deployParsedStack(ctx, req, st)

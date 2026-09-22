@@ -14,9 +14,11 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
 
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+const toastWarning = vi.fn();
 vi.mock("sonner", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
+    warning: (...args: unknown[]) => toastWarning(...args),
     error: (...args: unknown[]) => toastError(...args),
   },
 }));
@@ -31,6 +33,7 @@ beforeEach(() => {
   mutate.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
+  toastWarning.mockReset();
 });
 
 describe("useSyncBlueprint", () => {
@@ -142,4 +145,38 @@ describe("useSyncBlueprint", () => {
     expect(outcome).toMatchObject({ status: "success" });
     expect(toastSuccess).toHaveBeenCalledOnce();
   });
+});
+
+it("warns about resources detached by a successful sync and keeps their ids", async () => {
+  mutate.mockResolvedValue({
+    data: {
+      syncBlueprint: {
+        blueprint: { id: "blp-1" },
+        detachedResources: [
+          { id: "srv-old", name: "old-api", type: "web_service" },
+        ],
+      },
+    },
+  });
+  const { result } = renderHook(() => useSyncBlueprint());
+  let outcome;
+  await act(async () => {
+    outcome = await result.current.sync("blp-1", { reviewed });
+  });
+  expect(outcome).toMatchObject({
+    status: "success",
+    result: {
+      detachedResources: [
+        { id: "srv-old", name: "old-api", type: "web_service" },
+      ],
+    },
+  });
+  expect(toastWarning).toHaveBeenCalledWith(
+    "Sync complete — resources detached",
+    { description: expect.stringContaining("old-api (srv-old)") },
+  );
+  expect(toastWarning.mock.calls[0][1].description).toContain(
+    "remain running and may continue to incur charges",
+  );
+  expect(toastSuccess).not.toHaveBeenCalled();
 });

@@ -503,9 +503,9 @@ type BlueprintValidationError struct {
 	Path   *string `json:"path,omitempty"`
 }
 
-// BlueprintValidationPlan is a declaration-only dry-run summary. Validation
-// does not resolve the caller's current resources, so TotalActions is the
-// number of declared resources—not a create/update/no-op diff.
+// BlueprintValidationPlan is structural when current state is unavailable,
+// otherwise it reports create/update/noop actions and, with an explicit
+// blueprint scope, detach actions for claims the new manifest drops.
 type BlueprintValidationPlan struct {
 	Mode          string                `json:"mode"`
 	Services      []string              `json:"services,omitempty"`
@@ -531,8 +531,9 @@ type BlueprintValidation struct {
 
 // SyncBlueprintResult is returned by sync and create.
 type SyncBlueprintResult struct {
-	Blueprint BlueprintView `json:"blueprint"`
-	Stack     StackResult   `json:"stack"`
+	Blueprint         BlueprintView       `json:"blueprint"`
+	Stack             StackResult         `json:"stack"`
+	DetachedResources []BlueprintResource `json:"detachedResources"`
 }
 
 // BlueprintPreview is the pre-create dry-run result: the manifest fetched from
@@ -610,21 +611,30 @@ type UpdateBlueprintRequest struct {
 }
 
 // ValidateBlueprint parses a Render Blueprint and returns per-entry errors without
-// applying anything (stateless: no store, no k8s writes). Requires can_view.
-func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML string) (BlueprintValidation, error) {
+// applying anything. An optional blueprint ID includes owned-resource detachments.
+// Reads current state when available and requires can_view.
+func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML, blueprintID string) (BlueprintValidation, error) {
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return BlueprintValidation{}, err
 	}
-	return s.blueprintValidationFor(ctx, "", "", bexYAML)
+	return s.blueprintValidationFor(ctx, "", "", bexYAML, blueprintID)
 }
 
-// blueprintValidationFor is the stateless dry-run core shared by
+// blueprintValidationFor is the read-only dry-run core shared by
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
-func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML string) (BlueprintValidation, error) {
+func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML, blueprintID string) (BlueprintValidation, error) {
+	if blueprintID != "" {
+		if s.Blueprints == nil {
+			return BlueprintValidation{}, ErrBlueprintsUnavailable
+		}
+		if _, err := s.Blueprints.GetBlueprint(ctx, blueprintID, s.resolveTenantID(ctx)); err != nil {
+			return BlueprintValidation{}, store.MapError(err)
+		}
+	}
 	source, ir, problems := CompileBlueprintIR(bexYAML)
 	if len(problems) > 0 {
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
@@ -665,7 +675,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	}
 	if err == nil {
 		plan := blueprintValidationPlanFromIR(ir, st)
-		if actionPlan, available, planErr := s.blueprintActionPlan(ctx, ir, st); planErr != nil {
+		if actionPlan, available, planErr := s.blueprintActionPlan(ctx, ir, st, blueprintID); planErr != nil {
 			if !errors.Is(planErr, core.ErrBadRequest) {
 				return BlueprintValidation{}, planErr
 			}
@@ -771,7 +781,7 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 		reason, message := classifyBlueprintFetchError(err, filePath, branch)
 		return BlueprintPreview{Reason: reason, Error: message}, nil
 	}
-	validation, err := s.blueprintValidationFor(ctx, repo, branch, contents)
+	validation, err := s.blueprintValidationFor(ctx, repo, branch, contents, forBlueprintID)
 	if err != nil {
 		return BlueprintPreview{}, err
 	}
@@ -847,7 +857,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
 		return BlueprintView{}, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed); err != nil {
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, ""); err != nil {
 		return BlueprintView{}, err
 	}
 
@@ -1042,7 +1052,7 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, ru
 	if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
 		return store.Blueprint{}, nil, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed); err != nil {
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, ""); err != nil {
 		return store.Blueprint{}, nil, err
 	}
 	staged, err := s.Blueprints.StageBlueprintManifest(ctx, b.ID, b.TenantID, run.ExecutionGeneration, run.ID, manifest)
@@ -1212,19 +1222,43 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		Manifest:            b.Manifest,
 		Confirm:             confirm,
 	}
-	var stack StackResult
 	var applyErr error
-	if prepared != nil {
+	if prepared == nil {
+		parsed, ir, err := compileStack(deployReq)
+		applyErr = err
+		if applyErr == nil {
+			prepared = &parsed
+			_, _, applyErr = s.blueprintActionPlan(ctx, ir, parsed, "")
+		}
+	}
+	baseline := []BlueprintResource{}
+	var stack StackResult
+	if applyErr == nil {
+		baseline, err = s.blueprintDetachments(ctx, b.TenantID, b.ID, *prepared, nil)
+		if err != nil {
+			return settleStage(err)
+		}
 		stack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared)
-	} else {
-		stack, applyErr = s.deployStack(ctx, deployReq)
 	}
 
 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "sync")
 	if cerr != nil {
 		return SyncBlueprintResult{}, cerr
 	}
-	return SyncBlueprintResult{Blueprint: toBlueprintView(b), Stack: stack}, nil
+	if len(baseline) > 0 {
+		names := make([]string, 0, len(baseline))
+		for _, resource := range baseline {
+			names = append(names, fmt.Sprintf("%s %q (%s)", resource.Type, resource.Name, resource.ID))
+		}
+		note := "Detached from this blueprint: " + strings.Join(names, ", ") + ". These resources continue running and may incur charges."
+		if run.Note != "" {
+			note = run.Note + "\n" + note
+		}
+		if err := s.Blueprints.SetBlueprintSyncNote(ctx, run.ID, note); err != nil {
+			return SyncBlueprintResult{}, fmt.Errorf("sync applied but recording detached resources failed: %w", err)
+		}
+	}
+	return SyncBlueprintResult{Blueprint: toBlueprintView(b), Stack: stack, DetachedResources: baseline}, nil
 }
 
 // triggerBlueprintSync is called by the push-webhook auto-sync path
