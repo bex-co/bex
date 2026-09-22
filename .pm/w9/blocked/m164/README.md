@@ -1,12 +1,12 @@
 # w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF
 
-**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** blocked (live production session + the AAAA decision)
+**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** blocked (the AAAA decision; t001/t002/t004 done — Key Value proven affected 2026-09-21)
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------- | --- | ---------- |
-| t001 | Prove or disprove the Key Value half of the same trap, live             | 45m | —          | — **BLOCKED** (live session) |
+| t001 | Prove or disprove the Key Value half of the same trap, live             | 45m | —          | — **DONE** (proven affected) |
 | t002 | Decide the fix: drop AAAA, make the denial legible, or surface both     | 45m | t001       | — research **DONE**; decision yours |
 | t003 | Implement the decision across Postgres and Key Value                    | 90m | t002       | — **BLOCKED** (decision + live) |
 | t004 | Re-point `w4/m116/t004` at this cause and correct its "ruled out" line  | 30m | t001       | — **DONE** |
@@ -60,9 +60,31 @@ Mechanism, traced end to end:
 
 Not a duplicate of the service-allow-list work: `w1/m150` (and `w4/m117`, closed into it) are Traefik/HTTP-ingress source-IP failures fixed by PROXY protocol on the HTTP listeners, and `m150`'s own scope table lists datastore allow-lists as "Already correct (`w2/done/m57` t010) … Unchanged — out of scope". This evidence agrees: the SNI proxy reads the true client address correctly for **both** families (a listed v6 is admitted, an unlisted v6 is denied). Different layer, different defect.
 
+## Key Value — confirmed affected (t001, live 2026-09-21)
+
+Not "likely" any more. Fixture `red-daorlsbs0ils73bgpit0` (free, published, deleted in-sweep), probed with `redis-cli --tls --sni <host> -h <literal> -p 6379` because `bex kv-cli` is interactive-only at this pin:
+
+| allow list               | peer address (literal)       | result                                                                 |
+| ------------------------ | ---------------------------- | ---------------------------------------------------------------------- |
+| IPv4 `/32` only          | `2a01:4f8:c01e:3d1f::1` (v6) | **FAIL** — `SSL_connect failed: unexpected eof while reading`          |
+| IPv4 `/32` only          | `49.12.20.236` (v4)          | **PONG**                                                               |
+| IPv4 `/32` + IPv6 `/128` | `2a01:4f8:c01e:3d1f::1` (v6) | **PONG**                                                               |
+| IPv4 `/32` + IPv6 `/128` | `49.12.20.236` (v4)          | **PONG**                                                               |
+
+Same symptom, same shape, same `sniproxy.AllowedBy` call (`kv-sni-proxy/main.go:145`). Worse than the Postgres half in one respect: `GET /v1/key-value/{id}/connection-info` hands the user a `cliCommand` and an `externalConnectionString` that both target the **hostname**, which resolves AAAA-first — so the trap is reachable with no CLI involvement at all, by copy-pasting a string the product emitted. Full evidence in `done/t001.md`.
+
+**A third affected hostname, found the same day.** A Postgres created with `--connection-pool pgbouncer` (accepted on the free plan) publishes a *separate* pooled endpoint, and it is dual-stack too:
+
+```text
+dpg-<id>-pool.db.bex.co   A 49.12.20.236   AAAA 2a01:4f8:c01e:3d1f::1
+```
+
+So the wildcard covers `<id>.db.bex.co`, `<id>-pool.db.bex.co` and `<id>.kv.bex.co` alike — consistent with the AAAA coming from `scripts/datastore-dns-cloudflare.sh` reconciling the whole wildcard rather than per-resource records. Whatever t003 does must cover the pooled host; a fix scoped to the primary endpoint would leave pooled clients in the trap. (The pooled path itself is healthy: with both families allow-listed, `psql '<externalConnectionPoolString>'` returned the probe row.)
+
+Two consequences carried forward: **t003's scope stays both front doors**, and whichever candidate t002 picks, the emitted `cliCommand`/`externalConnectionString` must land on a path the user's allow-list entry actually covers. Note also that b′ (the pre-TLS PostgreSQL `ErrorResponse` seam) has **no exact RESP analogue** — a Redis client opens with its ClientHello and offers no plaintext round trip to hijack — so the legibility fix must be designed per protocol rather than assumed portable.
+
 ## Unverified
 
-- The Key Value half. `kv-sni-proxy/main.go:145` calls the same `sniproxy.AllowedBy` and `red-<id>.kv.bex.co` resolves to the same dual A/AAAA pair, so it is very likely affected — but `bex kv-cli` is interactive-only at this pin and the bounded-PTY control was inconclusive. t001 exists to settle it.
 - Which DNS layer publishes the AAAA (`lego/operator/config/manager/manager.yaml:208-211` documents the wildcard as DNS-only to a node IP; the Cloudflare/Hetzner records were not inspected).
 - Whether Render publishes AAAA for its own datastore hosts.
 
@@ -135,12 +157,14 @@ caller's own address and reveals nothing about which resources exist, so the
   task row, and blocker list agree; `w9/done/063.md`'s "transient EOF … not
   filed" line is annotated with the real cause.
 
-**Two gates remain, both yours:**
+**Two gates remain — gate 2 is now the binding one, and it is yours:**
 
-1. **A live production CLI session.** `bex`'s stored token is expired (`your
-   token is expired; run render login`), and re-minting it is an interactive
-   browser device ceremony. t001 (the Key Value half), t003's live verification,
-   and t005's "prove the new leg fails pre-fix" all need it.
+1. **A live production CLI session** — **partially cleared 2026-09-21.** The
+   `/qa-find-bugs-cli` sweep-4 run completed the browser device ceremony and
+   used the session to finish **t001**, which is now done (Key Value proven
+   affected). What still needs a live session is t003's verification and
+   t005's "prove the new leg fails pre-fix" — and both of those are downstream
+   of gate 2 anyway, so this is no longer the binding constraint.
 2. **The (a) decision — stop publishing AAAA for the datastore wildcards.** It
    is parity with Render and makes the pinned CLI's IPv4-only gate correct by
    construction, but it **removes IPv6 reachability for datastore endpoints**,
