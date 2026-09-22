@@ -632,6 +632,25 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	if err == nil {
 		err = s.validateBlueprintServices(ctx, st)
 	}
+	if err == nil {
+		// w4/118: fromDatabase and fromService→KeyValue resolve against the
+		// WORKSPACE rather than the file, and their checks ran only at apply —
+		// so a manifest naming a database that exists nowhere validated
+		// `valid: true` with a clean plan, while the same manifest's
+		// fromService→service (a same-file-only reference) was rejected. The
+		// resolvers, their wording and their ambiguous-name case already
+		// existed; only the step was wrong.
+		//
+		// fromGroup stays deferred, deliberately. Its check is gated on an
+		// uncached can_view_sensitive re-assert (preflightBlueprintEnv) because
+		// a group link materializes secret values to workload code, and
+		// validateBlueprint is a can_view verb — running it here would either
+		// refuse a viewer's validate or weaken that gate. Recorded in ADR018's
+		// Blueprint row so a manifest author knows which checks are which.
+		if entries := s.validateWorkspaceReferences(ctx, ir, st); len(entries) > 0 {
+			return BlueprintValidation{Errors: entries}, nil
+		}
+	}
 	if err == nil && repo != "" && s.Blueprints != nil {
 		// Ownership conflicts surface in the preview/validation result (the
 		// dashboard's create review + pre-sync dialog) so nobody discovers
