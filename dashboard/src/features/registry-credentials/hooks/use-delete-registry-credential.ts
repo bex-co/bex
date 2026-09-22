@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ export interface UseDeleteRegistryCredentialResult {
  * leaves the credential listed, the correct behavior since it's still stored.
  */
 export function useDeleteRegistryCredential(): UseDeleteRegistryCredentialResult {
+  const { currentWorkspaceId } = useWorkspace();
   const { t } = useTranslations();
   const [mutate] = useMutation(DeleteRegistryCredentialDocument);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function useDeleteRegistryCredential(): UseDeleteRegistryCredentialResult
     async (id: string, name: string) => {
       setDeleting(id);
       try {
-        await mutate({ variables: { id } });
+        await mutate({ variables: { id, ownerId: currentWorkspaceId } });
         toast.success(t("registryCredentials.deleteSuccess", { name }));
         return true;
       } catch (err) {
@@ -41,7 +43,7 @@ export function useDeleteRegistryCredential(): UseDeleteRegistryCredentialResult
         setDeleting(null);
       }
     },
-    [mutate, t],
+    [mutate, t, currentWorkspaceId],
   );
 
   return { remove, deleting };
