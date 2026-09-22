@@ -792,3 +792,28 @@ func TestRenderRequestValidatorNamesParameterConstraints(t *testing.T) {
 		t.Fatalf("undeclared param = %d %s, want unsupported query parameter", w.Code, w.Body.String())
 	}
 }
+
+func TestRegistryCredentialWorkspaceQueryPassesRenderValidator(t *testing.T) {
+	for _, method := range []string{http.MethodGet, http.MethodPatch, http.MethodDelete} {
+		t.Run(method, func(t *testing.T) {
+			var seen string
+			mux := http.NewServeMux()
+			mux.HandleFunc(method+" /v1/registrycredentials/{registryCredentialId}", func(w http.ResponseWriter, r *http.Request) {
+				seen = r.URL.Query().Get("ownerId")
+				w.WriteHeader(http.StatusNoContent)
+			})
+			handler, err := newRenderRequestValidator(mux)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, contentType := "", ""
+			if method == http.MethodPatch {
+				body, contentType = `{"name":"renamed","registry":"DOCKER","username":"user","authToken":"synthetic"}`, "application/json"
+			}
+			result := requestOpenAPITest(t, handler, method, "/v1/registrycredentials/rcr-00000000000000000000?ownerId=tea-bravo", contentType, body)
+			if result.Code != http.StatusNoContent || seen != "tea-bravo" {
+				t.Fatalf("workspace selector: status=%d seen=%q body=%s", result.Code, seen, result.Body.String())
+			}
+		})
+	}
+}

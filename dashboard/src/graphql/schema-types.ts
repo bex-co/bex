@@ -1601,6 +1601,7 @@ export type MutationDeleteProjectArgs = {
 
 export type MutationDeleteRegistryCredentialArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2391,6 +2392,7 @@ export type MutationUpdateRegistryCredentialArgs = {
   expiresAt?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
   username?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3172,6 +3174,7 @@ export type QueryPushNotificationsAvailableArgs = {
 
 export type QueryRegistryCredentialArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3244,6 +3247,7 @@ export type QueryServiceArgs = {
 
 export type QueryServiceEventArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

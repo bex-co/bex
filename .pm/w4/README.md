@@ -259,4 +259,8 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **126** — [Host suggestion investigation](done/126.md) — extra hosts confirmed as documented hand-applied Ingresses outside the App spec; proposed status/discovery fix withdrawn, QA record retained.
 
-- [x] **128** — [Reach a registry credential in the workspace it was created in](done/128.md) — every by-id verb on GraphQL and REST now binds an optional `ownerId`; MCP was already correct, GraphQL's `serviceEvent(id:)` gained the same selector, and `clitelemetry` turned out to be a write path rather than an instance. The dashboard half is filed as [140](140.md).
+- [x] **128** — [Reach a registry credential in the workspace it was created in](done/128.md) — every by-id verb on GraphQL and REST now binds an optional `ownerId`; MCP was already correct, GraphQL's `serviceEvent(id:)` gained the same selector, and `clitelemetry` turned out to be a write path rather than an instance. The dashboard half is completed in [m134](done/m134/README.md) and [140](done/140.md).
+
+- [x] **m134** — [Reach workspace-scoped credentials and event details](done/m134/README.md) (7 tasks) ← promoted from 128; REST/GraphQL selectors, dashboard propagation, and workspace authorization coverage.
+
+- [x] **140** — [Registry credential dashboard workspace selection](done/140.md) — completed within m134; concurrent filing retained.

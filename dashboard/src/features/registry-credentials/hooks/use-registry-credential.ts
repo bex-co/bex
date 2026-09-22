@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useQuery } from "@apollo/client/react";
 import { RegistryCredentialDocument } from "@/graphql/definitions";
 import {
@@ -20,8 +21,11 @@ export interface UseRegistryCredentialResult {
  * name/host/username/expiry, never the stored token.
  */
 export function useRegistryCredential(id: string): UseRegistryCredentialResult {
+  const { currentWorkspaceId } = useWorkspace();
+  const resolved = currentWorkspaceId != null;
   const { data, loading, error } = useQuery(RegistryCredentialDocument, {
-    variables: { id },
+    variables: { id, ownerId: currentWorkspaceId },
+    skip: !resolved,
     fetchPolicy: "cache-and-network",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,
     skipPollAttempt: skipPollWhenHidden,
@@ -39,5 +43,5 @@ export function useRegistryCredential(id: string): UseRegistryCredentialResult {
           createdAt: raw.createdAt ?? null,
         }
       : null;
-  return { credential, loading, error: !!error };
+  return { credential, loading: !resolved || loading, error: !!error };
 }

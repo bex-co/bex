@@ -35,7 +35,9 @@ describe("useDeleteRegistryCredential", () => {
     });
 
     expect(ok).toBe(true);
-    expect(mutate).toHaveBeenCalledWith({ variables: { id: "rgc-1" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "rgc-1", ownerId: null },
+    });
     expect(toastSuccess).toHaveBeenCalledWith("Deleted ghcr.io");
   });
 

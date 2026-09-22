@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ export interface UseCreateRegistryCredentialResult {
  * field to leak into Apollo's cache in the first place.
  */
 export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult {
+  const { currentWorkspaceId } = useWorkspace();
   const { t } = useTranslations();
   const [mutate] = useMutation(CreateRegistryCredentialDocument);
   const [busy, setBusy] = useState(false);
@@ -39,6 +41,7 @@ export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult
       try {
         await mutate({
           variables: {
+            ownerId: currentWorkspaceId,
             host: input.host,
             username: input.username,
             authToken: input.authToken,
@@ -62,7 +65,7 @@ export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, t, currentWorkspaceId],
   );
 
   return { create, busy };
