@@ -254,3 +254,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **121** — [Expose the immutable Blueprint service name](done/121.md) — shared detail header shows it when different from the display label; explicit query/mapping and suffixed-slug regression verified.
 
 - [x] **122** — [Scope GraphQL sandbox reads and termination to the selected workspace](done/122.md) — added by-ID query and ownerId bindings, adapter and composed OAuth/MCP coverage, and complete generated sandbox schema.
+
+- [x] **123** — [Enforce disk constraints before plan, scaling, and autoscaling writes](done/123.md) — shared preview guard; all three API surfaces preserve stored intent on refusal.
