@@ -277,3 +277,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **134** — [Name the project and environment rename fields](done/134.md) — visible labels on both rename dialogs, the Settings card heading associated with its editable and read-only inputs, and the Radix missing-description warning opted out of at the two callers; the three existing tests moved onto name-based queries. Live accessibility-tree re-probe still owed.
 - [x] **m135** — [Keep usage attribution after resource deletion](done/m135/README.md) (6 tasks) ← promoted from 129; collector name retention and independent lifecycle evidence.
+
+- [x] **135** — [Give CIDR editor rows a stable identity](done/135.md) — the row key was the editable value, so one keystroke remounted the row and dropped focus; rows now carry an editor-local id kept out of the wire shape, with sequential-keystroke regression coverage. Live browser re-probe still owed.
