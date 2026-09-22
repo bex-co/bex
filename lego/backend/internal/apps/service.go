@@ -960,6 +960,27 @@ func view(a *appv1alpha1.App) AppView {
 	phase := string(a.Status.Phase)
 	url := a.Status.URL
 	urls := a.Status.URLs
+	// `url` means the PUBLIC URL. The operator fills status.URL with the
+	// cluster-internal address whenever an App has no public host — always for
+	// a private_service, and also for an exposed service whose platform
+	// subdomain is off with no custom domain — so projecting it unconditionally
+	// hands back `http://<slug>:<port>` in the field that promises a public
+	// address (w4/124). REST already gates private_service at its emission site
+	// and MCP inherits that gate, but GraphQL reads this AppView, so the VALUE
+	// has to be emptied here — exactly the remedy w6/m130 applied to
+	// renderSubdomainPolicy a few lines above, and the fourth member of the
+	// family disk / ipAllowList / renderSubdomainPolicy started.
+	//
+	// The test is the scheme, not the type: every public URL the operator
+	// publishes is "https://"+host (setStatusURLs), and every internal form it
+	// falls back to is http://. That covers the exposed-but-unrouted case the
+	// type gate alone would miss, and any internal shape added later.
+	// InternalAddress still carries the address, which is the point — it travels
+	// in the field that says what it is, and publicRoutingNotice explains the
+	// absence (w7/m79).
+	if !strings.HasPrefix(url, "https://") {
+		url = ""
+	}
 	if !a.DeletionTimestamp.IsZero() {
 		// A deleting App's route and certificate are withdrawn by the ownerRef
 		// cascade within seconds, so its serving URL is dead. Never project it.
