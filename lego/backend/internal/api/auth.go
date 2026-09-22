@@ -390,6 +390,13 @@ func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, erro
 			if err != nil {
 				return core.Identity{}, err
 			}
+			// API keys are unique, disposable clients. Their durable marker is a
+			// tombstone, not just a cache timestamp: an in-flight Hydra response
+			// on another replica must not revive a key after membership exit.
+			if revoked && !entry.Identity.Human {
+				a.cache.Delete(token)
+				return core.Identity{}, nil
+			}
 			if revoked && revokedAt.After(entry.CachedAt) {
 				a.cache.Delete(token)
 			} else {
@@ -525,6 +532,15 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 		Method:   "oauth2",
 		ClientID: out.ClientID,
 		Human:    human,
+	}
+	if !human && a.revocations != nil {
+		_, revoked, err := a.revocations.OAuthRevokedAt(ctx, subject, out.ClientID)
+		if err != nil {
+			return err
+		}
+		if revoked {
+			return nil
+		}
 	}
 	if human {
 		id.CanonicalScopes = grant.Scopes
