@@ -72,3 +72,38 @@ func TestActionCapabilities_SuspendResumeOnly(t *testing.T) {
 		t.Fatalf("unprotected suspend precondition = %q, want none", s.Precondition)
 	}
 }
+
+// TestActionCapabilities_SuspendResumeReadTheResourceState is w4/132, the Key
+// Value half: both decisions used to compute protection and billing only, so a
+// store in `status suspended, suspended suspended` projected the same
+// suspend:allowed / resume:allowed as one that was running.
+func TestActionCapabilities_SuspendResumeReadTheResourceState(t *testing.T) {
+	running := keyValueForProtection("red-scratch", "scratch", false)
+	svc, _, _ := protectedKeyValueService(running)
+	acts, err := svc.ActionCapabilities(context.Background(), running.Name)
+	if err != nil {
+		t.Fatalf("ActionCapabilities (running): %v", err)
+	}
+	if s := actionByID(t, acts, core.ActionSuspend); s.Precondition != "" {
+		t.Errorf("running suspend precondition = %q, want none", s.Precondition)
+	}
+	if r := actionByID(t, acts, core.ActionResume); r.Precondition != core.PrecondNotSuspended {
+		t.Errorf("running resume = %+v, want the not_suspended precondition", r)
+	}
+
+	asleep := keyValueForProtection("red-asleep", "asleep", true)
+	asleep.Spec.Suspended = true
+	svc2, _, _ := protectedKeyValueService(asleep)
+	acts2, err := svc2.ActionCapabilities(context.Background(), asleep.Name)
+	if err != nil {
+		t.Fatalf("ActionCapabilities (suspended): %v", err)
+	}
+	// Protected AND suspended: state wins, so the projection does not ask for a
+	// confirmation phrase to perform a call that would no-op.
+	if s := actionByID(t, acts2, core.ActionSuspend); s.Precondition != core.PrecondSuspended {
+		t.Errorf("suspended suspend = %+v, want the suspended precondition", s)
+	}
+	if r := actionByID(t, acts2, core.ActionResume); r.Precondition != "" {
+		t.Errorf("suspended resume precondition = %q, want none", r.Precondition)
+	}
+}

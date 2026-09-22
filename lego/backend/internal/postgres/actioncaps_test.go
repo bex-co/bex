@@ -97,3 +97,36 @@ func TestActionCapabilities_SuspendPreconditionMatchesGuard(t *testing.T) {
 	}
 	_ = prot
 }
+
+// TestActionCapabilities_SuspendResumeReadTheResourceState is w4/132, the
+// Postgres half — the one the note read in code but did not drive live,
+// judging the two datastore projections near-identical. "Identical in shape"
+// is an argument, not an observation, so it is asserted here.
+func TestActionCapabilities_SuspendResumeReadTheResourceState(t *testing.T) {
+	running := databaseForProtection("dpg-scratch", "scratch", false)
+	svc, _, _ := protectedPostgresService(running)
+	acts, err := svc.ActionCapabilities(context.Background(), running.Name)
+	if err != nil {
+		t.Fatalf("ActionCapabilities (running): %v", err)
+	}
+	if s := actionByID(t, acts, core.ActionSuspend); s.Precondition != "" {
+		t.Errorf("running suspend precondition = %q, want none", s.Precondition)
+	}
+	if r := actionByID(t, acts, core.ActionResume); r.Precondition != core.PrecondNotSuspended {
+		t.Errorf("running resume = %+v, want the not_suspended precondition", r)
+	}
+
+	asleep := databaseForProtection("dpg-asleep", "asleep", true)
+	asleep.Spec.Suspended = true
+	svc2, _, _ := protectedPostgresService(asleep)
+	acts2, err := svc2.ActionCapabilities(context.Background(), asleep.Name)
+	if err != nil {
+		t.Fatalf("ActionCapabilities (suspended): %v", err)
+	}
+	if s := actionByID(t, acts2, core.ActionSuspend); s.Precondition != core.PrecondSuspended {
+		t.Errorf("suspended suspend = %+v, want the suspended precondition", s)
+	}
+	if r := actionByID(t, acts2, core.ActionResume); r.Precondition != "" {
+		t.Errorf("suspended resume precondition = %q, want none", r.Precondition)
+	}
+}
