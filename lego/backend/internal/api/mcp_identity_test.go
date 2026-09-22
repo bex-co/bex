@@ -72,3 +72,59 @@ func TestMCPMayStillReferToRender(t *testing.T) {
 		t.Fatal("no tool explains its relationship to Render any more — the compatibility context is deliberate (w4/113)")
 	}
 }
+
+// TestMCPImageCreateIsReachable is w4/114: create_web_service and
+// create_cron_job required buildCommand and startCommand — inherited verbatim
+// from Render's tool, which is coherent there because Render's tool is git-only
+// — while bex's handler refuses both for a prebuilt image. No value satisfied
+// both, so every image-backed service type (web, private, worker, cron) was
+// unreachable over MCP while REST and GraphQL created them happily.
+//
+// The requirement was never the schema's to enforce: resolveBuildStrategy
+// refuses a native runtime without both commands on every surface, which is
+// what the apps-package half of this pins.
+func TestMCPImageCreateIsReachable(t *testing.T) {
+	required := map[string]map[string]bool{}
+	for _, tool := range listBexTools(t, fullyWiredServer()).Tools {
+		if tool.InputSchema == nil {
+			continue
+		}
+		raw, err := json.Marshal(tool.InputSchema)
+		if err != nil {
+			t.Fatalf("marshal input schema for %s: %v", tool.Name, err)
+		}
+		var sch struct {
+			Required []string `json:"required"`
+		}
+		if err := json.Unmarshal(raw, &sch); err != nil {
+			t.Fatalf("parse input schema for %s: %v", tool.Name, err)
+		}
+		set := map[string]bool{}
+		for _, r := range sch.Required {
+			set[r] = true
+		}
+		required[tool.Name] = set
+	}
+
+	for tool, stillRequired := range map[string][]string{
+		"create_web_service": {"name"},
+		"create_cron_job":    {"name", "schedule"},
+	} {
+		set, ok := required[tool]
+		if !ok {
+			t.Errorf("%s is not registered", tool)
+			continue
+		}
+		for _, field := range []string{"buildCommand", "startCommand"} {
+			if set[field] {
+				t.Errorf("%s still requires %s, so a prebuilt image cannot be created: the schema refuses its absence and the handler refuses its presence", tool, field)
+			}
+		}
+		// The relaxation is exactly two fields wide.
+		for _, field := range stillRequired {
+			if !set[field] {
+				t.Errorf("%s no longer requires %s — the fix was meant to be two fields wide", tool, field)
+			}
+		}
+	}
+}
