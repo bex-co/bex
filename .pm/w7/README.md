@@ -16,7 +16,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [ ] **m151** — **BLOCKED (user/operator must restore shared VM capacity for the live datastore walkthrough)** — [Coherent datastore placement after moves and deletion](blocked/m151/README.md) (t001–t003, t005–t007 done; t004 live verification and t008 remain). Move/delete/retry repair and cross-surface regressions implemented.
-- [ ] **m152** — [Validate grouping mutations before changing members](m152/README.md) (8 tasks, ~4h25m) ← approved additional w7 brainstorm
+- [x] **m152** — [Validate grouping mutations before changing members](done/m152/README.md) — done 2026-09-21: complete-set datastore validation, child ACL preflight, 75 composed adapter cases, 89 dashboard tests; local acceptance only, no live claim.
 
 - [x] **m148** — [Reliable local cluster bring-up](done/m148/README.md) (7 tasks) ← approved five-item brainstorm. Local CAPD cluster reprovisioned 2026-09-17; the rebuild also fixed a pre-existing helm `--set` comma bug that had been aborting every bring-up at metrics-server.
 - [ ] **m149** — **BLOCKED (user/operator must restore shared VM memory capacity, with a scheduled OrbStack restart if increasing its limit)** — [Correct cold deep-link initialization](blocked/m149/README.md) (8 tasks; none complete). Offline regressions preserved; authenticated dev-7 measurement remains gated.
@@ -122,7 +122,7 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 1. [058 — CLI-only commits must not suppress platform deployment](058.md) — 45m, no dependency.
 2. [m151 — Coherent datastore placement after moves and deletion](blocked/m151/README.md) — 8 tasks, ~4h55m total; implementation starts at t001, live acceptance requires m148/t007.
-3. [m152 — Validate grouping mutations before changing members](m152/README.md) — 8 tasks, ~4h25m total; implementation starts at t001; coordinate shared files with m151, live acceptance requires m148/t007.
+3. [m152 — Validate grouping mutations before changing members](done/m152/README.md) — done 2026-09-21 with the filed local acceptance matrix; no live dev-7 verification claimed.
 4. [059 — Resolve the legacy Blueprint ownership question](059.md) — 60m diagnostic; requires read access to the named control-plane records and cluster metadata.
 
 - [ ] **058** — platform supersession filter correction, scoped above.

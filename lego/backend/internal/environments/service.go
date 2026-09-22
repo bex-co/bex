@@ -745,6 +745,14 @@ func (s *Service) clearMembersForProject(ctx context.Context, projectID string) 
 	if err != nil {
 		return err
 	}
+	// Refuse the whole cascade before its first write when any child already
+	// requires permission the caller lacks. Cleanup still rechecks permission
+	// because authorization can change after this preflight.
+	for _, e := range envs {
+		if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
+			return err
+		}
+	}
 	for _, e := range envs {
 		if err := s.clearEnvironmentMembers(ctx, e); err != nil {
 			return err
@@ -903,12 +911,12 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 // environment does NOT clear its project membership, matching
 // store.SetEnvironmentServices' own asymmetry for services.
 func (s *Service) SetDatabases(ctx context.Context, id string, databaseIDs []string) (EnvironmentView, error) {
-	return s.setResourceMembers(ctx, s.databases(), id, databaseIDs, ignoreUnknownIDs)
+	return s.setResourceMembers(ctx, s.databases(), id, databaseIDs)
 }
 
 // SetKeyValues is SetDatabases' KeyValue-CR counterpart.
 func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []string) (EnvironmentView, error) {
-	return s.setResourceMembers(ctx, s.keyValues(), id, keyValueIDs, ignoreUnknownIDs)
+	return s.setResourceMembers(ctx, s.keyValues(), id, keyValueIDs)
 }
 
 // SetEnvGroups replaces the full list of environment groups assigned to an
@@ -917,33 +925,14 @@ func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []str
 // Groups already assigned to another Environment in the same workspace move in
 // one update, while groups omitted from this Environment are unassigned.
 func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []string) (EnvironmentView, error) {
-	return s.setResourceMembers(ctx, s.envGroups(), id, envGroupIDs, rejectUnknownIDs)
+	return s.setResourceMembers(ctx, s.envGroups(), id, envGroupIDs)
 }
 
-// unknownIDPolicy decides what a wanted id that the workspace listing doesn't
-// know about means — the one behavior the three Set verbs genuinely differ on.
-type unknownIDPolicy int
-
-const (
-	// ignoreUnknownIDs drops the id: the listing is scoped to the
-	// environment's own workspace, so an id naming a Database/KeyValue
-	// elsewhere is simply absent from the diff and never adopted across the
-	// tenant boundary.
-	ignoreUnknownIDs unknownIDPolicy = iota
-	// rejectUnknownIDs refuses the whole call instead, so a typo'd or foreign
-	// env group id is reported rather than silently dropped. Nothing has been
-	// written by the time the check runs, so a refusal never leaves a partial
-	// membership change behind.
-	rejectUnknownIDs
-)
-
 // setResourceMembers replaces the full membership of one member kind in an
-// environment: it diffs the wanted set against the workspace's current
-// membership and re-stamps only what actually changed, so an unrelated member
-// is never rewritten. Every per-kind difference lives in idx (what join/leave
-// imply) or in unknown (what a foreign id means); the authorize-fetch-diff
-// shape itself exists once, so it cannot drift between the three Set verbs.
-func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string, unknown unknownIDPolicy) (EnvironmentView, error) {
+// environment. Every requested id must be in the environment's workspace
+// before any membership changes; unknown and foreign ids receive the same
+// refusal. The diff then re-stamps only members that actually changed.
+func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string) (EnvironmentView, error) {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -972,9 +961,7 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	}
 	want := make(map[string]bool, len(wantIDs))
 	for _, wid := range wantIDs {
-		if unknown == rejectUnknownIDs && !known[wid] {
-			// The typed id prefix (ADR020) already names the kind, so one
-			// message serves whichever kind opted into rejection.
+		if !known[wid] {
 			return EnvironmentView{}, fmt.Errorf("%w: %q does not belong to workspace %q", core.ErrForbidden, wid, e.TenantID)
 		}
 		want[wid] = true
