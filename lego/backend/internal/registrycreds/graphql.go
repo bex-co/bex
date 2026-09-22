@@ -17,8 +17,11 @@ limitations under the License.
 package registrycreds
 
 import (
+	"context"
+
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -41,7 +44,24 @@ var credentialGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery returns registryCredentials(ownerId) + registryCredential(id).
+// ownerScoped selects the requested workspace while preserving the caller's
+// default when `ownerId` is omitted. Every by-id verb binds it: a credential
+// created with `ownerId: B` must be readable, updatable and deletable with
+// `ownerId: B`, or it consumes B's MaxCredentials quota with no product path to
+// free it (w4/128; same shape as the sandbox binding in w4/122).
+func ownerScoped(p graphql.ResolveParams) context.Context {
+	return core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId"))
+}
+
+// idOwnerArgs is the argument set shared by every by-id verb below.
+func idOwnerArgs() graphql.FieldConfigArgument {
+	return graphql.FieldConfigArgument{
+		"id":      gqlutil.ReqArg(graphql.String),
+		"ownerId": gqlutil.Arg(graphql.String),
+	}
+}
+
+// GraphQLQuery returns registryCredentials(ownerId) + registryCredential(id, ownerId).
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"registryCredentials": &graphql.Field{
@@ -53,7 +73,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.List(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
-		"registryCredential": gqlutil.IDVerb(credentialGQLType, s.Get),
+		"registryCredential": &graphql.Field{
+			Type: credentialGQLType,
+			Args: idOwnerArgs(),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Get(ownerScoped(p), p.Args["id"].(string))
+			},
+		},
 	}
 }
 
@@ -86,6 +112,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Type: credentialGQLType,
 			Args: graphql.FieldConfigArgument{
 				"id":        gqlutil.ReqArg(graphql.String),
+				"ownerId":   gqlutil.Arg(graphql.String),
 				"name":      gqlutil.Arg(graphql.String),
 				"username":  gqlutil.Arg(graphql.String),
 				"authToken": gqlutil.Arg(graphql.String),
@@ -104,14 +131,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					req.ExpiresAtSet = true
 					req.ExpiresAt = expiresAt
 				}
-				return s.Update(p.Context, p.Args["id"].(string), req)
+				return s.Update(ownerScoped(p), p.Args["id"].(string), req)
 			},
 		},
 		"deleteRegistryCredential": &graphql.Field{
 			Type: graphql.Boolean,
-			Args: gqlutil.IDArg(),
+			Args: idOwnerArgs(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.Delete(p.Context, p.Args["id"].(string))
+				err := s.Delete(ownerScoped(p), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},

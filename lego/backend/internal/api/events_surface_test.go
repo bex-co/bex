@@ -274,7 +274,7 @@ func TestGetEventSurfaceParity(t *testing.T) {
 	}
 }
 
-func TestGetEventRESTHonorsNamedWorkspace(t *testing.T) {
+func TestGetEventHonorsNamedWorkspace(t *testing.T) {
 	at := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 	eventID := ids.Derive(ids.Event, "aud-named-workspace:")
 	fake := &fakeEventStore{lookups: map[string]store.ServiceEventLookup{
@@ -298,6 +298,23 @@ func TestGetEventRESTHonorsNamedWorkspace(t *testing.T) {
 	}
 	if fake.gotEventWorkspace != "tea-b" {
 		t.Fatalf("event lookup workspace = %q, want tea-b", fake.gotEventWorkspace)
+	}
+
+	// GraphQL's serviceEvent took only an id until w4/128, so the same
+	// hydration — the one a webhook subscriber performs on a delivered
+	// data.id — resolved the caller's default workspace and answered
+	// EVENT_NOT_FOUND for an event owned by tea-b.
+	fake.gotEventWorkspace = ""
+	query := fmt.Sprintf(`{ serviceEvent(id: %q, ownerId: "tea-b") { id serviceId } }`, eventID)
+	gqlEvent, ok := gql(t, h, query)["serviceEvent"].(map[string]any)
+	if !ok {
+		t.Fatalf("GraphQL serviceEvent(ownerId:) did not return an object")
+	}
+	if gqlEvent["id"] != eventID || gqlEvent["serviceId"] != "dpg-bravo" {
+		t.Errorf("GraphQL named-workspace event = %v, want id=%s serviceId=dpg-bravo", gqlEvent, eventID)
+	}
+	if fake.gotEventWorkspace != "tea-b" {
+		t.Errorf("GraphQL event lookup workspace = %q, want tea-b", fake.gotEventWorkspace)
 	}
 }
 
