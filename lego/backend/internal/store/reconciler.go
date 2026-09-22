@@ -244,6 +244,9 @@ type Reconciler struct {
 	// can prune entries for datastores that have gone away without having to
 	// tell a dpg-/red- key apart from a service id.
 	datastoreUnhealthyOnce map[string]bool
+	// Resume after a bounded repair pass so a large inventory cannot starve
+	// later datastores of placement cleanup.
+	datastorePlacementCursor int
 
 	kick chan struct{}
 }
@@ -585,9 +588,9 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			errs = append(errs, fmt.Errorf("delete App %s: %w", cur.Name, err))
 		}
 	}
-	// Managed datastores are observed, never projected: they have no desired
-	// row here, so this is a sibling pass rather than part of the loop above.
-	if err := r.recordDatastoreObservations(ctx); err != nil {
+	// Datastores have no desired row here. Their sibling pass records observed
+	// state and repairs only provably stale project/environment references.
+	if err := r.reconcileDatastores(ctx); err != nil {
 		errs = append(errs, err)
 	}
 	// Product sampling gets one shared pass budget AFTER deployment/lifecycle

@@ -294,7 +294,7 @@ func TestRecordDatastoreObservationsSkipsUnownedCRs(t *testing.T) {
 			t.Fatalf("create Database: %v", err)
 		}
 	}
-	if err := rec.recordDatastoreObservations(context.Background()); err != nil {
+	if err := rec.reconcileDatastores(context.Background()); err != nil {
 		t.Fatalf("record datastore observations: %v", err)
 	}
 

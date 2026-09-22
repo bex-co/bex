@@ -49,6 +49,8 @@ type fakeResourceIndex struct {
 	lists       int
 	relabels    []relabel
 	listErr     error
+	clearErr    error
+	afterList   func()
 }
 
 func newFakeResourceIndex(workspaceID string, members ...projectResource) *fakeResourceIndex {
@@ -77,6 +79,9 @@ func (f *fakeResourceIndex) ListPostgres(_ context.Context, ownerID string) ([]p
 	for i, r := range rs {
 		out[i] = postgres.PostgresView{ID: r.id, ProjectID: r.projectID}
 	}
+	if f.afterList != nil {
+		f.afterList()
+	}
 	return out, nil
 }
 
@@ -89,6 +94,9 @@ func (f *fakeResourceIndex) ListKeyValues(_ context.Context, ownerID string) ([]
 	for i, r := range rs {
 		out[i] = keyvalue.KeyValueView{ID: r.id, ProjectID: r.projectID}
 	}
+	if f.afterList != nil {
+		f.afterList()
+	}
 	return out, nil
 }
 
@@ -98,6 +106,20 @@ func (f *fakeResourceIndex) SetProjectID(_ context.Context, name, projectID stri
 		for i := range f.byWorkspace[ws] {
 			if f.byWorkspace[ws][i].id == name {
 				f.byWorkspace[ws][i].projectID = projectID
+			}
+		}
+	}
+	return nil
+}
+
+func (f *fakeResourceIndex) ClearProjectID(ctx context.Context, name, expectedProjectID string) error {
+	if f.clearErr != nil {
+		return f.clearErr
+	}
+	for _, members := range f.byWorkspace {
+		for _, member := range members {
+			if member.id == name && member.projectID == expectedProjectID {
+				return f.SetProjectID(ctx, name, "")
 			}
 		}
 	}

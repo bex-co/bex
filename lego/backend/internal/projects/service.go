@@ -63,6 +63,7 @@ type ProjectStore interface {
 type DatabaseIndex interface {
 	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
 	SetProjectID(ctx context.Context, name, projectID string) error
+	ClearProjectID(ctx context.Context, name, expectedProjectID string) error
 }
 
 // KeyValueIndex is DatabaseIndex's KeyValue-CR counterpart. *keyvalue.Service
@@ -70,6 +71,7 @@ type DatabaseIndex interface {
 type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
 	SetProjectID(ctx context.Context, name, projectID string) error
+	ClearProjectID(ctx context.Context, name, expectedProjectID string) error
 }
 
 // EnvironmentIndex is the narrow contract projects needs from the
@@ -190,6 +192,7 @@ type projectResource struct {
 type resourceIndex interface {
 	list(ctx context.Context, workspaceID string) ([]projectResource, error)
 	SetProjectID(ctx context.Context, name, projectID string) error
+	ClearProjectID(ctx context.Context, name, expectedProjectID string) error
 }
 
 type databaseResources struct{ DatabaseIndex }
@@ -474,14 +477,9 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	return s.view(ctx, p)
 }
 
-// Delete removes a project (its services' project_id is set to NULL by the DB
-// cascade, and — since the same FK behavior nulls apps.environment_id for
-// members of every child environment, which the cascade also deletes — the
-// store rows end up consistent on their own). What the DB cascade can't do is
-// touch the already-existing k8s CRs: before the row disappears, fan the
-// environment-projected layer clear out to every member of every child
-// environment (w4/m32), so a deleted project's protected/isolated
-// environments don't leave their Apps/Databases/KeyValues silently blocked.
+// Delete clears inherited environment rules and datastore placement before
+// removing the project. The store cascade clears service membership and child
+// environments; surviving datastores retain their own rules and remain unassigned.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
@@ -490,6 +488,23 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if s.Environments != nil {
 		if err := s.Environments.ClearMembersForProject(ctx, p.ID); err != nil {
 			return err
+		}
+	}
+	for _, idx := range []resourceIndex{s.databases(), s.keyValues()} {
+		if idx == nil {
+			continue
+		}
+		members, err := idx.list(ctx, p.TenantID)
+		if err != nil {
+			return err
+		}
+		for _, member := range members {
+			if member.projectID != p.ID {
+				continue
+			}
+			if err := idx.ClearProjectID(ctx, member.id, p.ID); err != nil {
+				return err
+			}
 		}
 	}
 	return store.MapError(s.Store.DeleteProject(ctx, id))

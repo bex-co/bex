@@ -1509,57 +1509,104 @@ func (s *Service) patchDatabase(ctx context.Context, relation, name string, muta
 	return s.patchDatabaseObj(ctx, d, mutate)
 }
 
-// SetProjectID assigns (or, with an empty projectID, clears) this Database's
-// project (w1/m31 extension) — the internal/projects feature's write path,
-// mirroring keyvalue.Service.SetProjectID. Authorized the same as the other
-// tenant-mutating verbs on a named Database (RelCanCreate, matching DeletePostgres).
+// SetProjectID assigns the project and atomically drops the former
+// environment and its inherited rules when the project changes.
 func (s *Service) SetProjectID(ctx context.Context, name, projectID string) error {
-	_, err := s.patchDatabase(ctx, core.RelCanCreate, name, func(d *appv1alpha1.Database) {
-		if projectID == "" {
-			delete(d.Labels, core.LabelProject)
-			return
-		}
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	return s.setProjectID(ctx, d, projectID)
+}
+
+// ClearProjectID removes only the placement observed by the caller. A
+// reassignment since the caller listed the resource is left intact.
+func (s *Service) ClearProjectID(ctx context.Context, name, expectedProjectID string) error {
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if d.Labels[core.LabelProject] != expectedProjectID {
+		return nil
+	}
+	return s.setProjectID(ctx, d, "")
+}
+
+func (s *Service) setProjectID(ctx context.Context, d *appv1alpha1.Database, projectID string) error {
+	if d.Labels[core.LabelProject] == projectID && (projectID != "" || (d.Labels[core.LabelEnvironment] == "" && len(d.Spec.EnvironmentIPAllowList) == 0)) {
+		return nil
+	}
+	// A concurrent assignment must conflict, never lose its environment or rules.
+	patch := client.MergeFromWithOptions(d.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	delete(d.Labels, core.LabelEnvironment)
+	d.Spec.EnvironmentIPAllowList = nil
+	if projectID == "" {
+		delete(d.Labels, core.LabelProject)
+	} else {
 		if d.Labels == nil {
 			d.Labels = map[string]string{}
 		}
 		d.Labels[core.LabelProject] = projectID
-	})
-	return err
+	}
+	resourcemeta.Touch(d, s.Now())
+	return s.Client.Patch(ctx, d, patch)
 }
 
 // SetEnvironmentIPAllowList projects (or, with nil, clears) the environment
 // inbound-IP layer onto this Database (w4/m28) — the internal/environments
 // fan-out's write path. The Database's OWN IPAllowList is never touched: the
 // operator chains one middleware per layer, so a source must pass both.
-func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error {
+// A departed member must not inherit rules from a delayed fan-out.
+func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error {
 	d, err := s.AuthorizeDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return err
 	}
-	if slices.Equal(d.Spec.EnvironmentIPAllowList, cidrs) {
-		return nil // unchanged layer: no Update, no resourceVersion churn
+	if d.Labels[core.LabelEnvironment] != expectedEnvironmentID || slices.Equal(d.Spec.EnvironmentIPAllowList, cidrs) {
+		return nil
 	}
-	_, err = s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
-		d.Spec.EnvironmentIPAllowList = cidrs
-	})
-	return err
+	patch := client.MergeFromWithOptions(d.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	d.Spec.EnvironmentIPAllowList = cidrs
+	resourcemeta.Touch(d, s.Now())
+	return s.Client.Patch(ctx, d, patch)
 }
 
-// SetEnvironmentID assigns (or, with an empty environmentID, clears) this
-// Database's environment (w6/m20 extension) — the internal/environments
-// feature's write path, mirroring keyvalue.Service.SetEnvironmentID and
-// SetProjectID above. Authorized the same as the other tenant-mutating verbs
-// on a named Database (RelCanCreate, matching DeletePostgres).
+// SetEnvironmentID changes the environment without retaining rules inherited
+// from its predecessor. The parent project and resource-owned rules stay intact.
 func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID string) error {
-	_, err := s.patchDatabase(ctx, core.RelCanCreate, name, func(d *appv1alpha1.Database) {
-		if environmentID == "" {
-			delete(d.Labels, core.LabelEnvironment)
-			return
-		}
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	return s.setEnvironmentID(ctx, d, environmentID)
+}
+
+// ClearEnvironmentID removes only the environment observed by the caller.
+func (s *Service) ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error {
+	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return err
+	}
+	if d.Labels[core.LabelEnvironment] != expectedEnvironmentID {
+		return nil
+	}
+	return s.setEnvironmentID(ctx, d, "")
+}
+
+func (s *Service) setEnvironmentID(ctx context.Context, d *appv1alpha1.Database, environmentID string) error {
+	if d.Labels[core.LabelEnvironment] == environmentID && (environmentID != "" || len(d.Spec.EnvironmentIPAllowList) == 0) {
+		return nil
+	}
+	patch := client.MergeFromWithOptions(d.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	if environmentID == "" {
+		delete(d.Labels, core.LabelEnvironment)
+	} else {
 		if d.Labels == nil {
 			d.Labels = map[string]string{}
 		}
 		d.Labels[core.LabelEnvironment] = environmentID
-	})
-	return err
+	}
+	d.Spec.EnvironmentIPAllowList = nil
+	resourcemeta.Touch(d, s.Now())
+	return s.Client.Patch(ctx, d, patch)
 }
