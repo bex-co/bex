@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog.tsx";
 import { Input } from "@/common/components/ui/input.tsx";
+import { Label } from "@/common/components/ui/label";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
@@ -166,19 +167,30 @@ export function ProjectPage() {
         </div>
       </div>
 
+      {/* aria-describedby={undefined} is deliberate, not an oversight: Radix
+          points every DialogContent at a description id and warns when the
+          element is missing, and a one-field rename form has nothing useful to
+          explain beyond its title. The label below is what names the input —
+          the DialogTitle names the dialog, not the field (w4/134). */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{t("projects.renameTitle")}</DialogTitle>
           </DialogHeader>
-          <Input
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            autoComplete="off"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void handleRename();
-            }}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="project-rename-name">
+              {t("projects.renameFieldLabel")}
+            </Label>
+            <Input
+              id="project-rename-name"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              autoComplete="off"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleRename();
+              }}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"

@@ -121,10 +121,16 @@ describe("ProjectSettingsPage", () => {
 
     renderSettingsPage();
 
-    await screen.findByDisplayValue("storefront");
+    // The read-only state is named too, by the card heading it is now
+    // associated with — a control identified by its purpose in BOTH states
+    // rather than by whatever value it holds (w4/134).
+    expect(
+      await screen.findByRole("textbox", { name: "Project Name" }),
+    ).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Edit" }));
 
-    const input = screen.getByDisplayValue("storefront");
+    const input = screen.getByRole("textbox", { name: "Project Name" });
+    expect(input).toBeEnabled();
     await user.clear(input);
     await user.type(input, "new-name");
     await user.click(screen.getByRole("button", { name: "Save" }));
