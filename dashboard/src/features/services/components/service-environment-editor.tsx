@@ -72,6 +72,7 @@ import {
   isNewDraftRow,
   isValidSecretFileName,
   MASKED_VALUE,
+  reidentifyDraft,
   validateEnvironmentDraft,
   type EnvDraftRow,
   type EnvironmentDraft,
@@ -329,10 +330,16 @@ export function EnvironmentEditor({
   // draft-less SSR output and there's no hydration mismatch.
   useEffect(() => {
     const saved = consumeRestored();
-    if (saved) {
-      setDraft((current) => current ?? saved);
-      setRestoredDraft(true);
-    }
+    if (!saved) return;
+    // Re-key through THIS mount's allocator before adopting. The stored ids
+    // were allocated by the previous mount, whose counter is gone; reinstating
+    // them verbatim let the next added row collide with a restored one, and
+    // `updateRow` acts on every row whose id matches — so one edit rewrote two
+    // rows and one delete removed two (w4/139). Reading the ref here is safe:
+    // this is an effect, not render.
+    const fresh = reidentifyDraft(saved, () => nextID.current++);
+    setDraft((current) => current ?? fresh);
+    setRestoredDraft(true);
   }, [consumeRestored]);
 
   // Mirror the live draft to sessionStorage while it holds unsaved changes, and
