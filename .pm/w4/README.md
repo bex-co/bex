@@ -283,3 +283,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **136** — [Adopt the accepted rows after a static edge-rule save](done/136.md) — the setters now return the canonical rows from the refetch they were already discarding, so a whitespace-normalized save no longer leaves the editor permanently dirty; a later draft typed mid-flight is preserved. Live re-probe still owed.
 
 - [x] **137** — [Let a blank Command actually clear the cron override](done/137.md) — the hook rewrote an explicit `""` into `null`, so clearing the field saved "successfully" and kept the old command; the caller now distinguishes keep/replace/clear, and a commandless reschedule still sends `null` so its authorization path is unchanged. Live re-probe still owed.
+
+- [x] **138** — [Refresh cron Recent Runs while the page stays open](done/138.md) — page 1 now polls on the shared visible-tab cadence with the loaded tail held outside the cache entry, so a poll cannot truncate it; adds last-good retention on a failed refresh and drops a tail the refreshed head no longer joins rather than hiding a run mid-history. Live re-probe still owed.
