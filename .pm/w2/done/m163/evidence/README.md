@@ -143,7 +143,9 @@ The four unused Docker containers created during the first local bring-up attemp
 were removed successfully: `bex-w2-m163-fga`, `bex-w2-m163-pg`,
 `bex-w2-m163-hydra`, and `bex-w2-m163-kratos`. The native acceptance API, Hydra, Kratos, and acceptance OpenFGA processes were
 stopped after the successful walk. PostgreSQL and a separate test-only OpenFGA
-process are retained for the next workstream item's isolated integration tests;
-the root drain owns their final teardown. Private runtime files remain under
+process were reused for m164's isolated integration tests, then stopped on
+2026-09-22 after verification. The temporary OpenBao process used for the newly
+merged integration tests was also stopped. Ports 55120, 63220, and 63420 were
+confirmed closed. Private runtime files remain under
 `/tmp/bex-w2-m163-live/`. No `.env` or kubeconfig is
 part of this evidence.

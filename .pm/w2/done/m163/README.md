@@ -29,7 +29,7 @@ The three options and what each actually costs:
 
 **Decided: revoke** — the same disposition ADR086 already chose for account deletion, applied to every exit. The argument that settles it: revocation that does not cover a subject's delegated credentials is not revocation. A key created by a member is that member's authority in machine form; ending the membership while leaving the delegation live means the removal only *appears* to have happened. Retention and reassignment both keep a credential alive whose authorizing relationship has ended.
 
-**The tension, recorded because it is real.** [ADR078 §1](../../../docs/ADR078-github-workspace-connections.md) praises bex for *not* having Render's member-departure breakage in the git-connection model, and revoking here deliberately introduces exactly that failure for API keys. The two are not inconsistent, and the distinction is the point:
+**The tension, recorded because it is real.** [ADR078 §1](../../../../docs/ADR078-github-workspace-connections.md) praises bex for *not* having Render's member-departure breakage in the git-connection model, and revoking here deliberately introduces exactly that failure for API keys. The two are not inconsistent, and the distinction is the point:
 
 - A **git connection** is workspace-owned in substance: it is bound by an admin proving they administer an installation, and no member's continued employment is part of what authorizes it. Nothing breaks when they leave because nothing about the binding referred to them.
 - An **API key** is a delegation of one subject's authority. `CreatedBy` is not decoration — it is the authorizing relationship. When that relationship ends, the credential has no basis left.
@@ -38,7 +38,7 @@ So the rule is: bex avoids member-departure breakage wherever the resource never
 
 **Scope of the rule:** keys created by the departing subject **and bound to the workspace being exited** — never that subject's keys in other workspaces. All three exits (admin removal, self-leave, account deletion) converge on it; account deletion stays global by subject, which is correct for that path.
 
-**ADR amendments owed:** [ADR024](../../../docs/ADR024-members.md) gets the membership rule (removal disposes the member's machine credentials) and [ADR086](../../../docs/ADR086-account-deletion.md)'s disposition table gets the cross-reference that the rule is no longer deletion-only.
+**ADR amendments owed:** [ADR024](../../../../docs/ADR024-members.md) gets the membership rule (removal disposes the member's machine credentials) and [ADR086](../../../../docs/ADR086-account-deletion.md)'s disposition table gets the cross-reference that the rule is no longer deletion-only.
 
 ## Definition of done
 
