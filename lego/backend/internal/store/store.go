@@ -837,10 +837,21 @@ func (s *PGStore) BindClient(ctx context.Context, clientID, tenantID string) err
 	return nil
 }
 
-// UnbindClient removes an API key's tenant_members row across every tenant it
-// might be bound to (idempotent — a key that was never bound is not an error).
+// UnbindClient permanently revokes an API key and removes its tenant_members
+// rows atomically. The marker also rejects already-issued tokens on every API
+// replica. Keys are never reused, so an existing marker remains authoritative.
+// A key that was never bound is still revoked without returning an error.
 func (s *PGStore) UnbindClient(ctx context.Context, clientID string) error {
-	_, err := s.Pool.Exec(ctx, `DELETE FROM tenant_members WHERE subject = $1`, clientID)
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO oauth_revocations (subject, client_id, revoked_at)
+			VALUES ($1, $1, clock_timestamp())
+			ON CONFLICT (subject, client_id) DO NOTHING`, clientID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM tenant_members WHERE subject = $1`, clientID)
+		return err
+	})
 	if err != nil {
 		return classify("tenant_member", err)
 	}

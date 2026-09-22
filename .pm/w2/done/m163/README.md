@@ -1,6 +1,6 @@
 # w2 · m163 — Credential offboarding: a removed member's machine credentials
 
-**Worker:** worker2 **Goal:** removing a member removes what they can still act with — their API keys stop being a back door into a workspace they were just removed from **Status:** t001–t007 done 2026-09-16; t008 closeout open (needs a live OpenFGA-enforced walk)
+**Worker:** worker2 **Goal:** removing a member removes what they can still act with — their API keys stop being a back door into a workspace they were just removed from **Status:** done 2026-09-21
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity check for key ownership and removal semantics                         | 30m | t004       | — **DONE** |
 | t006 | Simplify the code this milestone changed                                            | 30m | t005       | — **DONE** |
 | t007 | Test coverage: a removed member's key cannot act                                    | 45m | t005       | — **DONE** |
-| t008 | Closeout                                                                            | 15m | t006, t007 | open       |
+| t008 | Closeout                                                                            | 15m | t006, t007 | — **DONE** |
 
 ## t001 decision (2026-09-16) — **revoke**
 
@@ -56,3 +56,9 @@ On a store-backed environment with OpenFGA enforced:
 - **Expected outcome:** one offboarding rule, applied by every path that ends a membership.
 - **Why now:** `w5/m103` is about to filter machine bindings off the Team surface — which makes these keys *less* visible while they stay live. The disposition has to be settled before that lands, or the gap becomes invisible as well as open.
 - **Render parity task included:** yes — key ownership semantics and the removal response are user-facing API behavior (note: Render's API keys are user-owned and leave with the user; bex's are workspace-owned, which is the crux of t001).
+
+## Closeout — 2026-09-21
+
+All three exits passed the strict live 401 check using real PostgreSQL, Hydra, Kratos, and enforced OpenFGA. The live probe found and drove a fix for cached machine tokens returning 403: unbinding now records a permanent revocation atomically, and every replica checks cached and freshly introspected machine identities. Remaining-member keys stayed valid; scoped exits retained other-workspace keys. See [the reproducible live evidence](evidence/README.md) for all 235 observations and the disclosed in-memory Kubernetes boundary.
+
+The full backend suite ran with real PostgreSQL and OpenFGA and passed. All four modules passed lint; targeted authentication/store regressions and the dashboard Team panel's 20 tests passed. Simplify review completed with existing test helpers reused.
