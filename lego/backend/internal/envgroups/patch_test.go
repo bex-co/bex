@@ -19,6 +19,7 @@ package envgroups
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"sync"
 	"testing"
@@ -135,23 +136,31 @@ func TestPatchEnvironmentConcurrentExpectedRevisionHasOneWinner(t *testing.T) {
 	}
 	services := []*Service{newService(store), newService(store)}
 	start := make(chan struct{})
-	errs := make(chan error, 2)
+	type outcome struct {
+		value  string
+		result EnvironmentPatchResult
+		err    error
+	}
+	outcomes := make(chan outcome, 2)
 	for i, service := range services {
 		value := []string{"one", "two"}[i]
 		go func() {
 			<-start
-			_, patchErr := service.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+			result, patchErr := service.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
 				ExpectedRevision: &group.Revision, SaveMode: SaveModeOnly,
 				EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: value}},
 			})
-			errs <- patchErr
+			outcomes <- outcome{value: value, result: result, err: patchErr}
 		}()
 	}
 	close(start)
 	var successes, conflicts int
+	var winner outcome
 	for range services {
-		if err := <-errs; err == nil {
+		got := <-outcomes
+		if err := got.err; err == nil {
 			successes++
+			winner = got
 		} else if errors.Is(err, core.ErrConflict) {
 			conflicts++
 		} else {
@@ -160,6 +169,57 @@ func TestPatchEnvironmentConcurrentExpectedRevisionHasOneWinner(t *testing.T) {
 	}
 	if successes != 1 || conflicts != 1 {
 		t.Fatalf("successes=%d conflicts=%d", successes, conflicts)
+	}
+	value, err := creator.GetEnvGroupVar(ctx, group.ID, "TOKEN")
+	if err != nil || value.Value != winner.value {
+		t.Fatalf("final value = %+v, err=%v; winning value=%q", value, err, winner.value)
+	}
+	current, err := creator.GetEnvGroup(ctx, group.ID)
+	if err != nil || current.Revision != winner.result.Revision || current.Revision == group.Revision {
+		t.Fatalf("final revision = %q, err=%v; winning revision=%q, original=%q", current.Revision, err, winner.result.Revision, group.Revision)
+	}
+}
+
+// Groups expose a logical content revision, unlike the service map's physical
+// CAS revision: a save-only no-op retains its token and does not roll services.
+func TestPatchEnvironmentSaveOnlyNoopPreservesLogicalRevision(t *testing.T) {
+	ctx := context.Background()
+	store := newFakeStore()
+	svc := newService(store, sampleApp("web"))
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+		Name: "shared", EnvVars: []CreateEnvVarInput{{Key: "TOKEN", Value: "unchanged"}},
+		ServiceIDs: []string{"web"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := getApp(t, svc.Client, "web").DeepCopy()
+	svc.Clock = func() time.Time { return time.Unix(2_000_000, 0).UTC() }
+	result, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		ExpectedRevision: &group.Revision, SaveMode: SaveModeOnly,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "unchanged"}},
+	})
+	if err != nil || result.Revision != group.Revision || result.RolledOut {
+		t.Fatalf("no-op result = %+v, err=%v, original revision=%q", result, err, group.Revision)
+	}
+	current, err := svc.GetEnvGroup(ctx, group.ID)
+	if err != nil || current.Revision != group.Revision {
+		t.Fatalf("no-op persisted revision = %q, err=%v", current.Revision, err)
+	}
+	value, err := svc.GetEnvGroupVar(ctx, group.ID, "TOKEN")
+	if err != nil || value.Value != "unchanged" {
+		t.Fatalf("no-op value = %+v, err=%v", value, err)
+	}
+	if after := getApp(t, svc.Client, "web"); !reflect.DeepEqual(before, after) {
+		t.Fatal("save-only no-op changed linked App")
+	}
+	// The unchanged logical token remains valid for a later content update.
+	next, err := svc.PatchEnvironment(ctx, group.ID, EnvironmentPatch{
+		ExpectedRevision: &result.Revision, SaveMode: SaveModeOnly,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "changed"}},
+	})
+	if err != nil || next.Revision == result.Revision {
+		t.Fatalf("save after no-op = %+v, err=%v", next, err)
 	}
 }
 

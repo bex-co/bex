@@ -2,9 +2,8 @@ name: test (backend)
 
 # Run the backend and agent-driver suites on every relevant push/PR, and as a
 # reusable workflow called by deploy.yml to gate the build+push+deploy job.
-# Integration tests gated on BEX_TEST_DB_URI / BEX_TEST_OPENFGA_URL run against real
-# ephemeral service containers (postgres:17 + openfga/openfga in-memory), both
-# digest-pinned and enforced by scripts/image-pin-validate.sh.
+# Integration tests run against real ephemeral Postgres, OpenFGA, and OpenBao
+# service containers, all digest-pinned and enforced by scripts/image-pin-validate.sh.
 on:
   push:
     branches: [main]
@@ -103,6 +102,14 @@ jobs:
           curl -sf -X POST "http://localhost:8080/stores/$store_id/authorization-models" \
             -H 'Content-Type: application/json' \
             -d @deploy/gitops/authz/model.json
+      - name: start OpenBao (ephemeral KV v2)
+        run: |
+          docker run -d --name backend-test-openbao \
+            -e BAO_DEV_ROOT_TOKEN_ID=backend-test-only \
+            -p 127.0.0.1:8200:8200 \
+            quay.io/openbao/openbao:2.5.5@sha256:6150c4a6b62067db6141c8da7a6a6b5763f4f47c315343d0c848b40fecdfd452 \
+            server -dev -dev-listen-address=0.0.0.0:8200
+          timeout 60 bash -c 'until curl -sf http://localhost:8200/v1/sys/health; do sleep 2; done'
       # TestRenderConformance (internal/api/conformance_test.go) validates bex's
       # REST responses against the pinned Render OpenAPI schemas in
       # internal/api/testdata/render-openapi.json. It runs as part of go test
@@ -123,6 +130,8 @@ jobs:
         env:
           BEX_TEST_DB_URI: postgres://postgres:pw@localhost:5432/postgres?sslmode=disable
           BEX_TEST_OPENFGA_URL: http://localhost:8080
+          BEX_TEST_OPENBAO_KV_URL: http://localhost:8200
+          BEX_TEST_OPENBAO_KV_TOKEN: backend-test-only
         # The integration packages share this one ephemeral database, and
         # legacy store suites intentionally TRUNCATE their fixtures. Serialize
         # package test binaries so those resets cannot erase another package's
@@ -136,3 +145,6 @@ jobs:
           scripts/test_stripe_billing_secret.py
           scripts/test_stripe_billing_operations.py
           scripts/test_stripe_billing_reconcile.py
+      - name: stop test OpenBao
+        if: always()
+        run: docker rm -f backend-test-openbao

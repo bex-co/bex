@@ -64,12 +64,13 @@ type EnvironmentPatch struct {
 	ExpectedEnvRevision *string           `json:"expectedEnvRevision,omitempty"`
 }
 
-// EnvironmentPatchResult deliberately contains names only. Generated or
-// supplied secret material remains write-only on this batch surface.
+// EnvironmentPatchResult contains names and an opaque revision, never secret material.
 type EnvironmentPatchResult struct {
 	EnvVarKeys      []string `json:"envVarKeys"`
 	SecretFileNames []string `json:"secretFileNames"`
 	RolledOut       bool     `json:"rolledOut"`
+	// Revision is null for sparse patches, which make no caller-visible CAS promise.
+	Revision *string `json:"revision"`
 }
 
 // PatchEnvironment applies a mixed, sparse environment patch after validating
@@ -166,6 +167,8 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 		}
 		return EnvironmentPatchResult{}, envSourceUnavailable()
 	}
+	revision := encodeEnvRevision(newVersion)
+	result.Revision = &revision
 	txn := envPatchTxn{
 		service:         service,
 		originalApp:     a.DeepCopy(),
@@ -535,7 +538,7 @@ func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
 
 func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, cause error) error {
 	if txn.casWriteVersion != nil {
-		return s.compensateCASEnvironment(ctx, txn.service, txn.originalApp, txn.oldEnv, *txn.casWriteVersion, txn.casProjection, cause)
+		return s.compensateCASEnvironment(ctx, txn.service, txn.originalApp, txn.oldEnv, *txn.casWriteVersion, txn.casProjection)
 	}
 	originalApp := txn.originalApp
 	var compensation []error
@@ -565,25 +568,20 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 }
 
 // compensateCASEnvironment restores source first, then rolls the projection
-// back only while the failed write's exact revision still owns it. A conflict
-// returns the coded error directly (rather than errors.Join) so graphql-go keeps
-// extensions.code and no underlying store/Kubernetes detail crosses the API.
-func (s *Service) compensateCASEnvironment(ctx context.Context, service string, originalApp *appv1alpha1.App, oldEnv map[string]string, casWriteVersion uint64, projection casEnvProjection, _ error) error {
+// back only while the failed write's exact revision still owns it. Once the
+// source write was accepted, a failed rollback is a restoration failure, never
+// a revision refusal: the submitted value may still be stored. Return only the
+// coded error so store/Kubernetes details do not cross the API.
+func (s *Service) compensateCASEnvironment(ctx context.Context, service string, originalApp *appv1alpha1.App, oldEnv map[string]string, casWriteVersion uint64, projection casEnvProjection) error {
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
 		return envRestorationFailed()
 	}
 	restoredVersion, err := versioned.PutCAS(ctx, envPath(service), oldEnv, casWriteVersion)
 	if err != nil {
-		if errors.Is(err, core.ErrConflict) {
-			return envRevisionConflict()
-		}
 		return envRestorationFailed()
 	}
 	if err := s.rollbackCASEnvProjection(ctx, originalApp, oldEnv, restoredVersion, projection); err != nil {
-		if errors.Is(err, core.ErrConflict) {
-			return envRevisionConflict()
-		}
 		return envRestorationFailed()
 	}
 	return envUpdateRestored()

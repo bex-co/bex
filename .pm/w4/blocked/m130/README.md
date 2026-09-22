@@ -1,19 +1,19 @@
 # w4 · m130 — `patchServiceEnvironment` applies the write and then reports a conflict
 
-**Worker:** worker4 **Goal:** a revision-aware environment save either applies and says so, or refuses and changes nothing — so a client doing a correct read-modify-write is never told to retry a save that already succeeded. **Status:** todo
+**Worker:** worker4 **Goal:** a revision-aware environment save either applies and says so, or refuses and changes nothing — so a client doing a correct read-modify-write is never told to retry a save that already succeeded. **Status:** blocked (t002–t007 done; t001 needs original production failure attribution; t008 awaits deployment and live verification)
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------------------ | --- | ------------ |
-| t001 | Diagnose why a CAS patch that durably applies its write returns `ENVIRONMENT_REVISION_CONFLICT` | 45m | —            |
-| t002 | Make the outcome and the response agree: a landed write never reports a conflict             | 40m | w4/m130/t001 |
-| t003 | Return the new revision from `EnvironmentPatchResult`, as the env-group sibling already does  | 25m | w4/m130/t001 |
-| t004 | Carry the fix across REST and MCP, which expose the same `expectedEnvRevision` parameter      | 30m | w4/m130/t002 |
-| t005 | Render parity — the environment save surface across REST/GraphQL/MCP/UI                      | 30m | w4/m130/t003, w4/m130/t004 |
-| t006 | Simplify — `/simplify` over the code this milestone changed                                   | 25m | w4/m130/t005 |
-| t007 | Test coverage — a conflict means nothing was written; a success reports success               | 45m | w4/m130/t005 |
-| t008 | Closeout — close the milestone once the definition of done actually holds                     | 15m | w4/m130/t007 |
+| t001 | Diagnose why a CAS patch that durably applies its write returns `ENVIRONMENT_REVISION_CONFLICT` — **BLOCKED** | 45m | —            |
+| t002 | Make the outcome and the response agree: a landed write never reports a conflict — **DONE** | 40m | w4/m130/t001 |
+| t003 | Return the new revision from `EnvironmentPatchResult`, as the env-group sibling already does — **DONE** | 25m | w4/m130/t001 |
+| t004 | Carry the fix across REST and MCP, which expose the same `expectedEnvRevision` parameter — **DONE** | 30m | w4/m130/t002 |
+| t005 | Render parity — the environment save surface across REST/GraphQL/MCP/UI — **DONE** | 30m | w4/m130/t003, w4/m130/t004 |
+| t006 | Simplify — `/simplify` over the code this milestone changed — **DONE** | 25m | w4/m130/t005 |
+| t007 | Test coverage — a conflict means nothing was written; a success reports success — **DONE** | 45m | w4/m130/t005 |
+| t008 | Closeout — close the milestone once the definition of done actually holds — **BLOCKED** | 15m | w4/m130/t007 |
 
 ## Definition of done
 
@@ -95,3 +95,33 @@ So the live behavior contradicts a straightforward reading of the code, which pe
 
 - **Whether `saveMode:"deploy"` behaves the same** was not probed; every trial used `save_only` to avoid rollout churn. t001 should check both, since the deploy mode does strictly more work and the hypothesis above implicates exactly that extra work.
 - **The 20-iteration DoD loop is deliberately longer than the 8 trials run here.** Four failures in eight is a high enough rate to characterize, but not to prove a fix; the DoD asks for a run long enough that the current failure rate would almost certainly appear.
+
+## Diagnosis (2026-09-21, implementation investigation)
+
+The original "exactly two call sites" premise is incorrect in the current code. `projectCASEnv` can fail after the accepted source CAS, and `compensateCASEnvironment` returns `ENVIRONMENT_REVISION_CONFLICT` when its restoring CAS or projection ownership check loses to a newer writer. `TestPatchEnvironmentCASRollbackDoesNotClobberProjectionLandedAfterSourceRestore` explicitly asserted that post-write error. A newer writer can preserve this request's submitted key while changing another key, leaving the submitted value stored although compensation reports a revision refusal. This reachable mechanism is being exercised against real OpenBao; it does not by itself prove the cause of the original unattended production failures.
+
+The source-path census is 12 mutation sites across 11 logical operations: `SetEnvVars`, `SetEnvVar`, `DeleteEnvVar`, `SeedEnvVars`; `patchEnvironmentCAS`, `patchEnvironmentSparse`, `compensateCASEnvironment`, `restoreSourceMaps`; `prepareEnvVars` (write and failure cleanup), `abortEnvVars`, and the purger's normal/legacy-path deletion loop. `projectCASEnv` only reads OpenBao. Successful finalization writes Kubernetes; it reaches source writes only on compensation. REST, GraphQL, and MCP are the three public patch adapters. `OryTransport` is an ordinary Go transport, the POST has no idempotency headers, and `kv` retries only a rejected 403. No evidence supports an applied POST retry here.
+
+The correction reserves `ENVIRONMENT_REVISION_CONFLICT` for rejection before this request's source write is accepted. Incomplete post-write compensation uses the existing `ENVIRONMENT_RESTORATION_FAILED` error, preserving newer writes and requiring a refresh; successful compensation retains `ENVIRONMENT_UPDATE_RESTORED`. A failed projection must not be misreported as a successful deploy. The original production frequency and deployed 20-iteration proof remain open until verified, regardless of local results.
+
+### Reproduction and verification evidence
+
+Real OpenBao 2.5.5, with the production store adapter and controlled fake Kubernetes resources, reproduced the misleading error before the fix: source version 1; request GET 200, submitted CAS POST 200 (version 2), injected other-key CAS POST 200 (version 3), projection GET 200, restoring CAS POST 400; final version 3 retained the submitted key. The old response was `ENVIRONMENT_REVISION_CONFLICT`. The corrected response is `ENVIRONMENT_RESTORATION_FAILED`, without overwriting either key. The recorded sequence comes from `TestPatchEnvironmentRealOpenBaoPostWriteConflict`; a Go overlay of the old implementation failed this regression as expected. No secret values or paths were logged.
+
+`TestPatchEnvironmentRealOpenBaoSequentialAndStale` ran 20 chained writes on each of REST/GraphQL/MCP in each of `save_only` and `deploy` (120 total, alternating changes/no-ops), zero spurious errors in either mode. Each iteration verified the returned revision and persisted value, then replayed the stale revision and checked the exact map and version remained unchanged. `TestPatchEnvironmentRealOpenBaoConcurrentWriters` observed two initial reads, one POST 200, one POST 400, and one persisted winner. These tests use real KV storage and fake Kubernetes; they do not validate Kubernetes rollout or production auth. They are wired into backend CI with a digest-pinned ephemeral OpenBao.
+
+Existing env-group tests now tie concurrent success to the final value/revision and cover its intentional no-op behavior: env groups retain a logical content revision for unchanged content, whereas service CAS advances the physical store revision to consume one observed token. The production report's original single-caller frequency remains unexplained by this injected interleaving. A deployed trace identifying the competing writer or other failure is still owed; the milestone must remain blocked until that diagnosis and its deployed definition of done are verified.
+
+### Review and validation notes
+
+Three `/simplify` reviews covered reuse, quality, and efficiency. Applied all findings: reuse the store HTTP helper for mount setup and `StrField` for GraphQL; remove compensation's unused cause argument; correct the names-only documentation; join both concurrent test writers before assertions can tear down their mount. The revision-field mutation overlay fails all six API/mode tests without the new contract; the compensation overlay fails all three targeted post-write cases. Existing unaffected assertions are regression controls, not claimed to fail on old code.
+
+The first full-suite run caught an API-level expectation of the old post-write error, which was updated. Its workspace lifecycle failure came from reusing `BEX_TEST_OPENBAO_URL`, which enables a distinct Kubernetes-auth test; the new ephemeral KV fixture now uses `BEX_TEST_OPENBAO_KV_URL`/`BEX_TEST_OPENBAO_KV_TOKEN`. A separate mount attempt timed out on the overloaded local Docker host. The native Postgres instance also retained the old full run's fixed gateway test role privileges in the `postgres` database; those test-only grants were cleared before final verification. No production store or other workstream's fixture was changed.
+
+The remaining KV test setup failure was traced to OpenBao's explicit HTTP400 “Upgrading from non-versioned to versioned data” response immediately after mounting KV-v2. The fixture now waits on the read-only configuration endpoint before its first write; there is no retry around CAS mutations. This startup race is separate from the observed production service-save defect.
+
+The readiness correction passed three consecutive complete real-OpenBao regression runs. It follows OpenBao 2.5.5's [`config` read upgrade check](https://github.com/openbao/openbao/blob/v2.5.5/builtin/logical/kv/path_config.go) and [asynchronous KV upgrade](https://github.com/openbao/openbao/blob/v2.5.5/builtin/logical/kv/upgrade.go), polls only the read-only endpoint under a deadline, and leaves tested writes single-attempt. The dedicated no-op regression also asserts zero App patches, zero audit events, no restart timestamp, and an advanced returned revision.
+
+### Final local gate
+
+Passed the full backend suite with `GOWORK=off go test -p 1 ./...`, real native Postgres, real OpenFGA, and the real OpenBao KV fixture enabled (`BEX_TEST_DB_URI`, `BEX_TEST_OPENFGA_URL`, `BEX_TEST_OPENBAO_KV_URL`, `BEX_TEST_OPENBAO_KV_TOKEN`). Backend lint reports zero issues; image-pin validation passes88 references; workflow YAML parses; Markdown formatting and diff whitespace checks pass. Logs for this run are `/tmp/bex-w4-m130-green.log` and `/tmp/bex-w4-m130-lint-green.log`. These are local results, not a claim about CI or production rollout. No dashboard source changed, so no dashboard suite was needed.
