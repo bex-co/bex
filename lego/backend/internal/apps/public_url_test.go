@@ -155,3 +155,60 @@ func TestM124_APublicServiceStillReportsItsURL(t *testing.T) {
 		t.Fatalf("AppView.URL = %q, want the public URL", view.URL)
 	}
 }
+
+// TestM125_MaintenanceModeIsNullOffAWebService is w4/125, the sibling this
+// sweep was meant to find. REST and MCP omit maintenanceMode for every type but
+// web_service; GraphQL answered {enabled:false, uri:""} for all of them, which
+// is not "unset" — it is a claim about a mode the service does not have.
+//
+// The w6/m130 remedy could not reach it: emptying the VALUE in view() still
+// yields the zero object. Only the schema can say "not applicable", so the
+// field is nullable now, which is why the web-service control below matters.
+func TestM125_MaintenanceModeIsNullOffAWebService(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		svcType  string
+		wantNull bool
+	}{
+		{name: "web_service", svcType: appv1alpha1.TypeWebService},
+		{name: "private_service", svcType: appv1alpha1.TypePrivateService, wantNull: true},
+		{name: "background_worker", svcType: appv1alpha1.TypeBackgroundWorker, wantNull: true},
+		{name: "cron_job", svcType: appv1alpha1.TypeCronJob, wantNull: true},
+		{name: "static_site", svcType: appv1alpha1.TypeStaticSite, wantNull: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newService(nil, typedApp("svc", tc.svcType))
+			ctx := context.Background()
+
+			schema, err := graphql.NewSchema(graphql.SchemaConfig{
+				Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+			})
+			if err != nil {
+				t.Fatalf("schema: %v", err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+				RequestString: `{ service(id: "svc") { maintenanceMode { enabled uri } } }`})
+			if len(res.Errors) > 0 {
+				t.Fatalf("gql: %v", res.Errors)
+			}
+			got := res.Data.(map[string]any)["service"].(map[string]any)["maintenanceMode"]
+			if tc.wantNull {
+				if got != nil {
+					t.Errorf("GraphQL maintenanceMode = %v, want null (agrees with REST's omission)", got)
+				}
+			} else if got == nil {
+				t.Error("GraphQL maintenanceMode = null for a web_service, want the object")
+			}
+
+			// REST and MCP are the reference: present for web_service only.
+			view, err := svc.Get(ctx, "svc")
+			if err != nil {
+				t.Fatalf("Get: %v", err)
+			}
+			_, present := toRenderService(view).ServiceDetails["maintenanceMode"]
+			if present == tc.wantNull {
+				t.Errorf("REST/MCP serviceDetails.maintenanceMode present = %v, want %v", present, !tc.wantNull)
+			}
+		})
+	}
+}
