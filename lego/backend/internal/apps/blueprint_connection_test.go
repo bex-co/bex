@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -348,5 +350,108 @@ func TestM125_ConnectionLookupFailureFailsClosed(t *testing.T) {
 		t.Fatal("want an error when the connection lookup fails")
 	} else if errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("a lookup failure must not be read as not-found: %v", err)
+	}
+}
+
+// --- w4/118: workspace-resolvable references are checked at validate --------
+//
+// fromService names a service in the SAME FILE, so it is fully checkable from
+// the manifest and always was. fromDatabase and fromService→KeyValue resolve
+// against the workspace, and their checks ran only at apply — so a manifest
+// naming a database that exists nowhere came back `valid: true` with a clean
+// plan, while the same manifest's dangling fromService was rejected.
+
+const m118DanglingDatabase = `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+    envVars:
+      - key: REF
+        fromDatabase:
+          name: qa-no-such-database-anywhere
+          property: connectionString
+`
+
+const m118DanglingKeyValue = `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+    envVars:
+      - key: REF
+        fromService:
+          name: qa-no-such-keyvalue-anywhere
+          type: keyvalue
+          property: connectionString
+`
+
+func TestM118_DanglingWorkspaceReferencesFailValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		manifest string
+		want     string
+	}{
+		{
+			name:     "fromDatabase",
+			manifest: m118DanglingDatabase,
+			want:     `fromDatabase references unknown database "qa-no-such-database-anywhere" in this workspace`,
+		},
+		{
+			name:     "fromService to a Key Value",
+			manifest: m118DanglingKeyValue,
+			want:     `fromService references unknown Key Value "qa-no-such-keyvalue-anywhere" in this workspace`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := connectionService(t)
+			v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, tc.manifest)
+			if err != nil {
+				t.Fatalf("ValidateBlueprint: %v", err)
+			}
+			if v.Valid {
+				t.Fatalf("a reference that resolves to nothing must not validate: %+v", v)
+			}
+			// The wording is apply's, verbatim — validate and apply must not
+			// have two vocabularies for one refusal.
+			var found bool
+			for _, e := range v.Errors {
+				if strings.Contains(e.Error, tc.want) {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("validation errors = %+v, want one containing %q", v.Errors, tc.want)
+			}
+		})
+	}
+}
+
+// TestM118_AResolvableReferenceStillValidates keeps the guard above from being
+// satisfied by refusing every workspace reference — the superset over Render's
+// same-blueprint-only rule is deliberate and has to keep working.
+func TestM118_AResolvableReferenceStillValidates(t *testing.T) {
+	svc, _ := connectionService(t)
+	ctx := ownershipCtx()
+
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dpg-real",
+			Namespace: "default",
+			Labels:    map[string]string{core.LabelTenant: "tea-a"},
+		},
+		Spec: appv1alpha1.DatabaseSpec{Name: "qa-real-database"},
+	}
+	if err := svc.Client.Create(ctx, db); err != nil {
+		t.Fatalf("create database: %v", err)
+	}
+
+	manifest := strings.Replace(m118DanglingDatabase, "qa-no-such-database-anywhere", "qa-real-database", 1)
+	v, err := svc.ValidateBlueprint(ctx, connOwner, manifest)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if !v.Valid {
+		t.Fatalf("a database that exists in the workspace must validate: %+v", v.Errors)
 	}
 }
