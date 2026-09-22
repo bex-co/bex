@@ -1,19 +1,19 @@
 # w4 · m128 — Deploy-notification preferences are stored and applied per workspace but can only be read and written for one of them
 
-**Worker:** worker4 **Goal:** one answer to "which workspace do my deploy-notification preferences belong to", implemented the same way in the store, the mail fan-out, and every surface — so turning deploy emails off actually stops them. **Status:** todo
+**Worker:** worker4 **Goal:** one answer to "which workspace do my deploy-notification preferences belong to", implemented the same way in the store, the mail fan-out, and every surface — so turning deploy emails off actually stops them. **Status:** done 2026-09-21 (live re-probe of the deployed fix deferred to the next QA pass — no production access this session)
 
 ## Tasks (in order)
 
 | id   | title                                                                             | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Decide the scope of a member's notification preferences and write it into ADR024      | 40m | —          |
-| t002 | Make the API reach the row the mail fan-out actually reads                            | 45m | t001       |
-| t003 | Reconcile MCP's caller-scoped classification with the decision                        | 30m | t001       |
-| t004 | Dashboard: make the Notifications panel agree with the decided scope                  | 30m | t002       |
-| t005 | Render parity check (owner-scoped route + the ADR018 Notifications row)               | 30m | t002, t003, t004 |
-| t006 | Simplify (`/simplify` over the changed code)                                          | 30m | t005       |
-| t007 | Test coverage                                                                         | 45m | t005       |
-| t008 | Closeout                                                                              | 15m | t007       |
+| t001 | Decide the scope of a member's notification preferences and write it into ADR024      | 40m | —          | — **DONE**
+| t002 | Make the API reach the row the mail fan-out actually reads                            | 45m | t001       | — **DONE**
+| t003 | Reconcile MCP's caller-scoped classification with the decision                        | 30m | t001       | — **DONE**
+| t004 | Dashboard: make the Notifications panel agree with the decided scope                  | 30m | t002       | — **DONE**
+| t005 | Render parity check (owner-scoped route + the ADR018 Notifications row)               | 30m | t002, t003, t004 | — **DONE**
+| t006 | Simplify (`/simplify` over the changed code)                                          | 30m | t005       | — **DONE**
+| t007 | Test coverage                                                                         | 45m | t005       | — **DONE**
+| t008 | Closeout                                                                              | 15m | t007       | — **DONE**
 
 ## Definition of done
 

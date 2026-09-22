@@ -242,11 +242,19 @@ func toView(n store.NotificationSettings) SettingsView {
 	return SettingsView{DeployStarted: n.DeployStarted, DeploySucceeded: n.DeploySucceeded, DeployFailed: n.DeployFailed}
 }
 
-// GetSettings returns the CALLER's own deploy-notification preferences within
-// their workspace — viewer-and-up, like usage's month-to-date (a personal
+// GetSettings returns the CALLER's own deploy-notification preferences in one
+// workspace — viewer-and-up, like usage's month-to-date (a personal
 // preference, not a workspace-admin concern). Defaults are returned, not an
 // error, for a caller who never customized them or has no tenant to key on.
-func (s *Service) GetSettings(ctx context.Context) (SettingsView, error) {
+//
+// ownerID names the workspace, empty meaning the caller's default (w4/m128).
+// It is not decoration: preferences are stored per (tenant, subject) and the
+// mail fan-out joins on that pair, so before the argument existed an account
+// in three workspaces could read and write exactly one of its three rows while
+// the other two decided whether it got mail. Turning deploy email off did not
+// stop it, and nothing in the product could show why.
+func (s *Service) GetSettings(ctx context.Context, ownerID string) (SettingsView, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return SettingsView{}, err
 	}
@@ -271,10 +279,12 @@ func (s *Service) GetSettings(ctx context.Context) (SettingsView, error) {
 	return toView(row), nil
 }
 
-// UpdateSettings writes the CALLER's own deploy-notification preferences.
-// Viewer-and-up, same rationale as GetSettings: every member manages their
-// own notifications regardless of workspace role.
-func (s *Service) UpdateSettings(ctx context.Context, deployStarted, deploySucceeded, deployFailed bool) (SettingsView, error) {
+// UpdateSettings writes the CALLER's own deploy-notification preferences in
+// one workspace. Viewer-and-up, same rationale as GetSettings: every member
+// manages their own notifications regardless of workspace role. ownerID names
+// the workspace, empty meaning the caller's default (w4/m128).
+func (s *Service) UpdateSettings(ctx context.Context, ownerID string, deployStarted, deploySucceeded, deployFailed bool) (SettingsView, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return SettingsView{}, err
 	}
