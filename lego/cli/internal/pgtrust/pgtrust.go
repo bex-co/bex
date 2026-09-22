@@ -166,7 +166,7 @@ func Provision(ctx context.Context, opts Options) (func(), error) {
 				"cannot open a %s session to Postgres %q: %w.\n"+
 					"A public bex Postgres pins sslmode=verify-full, so the session cannot open until "+
 					"its server CA exists. Retry once the database reports available; if it persists, "+
-					"the database's external endpoint is not provisioned.",
+					"the database's external endpoint is not provisioned",
 				opts.Tool, target, err)
 		}
 		// Anything else — not logged in, no such database, an unreachable API —

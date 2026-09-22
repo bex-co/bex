@@ -47,6 +47,9 @@ type ExecConfig struct {
 	// GatewayURL is the gateway's internal sandbox-exec endpoint
 	// (e.g. http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec).
 	GatewayURL string
+	// FileGatewayURL is the gateway's internal /sandbox-files endpoint. File
+	// transfers use distinct tickets and never pass a caller-chosen command.
+	FileGatewayURL string
 	// Client is the HTTP client used to stream from the gateway (no timeout —
 	// the stream is long-lived; the request context bounds it).
 	Client *http.Client

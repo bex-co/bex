@@ -1182,7 +1182,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 336 // +1: apps.Service SetPort (w4/m121)
+const wantSweptVerbs = 337 // +1: sandbox.Service ConnectFile (w7/m150)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()
