@@ -904,7 +904,9 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	// still-live last-good deploy — rolling back to it then restores that image
 	// and is a legitimate recovery (TestRollbackRestoresPreviousLiveImage), which
 	// the image comparison preserves.
-	if target.Status == store.DeployLive && target.ResolvedImage == a.Spec.Image {
+	// Shared with the capability projection (RollbackActionable) so the answer
+	// deployActions gives and the answer this verb gives cannot drift (w4/110).
+	if !RollbackActionable(target, a.Spec.Image) {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already live — nothing to roll back to", core.ErrConflict, deployID)
 	}
 	// Row-first: the projector owns spec.image for store-managed Apps, so the
