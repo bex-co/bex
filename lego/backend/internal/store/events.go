@@ -249,6 +249,12 @@ WITH feed AS (
            ''::text                            AS pre_deploy_status,
            ''::text                            AS failure_reason,
            ''::text                            AS cancel_reason,
+           -- w4/m112's stall reason: only an OPEN (started) deploy carries one;
+           -- an ended row is terminal, where failure_reason owns the story. It
+           -- was added to the outer SELECT and to the by-id query and missed
+           -- here, so every read of a service's activity feed failed on a
+           -- column the feed CTE did not have. Found by w4/117's Postgres run.
+           d.stall_reason                      AS stall_reason,
            ''::text                            AS verb,
            d.triggered_by                      AS caller,
            NULL::text                          AS plan_from,
@@ -296,6 +302,7 @@ WITH feed AS (
            d.pre_deploy_status,
            d.failure_reason,
            d.cancel_reason,
+           ''::text, -- stall_reason: an ended deploy is terminal
            ''::text,
            d.triggered_by,
            NULL::text,
@@ -343,6 +350,7 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
+           ''::text, -- stall_reason: audit rows are not deploys
            a.verb,
            a.caller,
            a.plan_from,
@@ -397,6 +405,7 @@ WITH feed AS (
            ''::text,
            ''::text,
            COALESCE(dc.cancel_reason, ''),
+           ''::text, -- stall_reason: a fact is a point observation
            ''::text,
            ''::text,
            NULL::text,
