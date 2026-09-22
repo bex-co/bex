@@ -382,6 +382,9 @@ query DatabaseParameterSpec($id: String!) {
   databaseParameterSpec(id: $id) {
     name
     value
+    observationStatus
+    observedSetting
+    observedUnit
   }
 }
 

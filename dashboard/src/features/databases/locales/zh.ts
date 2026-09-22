@@ -810,10 +810,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "显示连接池字符串",
     description: "Access panel button to fetch the pooled connection strings",
   },
-    "databases.accessPoolerDisabled": {
+  "databases.accessPoolerDisabled": {
     // See the en copy — w4/107.
     message:
-      "该数据库未启用连接池，因此没有连接池字符串。请通过 API 开启 —— PATCH /v1/postgres/{id}，请求体 {\"pooler\": true} —— 之后连接池字符串会显示在这里。",
+      '该数据库未启用连接池，因此没有连接池字符串。请通过 API 开启 —— PATCH /v1/postgres/{id}，请求体 {"pooler": true} —— 之后连接池字符串会显示在这里。',
     description:
       "Access panel shown when no pooler is provisioned; names the API that enables one, since the dashboard has no pooler control (w4/107)",
   },
@@ -1019,6 +1019,30 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.insightsNoTableScans": {
     message: "暂无用户表扫描统计。",
     description: "Insights table-scans empty state",
+  },
+  "databases.insightsParamsDeclaredValue": {
+    message: "声明值",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsObservedValue": {
+    message: "观测设置",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsNoObservation": {
+    message: "此值暂无观测结果。",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsObservedHint": {
+    message: "实时设置；这并不确认请求的值已生效。",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsNotObserved": {
+    message: "尚未观测到请求的覆盖配置，可能正在等待生效或配置无效。",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
+  },
+  "databases.insightsParamsObservationUnavailable": {
+    message: "目前无法验证此覆盖配置。",
+    description: "Declared PostgreSQL parameter observation diagnostic.",
   },
   "databases.insightsParamsTitle": {
     message: "参数覆盖",

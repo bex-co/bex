@@ -492,7 +492,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_parameters",
-		Description: "List the postgresql.conf parameters THIS database declares (Database.spec.parameters) — the tenant-owned set that update_postgres's parameterOverrides replaces. Empty for a database nobody has configured. Use this, not list_postgres_parameter_overrides, to read back what was set.",
+		Description: "List the postgresql.conf parameters THIS database declares (Database.spec.parameters) — the tenant-owned set that update_postgres's parameterOverrides replaces. Empty for a database nobody has configured. Use this, not list_postgres_parameter_overrides, to read back what was set. Each declaration includes observationStatus (observed, not_observed, or unavailable), observedSetting and observedUnit. Observed means the name exists in non-default pg_settings, not that the requested value has applied; units may differ.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterSpecResult, error) {
 		out, err := s.ParameterSpec(ctx, in.PostgresID)
 		if err != nil {
