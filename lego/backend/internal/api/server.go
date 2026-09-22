@@ -387,6 +387,7 @@ type Deps struct {
 	DiskSnapshotSecret []byte
 	ShellWSURL         string
 	Store              apps.IntentStore
+	AppPlacements      apps.PlacementReader
 	// Secrets is the shared OpenBao-backed store both the env-vars/secret-files
 	// feature and the env-groups feature read/write through (docs/ADR013-secrets.md). One
 	// instance, wired into both services below. nil => those verbs 503.
@@ -871,7 +872,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		APIKeys:    accountKeys,
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 	}
-	appsSvc := &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
+	appsSvc := &apps.Service{Base: base, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
 	srv := &Server{
 		Apps: appsSvc,
 		Logs: logSvc,

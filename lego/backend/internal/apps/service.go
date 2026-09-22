@@ -119,6 +119,8 @@ type Service struct {
 	// originate — then patch the CR as the fast-converge path. Nil (tests, DB-less
 	// mode) falls back to CR-only patches, safe only for hand-applied Apps.
 	Store IntentStore
+	// Placements reads committed membership; nil retains CR-only reads.
+	Placements PlacementReader
 	// EventFacts persists closed, non-secret service activity that cannot be
 	// represented by an ordinary authorization audit row. nil in store-less mode.
 	EventFacts store.EventFactWriter
@@ -470,8 +472,8 @@ type AppView struct {
 	// for Apps the control-plane projector didn't stamp (the hand-applied path,
 	// scripts/app-apply.sh) — an honest superset rather than a faked id.
 	OwnerID string `json:"ownerId,omitempty"`
-	// ProjectID/EnvironmentID are projected from the control-plane row onto
-	// labels so Render REST clients can hydrate and filter service membership.
+	// ProjectID/EnvironmentID use committed membership on managed Get/List
+	// reads; CR-only views use labels. Empty values remain omitted for REST.
 	ProjectID     string `json:"projectId,omitempty"`
 	EnvironmentID string `json:"environmentId,omitempty"`
 	// BlueprintID names the Git-connected Blueprint that manages this service,
@@ -1281,29 +1283,7 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 	if err := s.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
-	out := make([]AppView, 0, len(list.Items))
-	for i := range list.Items {
-		// A deleting App is dropped from the list the moment its deletion is
-		// requested (w3/m46), matching Render (a deleted service leaves the list
-		// at once) and the by-id Get, which already 404s once the store row is
-		// gone. Without this, an App lingers in the list through its finalizer
-		// teardown (a static site's S3-prefix cleanup Job can run for tens of
-		// seconds) rendered as "Deleting" — which the dashboard shows as the
-		// meaningless "Unknown" status. Trade-off: a delete stuck on a failing
-		// finalizer becomes invisible HERE, but not unaccounted for — an
-		// object-count ResourceQuota keeps holding its quota until finalizers
-		// clear, so the usage surface (workspaces.ResourceLimits / GraphQL
-		// workspaceLimits) reports it under `terminating` and the tenant can
-		// reconcile the shorter list against the quota it consumes (w6/m129);
-		// the operator's own alerts/audit still surface a genuinely stuck one.
-		// The detail view is already 404 in that state, so hiding the list row
-		// keeps the two consistent.
-		if !list.Items[i].DeletionTimestamp.IsZero() {
-			continue
-		}
-		out = append(out, s.view(&list.Items[i]))
-	}
-	return out, nil
+	return s.readViews(ctx, list.Items)
 }
 
 // InstanceType is the display-shaped projection of one lego/types/tiers
@@ -1373,7 +1353,14 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	if err := core.NotFoundIfDeleting(a); err != nil {
 		return AppView{}, err
 	}
-	v := s.view(a)
+	views, err := s.readViews(ctx, []appv1alpha1.App{*a})
+	if err != nil {
+		return AppView{}, err
+	}
+	if len(views) == 0 {
+		return AppView{}, core.ErrNotFound
+	}
+	v := views[0]
 	// Push deliverability is computed HERE and nowhere else (w6/m99): this one
 	// verb backs REST GET /v1/services/{id}, GraphQL server(id)/service(id), and
 	// MCP get_service, so all three agree — while List and the projections
