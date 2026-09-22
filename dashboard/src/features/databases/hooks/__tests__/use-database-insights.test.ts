@@ -18,8 +18,10 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DatabaseParameterOverridesDocument,
+  DatabaseParameterSpecDocument,
   SetDatabaseParameterOverridesDocument,
 } from "@/graphql/definitions";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { useDatabaseInsights } from "@/features/databases/hooks/use-database-insights";
 
 const mockUseQuery = vi.fn();
@@ -77,6 +79,22 @@ describe("useDatabaseInsights parameter writes", () => {
       DatabaseParameterOverridesDocument,
       expect.objectContaining({ pollInterval: 15_000 }),
     );
+  });
+
+  it("refreshes declared observations on the same visible-page cadence", () => {
+    renderHook(() => useDatabaseInsights("db-1"));
+    for (const document of [
+      DatabaseParameterSpecDocument,
+      DatabaseParameterOverridesDocument,
+    ]) {
+      expect(mockUseQuery).toHaveBeenCalledWith(
+        document,
+        expect.objectContaining({
+          pollInterval: 15_000,
+          skipPollAttempt: skipPollWhenHidden,
+        }),
+      );
+    }
   });
 
   it("returns the backend message without refetching after rejection", async () => {

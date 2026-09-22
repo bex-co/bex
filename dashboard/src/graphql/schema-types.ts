@@ -523,6 +523,9 @@ export type DatabaseParameterOverride = {
 export type DatabaseParameterSpec = {
   __typename: 'DatabaseParameterSpec';
   name: Maybe<Scalars['String']['output']>;
+  observationStatus: Scalars['String']['output'];
+  observedSetting: Maybe<Scalars['String']['output']>;
+  observedUnit: Maybe<Scalars['String']['output']>;
   value: Maybe<Scalars['String']['output']>;
 };
 

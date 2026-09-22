@@ -28,8 +28,10 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // pgInsufficientPrivilege is PostgreSQL's own placeholder for a query text the
@@ -138,6 +140,10 @@ type ParameterOverrideView struct {
 type ParameterSpecView struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+	// Observed means pg_settings reported this name, not that Value was applied.
+	ObservationStatus string  `json:"observationStatus"`
+	ObservedSetting   *string `json:"observedSetting"`
+	ObservedUnit      *string `json:"observedUnit"`
 }
 
 const (
@@ -219,6 +225,10 @@ func (s *Service) runInsight(ctx context.Context, relation, dbID, sql string) (Q
 	if err := s.AuthorizeDatabaseFresh(ctx, relation, db); err != nil {
 		return QueryResult{}, err
 	}
+	return s.runAuthorizedInsight(ctx, db, sql)
+}
+
+func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Database, sql string) (QueryResult, error) {
 	sec, err := s.databaseSecret(ctx, db)
 	if err != nil {
 		return QueryResult{}, err
@@ -426,6 +436,10 @@ func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]Parame
 	if err != nil {
 		return nil, err
 	}
+	return parameterOverrideViews(res), nil
+}
+
+func parameterOverrideViews(res QueryResult) []ParameterOverrideView {
 	out := make([]ParameterOverrideView, 0, len(res.Rows))
 	for _, row := range res.Rows {
 		if len(row) < 5 {
@@ -439,7 +453,7 @@ func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]Parame
 			Description: strVal(row[4]),
 		})
 	}
-	return out, nil
+	return out
 }
 
 // SetParameterOverrides replaces the Database's parameter overrides.
@@ -458,18 +472,49 @@ func (s *Service) SetParameterOverrides(ctx context.Context, dbID string, params
 // an editor from: ParameterOverrides is the observed pg_settings config and is
 // mostly the operator's (w6/m133).
 func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSpecView, error) {
-	params, err := s.GetParameterSpec(ctx, dbID)
+	db, err := s.fetchDatabaseForRead(ctx, core.RelCanView, dbID)
 	if err != nil {
 		return nil, err
 	}
+	if len(db.Spec.Parameters) == 0 {
+		return []ParameterSpecView{}, nil
+	}
+	// Authorization failures are not runtime diagnostics. Re-check before
+	// loading credentials, exactly as the observed-parameter endpoint does.
+	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanView, db); err != nil {
+		return nil, err
+	}
+	// A restarting or unreachable server must not hold the editable declaration
+	// hostage to the normal insight query's longer timeout.
+	observationCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	observed, observationErr := s.runAuthorizedInsight(observationCtx, db, sqlParameterOverrides)
+	return parameterSpecViews(db.Spec.Parameters, parameterOverrideViews(observed), observationErr), nil
+}
+
+func parameterSpecViews(params map[string]string, observed []ParameterOverrideView, observationErr error) []ParameterSpecView {
+	byName := make(map[string]ParameterOverrideView, len(observed))
+	for _, row := range observed {
+		byName[row.Name] = row
+	}
 	out := make([]ParameterSpecView, 0, len(params))
 	for name, value := range params {
-		out = append(out, ParameterSpecView{Name: name, Value: value})
+		row := ParameterSpecView{Name: name, Value: value, ObservationStatus: "not_observed"}
+		if observationErr != nil {
+			row.ObservationStatus = "unavailable"
+		} else if current, ok := byName[name]; ok {
+			row.ObservationStatus = "observed"
+			row.ObservedSetting = &current.Setting
+			if current.Unit != "" {
+				row.ObservedUnit = &current.Unit
+			}
+		}
+		out = append(out, row)
 	}
 	slices.SortFunc(out, func(a, b ParameterSpecView) int {
 		return strings.Compare(a.Name, b.Name)
 	})
-	return out, nil
+	return out
 }
 
 // GetParameterSpec returns the currently stored parameter overrides from the

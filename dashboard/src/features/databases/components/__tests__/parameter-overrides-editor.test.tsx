@@ -221,3 +221,143 @@ describe("ParameterOverridesEditor — bound to the declared set (w6/m133)", () 
     ).toBeInTheDocument();
   });
 });
+
+describe("ParameterOverridesEditor — declared versus observed", () => {
+  beforeEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(ADMIN);
+  });
+
+  it("shows the declared value separately from the observed setting and unit", () => {
+    render(
+      <ParameterOverridesEditor
+        parameters={[
+          {
+            name: "work_mem",
+            value: "8MB",
+            observationStatus: "observed",
+            observedSetting: "8192",
+            observedUnit: "kB",
+          },
+        ]}
+        saving={false}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Parameter 1 value")).toHaveValue("8MB");
+    expect(screen.getByText("8192 kB")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Live setting; this does not confirm the requested value was applied.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("distinguishes unobserved requests from unavailable diagnostics", () => {
+    render(
+      <ParameterOverridesEditor
+        parameters={[
+          {
+            name: "application_name",
+            value: "ignored",
+            observationStatus: "not_observed",
+          },
+          { name: "work_mem", value: "8MB", observationStatus: "unavailable" },
+        ]}
+        saving={false}
+        onSave={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Requested override not observed. It may be pending or invalid.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Cannot verify this override right now."),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Parameter 1 value")).toHaveValue("ignored");
+  });
+
+  it("preserves edits on observation refresh and never labels an unsaved value as observed", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue({ ok: true });
+    const parameter = {
+      name: "work_mem",
+      value: "8MB",
+      observationStatus: "not_observed",
+    };
+    const { rerender } = render(
+      <ParameterOverridesEditor
+        parameters={[parameter]}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    await user.clear(screen.getByLabelText("Parameter 1 value"));
+    await user.type(screen.getByLabelText("Parameter 1 value"), "16MB");
+    rerender(
+      <ParameterOverridesEditor
+        parameters={[
+          {
+            ...parameter,
+            observationStatus: "observed",
+            observedSetting: "8192",
+            observedUnit: "kB",
+          },
+        ]}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    expect(screen.getByLabelText("Parameter 1 value")).toHaveValue("16MB");
+    expect(screen.queryByText("8192 kB")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("No observation for this value yet."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save overrides" }));
+    expect(onSave).toHaveBeenCalledWith([{ name: "work_mem", value: "16MB" }]);
+    expect(screen.queryByText("8192 kB")).not.toBeInTheDocument();
+  });
+
+  it("refreshes observations without replacing draft state and excludes newly added rows", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    const parameter = {
+      name: "work_mem",
+      value: "8MB",
+      observationStatus: "not_observed",
+    };
+    const { rerender } = render(
+      <ParameterOverridesEditor
+        parameters={[parameter]}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add override" }));
+    await user.type(
+      screen.getByLabelText("Parameter 2 name"),
+      "max_connections",
+    );
+    await user.type(screen.getByLabelText("Parameter 2 value"), "200");
+    rerender(
+      <ParameterOverridesEditor
+        parameters={[
+          {
+            ...parameter,
+            observationStatus: "observed",
+            observedSetting: "8192",
+            observedUnit: "kB",
+          },
+        ]}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    expect(screen.getByLabelText("Parameter 2 value")).toHaveValue("200");
+    expect(screen.getByText("8192 kB")).toBeInTheDocument();
+    expect(
+      screen.getByText("No observation for this value yet."),
+    ).toBeInTheDocument();
+  });
+});

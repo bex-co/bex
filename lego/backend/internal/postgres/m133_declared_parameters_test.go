@@ -76,8 +76,8 @@ func TestDeclaredParametersAreReadableOverREST(t *testing.T) {
 		t.Fatalf("decode /parameters: %v", err)
 	}
 	want := []ParameterSpecView{
-		{Name: "max_connections", Value: "200"},
-		{Name: "work_mem", Value: "16MB"},
+		{Name: "max_connections", Value: "200", ObservationStatus: "unavailable"},
+		{Name: "work_mem", Value: "16MB", ObservationStatus: "unavailable"},
 	}
 	if len(declared) != len(want) {
 		t.Fatalf("GET /parameters = %v, want %v", declared, want)

@@ -90,6 +90,8 @@ export function useDatabaseInsights(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
+    pollInterval: 15_000,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const [setParameters, { loading: saving }] = useMutation(

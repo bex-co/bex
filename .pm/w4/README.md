@@ -15,6 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m132** — [Make unapplied Postgres overrides visible](done/m132/README.md) (6 tasks) ← promoted from w4/115; saved configuration gains runtime diagnostics across API and dashboard.
 - [x] **m131** — [Service placement reads reflect committed moves](done/m131/README.md) (7 tasks) ← promoted from w4/109. Managed Get/List reads committed placement in one bounded query; three-surface, authorization and real-Postgres regressions pass. REST omission remains compatible with the pinned Render schema.
 
 - [ ] **m130** — [Service environment CAS outcomes and returned revisions](blocked/m130/README.md) — **BLOCKED (release pipeline deployment, then production QA must identify the original failure and pass the deployed save/stale/concurrency probes)**. t002–t007 done: post-write compensation has a distinct error, successful CAS returns a revision on all three APIs, real OpenBao and adapter regressions added. t001 production attribution and t008 live closeout remain open.

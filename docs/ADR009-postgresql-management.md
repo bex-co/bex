@@ -224,6 +224,18 @@ Until w6/m133 the declared set was reachable on **no** surface: it could be writ
 
 `shared_preload_libraries` keeps its older, narrower treatment — a silent drop — because that is a published contract (`SetParameterOverrides`' doc and the MCP tool schema) with its own client-side message in the editor. The asymmetry is deliberate: silently dropping the _new_ set would leave a tenant believing they had set `archive_command` when they had not.
 
+### Declared parameter observations (w4/m132)
+
+The declared parameter list now includes `observationStatus`, nullable `observedSetting`, and nullable `observedUnit` on REST, GraphQL and MCP. The editor displays these beside the saved values. The diagnostic reads the same non-default `pg_settings` rows as the existing observed-configuration endpoint:
+
+- `observed`: a row with this name is present; its current value and unit are shown. This does **not** assert that the requested value was applied.
+- `not_observed`: the name is absent from that non-default view. The override may still be pending or may be invalid; it is not confirmed as applied.
+- `unavailable`: runtime observation failed. The declared value stays readable so users can inspect and repair configuration during a database outage.
+
+Names and values still pass through to Postgres, subject to the existing platform-owned parameter guards. This change deliberately reports runtime evidence instead of implementing another Postgres parameter validator. For example, declared `work_mem: 8MB` can correctly appear as observed `8192` with unit `kB`; raw string inequality is not a failed-application signal. A previous non-default value can also remain visible after an invalid write. The UI does not label either case “applied”, and observation refresh does not reset drafts. The editor refreshes observations every 15 seconds while visible. Empty declared sets do not query the runtime. The diagnostic is a point-in-time read, not a reconciliation acknowledgment or a guarantee of later health.
+
+[PostgreSQL documents](https://www.postgresql.org/docs/17/view-pg-settings.html) `setting` as the current value and `unit` as its implicit unit. Render's [update contract](https://api-docs.render.com/reference/update-postgres) exposes `parameterOverrides`; these per-entry observations are a bex extension. No live Render invalid-value acceptance behavior was verified. Key Value's fixed policy/persistence enums remain strictly validated; the Postgres setting catalogue is version- and extension-dependent.
+
 ### Legacy query-insights convergence (w8/m16)
 
 Every reconcile projects `pg_stat_statements.track=all` plus CNPG's dedicated `shared_preload_libraries: [pg_stat_statements]`, including onto clusters created before the insights surface. CloudNativePG recognizes the `pg_stat_statements.*` parameter as its managed-extension switch: it performs the required rolling restart for preload changes and runs `CREATE EXTENSION IF NOT EXISTS pg_stat_statements` in each connectable database. The operator does not launch a competing SQL Job. A projection test starts from a legacy CNPG spec with neither setting, proves one reconcile adds both, and proves the next reconcile is byte-identical (no restart churn). Single-instance plans have a brief interruption during the one-time CNPG restart; HA plans roll through replicas.

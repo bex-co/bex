@@ -45,6 +45,9 @@ interface DraftParameter {
 export interface ParameterSpecView {
   name: string | null;
   value: string | null;
+  observationStatus?: string;
+  observedSetting?: string | null;
+  observedUnit?: string | null;
 }
 
 interface ParameterOverridesEditorProps {
@@ -81,6 +84,9 @@ export function ParameterOverridesEditor({
   const { t } = useTranslations();
   const capabilities = useCapabilities();
   const { canCreate, canOperate } = capabilities;
+  const persistedByName = new Map(
+    parameters.map((parameter) => [parameter.name, parameter]),
+  );
   const initial = initialDrafts(parameters);
   const [rows, setRows] = useState(initial);
   const [savedRows, setSavedRows] = useState(initial);
@@ -173,7 +179,10 @@ export function ParameterOverridesEditor({
                   {t("databases.insightsColParam")}
                 </th>
                 <th className="pb-1 pr-3 font-medium">
-                  {t("databases.insightsColSetting")}
+                  {t("databases.insightsParamsDeclaredValue")}
+                </th>
+                <th className="pb-1 pr-3 font-medium">
+                  {t("databases.insightsParamsObservedValue")}
                 </th>
                 <th className="w-9 pb-1">
                   <span className="sr-only">
@@ -183,51 +192,83 @@ export function ParameterOverridesEditor({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => (
-                <tr key={row.id} className="border-b last:border-0">
-                  <td className="py-1.5 pr-3">
-                    <Input
-                      className="h-8 min-w-48 font-mono text-xs"
-                      value={row.name}
-                      onChange={(event) =>
-                        updateRow(row.id, "name", event.target.value)
-                      }
-                      aria-label={t("databases.insightsParamNameLabel", {
-                        index: index + 1,
-                      })}
-                    />
-                  </td>
-                  <td className="py-1.5 pr-3">
-                    <Input
-                      className="h-8 min-w-40 font-mono text-xs"
-                      value={row.value}
-                      onChange={(event) =>
-                        updateRow(row.id, "value", event.target.value)
-                      }
-                      aria-label={t("databases.insightsParamValueLabel", {
-                        index: index + 1,
-                      })}
-                    />
-                  </td>
-                  <td className="py-1.5 text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => removeRow(row.id)}
-                      aria-label={t("databases.insightsParamsRemove", {
-                        name:
-                          row.name ||
-                          t("databases.insightsParamsUnnamed", {
-                            index: index + 1,
-                          }),
-                      })}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {rows.map((row, index) => {
+                const declared = persistedByName.get(row.name);
+                const persisted =
+                  declared?.value === row.value ? declared : undefined;
+                return (
+                  <tr key={row.id} className="border-b last:border-0">
+                    <td className="py-1.5 pr-3">
+                      <Input
+                        className="h-8 min-w-48 font-mono text-xs"
+                        value={row.name}
+                        onChange={(event) =>
+                          updateRow(row.id, "name", event.target.value)
+                        }
+                        aria-label={t("databases.insightsParamNameLabel", {
+                          index: index + 1,
+                        })}
+                      />
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <Input
+                        className="h-8 min-w-40 font-mono text-xs"
+                        value={row.value}
+                        onChange={(event) =>
+                          updateRow(row.id, "value", event.target.value)
+                        }
+                        aria-label={t("databases.insightsParamValueLabel", {
+                          index: index + 1,
+                        })}
+                      />
+                    </td>
+                    <td className="min-w-56 py-1.5 pr-3">
+                      {!persisted ? (
+                        <span className="text-muted-foreground">
+                          {t("databases.insightsParamsNoObservation")}
+                        </span>
+                      ) : persisted.observationStatus === "observed" ? (
+                        <div>
+                          <code>
+                            {persisted.observedSetting}
+                            {persisted.observedUnit
+                              ? ` ${persisted.observedUnit}`
+                              : ""}
+                          </code>
+                          <p className="text-muted-foreground">
+                            {t("databases.insightsParamsObservedHint")}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-amber-700 dark:text-amber-400">
+                          {t(
+                            persisted.observationStatus === "not_observed"
+                              ? "databases.insightsParamsNotObserved"
+                              : "databases.insightsParamsObservationUnavailable",
+                          )}
+                        </p>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => removeRow(row.id)}
+                        aria-label={t("databases.insightsParamsRemove", {
+                          name:
+                            row.name ||
+                            t("databases.insightsParamsUnnamed", {
+                              index: index + 1,
+                            }),
+                        })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

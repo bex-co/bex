@@ -48,7 +48,7 @@ Estimate: ~40m for the divergence signal; ~1.5h if name+value validation is want
 
 ## Unverified
 
-- Whether a declared-but-invalid override blocks a *later valid* one from applying was not tested.
+- Whether a declared-but-invalid override blocks a _later valid_ one from applying was not tested.
 - Whether the same pass-through exists on the Key Value config surface — `setKeyValueMaxmemoryPolicy` and `setKeyValuePersistenceMode` both validate strictly (pass 120 saw them refuse unknown values with the full valid set enumerated), so the two datastore surfaces appear to disagree about whether to validate. That comparison is worth making part of the fix.
 
 ## Also checked this pass, and found correct
