@@ -35,15 +35,19 @@ const mcpWorkspaceIDDescription = "The ID of the Render workspace to use. Reuse 
 // expose workspaceId. Every other registered tool is a workspace resource
 // operation and is scoped uniformly here instead of growing adapter-specific
 // ownerId or transport-session state in each feature package.
+// The notification tools are deliberately NOT here. They read like caller
+// state, but the row they read and write is keyed (tenant_id, subject) and the
+// mail fan-out joins on that pair, so "the caller's preferences" is not a
+// single answer — it is one per workspace (w4/m128). Classifying them as
+// caller-scoped made two of an account's three rows unreachable while all
+// three still decided whether it got mail.
 var mcpCallerScopedTools = map[string]struct{}{
-	"preview_workspace_invite":     {},
-	"accept_workspace_invite":      {},
-	"add_ssh_key":                  {},
-	"delete_ssh_key":               {},
-	"get_notification_settings":    {},
-	"list_ssh_keys":                {},
-	"list_workspaces":              {},
-	"update_notification_settings": {},
+	"preview_workspace_invite": {},
+	"accept_workspace_invite":  {},
+	"add_ssh_key":              {},
+	"delete_ssh_key":           {},
+	"list_ssh_keys":            {},
+	"list_workspaces":          {},
 }
 
 func mcpWorkspaceMiddleware(base *core.Base, checkScope func(context.Context, string) error) mcp.Middleware {

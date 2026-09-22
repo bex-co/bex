@@ -25,8 +25,23 @@ import (
 
 // rest.go is the notifications REST fragment (bex extension — Render exposes
 // notification settings only via its dashboard GraphQL). GET/PATCH
-// /v1/notification-settings read/write the CALLER's own preferences, the same
-// self-service shape GET /v1/usage uses (no path param — always "me").
+// /v1/notification-settings read/write the CALLER's own preferences — always
+// "me", never another member, the same self-service shape GET /v1/usage uses.
+//
+// They are "me" but not "me, everywhere": preferences live per (tenant,
+// subject) and the mail fan-out joins on that pair, so the workspace is part
+// of the address. `?ownerId=` names it; omitting it keeps the previous
+// behavior, the caller's default workspace (w4/m128).
+//
+// Render's `/notification-settings/owners/{ownerId}` is deliberately NOT the
+// path for this, even though the id in it is the same workspace id. Render's
+// operation there returns the OWNER-level object — `{ownerId, slackEnabled,
+// emailEnabled, previewNotificationsEnabled, notificationsToSend}` — which is
+// a workspace-wide policy, not one member's own preferences, and whose Slack
+// half is a recorded non-goal (.pm/DO_NOT_DO.md round 14). Serving a body of
+// `{deployStarted, deploySucceeded, deployFailed}` from Render's path would
+// make the route-intersection inventory count two Render operations bex does
+// not implement. The member-scoped query parameter says what is true.
 
 // RegisterREST mounts the notification-settings endpoints on the shared mux.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
@@ -42,14 +57,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return map[string]bool{"read": read}, err
 	}))
 	mux.HandleFunc("GET /v1/notification-settings", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.GetSettings(r.Context())
+		return s.GetSettings(r.Context(), r.URL.Query().Get("ownerId"))
 	}))
 	mux.HandleFunc("PATCH /v1/notification-settings", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[SettingsView](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.UpdateSettings(r.Context(), req.DeployStarted, req.DeploySucceeded, req.DeployFailed)
+		return s.UpdateSettings(r.Context(), r.URL.Query().Get("ownerId"), req.DeployStarted, req.DeploySucceeded, req.DeployFailed)
 	}))
 	mux.HandleFunc("GET /v1/notification-settings/push", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetPushSettings(r.Context())

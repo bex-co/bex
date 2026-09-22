@@ -196,6 +196,20 @@ The gaps a live side-by-side against Render's Team Members section surfaced, clo
 - **Active-workspace resolution** stays single-tenant (w1/m9): a caller resolves to one workspace for resource queries. The member verbs sidestep this by taking an explicit workspace id; a full workspace switcher is future work (the `workspaces` query already returns every membership).
 - **Unresolved identity is not a Render `status`.** Render's `teamMember.status` is `active | inactive`. A Kratos lookup miss is not deactivation, so owners REST stays `active` while bex-native GraphQL/MCP carry `identityResolved`. Unresolved rows are kept until an admin removes them.
 
+## Deploy-notification preferences are per workspace (w4/m128, 2026-09-21)
+
+A member's deploy-email preferences (`deployStarted` / `deploySucceeded` / `deployFailed`) are **per member per workspace**, not per account. `notification_settings` is `UNIQUE (tenant_id, subject)` and `ListNotifyRecipients` — the mail fan-out — joins on that pair, so whether you are emailed about a deploy in workspace B is decided by workspace B's row.
+
+Four parts of the product had opinions about this and only three agreed. The schema (migration 0013) and the fan-out said per workspace. The API said per account: `GetSettings`/`UpdateSettings` keyed on `Base.Tenant(ctx)` and no adapter offered an argument to name a workspace, so they always resolved the caller's **default** one. MCP said something else again — both notification tools sat in `mcpCallerScopedTools`, the list of "tools that operate on the caller rather than on a workspace".
+
+**The API and MCP change; the schema and the fan-out are right.** Per workspace is Render's model, it is what the storage already committed to in its own header comment, and it is the only option where no data is discarded — collapsing to per account would need a migration and a rule for members holding different values in different workspaces, which is a preference change made on the user's behalf.
+
+So: `ownerId` is an optional argument on REST (`?ownerId=`), GraphQL (`notificationSettings(ownerId:)` / `updateNotificationSettings(ownerId:)`) and, via the shared workspace middleware, MCP; omitting it keeps the previous behavior of the caller's default workspace. For an account in three workspaces, all three rows are now reachable — previously two were unreachable through any surface while all three still decided whether it got mail. A member who turned deploy-failure email off kept receiving it from their other workspaces, and nothing in the product could show them why. A single-workspace account cannot observe any of this, which is why it survived from w3/m9 to here.
+
+**Render's `/notification-settings/owners/{ownerId}` is deliberately not the path for this.** The id in it is the same workspace id, but Render's operation there returns the owner-level object — `{ownerId, slackEnabled, emailEnabled, previewNotificationsEnabled, notificationsToSend}` — a workspace-wide policy rather than one member's own preferences, and its Slack half is a recorded non-goal. Serving a `{deployStarted, deploySucceeded, deployFailed}` body from Render's path would make the route-intersection inventory count two Render operations bex does not implement. The member-scoped query parameter says what is true.
+
+**Known gap, recorded rather than fixed here:** the native-push half (`pushNotificationSettings` / `UpsertNotificationPushPolicy`) writes the same `(tenant_id, subject)` row and still keys on the default workspace only. It has its own shape and its own milestone; this one is about which workspace a deploy-email preference belongs to.
+
 ## Account-deletion offboarding (ADR086)
 
 The last-admin refusal is also the account-deletion preflight: a sole-member workspace is deleted through workspace teardown, a shared workspace is left only when another admin remains, and a workspace with other members but no other admin blocks the request. Intent rechecks this matrix under deterministic membership locks so preview cannot race a role or membership change.

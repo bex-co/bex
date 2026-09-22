@@ -298,7 +298,7 @@ func TestGetSettingsDefaultsWhenNoRow(t *testing.T) {
 	svc := newTestService(st, fakeWorkspace{"alice": "tea-a"}, nil, nil)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice"})
 
-	got, err := svc.GetSettings(ctx)
+	got, err := svc.GetSettings(ctx, "")
 	if err != nil {
 		t.Fatalf("GetSettings: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestUpdateSettingsThenGetReflectsIt(t *testing.T) {
 	svc := newTestService(st, fakeWorkspace{"alice": "tea-a"}, nil, nil)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice"})
 
-	updated, err := svc.UpdateSettings(ctx, false, false, true)
+	updated, err := svc.UpdateSettings(ctx, "", false, false, true)
 	if err != nil {
 		t.Fatalf("UpdateSettings: %v", err)
 	}
@@ -320,14 +320,14 @@ func TestUpdateSettingsThenGetReflectsIt(t *testing.T) {
 	if updated != want {
 		t.Fatalf("UpdateSettings returned %+v, want %+v", updated, want)
 	}
-	got, err := svc.GetSettings(ctx)
+	got, err := svc.GetSettings(ctx, "")
 	if err != nil || got != want {
 		t.Errorf("GetSettings after update = %+v (%v), want %+v", got, err, want)
 	}
 
 	// A second caller in the same workspace is untouched.
 	other := core.WithIdentity(context.Background(), core.Identity{Subject: "bob"})
-	if got, err := svc.GetSettings(other); err != nil || got != defaultSettings {
+	if got, err := svc.GetSettings(other, ""); err != nil || got != defaultSettings {
 		t.Errorf("bob's settings = %+v (%v), want unaffected default %+v", got, err, defaultSettings)
 	}
 }
@@ -336,10 +336,10 @@ func TestSettingsUnavailableWhenStoreNil(t *testing.T) {
 	svc := newTestService(nil, fakeWorkspace{"alice": "tea-a"}, nil, nil)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice"})
 
-	if _, err := svc.GetSettings(ctx); !errors.Is(err, core.ErrNotificationsUnavailable) {
+	if _, err := svc.GetSettings(ctx, ""); !errors.Is(err, core.ErrNotificationsUnavailable) {
 		t.Errorf("GetSettings with nil store: want ErrNotificationsUnavailable, got %v", err)
 	}
-	if _, err := svc.UpdateSettings(ctx, true, true, true); !errors.Is(err, core.ErrNotificationsUnavailable) {
+	if _, err := svc.UpdateSettings(ctx, "", true, true, true); !errors.Is(err, core.ErrNotificationsUnavailable) {
 		t.Errorf("UpdateSettings with nil store: want ErrNotificationsUnavailable, got %v", err)
 	}
 }

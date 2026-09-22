@@ -38,17 +38,20 @@ type updateSettingsArgs struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_notification_settings",
-		Description: "Get the caller's own deploy-notification email preferences for their workspace. bex extension over Render's MCP.",
+		Description: "Get the caller's own deploy-notification email preferences in one workspace. Preferences are stored and applied per workspace, so this answers for the named workspace only. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, SettingsView, error) {
-		v, err := s.GetSettings(ctx)
+		// The workspace rides the context: these tools are workspace-scoped
+		// like every other resource tool since w4/m128, so mcpWorkspaceMiddleware
+		// binds workspaceId before the handler runs.
+		v, err := s.GetSettings(ctx, "")
 		return nil, v, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_notification_settings",
-		Description: "Update the caller's own deploy-notification email preferences for their workspace. bex extension over Render's MCP.",
+		Description: "Update the caller's own deploy-notification email preferences in one workspace. Preferences are stored and applied per workspace, so turning deploy email off here does not turn it off in the caller's other workspaces. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateSettingsArgs) (*mcp.CallToolResult, SettingsView, error) {
-		v, err := s.UpdateSettings(ctx, in.DeployStarted, in.DeploySucceeded, in.DeployFailed)
+		v, err := s.UpdateSettings(ctx, "", in.DeployStarted, in.DeploySucceeded, in.DeployFailed)
 		return nil, v, err
 	})
 }
