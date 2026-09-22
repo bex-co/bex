@@ -15,6 +15,9 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m164** — [A cancel over a never-served release must not stamp a `releaseGeneration` that never succeeded](m164/README.md) (7 tasks; ~2h05m implementation, ~3h30m total) ← `w1/106`, promoted 2026-09-21.
+- [ ] **m163** — [A cron job or static site whose newest build failed or is still building ignores suspend, resume and schedule edits](m163/README.md) (8 tasks; ~2h35m implementation, ~4h total) ← `/pm-brainstorm for w1` 2026-09-20 item 3; the last unfixed member of the `m156`–`m158` class.
+- [ ] **m162** — [Native-runtime monorepo builds: rootDir sets the working directory, not the build context](m162/README.md) (10 tasks; ~4h05m implementation, ~5h30m total) ← `/pm-brainstorm for w1` 2026-09-20 item 2; evidence `build.go:850`, `kpack.go:108`, the untracked `examples/shared-package-monorepo/` scaffold.
 - [ ] **m161** — **BLOCKED (needs a deploy that actually pins images — no run has reached its pin step since 02:00 2026-09-16; production still serves the `w1/m158` build `eb035151a`)** — [A WebSocket whose traffic is only client→server does not keep a free service awake](blocked/m161/README.md) (7 tasks; ~1h15m implementation, ~3h25m total) ← `w1/102`, promoted 2026-09-15. **t001, t002, t005, t006 done** (plugin ingress counter, operator activity read, simplify, tests; the pre-fix symptom is captured live: 34 client frames, 0 bytes back, hibernated anyway at +313s). Left: t003 live re-check, t004 parity, t007 closeout.
 - [ ] **m160** — **BLOCKED (needs a deploy that actually pins images — no run has reached its pin step since 02:00 2026-09-16; production still serves the `w1/m158` build `eb035151a`)** — [Release identity: a never-served first release must not read Running, and an autoscaled worker must keep autoscaling](blocked/m160/README.md) (8 tasks; ~1h45m implementation, ~4h total) ← `w1/101` + `w1/105`, promoted 2026-09-15. **t001, t002, t003, t006, t007 done** (both decisions moved onto `releaseHasServed`, the worker transition completes, blast radius, tests, mutations caught; pre-fix symptom captured live: a never-served release reporting Running over a failed build). Left: t004 live re-check, t005 parity, t008 closeout.
 - [ ] **m159** — **BLOCKED (needs a deploy that actually pins images — no run has reached its pin step since 02:00 2026-09-16; production still serves the `w1/m158` build `eb035151a`)** — [Dashboard truth: a datastore's own Status row, the landing after "Move to project", and seven count strings](blocked/m159/README.md) (7 tasks; ~2h05m implementation, ~3h30m total) ← `w1/085` + `w1/086` + `w1/098`, promoted 2026-09-15. **t001, t002, t003, t005, t006 done** (both datastore cards, the move-to-project landing, seven count strings + a locale guard, simplify, tests; all three pre-fix symptoms captured live). Left: t004 parity, t007 closeout.
@@ -166,7 +169,9 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-No open inbox notes.
+- [ ] **108** — [Review the nine drifted build-toolchain digests in issue #60 and bump per ADR060 D7](108.md) (~45m) ← `/pm-brainstorm for w1` 2026-09-20 item 5.
+
+> **2026-09-21 (`/pm 2,3,4,5 for w1`):** [106](done/106.md) promoted → **m164**; brainstorm items 2 and 3 filed as **m162** and **m163**; item 5 filed as inbox note **108**. Item 1 (red main: `serviceEventsQuery` lost `stall_reason`, deploy blocked since 2026-09-19) was not scheduled here. Note for the five `blocked/` milestones: their "no pin since 2026-09-16 02:00Z" blocker is stale — pins landed 2026-09-16 09:12Z and 2026-09-17 01:19Z/03:47Z/09:27Z (production runs `f4be22797`), so their live re-checks can resume.
 
 > **2026-09-16 (`/loopx w1`):** [107](done/107.md) fixed and shipped — the agent-session audit now records the real client instead of Traefik's pod IP. [106](blocked/106.md) parked: its fix changes what `successfulReleaseGeneration` reports, a field bex-api's deploy reconciler consumes, so it needs store-reconciler evidence rather than a line change.
 
