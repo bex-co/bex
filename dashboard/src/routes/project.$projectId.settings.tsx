@@ -113,7 +113,12 @@ export function ProjectSettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("projects.nameCardTitle")}</CardTitle>
+            {/* Both mutually exclusive inputs below point at this heading, so
+                the control is named by its purpose in either state rather than
+                by whatever value it currently holds (w4/134). */}
+            <CardTitle id="project-name-card-title">
+              {t("projects.nameCardTitle")}
+            </CardTitle>
             <CardDescription>
               {t("projects.nameCardDescription")}
             </CardDescription>
@@ -122,6 +127,7 @@ export function ProjectSettingsPage() {
             {editing ? (
               <div className="flex items-center gap-2">
                 <Input
+                  aria-labelledby="project-name-card-title"
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   autoFocus
@@ -157,6 +163,7 @@ export function ProjectSettingsPage() {
             ) : (
               <div className="flex items-center gap-2">
                 <Input
+                  aria-labelledby="project-name-card-title"
                   value={project?.name ?? ""}
                   disabled
                   readOnly

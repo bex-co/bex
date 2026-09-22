@@ -92,6 +92,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "创建环境“{name}”失败。",
     description: "Toast shown when creating an environment fails",
   },
+  "environments.renameFieldLabel": {
+    message: "环境名称",
+    description:
+      'Accessible/visible label for the environment rename field. Deliberately more specific than environments.fieldName\'s bare "Name" (w4/134)',
+  },
   "environments.renameTitle": {
     message: "重命名环境",
     description: "Rename-environment dialog title",

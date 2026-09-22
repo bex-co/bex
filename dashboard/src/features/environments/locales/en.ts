@@ -99,6 +99,11 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: 'Failed to create environment "{name}".',
     description: "Toast shown when creating an environment fails",
   },
+  "environments.renameFieldLabel": {
+    message: "Environment name",
+    description:
+      'Accessible/visible label for the environment rename field. Deliberately more specific than environments.fieldName\'s bare "Name" (w4/134)',
+  },
   "environments.renameTitle": {
     message: "Rename environment",
     description: "Rename-environment dialog title",
