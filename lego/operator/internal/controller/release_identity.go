@@ -303,6 +303,15 @@ func successfulReleaseGeneration(app *appv1alpha1.App) int64 {
 			return generation
 		}
 	}
+	// Modern reconciliation records fingerprints before an image becomes ready.
+	// Without an active revision, that image is only an attempt, never a success.
+	// Preserve the historical fallback for unfingerprinted legacy status and
+	// for older, non-rev active revision names that still prove a served release.
+	legacy := app.Status.ReleaseFingerprint == "" &&
+		app.Status.ArtifactFingerprint == "" && app.Status.ReleaseArtifactFingerprint == ""
+	if !releaseHasServed(app) && !legacy {
+		return 0
+	}
 	if app.Status.Image != "" && app.Status.ObservedGeneration > 0 {
 		return app.Status.ObservedGeneration
 	}
