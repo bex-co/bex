@@ -110,9 +110,10 @@ func TestAuthorizeAppResolvesTypedPublicID(t *testing.T) {
 	}
 }
 
-func TestAuthorizeAppTypedIDAuditsCanonicalCRName(t *testing.T) {
+func TestAuthorizeAppAliasesAuditImmutableServiceID(t *testing.T) {
 	a := sampleApp("tea-a-web", "tea-a")
-	a.Labels[LabelServiceName] = "Customer API"
+	a.Namespace = "tea-a"
+	a.Labels[LabelServiceName] = "web"
 	a.Labels[LabelAppID] = "srv-d9example"
 	sink := &recordingSink{}
 	b := &Base{
@@ -121,11 +122,18 @@ func TestAuthorizeAppTypedIDAuditsCanonicalCRName(t *testing.T) {
 	}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := b.AuthorizeApp(ctx, RelCanOperate, "srv-d9example"); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"srv-d9example", "tea-a-web", "web"} {
+		if _, err := b.AuthorizeApp(ctx, RelCanOperate, name); err != nil {
+			t.Fatalf("authorize %q: %v", name, err)
+		}
 	}
-	if len(sink.events) != 1 || sink.events[0].Target != ServiceTarget("tea-a-web") {
-		t.Fatalf("audit events = %#v, want namespace-unique CR-name target", sink.events)
+	if len(sink.events) != 3 {
+		t.Fatalf("audit events = %#v, want one per alias", sink.events)
+	}
+	for _, event := range sink.events {
+		if event.Target != ServiceTarget("srv-d9example") {
+			t.Fatalf("audit target = %q, want immutable service id", event.Target)
+		}
 	}
 }
 

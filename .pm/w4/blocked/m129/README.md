@@ -1,20 +1,20 @@
 # w4 · m129 — A re-created service inherits the deleted service's Activity feed
 
-**Worker:** worker4 **Goal:** a service's activity feed and its outbound webhook deliveries describe operations performed on **that** service — identified by the row that cannot be reused — so deleting a service ends its history and creating one with a name someone used before starts an empty one. **Status:** todo
+**Worker:** worker4 **Goal:** a service's activity feed and its outbound webhook deliveries describe operations performed on **that** service — identified by the row that cannot be reused — so deleting a service ends its history and creating one with a name someone used before starts an empty one. **Status:** blocked (t001–t008 done; t009 awaits deployment and production QA replay)
 
 ## Tasks (in order)
 
 | id   | title                                                                                      | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------------------ | --- | ------------ |
-| t001 | Decide the key and the migration shape: what identifies a service to an audit-derived event | 40m | —            |
-| t002 | Re-key the audit arm of `serviceEventsQuery` and of its webhook twin                        | 50m | w4/m129/t001 |
-| t003 | Place the rows already written name-only, and the three name spellings the twin recognizes  | 35m | w4/m129/t001 |
-| t004 | Gate `apps.SetIdleTTL`, which `w4/m122`'s own audit misclassified as unable to fail         | 35m | —            |
-| t005 | `serviceEvents` returns an event `serviceEvent(id:)` denies, and its default window hides it | 30m | w4/m129/t002 |
-| t006 | Render parity — the feed and the webhook payloads across REST/GraphQL/MCP/UI                | 30m | w4/m129/t003, w4/m129/t004, w4/m129/t005 |
-| t007 | Simplify — `/simplify` over the code this milestone changed                                  | 25m | w4/m129/t006 |
-| t008 | Test coverage — inherited history cannot come back, and a refused verb writes no event       | 45m | w4/m129/t006 |
-| t009 | Closeout — close the milestone once the definition of done actually holds                    | 15m | w4/m129/t008 |
+| t001 | Decide the key and the migration shape: what identifies a service to an audit-derived event — **DONE** | 40m | —            |
+| t002 | Re-key the audit arm of `serviceEventsQuery` and of its webhook twin — **DONE** | 50m | w4/m129/t001 |
+| t003 | Place the rows already written name-only, and the three name spellings the twin recognizes — **DONE** | 35m | w4/m129/t001 |
+| t004 | Gate `apps.SetIdleTTL`, which `w4/m122`'s own audit misclassified as unable to fail — **DONE** | 35m | —            |
+| t005 | `serviceEvents` returns an event `serviceEvent(id:)` denies, and its default window hides it — **DONE** | 30m | w4/m129/t002 |
+| t006 | Render parity — the feed and the webhook payloads across REST/GraphQL/MCP/UI — **DONE** | 30m | w4/m129/t003, w4/m129/t004, w4/m129/t005 |
+| t007 | Simplify — `/simplify` over the code this milestone changed — **DONE** | 25m | w4/m129/t006 |
+| t008 | Test coverage — inherited history cannot come back, and a refused verb writes no event — **DONE** | 45m | w4/m129/t006 |
+| t009 | Closeout — close the milestone once the definition of done actually holds — **BLOCKED: deployment + production replay** | 15m | w4/m129/t008 |
 
 ## Definition of done
 
@@ -102,3 +102,19 @@ The refused call changed nothing: `idleTTLSeconds` read back unchanged after eac
 
 - **The audit row's own `targetName` is null and its `resource` is the workspace** for `apps.SetIdleTTL` (`auditLogs` at `2026-09-21T23:09:32Z` reads `res=workspace:tea-…`, `target=null`, `metadata=null`). That is the audit **read surface** not projecting what the store's `target` column holds; `w4/done/111.md` already carries the related observation that a forensic row with a null `targetName` states a weaker claim than its wording implies. Re-file separately if it matters; the feed fix does not need it.
 - **Cross-tenant attribution by shared name** is a *documented* caveat of the same join (`webhooks.go:713-719`: a default-workspace caller's write on a name two tenants share "attributes to both"). It is a deliberate, recorded trade-off, not this defect. Do not silently change it while re-keying — t001 must say whether the new key ends it as a side effect, and if so, that is a separate decision to surface.
+
+## Decision (2026-09-21)
+
+Use the existing `service_event_index.app_id` as the audit event's immutable owner in both service and webhook feeds. Migration 0083 already captures that association at insertion and the by-id read uses it; deleting an app cascades its index entries while retaining the raw audit evidence. `core.AuthorizeApp` has already fetched the App, including `LabelAppID`, before its authorize-and-audit call, so managed writes can record `service:<srv-id>` without another lookup. Name-only targets remain a compatibility path for unmanaged CRs and older replicas.
+
+Reject a new generation column (duplicates the immutable app id), name-only lifetime joins (re-resolve ownership on every read and can misattribute a delayed write), and revival (creating a new service is not reviving its predecessor). A forward migration accepts typed targets, limits legacy name resolution to rows at or after the live app's creation, and removes impossible pre-creation index associations without deleting audit rows or guessing a backfill. Unindexed old audit evidence stays available in the audit log, but is not presented as a current service event.
+
+Five read-time name predicates disappear: the primary target and `LegacyTarget` in the service list, and tenant-id-prefixed, tenant-name-prefixed, and bare names in the webhook query. All three historical spellings remain supported by the insert trigger under the lifetime guard. Datastore events retain their existing immutable dpg-/red- targets.
+
+New managed writes using typed ids cease the documented default-workspace shared-name ambiguity as an explicit consequence; historical name-only/default-workspace associations retain the existing policy. The API keeps its Render-compatible one-hour default window; the dashboard deliberately requests a wider explicit window. Add the default to GraphQL field documentation rather than narrowing the UI's history.
+
+## Verification and remaining gate (2026-09-21)
+
+Full backend tests pass with real Postgres and OpenFGA, backend lint reports zero issues, and both list/webhook mutation checks reject inherited rows in the replacement generation. Simplify's three reviews were applied. Raw historical audits remain intact; only invalid service ownership associations are removed. Three pre-existing timing-dependent test fixtures were made deterministic while validating the full suite.
+
+The remaining gate is t009's production replay after the release pipeline deploys this change. Local database and transport tests establish the implementation contract, not production rollout or delivery. Keep this milestone blocked until that replay is recorded.

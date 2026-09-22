@@ -62,7 +62,7 @@ func TestPGWebhookFeedReportsDisplayNameAfterRename(t *testing.T) {
 	if closed, err := st.CloseDeploy(ctx, deploys[0].ID, DeployLive, "traefik/whoami"); err != nil || !closed {
 		t.Fatalf("close deploy = (%v, %v)", closed, err)
 	}
-	at := time.Now().UTC().Truncate(time.Microsecond).Add(-time.Minute)
+	at := time.Now().UTC().Truncate(time.Microsecond)
 	if err := st.Record(ctx, core.AuditEvent{
 		Caller: "alice", Verb: "apps.Restart", Resource: core.WorkspaceObject(tenant.ID),
 		Target: core.ServiceTarget(core.CRName(tenant.Name, app.Name)), Outcome: core.AuditAllowed, At: at,

@@ -51,12 +51,11 @@ type fakeEventStore struct {
 	lookups           map[string]store.ServiceEventLookup
 	gotFil            store.ServiceEventFilter
 	gotApp            string
-	gotTgt            string
 	gotEventWorkspace string
 }
 
-func (f *fakeEventStore) ListServiceEvents(_ context.Context, appID, target, _ string, fil store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
-	f.gotApp, f.gotTgt, f.gotFil = appID, target, fil
+func (f *fakeEventStore) ListServiceEvents(_ context.Context, appID, _ string, fil store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
+	f.gotApp, f.gotFil = appID, fil
 	out := f.rows
 	if fil.Limit > 0 && len(out) > fil.Limit {
 		out = out[:fil.Limit]
@@ -553,10 +552,8 @@ func TestEventsWindowAndPaging(t *testing.T) {
 	if fake.gotFil.Limit != core.DefaultPageLimit {
 		t.Errorf("default limit = %d, want %d", fake.gotFil.Limit, core.DefaultPageLimit)
 	}
-	// The feed is keyed on BOTH identifiers: the store row id (deploys) and the
-	// service target (audit rows).
-	if fake.gotApp != "srv-1" || fake.gotTgt != core.ServiceTarget("web") {
-		t.Errorf("store keyed on appID=%q target=%q", fake.gotApp, fake.gotTgt)
+	if fake.gotApp != "srv-1" {
+		t.Errorf("store keyed on appID=%q", fake.gotApp)
 	}
 
 	// An out-of-contract limit is rejected before the handler/store rather than

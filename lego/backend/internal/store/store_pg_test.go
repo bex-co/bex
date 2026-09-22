@@ -1070,7 +1070,7 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 	if won, err := s.TransitionDeploy(ctx, failedDeploy.ID, DeployUpdateFailed, "", "bounded operator diagnosis", EventReasonImagePullBackoff, "", nil); err != nil || !won {
 		t.Fatalf("image-pull transition = (%v, %v)", won, err)
 	}
-	failureEvents, err := s.ListServiceEvents(ctx, failureApp.ID, core.ServiceTarget(failureApp.Name), failureApp.TenantID, ServiceEventFilter{
+	failureEvents, err := s.ListServiceEvents(ctx, failureApp.ID, failureApp.TenantID, ServiceEventFilter{
 		FactTypes: []string{string(EventFactImagePullFailed)},
 	})
 	if err != nil || len(failureEvents) != 1 {
@@ -1257,9 +1257,9 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	record(base.Add(2*time.Second), "apps.Suspend", ten.ID, target, core.AuditDenied)
 	record(base.Add(3*time.Second), "apps.Suspend", "tea-stranger00000000", target, core.AuditAllowed)
 	record(base.Add(4*time.Second), "apps.Create", ten.ID, target, core.AuditAllowed)
-	legacyTarget := core.ServiceTarget("shared-public-name")
-	record(base.Add(5*time.Second), "apps.Suspend", core.DefaultTenant, legacyTarget, core.AuditAllowed)
-	record(base.Add(6*time.Second), "apps.Suspend", ten.ID, legacyTarget, core.AuditAllowed)
+	unrelatedTarget := core.ServiceTarget("shared-public-name")
+	record(base.Add(5*time.Second), "apps.Suspend", core.DefaultTenant, unrelatedTarget, core.AuditAllowed)
+	record(base.Add(6*time.Second), "apps.Suspend", ten.ID, unrelatedTarget, core.AuditAllowed)
 	fact := ServiceEventFact{
 		SourceKey: "git:delivery-1:" + app.ID + ":ignored", AppID: app.ID,
 		Type: EventFactCommitIgnored, At: base.Add(500 * time.Millisecond),
@@ -1319,14 +1319,14 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 		[]string{cronFacts[0].SourceKey, cronFacts[1].SourceKey}).Scan(&cronFactCount); err != nil || cronFactCount != 2 {
 		t.Fatalf("batched cron fact count = %d (err %v), want exactly 2 after replay", cronFactCount, err)
 	}
-	buildOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID,
+	buildOnly, err := s.ListServiceEvents(ctx, app.ID, ten.ID,
 		ServiceEventFilter{FactTypes: []string{string(EventFactBuildEnded)}})
 	if err != nil || len(buildOnly) != 1 || buildOnly[0].FactStatus != EventStatusFailed {
 		t.Fatalf("build_ended round-trip = %+v (err %v), want status=failed", buildOnly, err)
 	}
 	factTypes := []string{string(EventFactCommitIgnored)}
 
-	all, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes})
+	all, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes})
 	if err != nil {
 		t.Fatalf("list service events: %v", err)
 	}
@@ -1376,17 +1376,17 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if seenPhases[EventPhaseStarted] != 2 || seenPhases[EventPhaseEnded] != 2 {
 		t.Errorf("deploy phases = %v, want 2 started + 2 ended (deactivated and live)", seenPhases)
 	}
-	legacyOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
-		Since: base.Add(5 * time.Second), Verbs: []string{"apps.Suspend"}, LegacyTarget: legacyTarget,
+	unrelated, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{
+		Since: base.Add(5 * time.Second), Verbs: []string{"apps.Suspend"},
 	})
-	if err != nil || len(legacyOnly) != 1 || legacyOnly[0].At != base.Add(6*time.Second) {
-		t.Fatalf("legacy target scope = %+v (err %v), want only the owner-workspace row", legacyOnly, err)
+	if err != nil || len(unrelated) != 0 {
+		t.Fatalf("unrelated name events = %+v (err %v), want none", unrelated, err)
 	}
 
 	// Keyset paging: walk the feed 2 at a time and reassemble it exactly. Between
 	// page 1 and page 2 a NEWER event lands — the page-2 cursor must not notice
 	// (an OFFSET would have shifted and re-served a row here).
-	page1, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes, Limit: 2})
+	page1, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes, Limit: 2})
 	if err != nil || len(page1) != 2 {
 		t.Fatalf("page 1 = %+v (err %v), want 2", page1, err)
 	}
@@ -1396,7 +1396,7 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	var walked []ServiceEventRow
 	walked = append(walked, page1...)
 	for {
-		page, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
+		page, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{
 			Verbs: verbs, Phases: phases, FactTypes: factTypes, Limit: 2, AfterAt: after.At, AfterKey: after.Key,
 		})
 		if err != nil {
@@ -1423,7 +1423,7 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	}
 
 	// The window bounds `at` inclusively — two audit events plus the interleaved fact.
-	windowed, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
+	windowed, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{
 		Verbs: verbs, Phases: phases, FactTypes: factTypes, Since: base, Until: base.Add(time.Second),
 	})
 	if err != nil || len(windowed) != 3 {
@@ -1435,7 +1435,7 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	// for, both rows must come back deploy rows — a Go-side filter after the LIMIT
 	// would have spent the page on the two newest (audit) rows and returned an empty
 	// one, which a cursor client reads as the end of the feed.
-	deploysOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{
+	deploysOnly, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{
 		Verbs: nil, Phases: []string{EventPhaseStarted}, Limit: 2,
 	})
 	if err != nil || len(deploysOnly) != 2 {
@@ -1459,18 +1459,18 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 		}
 	}
 	// The converse: no phases ⇒ no deploy rows at all.
-	auditOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{Verbs: []string{"apps.Scale"}})
+	auditOnly, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{Verbs: []string{"apps.Scale"}})
 	if err != nil || len(auditOnly) != 1 || auditOnly[0].Verb != "apps.Scale" {
 		t.Fatalf("verb-filtered feed = %+v (err %v), want just the scale", auditOnly, err)
 	}
-	factsOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID, ServiceEventFilter{FactTypes: factTypes, Limit: 1})
+	factsOnly, err := s.ListServiceEvents(ctx, app.ID, ten.ID, ServiceEventFilter{FactTypes: factTypes, Limit: 1})
 	if err != nil || len(factsOnly) != 1 || factsOnly[0].FactType != string(EventFactCommitIgnored) {
 		t.Fatalf("fact-filtered feed = %+v (err %v), want just commit_ignored", factsOnly, err)
 	}
 
 	// A hand-applied app (no control-plane row) and a service nobody targeted:
 	// an empty feed, never another service's rows.
-	empty, err := s.ListServiceEvents(ctx, "srv-doesnotexist0000", core.ServiceTarget("nope"), ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes})
+	empty, err := s.ListServiceEvents(ctx, "srv-doesnotexist0000", ten.ID, ServiceEventFilter{Verbs: verbs, Phases: phases, FactTypes: factTypes})
 	if err != nil || len(empty) != 0 {
 		t.Fatalf("feed of an unknown service = %+v (err %v), want empty", empty, err)
 	}
@@ -2220,7 +2220,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	// PostgreSQL stores timestamptz at microsecond precision. Keep occurrence
 	// fixtures on that boundary so equality assertions test persisted values,
 	// not Go-only nanoseconds discarded by the database.
-	at := time.Now().UTC().Truncate(time.Microsecond).Add(-time.Minute)
+	at := time.Now().UTC().Truncate(time.Microsecond)
 	recordAudit := func(atRow time.Time, verb, workspace, target, targetName string, outcome core.AuditOutcome) {
 		t.Helper()
 		if err := s.Record(ctx, core.AuditEvent{
