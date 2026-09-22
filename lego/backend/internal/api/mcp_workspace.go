@@ -29,7 +29,19 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-const mcpWorkspaceIDDescription = "The ID of the Render workspace to use. Reuse the workspaceId the user confirmed from list_workspaces."
+// mcpWorkspaceIDDescription is applied to every workspace-scoped tool schema,
+// so it is the one place the MCP surface states what product the caller is
+// driving. It said "Render workspace" on 180 of 188 tools (w4/113).
+//
+// The line bex draws, and the one a new tool description should land on: bex
+// may REFER to Render when explaining compatibility — "bex extension over
+// Render's MCP", "Tracks Render's …" tell an agent something true and useful —
+// and must never CALL ITSELF Render. A workspace id belongs to bex.
+//
+// Nothing held the old wording in place: the pinned upstream contract
+// (openapi/render-mcp-tools.json) records which tools Render registers, not
+// their descriptions, and the string appeared nowhere in it.
+const mcpWorkspaceIDDescription = "The ID of the bex workspace to use. Reuse the workspaceId the user confirmed from list_workspaces."
 
 // MCP tools that operate on the caller rather than on a workspace do not
 // expose workspaceId. Every other registered tool is a workspace resource

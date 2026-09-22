@@ -1,0 +1,74 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package api
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+// TestMCPToolsNeverCallBexRender is w4/113. The consumer of an MCP tool schema
+// is an agent deciding what product it is driving, and one unannotated constant
+// told 180 of 188 tools that the caller's workspace was a "Render workspace".
+//
+// The line this pins: bex may REFER to Render when explaining compatibility —
+// "bex extension over Render's MCP" tells an agent something true and useful —
+// and must never CALL ITSELF Render. A possessive ("Render's MCP", "Render's
+// schema") is a reference; a bare noun phrase naming the caller's own resource
+// is a mislabel.
+func TestMCPToolsNeverCallBexRender(t *testing.T) {
+	// Each phrase names something belonging to the CALLER. None of them can be
+	// read as bex describing Render's product.
+	mislabels := []string{
+		"render workspace",
+		"render account",
+		"your render",
+		"the render service",
+	}
+
+	for _, tool := range listBexTools(t, fullyWiredServer()).Tools {
+		text := tool.Description
+		if tool.InputSchema != nil {
+			raw, err := json.Marshal(tool.InputSchema)
+			if err != nil {
+				t.Fatalf("marshal input schema for %s: %v", tool.Name, err)
+			}
+			text += " " + string(raw)
+		}
+		lower := strings.ToLower(text)
+		for _, phrase := range mislabels {
+			if strings.Contains(lower, phrase) {
+				t.Errorf("tool %s names the caller's own resource as Render (%q) — bex may refer to Render, never call itself Render", tool.Name, phrase)
+			}
+		}
+	}
+}
+
+// TestMCPMayStillReferToRender keeps the guard above from being read as "purge
+// the word Render". The compatibility descriptions are deliberate and stay.
+func TestMCPMayStillReferToRender(t *testing.T) {
+	var referring int
+	for _, tool := range listBexTools(t, fullyWiredServer()).Tools {
+		if strings.Contains(tool.Description, "Render's") {
+			referring++
+		}
+	}
+	if referring == 0 {
+		t.Fatal("no tool explains its relationship to Render any more — the compatibility context is deliberate (w4/113)")
+	}
+}
