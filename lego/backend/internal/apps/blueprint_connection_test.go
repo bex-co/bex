@@ -455,3 +455,47 @@ func TestM118_AResolvableReferenceStillValidates(t *testing.T) {
 		t.Fatalf("a database that exists in the workspace must validate: %+v", v.Errors)
 	}
 }
+
+// TestM120_ReconnectingSaysSoInSyncHistory is w4/120's second half. Reviving a
+// disconnected row is deliberate (w8/m37), and it keeps the row's id AND its
+// whole sync history — so the entries a reader sees under the new blueprint's
+// name partly belong to the connection before it. The boundary is now recorded
+// where those entries are read.
+func TestM120_ReconnectingSaysSoInSyncHistory(t *testing.T) {
+	svc, fs := connectionService(t)
+	ctx := ownershipCtx()
+	a := connectA(t, svc)
+	if err := svc.DisconnectBlueprint(ctx, a.ID, connOwner); err != nil {
+		t.Fatalf("disconnect: %v", err)
+	}
+
+	again, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
+		Repo: repoBex, Branch: "main", Path: pathSite, Name: "bpA-again",
+	})
+	if err != nil {
+		t.Fatalf("reconnect: %v", err)
+	}
+	if again.ID != a.ID {
+		t.Fatalf("reconnect id = %s, want the revived row %s", again.ID, a.ID)
+	}
+
+	var note string
+	for _, run := range fs.insertedSyncs {
+		if run.Note != "" {
+			note = run.Note
+		}
+	}
+	if !strings.Contains(note, "re-established") || !strings.Contains(note, repoBex) {
+		t.Fatalf("sync note = %q, want it to record the reconnection and name the source", note)
+	}
+
+	// A first connection says nothing — the note marks a boundary, and there
+	// is none to mark.
+	svc2, fs2 := connectionService(t)
+	connectA(t, svc2)
+	for _, run := range fs2.insertedSyncs {
+		if run.Note != "" {
+			t.Fatalf("a first connection recorded %q, want no note", run.Note)
+		}
+	}
+}
