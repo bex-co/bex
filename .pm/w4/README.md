@@ -274,3 +274,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **132** — [Make suspend/resume projections read the resource's state](done/132.md) — all three lifecycle projections gained the state check the cron verbs already had, with a new `not_suspended` term wired through the dashboard's vocabulary and locales; the dashboard turned out to gate by a second route, so exposure was CLI/MCP/mobile only.
 
 - [x] **133** — [Keep unsaved membership drafts across Manage resources tabs](done/133.md) — the four drafts moved to the form that survives tab changes and `ResourceChecklist` became controlled; reopen still reseeds from persisted membership, and a poll tick no longer stomps a draft. Live browser re-probe still owed.
+
+- [x] **134** — [Name the project and environment rename fields](done/134.md) — visible labels on both rename dialogs, the Settings card heading associated with its editable and read-only inputs, and the Radix missing-description warning opted out of at the two callers; the three existing tests moved onto name-based queries. Live accessibility-tree re-probe still owed.

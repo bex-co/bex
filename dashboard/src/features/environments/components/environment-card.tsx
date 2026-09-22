@@ -18,6 +18,7 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
 import { Input } from "@/common/components/ui/input";
+import { Label } from "@/common/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -389,19 +390,30 @@ export function EnvironmentCard({
         )}
       </CardContent>
 
+      {/* See the project rename dialog: the title names the dialog, the label
+          names the field, and the description is opted out of explicitly so
+          Radix does not point at an element that was never rendered (w4/134).
+          The input id carries the environment id because a panel renders one
+          card per environment. */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
+        <DialogContent aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>{t("environments.renameTitle")}</DialogTitle>
           </DialogHeader>
-          <Input
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            autoComplete="off"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void handleRename();
-            }}
-          />
+          <div className="space-y-2">
+            <Label htmlFor={`environment-rename-name-${environment.id}`}>
+              {t("environments.renameFieldLabel")}
+            </Label>
+            <Input
+              id={`environment-rename-name-${environment.id}`}
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              autoComplete="off"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleRename();
+              }}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"

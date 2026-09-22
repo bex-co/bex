@@ -332,7 +332,10 @@ describe("EnvironmentCard", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
 
     const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByRole("textbox");
+    // By accessible name — see the project rename test (w4/134).
+    const input = within(dialog).getByRole("textbox", {
+      name: "Environment name",
+    });
     await user.clear(input);
     await user.type(input, "production");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));

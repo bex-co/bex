@@ -255,11 +255,53 @@ describe("ProjectPage", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
 
     const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByRole("textbox");
+    // By accessible name, not a bare getByRole("textbox"): the field used to
+    // expose only its current value, so a name-based query is what would have
+    // caught w4/134 and is what keeps it caught.
+    const input = within(dialog).getByRole("textbox", { name: "Project name" });
     await user.clear(input);
     await user.type(input, "new-name");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     expect(rename).toHaveBeenCalledWith("prj-1", "new-name");
+  });
+});
+
+// w4/134's second half: Radix points every DialogContent at a description id
+// (@radix-ui/react-dialog 1.1.15, dist/index.mjs:225-228) and warns when that
+// element does not exist, so both rename dialogs logged a missing-description
+// warning on open. They opt out explicitly with aria-describedby={undefined}
+// rather than the warning being suppressed globally or a description invented.
+describe("rename dialog accessibility", () => {
+  it("opens with no missing-description warning and no dangling reference", async () => {
+    projectsState.projects = [
+      {
+        id: "prj-1",
+        name: "storefront",
+        ownerId: "tea-1",
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+      },
+    ];
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const user = userEvent.setup();
+
+    renderProjectPage();
+    await screen.findByRole("heading", { name: "storefront" });
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).not.toHaveAttribute("aria-describedby");
+
+    const logged = [...warn.mock.calls, ...error.mock.calls]
+      .map((args) => String(args[0]))
+      .join("\n");
+    expect(logged).not.toMatch(/aria-describedby/);
+    expect(logged).not.toMatch(/Missing `Description`/);
+
+    warn.mockRestore();
+    error.mockRestore();
   });
 });

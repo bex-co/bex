@@ -240,6 +240,11 @@ const zhProjects: Record<string, TranslationEntry> = {
     description:
       "Accessible label for the project page's inline pencil-edit button, and the Settings page's Project Name \"Edit\" button",
   },
+  "projects.renameFieldLabel": {
+    message: "项目名称",
+    description:
+      'Accessible/visible label for the project rename field, on both the overview dialog and the Settings card. Deliberately more specific than projects.fieldName\'s bare "Name": these controls are identified by value alone otherwise (w4/134)',
+  },
   "projects.renameTitle": {
     message: "重命名项目",
     description: "Rename-project dialog title",
