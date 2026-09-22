@@ -28,7 +28,7 @@ Meanwhile `environment(id).serviceIds` lists the service **immediately**, and th
 
 - **Not a broken write.** After ~12s both surfaces are correct and stay correct; re-running the mutation changes nothing.
 - **Not resource-type-specific.** First observed on a `static_site`, then reproduced on a `web_service`.
-- **Not "the field never works".** A service created *directly into* the environment (`createService(environmentId:)`) reads back correctly on both surfaces within 2s — `environmentId` and `projectId` are both present in its REST payload immediately.
+- **Not "the field never works".** A service created _directly into_ the environment (`createService(environmentId:)`) reads back correctly on both surfaces within 2s — `environmentId` and `projectId` are both present in its REST payload immediately.
 
 The first reading in this pass looked like a permanent disagreement; a later read had converged, which is what prompted the timed re-measurement above. The finding is the window, not a lost write.
 

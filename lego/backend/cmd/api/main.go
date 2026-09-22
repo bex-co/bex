@@ -697,6 +697,7 @@ func wireGitHubApp(deps *api.Deps, cfg *Config) *github.Client {
 // and adapts the authz checker's role grant/revoke sides, returning the
 // membership granter shared by the tenant service and the internal CP API.
 func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *store.PGStore, rec *store.Reconciler, authzChecker core.Checker) store.MembershipGranter {
+	deps.AppPlacements = st
 	deps.Store = st // single writer of intent: suspend/resume write the row first
 	deps.OAuthRevocations = st
 	deps.AccountStore = st
