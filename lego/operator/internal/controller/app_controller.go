@@ -3512,65 +3512,17 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if r.TenantSignKeySecret != "" {
 		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
-	suspended := app.Spec.Suspended
-
-	cancelPending, err := r.cancelRequestedCronRun(ctx, app)
+	res, err := r.convergeCronRuntime(ctx, app, r.cronPodSpec(app, image, port, labels))
 	if err != nil {
-		return r.fail(ctx, app, "CronRunCancelFailed", err)
-	}
-	// A manual run is a one-off Job this controller creates directly, owned by
-	// the App rather than by the CronJob — so ConcurrencyPolicy, which only ever
-	// inspects the Jobs a CronJob's own controller made, cannot see it. Without
-	// this, a schedule tick landing during an active Trigger Run starts a second,
-	// genuinely concurrent execution, breaking the single-concurrent-execution
-	// guarantee docs/render-artifacts/cron-runs.md states (w6/039). Pausing the
-	// schedule for the duration is the same mechanism the user-facing Suspend
-	// already uses, and it skips the tick rather than queueing it, matching what
-	// ForbidConcurrent does for a scheduled-vs-scheduled overlap.
-	manualRunActive, err := r.manualCronRunActive(ctx, app, cancelPending)
-	if err != nil {
-		return r.fail(ctx, app, "CronRunFailed", err)
-	}
-	scheduleSuspended := suspended || manualRunActive
-
-	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cj, func() error {
-		cj.Spec.Schedule = app.Spec.Schedule
-		// Render runs at most one cron execution at a time. Scheduled overlap is
-		// skipped; a manual trigger explicitly cancels the active Job before its
-		// replacement is created below.
-		cj.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
-		// Suspend pauses scheduling without losing history — resume just clears
-		// it. Set for a user Suspend AND for the span of a manual run.
-		cj.Spec.Suspend = &scheduleSuspended
-		cj.Spec.JobTemplate.Labels = labels // so the Jobs it creates carry labelApp
-		cj.Spec.JobTemplate.Spec.Template = r.cronPodSpec(app, image, port, labels)
-		return controllerutil.SetControllerReference(app, cj, r.Scheme)
-	}); err != nil {
-		return r.fail(ctx, app, "CronJobFailed", err)
-	}
-
-	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
-	// single Job from the same template, named deterministically from runAt so a
-	// re-reconcile of the same value is a no-op. Skipped while suspended.
-	if app.Spec.RunAt != "" && !suspended && !cancelPending && !manualRunSettled(app) {
-		if err := r.ensureManualRun(ctx, app, image, port, labels); err != nil {
-			return r.fail(ctx, app, "CronRunFailed", err)
-		}
-	}
-
-	runs, err := r.cronRuns(ctx, app)
-	if err != nil {
-		return r.fail(ctx, app, "CronRunFailed", err)
+		return r.failStep(ctx, app, err)
 	}
 
 	app.Status.Image = image
 	app.Status.URL = "" // a cron_job has no serving URL
 	app.Status.URLs = nil
-	app.Status.Runs = runs
 	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.ObservedGeneration = app.Generation
-	if suspended {
+	if app.Spec.Suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
@@ -3586,7 +3538,68 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		return ctrl.Result{}, err
 	}
-	logf.FromContext(ctx).Info("cron reconciled (kubernetes)", "name", app.Name, "schedule", app.Spec.Schedule, "runs", len(runs))
+	logf.FromContext(ctx).Info("cron reconciled (kubernetes)", "name", app.Name, "schedule", app.Spec.Schedule, "runs", len(app.Status.Runs))
+	return res, nil
+}
+
+// convergeCronRuntime applies operational controls to an explicitly selected
+// template. During a pending build the caller supplies the existing CronJob's
+// template, including for manual runs, so new release configuration cannot leak
+// into the still-active release.
+func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) (ctrl.Result, error) {
+	suspended := app.Spec.Suspended
+
+	cancelPending, err := r.cancelRequestedCronRun(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronRunCancelFailed", err: err}
+	}
+	// A manual run is a one-off Job this controller creates directly, owned by
+	// the App rather than by the CronJob — so ConcurrencyPolicy, which only ever
+	// inspects the Jobs a CronJob's own controller made, cannot see it. Without
+	// this, a schedule tick landing during an active Trigger Run starts a second,
+	// genuinely concurrent execution, breaking the single-concurrent-execution
+	// guarantee docs/render-artifacts/cron-runs.md states (w6/039). Pausing the
+	// schedule for the duration is the same mechanism the user-facing Suspend
+	// already uses, and it skips the tick rather than queueing it, matching what
+	// ForbidConcurrent does for a scheduled-vs-scheduled overlap.
+	manualRunActive, err := r.manualCronRunActive(ctx, app, cancelPending)
+	if err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronRunFailed", err: err}
+	}
+	scheduleSuspended := suspended || manualRunActive
+
+	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cj, func() error {
+		cj.Spec.Schedule = app.Spec.Schedule
+		// Render runs at most one cron execution at a time. Scheduled overlap is
+		// skipped; a manual trigger explicitly cancels the active Job before its
+		// replacement is created below.
+		cj.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
+		// Suspend pauses scheduling without losing history — resume just clears
+		// it. Set for a user Suspend AND for the span of a manual run.
+		cj.Spec.Suspend = &scheduleSuspended
+		cj.Spec.JobTemplate.Labels = template.Labels // so the Jobs it creates carry labelApp
+		cj.Spec.JobTemplate.Spec.Template = template
+		return controllerutil.SetControllerReference(app, cj, r.Scheme)
+	}); err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
+	}
+
+	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
+	// single Job from the same template, named deterministically from runAt so a
+	// re-reconcile of the same value is a no-op. Skipped while suspended.
+	if app.Spec.RunAt != "" && !suspended && !cancelPending && !manualRunSettled(app) {
+		if err := r.ensureManualRun(ctx, app, template); err != nil {
+			return ctrl.Result{}, &stepFailure{reason: "CronRunFailed", err: err}
+		}
+	}
+
+	runs, err := r.cronRuns(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronRunFailed", err: err}
+	}
+
+	app.Status.Runs = runs
 	if suspended {
 		return ctrl.Result{}, nil
 	}
@@ -3727,7 +3740,7 @@ func manualRunSettled(app *appv1alpha1.App) bool {
 // ensureManualRun creates the one-off Job for the current spec.runAt if it does
 // not already exist. The Job carries labelApp (so it shows up in run history) and
 // is owned by the App (so it is garbage-collected with it).
-func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.App, image string, port int, labels map[string]string) error {
+func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) error {
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 		Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
 	}}
@@ -3738,8 +3751,8 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	if !apierrors.IsNotFound(err) {
 		return err
 	}
-	job.Labels = labels
-	job.Spec.Template = r.cronPodSpec(app, image, port, labels)
+	job.Labels = template.Labels
+	job.Spec.Template = template
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
 		return err
 	}
@@ -5018,12 +5031,18 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 // Building keeps it: that phase pins the release to its build (buildRunning), so
 // the hold neither parks over it nor records a failure in its place.
 //
-// held=false keeps the pass on its halt: a cron job or static site, the
+// held=false keeps the pass on its halt: a static site, the
 // opensandbox runtime, no serving prior release, or a build failure recorded
 // only in the legacy Ready marker, which a held pass's status write would
 // erase. A background worker is held too (w1/m158): only its replicas move.
 func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
-	if r.Mode != ModeKubernetes || !scalableRuntime(app) || legacyReadyBuildVerdict(app) {
+	if r.Mode != ModeKubernetes || legacyReadyBuildVerdict(app) {
+		return false, ctrl.Result{}, nil
+	}
+	if app.Spec.Type == appv1alpha1.TypeCronJob {
+		return r.holdPendingCronArtifact(ctx, app, buildHalt)
+	}
+	if !scalableRuntime(app) {
 		return false, ctrl.Result{}, nil
 	}
 	prior, err := r.servingPriorRelease(ctx, app)
@@ -5075,6 +5094,31 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 		failed = "the latest build failed"
 	}
 	return held(r.settleHeldRuntime(ctx, app, prior, plan, failed, buildHalt.RequeueAfter))
+}
+
+// holdPendingCronArtifact keeps operational controls and run history converging
+// while the next image is unavailable. A missing prior CronJob is not recreated
+// from the pending spec: that would execute configuration that never deployed.
+func (r *AppReconciler) holdPendingCronArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
+	if !releaseHasServed(app) {
+		return false, ctrl.Result{}, nil
+	}
+	var prior batchv1.CronJob
+	if err := r.Get(ctx, client.ObjectKeyFromObject(app), &prior); err != nil {
+		return true, buildHalt, client.IgnoreNotFound(err)
+	}
+	res, err := r.convergeCronRuntime(ctx, app, prior.Spec.JobTemplate.Spec.Template)
+	if err != nil {
+		return true, res, err
+	}
+	res.RequeueAfter = soonerRequeue(res.RequeueAfter, buildHalt.RequeueAfter)
+	if app.Status.Phase == appv1alpha1.PhaseBuilding {
+		// Building pins the in-flight artifact identity. Suspending its schedule
+		// must not replace that phase or acknowledge a successful release.
+		return true, res, updateStatusIfChanged(ctx, r.Client, app)
+	}
+	r.settlePriorRelease(ctx, app, "the latest build has no image yet", app.Spec.Suspended)
+	return true, res, nil
 }
 
 // servingPriorRelease returns the release a held pass keeps serving, or nil when
