@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  blockedReasonKey,
   decisionForSelectedRollback,
   decisionReady,
   gateAction,
@@ -125,5 +126,35 @@ describe("resource-action policy (w6/m143/t001)", () => {
         ),
       )?.precondition,
     ).toBe("billing_blocked");
+  });
+});
+
+describe("not_suspended (w4/132)", () => {
+  it("is a known precondition, not normalized to unavailable", () => {
+    const snapshot = toResourceSnapshot("tea-1", "srv-1", [
+      {
+        action: "resume",
+        outcome: "allowed",
+        reason: null,
+        precondition: "not_suspended",
+      },
+    ]);
+    expect(snapshot.decisions.resume?.precondition).toBe("not_suspended");
+  });
+
+  it("blocks the control with its own reason, never the suspended one", () => {
+    const gate = gateAction(
+      { outcome: "allowed", precondition: "not_suspended" },
+      "ready",
+    );
+    expect(gate.kind).toBe("blocked");
+    expect(gate).toMatchObject({
+      reasonKey: "capabilities.blockedNotSuspended",
+    });
+    // The mirror term must not collapse onto "suspended": telling a user their
+    // running resource is suspended is exactly backwards.
+    expect(blockedReasonKey("not_suspended")).not.toBe(
+      blockedReasonKey("suspended"),
+    );
   });
 });

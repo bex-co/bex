@@ -42,10 +42,20 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 	// preconditions only for an allowed decision (a viewer pays no protection
 	// or billing reads, and learns nothing from them).
 	operate := s.CanDecisionOn(ctx, core.RelCanOperate, core.WorkspaceObject(s.WorkspaceOrDefault(ctx)))
+	// State first, then protection/billing — the same order the verbs
+	// themselves take, so the projection refuses for the reason the verb would.
+	// Without the state check both decisions read `allowed` in every state, and
+	// a client binding a button to the outcome offers a Suspend that no-ops on
+	// a suspended resource and a Resume that no-ops on a running one (w4/132).
 	suspendPre, resumePre := "", ""
 	if operate.Allowed() {
-		suspendPre = core.EnvironmentProtectionPrecondition(ctx, s.Protection, d.Labels[core.LabelEnvironment])
-		resumePre = s.BillingPreconditionFor(ctx, d.Labels[core.LabelTenant])
+		if d.Spec.Suspended {
+			suspendPre = core.PrecondSuspended
+			resumePre = s.BillingPreconditionFor(ctx, d.Labels[core.LabelTenant])
+		} else {
+			suspendPre = core.EnvironmentProtectionPrecondition(ctx, s.Protection, d.Labels[core.LabelEnvironment])
+			resumePre = core.PrecondNotSuspended
+		}
 	}
 	return []core.ActionDecision{
 		core.DecideAction(core.ActionRestart, operate, ""),

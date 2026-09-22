@@ -56,6 +56,10 @@ const enCapabilities: Record<string, TranslationEntry> = {
     message: "Unavailable while the service is suspended. Resume it first.",
     description: "Blocked reason for suspended precondition",
   },
+  "capabilities.blockedNotSuspended": {
+    message: "This resource is already running, so there is nothing to resume.",
+    description: "Blocked reason for not_suspended precondition",
+  },
   "capabilities.blockedNoActiveDeploy": {
     message: "There is no active deploy to cancel right now.",
     description: "Blocked reason for no_active_deploy",

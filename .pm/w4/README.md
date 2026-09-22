@@ -270,3 +270,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **130** — [QA re-probe record for m122, m126 and m127](done/130.md) — record-only; the three milestones' deferred live DoD probes all pass against the deployed fix, so nothing was left to implement.
 
 - [x] **131** — [Answer `latestDeployId` as null on reads](done/131.md) — third member of the `url`/`maintenanceMode` family; `""` claimed "no deploy" for services with real history, and the create path still returns the id.
+
+- [x] **132** — [Make suspend/resume projections read the resource's state](done/132.md) — all three lifecycle projections gained the state check the cron verbs already had, with a new `not_suspended` term wired through the dashboard's vocabulary and locales; the dashboard turned out to gate by a second route, so exposure was CLI/MCP/mobile only.

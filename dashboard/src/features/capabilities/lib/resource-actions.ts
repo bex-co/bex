@@ -19,6 +19,10 @@ export type ResourceActionId = (typeof RESOURCE_ACTION_IDS)[number];
 export const RESOURCE_PRECONDITIONS = [
   "protected_confirmation_required",
   "suspended",
+  // The mirror of "suspended": resume has nothing to do on a running resource.
+  // Distinct from "suspended" on purpose — rendering "this is suspended" as the
+  // reason Resume is unavailable would be exactly backwards (w4/132).
+  "not_suspended",
   "no_active_deploy",
   "no_active_run",
   "no_eligible_rollback_target",
@@ -217,6 +221,8 @@ export function blockedReasonKey(
       return "capabilities.blockedProtectedConfirmation";
     case "suspended":
       return "capabilities.blockedSuspended";
+    case "not_suspended":
+      return "capabilities.blockedNotSuspended";
     case "no_active_deploy":
       return "capabilities.blockedNoActiveDeploy";
     case "no_active_run":
