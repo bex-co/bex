@@ -404,6 +404,8 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`UPDATE tenant_invites SET invited_by = $2 WHERE invited_by = $1`,
 			`UPDATE registry_credentials SET created_by = $2 WHERE created_by = $1`,
 			`UPDATE webhook_endpoints SET created_by = $2 WHERE created_by = $1`,
+			`UPDATE webhook_delivery_attempts SET requested_by = $2 WHERE requested_by = $1`,
+			`UPDATE deploys SET triggered_by = $2 WHERE triggered_by = $1`,
 			`UPDATE audit_events SET caller = $2 WHERE caller = $1`,
 			`UPDATE owner_ids SET subject = $2 WHERE subject = $1`,
 		}
@@ -412,7 +414,14 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 				return err
 			}
 		}
-		return nil
+		// Retain provider correlations for retryable financial cleanup and the
+		// existing terminal sweep. An attempt's billing address may differ from
+		// the account email; both are personal state once its owner is deleted.
+		// Leave updated_at alone so anonymization cannot extend retention.
+		_, err := tx.Exec(ctx, `
+			UPDATE workspace_creation_attempts SET owner_subject = $2, billing_email = $3
+			WHERE owner_subject = $1`, subject, marker, anonymousAccountEmail(marker))
+		return err
 	})
 }
 
@@ -428,12 +437,21 @@ func cleanupAccountEmail(ctx context.Context, tx pgx.Tx, email, marker string) e
 		`DELETE FROM tenant_invites WHERE lower(email) = lower($1) AND accepted_at IS NULL`, email); err != nil {
 		return err
 	}
-	anonymousEmail := strings.ReplaceAll(marker, ":", "-") + "@invalid"
-	if _, err := tx.Exec(ctx,
-		`UPDATE tenant_invites SET email = $2 WHERE lower(email) = lower($1)`, email, anonymousEmail); err != nil {
-		return err
+	anonymousEmail := anonymousAccountEmail(marker)
+	for _, statement := range []string{
+		`UPDATE tenant_invites SET email = $2 WHERE lower(email) = lower($1)`,
+		`UPDATE workspace_creation_attempts SET billing_email = $2 WHERE lower(billing_email) = lower($1)`,
+		`UPDATE tenants SET billing_email = $2 WHERE lower(billing_email) = lower($1)`,
+	} {
+		if _, err := tx.Exec(ctx, statement, email, anonymousEmail); err != nil {
+			return err
+		}
 	}
 	_, err := tx.Exec(ctx,
 		`UPDATE audit_events SET target_name = $2 WHERE lower(target_name) = lower($1)`, email, marker)
 	return err
+}
+
+func anonymousAccountEmail(marker string) string {
+	return strings.ReplaceAll(marker, ":", "-") + "@invalid"
 }

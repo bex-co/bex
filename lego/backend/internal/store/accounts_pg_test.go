@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -46,7 +45,6 @@ func TestAccountDeletionStorePG(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := NewPGStore(pool)
-	assertAccountDeletionInventory(t, ctx, pool)
 
 	solo, err := st.CreateWorkspace(ctx, "solo", PlanHobby, "identity-a")
 	if err != nil {
@@ -273,59 +271,100 @@ func TestAccountDeletionStorePG(t *testing.T) {
 	}
 }
 
-// assertAccountDeletionInventory turns the ADR086 disposition table into a
-// schema tripwire. A future identity/provenance-shaped column must be added to
-// both this list and the deletion policy instead of silently retaining data.
-func assertAccountDeletionInventory(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
-	t.Helper()
-	rows, err := pool.Query(ctx, `
-		SELECT table_name || '.' || column_name
-		FROM information_schema.columns
-		WHERE table_schema = 'public'
-		  AND column_name = ANY($1::text[])
-		ORDER BY table_name, column_name`, []string{
-		"subject", "owner_identity_id", "email", "invited_by", "caller", "created_by", "actor_id",
-	})
+// accountDeletionDispositions implements ADR086's coverage contract. The ADR
+// states policy; these entries name the actual cleanup or deliberate retention.
+// Naming a column differently must not let personal data evade this inventory.
+var accountDeletionDispositions = map[string]string{
+	"account_deletions.subject":                 "retain: permanent fail-closed tombstone prevents onboarding the deleted subject",
+	"audit_events.caller":                       "anonymize: CleanupAccountSubject replaces caller with the deleted marker",
+	"audit_events.caller_method":                "retain: authentication method category, not a personal identifier; audit retention applies",
+	"audit_events.oauth_client_id":              "retain: OAuth application provenance shared across users; audit retention applies",
+	"billing_export_issues.actor":               "retain: operator-supplied financial repair label from the internal control-plane API, not a customer identity binding",
+	"cli_telemetry_events.subject":              "delete: CleanupAccountSubject removes linkable installation diagnostics",
+	"deploys.triggered_by":                      "anonymize: CleanupAccountSubject replaces deploy trigger provenance on surviving workspace resources",
+	"device_push_subscriptions.subject":         "cascade: membership deletion removes personal push endpoints",
+	"github_claim_selections.subject":           "delete: CleanupAccountSubject removes pending authorization choices",
+	"github_connect_transactions.subject":       "delete: CleanupAccountSubject removes transient authorization state",
+	"membership_role_reconciliations.subject":   "cascade: membership deletion removes pending role reconciliation",
+	"notification_settings.subject":             "delete: CleanupAccountSubject removes personal preferences",
+	"oauth_revocations.client_id":               "retain: client identifier preserves revoked machine credentials and OAuth application correlation; never a bearer secret",
+	"oauth_revocations.subject":                 "anonymize: CleanupAccountSubject replaces human subject; machine revocation tombstones remain terminal",
+	"owner_ids.subject":                         "anonymize: CleanupAccountSubject replaces subject while retaining the public owner mapping",
+	"product_activity_events.actor_id":          "anonymize: CleanupAccountSubject clears the identifier",
+	"product_activity_events.actor_type":        "anonymize: CleanupAccountSubject sets the deleted actor's type to unknown",
+	"push_deliveries.subject":                   "cascade: membership deletion removes notifications and their deliveries",
+	"push_notifications.subject":                "cascade: membership deletion removes personal notification state",
+	"registry_credentials.created_by":           "anonymize: CleanupAccountSubject replaces creator on surviving workspace resources",
+	"ssh_keys.subject":                          "delete: account credential cleanup removes SSH access before identity deletion",
+	"ssh_sessions.subject":                      "anonymize: CleanupAccountSubject replaces subject in operational history",
+	"tenant_invites.email":                      "anonymize: cleanupAccountEmail deletes pending invitations and anonymizes accepted history",
+	"tenant_invites.invited_by":                 "anonymize: CleanupAccountSubject replaces inviter provenance",
+	"tenant_members.subject":                    "delete: account workspace disposition removes memberships and dependent state",
+	"tenants.billing_email":                     "anonymize: cleanupAccountEmail replaces matching account addresses; alternate workspace-owned financial contacts remain",
+	"tenants.owner_identity_id":                 "anonymize: RemoveAccountMember clears the owner binding on surviving workspaces; other workspaces are deleted",
+	"webhook_delivery_attempts.requested_by":    "anonymize: CleanupAccountSubject replaces manual replay provenance; trigger permits only the recorded deleted marker with all other evidence unchanged",
+	"webhook_endpoints.created_by":              "anonymize: CleanupAccountSubject replaces creator on surviving workspace resources",
+	"webpush_subscriptions.subject":             "cascade: membership deletion removes personal push endpoints",
+	"workspace_creation_attempts.billing_email": "anonymize: matching addresses at intent, all owned attempt addresses during subject cleanup; retain provider correlations for cleanup",
+	"workspace_creation_attempts.owner_subject": "anonymize: CleanupAccountSubject replaces owner; terminal attempt retention remains 30 days",
+}
+
+func accountDeletionInventory(ctx context.Context, db schemaQuerier) error {
+	columns, err := schemaColumns(ctx, db, `(^|_)(subject|email|identity_id|user_id|client_id)$|_by$|^(caller.*|actor.*)$`)
+	if err != nil {
+		return err
+	}
+	return checkSchemaDispositions(columns, accountDeletionDispositions)
+}
+
+func TestAccountDeletionInventoryPG(t *testing.T) {
+	st := newReplayTestStore(t)
+	if err := accountDeletionInventory(context.Background(), st.Pool); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("identity/provenance inventory: %d declared columns", len(accountDeletionDispositions))
+}
+
+func TestAccountDeletionInventoryRejectsUndeclaredShapesPG(t *testing.T) {
+	st := newReplayTestStore(t)
+	ctx := context.Background()
+	if err := accountDeletionInventory(ctx, st.Pool); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := st.Pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
-	var got []string
-	for rows.Next() {
-		var column string
-		if err := rows.Scan(&column); err != nil {
-			t.Fatal(err)
-		}
-		got = append(got, column)
-	}
-	if err := rows.Err(); err != nil {
+	defer func() { _ = tx.Rollback(ctx) }()
+	// Use the real migrated public schema, just like a future migration. Every
+	// shape below would evade the old seven-exact-name census.
+	if _, err := tx.Exec(ctx, `CREATE TABLE census_identity_violation (
+		foo_subject text, bar_email text, account_identity_id text,
+		actor_label text, caller_id text, user_id text, oauth_client_id text,
+		created_by text, invited_by text, requested_by text
+	); ALTER TABLE tenants ADD COLUMN billing_contact_email text`); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{
-		"account_deletions.subject",
-		"audit_events.caller",
-		"cli_telemetry_events.subject",
-		"device_push_subscriptions.subject",
-		"github_claim_selections.subject",
-		"github_connect_transactions.subject",
-		"membership_role_reconciliations.subject",
-		"notification_settings.subject",
-		"oauth_revocations.subject",
-		"owner_ids.subject",
-		"product_activity_events.actor_id",
-		"push_deliveries.subject",
-		"push_notifications.subject",
-		"registry_credentials.created_by",
-		"ssh_keys.subject",
-		"ssh_sessions.subject",
-		"tenant_invites.email",
-		"tenant_invites.invited_by",
-		"tenant_members.subject",
-		"tenants.owner_identity_id",
-		"webhook_endpoints.created_by",
-		"webpush_subscriptions.subject",
+	err = accountDeletionInventory(ctx, tx)
+	if err == nil {
+		t.Fatal("identity census accepted undeclared identity/provenance columns")
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("identity/provenance schema inventory changed:\n got %v\nwant %v", got, want)
+	for _, column := range []string{
+		"foo_subject", "bar_email", "account_identity_id", "actor_label",
+		"caller_id", "user_id", "oauth_client_id", "created_by", "invited_by", "requested_by",
+	} {
+		if !strings.Contains(err.Error(), "census_identity_violation."+column) {
+			t.Errorf("census did not report %s: %v", column, err)
+		}
+	}
+	if !strings.Contains(err.Error(), "tenants.billing_contact_email") {
+		t.Errorf("census did not report a column added to an existing table: %v", err)
+	}
+	t.Logf("seeded migration rejected: %v", err)
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := accountDeletionInventory(ctx, st.Pool); err != nil {
+		t.Fatalf("inventory after fixture rollback: %v", err)
 	}
 }

@@ -96,12 +96,20 @@ func (s *PGStore) CreateWorkspaceCreationAttempt(ctx context.Context, subject, n
 		State:           WorkspaceCreationPrepared,
 		ExpiresAt:       expiresAt.UTC(),
 	}
-	err := s.Pool.QueryRow(ctx, `
-		INSERT INTO workspace_creation_attempts
-			(id, workspace_id, owner_subject, name, plan, billing_email, payment_required, expires_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-		RETURNING created_at, updated_at`, a.ID, a.WorkspaceID, subject, name, plan,
-		billingEmail, paymentRequired, a.ExpiresAt).Scan(&a.CreatedAt, &a.UpdatedAt)
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockSubjectMembership(ctx, tx, subject); err != nil {
+			return err
+		}
+		if err := refuseDeletingSubject(ctx, tx, subject); err != nil {
+			return err
+		}
+		return tx.QueryRow(ctx, `
+			INSERT INTO workspace_creation_attempts
+				(id, workspace_id, owner_subject, name, plan, billing_email, payment_required, expires_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+			RETURNING created_at, updated_at`, a.ID, a.WorkspaceID, subject, name, plan,
+			billingEmail, paymentRequired, a.ExpiresAt).Scan(&a.CreatedAt, &a.UpdatedAt)
+	})
 	if err != nil {
 		return WorkspaceCreationAttempt{}, classify("workspace creation attempt", err)
 	}
