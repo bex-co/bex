@@ -172,3 +172,41 @@ func (s *PGStore) SandboxLabels(ctx context.Context, tenantID string, sandboxIDs
 	}
 	return out, nil
 }
+
+// LiveSandboxes reports which of the given sandbox ids are still running, read
+// from the compute meter's own per-sandbox phase cursor (migration 0061).
+//
+// SandboxLabels deliberately answers for dead sandboxes — that is its whole
+// point — so a label is evidence of ownership, never of liveness. The meter
+// state is the durable signal: the poller writes phase 'terminated' when
+// OpenSandbox reports the sandbox gone, and every sandbox that ever accrued
+// usage has a row here by construction, because the same poller opens it.
+// A sandbox with no row at all is absent from the result: it never metered, so
+// there is nothing to claim about it either way (w4/129).
+func (s *PGStore) LiveSandboxes(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]bool, error) {
+	if tenantID == "" || len(sandboxIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := s.Pool.Query(ctx,
+		`SELECT sandbox_id, phase <> 'terminated'
+		 FROM sandbox_meter_states
+		 WHERE workspace_id = $1 AND sandbox_id = ANY($2::text[])`,
+		tenantID, sandboxIDs)
+	if err != nil {
+		return nil, classify("sandbox meter state", err)
+	}
+	defer rows.Close()
+	out := make(map[string]bool, len(sandboxIDs))
+	for rows.Next() {
+		var id string
+		var live bool
+		if err := rows.Scan(&id, &live); err != nil {
+			return nil, classify("sandbox meter state", err)
+		}
+		out[id] = live
+	}
+	if err := rows.Err(); err != nil {
+		return nil, classify("sandbox meter state", err)
+	}
+	return out, nil
+}
