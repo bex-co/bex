@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import {
@@ -44,9 +45,13 @@ export interface UseRegistryCredentialsResult {
  * to return in the first place.
  */
 export function useRegistryCredentials(): UseRegistryCredentialsResult {
+  const { currentWorkspaceId } = useWorkspace();
+  const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(
     RegistryCredentialsDocument,
     {
+      variables: { ownerId: currentWorkspaceId },
+      skip: !resolved,
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
       pollInterval: RESOURCE_POLL_INTERVAL_MS,
@@ -56,5 +61,5 @@ export function useRegistryCredentials(): UseRegistryCredentialsResult {
 
   const credentials = useMemo(() => toViews(data?.registryCredentials), [data]);
 
-  return { credentials, loading, error, refetch };
+  return { credentials, loading: !resolved || loading, error, refetch };
 }

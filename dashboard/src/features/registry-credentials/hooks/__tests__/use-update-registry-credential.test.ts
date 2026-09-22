@@ -43,6 +43,7 @@ describe("useUpdateRegistryCredential", () => {
 
     expect(mutate).toHaveBeenCalledWith({
       variables: {
+        ownerId: null,
         id: "rgc-1",
         name: "New",
         username: "bob",
@@ -64,6 +65,7 @@ describe("useUpdateRegistryCredential", () => {
 
     expect(mutate).toHaveBeenCalledWith({
       variables: {
+        ownerId: null,
         id: "rgc-1",
         name: null,
         username: null,

@@ -42,6 +42,7 @@ describe("useCreateRegistryCredential", () => {
     expect(ok).toBe(true);
     expect(mutate).toHaveBeenCalledWith({
       variables: {
+        ownerId: null,
         host: "ghcr.io",
         username: "alice",
         authToken: "hunter2",
@@ -68,6 +69,7 @@ describe("useCreateRegistryCredential", () => {
 
     expect(mutate).toHaveBeenCalledWith({
       variables: {
+        ownerId: null,
         host: "docker.io",
         username: "bob",
         authToken: "s3cr3t",

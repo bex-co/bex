@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ export interface UseUpdateRegistryCredentialResult {
  * is never rendered, so this never round-trips a stored value.
  */
 export function useUpdateRegistryCredential(): UseUpdateRegistryCredentialResult {
+  const { currentWorkspaceId } = useWorkspace();
   const { t } = useTranslations();
   const [mutate] = useMutation(UpdateRegistryCredentialDocument);
   const [busy, setBusy] = useState(false);
@@ -43,6 +45,7 @@ export function useUpdateRegistryCredential(): UseUpdateRegistryCredentialResult
       try {
         await mutate({
           variables: {
+            ownerId: currentWorkspaceId,
             id: input.id,
             name: input.name?.trim() || null,
             username: input.username?.trim() || null,
@@ -62,7 +65,7 @@ export function useUpdateRegistryCredential(): UseUpdateRegistryCredentialResult
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, t, currentWorkspaceId],
   );
 
   return { update, busy };

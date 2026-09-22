@@ -159,6 +159,11 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// Bex's dashboard carries its selected workspace explicitly. Render's event
 	// route has no owner selector, so this remains a labeled query extension.
 	"retrieve-event": {"ownerId": {}},
+	// Registry credentials retain workspace-scoped storage; optional selection
+	// makes credentials outside the caller's default workspace manageable.
+	"retrieve-registry-credential": {"ownerId": {}},
+	"update-registry-credential":   {"ownerId": {}},
+	"delete-registry-credential":   {"ownerId": {}},
 
 	// The same concession the webhook and event routes above already make, for
 	// the blueprint-id routes it was never extended to (w6/m96). All four bex
