@@ -515,13 +515,35 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.NewList(gqlutil.IPAllowEntryType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.IPAllowList }),
 		},
-		// maintenanceMode is Render's maintenanceMode object (web_service only;
-		// every other type reports the zero value {enabled:false, uri:""}). The
-		// Settings → Maintenance Mode section reads it and writes it via
-		// setMaintenanceMode.
+		// maintenanceMode is Render's maintenanceMode object, and it is a
+		// web_service property: Render declares it solely on
+		// webServiceDetails, and REST/MCP omit the key entirely for every other
+		// type. GraphQL returned {enabled:false, uri:""} for a cron job and a
+		// private service, which is not "unset" — it is a claim that the
+		// service is not in maintenance mode, about a service that has no such
+		// mode (w4/125).
+		//
+		// Deliberately NULLABLE, where the field used to be NewNonNull. The
+		// w6/m130 remedy for the sibling fields — empty the VALUE in view() so
+		// GraphQL's flat field agrees with REST's omission — cannot reach an
+		// object: emptying it still yields {enabled:false, uri:""}, which is
+		// exactly the wrong answer. Only the schema can express "not
+		// applicable", so the schema is what changed, matching
+		// renderSubdomainPolicy's precedent one field over.
+		//
+		// Loosening a non-null output field is a breaking change for a client
+		// that declared it non-null, so it was checked rather than assumed: the
+		// dashboard already types this `MaintenanceModeView | null`, reads it
+		// with `?.`, and renders the section only for a web service — so its
+		// generated types loosen and nothing branches differently.
 		"maintenanceMode": &graphql.Field{
-			Type:    graphql.NewNonNull(maintenanceModeGQLType),
-			Resolve: gqlutil.Field(func(a AppView) any { return a.MaintenanceMode }),
+			Type: maintenanceModeGQLType,
+			Resolve: gqlutil.Field(func(a AppView) any {
+				if a.Type != appv1alpha1.TypeWebService {
+					return nil
+				}
+				return a.MaintenanceMode
+			}),
 		},
 		// latestDeployId is the id of the first deploy row, populated on Create
 		// only (w3/m14). The dashboard uses it to navigate straight to the
