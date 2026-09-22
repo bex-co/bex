@@ -210,3 +210,63 @@ func TestSandboxLabelsPG(t *testing.T) {
 		t.Errorf("a sandbox with no session resolved to %q, want absent", label)
 	}
 }
+
+// LiveSandboxes answers the question SandboxLabels deliberately cannot: whether
+// the sandbox behind a charge line still exists. Three outcomes, not two —
+// running, terminated, and never metered (w4/129).
+func TestLiveSandboxesPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE sandbox_meter_states, tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	st := NewPGStore(pool)
+
+	tenant, err := st.CreateWorkspace(ctx, "phases", PlanPro, "identity-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := st.CreateWorkspace(ctx, "phases-other", PlanPro, "identity-b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO sandbox_meter_states (workspace_id, sandbox_id, phase, tier, weight_milli, observed_at)
+		 VALUES ($1, 'sbx-running', 'running', 'standard', 1000, now()),
+		        ($1, 'sbx-terminated', 'terminated', 'standard', 1000, now()),
+		        ($2, 'sbx-other-workspace', 'running', 'standard', 1000, now())`,
+		tenant.ID, other.ID); err != nil {
+		t.Fatalf("seed meter states: %v", err)
+	}
+
+	got, err := st.LiveSandboxes(ctx, tenant.ID,
+		[]string{"sbx-running", "sbx-terminated", "sbx-never-metered", "sbx-other-workspace"})
+	if err != nil {
+		t.Fatalf("LiveSandboxes: %v", err)
+	}
+	if live, ok := got["sbx-running"]; !ok || !live {
+		t.Errorf("sbx-running = %v (present %v), want true", live, ok)
+	}
+	if live, ok := got["sbx-terminated"]; !ok || live {
+		t.Errorf("sbx-terminated = %v (present %v), want false", live, ok)
+	}
+	// Absent, not false: nothing is known, so nothing may be claimed.
+	if live, ok := got["sbx-never-metered"]; ok {
+		t.Errorf("a sandbox with no meter state resolved to %v, want absent", live)
+	}
+	// Another workspace's sandbox is not this workspace's business.
+	if live, ok := got["sbx-other-workspace"]; ok {
+		t.Errorf("another workspace's sandbox resolved to %v, want absent", live)
+	}
+}

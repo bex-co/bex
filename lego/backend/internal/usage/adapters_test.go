@@ -720,6 +720,9 @@ func TestRetainedNamesAgreeAcrossAdapters(t *testing.T) {
 		store.ResourceDisplayNameKey(store.ResourceKindService, "srv-gone"): "checkout-api",
 		store.ResourceDisplayNameKey(store.ResourceKindSandbox, "sbx-gone"): "bex-co/bex (main)",
 	}}
+	// The sandbox's tombstone comes from the compute meter's phase cursor, not
+	// from its retained name (w4/129).
+	st.liveSandboxes = map[string]bool{"sbx-gone": false}
 	svc := svcWithTenant(st, tenant)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
 

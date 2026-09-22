@@ -70,6 +70,9 @@ type UsageStore interface {
 	ResourceDisplayNames(ctx context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error)
 	RecordResourceDisplayNames(ctx context.Context, tenantID string, records []store.ResourceDisplayName) error
 	SandboxLabels(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]string, error)
+	// LiveSandboxes is the liveness half SandboxLabels deliberately does not
+	// provide: a label resolves for a reaped sandbox, the meter phase does not.
+	LiveSandboxes(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]bool, error)
 }
 
 // Service is the usage feature. Base carries the Kubernetes client, namespace,
@@ -170,9 +173,11 @@ type ServiceUsage struct {
 	// only when bex never recorded a name for the id at all, in which case
 	// presenters fall back to ServiceID.
 	ServiceName string
-	// Deleted reports that the id resolved to a retained name but no live
-	// resource: the thing being billed for is gone. False for a live resource
-	// and false for a nameless pre-retention row.
+	// Deleted reports that no live resource carries this id: the thing being
+	// billed for is gone. It is independent of ServiceName — a row can be
+	// deleted and unnamed at once (w4/129) — and stays false when the relevant
+	// live enumeration could not be performed, so a transient listing failure
+	// never tombstones a healthy workspace.
 	Deleted      bool
 	ResourceKind string // store.ResourceKind* — "service", "postgres", "key_value", "sandbox"
 	Rows         []store.UsageSummaryRow
@@ -304,10 +309,26 @@ func (s *Service) readBilling(ctx context.Context, tenantID string, now time.Tim
 // bare UUID (w1/088). Resolution is therefore two-sided:
 //
 //  1. Live resources — Apps from the store, Database/KeyValue from their CRs,
-//     sandboxes labelled from the agent session that owns (or owned) them.
-//     A live name always wins, so a renamed resource bills under its new name.
-//  2. The retained record — the last name bex knew for the id. Used when the
-//     resource is gone, which is what sets Deleted.
+//     sandboxes from the compute meter's phase cursor. A live name always wins,
+//     so a renamed resource bills under its new name.
+//  2. The retained record — the last name bex knew for the id, plus the agent
+//     session that owned a sandbox. Used when the resource is gone.
+//
+// The name and the Deleted flag are resolved INDEPENDENTLY, which is w4/129's
+// fix. They used to share one branch — Deleted was set only where a retained
+// name happened to exist — so the two failed together: a resource created and
+// deleted between two usage reads was never captured, and came back as an
+// unnamed row claiming `deleted: false`, indistinguishable from a live service
+// whose name merely failed to resolve. That was 42 of 54 rows in one real
+// workspace. A usage row is proof the resource existed, so absence from a
+// live enumeration is itself the tombstone; the name is a separate, best-effort
+// lookup that may legitimately come back empty (presenters already fall back to
+// the id).
+//
+// Deletion is only ever claimed from an enumeration that actually answered. A
+// failed or unavailable listing yields no live set for that kind, and its rows
+// keep Deleted false rather than mass-tombstoning a healthy workspace on a
+// transient store or API-server error.
 //
 // It also writes step 1's names back into the retained record. This read is by
 // construction the one place every *metered* resource is enumerated, so
@@ -322,19 +343,42 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 	if len(svcs) == 0 {
 		return
 	}
-	live := map[string]string{}
+	// names holds display names from any source; live holds ids an enumeration
+	// positively reported as still existing. A sandbox label is in the first and
+	// not the second on purpose — SandboxLabels answers for reaped sandboxes by
+	// design, so it names them without vouching for them.
+	names := map[string]string{}
+	live := map[string]bool{}
+	// enumerated records which kinds we can make a deletion claim about at all.
+	enumerated := map[string]bool{}
+	// sandboxPhase is per-id rather than per-kind: running / terminated /
+	// absent-because-never-metered are three distinct answers, and only the
+	// middle one is a tombstone.
+	var sandboxPhase map[string]bool
+
 	if apps, err := s.Store.ListApps(ctx); err != nil {
 		log.Printf("usage: resolve names: list apps: %v", err)
 	} else {
+		enumerated[store.ResourceKindService] = true
 		for _, app := range apps {
-			live[store.ResourceDisplayNameKey(store.ResourceKindService, app.ID)] = app.Name
+			key := store.ResourceDisplayNameKey(store.ResourceKindService, app.ID)
+			names[key] = app.Name
+			live[key] = true
 		}
 	}
-	if datastores, err := s.listDatastores(ctx); err != nil {
-		log.Printf("usage: resolve names: list datastores: %v", err)
-	} else {
-		for _, ds := range datastores {
-			live[store.ResourceDisplayNameKey(ds.Kind, ds.ID)] = ds.Display
+	// listDatastores answers (nil, nil) with no Kubernetes client, which is an
+	// unwired store rather than an empty cluster — not evidence of deletion.
+	if s.Client != nil {
+		if datastores, err := s.listDatastores(ctx); err != nil {
+			log.Printf("usage: resolve names: list datastores: %v", err)
+		} else {
+			enumerated[store.ResourceKindPostgres] = true
+			enumerated[store.ResourceKindKeyValue] = true
+			for _, ds := range datastores {
+				key := store.ResourceDisplayNameKey(ds.Kind, ds.ID)
+				names[key] = ds.Display
+				live[key] = true
+			}
 		}
 	}
 
@@ -351,8 +395,12 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 			log.Printf("usage: resolve names: sandbox labels: %v", err)
 		} else {
 			for id, label := range labels {
-				live[store.ResourceDisplayNameKey(store.ResourceKindSandbox, id)] = label
+				names[store.ResourceDisplayNameKey(store.ResourceKindSandbox, id)] = label
 			}
+		}
+		var err error
+		if sandboxPhase, err = s.Store.LiveSandboxes(ctx, tenantID, sandboxIDs); err != nil {
+			log.Printf("usage: resolve names: sandbox meter states: %v", err)
 		}
 	}
 
@@ -364,21 +412,30 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 	capture := make([]store.ResourceDisplayName, 0, len(svcs))
 	for i := range svcs {
 		key := store.ResourceDisplayNameKey(svcs[i].ResourceKind, svcs[i].ServiceID)
-		if name, ok := live[key]; ok && name != "" {
+		if svcs[i].ResourceKind == store.ResourceKindSandbox {
+			running, known := sandboxPhase[svcs[i].ServiceID]
+			svcs[i].Deleted = known && !running
+			live[key] = running
+		} else {
+			// Gone unless an enumeration that ran says otherwise.
+			svcs[i].Deleted = enumerated[svcs[i].ResourceKind] && !live[key]
+		}
+		if name, ok := names[key]; ok && name != "" {
 			svcs[i].ServiceName = name
-			if retained[key] != name {
+			// Retain only names of resources still standing: capturing a dead
+			// sandbox's session label would keep rewriting the record long after
+			// the sandbox it describes is gone.
+			if live[key] && retained[key] != name {
 				capture = append(capture, store.ResourceDisplayName{
 					Kind: svcs[i].ResourceKind, ID: svcs[i].ServiceID, Name: name,
 				})
 			}
 			continue
 		}
-		// No live resource: the retained name is what the charge is for, and
-		// its presence is what distinguishes "deleted" from "never named".
-		if name := retained[key]; name != "" {
-			svcs[i].ServiceName = name
-			svcs[i].Deleted = true
-		}
+		// Nothing current names it: the retained record is the last name bex
+		// knew. Empty here means bex never recorded one, and the row bills under
+		// its bare id — correct, and now correctly marked deleted besides.
+		svcs[i].ServiceName = retained[key]
 	}
 	if len(capture) > 0 {
 		if err := s.Store.RecordResourceDisplayNames(ctx, tenantID, capture); err != nil {

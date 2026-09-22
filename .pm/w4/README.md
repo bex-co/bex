@@ -264,3 +264,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **m134** — [Reach workspace-scoped credentials and event details](done/m134/README.md) (7 tasks) ← promoted from 128; REST/GraphQL selectors, dashboard propagation, and workspace authorization coverage.
 
 - [x] **140** — [Registry credential dashboard workspace selection](done/140.md) — completed within m134; concurrent filing retained.
+
+- [x] **129** — [Tombstone every usage row whose resource is gone](done/129.md) — `deleted` no longer depends on a retained name happening to exist; per-kind live enumerations claim deletion only when they answered, and sandboxes get a real liveness signal from the compute meter's phase cursor instead of a label that resolves for reaped sandboxes by design.
