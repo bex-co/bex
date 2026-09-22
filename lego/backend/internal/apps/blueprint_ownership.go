@@ -545,3 +545,43 @@ func (s *Service) previewConnectionConflict(ctx context.Context, tenantID, repo,
 		Error: errBlueprintAlreadyConnected(existing).Error(),
 	}
 }
+
+// validateWorkspaceReferences runs the workspace-resolvable reference checks at
+// VALIDATE time (w4/118) — fromDatabase, and fromService pointing at a Key
+// Value. Both are resolved by name against the caller's workspace, so unlike
+// the same-file-only fromService→service check they cannot be answered from the
+// manifest alone; they were therefore checked only at apply, and a manifest
+// referencing a database that exists nowhere validated clean.
+//
+// This is the same resolution the apply path runs, reusing its errors verbatim
+// — including the ambiguous-name case — so validate and apply cannot disagree
+// about a reference. It reads CR identities only, never a credential value,
+// which is why it needs no role beyond the one validate already holds.
+//
+// A caller with no resolved workspace (the store-less dev path) is skipped: it
+// has no workspace for a name to resolve against, and failing there would be an
+// answer about the environment rather than the manifest.
+func (s *Service) validateWorkspaceReferences(ctx context.Context, ir BlueprintIR, st parsedStack) []BlueprintValidationError {
+	if s.Client == nil {
+		return nil
+	}
+	if _, scoped := s.Tenant(ctx); !scoped {
+		return nil
+	}
+	if _, _, err := s.resolveExistingBlueprintReferences(ctx, st, nil, nil); err != nil {
+		if !errors.Is(err, core.ErrBadRequest) && !errors.Is(err, core.ErrConflict) {
+			// A cluster read failure is not a manifest problem; the apply path
+			// is still the enforcement point.
+			return nil
+		}
+		msg := err.Error()
+		for _, prefix := range []string{"bad request: ", "conflict: "} {
+			if after, ok := strings.CutPrefix(msg, prefix); ok {
+				msg = after
+				break
+			}
+		}
+		return []BlueprintValidationError{blueprintValidationError(ir, msg)}
+	}
+	return nil
+}
