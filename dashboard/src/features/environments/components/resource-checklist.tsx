@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { DialogFooter } from "@/common/components/ui/dialog";
 import { Button } from "@/common/components/ui/button";
@@ -15,7 +15,9 @@ export interface ResourceChecklistItem {
 
 export interface ResourceChecklistProps {
   items: ResourceChecklistItem[];
-  initialChecked: string[];
+  /** The tab's draft selection. Owned by the parent — see the note below. */
+  checked: Set<string>;
+  onToggle: (id: string, next: boolean) => void;
   busy: boolean;
   emptyLabel: string;
   onSave: (ids: string[]) => Promise<boolean>;
@@ -26,31 +28,27 @@ export interface ResourceChecklistProps {
  * One resource-kind tab of the environment "Manage resources" dialog: a
  * checkbox list of candidates, pre-checked for those already assigned,
  * full-replacing on save — the shape `AssignServicesForm` used before w6/m20
- * generalized it to also cover databases and key-value instances. Local
- * `checked` state seeds fresh each mount (Radix unmounts inactive
- * `TabsContent`/closed `Dialog` children), so no sync effect is needed.
+ * generalized it to also cover databases and key-value instances.
+ *
+ * Controlled, deliberately. This owned `checked` locally and seeded it on
+ * mount, which was correct for the dialog (Radix unmounts a closed Dialog's
+ * children, so reopening SHOULD reseed) but wrong for the tabs: Radix unmounts
+ * inactive `TabsContent` too, so visiting another kind and coming back
+ * destroyed the draft and reseeded from unchanged server membership — the
+ * user's unchecked box silently checked itself again (w4/133). The drafts now
+ * live in `ManageResourcesForm`, which stays mounted across tab changes and is
+ * itself remounted per dialog open, so both behaviours come out right.
  */
 export function ResourceChecklist({
   items,
-  initialChecked,
+  checked,
+  onToggle,
   busy,
   emptyLabel,
   onSave,
   onClose,
 }: ResourceChecklistProps) {
   const { t } = useTranslations();
-  const [checked, setChecked] = useState<Set<string>>(
-    () => new Set(initialChecked),
-  );
-
-  function toggle(id: string, next: boolean) {
-    setChecked((prev) => {
-      const nextSet = new Set(prev);
-      if (next) nextSet.add(id);
-      else nextSet.delete(id);
-      return nextSet;
-    });
-  }
 
   async function handleSave() {
     const ok = await onSave([...checked]);
@@ -76,7 +74,7 @@ export function ResourceChecklist({
                 <Checkbox
                   id={`assign-${item.id}`}
                   checked={checked.has(item.id)}
-                  onCheckedChange={(v) => toggle(item.id, v === true)}
+                  onCheckedChange={(v) => onToggle(item.id, v === true)}
                   disabled={busy}
                 />
                 <span className="flex-1 font-medium">{item.name}</span>

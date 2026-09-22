@@ -274,3 +274,174 @@ describe("ManageResourcesDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
+
+// w4/133: Radix unmounts inactive TabsContent, and the checklist used to seed
+// its selection on mount — so looking at another resource kind destroyed the
+// draft and reseeded from unchanged server membership. Live, an unchecked
+// service silently checked itself again after a Services → Databases → Services
+// round trip, with no Save in between and no membership mutation on the server.
+describe("ManageResourcesDialog draft retention across tabs", () => {
+  const tabs = [
+    { name: "Databases", label: "Databases" },
+    { name: "Key Value", label: "Key Value" },
+    { name: "Env Groups", label: "Env Groups" },
+  ];
+
+  for (const tab of tabs) {
+    it(`keeps an unsaved Services edit across a round trip through ${tab.label}`, async () => {
+      const user = userEvent.setup();
+      renderDialog();
+
+      await user.click(screen.getByRole("checkbox", { name: /api/ }));
+      expect(screen.getByRole("checkbox", { name: /api/ })).not.toBeChecked();
+
+      await user.click(screen.getByRole("tab", { name: tab.name }));
+      await user.click(screen.getByRole("tab", { name: "Services" }));
+
+      expect(screen.getByRole("checkbox", { name: /api/ })).not.toBeChecked();
+    });
+  }
+
+  it("saves the retained draft, not the persisted membership, after a round trip", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("checkbox", { name: /api/ }));
+    await user.click(screen.getByRole("tab", { name: "Databases" }));
+    await user.click(screen.getByRole("tab", { name: "Services" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    // The last member was unchecked, so the complete replacement set is empty —
+    // and it must still be submitted as [], not withheld.
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(setServices.mock.calls[0][2]).toEqual([]);
+    expect(setDatabases).not.toHaveBeenCalled();
+    expect(setKeyValues).not.toHaveBeenCalled();
+    expect(setEnvGroups).not.toHaveBeenCalled();
+  });
+
+  it("keeps the four drafts independent, and saves only the active tab's", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("checkbox", { name: /web/ }));
+
+    await user.click(screen.getByRole("tab", { name: "Databases" }));
+    await user.click(screen.getByRole("checkbox", { name: /replica-db/ }));
+
+    await user.click(screen.getByRole("tab", { name: "Key Value" }));
+    await user.click(screen.getByRole("checkbox", { name: /cache/ }));
+
+    await user.click(screen.getByRole("tab", { name: "Env Groups" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: /production-secrets/ }),
+    );
+
+    // Every edit survived three further tab changes.
+    await user.click(screen.getByRole("tab", { name: "Services" }));
+    expect(screen.getByRole("checkbox", { name: /web/ })).toBeChecked();
+    await user.click(screen.getByRole("tab", { name: "Databases" }));
+    expect(screen.getByRole("checkbox", { name: /replica-db/ })).toBeChecked();
+    await user.click(screen.getByRole("tab", { name: "Key Value" }));
+    expect(screen.getByRole("checkbox", { name: /cache/ })).not.toBeChecked();
+    await user.click(screen.getByRole("tab", { name: "Env Groups" }));
+    expect(
+      screen.getByRole("checkbox", { name: /production-secrets/ }),
+    ).toBeChecked();
+
+    // Saving writes ONE tab's replacement set — the active one — and the three
+    // other drafts are discarded with the dialog rather than silently written.
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(setEnvGroups).toHaveBeenCalledTimes(1);
+    expect([...setEnvGroups.mock.calls[0][2]].sort()).toEqual([
+      "evg-production",
+      "evg-shared",
+    ]);
+    expect(setServices).not.toHaveBeenCalled();
+    expect(setDatabases).not.toHaveBeenCalled();
+    expect(setKeyValues).not.toHaveBeenCalled();
+  });
+
+  it("keeps only the active tab's controls in the accessibility tree", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    expect(screen.getByRole("checkbox", { name: /api/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: /replica-db/ }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Databases" }));
+    expect(
+      screen.getByRole("checkbox", { name: /replica-db/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: /worker/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("a failed Save keeps the dialog open with the draft intact", async () => {
+    const onOpenChange = vi.fn();
+    setServices.mockResolvedValue(false);
+    const user = userEvent.setup();
+    renderDialog(onOpenChange);
+
+    await user.click(screen.getByRole("checkbox", { name: /web/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("checkbox", { name: /web/ })).toBeChecked();
+  });
+
+  it("an unchanged refetch of the same membership does not stomp a draft", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const { rerender } = renderDialog(onOpenChange);
+
+    await user.click(screen.getByRole("checkbox", { name: /api/ }));
+    expect(screen.getByRole("checkbox", { name: /api/ })).not.toBeChecked();
+
+    // A poll tick hands down an equal-but-new array instance, the shape that
+    // would resurrect the draft through any sync effect keyed on identity.
+    rerender(
+      <ManageResourcesDialog
+        environment={{ ...env, serviceIds: ["api"] }}
+        services={[svc("api"), svc("web"), svc("worker")]}
+        databases={[db("primary-db"), db("replica-db")]}
+        keyValues={[kv("cache")]}
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: /api/ })).not.toBeChecked();
+  });
+
+  it("discards drafts on close and reseeds from persisted membership on reopen", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const { rerender } = renderDialog(onOpenChange);
+
+    await user.click(screen.getByRole("checkbox", { name: /api/ }));
+    expect(screen.getByRole("checkbox", { name: /api/ })).not.toBeChecked();
+
+    // Cancel: the dialog's own close path, which unmounts the form.
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    const props = {
+      environment: env,
+      services: [svc("api"), svc("web"), svc("worker")],
+      databases: [db("primary-db"), db("replica-db")],
+      keyValues: [kv("cache")],
+      onOpenChange,
+    };
+    rerender(<ManageResourcesDialog {...props} open={false} />);
+    rerender(<ManageResourcesDialog {...props} open />);
+
+    // Draft gone, persisted membership back — the behaviour the per-mount seed
+    // was originally right about, and which lifting the drafts must preserve.
+    expect(screen.getByRole("checkbox", { name: /api/ })).toBeChecked();
+    expect(setServices).not.toHaveBeenCalled();
+  });
+});
