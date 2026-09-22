@@ -19,10 +19,13 @@ package registrycreds
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 func testMux() (*Service, *http.ServeMux) {
@@ -225,5 +228,61 @@ func TestRESTReportsExpiredStatus(t *testing.T) {
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
 	if got.Status != "expired" {
 		t.Fatalf("get = %+v, want status=expired — a stale credential must never be silently hidden", got)
+	}
+}
+
+// TestRESTNonDefaultWorkspaceCredentialIsFullyReachable is the REST half of
+// w4/128: POST and the list route bound `?ownerId`, the three by-id routes did
+// not. The note left REST unchecked and GraphQL verified; the asymmetry was the
+// same on both surfaces, so both bind it now.
+func TestRESTNonDefaultWorkspaceCredentialIsFullyReachable(t *testing.T) {
+	s, _, _ := newTestService()
+	s.Workspace = fakeWorkspaceResolver{"tea-default"}
+	mux := http.NewServeMux()
+	s.RegisterREST(mux)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
+
+	req := httptest.NewRequest("POST", "/v1/registrycredentials",
+		strings.NewReader(`{"ownerId":"tea-other","host":"ghcr.io","username":"alice","authToken":"hunter2"}`)).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
+	}
+	var created credentialWire
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.OwnerID != "tea-other" {
+		t.Fatalf("created ownerId = %q, want tea-other", created.OwnerID)
+	}
+
+	// Control: no ?ownerId still means the caller's default workspace.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials/"+created.ID, nil).WithContext(ctx))
+	if rec.Code == http.StatusOK {
+		t.Errorf("get without ownerId => 200, want a miss in the default workspace: %s", rec.Body)
+	}
+
+	for _, tc := range []struct {
+		name, method, body string
+		want               int
+	}{
+		{"get", "GET", "", http.StatusOK},
+		{"patch", "PATCH", `{"username":"alice2"}`, http.StatusOK},
+		{"delete", "DELETE", "", http.StatusNoContent},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var body io.Reader
+			if tc.body != "" {
+				body = strings.NewReader(tc.body)
+			}
+			r := httptest.NewRequest(tc.method, "/v1/registrycredentials/"+created.ID+"?ownerId=tea-other", body).WithContext(ctx)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, r)
+			if rec.Code != tc.want {
+				t.Fatalf("%s with ?ownerId => %d, want %d: %s", tc.method, rec.Code, tc.want, rec.Body)
+			}
+		})
 	}
 }

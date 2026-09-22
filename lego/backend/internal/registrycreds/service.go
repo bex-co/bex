@@ -164,7 +164,12 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]CredentialView, e
 	return out, nil
 }
 
-// Get returns one credential (secret omitted). Member read.
+// Get returns one credential (secret omitted). Member read. The workspace comes
+// from the context, which every adapter binds from its own optional `ownerId`
+// selector (GraphQL arg, REST query param, MCP middleware) before calling —
+// omitted means the caller's default, as it always has. Binding it is what makes
+// a credential created with `ownerId: B` reachable in B rather than listable but
+// unreadable, unupdatable and undeletable (w4/128).
 func (s *Service) Get(ctx context.Context, id string) (CredentialView, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return CredentialView{}, err
@@ -266,7 +271,8 @@ type UpdateRequest struct {
 }
 
 // Update changes a credential's name/username/expiry and/or rotates its
-// secret. Admin-only, matching Create.
+// secret. Admin-only, matching Create. Workspace-scoped like Get — see its
+// note on the adapter-bound `ownerId`.
 func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (CredentialView, error) {
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return CredentialView{}, err
@@ -331,7 +337,10 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 // Delete removes a credential's OpenBao secret before its Postgres row. Secret
 // deletion is fail-closed: retaining the row makes an OpenBao outage retryable
 // and prevents a supposedly deleted credential from leaving secret material
-// behind. Admin-only, matching Create/Update.
+// behind. Admin-only, matching Create/Update. Workspace-scoped like Get — the
+// REGISTRY_CREDENTIAL_LIMIT error tells the caller to "delete unused
+// credentials", so this verb must be able to reach the workspace whose quota is
+// full, not only the caller's default one (w4/128).
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return err

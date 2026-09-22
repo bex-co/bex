@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 func testSchema(s *Service) graphql.Schema {
@@ -159,5 +161,72 @@ func TestGraphQLDeleteRemovesCredential(t *testing.T) {
 		RequestString: `{ registryCredential(id: "` + id + `") { id } }`})
 	if len(res.Errors) == 0 {
 		t.Fatal("get after delete should error")
+	}
+}
+
+// TestGraphQLNonDefaultWorkspaceCredentialIsFullyReachable is w4/128's
+// regression: create/list carried `ownerId` while the three by-id verbs
+// resolved the caller's DEFAULT workspace, so a credential created in any other
+// workspace was listable but could never be read, updated or deleted — and it
+// kept consuming that workspace's MaxCredentials quota, which the
+// REGISTRY_CREDENTIAL_LIMIT error tells the caller to free by deleting.
+func TestGraphQLNonDefaultWorkspaceCredentialIsFullyReachable(t *testing.T) {
+	s, _, _ := newTestService()
+	s.Workspace = fakeWorkspaceResolver{"tea-default"}
+	schema := testSchema(s)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
+
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `mutation { createRegistryCredential(ownerId: "tea-other", host: "ghcr.io", username: "alice", authToken: "hunter2") { id ownerId } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("create in tea-other: %v", res.Errors)
+	}
+	created := res.Data.(map[string]any)["createRegistryCredential"].(map[string]any)
+	if created["ownerId"] != "tea-other" {
+		t.Fatalf("created ownerId = %v, want tea-other", created["ownerId"])
+	}
+	id := created["id"].(string)
+
+	// Without ownerId every by-id verb still resolves the caller's default
+	// workspace — the pre-existing behaviour, and the control that proves the
+	// three assertions below come from the binding and not from a widened lookup.
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ registryCredential(id: "` + id + `") { id } }`})
+	if len(res.Errors) == 0 {
+		t.Errorf("get without ownerId should stay scoped to the default workspace, got %+v", res.Data)
+	}
+
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ registryCredential(id: "` + id + `", ownerId: "tea-other") { id ownerId } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("get with ownerId: %v", res.Errors)
+	}
+	if got := res.Data.(map[string]any)["registryCredential"].(map[string]any); got["id"] != id {
+		t.Errorf("get = %+v, want id %s", got, id)
+	}
+
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `mutation { updateRegistryCredential(id: "` + id + `", ownerId: "tea-other", username: "alice2") { username } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("update with ownerId: %v", res.Errors)
+	}
+	if got := res.Data.(map[string]any)["updateRegistryCredential"].(map[string]any); got["username"] != "alice2" {
+		t.Errorf("update = %+v, want username alice2", got)
+	}
+
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `mutation { deleteRegistryCredential(id: "` + id + `", ownerId: "tea-other") }`})
+	if len(res.Errors) > 0 || res.Data.(map[string]any)["deleteRegistryCredential"] != true {
+		t.Fatalf("delete with ownerId: data=%+v errors=%v", res.Data, res.Errors)
+	}
+
+	// The quota the deletion was supposed to free is actually free.
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `{ registryCredentials(ownerId: "tea-other") { id } }`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("list tea-other: %v", res.Errors)
+	}
+	if list := res.Data.(map[string]any)["registryCredentials"].([]any); len(list) != 0 {
+		t.Errorf("tea-other list after delete = %+v, want empty", list)
 	}
 }

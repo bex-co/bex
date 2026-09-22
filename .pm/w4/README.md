@@ -258,3 +258,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **123** — [Enforce disk constraints before plan, scaling, and autoscaling writes](done/123.md) — shared preview guard; all three API surfaces preserve stored intent on refusal.
 
 - [x] **126** — [Host suggestion investigation](done/126.md) — extra hosts confirmed as documented hand-applied Ingresses outside the App spec; proposed status/discovery fix withdrawn, QA record retained.
+
+- [x] **128** — [Reach a registry credential in the workspace it was created in](done/128.md) — every by-id verb on GraphQL and REST now binds an optional `ownerId`; MCP was already correct, GraphQL's `serviceEvent(id:)` gained the same selector, and `clitelemetry` turned out to be a write path rather than an instance. The dashboard half is filed as [140](140.md).
