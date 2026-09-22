@@ -548,9 +548,20 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// latestDeployId is the id of the first deploy row, populated on Create
 		// only (w3/m14). The dashboard uses it to navigate straight to the
 		// in-flight deploy page after a git-sourced service is created.
+		//
+		// Null — never "" — on every other path, which is w4/131 and the third
+		// member of the url (w4/124) / maintenanceMode (w4/125) family: a
+		// GraphQL field filled unconditionally from a view whose REST
+		// counterpart gates emission. REST carries this id OUTSIDE the service
+		// object, in Render's serviceAndDeploy create envelope (w2/m47), so
+		// GET /v1/services/{id} has no deploy key at all; the view's
+		// `omitempty` is what keeps it that way. An empty string here would
+		// claim "there is no deploy" for a service with years of deploy
+		// history, so reads say null — "we are not telling you" — and a caller
+		// that wants the answer asks deploys(serviceId:), one field away.
 		"latestDeployId": &graphql.Field{
-			Type:    graphql.String,
-			Resolve: gqlutil.Field(func(a AppView) any { return a.LatestDeployID }),
+			Type: graphql.String,
+			Resolve: gqlutil.Field(latestDeployIDOf),
 		},
 		// outboundIps is Render's retrieve-service-outbound-ips read nested under
 		// the Service (w2/023; a bex extension — Render publishes no GraphQL
@@ -1879,4 +1890,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	maps.Copy(fields, s.diskGQLMutationFields())
 	maps.Copy(fields, s.diskSnapshotGQLMutationFields())
 	return fields
+}
+
+// latestDeployIDOf is the latestDeployId resolver's body, exported to the
+// package's tests so the populated-create-path control can assert it without
+// standing up a create. See the field's comment for why empty means null.
+func latestDeployIDOf(a AppView) any {
+	if a.LatestDeployID == "" {
+		return nil
+	}
+	return a.LatestDeployID
 }

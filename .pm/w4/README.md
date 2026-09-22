@@ -266,3 +266,7 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **140** — [Registry credential dashboard workspace selection](done/140.md) — completed within m134; concurrent filing retained.
 
 - [x] **129** — [Tombstone every usage row whose resource is gone](done/129.md) — `deleted` no longer depends on a retained name happening to exist; per-kind live enumerations claim deletion only when they answered, and sandboxes get a real liveness signal from the compute meter's phase cursor instead of a label that resolves for reaped sandboxes by design.
+
+- [x] **130** — [QA re-probe record for m122, m126 and m127](done/130.md) — record-only; the three milestones' deferred live DoD probes all pass against the deployed fix, so nothing was left to implement.
+
+- [x] **131** — [Answer `latestDeployId` as null on reads](done/131.md) — third member of the `url`/`maintenanceMode` family; `""` claimed "no deploy" for services with real history, and the create path still returns the id.
