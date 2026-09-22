@@ -18,7 +18,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m163** — [Credential offboarding: a removed member's machine credentials](done/m163/README.md) (8 tasks) — **DONE 2026-09-21**. Admin removal, self-leave, and account deletion revoke cached and fresh API-key tokens across replicas. Strict live acceptance passed with real PostgreSQL, Hydra, Kratos, and enforced OpenFGA; remaining-member and other-workspace controls passed. Full backend suite and all-module lint green.
 - [x] **m164** — [The disposition contract, enforced: every tenant- and subject-scoped table declares how it dies](done/m164/README.md) (8 tasks) — **DONE 2026-09-22**. Identity census covers 32 columns; workspace census covers 48 tables (43 cascades, five explicit retentions). Added four workspace cascades and account anonymization for creation attempts, billing contacts, deploy triggers, and webhook requesters. Seeded negative proofs, real PostgreSQL/OpenFGA/OpenBao verification, full backend suite, and all-module lint passed.
 
-**Suggested order (2026-09-16):** `037` (heads-up, blocks nothing) → m163 (a live access gap, and time-boxed by `w5/m103`) → m164 (prevention). m164 is independently runnable and needs no cluster — real Postgres is enough.
+**Drain checkpoint (2026-09-22):** m163 and m164 shipped; 037 closed as already fixed. The remaining unchecked milestones are parked below with their external gates.
 
 - [ ] **m94** — [Linked environment groups: precedence, auto-deploy, and quota parity](blocked/m94/README.md) — **t001–t008 done 2026-09-15**; t009 closeout **BLOCKED (needs a working production credential to re-probe the Definition of done live — refresh `QA_PASSWORD` in `.env`, or run `render login`)** ← `/pm-brainstorm for w1` 2026-09-15 #1, absorbing w1/091, w1/092, w1/095, w1/100.
 - [ ] **m95** — [Environment values mean what the user typed: round-trip escapes, multi-line values, and `PORT`](blocked/m95/README.md) — **t001–t006 done 2026-09-15**; t007 closeout **BLOCKED (needs a working production credential to re-probe the Definition of done live — refresh `QA_PASSWORD` in `.env`, or run `render login`)** ← `/pm-brainstorm for w1` 2026-09-15 #2, absorbing w1/099, w1/096; `PORT` decided as option (a).
@@ -116,7 +116,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **037** — [m162's `github_claim_selections.subject` needs a disposition before it ships](037.md) ← from the 2026-09-16 offboarding research: the in-flight (uncommitted) `0124` migration adds a subject-bearing table with no ADR086 disposition and no FK to `tenants`; it will also turn the identity/provenance census red. Sub-hour, and cheapest to fix inside m162 rather than after it.
+- [x] **037** — [GitHub claim-selection disposition](done/037.md) — **already fixed in `c82108964`; verified 2026-09-22**. Account cleanup, workspace cascade, census declaration, and ADR086 policy all present; m164 revalidated both schema guards.
 
 - [BLOCKED] **035** — [Phase 4: drop dual-read + delete legacy registry/static blobs](blocked/035.md) (ADR055 F2/F3 close) — **BLOCKED (destructive; needs an evidenced 14-day clean window AND an explicit change-window authorization from the operator)**. Live readiness re-run 2026-09-15 reports `insufficient_evidence`, now with a second gate: `tea-daif693dqjvc73e7as3g-hello-go` is labeled but untombstoned. ← from w2/m92 t005
 
