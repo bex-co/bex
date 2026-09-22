@@ -116,6 +116,7 @@ var environmentPatchResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"envVarKeys":      gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v EnvironmentPatchResult) any { return v.EnvVarKeys }),
 		"secretFileNames": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v EnvironmentPatchResult) any { return v.SecretFileNames }),
 		"rolledOut":       gqlutil.ReqBoolField(func(v EnvironmentPatchResult) any { return v.RolledOut }),
+		"revision":        gqlutil.StrField(func(v EnvironmentPatchResult) any { return v.Revision }),
 	},
 })
 
