@@ -571,12 +571,8 @@ func (s *Service) SetKeyValues(ctx context.Context, id string, keyValueIDs []str
 }
 
 // setResourceMembers replaces the full membership of one label-backed resource
-// kind in a project: it diffs the wanted set against the workspace's current
-// labels and re-labels only what actually changed, so an unrelated resource is
-// never rewritten. Only relabels within the project's OWN workspace are
-// considered — the listing is scoped to p.TenantID, so an id naming a resource
-// in another workspace is simply absent from the diff and silently ignored,
-// never adopted across the tenant boundary.
+// kind in a project. It validates every requested id against the project's
+// workspace before changing any labels, then re-labels only the difference.
 func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string) (ProjectView, error) {
 	if s.Store == nil || idx == nil {
 		return ProjectView{}, ErrProjectsUnavailable
@@ -589,8 +585,15 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	if err != nil {
 		return ProjectView{}, err
 	}
+	known := make(map[string]bool, len(existing))
+	for _, r := range existing {
+		known[r.id] = true
+	}
 	want := make(map[string]bool, len(wantIDs))
 	for _, wid := range wantIDs {
+		if !known[wid] {
+			return ProjectView{}, fmt.Errorf("%w: %q does not belong to workspace %q", core.ErrForbidden, wid, p.TenantID)
+		}
 		want[wid] = true
 	}
 	for _, r := range existing {

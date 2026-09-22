@@ -125,8 +125,9 @@ export function useMoveToProject(
         // the source is pure redundancy. It was also the bug: the pair ran
         // remove-then-add with no rollback, so a failure on the add left the
         // resource in NEITHER project while the toast said the move failed
-        // (w6/036). With one call the move is all-or-nothing, and the stale
-        // source list is reconciled by refreshProjects below.
+        // (w6/036). One call avoids that preliminary detach; the server
+        // validates the requested set before applying it. The stale source
+        // list is reconciled by refreshProjects below.
         await runSet(to.id, [...idsOf(kind, to), resourceId]);
       } catch (err) {
         toast.error(

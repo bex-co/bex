@@ -205,10 +205,8 @@ func TestSetResourceMembersRelabelsOnlyTheDifference(t *testing.T) {
 	}
 }
 
-// TestSetResourceMembersNeverAdoptsAcrossWorkspaces: the listing the diff runs
-// against is scoped to the PROJECT'S workspace, so an id naming a resource in
-// another workspace is simply absent from the diff — ignored, never re-labeled
-// into this project.
+// A foreign id refuses the entire replacement before even the valid member
+// changes, using the same error as an unknown id.
 func TestSetResourceMembersNeverAdoptsAcrossWorkspaces(t *testing.T) {
 	for _, kind := range setKinds {
 		t.Run(kind.name, func(t *testing.T) {
@@ -218,15 +216,12 @@ func TestSetResourceMembersNeverAdoptsAcrossWorkspaces(t *testing.T) {
 			svc := projectServiceWith(st, allowChecker{})
 			kind.wire(svc, idx)
 
-			v, err := kind.set(svc, ctxAs("user-a"), "prj-1", []string{"res-mine", "res-theirs"})
-			if err != nil {
-				t.Fatalf("set %s: %v", kind.name, err)
+			_, err := kind.set(svc, ctxAs("user-a"), "prj-1", []string{"res-mine", "res-theirs"})
+			if !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("set %s: got %v, want forbidden", kind.name, err)
 			}
-			if got := join(idx.relabelPairs()); got != "res-mine=>prj-1" {
-				t.Errorf("relabels = %q, want only the same-workspace resource", got)
-			}
-			if got := join(kind.ids(v)); got != "res-mine" {
-				t.Errorf("membership = %q, want only res-mine", got)
+			if len(idx.relabels) != 0 {
+				t.Errorf("refused replacement relabeled resources: %v", idx.relabelPairs())
 			}
 		})
 	}

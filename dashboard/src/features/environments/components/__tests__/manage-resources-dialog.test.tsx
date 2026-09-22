@@ -220,6 +220,37 @@ describe("ManageResourcesDialog", () => {
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
+  it.each([
+    { tab: "Databases", member: "primary-db", mutate: setDatabases },
+    { tab: "Key Value", member: "cache", mutate: setKeyValues },
+  ])(
+    "keeps $tab selections open after a refused replacement",
+    async ({ tab, member, mutate }) => {
+      mutate.mockResolvedValue(false);
+      const onOpenChange = vi.fn();
+      const user = userEvent.setup();
+      renderDialog(onOpenChange);
+
+      await user.click(screen.getByRole("tab", { name: tab }));
+      await user.click(
+        screen.getByRole("checkbox", { name: new RegExp(member) }),
+      );
+      await user.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(mutate).toHaveBeenCalledWith("env-1", "staging", []);
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: new RegExp(member) }),
+      ).not.toBeChecked();
+
+      mutate.mockResolvedValue(true);
+      await user.click(screen.getByRole("button", { name: "Save" }));
+      expect(mutate).toHaveBeenLastCalledWith("env-1", "staging", []);
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    },
+  );
+
   it("full-replaces environment-group membership from workspace-scoped candidates", async () => {
     const onOpenChange = vi.fn();
     const user = userEvent.setup();
