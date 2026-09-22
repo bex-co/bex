@@ -72,7 +72,7 @@ func TestShippedExampleBlueprintsValidate(t *testing.T) {
 			t.Errorf("%s compiler problems = %+v", rel, problems)
 			return nil
 		}
-		validation, valErr := svc.ValidateBlueprint(context.Background(), "", string(raw))
+		validation, valErr := svc.ValidateBlueprint(context.Background(), "", string(raw), "")
 		if valErr != nil {
 			t.Errorf("%s ValidateBlueprint: %v", rel, valErr)
 			return nil
@@ -105,7 +105,7 @@ func TestStaticSitePlanIsTheNamedOffender(t *testing.T) {
 func TestObeyingStaticSiteErrorsConvergesByRemovingPlan(t *testing.T) {
 	svc := newBlueprintValidator(t)
 	start := staticSiteManifest("    staticPublishPath: .\n    plan: free\n")
-	first, err := svc.ValidateBlueprint(context.Background(), "", start)
+	first, err := svc.ValidateBlueprint(context.Background(), "", start, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestObeyingStaticSiteErrorsConvergesByRemovingPlan(t *testing.T) {
 		t.Fatalf("step 1 = %+v, want plan named and staticPublishPath omitted", first.Errors)
 	}
 	fixed := staticSiteManifest("    staticPublishPath: .\n")
-	second, err := svc.ValidateBlueprint(context.Background(), "", fixed)
+	second, err := svc.ValidateBlueprint(context.Background(), "", fixed, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestObeyingStaticSiteErrorsConvergesByRemovingPlan(t *testing.T) {
 
 func TestBlueprintMissingPublishDirectorySpeaksManifestKey(t *testing.T) {
 	svc := newBlueprintValidator(t)
-	validation, err := svc.ValidateBlueprint(context.Background(), "", staticSiteManifest(""))
+	validation, err := svc.ValidateBlueprint(context.Background(), "", staticSiteManifest(""), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestBlueprintMissingPublishDirectorySpeaksManifestKey(t *testing.T) {
 		t.Fatalf("blueprint error still used REST field name: %s", got)
 	}
 	withPath := staticSiteManifest("    staticPublishPath: .\n")
-	ok, err := svc.ValidateBlueprint(context.Background(), "", withPath)
+	ok, err := svc.ValidateBlueprint(context.Background(), "", withPath, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +363,7 @@ func TestEnvVarAnyOfNamesTheEnvVarFault(t *testing.T) {
 	}
 	svc := newBlueprintValidator(t)
 	for _, manifest := range controls {
-		validation, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+		validation, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -375,7 +375,7 @@ func TestEnvVarAnyOfNamesTheEnvVarFault(t *testing.T) {
 
 func TestGraphQLAndMCPShareValidateBlueprintProblems(t *testing.T) {
 	svc := newBlueprintValidator(t)
-	validation, err := svc.ValidateBlueprint(context.Background(), "", staticSiteManifest("    staticPublishPath: .\n    plan: free\n"))
+	validation, err := svc.ValidateBlueprint(context.Background(), "", staticSiteManifest("    staticPublishPath: .\n    plan: free\n"), "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -59,6 +59,12 @@ function strings(items: Array<string | null> | null): string[] | null {
   return items ? items.filter(nonNull) : null;
 }
 
+function toBlueprintResource(
+  row: NonNullable<NonNullable<BlueprintRowLike["resources"]>[number]>,
+) {
+  return { id: row.id ?? "", name: row.name ?? "", type: row.type ?? "" };
+}
+
 export function toBlueprintView(row: BlueprintRowLike): BlueprintView {
   return {
     id: row.id ?? "",
@@ -71,11 +77,7 @@ export function toBlueprintView(row: BlueprintRowLike): BlueprintView {
     status: row.status ?? "",
     lastSync: row.lastSync ?? null,
     resources: row.resources
-      ? row.resources.filter(nonNull).map((r) => ({
-          id: r.id ?? "",
-          name: r.name ?? "",
-          type: r.type ?? "",
-        }))
+      ? row.resources.filter(nonNull).map(toBlueprintResource)
       : null,
     createdAt: row.createdAt ?? null,
     updatedAt: row.updatedAt ?? null,
@@ -90,6 +92,7 @@ export function toBlueprintSyncView(row: SyncRow): BlueprintSyncView {
     startedAt: row.startedAt ?? null,
     completedAt: row.completedAt ?? null,
     errorMessage: row.errorMessage ?? null,
+    note: row.note ?? null,
   };
 }
 
@@ -185,6 +188,9 @@ export function toSyncBlueprintResult(
         )
       : null,
     databases: strings(result.databases),
+    detachedResources: (result.detachedResources ?? [])
+      .filter(nonNull)
+      .map(toBlueprintResource),
   };
 }
 

@@ -54,6 +54,7 @@ query BlueprintSyncs(
     startedAt
     completedAt
     errorMessage
+    note
   }
 }
 
@@ -239,5 +240,10 @@ mutation SyncBlueprint(
       name
     }
     databases
+    detachedResources {
+      id
+      name
+      type
+    }
   }
 }

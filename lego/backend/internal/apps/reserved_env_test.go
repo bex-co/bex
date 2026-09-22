@@ -59,7 +59,7 @@ func TestBlueprintValidationReportsAReservedEnvKey(t *testing.T) {
 		{"an envVarGroups entry", reservedGroupManifest, "shared"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := svc.ValidateBlueprint(context.Background(), "", tc.manifest)
+			result, err := svc.ValidateBlueprint(context.Background(), "", tc.manifest, "")
 			if err != nil {
 				t.Fatalf("ValidateBlueprint: %v", err)
 			}
@@ -89,7 +89,7 @@ func messagesOf(v BlueprintValidation) []string {
 func TestBlueprintValidationAcceptsANearMissOfTheReservedKey(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	manifest := strings.ReplaceAll(reservedManifest, "key: PORT", "key: APP_PORT")
-	result, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	result, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !result.Valid {
 		t.Fatalf("ValidateBlueprint(APP_PORT) = %+v, %v; want valid", result, err)
 	}

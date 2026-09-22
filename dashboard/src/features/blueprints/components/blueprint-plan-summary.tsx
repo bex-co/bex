@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EstimatedPricingPanel } from "./estimated-pricing-panel";
-import type {
-  BlueprintEstimatedPricing,
-  BlueprintPreviewPlan,
-} from "../types";
+import type { BlueprintEstimatedPricing, BlueprintPreviewPlan } from "../types";
 
 /** One named group of planned resources in a blueprint review. */
 function PlanGroup({ label, names }: { label: string; names: string[] }) {
@@ -38,6 +40,9 @@ export function BlueprintPlanSummary({
   note?: ReactNode;
 }) {
   const { t } = useTranslations();
+  const detached = (plan?.actions ?? []).filter(
+    (action) => action.operation === "detach",
+  );
   return (
     <>
       <div className="space-y-3 rounded-md border p-4">
@@ -64,6 +69,29 @@ export function BlueprintPlanSummary({
         />
         {note}
       </div>
+      {detached.length > 0 && (
+        <Alert>
+          <AlertTitle>{t("blueprints.detachPreviewTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("blueprints.detachWarning")}</p>
+            <p>{t("blueprints.detachEstimateNote")}</p>
+            <ul className="mt-2 space-y-1">
+              {detached.map((resource) => (
+                <li
+                  key={`${resource.kind}:${resource.resourceId ?? resource.name}`}
+                >
+                  <span className="font-medium">{resource.name}</span>
+                  {resource.resourceId && (
+                    <code className="ml-2 break-all text-xs">
+                      {resource.resourceId}
+                    </code>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
       <EstimatedPricingPanel pricing={pricing} />
     </>
   );

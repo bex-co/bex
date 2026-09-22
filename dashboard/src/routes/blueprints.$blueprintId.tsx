@@ -544,11 +544,10 @@ export function BlueprintDetailPage() {
                               <TableCell className="text-muted-foreground">
                                 <RelativeAge value={run.completedAt} />
                               </TableCell>
-                              <TableCell
-                                className="max-w-xs truncate text-muted-foreground"
-                                title={run.errorMessage ?? undefined}
-                              >
-                                {run.errorMessage ?? "—"}
+                              <TableCell className="max-w-xs whitespace-normal break-words text-muted-foreground">
+                                {run.errorMessage && <p>{run.errorMessage}</p>}
+                                {run.note && <p>{run.note}</p>}
+                                {!run.errorMessage && !run.note && "—"}
                               </TableCell>
                             </TableRow>
                           ))}

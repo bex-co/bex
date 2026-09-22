@@ -1272,12 +1272,12 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 		return s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), q.Get("ownerId"), q.Get("cursor"), limit)
 	}))
 	mux.HandleFunc("POST /v1/blueprints/validate", func(w http.ResponseWriter, r *http.Request) {
-		ownerID, bexYAML, err := decodeBlueprintValidationRequest(w, r)
+		ownerID, bexYAML, blueprintID, err := decodeBlueprintValidationRequest(w, r)
 		if err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
-		v, err := s.ValidateBlueprint(r.Context(), ownerID, bexYAML)
+		v, err := s.ValidateBlueprint(r.Context(), ownerID, bexYAML, blueprintID)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -1481,27 +1481,28 @@ const (
 // decodeBlueprintValidationRequest accepts Render's multipart contract used by
 // the official CLI (ownerId field + file part), while retaining bex's original
 // JSON contract for the dashboard and direct API callers.
-func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (ownerID, bexYAML string, err error) {
+func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (ownerID, bexYAML, blueprintID string, err error) {
 	contentType := r.Header.Get("Content-Type")
 	mediaType := "application/json"
 	if contentType != "" {
 		mediaType, _, err = mime.ParseMediaType(contentType)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 	}
 	if mediaType != "multipart/form-data" {
 		if mediaType != "application/json" {
-			return "", "", fmt.Errorf("unsupported content type %q", mediaType)
+			return "", "", "", fmt.Errorf("unsupported content type %q", mediaType)
 		}
 		var body struct {
-			BexYAML string `json:"bexYaml"`
-			OwnerID string `json:"ownerId"`
+			BexYAML     string `json:"bexYaml"`
+			OwnerID     string `json:"ownerId"`
+			BlueprintID string `json:"blueprintId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil || body.BexYAML == "" {
-			return "", "", core.ErrBadRequest
+			return "", "", "", core.ErrBadRequest
 		}
-		return body.OwnerID, body.BexYAML, nil
+		return body.OwnerID, body.BexYAML, body.BlueprintID, nil
 	}
 
 	// Keep a local bound because feature-level tests and embedders can mount this
@@ -1509,26 +1510,26 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 	// Blueprint-specific file/envelope cap, not the stricter global API default.
 	r.Body = http.MaxBytesReader(w, r.Body, maxBlueprintValidationBodyBytes)
 	if err := r.ParseMultipartForm(maxBlueprintValidationBodyBytes); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if r.MultipartForm != nil {
 		defer r.MultipartForm.RemoveAll() //nolint:errcheck // best-effort temp-file cleanup
 	}
 	ownerID = strings.TrimSpace(r.FormValue("ownerId"))
 	if ownerID == "" {
-		return "", "", fmt.Errorf("ownerId is required")
+		return "", "", "", fmt.Errorf("ownerId is required")
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	defer file.Close() //nolint:errcheck // read-only multipart file
 	content, err := io.ReadAll(file)
 	if err != nil || len(content) == 0 {
-		return "", "", core.ErrBadRequest
+		return "", "", "", core.ErrBadRequest
 	}
 	if len(content) > maxBlueprintValidationFileBytes {
-		return "", "", fmt.Errorf("Blueprint file exceeds the 10 MiB validation limit")
+		return "", "", "", fmt.Errorf("Blueprint file exceeds the 10 MiB validation limit")
 	}
-	return ownerID, string(content), nil
+	return ownerID, string(content), strings.TrimSpace(r.FormValue("blueprintId")), nil
 }

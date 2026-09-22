@@ -353,7 +353,8 @@ func toRenderStack(res StackResult) renderStack {
 // validateBlueprintArgs is validate_bex_yml's input; the wire name remains
 // compatible while the Blueprint filename contract is render.yaml.
 type validateBlueprintArgs struct {
-	BexYAML string `json:"bexYaml" jsonschema:"the render.yaml content to validate; parsed and checked for per-entry errors with no apply (the wire field name is retained for compatibility)"`
+	BlueprintID string `json:"blueprintId,omitempty" jsonschema:"existing blueprint to compare for detach actions; omit for an unscoped manifest validation"`
+	BexYAML     string `json:"bexYaml" jsonschema:"the render.yaml content to validate; parsed and checked for per-entry errors with no apply (the wire field name is retained for compatibility)"`
 }
 
 type listBlueprintsArgs struct{}
@@ -1004,9 +1005,9 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
-		Description: "Dry-run parse a render.yaml Blueprint and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. bex.yml remains a filename-only alias. Returns {valid, errors: [{code?, error, line?, column?, path?}], plan?, estimatedPricing?: {totalUsd, lines, variable}} — the pricing object is the always-on monthly cost projection on bex's price sheet (free tiers filtered; cron/autoscaling/multi-instance listed as variable, excluded from the total). Requires no store; always available. bex extension (pillar 4 agent safety).",
+		Description: "Dry-run parse a render.yaml Blueprint and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. bex.yml remains a filename-only alias. Returns {valid, errors: [{code?, error, line?, column?, path?}], plan?, estimatedPricing?: {totalUsd, lines, variable}} — the pricing object is the always-on monthly cost projection on bex's price sheet (free tiers filtered; cron/autoscaling/multi-instance listed as variable, excluded from the total). Unscoped validation needs no Blueprint store; optional blueprintId requires it and includes detach actions for currently owned resources. bex extension (pillar 4 agent safety).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
-		v, err := s.ValidateBlueprint(ctx, core.NamedWorkspace(ctx), in.BexYAML)
+		v, err := s.ValidateBlueprint(ctx, core.NamedWorkspace(ctx), in.BexYAML, in.BlueprintID)
 		return nil, v, err
 	})
 

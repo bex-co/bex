@@ -15,6 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m133** — [Report resources detached by blueprint sync](done/m133/README.md) (6 tasks) ← promoted from w4/119; m125 fixed claim release, detach notices remain.
 - [x] **m132** — [Make unapplied Postgres overrides visible](done/m132/README.md) (6 tasks) ← promoted from w4/115; saved configuration gains runtime diagnostics across API and dashboard.
 - [x] **m131** — [Service placement reads reflect committed moves](done/m131/README.md) (7 tasks) ← promoted from w4/109. Managed Get/List reads committed placement in one bounded query; three-surface, authorization and real-Postgres regressions pass. REST omission remains compatible with the pinned Render schema.
 

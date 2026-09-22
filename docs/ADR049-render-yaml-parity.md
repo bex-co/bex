@@ -250,3 +250,13 @@ Rejected. Parity is honest behavior, not checkbox maximization. Both features co
 `w1/m63` owns implementation. Its conformance corpus must cover official Render examples, every capability-registry state, duplicate and unknown fields, all supported resource locations, create-versus-existing omission semantics, references, explicit empties, secret redaction, multi-error validation, current-state plans, filename discovery, and all public entrypoints. The unmodified official Render CLI must validate representative accepted and rejected files against bex-api.
 
 At closeout, `docs/ADR006-bex-api.md`, `docs/ADR018-render-parity.md`, examples, dashboard copy, MCP descriptions, and the CLI compatibility checklist must be generated from or reconciled with the capability registry. No Blueprint row may use a blanket ✅ without evidence from the corpus.
+
+### Detach notices before and after sync (w4/m133)
+
+A blueprint-scoped preview now adds `detach` plan actions for services, Postgres databases and Key Value stores the blueprint currently claims but the proposed manifest no longer declares. Each action carries the existing `kind`, `name`, `resourceId` and `message` fields. A rename therefore shows both the new resource's action and the old resource's detach action. The comparison is restricted to the authorized blueprint's claims; unrelated workspace resources are never removals.
+
+`blueprintPreview` already accepts `blueprintId`. Manifest validation now accepts that optional identifier too, across REST, GraphQL and MCP. Omitting it retains ordinary manifest validation: YAML alone cannot identify which blueprint is being replaced, so that mode cannot promise a complete detach preview.
+
+After a successful sync, `detachedResources` identifies surviving resources that left management. Sync history records the detachment notice in its existing `note` field; the dashboard renders that note after reload and warns before sync in the plan summary. The current declared set may still be `in_sync`: that status is not a claim that every resource ever managed was deleted or stopped. Removed resources keep their independent running and billing lifecycle. Failed syncs must not report the planned detachments as completed ones.
+
+This preserves Render's documented [non-destructive Blueprint removal](https://render.com/docs/infrastructure-as-code#deleting-resources) (rechecked 2026-09-22). Named plan actions, the result list, and history notices are additive bex diagnostics; no matching live Render response shape is claimed. The actual claim release remains the fenced reconciliation from w4/m125.

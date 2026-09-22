@@ -33,7 +33,7 @@ import (
 // mutable secret values behind a deliberately write-only seam: an absent group
 // is a create, while an existing group is conservatively an update because a
 // no-op cannot be proved without revealing its values.
-func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack) (BlueprintPlan, bool, error) {
+func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string) (BlueprintPlan, bool, error) {
 	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
 		return BlueprintPlan{}, false, nil
 	}
@@ -44,6 +44,20 @@ func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st pa
 	plan, err := PlanBlueprintIR(ctx, ir, resolver)
 	if err != nil {
 		return BlueprintPlan{}, false, err
+	}
+	detached, err := s.blueprintDetachments(ctx, s.resolveTenantID(ctx), blueprintID, st, resolver)
+	if err != nil {
+		return BlueprintPlan{}, false, err
+	}
+	for _, resource := range detached {
+		kind := BlueprintResourceService
+		if resource.Type == "postgres" {
+			kind = BlueprintResourcePostgres
+		}
+		if resource.Type == "key_value" {
+			kind = BlueprintResourceKeyValue
+		}
+		plan.Actions = append(plan.Actions, BlueprintPlanAction{Operation: BlueprintPlanDetach, Kind: kind, Name: resource.Name, ResourceID: resource.ID, Message: "Stops being managed by this blueprint; continues running and may incur charges."})
 	}
 	return plan, true, nil
 }

@@ -115,7 +115,7 @@ func TestGenerateBlueprintRoundTrip(t *testing.T) {
 	}
 
 	// (a) The platform's own validator accepts the generated manifest.
-	v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, "")
 	if err != nil || !v.Valid {
 		t.Fatalf("generated manifest must self-validate: %+v err=%v\n%s", v, err, out.Manifest)
 	}
@@ -196,7 +196,7 @@ func TestGenerateBlueprintServiceNameIsPublicNotCRName(t *testing.T) {
 		t.Errorf("manifest carries the CR object name:\n%s", out.Manifest)
 	}
 	// The loop is closed: the platform's own validator accepts what it produced.
-	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, ""); err != nil || !v.Valid {
 		t.Fatalf("generated manifest must self-validate: %+v err=%v\n%s", v, err, out.Manifest)
 	}
 }
@@ -234,7 +234,7 @@ func TestGenerateBlueprintDomainsCronAndWorkerScaling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateBlueprint: %v", err)
 	}
-	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, ""); err != nil || !v.Valid {
 		t.Fatalf("must self-validate: %+v err=%v\n%s", v, err, out.Manifest)
 	}
 	for _, want := range []string{
@@ -298,7 +298,7 @@ func TestGenerateBlueprintEnvGroupsRoundTrip(t *testing.T) {
 	if strings.Contains(out.Manifest, "secret-value") || strings.Contains(out.Manifest, "sk_live") {
 		t.Errorf("manifest must never emit secret values:\n%s", out.Manifest)
 	}
-	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, ""); err != nil || !v.Valid {
 		t.Fatalf("generated env-group manifest must self-validate: %+v err=%v\n%s", v, err, out.Manifest)
 	}
 }
@@ -332,7 +332,7 @@ func TestGenerateBlueprintUnselectedEnvGroupFallsBackToSyncFalse(t *testing.T) {
 	if !strings.Contains(out.Manifest, "API_TOKEN") || !strings.Contains(out.Manifest, "sync: false") {
 		t.Errorf("unselected group keys must degrade to sync:false:\n%s", out.Manifest)
 	}
-	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, ""); err != nil || !v.Valid {
 		t.Fatalf("degraded env-group manifest must still validate: %+v err=%v", v, err)
 	}
 }
@@ -369,7 +369,7 @@ func TestGenerateBlueprintUnselectedTargetFallsBackToSyncFalse(t *testing.T) {
 	if strings.Contains(out.Manifest, "fromDatabase") || strings.Contains(out.Manifest, "fromService") {
 		t.Errorf("unselected targets must not emit references:\n%s", out.Manifest)
 	}
-	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest); err != nil || !v.Valid {
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, ""); err != nil || !v.Valid {
 		t.Fatalf("degraded manifest must still validate: %+v err=%v", v, err)
 	}
 }
