@@ -1,6 +1,6 @@
 # w7 · m149 — Correct cold deep-link initialization
 
-**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** todo (unblocked 2026-09-17)
+**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** blocked (2026-09-21: dev-7 live measurement needs shared VM memory recovery; no tasks complete)
 
 ## Tasks (in order)
 
@@ -61,3 +61,76 @@ A source pass during the `049` triage already advanced the diagnosis and is wort
 - **One fix step is already satisfied and should be dropped.** Step 1 of `049`'s fix ("the same copy covers 'never asked' and 'asked and failed'") is not true in current code: a `checking` state returns `undefined`, so pending and failed are already distinct.
 
 t003 (the `/agents` guard) looks separable, and its first two criteria are, but its third — _"Pending geometry matches the destination at desktop and narrow-mobile widths"_ — is a rendering requirement, and it still declares `depends_on t001`. Implementing it ahead of the measurement would contradict the sequencing this milestone chose and risk the exact error its DoD warns about.
+
+
+## Blocked 2026-09-21 — live measurement requires shared VM recovery
+
+The m148 dependency remains complete, but current dev-7 is not healthy. The local
+CAPD substrate was brought up again, CRDs and the operator installed, and all
+three database pods reached Ready. Auth migration jobs initially could not reach
+their database across CAPD nodes; pinning dev-7 auth workloads to the control-plane
+node completed the migrations. Subsequent kernel diagnostics confirmed global
+out-of-memory kills in the shared OrbStack VM (16 GiB), repeatedly dropping
+Kratos/CNPG readiness and preventing bex-api database initialization. Per-dev-7
+memory limits, scheduling pins and scaling down unused auth components did not
+stabilize it. No other workstream or runner was stopped.
+
+**Gate:** the user/operator must schedule a shared OrbStack restart with enough
+memory (24 GiB was the proposed setting), or otherwise free sufficient shared VM
+memory without disrupting other workloads; then rerun dev-7 bring-up and t001's
+instrumented browser measurement. `orb config set memory_mib` reported that a VM
+stop was required, so its pending change was reverted to 16384 and no shared
+restart occurred. This is an operational availability gate, not missing access.
+
+No task is marked complete: t001 requires a live measured journey and the
+remaining tasks explicitly depend on it. Temporary diagnostic source edits were
+removed. The actual providers/transport and router were exercised offline, but
+those results are not claimed as desktop/mobile or authenticated dev-7 acceptance.
+
+### Reproduced diagnosis to resume from
+
+- Real `WorkspaceProvider` + `CapabilitiesProvider` with the production Apollo
+  client transport: two failing regressions (cold missing-cookie fallback and
+  workspace switch before batch dispatch), two passing controls (retained
+  selection and failure/denial/recovery). A healthy Workspaces reply selects the
+  fallback at 10 ms; generation 0 capability request aborts; generation 1 starts
+  at 10 ms but rejects `AbortError` around 940 ms while its own signal is still
+  active. This is measured pre-dispatch cancellation, not a 30-second delay in
+  workspace readiness. Test fetch honors AbortSignal; auth/network boundaries
+  are test doubles, with fixed retry jitter for deterministic batching.
+- Installed Apollo deduplicates identical document/variables without including
+  AbortSignal. Disabling dedup alone still fails because BatchHttpLink groups
+  signals by serialized fetch options and sends the batch with its first signal.
+  Candidate repair: disable query deduplication only for capability checks and
+  send explicitly signalled operations through HttpLink, preserving batching for
+  other reads. Verify against the browser trace before implementing t002.
+- Real TanStack memory routers using the actual list/detail `beforeLoad`
+  handlers redirect cold stale-cookie agents links to Home with zero workspace
+  requests. Fourteen guard regressions fail on baseline. Candidate repair:
+  await membership in the guard, preserve a valid preferred member or select the
+  first member, return the selected workspace to the loader, and redirect only
+  after confirmed ineligibility. Null/error membership is unavailable, not denial;
+  an invalid cached null must be evicted so retry can recover.
+- One further regression proves the existing ErrorPage's Try again only resets
+  its React boundary and never reruns a failed `beforeLoad`. A bounded companion
+  fix would invalidate the router before resetting the boundary.
+- ADR018 lines 261 and 263 classify agent sessions and Viewer capabilities as
+  bex extensions. Proposed changes alter no REST/GraphQL/MCP fields, permission
+  verbs or beta workspace targeting.
+
+The three proposed regression files are preserved in
+[`evidence/startup-regressions.patch`](evidence/startup-regressions.patch). Apply it
+from the repository root to restore the test work. They intentionally fail on the
+unfixed implementation, so they are diagnostic artifacts rather than part of the
+shipped runnable suite. The capability test's TypeScript and ESLint checks passed;
+no fix or full dashboard-suite pass is claimed.
+
+
+### Local recovery state left behind
+
+The installed CRDs/operator and dev-7 database/auth resources remain in the local
+cluster. Dev-7 Hydra, Mailpit and courier were scaled to zero to reduce pressure;
+auth pods have local control-plane pins, memory limits and Go caps that may need
+reapplication after `scripts/dev-env.sh 7 up`. All API, dashboard and port-forward
+processes started by this run were stopped, and temporary auth artifacts were
+removed. No usable authenticated browser state was produced.
