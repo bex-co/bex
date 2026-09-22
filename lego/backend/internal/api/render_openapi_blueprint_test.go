@@ -136,8 +136,12 @@ func (f *blueprintFixtureStore) AdmitBlueprintSyncRun(context.Context, string, s
 	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
 }
 
-func (f *blueprintFixtureStore) AdmitBlueprintCreate(context.Context, store.Blueprint, store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error) {
-	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+func (f *blueprintFixtureStore) AdmitBlueprintCreate(context.Context, store.Blueprint, store.BlueprintSync) (store.Blueprint, store.BlueprintSync, bool, error) {
+	return store.Blueprint{}, store.BlueprintSync{}, false, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+}
+
+func (f *blueprintFixtureStore) SetBlueprintSyncNote(context.Context, string, string) error {
+	return nil
 }
 
 func (f *blueprintFixtureStore) StageBlueprintManifest(context.Context, string, string, int64, string, string) (store.Blueprint, error) {

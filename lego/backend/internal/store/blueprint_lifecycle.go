@@ -169,7 +169,14 @@ func (s *PGStore) AdmitBlueprintSyncRun(ctx context.Context, blueprintID, tenant
 // re-established under a fresh (bumped) generation so old queued execution
 // cannot regain authority (w8/m37 t001). The run insert commits in the same
 // transaction — admission failure means zero workload mutations.
-func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run BlueprintSync) (Blueprint, BlueprintSync, error) {
+//
+// The third return value reports that a DISCONNECTED row was revived — a new
+// connection on an old row (w4/120). It matters because the row keeps its id
+// and its sync history across the boundary, so the caller can say so; and
+// because created_at is reset for exactly that case below. Reviving is the
+// deliberate w8/m37 behavior and is not changed here: what changed is that a
+// connection made seconds ago no longer reports an age of two days.
+func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run BlueprintSync) (Blueprint, BlueprintSync, bool, error) {
 	if b.ID == "" {
 		b.ID = ids.New(ids.Blueprint)
 	}
@@ -182,8 +189,15 @@ func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run Blu
 	var out Blueprint
 	var outRun BlueprintSync
 	var active string
+	var revived bool
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		// prior reads the row's state BEFORE the upsert touches it, which is
+		// the only way to tell a revive from a re-apply: the conflict arm
+		// serves both, and after it runs the status says 'syncing' either way.
 		if err := tx.QueryRow(ctx, `
+			WITH prior AS (
+				SELECT status FROM blueprints WHERE tenant_id = $2 AND repo = $4 AND branch = $5
+			)
 			INSERT INTO blueprints (id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 				execution_generation, active_run_id)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'syncing', 1, $9)
@@ -195,11 +209,20 @@ func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run Blu
 				status               = 'syncing',
 				execution_generation = blueprints.execution_generation + 1,
 				active_run_id        = EXCLUDED.active_run_id,
+				-- w4/120: reviving a DISCONNECTED row is a new connection, so
+				-- it gets a new created_at. Re-applying a live row is not, and
+				-- keeps the one it has. created_at was simply absent from this
+				-- list, so a blueprint connected seconds ago reported the age
+				-- of whoever connected the repo first — two days, in the hunt.
+				created_at           = CASE
+					WHEN (SELECT status FROM prior) = 'disconnected' THEN now()
+					ELSE blueprints.created_at
+				END,
 				updated_at           = now()
 			WHERE blueprints.active_run_id IS NULL
-			RETURNING `+blueprintColumns,
+			RETURNING `+blueprintColumns+`, COALESCE((SELECT status FROM prior), '') = 'disconnected'`,
 			b.ID, b.TenantID, b.Name, b.Repo, b.Branch, b.Path, b.AutoSync, b.Manifest, run.ID,
-		).Scan(scanBlueprint(&out, &active)...); err != nil {
+		).Scan(append(scanBlueprint(&out, &active), &revived)...); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ErrBlueprintSyncBusy
 			}
@@ -213,9 +236,9 @@ func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run Blu
 		return err
 	})
 	if err != nil {
-		return Blueprint{}, BlueprintSync{}, classify("blueprint_sync", err)
+		return Blueprint{}, BlueprintSync{}, false, classify("blueprint_sync", err)
 	}
-	return out, outRun, nil
+	return out, outRun, revived, nil
 }
 
 // AssertBlueprintExecution confirms the caller's admitted (generation, runID)
@@ -515,4 +538,18 @@ func (s *PGStore) AbandonBlueprintSync(ctx context.Context, runID string, now ti
 		return false, classify("blueprint_sync", err)
 	}
 	return settled, nil
+}
+
+// SetBlueprintSyncNote annotates an already-admitted run. The note is prose
+// about what the run did that its state cannot say, so it is composed by the
+// service layer and written here (w4/120: a create that revived a disconnected
+// row is a new connection on an old row, and the sync history below it belongs
+// to the previous one).
+//
+// Deliberately unconditional on the run's state: it records what the admission
+// was, not what the apply became, and an in-flight run is exactly when this is
+// known.
+func (s *PGStore) SetBlueprintSyncNote(ctx context.Context, runID, note string) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE blueprint_syncs SET note = $2 WHERE id = $1`, runID, note)
+	return err
 }
