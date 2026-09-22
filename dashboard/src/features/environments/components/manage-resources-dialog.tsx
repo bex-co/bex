@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,9 @@ import type { ServiceView } from "@/features/services/types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
+
+/** The dialog's four tabs, which are also its four independent draft keys. */
+type ResourceKind = "services" | "databases" | "keyvalues" | "envgroups";
 
 export interface ManageResourcesDialogProps {
   environment: EnvironmentView;
@@ -56,8 +60,10 @@ export function ManageResourcesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         {/* Radix unmounts Content's children on close, so this form remounts
-            each open — its checkbox state seeds fresh from the environment's
-            current members without a sync effect. */}
+            each open — its four drafts seed fresh from the environment's
+            current members without a sync effect. That remount is exactly why
+            the drafts belong on the form and not on each tab's checklist: the
+            form survives tab changes, a checklist does not (w4/133). */}
         <ManageResourcesForm
           environment={environment}
           services={services}
@@ -95,6 +101,36 @@ function ManageResourcesForm({
   // cross-workspace group is never offered as an assignment candidate.
   const { groups: envGroups } = useEnvGroups();
 
+  // The four drafts live HERE, not in each ResourceChecklist, because this
+  // component stays mounted across tab changes while Radix unmounts inactive
+  // TabsContent — which is what used to discard an unsaved selection the moment
+  // the user looked at another resource kind (w4/133).
+  //
+  // Seeded once per dialog open (lazy initial state, never a sync effect): the
+  // Dialog remounts this form on each open, so reopening reflects the latest
+  // persisted membership, while a background refetch handing down a new array
+  // instance cannot stomp a draft in progress.
+  const [drafts, setDrafts] = useState<Record<ResourceKind, Set<string>>>(
+    () => ({
+      services: new Set(environment.serviceIds),
+      databases: new Set(environment.databaseIds),
+      keyvalues: new Set(environment.keyValueIds),
+      envgroups: new Set(environment.envGroupIds),
+    }),
+  );
+
+  const toggle = useCallback(
+    (kind: ResourceKind, id: string, next: boolean) => {
+      setDrafts((prev) => {
+        const nextSet = new Set(prev[kind]);
+        if (next) nextSet.add(id);
+        else nextSet.delete(id);
+        return { ...prev, [kind]: nextSet };
+      });
+    },
+    [],
+  );
+
   return (
     <>
       <DialogHeader>
@@ -128,7 +164,8 @@ function ManageResourcesForm({
               name: s.name,
               badge: <ServiceStatusBadge service={s} />,
             }))}
-            initialChecked={environment.serviceIds}
+            checked={drafts.services}
+            onToggle={(id, next) => toggle("services", id, next)}
             busy={servicesBusyId === environment.id}
             emptyLabel={t("environments.manageNoServices")}
             onSave={(ids) => setServices(environment.id, environment.name, ids)}
@@ -142,7 +179,8 @@ function ManageResourcesForm({
               name: d.name,
               badge: <DatabaseStatusBadge database={d} />,
             }))}
-            initialChecked={environment.databaseIds}
+            checked={drafts.databases}
+            onToggle={(id, next) => toggle("databases", id, next)}
             busy={databasesBusyId === environment.id}
             emptyLabel={t("environments.manageNoDatabases")}
             onSave={(ids) =>
@@ -158,7 +196,8 @@ function ManageResourcesForm({
               name: k.name,
               badge: <KeyValueStatusBadge keyValue={k} />,
             }))}
-            initialChecked={environment.keyValueIds}
+            checked={drafts.keyvalues}
+            onToggle={(id, next) => toggle("keyvalues", id, next)}
             busy={keyValuesBusyId === environment.id}
             emptyLabel={t("environments.manageNoKeyValues")}
             onSave={(ids) =>
@@ -174,7 +213,8 @@ function ManageResourcesForm({
               name: group.name,
               badge: null,
             }))}
-            initialChecked={environment.envGroupIds}
+            checked={drafts.envgroups}
+            onToggle={(id, next) => toggle("envgroups", id, next)}
             busy={envGroupsBusyId === environment.id}
             emptyLabel={t("environments.manageNoEnvGroups")}
             onSave={(ids) =>
