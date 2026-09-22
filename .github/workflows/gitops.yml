@@ -10,6 +10,7 @@ on:
       - "deploy/gitops/**"
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/test_log_shipper.py"
       - "scripts/helm-artifact*.sh"
       - "deploy/helm-artifacts.lock"
       - "scripts/onbex-default-tls-secret.sh"
@@ -45,6 +46,7 @@ on:
       - "deploy/gitops/**"
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
+      - "scripts/test_log_shipper.py"
       - "scripts/helm-artifact*.sh"
       - "deploy/helm-artifacts.lock"
       - "scripts/onbex-default-tls-secret.sh"
@@ -145,5 +147,7 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: validate
         run: bash scripts/gitops-validate.sh
+      - name: app log severity parsing in the pinned Alloy image
+        run: python3 -m unittest scripts/test_log_shipper.py -v
       - name: platform-pod hardening guard self-test # w7/m58: proves the guard bites
         run: bash scripts/gitops-hardening-guard-test.sh
