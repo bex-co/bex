@@ -317,7 +317,7 @@ func TestEnvironmentCASCompensationPreservesGraphQLErrorCodes(t *testing.T) {
 		failCASCall int
 	}{
 		{name: "restored", code: "ENVIRONMENT_UPDATE_RESTORED"},
-		{name: "newer owner", code: "ENVIRONMENT_REVISION_CONFLICT", concurrent: true},
+		{name: "newer owner", code: "ENVIRONMENT_RESTORATION_FAILED", concurrent: true},
 		{name: "restoration failed", code: "ENVIRONMENT_RESTORATION_FAILED", failCASCall: 2},
 	}
 	for _, tc := range tests {

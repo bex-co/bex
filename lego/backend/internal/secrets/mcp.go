@@ -98,7 +98,7 @@ type patchEnvironmentArgs struct {
 	EnvVars             []EnvVarPatch     `json:"envVars,omitempty" jsonschema:"sparse environment-variable set, generate, or delete operations"`
 	SecretFiles         []SecretFilePatch `json:"secretFiles,omitempty" jsonschema:"sparse secret-file set or delete operations"`
 	SaveMode            SaveMode          `json:"saveMode" jsonschema:"save_only projects configuration without a rollout; deploy rolls exactly once"`
-	ExpectedEnvRevision *string           `json:"expectedEnvRevision,omitempty" jsonschema:"optional opaque revision from list_env_vars or get_env_var; when set, exactly one ordinary env value update is allowed"`
+	ExpectedEnvRevision *string           `json:"expectedEnvRevision,omitempty" jsonschema:"optional opaque revision from list_env_vars, get_env_var, or patch_service_environment; when set, exactly one ordinary env value update is allowed"`
 }
 
 // environmentMCPError keeps the same stable domain code visible when the MCP

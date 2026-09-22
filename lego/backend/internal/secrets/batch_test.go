@@ -489,28 +489,48 @@ func TestPatchEnvironmentCASRejectsWideOrInvalidWrites(t *testing.T) {
 }
 
 func TestPatchEnvironmentCASCompensationDoesNotOverwriteNewerWinner(t *testing.T) {
-	store := newVersionedFakeSecretStore()
-	store.m[envPath("web")] = map[string]string{"TOKEN": "before-secret"}
-	revision := encodeEnvRevision(0)
-	store.afterCAS = func(path string, version uint64) {
-		if _, err := store.PutCAS(context.Background(), path, map[string]string{"TOKEN": "concurrent-winner"}, version); err != nil {
-			t.Fatalf("inject concurrent winner: %v", err)
+	for _, preserveSubmittedValue := range []bool{false, true} {
+		name := "same-key writer"
+		if preserveSubmittedValue {
+			name = "other-key writer preserves submitted value"
 		}
-	}
-	failing := &patchCountingClient{Client: fakeClient(sampleApp("web")), fail: errors.New("injected App patch failure")}
-	svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+		t.Run(name, func(t *testing.T) {
+			store := newVersionedFakeSecretStore()
+			path := envPath("web")
+			store.m[path] = map[string]string{"TOKEN": "before-secret", "OTHER": "before-other"}
+			revision := encodeEnvRevision(0)
+			winner := map[string]string{"TOKEN": "concurrent-winner", "OTHER": "before-other"}
+			if preserveSubmittedValue {
+				winner = map[string]string{"TOKEN": "submitted-secret", "OTHER": "concurrent-other"}
+			}
+			store.afterCAS = func(path string, version uint64) {
+				if _, err := store.PutCAS(context.Background(), path, winner, version); err != nil {
+					t.Fatalf("inject concurrent winner: %v", err)
+				}
+			}
+			counting := &patchCountingClient{Client: fakeClient(sampleApp("web"))}
+			svc := &Service{Base: &core.Base{Client: counting, Namespace: "default", Clock: fixedNow}, Store: store}
 
-	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
-		SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
-		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "failed-writer-secret"}},
-	})
-	if !errors.Is(err, core.ErrConflict) || store.m[envPath("web")]["TOKEN"] != "concurrent-winner" {
-		t.Fatalf("compensation overwrote winner: err=%v store=%#v", err, store.m)
-	}
-	for _, material := range []string{"TOKEN", "before-secret", "failed-writer-secret", "concurrent-winner", revision} {
-		if strings.Contains(err.Error(), material) {
-			t.Fatalf("compensation error leaked %q: %v", material, err)
-		}
+			_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+				SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+				EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "submitted-secret"}},
+			})
+			var coded *core.CodedError
+			if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_RESTORATION_FAILED" {
+				t.Fatalf("post-write compensation error = %v", err)
+			}
+			if !maps.Equal(store.m[path], winner) || store.versions[path] != 2 || store.casCalls != 3 {
+				t.Fatalf("compensation changed newer state: data=%#v version=%d CAS calls=%d", store.m[path], store.versions[path], store.casCalls)
+			}
+			if counting.patches != 0 {
+				t.Fatalf("failed projection patched App %d times", counting.patches)
+			}
+			for _, material := range []string{"TOKEN", "before-secret", "submitted-secret", "concurrent-winner", "concurrent-other", revision} {
+				if strings.Contains(err.Error(), material) {
+					t.Fatalf("compensation error leaked %q: %v", material, err)
+				}
+			}
+		})
 	}
 }
 
@@ -627,11 +647,11 @@ func TestPatchEnvironmentCASRollbackDoesNotClobberProjectionLandedAfterSourceRes
 		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "failed-writer-secret"}},
 	})
 	var coded *core.CodedError
-	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_REVISION_CONFLICT" {
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_RESTORATION_FAILED" {
 		t.Fatalf("rollback ownership error = %#v", err)
 	}
-	if store.m[envPath("web")]["TOKEN"] != "concurrent-winner" {
-		t.Fatalf("source winner overwritten: %#v", store.m)
+	if !maps.Equal(store.m[envPath("web")], map[string]string{"TOKEN": "concurrent-winner"}) || store.versions[envPath("web")] != 3 {
+		t.Fatalf("source winner changed: data=%#v version=%d", store.m, store.versions[envPath("web")])
 	}
 	projection := getSecret(t, baseClient, "web-env")
 	if string(projection.Data["TOKEN"]) != "concurrent-winner" || projection.Annotations[envProjectionRevisionAnnotation] != encodeEnvRevision(3) {
