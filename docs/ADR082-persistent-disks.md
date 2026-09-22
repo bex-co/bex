@@ -143,6 +143,8 @@ CRD validation (CEL, mirrored by bex-api 400s so REST/GraphQL/MCP agree):
 - transition rule: `sizeGB ≥ oldSelf.sizeGB` while the disk exists (shrink refused at every surface, including Blueprint sync);
 - `mountPath` absolute + denylist.
 
+Later service mutations enforce these constraints before writing intent: `SetPlan` and its dry-run preview reject a free-plan downgrade, `Scale` rejects more than one instance, and `SetAutoscaling` rejects enabling autoscaling while a disk is attached. REST, GraphQL, and MCP share these checks. Paid-plan changes, scaling to one, and disabling autoscaling remain available. This prevents a predictable CEL refusal from leaving the stored plan or replica count ahead of the CR; it does not change the general store/CR write-through failure policy. The paid and single-instance restrictions match [Render's disk contract](https://render.com/docs/disks).
+
 ### D3 — Mechanism: Deployment + operator-managed PVC, `Recreate` strategy
 
 The App stays a **Deployment**. A StatefulSet was rejected (§ Rejected alternatives): the entire downstream stack — rollout gating, the metering pod-name regexes, the store reconciler's deploy gate, the activator — keys on the Deployment shape, and a `Recreate` Deployment with `replicas ≤ 1` reproduces Render's stop-then-start swap exactly.

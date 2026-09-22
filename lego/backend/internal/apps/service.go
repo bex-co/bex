@@ -3262,6 +3262,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if a.Spec.Type == appv1alpha1.TypeBackgroundWorker && !core.PaidPlan(tier) {
 		return AppView{}, errWorkerFreePlan()
 	}
+	if err := diskPlanError(a, tier); err != nil {
+		return AppView{}, err
+	}
 	if err := s.RequirePlanBilling(ctx, a.Labels[core.LabelTenant], tier); err != nil {
 		return AppView{}, err
 	}
@@ -3304,6 +3307,9 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 	if a.Spec.Type == appv1alpha1.TypeBackgroundWorker && !core.PaidPlan(t.ID) {
 		return AppView{}, errWorkerFreePlan()
 	}
+	if err := diskPlanError(a, t.ID); err != nil {
+		return AppView{}, err
+	}
 	if t.ID == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
 		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
 	}
@@ -3313,6 +3319,14 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 	preview := a.DeepCopy()
 	preview.Spec.Tier = t.ID
 	return s.view(preview), nil
+}
+
+// diskPlanError mirrors the paid-tier disk constraint before any intent write.
+func diskPlanError(a *appv1alpha1.App, tier string) error {
+	if a.Spec.Disk != nil && !core.PaidPlan(tier) {
+		return fmt.Errorf("%w: detach the disk before changing to the free plan", core.ErrBadRequest)
+	}
+	return nil
 }
 
 // errInstanceCap rejects an instance count above the plan's ceiling (w6/m118),
@@ -3381,6 +3395,9 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
+	}
+	if a.Spec.Disk != nil && replicas > 1 {
+		return AppView{}, fmt.Errorf("%w: a service with a disk cannot run more than one instance; detach the disk first", core.ErrBadRequest)
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return AppView{}, err
@@ -4786,6 +4803,9 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AutoscalingView{}, err
+	}
+	if a.Spec.Disk != nil {
+		return AutoscalingView{}, fmt.Errorf("%w: detach the disk before enabling autoscaling", core.ErrBadRequest)
 	}
 	as, err := autoscalingSpec(req, a.Spec.Type, a.Spec.Tier)
 	if err != nil {
