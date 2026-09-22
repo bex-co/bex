@@ -1,4 +1,9 @@
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import { Plus, Trash2, ArrowRightLeft, Tags } from "lucide-react";
 import {
@@ -29,12 +34,43 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useStaticSiteMutations } from "@/features/services/hooks/use-static-site";
+import type { StaticRuleSaveResult } from "@/features/services/hooks/use-static-site";
 import { rootDirPrefix } from "@/features/services/lib/format";
 import type {
   ServiceView,
   StaticRouteView,
   StaticHeaderView,
 } from "@/features/services/types";
+
+/**
+ * Saves the current draft and adopts the rows the server actually accepted.
+ *
+ * The backend normalizes what it stores — a padded `" /qa/* "` path saves
+ * successfully as `/qa/*` — so an editor that keeps displaying its submitted
+ * draft stays permanently dirty against the refetched props: Save enabled and
+ * Cancel present, for a change that already persisted (w4/136).
+ *
+ * The later-draft guard is the reason this is not an unconditional reset. Rows
+ * stay editable while the save is in flight, so a user can type during the
+ * request; reference equality answers "is the current draft still the one I
+ * submitted" exactly, because every edit produces a new array.
+ *
+ * An `ok` result with no `saved` rows means the post-save read did not produce
+ * this service. The draft is left alone rather than emptied.
+ */
+function useAdoptAcceptedRows<T>(
+  draft: T[],
+  setDraft: Dispatch<SetStateAction<T[]>>,
+  onSave: (rows: T[]) => Promise<StaticRuleSaveResult<T>>,
+) {
+  return useCallback(async () => {
+    const submitted = draft;
+    const result = await onSave(submitted);
+    if (!result.ok || !result.saved) return;
+    const accepted = result.saved;
+    setDraft((current) => (current === submitted ? accepted : current));
+  }, [draft, onSave, setDraft]);
+}
 
 /**
  * The Static Site section of the service Settings tab (w1/m21): the published
@@ -139,12 +175,15 @@ export function RoutesEditor({
   busy,
 }: {
   routes: StaticRouteView[];
-  onSave: (r: StaticRouteView[]) => Promise<boolean>;
+  onSave: (
+    r: StaticRouteView[],
+  ) => Promise<StaticRuleSaveResult<StaticRouteView>>;
   busy: boolean;
 }) {
   const { t } = useTranslations();
   const [draft, setDraft] = useState<StaticRouteView[]>(routes);
   const dirty = JSON.stringify(draft) !== JSON.stringify(routes);
+  const save = useAdoptAcceptedRows(draft, setDraft, onSave);
 
   function update(i: number, patch: Partial<StaticRouteView>) {
     setDraft((d) => d.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -246,7 +285,7 @@ export function RoutesEditor({
             {t("services.staticCancel")}
           </Button>
         )}
-        <Button disabled={busy || !dirty} onClick={() => void onSave(draft)}>
+        <Button disabled={busy || !dirty} onClick={() => void save()}>
           {t("services.routesSave")}
         </Button>
       </div>
@@ -263,12 +302,15 @@ export function HeadersEditor({
   busy,
 }: {
   headers: StaticHeaderView[];
-  onSave: (h: StaticHeaderView[]) => Promise<boolean>;
+  onSave: (
+    h: StaticHeaderView[],
+  ) => Promise<StaticRuleSaveResult<StaticHeaderView>>;
   busy: boolean;
 }) {
   const { t } = useTranslations();
   const [draft, setDraft] = useState<StaticHeaderView[]>(headers);
   const dirty = JSON.stringify(draft) !== JSON.stringify(headers);
+  const save = useAdoptAcceptedRows(draft, setDraft, onSave);
 
   function update(i: number, patch: Partial<StaticHeaderView>) {
     setDraft((d) => d.map((h, j) => (j === i ? { ...h, ...patch } : h)));
@@ -356,7 +398,7 @@ export function HeadersEditor({
             {t("services.staticCancel")}
           </Button>
         )}
-        <Button disabled={busy || !dirty} onClick={() => void onSave(draft)}>
+        <Button disabled={busy || !dirty} onClick={() => void save()}>
           {t("services.headersSave")}
         </Button>
       </div>
