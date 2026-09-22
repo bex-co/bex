@@ -498,10 +498,26 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "完成时间",
     description: "Sync history table column — sync run completion time",
   },
-  "blueprints.syncColError": {
-    message: "错误",
+  "blueprints.detachPreviewTitle": {
+    message: "资源将不再受此蓝图管理",
+    description: "Blueprint resource detachment notice.",
+  },
+  "blueprints.detachSuccessTitle": {
+    message: "同步完成，部分资源已解除关联",
+    description: "Blueprint resource detachment notice.",
+  },
+  "blueprints.detachEstimateNote": {
+    message: "下方的费用估算不包含这些资源。",
     description:
-      "Sync history table column — failure reason for an error-state run",
+      "Detached resources are outside the proposed manifest estimate.",
+  },
+  "blueprints.detachWarning": {
+    message: "这些资源将继续运行，并可能继续产生费用。此蓝图将不再管理它们。",
+    description: "Blueprint resource detachment notice.",
+  },
+  "blueprints.syncColError": {
+    message: "详情",
+    description: "Sync history table column — errors and durable sync notes",
   },
   "blueprints.manifestTitle": {
     message: "render.yaml 清单",

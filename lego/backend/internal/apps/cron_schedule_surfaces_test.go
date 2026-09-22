@@ -99,7 +99,7 @@ func TestCronScheduleContractAcrossSurfaces(t *testing.T) {
 		{"Blueprint validate", func(t *testing.T, schedule string) (bool, string) {
 			svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 			manifest := fmt.Sprintf("services:\n  - name: nightly\n    type: cron\n    runtime: image\n    image:\n      url: docker.io/library/alpine:3\n    schedule: %q\n", schedule)
-			v, err := svc.ValidateBlueprint(ctx, "", manifest)
+			v, err := svc.ValidateBlueprint(ctx, "", manifest, "")
 			if err != nil {
 				t.Fatalf("ValidateBlueprint: %v", err)
 			}

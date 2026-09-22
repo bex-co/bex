@@ -405,7 +405,7 @@ func TestM118_DanglingWorkspaceReferencesFailValidation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, _ := connectionService(t)
-			v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, tc.manifest)
+			v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, tc.manifest, "")
 			if err != nil {
 				t.Fatalf("ValidateBlueprint: %v", err)
 			}
@@ -447,7 +447,7 @@ func TestM118_AResolvableReferenceStillValidates(t *testing.T) {
 	}
 
 	manifest := strings.Replace(m118DanglingDatabase, "qa-no-such-database-anywhere", "qa-real-database", 1)
-	v, err := svc.ValidateBlueprint(ctx, connOwner, manifest)
+	v, err := svc.ValidateBlueprint(ctx, connOwner, manifest, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}

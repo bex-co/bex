@@ -26,6 +26,7 @@ export interface BlueprintSyncView {
   startedAt: string | null;
   completedAt: string | null;
   errorMessage: string | null;
+  note: string | null;
 }
 
 export interface BlueprintValidationResult {
@@ -121,6 +122,7 @@ export interface BlueprintPreviewResult {
 }
 
 export interface SyncBlueprintResult {
+  detachedResources: BlueprintResource[];
   blueprint: BlueprintView | null;
   services: Array<{ id: string; name: string } | null> | null;
   databases: string[] | null;

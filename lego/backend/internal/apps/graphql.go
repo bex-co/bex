@@ -1016,7 +1016,8 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SyncBlueprintResult",
 	Fields: graphql.Fields{
-		"blueprint": gqlutil.Typed(blueprintGQLType, func(r SyncBlueprintResult) any { return r.Blueprint }),
+		"blueprint":         gqlutil.Typed(blueprintGQLType, func(r SyncBlueprintResult) any { return r.Blueprint }),
+		"detachedResources": gqlutil.Typed(graphql.NewList(blueprintResourceGQLType), func(r SyncBlueprintResult) any { return r.DetachedResources }),
 		// The stack apply's resources — summary only (poll via server/postgres for
 		// full state). Every kind the plan can act on is reported (w6/064):
 		// databases set the names-only precedent, keyValues and envGroups follow it.
@@ -1173,11 +1174,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"validateBlueprint": &graphql.Field{
 			Type: blueprintValidationGQLType,
 			Args: graphql.FieldConfigArgument{
-				"bexYaml": gqlutil.ReqArg(graphql.String),
-				"ownerId": gqlutil.Arg(graphql.String),
+				"bexYaml":     gqlutil.ReqArg(graphql.String),
+				"ownerId":     gqlutil.Arg(graphql.String),
+				"blueprintId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string))
+				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string), gqlutil.Str(p.Args, "blueprintId"))
 			},
 		},
 		// generateBlueprint: export selected resources as render.yaml (w8/m22).

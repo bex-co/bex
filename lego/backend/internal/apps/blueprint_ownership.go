@@ -361,16 +361,7 @@ func (s *Service) releaseUndeclaredClaims(ctx context.Context, tenantID, bluepri
 	if err != nil {
 		return fmt.Errorf("listing Blueprint resource claims: %w", err)
 	}
-	declared := map[string]bool{}
-	for _, svc := range st.services {
-		declared["service/"+svc.req.Name] = true
-	}
-	for _, db := range st.databases {
-		declared["database/"+db.name] = true
-	}
-	for _, kv := range st.keyValues {
-		declared["key_value/"+kv.name] = true
-	}
+	declared := blueprintDeclaredClaims(st)
 	released := map[string]bool{}
 	for _, c := range claims {
 		if declared[c.Kind+"/"+c.Name] {
@@ -584,4 +575,18 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, ir BlueprintI
 		return []BlueprintValidationError{blueprintValidationError(ir, msg)}
 	}
 	return nil
+}
+
+func blueprintDeclaredClaims(st parsedStack) map[string]bool {
+	declared := map[string]bool{}
+	for _, svc := range st.services {
+		declared["service/"+svc.req.Name] = true
+	}
+	for _, db := range st.databases {
+		declared["database/"+db.name] = true
+	}
+	for _, kv := range st.keyValues {
+		declared["key_value/"+kv.name] = true
+	}
+	return declared
 }

@@ -651,7 +651,7 @@ func blueprintSchema(t *testing.T, svc *Service) graphql.Schema {
 
 func TestValidateBlueprintValidYAML(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), "", stackManifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", stackManifest, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(valid): %v", err)
 	}
@@ -687,7 +687,7 @@ func TestValidateBlueprintCurrentStateActionPlan(t *testing.T) {
     runtime: image
     image: {url: nginx:1}
 `
-	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !validation.Valid || validation.Plan == nil {
 		t.Fatalf("ValidateBlueprint(noop): validation=%+v err=%v", validation, err)
 	}
@@ -696,7 +696,7 @@ func TestValidateBlueprintCurrentStateActionPlan(t *testing.T) {
 	}
 
 	manifest = strings.Replace(manifest, "nginx:1", "nginx:2", 1)
-	validation, err = svc.ValidateBlueprint(context.Background(), "", manifest)
+	validation, err = svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !validation.Valid || validation.Plan == nil {
 		t.Fatalf("ValidateBlueprint(update): validation=%+v err=%v", validation, err)
 	}
@@ -739,7 +739,7 @@ func TestValidateBlueprintCurrentStatePlanResolvesStoreManagedService(t *testing
     runtime: image
     image: {url: nginx:1}
 `
-	validation, err := svc.ValidateBlueprint(ctx, "tea-a", manifest)
+	validation, err := svc.ValidateBlueprint(ctx, "tea-a", manifest, "")
 	if err != nil || !validation.Valid || validation.Plan == nil {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", validation, err)
 	}
@@ -759,7 +759,7 @@ func TestValidateBlueprintCurrentStatePlanResolvesStoreManagedService(t *testing
 // manifest planned in workspace tea-a, failing the test on any other outcome.
 func planActionsForTest(ctx context.Context, t *testing.T, svc *Service, manifest string) []BlueprintPlanAction {
 	t.Helper()
-	validation, err := svc.ValidateBlueprint(ctx, "tea-a", manifest)
+	validation, err := svc.ValidateBlueprint(ctx, "tea-a", manifest, "")
 	if err != nil || !validation.Valid || validation.Plan == nil {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", validation, err)
 	}
@@ -938,7 +938,7 @@ func TestValidateBlueprintCurrentStatePlanRejectsDuplicateServiceName(t *testing
     type: web
     runtime: image
     image: {url: nginx:1}
-`)
+`, "")
 	if !errors.Is(err, core.ErrConflict) || !strings.Contains(err.Error(), `service name "web"`) {
 		t.Fatalf("duplicate service name: err = %v, want %v naming the service", err, core.ErrConflict)
 	}
@@ -951,7 +951,7 @@ func TestValidateBlueprintBadYAML(t *testing.T) {
     type: web
     runtime: image
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", bad)
+	v, err := svc.ValidateBlueprint(context.Background(), "", bad, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(bad): unexpected error %v", err)
 	}
@@ -972,7 +972,7 @@ services:
     runtime: image
     image: {url: nginx}
     typoThatWouldPreviouslyBeIgnored: true
-`)
+`, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
@@ -993,7 +993,7 @@ services:
     runtime: image
     image: {url: nginx}
     scaling: {minInstances: 1, typo: true}
-`)
+`, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
@@ -1010,7 +1010,7 @@ func TestValidateBlueprintRejectsFieldsTheTargetServiceKindCannotApply(t *testin
     runtime: image
     image: {url: nginx:1.27}
     ipAllowList: [{source: 192.0.2.0/24}]
-`)
+`, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
@@ -1022,7 +1022,7 @@ func TestValidateBlueprintRejectsFieldsTheTargetServiceKindCannotApply(t *testin
 func TestValidateBlueprintSyntaxErrorIncludesLine(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	const bad = "services:\n  - name: web\n    envVars: [\n"
-	v, err := svc.ValidateBlueprint(context.Background(), "", bad)
+	v, err := svc.ValidateBlueprint(context.Background(), "", bad, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(syntax error): unexpected error %v", err)
 	}
@@ -1056,11 +1056,11 @@ func TestDecodeBlueprintValidationRequestAllowsTenMiBFileOnly(t *testing.T) {
 	}
 
 	valid := bytes.Repeat([]byte{'x'}, maxBlueprintValidationFileBytes)
-	owner, contents, err := decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(valid))
+	owner, contents, _, err := decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(valid))
 	if err != nil || owner != "tea-test" || len(contents) != len(valid) {
 		t.Fatalf("10 MiB file = owner %q bytes %d err %v", owner, len(contents), err)
 	}
-	_, _, err = decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(append(valid, 'x')))
+	_, _, _, err = decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(append(valid, 'x')))
 	if err == nil || !strings.Contains(err.Error(), "10 MiB") {
 		t.Fatalf("10 MiB + 1 file error = %v", err)
 	}
@@ -1069,7 +1069,7 @@ func TestDecodeBlueprintValidationRequestAllowsTenMiBFileOnly(t *testing.T) {
 func TestValidateBlueprintStateless(t *testing.T) {
 	// validate must not touch the store — Blueprints=nil must not panic.
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}, Blueprints: nil}
-	if _, err := svc.ValidateBlueprint(context.Background(), "", stackManifest); err != nil {
+	if _, err := svc.ValidateBlueprint(context.Background(), "", stackManifest, ""); err != nil {
 		t.Fatalf("ValidateBlueprint with nil store: %v", err)
 	}
 }
@@ -1138,7 +1138,7 @@ projects:
             image: {url: nginx}
             envVars: [{key: NESTED_SECRET, sync: false}]
 `
-	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	validation, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
@@ -1783,7 +1783,7 @@ func TestBlueprintCoreEntrypointsRefuseUnsupportedManifestBeforeWrites(t *testin
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	validation, err := svc.ValidateBlueprint(ctx, "tea-a", unsupported)
+	validation, err := svc.ValidateBlueprint(ctx, "tea-a", unsupported, "")
 	if err != nil || validation.Valid || len(validation.Errors) != 1 || validation.Errors[0].Code != "BLUEPRINT_CAPABILITY_UNSUPPORTED" {
 		t.Fatalf("ValidateBlueprint unsupported = %+v, %v", validation, err)
 	}
@@ -3522,7 +3522,7 @@ func TestValidateBlueprintStaticBuildCommand(t *testing.T) {
     buildCommand: npm run build
     staticPublishPath: dist
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !v.Valid {
 		t.Fatalf("static buildCommand must validate: validation=%+v err=%v", v, err)
 	}
@@ -3568,7 +3568,7 @@ func TestValidateBlueprintDockerContext(t *testing.T) {
     dockerContext: apps/nightly
     schedule: "0 0 * * *"
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !v.Valid {
 		t.Fatalf("dockerContext must validate: validation=%+v err=%v", v, err)
 	}
@@ -3592,7 +3592,7 @@ func TestValidateBlueprintDockerContext(t *testing.T) {
 	}
 
 	escape := strings.Replace(manifest, "apps/api/ctx", "../escape", 1)
-	v, err = svc.ValidateBlueprint(context.Background(), "", escape)
+	v, err = svc.ValidateBlueprint(context.Background(), "", escape, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(escape): %v", err)
 	}
@@ -3624,7 +3624,7 @@ func TestValidateBlueprintRegistryCredential(t *testing.T) {
     image: {url: ghcr.io/acme/worker:1}
     registryCredential: {fromRegistryCreds: {name: acme-registry}}
 `
-	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !v.Valid {
 		t.Fatalf("registry credentials must validate: validation=%+v err=%v", v, err)
 	}
@@ -3648,7 +3648,7 @@ func TestValidateBlueprintRegistryCredential(t *testing.T) {
 	}
 
 	unknown := strings.ReplaceAll(manifest, "acme-registry", "no-such-credential")
-	v, err = svc.ValidateBlueprint(context.Background(), "", unknown)
+	v, err = svc.ValidateBlueprint(context.Background(), "", unknown, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(unknown): %v", err)
 	}
@@ -3665,7 +3665,7 @@ func TestValidateBlueprintRegistryCredential(t *testing.T) {
       creds: {fromRegistryCreds: {name: acme-registry}}
     registryCredential: {fromRegistryCreds: {name: other-registry}}
 `
-	v, err = svc.ValidateBlueprint(context.Background(), "", conflicting)
+	v, err = svc.ValidateBlueprint(context.Background(), "", conflicting, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint(conflicting): %v", err)
 	}

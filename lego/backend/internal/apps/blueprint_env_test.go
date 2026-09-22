@@ -161,7 +161,7 @@ func TestValidateBlueprintAcceptsAllFiveForms(t *testing.T) {
 	// validate is stateless (no store, no seams) — a five-field blueprint must
 	// validate clean (t006 DoD: the named-error rejection list is empty).
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), "", fiveFieldManifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", fiveFieldManifest, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
@@ -183,7 +183,7 @@ envVarGroups:
 	groups := newFakeEnvGroups()
 	svc, _ := newBlueprintEnvService(groups, &fakeSeeder{})
 
-	created, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	created, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !created.Valid || created.Plan == nil {
 		t.Fatalf("ValidateBlueprint(create): validation=%+v err=%v", created, err)
 	}
@@ -197,7 +197,7 @@ envVarGroups:
 	if err := groups.ApplyEnvGroup(context.Background(), "shared", map[string]string{"LOG_LEVEL": "info"}, nil); err != nil {
 		t.Fatalf("ApplyEnvGroup: %v", err)
 	}
-	updated, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	updated, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 	if err != nil || !updated.Valid || updated.Plan == nil || len(updated.Plan.Actions) != 1 {
 		t.Fatalf("ValidateBlueprint(update): validation=%+v err=%v", updated, err)
 	}
@@ -555,7 +555,7 @@ func TestParseStackEnvironmentScopedEnvGroup(t *testing.T) {
 
 func TestValidateBlueprintAcceptsEnvironmentScopedEnvGroup(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
-	v, err := svc.ValidateBlueprint(context.Background(), "", envScopedGroupManifest)
+	v, err := svc.ValidateBlueprint(context.Background(), "", envScopedGroupManifest, "")
 	if err != nil {
 		t.Fatalf("ValidateBlueprint: %v", err)
 	}
