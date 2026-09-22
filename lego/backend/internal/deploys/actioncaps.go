@@ -33,6 +33,29 @@ func RollbackEligible(d store.Deploy) bool {
 	return (d.Status == store.DeployLive || d.Status == store.DeployDeactivated) && d.ResolvedImage != ""
 }
 
+// RollbackActionable is RollbackEligible plus the one refusal eligibility does
+// not cover: Rollback rejects the currently-live deploy when it is already the
+// running image, because that changes no image while still restarting the
+// service and minting a redundant deploy (w4/051).
+//
+// The projection used RollbackEligible alone, so a freshly created service —
+// whose only deploy is its live first one — was told `rollback: allowed` with
+// no precondition, and every possible target answered 409 (w4/110). The
+// dashboard was not misled because it gates the control a second way; the
+// exposure was to a client binding an affordance straight to the capability
+// response, which is what that query is for.
+//
+// currentImage is the App's spec.image. The narrowness is deliberate and
+// mirrors the verb: a deploy stays live until a NEWER one goes live, so after a
+// failed rollout spec.image can drift off the still-live last-good deploy, and
+// rolling back to it then is a legitimate recovery.
+func RollbackActionable(d store.Deploy, currentImage string) bool {
+	if !RollbackEligible(d) {
+		return false
+	}
+	return !(d.Status == store.DeployLive && d.ResolvedImage == currentImage)
+}
+
 // eligibilityScanLimit bounds the projection's deploy-history scan. The verb
 // validates the exact NAMED target; the projection only answers "is there
 // anything to act on", so a recent-history page is the honest cost bound — a
@@ -113,7 +136,10 @@ func (s *Service) deployPreconditions(ctx context.Context, a *appv1alpha1.App) (
 	if rollbackPre == "" {
 		rollbackPre = core.PrecondNoEligibleRollbackTarget
 		for _, d := range rows {
-			if RollbackEligible(d) {
+			// RollbackActionable, not RollbackEligible: the projection has to
+			// answer the question the verb will answer, and the verb also
+			// refuses the live deploy when it is the running image (w4/110).
+			if RollbackActionable(d, a.Spec.Image) {
 				rollbackPre = ""
 				break
 			}

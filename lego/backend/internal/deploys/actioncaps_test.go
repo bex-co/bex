@@ -150,3 +150,55 @@ func TestActionCapabilities_SuspendedAndUnmanagedPreconditions(t *testing.T) {
 		}
 	}
 }
+
+// TestActionCapabilities_FreshServiceCannotRollBack is w4/110, the case the
+// shared predicate missed: on a service whose only deploy is its live first
+// one, the projection said `rollback: allowed` with no precondition while
+// every possible target answered 409. The precondition vocabulary already had
+// the right word for it — cancel_deploy has used `no_active_deploy` for
+// exactly this "permitted, not applicable right now" shape all along.
+func TestActionCapabilities_FreshServiceCannotRollBack(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("web", "srv-1")
+	svc, _ := newService(ds, app)
+	ctx := context.Background()
+
+	// The live first deploy, running exactly the image the service is on —
+	// the state a service is in the moment it finishes creating.
+	now := fixedNow()
+	ds.byApp["srv-1"] = []store.Deploy{{
+		ID: "dep-first", AppID: "srv-1", Status: store.DeployLive,
+		ResolvedImage: app.Spec.Image,
+		CreatedAt:     now, UpdatedAt: now, FinishedAt: &now,
+	}}
+
+	acts, err := svc.ActionCapabilities(ctx, "web")
+	if err != nil {
+		t.Fatalf("ActionCapabilities: %v", err)
+	}
+	if r := actionByID(t, acts, core.ActionRollback); r.Precondition != core.PrecondNoEligibleRollbackTarget {
+		t.Fatalf("rollback on a fresh service = %+v, want no_eligible_rollback_target", r)
+	}
+	// And the projection is right: the verb refuses the only candidate.
+	if _, err := svc.Rollback(ctx, "web", "dep-first"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Rollback to the live running deploy = %v, want ErrConflict", err)
+	}
+
+	// The narrowness matters: once spec.image drifts off the still-live
+	// deploy — what a failed rollout leaves behind — rolling back to it is a
+	// legitimate recovery, and both sides must say so again.
+	app.Spec.Image = "web:v2-failed"
+	if err := svc.Client.Update(ctx, app); err != nil {
+		t.Fatalf("update app: %v", err)
+	}
+	acts, err = svc.ActionCapabilities(ctx, "web")
+	if err != nil {
+		t.Fatalf("ActionCapabilities: %v", err)
+	}
+	if r := actionByID(t, acts, core.ActionRollback); r.Precondition != "" {
+		t.Fatalf("rollback after the image drifted = %+v, want ready", r)
+	}
+	if _, err := svc.Rollback(ctx, "web", "dep-first"); err != nil {
+		t.Fatalf("Rollback as recovery: %v", err)
+	}
+}
