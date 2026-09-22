@@ -147,10 +147,8 @@ func TestSetMembers_RestampsOnlyWhatChanged(t *testing.T) {
 	}
 }
 
-// TestSetMembers_ForeignWorkspaceIDsAreNotAdopted pins the ignoreUnknownIDs
-// policy's security property: the listing is scoped to the environment's OWN
-// workspace, so naming a Database that lives in another workspace cannot pull
-// it across the tenant boundary — it is simply absent from the diff.
+// A foreign datastore id refuses the whole replacement before any valid
+// member can be moved into the environment.
 func TestSetMembers_ForeignWorkspaceIDsAreNotAdopted(t *testing.T) {
 	st := newFakeStore()
 	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
@@ -164,20 +162,22 @@ func TestSetMembers_ForeignWorkspaceIDsAreNotAdopted(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	got, err := svc.SetDatabases(ctxAs("user-a"), e.ID, []string{"dpg-mine", "dpg-theirs"})
-	if err != nil {
-		t.Fatalf("SetDatabases: %v", err)
+	_, err = svc.SetDatabases(ctxAs("user-a"), e.ID, []string{"dpg-mine", "dpg-theirs"})
+	if !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("SetDatabases: got %v, want forbidden", err)
 	}
-	if !slices.Equal(got.DatabaseIDs, []string{"dpg-mine"}) {
-		t.Errorf("DatabaseIDs = %v, want only the same-workspace member", got.DatabaseIDs)
+	if dbs.setEnvCalls != 0 {
+		t.Errorf("refused replacement changed %d memberships", dbs.setEnvCalls)
 	}
-	if d := dbs.dbs["dpg-theirs"]; d.EnvironmentID != "" || d.ProjectID != "" {
-		t.Errorf("a Database in another workspace must not be adopted, got %+v", d)
+	for _, id := range []string{"dpg-mine", "dpg-theirs"} {
+		if d := dbs.dbs[id]; d.EnvironmentID != "" || d.ProjectID != "" {
+			t.Errorf("refused replacement changed Database %s: %+v", id, d)
+		}
 	}
 }
 
-// TestSetEnvGroups_UnknownIDIsRefusedBeforeAnyWrite pins the other half of the
-// policy: env groups reject an id the workspace listing doesn't know, and
+// TestSetEnvGroups_UnknownIDIsRefusedBeforeAnyWrite pins that env groups reject
+// an id the workspace listing doesn't know, and
 // because the check runs before the diff loop a refusal leaves no partial
 // membership change behind. (envgroups_test.go covers the FOREIGN-workspace id;
 // this covers an id that exists nowhere at all.)
