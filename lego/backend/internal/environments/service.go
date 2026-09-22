@@ -75,11 +75,12 @@ type EnvironmentStore interface {
 type DatabaseIndex interface {
 	ListPostgres(ctx context.Context, ownerID string) ([]postgres.PostgresView, error)
 	SetEnvironmentID(ctx context.Context, name, environmentID string) error
+	ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error
 	// SetProjectID joins a newly-assigned Database to the environment's
 	// project (mirroring SetEnvironmentServices' apps.project_id stamp — see
 	// SetDatabases).
 	SetProjectID(ctx context.Context, name, projectID string) error
-	SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error
+	SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error
 }
 
 // KeyValueIndex is DatabaseIndex's KeyValue-CR counterpart. *keyvalue.Service
@@ -87,8 +88,9 @@ type DatabaseIndex interface {
 type KeyValueIndex interface {
 	ListKeyValues(ctx context.Context, ownerID string) ([]keyvalue.KeyValueView, error)
 	SetEnvironmentID(ctx context.Context, name, environmentID string) error
+	ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error
 	SetProjectID(ctx context.Context, name, projectID string) error
-	SetEnvironmentIPAllowList(ctx context.Context, name string, cidrs []string) error
+	SetEnvironmentIPAllowList(ctx context.Context, name, expectedEnvironmentID string, cidrs []string) error
 }
 
 // EnvGroupIndex is the narrow cross-feature contract environments needs to
@@ -260,8 +262,9 @@ type resourceIndex interface {
 	// join adds id to e — and applies whatever else membership implies for
 	// this kind.
 	join(ctx context.Context, e store.Environment, id string) error
-	// leave removes id from whatever environment it is in, undoing join.
-	leave(ctx context.Context, id string) error
+	// leave removes membership; datastores compare the observed environment
+	// before clearing its inherited rules.
+	leave(ctx context.Context, id, expectedEnvironmentID string) error
 }
 
 // layeredIndex is a resourceIndex whose members also carry the environment's
@@ -270,7 +273,7 @@ type resourceIndex interface {
 // fan-out ranges over this narrower set.
 type layeredIndex interface {
 	resourceIndex
-	setIPLayer(ctx context.Context, id string, cidrs []string) error
+	setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error
 }
 
 type databaseResources struct{ DatabaseIndex }
@@ -293,27 +296,24 @@ func (d databaseResources) list(ctx context.Context, workspaceID string) ([]envi
 // "in an environment" as "in that project"), and the environment's inbound-IP
 // layer, which joiners inherit (w4/m28).
 func (d databaseResources) join(ctx context.Context, e store.Environment, id string) error {
-	if err := d.SetEnvironmentID(ctx, id, e.ID); err != nil {
-		return err
-	}
 	if err := d.SetProjectID(ctx, id, e.ProjectID); err != nil {
 		return err
 	}
-	return d.SetEnvironmentIPAllowList(ctx, id, core.EnvironmentLayerCIDRs(e.IPAllowList))
+	if err := d.SetEnvironmentID(ctx, id, e.ID); err != nil {
+		return err
+	}
+	return d.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList))
 }
 
 // leave drops the environment label and the environment's inbound-IP layer,
 // but deliberately NOT the project: leaving an environment doesn't unjoin its
 // project, matching store.SetEnvironmentServices' own asymmetry for services.
-func (d databaseResources) leave(ctx context.Context, id string) error {
-	if err := d.SetEnvironmentID(ctx, id, ""); err != nil {
-		return err
-	}
-	return d.SetEnvironmentIPAllowList(ctx, id, nil)
+func (d databaseResources) leave(ctx context.Context, id, expectedEnvironmentID string) error {
+	return d.ClearEnvironmentID(ctx, id, expectedEnvironmentID)
 }
 
-func (d databaseResources) setIPLayer(ctx context.Context, id string, cidrs []string) error {
-	return d.SetEnvironmentIPAllowList(ctx, id, cidrs)
+func (d databaseResources) setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error {
+	return d.SetEnvironmentIPAllowList(ctx, id, expectedEnvironmentID, cidrs)
 }
 
 // keyValueResources is databaseResources' KeyValue-CR counterpart.
@@ -332,24 +332,21 @@ func (k keyValueResources) list(ctx context.Context, workspaceID string) ([]envi
 }
 
 func (k keyValueResources) join(ctx context.Context, e store.Environment, id string) error {
-	if err := k.SetEnvironmentID(ctx, id, e.ID); err != nil {
-		return err
-	}
 	if err := k.SetProjectID(ctx, id, e.ProjectID); err != nil {
 		return err
 	}
-	return k.SetEnvironmentIPAllowList(ctx, id, core.EnvironmentLayerCIDRs(e.IPAllowList))
-}
-
-func (k keyValueResources) leave(ctx context.Context, id string) error {
-	if err := k.SetEnvironmentID(ctx, id, ""); err != nil {
+	if err := k.SetEnvironmentID(ctx, id, e.ID); err != nil {
 		return err
 	}
-	return k.SetEnvironmentIPAllowList(ctx, id, nil)
+	return k.SetEnvironmentIPAllowList(ctx, id, e.ID, core.EnvironmentLayerCIDRs(e.IPAllowList))
 }
 
-func (k keyValueResources) setIPLayer(ctx context.Context, id string, cidrs []string) error {
-	return k.SetEnvironmentIPAllowList(ctx, id, cidrs)
+func (k keyValueResources) leave(ctx context.Context, id, expectedEnvironmentID string) error {
+	return k.ClearEnvironmentID(ctx, id, expectedEnvironmentID)
+}
+
+func (k keyValueResources) setIPLayer(ctx context.Context, id, expectedEnvironmentID string, cidrs []string) error {
+	return k.SetEnvironmentIPAllowList(ctx, id, expectedEnvironmentID, cidrs)
 }
 
 // envGroupResources is the env-group member kind: membership is the whole of
@@ -373,7 +370,7 @@ func (g envGroupResources) join(ctx context.Context, e store.Environment, id str
 	return g.SetEnvironmentID(ctx, id, e.ID)
 }
 
-func (g envGroupResources) leave(ctx context.Context, id string) error {
+func (g envGroupResources) leave(ctx context.Context, id, _ string) error {
 	return g.SetEnvironmentID(ctx, id, "")
 }
 
@@ -756,18 +753,8 @@ func (s *Service) clearMembersForProject(ctx context.Context, projectID string) 
 	return nil
 }
 
-// Delete removes an environment (its services' environment_id is set to NULL
-// by the DB cascade; their project_id is untouched — deleting an environment
-// doesn't remove a service from the project it also belongs to). Member
-// Databases/KeyValues keep their core.LabelEnvironment label pointing at the
-// now-deleted id — the same staleness projects.Service.Delete already
-// tolerates for core.LabelProject; a member's next SetEnvironmentID call
-// (e.g. joining a different environment) overwrites it. Member Apps'
-// core.LabelNetworkIsolation IS cleared first, though — before the row
-// disappears — so a delete never leaves an App CR pointing at an environment
-// id that no longer exists (Apps have no store-row staleness tolerance the
-// way Database/KeyValue's label does, since the operator actively acts on
-// this label for NetworkPolicy scoping).
+// Delete clears members' environment membership and inherited rules before
+// removing the environment. Their project membership and own rules survive.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return err
@@ -791,9 +778,8 @@ func aclBearing(e store.Environment) bool {
 		len(e.IPAllowList) > 0
 }
 
-// clearEnvironmentMembers clears the environment-projected layer — the
-// isolation label, the inbound-IP layer (Apps/Databases/KeyValues), and env
-// group membership — from every current member of e, without touching the
+// clearEnvironmentMembers clears environment membership and projected rules
+// from every current member of e, without touching the
 // environment row itself. Shared by Delete (the row disappears right after)
 // and clearMembersForProject (w4/m32; the row survives here — only
 // projects.Service.Delete's cascade removes it, after every member across
@@ -812,26 +798,26 @@ func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environme
 	if err := s.applyAppEnvironmentLabels(ctx, names, "", false); err != nil {
 		return err
 	}
-	// Clear the inbound-IP layer on every member (w4/m28) — an environment
-	// leaving service must not leave its rules enforced on orphaned members.
-	if err := s.propagateIPAllowList(ctx, e.TenantID, e.ID, names, nil); err != nil {
+	if err := s.applyAppAllowLists(ctx, names, nil); err != nil {
 		return err
-	}
-	idx := s.envGroups()
-	if idx == nil {
-		return nil
 	}
 	// Env group writes authorize against the CONTEXT workspace (unlike the
 	// Database/KeyValue seams, which resolve it from the resource's own
 	// labels), so bind the environment's own workspace before touching them.
 	ctx = core.WithWorkspace(ctx, e.TenantID)
-	groups, err := idx.list(ctx, e.TenantID)
-	if err != nil {
-		return err
-	}
-	for _, g := range groups {
-		if g.environmentID == e.ID {
-			if err := idx.leave(ctx, g.id); err != nil {
+	for _, idx := range []resourceIndex{s.databases(), s.keyValues(), s.envGroups()} {
+		if idx == nil {
+			continue
+		}
+		members, err := idx.list(ctx, e.TenantID)
+		if err != nil {
+			return err
+		}
+		for _, member := range members {
+			if member.environmentID != e.ID {
+				continue
+			}
+			if err := idx.leave(ctx, member.id, e.ID); err != nil {
 				return err
 			}
 		}
@@ -996,7 +982,7 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	for _, r := range existing {
 		switch {
 		case r.environmentID == e.ID && !want[r.id]:
-			if err := idx.leave(ctx, r.id); err != nil {
+			if err := idx.leave(ctx, r.id, e.ID); err != nil {
 				return EnvironmentView{}, err
 			}
 		case r.environmentID != e.ID && want[r.id]:
@@ -1309,7 +1295,7 @@ func (s *Service) propagateIPAllowList(ctx context.Context, tenantID, environmen
 			if m.environmentID != environmentID {
 				continue
 			}
-			if err := idx.setIPLayer(ctx, m.id, cidrs); err != nil {
+			if err := idx.setIPLayer(ctx, m.id, environmentID, cidrs); err != nil {
 				return err
 			}
 		}
