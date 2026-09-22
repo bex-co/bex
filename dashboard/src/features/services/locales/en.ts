@@ -203,6 +203,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "URL",
     description: "Services table column header",
   },
+  "services.colBlueprintName": {
+    message: "Blueprint name",
+    description: "Immutable service name used to match Blueprint resources.",
+  },
+  "services.blueprintNameHelp": {
+    message:
+      "Use this immutable name in services[].name in your Blueprint manifest. Display names and public hostnames can differ.",
+    description: "Immutable service name used to match Blueprint resources.",
+  },
   "services.colSlug": {
     message: "Slug",
     description:

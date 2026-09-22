@@ -250,3 +250,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 > Inbox `057` transferred to [w9/059](../w9/done/059.md) on 2026-09-07 by user approval; fixed alongside 058 on 2026-09-08.
 
 - [x] **058** — Reject blank environment renames; direct environment creates and sibling project names are guarded too. Closed 2026-09-08; see [done/058.md](done/058.md).
+
+- [x] **121** — [Expose the immutable Blueprint service name](done/121.md) — shared detail header shows it when different from the display label; explicit query/mapping and suffixed-slug regression verified.

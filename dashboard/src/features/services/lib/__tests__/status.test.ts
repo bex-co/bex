@@ -41,6 +41,7 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     id: "app",
     name: "app",
     slug: null,
+    immutableName: null,
     type: "web_service",
     suspended: false,
     phase: "Running",
@@ -91,6 +92,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     id: "app",
     name: "app",
     slug: null,
+    immutableName: null,
     displayName: null,
     type: "web_service",
     suspended: "not_suspended",
@@ -161,6 +163,7 @@ describe("toServiceView", () => {
       id: "app",
       name: "app",
       slug: null,
+      immutableName: null,
       displayName: null,
       type: "web_service",
       suspended: true,
@@ -308,6 +311,21 @@ describe("toServiceView", () => {
     expect(v.startCommand).toBeNull();
     expect(v.dockerfilePath).toBeNull();
     expect(v.registryCredentialId).toBeNull();
+  });
+
+  it("reads the immutable Blueprint name without inferring it from the public slug", () => {
+    const view = toServiceView(
+      server({
+        name: "Friendly label",
+        displayName: "Friendly label",
+        immutableName: "original-api",
+        slug: "original-api-x123",
+      }),
+    );
+    expect(view.name).toBe("Friendly label");
+    expect(view.immutableName).toBe("original-api");
+    expect(view.slug).toBe("original-api-x123");
+    expect(toServiceView(node()).immutableName).toBeNull();
   });
 
   it("reads slug from a detail server node, incl. the random-suffix case", () => {

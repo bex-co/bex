@@ -260,3 +260,9 @@ A blueprint-scoped preview now adds `detach` plan actions for services, Postgres
 After a successful sync, `detachedResources` identifies surviving resources that left management. Sync history records the detachment notice in its existing `note` field; the dashboard renders that note after reload and warns before sync in the plan summary. The current declared set may still be `in_sync`: that status is not a claim that every resource ever managed was deleted or stopped. Removed resources keep their independent running and billing lifecycle. Failed syncs must not report the planned detachments as completed ones.
 
 This preserves Render's documented [non-destructive Blueprint removal](https://render.com/docs/infrastructure-as-code#deleting-resources) (rechecked 2026-09-22). Named plan actions, the result list, and history notices are additive bex diagnostics; no matching live Render response shape is claimed. The actual claim release remains the fenced reconciliation from w4/m125.
+
+### Service display labels and Blueprint names (w4/121)
+
+For an existing service, `services[].name` matches its `immutableName`, not its mutable display label (`name`). The dashboard's service details show **Blueprint name** when that value differs from the display name. Use the displayed Blueprint name when authoring a manifest to update that service; changing the manifest name means creating or selecting a different service, not renaming its label. API calls to service-by-ID endpoints should continue to use `id`.
+
+The public-host `slug` is a separate field. It can acquire a suffix to resolve a cross-workspace hostname collision, so do not infer a Blueprint name from the URL or slug. For example, a service displayed as `Customer API` could have `immutableName: api` and `slug: api-abcd`; its manifest must use `name: api`. This exposes the existing identity contract without changing matching behavior.

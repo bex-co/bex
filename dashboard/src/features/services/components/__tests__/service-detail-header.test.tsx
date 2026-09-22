@@ -541,3 +541,33 @@ describe("public routing notice", () => {
     expect(screen.queryByText(/no public address/i)).not.toBeInTheDocument();
   });
 });
+
+it("shows the immutable Blueprint name separately from a renamed label and suffixed slug", async () => {
+  const user = userEvent.setup();
+  renderHeader(
+    svc({
+      name: "Friendly label",
+      immutableName: "original-api",
+      slug: "original-api-x123",
+    }),
+  );
+  expect(await screen.findByText("Blueprint name")).toBeInTheDocument();
+  expect(screen.getByText("original-api-x123")).toBeInTheDocument();
+  const immutable = screen.getByText("original-api");
+  await user.hover(immutable);
+  expect(await screen.findByRole("tooltip")).toHaveTextContent(
+    "Use this immutable name in services[].name in your Blueprint manifest.",
+  );
+});
+
+it("omits the extra Blueprint name when it is already the display label", async () => {
+  renderHeader(
+    svc({
+      name: "original-api",
+      immutableName: "original-api",
+      slug: "original-api-x123",
+    }),
+  );
+  expect(await screen.findByText("original-api-x123")).toBeInTheDocument();
+  expect(screen.queryByText("Blueprint name")).not.toBeInTheDocument();
+});

@@ -199,6 +199,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "URL",
     description: "Services table column header",
   },
+  "services.colBlueprintName": {
+    message: "蓝图名称",
+    description: "Immutable service name used to match Blueprint resources.",
+  },
+  "services.blueprintNameHelp": {
+    message:
+      "在蓝图清单的 services[].name 中使用此不可变名称。显示名称和公开主机名可能与它不同。",
+    description: "Immutable service name used to match Blueprint resources.",
+  },
   "services.colSlug": {
     message: "Slug",
     description:

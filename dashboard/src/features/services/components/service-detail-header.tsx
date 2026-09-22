@@ -23,6 +23,11 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/common/components/ui/tooltip";
 import { CopyButton } from "@/common/components/copy-button";
 import { RelativeAge, RelativeUntil } from "@/common/components/relative-time";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -459,6 +464,25 @@ function HeaderFacts({ service }: { service: ServiceView }) {
 
   const facts: { label: string; value: ReactNode }[] = [
     { label: t("services.colSlug"), value: service.slug || "—" },
+    ...(service.immutableName && service.immutableName !== service.name
+      ? [
+          {
+            label: t("services.colBlueprintName"),
+            value: (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <code tabIndex={0} className="cursor-help">
+                    {service.immutableName}
+                  </code>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("services.blueprintNameHelp")}
+                </TooltipContent>
+              </Tooltip>
+            ),
+          },
+        ]
+      : []),
     ...(isStaticSite(service)
       ? []
       : [
