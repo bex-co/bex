@@ -9,8 +9,8 @@
 #
 # "Deploy-triggering" = any change under the production-input path filter,
 # EXCLUDING the five generated image-digest fields — a preceding run's [skip ci]
-# digest write-back is NOT a supersession. This filter must match the one the
-# write-back guard has always used.
+# digest write-back is NOT a supersession. Match deploy.yml's push paths,
+# including its CLI exclusion: CLI-only commits schedule no replacement run.
 #
 # Usage:   scripts/deploy-superseded.sh <git-sha>
 # Exit:    0 = superseded (a newer deploy-triggering commit is on origin/main)
@@ -35,6 +35,7 @@ fi
 # hidden by a whole-file exclusion.
 git diff --quiet "$SHA" origin/main -- \
   lego dashboard deploy/opensandbox deploy/gitops .github/workflows/deploy.yml \
+  ':(exclude)lego/cli/**' \
   ':(exclude)deploy/gitops/base/bex.yaml' \
   ':(exclude)deploy/gitops/base/dashboard.yaml' \
   ':(exclude)deploy/opensandbox/kustomization.yaml' \
