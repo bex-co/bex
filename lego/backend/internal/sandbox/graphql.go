@@ -17,8 +17,11 @@ limitations under the License.
 package sandbox
 
 import (
+	"context"
+
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -59,11 +62,30 @@ var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// ownerScoped selects the requested workspace while preserving the default when omitted.
+func ownerScoped(p graphql.ResolveParams) context.Context {
+	return core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId"))
+}
+
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
-		"sandboxes": &graphql.Field{Type: graphql.NewList(sandboxGQLType), Resolve: func(p graphql.ResolveParams) (any, error) {
-			return s.List(p.Context)
-		}},
+		"sandboxes": &graphql.Field{
+			Type: graphql.NewList(sandboxGQLType),
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.List(ownerScoped(p))
+			},
+		},
+		"sandbox": &graphql.Field{
+			Type: sandboxGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Get(ownerScoped(p), p.Args["id"].(string))
+			},
+		},
 	}
 }
 
@@ -96,9 +118,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"terminateSandbox": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.Boolean),
-			Args: gqlutil.IDArg(),
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				if err := s.Terminate(p.Context, p.Args["id"].(string)); err != nil {
+				if err := s.Terminate(ownerScoped(p), p.Args["id"].(string)); err != nil {
 					return false, err
 				}
 				return true, nil
