@@ -27,6 +27,7 @@ seed() { # create a file at $1 with content $2, committing under a fresh dir tre
 
 # Base commit carries one file in a filtered path; push it as origin/main.
 seed lego/app/main.go "package app // v1" "base"
+seed lego/cli/main.go "package main // CLI v1" "base CLI"
 seed deploy/gitops/base/bex.yaml $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'a%.0s' {1..64})" "base bex.yaml"
 seed deploy/gitops/base/dashboard.yaml $'images:\n  - dashboard=ghcr.io/x@sha256:'"$(printf 'a%.0s' {1..64})" "base dashboard.yaml"
 seed deploy/opensandbox/kustomization.yaml \
@@ -67,14 +68,44 @@ advance() { # commit $2 at path $1 on top of origin/main and push
   git push -q origin main
 }
 
+advance_with_cli() {
+  advance lego/cli/internal/launch/launch.go "package launch // CLI update"
+  advance "$@"
+}
+
+rename_input() {
+  git fetch -q origin main && git reset -q --hard origin/main
+  mkdir -p "$(dirname "$2")"
+  git mv "$1" "$2"
+  git commit -qm "rename $1 to $2"
+  git push -q origin main
+}
+
+remove_cli() {
+  git fetch -q origin main && git reset -q --hard origin/main
+  git rm -q lego/cli/main.go
+  git commit -qm "remove CLI file"
+  git push -q origin main
+}
+
 # current: origin/main unchanged from BASE → exit 1
 run_case "current (no drift)" 1 true
+# CLI releases do not schedule a replacement platform deploy.
+run_case "CLI-only root file (excluded)" 1 advance lego/cli/go.mod "module cli"
+run_case "CLI-only nested file (excluded)" 1 advance lego/cli/internal/launch/launch.go "package launch"
+run_case "CLI-only deletion (excluded)" 1 remove_cli
+run_case "platform file renamed into CLI" 0 rename_input lego/app/main.go lego/cli/internal/moved/main.go
+run_case "CLI file renamed into platform" 0 rename_input lego/cli/main.go lego/backend/cmd/moved/main.go
+run_case "CLI plus backend change" 0 advance_with_cli lego/backend/cmd/api/main.go "package main"
+run_case "CLI plus dashboard change" 0 advance_with_cli dashboard/src/routes/index.tsx "export default function Home() {}"
 # superseded by a lego/ change → exit 0
 run_case "superseded: lego change" 0 advance lego/app/main.go "package app // v2"
 # superseded by a deploy.yml change → exit 0
 run_case "superseded: deploy.yml change" 0 advance .github/workflows/deploy.yml "name: deploy v2"
 # a preceding run's generated digest write-back (bex.yaml digest only) → exit 1
 run_case "generated digest only (excluded)" 1 advance deploy/gitops/base/bex.yaml \
+  $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'b%.0s' {1..64})"
+run_case "CLI plus generated platform digest only (excluded)" 1 advance_with_cli deploy/gitops/base/bex.yaml \
   $'images:\n  - controller=ghcr.io/x@sha256:'"$(printf 'b%.0s' {1..64})"
 # the patched controller's generated digest write-back is excluded too
 run_case "generated controller digest only (excluded)" 1 advance \
@@ -85,7 +116,11 @@ run_case "controller tag change is substantive" 0 advance \
   $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-next@sha256:'"$(printf 'b%.0s' {1..64})"
 run_case "generated agent digest only (excluded)" 1 advance lego/operator/config/api/deployment.yaml \
   "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'd%.0s' {1..64})"
+run_case "CLI plus generated agent digest only (excluded)" 1 advance_with_cli lego/operator/config/api/deployment.yaml \
+  "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'd%.0s' {1..64})"
 run_case "agent manifest drift beyond digest" 0 advance lego/operator/config/api/deployment.yaml \
+  $'replicas: 2\n  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:'"$(printf 'd%.0s' {1..64})"
+run_case "CLI plus substantive agent manifest drift" 0 advance_with_cli lego/operator/config/api/deployment.yaml \
   $'replicas: 2\n  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:'"$(printf 'd%.0s' {1..64})"
 # a non-deploy-triggering change (docs) → exit 1
 run_case "non-triggering (docs)" 1 advance docs/notes.md "hello"
