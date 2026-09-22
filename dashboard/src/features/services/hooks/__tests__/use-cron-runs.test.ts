@@ -3,9 +3,11 @@ import { renderHook, act } from "@testing-library/react";
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
+const clientQuery = vi.fn();
 vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  useApolloClient: () => ({ query: clientQuery }),
 }));
 
 const toastSuccess = vi.fn();
@@ -25,6 +27,9 @@ import { useCronRuns } from "@/features/services/hooks/use-cron-runs";
 
 const refetch = vi.fn();
 
+const startPolling = vi.fn();
+const stopPolling = vi.fn();
+
 function mockQuery(cronJobRuns: unknown[]) {
   mockUseQuery.mockReturnValue({
     data: { cronJobRuns },
@@ -32,6 +37,8 @@ function mockQuery(cronJobRuns: unknown[]) {
     error: undefined,
     fetchMore: vi.fn(),
     refetch,
+    startPolling,
+    stopPolling,
   });
 }
 
@@ -42,6 +49,10 @@ beforeEach(() => {
   toastError.mockReset();
   refetch.mockReset();
   refetch.mockResolvedValue({});
+  clientQuery.mockReset();
+  clientQuery.mockResolvedValue({ data: { cronJobRuns: [] } });
+  startPolling.mockReset();
+  stopPolling.mockReset();
 });
 
 describe("useCronRuns trigger (w5/m60)", () => {
