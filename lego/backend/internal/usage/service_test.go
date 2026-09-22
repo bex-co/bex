@@ -66,6 +66,13 @@ type memUsageStore struct {
 	recorded []store.ResourceDisplayName
 	// sandboxLabels stands in for the agent-session join.
 	sandboxLabels map[string]string
+	// liveSandboxes stands in for the compute meter's phase cursor: true means
+	// still running, false means terminated, absent means never metered. Nil
+	// leaves every sandbox unknown, which is the pre-w4/129 shape.
+	liveSandboxes map[string]bool
+	// listAppsErr makes the live-App enumeration fail, so a test can assert the
+	// resolver claims no deletions it could not verify.
+	listAppsErr error
 }
 
 func (m *memUsageStore) ResourceDisplayNames(_ context.Context, tenantID string, refs []store.ResourceDisplayName) (map[string]string, error) {
@@ -95,6 +102,18 @@ func (m *memUsageStore) RecordResourceDisplayNames(_ context.Context, tenantID s
 		m.recorded = append(m.recorded, r)
 	}
 	return nil
+}
+
+func (m *memUsageStore) LiveSandboxes(_ context.Context, _ string, sandboxIDs []string) (map[string]bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[string]bool{}
+	for _, id := range sandboxIDs {
+		if live, ok := m.liveSandboxes[id]; ok {
+			out[id] = live
+		}
+	}
+	return out, nil
 }
 
 func (m *memUsageStore) SandboxLabels(_ context.Context, _ string, sandboxIDs []string) (map[string]string, error) {
@@ -200,6 +219,9 @@ func TestEgressQuerySourcesMatchPersistedVocabulary(t *testing.T) {
 }
 
 func (m *memUsageStore) ListApps(_ context.Context) ([]store.App, error) {
+	if m.listAppsErr != nil {
+		return nil, m.listAppsErr
+	}
 	return m.apps, nil
 }
 
