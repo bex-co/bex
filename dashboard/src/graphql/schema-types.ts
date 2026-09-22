@@ -2356,6 +2356,7 @@ export type MutationUpdateNotificationSettingsArgs = {
   deployFailed: Scalars['Boolean']['input'];
   deployStarted: Scalars['Boolean']['input'];
   deploySucceeded: Scalars['Boolean']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3120,6 +3121,11 @@ export type QueryNotificationDeviceSubscriptionsArgs = {
 
 export type QueryNotificationInboxArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryNotificationSettingsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 

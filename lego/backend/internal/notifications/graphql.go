@@ -214,8 +214,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"notificationSettings": &graphql.Field{
 			Type: notificationSettingsGQLType,
+			Args: graphql.FieldConfigArgument{
+				// ownerId names the workspace the preferences belong to
+				// (w4/m128). Omitted resolves the caller's default, which is
+				// all this query could reach before.
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetSettings(p.Context)
+				return s.GetSettings(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 		"pushNotificationSettings": &graphql.Field{
@@ -289,9 +295,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"deployStarted":   gqlutil.ReqArg(graphql.Boolean),
 				"deploySucceeded": gqlutil.ReqArg(graphql.Boolean),
 				"deployFailed":    gqlutil.ReqArg(graphql.Boolean),
+				"ownerId":         gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.UpdateSettings(p.Context, p.Args["deployStarted"].(bool), p.Args["deploySucceeded"].(bool), p.Args["deployFailed"].(bool))
+				return s.UpdateSettings(p.Context, gqlutil.Str(p.Args, "ownerId"),
+					p.Args["deployStarted"].(bool), p.Args["deploySucceeded"].(bool), p.Args["deployFailed"].(bool))
 			},
 		},
 		"updatePushNotificationSettings": &graphql.Field{

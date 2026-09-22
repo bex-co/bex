@@ -6,6 +6,10 @@ vi.mock("@apollo/client/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
 }));
 
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-canary" }),
+}));
+
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
   toast: { error: (...a: unknown[]) => toastError(...a), success: vi.fn() },
@@ -26,23 +30,36 @@ describe("useUpdateNotificationSettings", () => {
 
     const [, options] = mockUseMutation.mock.calls[0] as [
       unknown,
-      { update: (cache: unknown, result: unknown) => void },
+      {
+        update: (
+          cache: unknown,
+          result: unknown,
+          context: { variables?: { ownerId?: string } },
+        ) => void;
+      },
     ];
     const writeQuery = vi.fn();
     const fakeCache = { writeQuery };
-    options.update(fakeCache, {
-      data: {
-        updateNotificationSettings: {
-          __typename: "NotificationSettings",
-          deployStarted: true,
-          deploySucceeded: false,
-          deployFailed: true,
+    options.update(
+      fakeCache,
+      {
+        data: {
+          updateNotificationSettings: {
+            __typename: "NotificationSettings",
+            deployStarted: true,
+            deploySucceeded: false,
+            deployFailed: true,
+          },
         },
       },
-    });
+      { variables: { ownerId: "tea-canary" } },
+    );
 
+    // The cache entry is keyed by workspace (w4/m128): writing it unkeyed
+    // would file one workspace's answer where another's belongs.
     expect(writeQuery).toHaveBeenCalledWith({
       query: NotificationSettingsDocument,
+      variables: { ownerId: "tea-canary" },
       data: {
         notificationSettings: {
           __typename: "NotificationSettings",
@@ -60,14 +77,14 @@ describe("useUpdateNotificationSettings", () => {
 
     const [, options] = mockUseMutation.mock.calls[0] as [
       unknown,
-      { update: (cache: unknown, result: unknown) => void },
+      { update: (cache: unknown, result: unknown, context: object) => void },
     ];
     const writeQuery = vi.fn();
-    options.update({ writeQuery }, { data: undefined });
+    options.update({ writeQuery }, { data: undefined }, {});
 
     expect(writeQuery).not.toHaveBeenCalled();
   });
-  it("sends all three preference fields as mutation variables and resolves true", async () => {
+  it("sends all three preference fields plus the current workspace, and resolves true", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockReturnValue([mutate]);
 
@@ -87,6 +104,7 @@ describe("useUpdateNotificationSettings", () => {
         deployStarted: false,
         deploySucceeded: false,
         deployFailed: true,
+        ownerId: "tea-canary",
       },
     });
     expect(toastError).not.toHaveBeenCalled();
