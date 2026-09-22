@@ -1,0 +1,493 @@
+diff --git a/dashboard/src/features/capabilities/__tests__/capabilities-startup.test.tsx b/dashboard/src/features/capabilities/__tests__/capabilities-startup.test.tsx
+new file mode 100644
+index 000000000..f5cc1c0e1
+--- /dev/null
++++ b/dashboard/src/features/capabilities/__tests__/capabilities-startup.test.tsx
+@@ -0,0 +1,232 @@
++import type { ReactNode } from "react";
++import { ApolloClient, InMemoryCache } from "@apollo/client";
++import { ApolloProvider } from "@apollo/client/react";
++import { act, cleanup, renderHook } from "@testing-library/react";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import { createApolloCsrClient } from "@/common/apollo/factory.client";
++import { apolloCacheConfig } from "@/common/apollo/cache";
++import { apolloDefaultOptions } from "@/common/apollo/default-options";
++import { WorkspaceProvider } from "@/features/workspaces/context";
++import { useWorkspace } from "@/features/workspaces/context/hooks";
++import { WORKSPACE_SELECTION_KEY } from "@/features/workspaces/lib/selection";
++import { CapabilitiesProvider } from "@/features/capabilities/context/capabilities-provider";
++import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
++import { resetAccessGenerationForTests } from "@/features/capabilities/lib/access-generation";
++import { CAPABILITY_ACTIONS } from "@/features/capabilities/lib/capability-policy";
++import { WorkspacesDocument } from "@/graphql/definitions";
++
++vi.unmock("@/features/capabilities/hooks/use-capabilities");
++
++const { mockFetch, navigate } = vi.hoisted(() => ({
++  mockFetch: vi.fn<typeof fetch>(),
++  navigate: vi.fn(),
++}));
++
++vi.mock("@/common/hooks/use-is-authenticated", () => ({
++  useIsAuthenticated: () => true,
++}));
++vi.mock("@tanstack/react-router", async (importOriginal) => ({
++  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
++  useNavigate: () => navigate,
++}));
++vi.mock("@/common/apollo/auth-redirect", () => ({
++  handleUnauthenticated: vi.fn(),
++}));
++
++const workspaces = ["tea-first", "tea-second"].map((id) => ({
++  __typename: "Workspace" as const,
++  id,
++  name: id,
++  plan: "hobby",
++  role: "admin",
++  createdAt: null,
++}));
++
++interface Operation {
++  operationName: string;
++  variables: { ownerId?: string };
++}
++
++const dispatched: Operation[] = [];
++let client: ApolloClient;
++let capabilityOutcome: "allowed" | "denied" | "unavailable";
++
++function capabilityResult() {
++  const allowed = capabilityOutcome === "allowed";
++  return {
++    data: {
++      viewerCapabilities: {
++        __typename: "ViewerCapabilities",
++        role: allowed ? "ADMIN" : "VIEWER",
++        canView: allowed,
++        canViewLogs: allowed,
++        canOperate: allowed,
++        canCreate: allowed,
++        canViewSensitive: allowed,
++        canManageKeys: allowed,
++        canManage: allowed,
++        canManageBilling: allowed,
++        fresh: true,
++        grants: CAPABILITY_ACTIONS.map((action) => ({
++          __typename: "CapabilityGrant",
++          action,
++          outcome: capabilityOutcome,
++          reason: allowed ? null : "insufficient_permission",
++        })),
++      },
++    },
++  };
++}
++
++beforeEach(() => {
++  vi.useFakeTimers();
++  // Make retry schedules reproducible. Otherwise jitter can accidentally
++  // separate operations that shared a canceled batch and hide that defect.
++  vi.spyOn(Math, "random").mockReturnValue(0.5);
++  vi.stubGlobal("fetch", mockFetch);
++  resetAccessGenerationForTests();
++  navigate.mockReset();
++  mockFetch.mockReset();
++  dispatched.length = 0;
++  capabilityOutcome = "allowed";
++  document.cookie = `${WORKSPACE_SELECTION_KEY}=; Max-Age=0; Path=/`;
++  mockFetch.mockImplementation(async (_input, options) => {
++    const body = JSON.parse(String(options?.body)) as Operation | Operation[];
++    const operations = Array.isArray(body) ? body : [body];
++    const signal = options?.signal;
++    // Native fetch rejects an already-aborted signal before a request reaches
++    // the server. Preserve that boundary; a mock client.query cannot expose it.
++    signal?.throwIfAborted();
++    dispatched.push(...operations);
++    const results = operations.map((operation) => {
++      if (operation.operationName === "Workspaces") {
++        return { data: { workspaces } };
++      }
++      if (capabilityOutcome === "unavailable") {
++        throw new TypeError("The network request failed");
++      }
++      return capabilityResult();
++    });
++    return new Response(
++      JSON.stringify(Array.isArray(body) ? results : results[0]),
++      {
++        headers: { "content-type": "application/json" },
++      },
++    );
++  });
++  // Reuse the production transport (auth errors, retry, batching), with a fresh
++  // cache/query manager per test. Do not reproduce its configuration here: the
++  // regression needs to exercise changes to the actual CSR client.
++  client = new ApolloClient({
++    link: createApolloCsrClient().link,
++    cache: new InMemoryCache(apolloCacheConfig),
++    defaultOptions: apolloDefaultOptions,
++  });
++});
++
++afterEach(async () => {
++  cleanup();
++  client.stop();
++  await vi.advanceTimersByTimeAsync(0);
++  vi.useRealTimers();
++  vi.restoreAllMocks();
++  vi.unstubAllGlobals();
++});
++
++function mount(initialWorkspaceId: string | null = null) {
++  function Wrapper({ children }: { children: ReactNode }) {
++    return (
++      <ApolloProvider client={client}>
++        <WorkspaceProvider initialWorkspaceId={initialWorkspaceId}>
++          <CapabilitiesProvider>{children}</CapabilitiesProvider>
++        </WorkspaceProvider>
++      </ApolloProvider>
++    );
++  }
++  return renderHook(
++    () => ({ workspace: useWorkspace(), capabilities: useCapabilities() }),
++    { wrapper: Wrapper },
++  );
++}
++
++async function settleBeforePoll() {
++  // Includes the full transport retry budget, but never reaches the resource
++  // poll. Success must come from initialization or the requested refresh.
++  await act(async () => {
++    await vi.advanceTimersByTimeAsync(5_000);
++  });
++}
++
++describe("capability initialization through the browser transport", () => {
++  it("settles a retained workspace selection before its first poll (navigation control)", async () => {
++    const { result } = mount("tea-first");
++    await settleBeforePoll();
++
++    expect(result.current.capabilities).toMatchObject({
++      canCreate: true,
++      loaded: true,
++      unavailable: false,
++    });
++    expect(
++      dispatched.some((op) => op.operationName === "ViewerCapabilities"),
++    ).toBe(true);
++  });
++
++  it("settles a cold missing-cookie fallback before its first poll", async () => {
++    const { result } = mount();
++    expect(result.current.workspace.currentWorkspaceId).toBeNull();
++    expect(result.current.capabilities.canCreate).toBe(false);
++    await settleBeforePoll();
++
++    expect(result.current.workspace.currentWorkspaceId).toBe("tea-first");
++    expect(result.current.capabilities).toMatchObject({
++      canCreate: true,
++      loaded: true,
++      unavailable: false,
++    });
++    expect(
++      dispatched.some((op) => op.operationName === "ViewerCapabilities"),
++    ).toBe(true);
++  });
++
++  it("settles the new workspace when selection changes before the first batch dispatch", async () => {
++    client.writeQuery({ query: WorkspacesDocument, data: { workspaces } });
++    const { result } = mount("tea-first");
++    act(() => result.current.workspace.setCurrentWorkspaceId("tea-second"));
++    expect(result.current.capabilities.canCreate).toBe(false);
++    await settleBeforePoll();
++
++    expect(result.current.workspace.currentWorkspaceId).toBe("tea-second");
++    expect(result.current.capabilities).toMatchObject({
++      canCreate: true,
++      loaded: true,
++      unavailable: false,
++    });
++    expect(dispatched.some((op) => op.variables.ownerId === "tea-second")).toBe(
++      true,
++    );
++  });
++
++  it("keeps a transport failure distinct from denial and recovers on explicit refresh", async () => {
++    capabilityOutcome = "unavailable";
++    const { result } = mount("tea-first");
++    await settleBeforePoll();
++    expect(result.current.capabilities.unavailable).toBe(true);
++    expect(result.current.capabilities.loaded).toBe(false);
++    expect(result.current.capabilities.denied("can_create")).toBe(false);
++
++    capabilityOutcome = "denied";
++    act(() => void result.current.capabilities.refresh());
++    await settleBeforePoll();
++    expect(result.current.capabilities.unavailable).toBe(false);
++    expect(result.current.capabilities.loaded).toBe(true);
++    expect(result.current.capabilities.denied("can_create")).toBe(true);
++    expect(result.current.capabilities.canCreate).toBe(false);
++
++    capabilityOutcome = "allowed";
++    act(() => void result.current.capabilities.refresh());
++    await settleBeforePoll();
++    expect(result.current.capabilities.loaded).toBe(true);
++    expect(result.current.capabilities.canCreate).toBe(true);
++  });
++});
+diff --git a/dashboard/src/common/lib/growthbook/__tests__/require-agents-feature.test.tsx b/dashboard/src/common/lib/growthbook/__tests__/require-agents-feature.test.tsx
+new file mode 100644
+index 000000000..f0b3fdb90
+--- /dev/null
++++ b/dashboard/src/common/lib/growthbook/__tests__/require-agents-feature.test.tsx
+@@ -0,0 +1,192 @@
++import {
++  ApolloClient,
++  ApolloLink,
++  InMemoryCache,
++  Observable,
++} from "@apollo/client";
++import { act, render, screen, waitFor } from "@testing-library/react";
++import {
++  Outlet,
++  RouterProvider,
++  createMemoryHistory,
++  createRootRouteWithContext,
++  createRoute,
++  createRouter,
++  isRedirect,
++} from "@tanstack/react-router";
++import { describe, expect, it, vi } from "vitest";
++import type { Session } from "@ory/client-fetch";
++import { AgentsPageSkeleton } from "@/common/components/detail-skeletons";
++import type { RouterContext } from "@/common/types/router-context";
++import { AGENTS_DASHBOARD_BETA_WORKSPACE_ID as BETA } from "@/config/growthbook";
++import type { WorkspacesQuery } from "@/graphql/definitions";
++import { Route as AgentsRoute } from "@/routes/agents";
++import { Route as AgentDetailRoute } from "@/routes/agents_.$agentSessionId";
++import { requireAgentsFeature } from "../require-agents-feature";
++
++function membership(ids: string[]): WorkspacesQuery["workspaces"] {
++  return ids.map((id) => ({
++    __typename: "Workspace",
++    id,
++    name: id,
++    role: "admin",
++    plan: "hobby",
++    createdAt: null,
++  }));
++}
++
++function transport() {
++  let reply!: (result: ApolloLink.Result) => void;
++  let fail!: (error: Error) => void;
++  const request = vi.fn(
++    () =>
++      new Observable<ApolloLink.Result>((observer) => {
++        reply = (result) => {
++          observer.next(result);
++          observer.complete();
++        };
++        fail = (error) => observer.error(error);
++      }),
++  );
++  const client = new ApolloClient({
++    cache: new InMemoryCache(),
++    link: new ApolloLink(request),
++  });
++  return {
++    client,
++    request,
++    reply: (result: ApolloLink.Result) => reply(result),
++    fail: (error: Error) => fail(error),
++  };
++}
++
++describe("agents workspace eligibility", () => {
++  it.each([undefined, null, "tea-deleted", BETA])(
++    "resolves membership before accepting cookie %s and reuses the shared cache",
++    async (workspaceId) => {
++      const server = transport();
++      const context = { client: server.client, workspaceId };
++      const pending = requireAgentsFeature()({ context });
++      expect(server.request).toHaveBeenCalledOnce();
++      server.reply({ data: { workspaces: membership([BETA]) } });
++      await expect(pending).resolves.toEqual({ workspaceId: BETA });
++
++      await expect(requireAgentsFeature()({ context })).resolves.toEqual({
++        workspaceId: BETA,
++      });
++      expect(server.request).toHaveBeenCalledOnce();
++    },
++  );
++
++  it.each([
++    { cookie: undefined, memberships: ["tea-other", BETA] },
++    { cookie: "tea-other", memberships: [BETA, "tea-other"] },
++    { cookie: BETA, memberships: ["tea-other"] },
++    { cookie: BETA, memberships: [] },
++  ])("refuses only a confirmed ineligible selection: %o", async (testCase) => {
++    const server = transport();
++    const pending = requireAgentsFeature()({
++      context: { client: server.client, workspaceId: testCase.cookie },
++    });
++    server.reply({ data: { workspaces: membership(testCase.memberships) } });
++    const error = await Promise.resolve(pending).catch((error) => error);
++    expect(isRedirect(error)).toBe(true);
++    expect(error.options.to).toBe("/");
++  });
++
++  it("preserves an eligible explicit selection even when it is not first", async () => {
++    const server = transport();
++    const pending = requireAgentsFeature()({
++      context: { client: server.client, workspaceId: BETA },
++    });
++    server.reply({ data: { workspaces: membership(["tea-other", BETA]) } });
++    await expect(pending).resolves.toEqual({ workspaceId: BETA });
++  });
++
++  it.each(["transport", "graphql", "missing membership"])(
++    "keeps %s failure distinct from confirmed ineligibility",
++    async (failure) => {
++      const server = transport();
++      const pending = requireAgentsFeature()({
++        context: { client: server.client, workspaceId: BETA },
++      });
++      if (failure === "transport") server.fail(new Error("offline"));
++      else if (failure === "graphql")
++        server.reply({
++          data: { workspaces: [] },
++          errors: [{ message: "memberships unavailable" }],
++        });
++      else server.reply({ data: { workspaces: null } });
++
++      const error = await Promise.resolve(pending).catch((error) => error);
++      expect(error).toBeInstanceOf(Error);
++      expect(isRedirect(error)).toBe(false);
++
++      const recovered = requireAgentsFeature()({
++        context: { client: server.client, workspaceId: BETA },
++      });
++      expect(server.request).toHaveBeenCalledTimes(2);
++      server.reply({ data: { workspaces: membership([BETA]) } });
++      await expect(recovered).resolves.toEqual({ workspaceId: BETA });
++    },
++  );
++});
++
++describe.each([
++  { path: "/agents", route: AgentsRoute },
++  { path: "/agents/$agentSessionId", route: AgentDetailRoute },
++])("cold $path route", ({ path, route }) => {
++  it("holds its destination and loader until the actual beforeLoad resolves membership", async () => {
++    const server = transport();
++    const initialHref =
++      path.replace("$agentSessionId", "ags-test") + "?archived=all#history";
++    const loader = vi.fn(
++      ({ context }: { context: RouterContext }) => context.workspaceId,
++    );
++    const root = createRootRouteWithContext<RouterContext>()({
++      component: Outlet,
++    });
++    const home = createRoute({
++      getParentRoute: () => root,
++      path: "/",
++      component: () => <div>Home</div>,
++    });
++    const agents = createRoute({
++      getParentRoute: () => root,
++      path,
++      beforeLoad: route.options.beforeLoad,
++      loader,
++      pendingComponent: () => <AgentsPageSkeleton mode="list" />,
++      component: () => <div>Eligible destination</div>,
++    });
++    const router = createRouter({
++      routeTree: root.addChildren([home, agents]),
++      history: createMemoryHistory({ initialEntries: [initialHref] }),
++      context: {
++        client: server.client,
++        workspaceId: "tea-deleted",
++        session: { id: "session-test" } as Session,
++      },
++      defaultPendingMs: 0,
++      defaultPendingMinMs: 0,
++    });
++    render(<RouterProvider router={router} />);
++
++    await waitFor(() => expect(server.request).toHaveBeenCalledOnce());
++    expect(loader).not.toHaveBeenCalled();
++    expect(router.state.location.href).toBe(initialHref);
++    expect(
++      await screen.findByTestId("agents-page-skeleton"),
++    ).toBeInTheDocument();
++    expect(screen.queryByText("Home")).not.toBeInTheDocument();
++
++    await act(async () => {
++      server.reply({ data: { workspaces: membership([BETA]) } });
++    });
++
++    expect(await screen.findByText("Eligible destination")).toBeInTheDocument();
++    expect(loader).toHaveBeenCalledOnce();
++    expect(loader.mock.calls[0][0].context.workspaceId).toBe(BETA);
++    expect(router.state.location.href).toBe(initialHref);
++  });
++});
+diff --git a/dashboard/src/common/root-route/__tests__/error-page.test.tsx b/dashboard/src/common/root-route/__tests__/error-page.test.tsx
+new file mode 100644
+index 000000000..795f8476a
+--- /dev/null
++++ b/dashboard/src/common/root-route/__tests__/error-page.test.tsx
+@@ -0,0 +1,51 @@
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
++import {
++  Outlet,
++  RouterProvider,
++  createMemoryHistory,
++  createRootRoute,
++  createRoute,
++  createRouter,
++} from "@tanstack/react-router";
++import { describe, expect, it, vi } from "vitest";
++import ErrorPage from "../error-page";
++
++describe("route error retry", () => {
++  it("retries a failed beforeLoad and preserves the cold destination", async () => {
++    const beforeLoad = vi
++      .fn()
++      .mockRejectedValueOnce(new Error("Memberships unavailable"))
++      .mockResolvedValue({});
++    const root = createRootRoute({ component: Outlet });
++    const destination = createRoute({
++      getParentRoute: () => root,
++      path: "/agents",
++      beforeLoad,
++      component: () => <div>Recovered destination</div>,
++    });
++    const href = "/agents?archived=all#history";
++    const router = createRouter({
++      routeTree: root.addChildren([destination]),
++      history: createMemoryHistory({ initialEntries: [href] }),
++      defaultErrorComponent: ErrorPage,
++      defaultPendingMinMs: 0,
++    });
++    // React and the router report the intentional boundary failure.
++    const report = vi.spyOn(console, "error").mockImplementation(() => {});
++    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
++    try {
++      render(<RouterProvider router={router} />);
++      expect(await screen.findByText("Memberships unavailable")).toBeVisible();
++      expect(beforeLoad).toHaveBeenCalledOnce();
++
++      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
++
++      await waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2));
++      expect(await screen.findByText("Recovered destination")).toBeVisible();
++      expect(router.state.location.href).toBe(href);
++    } finally {
++      report.mockRestore();
++      warn.mockRestore();
++    }
++  });
++});
