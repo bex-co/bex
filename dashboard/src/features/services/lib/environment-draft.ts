@@ -93,6 +93,44 @@ export interface DraftValidation {
   files: Record<string, "invalid" | "duplicate" | "content" | "limit">;
 }
 
+/**
+ * Re-key a restored draft's rows through the live editor's allocator.
+ *
+ * Row ids are **local identities only** — `environmentDraftPatch` never
+ * serializes them, and `isNewDraftRow` reads `originalKey`/`originalName`, not
+ * the id prefix — but the editor leans on them hard: `updateRow` mutates every
+ * row whose id matches, JSX uses them as React keys, validation keys its error
+ * map by them, and the file-content dialog selects its row by id.
+ *
+ * Restoring a stranded draft reinstated its stored ids while the allocator
+ * counter restarted at 0 on the fresh mount, so the next added row could be
+ * handed an id a restored row already held. Two rows then shared one identity:
+ * editing one key rewrote both, typing one value rewrote both, and deleting one
+ * removed both — with duplicate-name validation blocking Save on top (w4/139).
+ *
+ * Every non-id field is carried through untouched: `originalKey`/`originalName`
+ * (which decide new-vs-existing), values and content, the changed and deleted
+ * flags, generation intent, and manifest read-only ownership. For an
+ * already-corrupted stored draft this gives the collided rows distinct
+ * identities so ordinary validation can guide correction; it cannot recover
+ * text that was overwritten before the draft was stored.
+ */
+export function reidentifyDraft(
+  draft: EnvironmentDraft,
+  allocate: () => number,
+): EnvironmentDraft {
+  return {
+    envVars: draft.envVars.map((row) => ({
+      ...row,
+      id: `restored-env:${allocate()}`,
+    })),
+    secretFiles: draft.secretFiles.map((row) => ({
+      ...row,
+      id: `restored-file:${allocate()}`,
+    })),
+  };
+}
+
 export function createEnvironmentDraft(
   envKeys: readonly string[],
   fileNames: readonly string[],

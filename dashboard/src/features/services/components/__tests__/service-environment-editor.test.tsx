@@ -688,3 +688,147 @@ describe("ServiceEnvironmentEditor", () => {
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(refusal));
   });
 });
+
+// w4/139: restoring a stranded draft reinstated its stored row ids while this
+// mount's allocator restarted at 0, so the next added row could be handed an id
+// a restored row already held. `updateRow` acts on EVERY row whose id matches,
+// so one key edit rewrote two rows, one value edit rewrote two, and one delete
+// removed two — live, the stored draft showed ids ["new-env:0", "new-env:0"].
+// Restoration is exercised for real here (a genuine unmount/remount over
+// sessionStorage), because mocking it away is exactly what left this untested.
+describe("ServiceEnvironmentEditor restored-draft row identity (w4/139)", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    envKeys = [];
+    fileNames = [];
+  });
+
+  async function addVariable(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add variable" }),
+    );
+  }
+
+  it("keeps a restored variable independent of one added afterwards", async () => {
+    const user = userEvent.setup();
+    const first = renderEditor();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await addVariable(user);
+    await user.type(screen.getByRole("textbox", { name: "Key" }), "QA_FIRST");
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for QA_FIRST" }),
+      "qa-first-draft",
+    );
+
+    // The reload: this mount goes away, the draft survives in sessionStorage.
+    first.unmount();
+    renderEditor();
+    expect(await screen.findByText("Restored unsaved changes")).toBeVisible();
+
+    await addVariable(user);
+    const keys = screen.getAllByRole("textbox", { name: "Key" });
+    expect(keys).toHaveLength(2);
+    await user.type(keys[1]!, "QA_SECOND");
+
+    // The live symptom was BOTH keys becoming QA_SECOND.
+    expect(keys[0]).toHaveValue("QA_FIRST");
+    expect(keys[1]).toHaveValue("QA_SECOND");
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for QA_SECOND" }),
+      "qa-second-draft",
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Value for QA_FIRST" }),
+    ).toHaveValue("qa-first-draft");
+
+    // …and the duplicate-key validation that followed from it.
+    expect(
+      screen.queryByText("Each variable key must be unique."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("deletes only the row the user asked to delete", async () => {
+    const user = userEvent.setup();
+    const first = renderEditor();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await addVariable(user);
+    await user.type(screen.getByRole("textbox", { name: "Key" }), "QA_FIRST");
+
+    first.unmount();
+    renderEditor();
+    expect(await screen.findByText("Restored unsaved changes")).toBeVisible();
+
+    await addVariable(user);
+    const keys = screen.getAllByRole("textbox", { name: "Key" });
+    await user.type(keys[1]!, "QA_SECOND");
+
+    await user.click(screen.getByRole("button", { name: "Delete QA_SECOND" }));
+
+    // Live, this removed both rows and left zero key inputs.
+    const remaining = screen.getAllByRole("textbox", { name: "Key" });
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toHaveValue("QA_FIRST");
+  });
+
+  it("keeps a restored secret file independent of one added afterwards", async () => {
+    const user = userEvent.setup();
+    const first = renderEditor();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Add secret file" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "File name" }),
+      "qa-first.txt",
+    );
+
+    first.unmount();
+    renderEditor();
+    expect(await screen.findByText("Restored unsaved changes")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Add secret file" }));
+    const names = screen.getAllByRole("textbox", { name: "File name" });
+    expect(names).toHaveLength(2);
+    await user.type(names[1]!, "qa-second.txt");
+
+    expect(names[0]).toHaveValue("qa-first.txt");
+    expect(names[1]).toHaveValue("qa-second.txt");
+  });
+
+  it("carries every non-id field of a restored draft through untouched", async () => {
+    // A server-backed row (existing key), an edited value, and a deletion all
+    // have to survive re-keying — the ids are local, everything else is state.
+    envKeys = [{ id: "ALPHA", key: "ALPHA", managedBy: "" }];
+    const user = userEvent.setup();
+    const first = renderEditor();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await addVariable(user);
+    const keys = screen.getAllByRole("textbox", { name: "Key" });
+    await user.type(keys[keys.length - 1]!, "QA_NEW");
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for QA_NEW" }),
+      "qa-new-draft",
+    );
+
+    first.unmount();
+    renderEditor();
+    expect(await screen.findByText("Restored unsaved changes")).toBeVisible();
+
+    // The persisted row is still recognised as persisted (not re-created), and
+    // the new row still carries its typed value.
+    const restoredKeys = screen.getAllByRole("textbox", { name: "Key" });
+    expect(
+      restoredKeys.map((input) => (input as HTMLInputElement).value),
+    ).toContain("QA_NEW");
+    expect(
+      screen.getByRole("textbox", { name: "Value for QA_NEW" }),
+    ).toHaveValue("qa-new-draft");
+    expect(
+      screen.getByRole("textbox", { name: "Value for ALPHA" }),
+    ).toBeInTheDocument();
+  });
+});
