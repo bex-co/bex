@@ -66,6 +66,15 @@ jobs:
       # proven here on every push, not only when the daily job happens to run.
       - name: CI red-streak detector self-test
         run: bash scripts/ci-red-streak.test.sh
+      # w3/042. Its sibling for a probe that is green but late. Two things are
+      # proven on every push rather than only when the daily job runs: every
+      # scheduled workflow declares a drift window (a new probe without one
+      # would otherwise go silently unwatched), and the never-fired and
+      # all-cancelled cases, where a naive gap computation reports nothing.
+      - name: CI schedule-drift windows + detector self-test
+        run: |
+          bash scripts/ci-schedule-drift.sh validate
+          bash scripts/ci-schedule-drift.test.sh
       # w7/m85. Six security rounds re-reported the same unpinned-image finding
       # because an inventory sweep is only true on the day it is done; this
       # re-derives the inventory every run and fails closed on anything it
@@ -133,6 +142,7 @@ jobs:
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
+          scripts/ci-schedule-drift.sh scripts/ci-schedule-drift.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
           scripts/terraform-install.sh scripts/terraform-install.test.sh
           scripts/lib/image-digest-exists.sh

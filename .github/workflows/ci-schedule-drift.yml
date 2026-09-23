@@ -1,0 +1,72 @@
+name: CI schedule drift
+
+# A scheduled probe that passes but runs hours late is invisible to every other
+# check: ci-red-streak only counts failures, and each late run looks fine on its
+# own. w7/055 measured ssh-edge-liveness firing 3h04m-5h27m after its slots by
+# reading run history by hand; this makes that read automatic for every
+# scheduled workflow, against the windows declared in the script.
+#
+# Deliberately NOT a gate, for the same reason as ci-red-streak: binding
+# releases to an advisory checker is a worse trade than the problem. It runs
+# daily, and a workflow outside its window becomes one open issue.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "43 8 * * *"
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Self-test the gap arithmetic
+        # The cases that decide whether it reports anything at all — a workflow
+        # that never fired, one whose runs were all cancelled — are exactly where
+        # a naive gap computation reads healthy. Prove them before trusting what
+        # it says about the repo.
+        run: bash scripts/ci-schedule-drift.test.sh
+      - name: Check scheduled workflows against their windows
+        id: check
+        run: |
+          if bash scripts/ci-schedule-drift.sh > drift.txt 2>&1; then
+            echo "late=false" >> "$GITHUB_OUTPUT"
+          else
+            rc=$?
+            if [ "$rc" -eq 2 ]; then
+              cat drift.txt
+              exit 2 # unusable: an operator problem, never a silent pass
+            fi
+            echo "late=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat drift.txt
+      - name: Open or update the tracking issue
+        if: steps.check.outputs.late == 'true'
+        run: |
+          gh label create ci-schedule-drift --repo "$GITHUB_REPOSITORY" \
+            --color D93F0B --description "A scheduled workflow ran outside its drift window" --force
+          body="$(cat drift.txt)"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-schedule-drift --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "A scheduled workflow is not running on time" \
+              --label ci-schedule-drift \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once every workflow is back inside its window
+        if: steps.check.outputs.late == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-schedule-drift --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "Every scheduled workflow is back inside its drift window."
+          fi
