@@ -450,6 +450,7 @@ describe("ServiceSettingsPage", () => {
 
       expect(hrefs).not.toContain("#domains");
       expect(hrefs).not.toContain("#networking");
+      expect(document.getElementById("networking")).toBeNull();
       expect(document.getElementById("domains")).toBeNull();
       expect(
         screen.queryByText("Platform Subdomain", { exact: false }),
@@ -460,12 +461,15 @@ describe("ServiceSettingsPage", () => {
 
   // static_site is the other publicly-routed type and has no coverage of this
   // gate; web_service's is the full-href-list assertion above.
-  it("still offers custom domains to a static site", async () => {
+  it("still offers custom domains and networking to a static site", async () => {
     serverState.service = svc({ type: "static_site", repo: null });
     renderSettings();
 
-    expect(await sectionHrefs()).toContain("#domains");
+    expect(await sectionHrefs()).toEqual(
+      expect.arrayContaining(["#domains", "#networking"]),
+    );
     expect(document.getElementById("domains")).toBeInTheDocument();
+    expect(document.getElementById("networking")).toBeInTheDocument();
   });
 
   it("keeps the section navigation free of unavailable cron-service links", async () => {
