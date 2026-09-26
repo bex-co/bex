@@ -291,3 +291,4 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **139** — [Re-key restored environment drafts through the live allocator](done/139.md) — a restored row and a newly added one could share an id, and `updateRow` acts on every matching row, so one edit rewrote two and one delete removed two; restoration now re-keys through this mount's counter, preserving every other field. Live re-probe still owed.
 
+- [ ] **142** — [Custom-domain copy ignores the pending state: "without at least one custom domain" while one is listed, and a delete that removes an Ingress that never existed](142.md) ← live `/qa-find-bugs` 2026-09-25 pass 162, journey 5. The subdomain guard requires a verified domain, but its message says any domain and leaks `RenderSubdomainPolicy`. The delete dialog is state-blind.
