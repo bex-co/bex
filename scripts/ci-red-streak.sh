@@ -44,8 +44,18 @@ if [ -n "${BEX_CI_RUNS_JSON:-}" ]; then
   runs="$(cat "$BEX_CI_RUNS_JSON")"
 else
   command -v gh >/dev/null || unusable "missing required command: gh"
-  runs="$(gh run list --branch main --limit "$LIMIT" \
-    --json name,conclusion,status,event,headSha,createdAt,url 2>/dev/null)" \
+  # Fetch per workflow, not one global window. A global `--limit 100` is the
+  # newest 100 runs across every workflow — about six hours on a busy main —
+  # so a deploy.yml streak whose failures were spread among supersession
+  # cancels and other workflows' runs fell outside it and read as a streak of
+  # one (2026-09-22: five straight deploy failures, issue #73 listed only
+  # `test (mobile)`). One list call per active workflow.
+  workflows="$(gh workflow list --limit 200 --json id --jq '.[].id' 2>/dev/null)" \
+    || unusable "could not list workflows"
+  runs="$(for wf in $workflows; do
+      gh run list --workflow "$wf" --branch main --limit "$LIMIT" \
+        --json name,conclusion,status,event,headSha,createdAt,url 2>/dev/null || exit 1
+    done | jq -s 'add // []')" \
     || unusable "could not list workflow runs"
 fi
 

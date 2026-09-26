@@ -22,6 +22,10 @@ jobs:
     # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    # The slowest successful run in the last 40 was 23 min. A starved host once
+    # left vitest silent for 47 min after a forks worker would not terminate,
+    # holding a deploy gate for most of an hour (w8/m42 t001). Fail it instead.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
