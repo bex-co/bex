@@ -297,3 +297,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [ ] **143** — [The service header's Connect menu says only "SSH isn't available": its reason lives in a hover-only tooltip](143.md) ← live `/qa-find-bugs` 2026-09-25 pass 163, journey 8. `service-detail-header.tsx:411-416` puts the reason in `title=`, and the Shell tab's only action (manage SSH keys) cannot help a Free service.
 
 - [ ] **144** — [A Key Value or Postgres placed in a project shows no project in its breadcrumb, only "Key Value red-…"](144.md) ← live `/qa-find-bugs` 2026-09-25 pass 165, journey 1. `dashboard-breadcrumbs.tsx` gives Project › Environment only to services; datastores fall back to type + raw id.
+
+- [ ] **145** — [Static-site rule errors name the row by its zero-based wire index ("Routes[1]") in a toast, with nothing marked in the table](145.md) ← live `/qa-find-bugs` 2026-09-25 pass 167, journey 9. There is no per-row validation, and the server's `routes[i]` reaches the user verbatim. Redirects, rewrites, and header rules all served correctly.
