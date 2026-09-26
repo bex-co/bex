@@ -127,7 +127,6 @@ Stop and give a final summary when any of these holds:
 - **Run-level block:** a ship failure you can't resolve, or the tree is in a state you shouldn't push. Per-item blocks do **not** stop the run — they get parked and the loop continues.
 - **Interrupt:** the user sends a new message, or the context budget is genuinely exhausted — you cannot fit another item's work. **Running for a long time is not an exit**, and neither is a queue that keeps growing; both are checkpoints. See below.
 
-<<<<<<< Updated upstream
 **Not exit conditions**, and never a reason to pause mid-drain: an item that is a record rather than a task; an item you yourself withdrew or filed earlier; a duplicate; an empty note; an item already fixed upstream; a verdict that feels unusual. Each of those has a row in the triage tables — apply it and keep going.
 
 Also **never** a reason to pause: **new work arriving while you drain.** A teammate session filing fresh milestones or notes into `<wN>` — uncommitted, half-written, or landing seconds ago — is the queue doing its job, not a hazard. A peer session showing `busy` against the same workstream changes nothing either. Refresh the queue, take the new items in order, and drain them. A backlog that grows during the run means the run continues; it does not mean the run stops to ask about it.
@@ -143,8 +142,6 @@ Two specific traps, both of which have actually happened:
 - **Re-surfacing parked blockers is a reminder, never a justification.** The final report is required to list every gate again, because a gate the user never reads is a gate that never clears. Listing them next to a decision to stop makes already-parked items look like live obstacles holding up the loop. They are not — they are parked precisely so the loop can continue past them.
 - **"This is unbounded" is not a finding.** A queue refilled by a concurrent worker, a backlog that outpaces you, a workstream that will not reach zero today — none of these is an exit condition. Note it in a checkpoint and take the next item.
 
-=======
->>>>>>> Stashed changes
 ## Guardrails
 
 - **Never ship red.** A failing test suite is a per-item block, not a footnote. `/ship`'s own gate backs this up — don't route around it.
