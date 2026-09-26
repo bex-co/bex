@@ -27,4 +27,4 @@ Syntax gotchas that break rendering: quote labels containing `(`, `)`, `[`, `{`,
 
 ## Output
 
-A single ` ```mermaid ` fenced block, followed by at most 2 sentences explaining the key dependency flow. If the user asked to put the diagram into a file, insert the verified block there instead.
+A single ` ```mermaid ` fenced block, followed by a brief explanation of the key dependency flow. If the user asked to put the diagram into a file, insert the verified block there instead.
