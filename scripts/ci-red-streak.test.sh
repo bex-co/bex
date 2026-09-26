@@ -111,6 +111,73 @@ else
   echo "ok   [unreadable input]"
 fi
 
+# (j) The 2026-09-22 deploy.yml stall, through the real fetch path with a stub
+# `gh`. deploy's three failures are spread among supersession cancels and other
+# workflows' runs, so the newest $LIMIT runs across ALL workflows hold only one
+# of them. The old global `gh run list --limit N` read a streak of 1 and stayed
+# silent; fetching per workflow sees all three.
+stub="$tmp/stub"
+mkdir -p "$stub"
+{
+  printf '['
+  m=59
+  for c in failure cancelled cancelled cancelled cancelled failure cancelled cancelled cancelled cancelled failure success; do
+    printf '{"name":"deploy","conclusion":"%s","status":"completed","event":"push","headSha":"d%02d","createdAt":"2026-09-22T00:%02d","url":"https://x/d%02d"},' "$c" "$m" "$m" "$m"
+    m=$((m - 1))
+    for _ in 1 2 3; do
+      printf '{"name":"busy","conclusion":"success","status":"completed","event":"push","headSha":"b%02d","createdAt":"2026-09-22T00:%02d","url":"https://x/b%02d"},' "$m" "$m" "$m"
+      m=$((m - 1))
+    done
+  done
+  printf '{"name":"busy","conclusion":"success","status":"completed","event":"push","headSha":"b00","createdAt":"2026-09-22T00:00","url":"https://x/b00"}]'
+} >"$stub/runs.json"
+cat >"$stub/gh" <<'STUB'
+#!/usr/bin/env bash
+# Minimal `gh` for the fetch path: `workflow list [--jq F]` and `run list [--workflow W] --limit N`.
+set -euo pipefail
+runs="$(dirname "$0")/runs.json"
+case "$1 $2" in
+  "workflow list")
+    shift 2
+    filter=.
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --jq) filter="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    jq -r "$filter" <<<'[{"id":"deploy","name":"deploy"},{"id":"busy","name":"busy"}]'
+    ;;
+  "run list")
+    shift 2
+    wf="" limit=20
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --workflow) wf="$2"; shift 2 ;;
+        --limit) limit="$2"; shift 2 ;;
+        --json | --branch) shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    jq --arg wf "$wf" --argjson n "$limit" \
+      '[.[] | select($wf == "" or .name == $wf)] | sort_by(.createdAt) | reverse | .[:$n]' "$runs"
+    ;;
+  *) echo "stub gh: unexpected $*" >&2; exit 1 ;;
+esac
+STUB
+chmod +x "$stub/gh"
+set +e
+out="$(PATH="$stub:$PATH" BEX_CI_RUN_LIMIT=15 bash "$SCRIPT" 2>&1)"
+rc=$?
+set -e
+if [ "$rc" != 1 ] || ! printf '%s' "$out" | grep -qF "**deploy** — 3 consecutive failures"; then
+  echo "FAIL [interleaved deploy streak]: exit=$rc want=1 naming deploy's 3-failure streak" >&2
+  echo "$out" | sed 's/^/    /' >&2
+  fails=$((fails + 1))
+else
+  echo "ok   [interleaved deploy streak]"
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "ci-red-streak self-test FAILED ($fails)" >&2
   exit 1
