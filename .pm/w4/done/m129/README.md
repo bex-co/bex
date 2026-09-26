@@ -1,6 +1,6 @@
 # w4 · m129 — A re-created service inherits the deleted service's Activity feed
 
-**Worker:** worker4 **Goal:** a service's activity feed and its outbound webhook deliveries describe operations performed on **that** service — identified by the row that cannot be reused — so deleting a service ends its history and creating one with a name someone used before starts an empty one. **Status:** blocked (t001–t008 done; t009 awaits deployment and production QA replay)
+**Worker:** worker4 **Goal:** a service's activity feed and its outbound webhook deliveries describe operations performed on **that** service — identified by the row that cannot be reused — so deleting a service ends its history and creating one with a name someone used before starts an empty one. **Status:** done (production replay passed 2026-09-26, `/qa-find-bugs` passes 190–191)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — the feed and the webhook payloads across REST/GraphQL/MCP/UI — **DONE** | 30m | w4/m129/t003, w4/m129/t004, w4/m129/t005 |
 | t007 | Simplify — `/simplify` over the code this milestone changed — **DONE** | 25m | w4/m129/t006 |
 | t008 | Test coverage — inherited history cannot come back, and a refused verb writes no event — **DONE** | 45m | w4/m129/t006 |
-| t009 | Closeout — close the milestone once the definition of done actually holds — **BLOCKED: deployment + production replay** | 15m | w4/m129/t008 |
+| t009 | Closeout — close the milestone once the definition of done actually holds — **DONE** | 15m | w4/m129/t008 |
 
 ## Definition of done
 
