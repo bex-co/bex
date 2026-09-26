@@ -347,9 +347,28 @@ func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, q L
 		// the caller (w1/m146).
 		return conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second))
 	})
-	if errors.Is(followErr, core.ErrLogsUnavailable) || errors.Is(followErr, core.ErrLogStoreUnavailable) {
-		msg, _ := json.Marshal(map[string]string{"error": followErr.Error()})
-		_ = conn.WriteMessage(websocket.TextMessage, msg)
+	// A named refusal goes out as one final Log-shaped line. The pinned Render
+	// CLI decodes every frame as a Log and ignores close reasons, so an
+	// {"error"} object read as a blank line and a bare close as a finished
+	// stream (w8/020). The text matches the SSE `event: error`.
+	if errors.Is(followErr, ErrBuildNotRunning) || errors.Is(followErr, core.ErrLogsUnavailable) || errors.Is(followErr, core.ErrLogStoreUnavailable) {
+		if payload, err := json.Marshal(toRenderLog(refusalLogEntry(followErr))); err == nil {
+			_ = conn.WriteMessage(websocket.TextMessage, payload)
+		}
+		_ = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
+	}
+}
+
+// refusalLogEntry is the platform `==>` line announcing why a tail ended.
+func refusalLogEntry(err error) LogEntry {
+	labels := map[string]string{"container": progressContainer}
+	if errors.Is(err, ErrBuildNotRunning) {
+		labels[LabelType] = LogTypeBuild
+	}
+	return LogEntry{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Message:   "==> " + err.Error(),
+		Labels:    labels,
 	}
 }
 
