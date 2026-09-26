@@ -127,3 +127,17 @@ The DoD allowed the platform-owned pods to go either way with a stated reason. T
 **Green:** `lego/operator` `make test` all packages; `lego/backend` `go test ./...` unaffected and green.
 
 **Not done — the live re-probe.** The DoD's bullets are `env | grep` checks inside a running container on a deployed fixture; there was no production access this session, so none has been run. Deferred to the next QA pass, which should re-run the `mendhak/http-https-echo` + `ECHO_INCLUDE_ENV_VARS=1` reproduction and expect **7** variables (4 user + `PORT` + the two Kubernetes ones), an empty `_SERVICE_HOST|_SERVICE_PORT|_PORT_[0-9]+_TCP` grep, no `CM_ACME_*`, and a still-working `<slug>:<port>` sibling call.
+
+## Live re-probe, pass 193 (2026-09-26, `/qa-find-bugs`, `muse.env` credentials): passes, with one doc correction
+
+The fixture was Free web service `qa-20260926-envx` (`srv-darsb51smc7s73cq5k10`, image `docker.io/mendhak/http-https-echo:35`, env `{QA_MARKER, OWN_VAR, HTTP_PORT=3000, ECHO_INCLUDE_ENV_VARS=1}`), deleted the same pass. `curl https://qa-20260926-envx.onbex.co/` → the `env` object had **21** keys:
+
+- the 4 user vars and `PORT`;
+- the image's own runtime vars: `HOME, HOSTNAME, PATH, PWD, SHLVL, NODE_VERSION, YARN_VERSION, HTTPS_PORT`;
+- the `kubernetes` master Service's set, **8** vars: `KUBERNETES_SERVICE_HOST, KUBERNETES_SERVICE_PORT, KUBERNETES_SERVICE_PORT_HTTPS, KUBERNETES_PORT, KUBERNETES_PORT_443_TCP{,_ADDR,_PORT,_PROTO}`.
+
+**Sibling enumeration: gone (PASS).** Filtering `_SERVICE_HOST|_SERVICE_PORT|_PORT_[0-9]+_TCP` matched only the `KUBERNETES_*` names, with no app, Postgres, or Key Value prefix. `CM_ACME_*` is absent (PASS). The 174-variable leak is fixed on production.
+
+**Correction:** the deferred note's expected total ("7 = 4 user + `PORT` + the two Kubernetes ones") and ADR004:158 ("The two Kubernetes variables…") undercount. The kubelet injects the master Service's **full** link set (8 vars) regardless of `enableServiceLinks`, and images add their own. Filed as `w4/153`.
+
+**Not probed:** the `<slug>:<port>` sibling call (echo-server cannot originate requests).

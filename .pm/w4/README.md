@@ -315,3 +315,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [ ] **151** — [The dashboard shows Blueprint errors without the line, column, or path the API already returns](151.md) ← live `/qa-find-bugs` 2026-09-26 pass 182 (read-only). `w8/019` added `errorDetails`, but no dashboard query selects it. Three renderers print bare strings.
 
 - [ ] **152** — [Private services run on the Free tier, which Render does not offer, and no ADR decides it (workers got that decision in `w6/025`)](152.md) ← live `/qa-find-bugs` 2026-09-26 pass 189. A private service defaulted to `free` while a worker defaulted to `starter`. Needs a decision: extend ADR030 §7, or record a divergence. Public unreachability verified.
+
+- [ ] **153** — [ADR004 says tenant pods keep "the two Kubernetes variables"; production shows the kubelet injects eight](153.md) ← `w4/m123` live re-probe, `/qa-find-bugs` 2026-09-26 pass 193. The m123 fix holds (no sibling or `CM_ACME_*` vars); only the documented count is wrong.
