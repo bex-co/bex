@@ -552,7 +552,7 @@ func (s *Service) previewConnectionConflict(ctx context.Context, tenantID, repo,
 // A caller with no resolved workspace (the store-less dev path) is skipped: it
 // has no workspace for a name to resolve against, and failing there would be an
 // answer about the environment rather than the manifest.
-func (s *Service) validateWorkspaceReferences(ctx context.Context, ir BlueprintIR, st parsedStack) []BlueprintValidationError {
+func (s *Service) validateWorkspaceReferences(ctx context.Context, source *BlueprintSource, ir BlueprintIR, st parsedStack) []BlueprintValidationError {
 	if s.Client == nil {
 		return nil
 	}
@@ -572,9 +572,34 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, ir BlueprintI
 				break
 			}
 		}
+		if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
+			return []BlueprintValidationError{blueprintLocatedError(source, msg, pointer)}
+		}
 		return []BlueprintValidationError{blueprintValidationError(ir, msg)}
 	}
 	return nil
+}
+
+// blueprintReferencePointer finds the first service envVars entry whose
+// fromDatabase/fromService names the resource the message quotes — the
+// resolver's error names the target, not the service that referenced it.
+func blueprintReferencePointer(ir BlueprintIR, msg string) string {
+	for _, resource := range ir.Resources {
+		if resource.Kind != BlueprintResourceService {
+			continue
+		}
+		envVars, _ := resource.Fields["envVars"].Value.([]any)
+		for i, raw := range envVars {
+			env, _ := raw.(map[string]any)
+			for _, key := range []string{"fromDatabase", "fromService"} {
+				ref, _ := env[key].(map[string]any)
+				if name, _ := ref["name"].(string); name != "" && strings.Contains(msg, fmt.Sprintf("%q", name)) {
+					return fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+				}
+			}
+		}
+	}
+	return ""
 }
 
 func blueprintDeclaredClaims(st parsedStack) map[string]bool {

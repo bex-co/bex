@@ -64,9 +64,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `019` — `blueprints validate` stops at the first semantic error, drops its line/column, leaks an inner `bad request:` (~1h) ← `/qa-find-bugs-cli` sweep 5, 2026-09-23
 - `020` — `bex logs --type build --tail` exits 0 with no reason when no build pod exists yet (queued) or anymore; the WebSocket path drops `ErrBuildNotRunning` (~1h) ← `/qa-find-bugs-cli` sweep 6, 2026-09-23
 - `021` — every 404 says "app not found" (a missing deploy reads as a missing service; `app not found: project: not found`) (~45m) ← `/qa-find-bugs-cli` sweep 7, 2026-09-23
+
+> `019.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweeps 5 and 8) and fixed 2026-09-25 — moved to `done/`. `blueprints validate` now reports every per-service semantic refusal (not the first), each located to its field or `envVars[i]` entry with line/column, and never with an inner `bad request:`; apply-path errors are unchanged. Compiler-plus-semantic aggregation (`b.yaml`) was left out as the note allowed.
 
 > `022.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweep 7) and fixed 2026-09-25 — moved to `done/`. An `imageUrl` trigger (`deploys create --image`, deploy hook `?imgURL=`, GraphQL/MCP) patched only the CR's projector-owned `spec.image`, so the projector restored the old image and the deploy closed `canceled`; `triggerFetched` now writes the row first, like `Rollback`.
 

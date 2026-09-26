@@ -640,6 +640,19 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
 	}
 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+	var refused blueprintResourceErrors
+	if errors.As(err, &refused) {
+		// Some declarations were refused; the services that parsed still get
+		// their own checks, which do not depend on the refused ones.
+		if svcErr := s.validateBlueprintServices(ctx, st); svcErr != nil {
+			var more blueprintResourceErrors
+			if !errors.As(svcErr, &more) {
+				return BlueprintValidation{}, svcErr
+			}
+			refused = append(refused, more...)
+		}
+		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
+	}
 	if err == nil {
 		err = s.resolveBlueprintRegistryCredentials(ctx, &st)
 	}
@@ -661,7 +674,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		// validateBlueprint is a can_view verb — running it here would either
 		// refuse a viewer's validate or weaken that gate. Recorded in ADR018's
 		// Blueprint row so a manifest author knows which checks are which.
-		if entries := s.validateWorkspaceReferences(ctx, ir, st); len(entries) > 0 {
+		if entries := s.validateWorkspaceReferences(ctx, source, ir, st); len(entries) > 0 {
 			return BlueprintValidation{Errors: entries}, nil
 		}
 	}
@@ -691,11 +704,87 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	if !errors.Is(err, core.ErrBadRequest) {
 		return BlueprintValidation{}, err
 	}
-	msg := err.Error()
-	if after, ok := strings.CutPrefix(msg, "bad request: "); ok {
-		msg = after
+	if errors.As(err, &refused) {
+		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
 	}
-	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, blueprintManifestCreateMessage(msg))}}, nil
+	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, blueprintManifestCreateMessage(blueprintValidationMessage(err)))}}, nil
+}
+
+// blueprintValidationMessage drops the ErrBadRequest sentinel text wherever a
+// wrap put it — "service \"x\": bad request: …" as well as a leading one. The
+// entry is already a validation error; the sentinel is transport detail.
+func blueprintValidationMessage(err error) string {
+	return strings.ReplaceAll(err.Error(), core.ErrBadRequest.Error()+": ", "")
+}
+
+// blueprintResourceValidationErrors turns per-resource refusals into entries
+// located from the IR: the failing field's line/column when the message names
+// one, else the declaration's own.
+func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, refused blueprintResourceErrors) []BlueprintValidationError {
+	out := make([]BlueprintValidationError, 0, len(refused))
+	for _, problem := range refused {
+		msg := blueprintManifestCreateMessage(blueprintValidationMessage(problem.err))
+		resource, ok := blueprintIRResource(ir, problem.kind, problem.name)
+		if !ok {
+			out = append(out, blueprintValidationError(ir, msg))
+			continue
+		}
+		pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
+		if i, ok := blueprintEnvVarIndex(resource, msg); ok {
+			pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+		}
+		out = append(out, blueprintLocatedError(source, msg, pointer))
+	}
+	return out
+}
+
+var blueprintEnvKeyRE = regexp.MustCompile(`envVars\["([^"]+)"\]`)
+
+// blueprintEnvVarIndex resolves a message naming envVars["KEY"] to that entry.
+func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) {
+	match := blueprintEnvKeyRE.FindStringSubmatch(msg)
+	if match == nil {
+		return 0, false
+	}
+	envVars, _ := resource.Fields["envVars"].Value.([]any)
+	for i, raw := range envVars {
+		if env, _ := raw.(map[string]any); env["key"] == match[1] {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+func blueprintIRResource(ir BlueprintIR, kind BlueprintResourceKind, name string) (BlueprintResourceIR, bool) {
+	name = strings.TrimSpace(name)
+	for _, resource := range ir.Resources {
+		if resource.Kind == kind && resource.Name == name {
+			return resource, true
+		}
+	}
+	return BlueprintResourceIR{}, false
+}
+
+// blueprintLocatedError is an entry for the JSON pointer: its display path and
+// the nearest recorded source location at or above it.
+func blueprintLocatedError(source *BlueprintSource, msg, pointer string) BlueprintValidationError {
+	entry := BlueprintValidationError{Error: msg}
+	if path := blueprintDisplayPath(pointer); path != "" {
+		entry.Path = &path
+	}
+	if source == nil {
+		return entry
+	}
+	location := lookupBlueprintLocation(pointer, source.Locations)
+	if location.Line > 0 {
+		line := location.Line
+		entry.Line = &line
+	}
+	if location.Column > 0 {
+		column := location.Column
+		entry.Column = &column
+	}
+	return entry
 }
 
 // blueprintManifestCreateMessage maps create-API field names onto the keys
@@ -1761,7 +1850,7 @@ func blueprintErrorField(message string) string {
 			return "." + field
 		}
 	}
-	if strings.Contains(message, " env ") || strings.Contains(message, "env var") {
+	if strings.Contains(message, " env ") || strings.Contains(message, "env var") || strings.Contains(message, "envVars[") {
 		return ".envVars"
 	}
 	return ""

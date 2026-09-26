@@ -1306,17 +1306,54 @@ func (s *Service) resolveBlueprintRegistryCredentials(ctx context.Context, st *p
 // ownership needs the configured base domain, so it lives here rather than in
 // the context-free YAML parser and is shared by ValidateBlueprint.
 func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack) error {
+	var problems blueprintResourceErrors
 	for _, svc := range st.services {
-		desired, err := specFromCreate(svc.req)
-		if err != nil {
-			return fmt.Errorf("service %q: %w", svc.req.Name, err)
+		err := s.validateBlueprintService(ctx, svc)
+		if err == nil {
+			continue
 		}
-		if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
-			return fmt.Errorf("service %q: %w", svc.req.Name, err)
+		if !errors.Is(err, core.ErrBadRequest) {
+			return err // not a manifest problem; nothing to aggregate
 		}
+		problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: svc.req.Name, err: err})
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+	return problems
+}
+
+func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService) error {
+	desired, err := specFromCreate(svc.req)
+	if err != nil {
+		return fmt.Errorf("service %q: %w", svc.req.Name, err)
+	}
+	if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
+		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
 	return nil
 }
+
+// blueprintResourceError ties a semantic-stage refusal to the declaration that
+// caused it, so validation can report a located entry per resource.
+type blueprintResourceError struct {
+	kind BlueprintResourceKind
+	name string
+	err  error
+}
+
+func (e blueprintResourceError) Error() string { return e.err.Error() }
+func (e blueprintResourceError) Unwrap() error { return e.err }
+
+// blueprintResourceErrors is every independent per-resource refusal, in
+// declaration order. As an error it reads and unwraps as the first, so apply
+// reports exactly what it did when these checks stopped at the first failure;
+// validation expands the whole list (ADR049: every independently actionable
+// error it can safely discover).
+type blueprintResourceErrors []blueprintResourceError
+
+func (e blueprintResourceErrors) Error() string { return e[0].Error() }
+func (e blueprintResourceErrors) Unwrap() error { return e[0] }
 
 // applyBlueprintGroupings resolves or creates the Project/Environment rows
 // named by the canonical Render Blueprint nesting. It runs after the stateless
@@ -1794,14 +1831,16 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		refVars []bexEnvVar // fromDatabase / fromService — resolved in pass 2
 	}
 	pendings := make([]pending, 0, len(services))
+	var problems blueprintResourceErrors
 	for _, a := range services {
 		if isKeyValueType(a.value.Type) {
 			kv, err := parseKeyValue(a.value)
-			if err != nil {
-				return parsedStack{}, err
+			if err == nil {
+				err = registerUniqueName(kv.name, idx.names)
 			}
-			if err := registerUniqueName(kv.name, idx.names); err != nil {
-				return parsedStack{}, err
+			if err != nil {
+				problems = append(problems, blueprintResourceError{kind: BlueprintResourceKeyValue, name: a.value.Name, err: err})
+				continue
 			}
 			kv.grouping = a.grouping
 			kv.ungrouped = a.ungrouped
@@ -1810,15 +1849,16 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			continue
 		}
 		req, se, err := parseService(overrides, a.value)
-		if err != nil {
-			return parsedStack{}, err
+		if err == nil {
+			err = registerUniqueName(req.Name, idx.names)
 		}
-		if err := registerUniqueName(req.Name, idx.names); err != nil {
-			return parsedStack{}, err
+		var credName string
+		if err == nil {
+			credName, err = blueprintRegistryCredentialName(a.value)
 		}
-		credName, err := blueprintRegistryCredentialName(a.value)
 		if err != nil {
-			return parsedStack{}, err
+			problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: a.value.Name, err: err})
+			continue
 		}
 		pendings = append(pendings, pending{
 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
@@ -1832,6 +1872,17 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			}
 			idx.servicePorts[req.Name] = port
 		}
+	}
+
+	if len(problems) > 0 {
+		// Pass 2 resolves references across declarations, so with one already
+		// refused it could only add cascades ("unknown service"). Return the
+		// services that did parse, unresolved, so validation can still run
+		// their own per-service checks; apply stops on the error.
+		for _, p := range pendings {
+			st.services = append(st.services, p.svc)
+		}
+		return st, problems
 	}
 
 	// Pass 2: classify each pending service's deferred references now that
