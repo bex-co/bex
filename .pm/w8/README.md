@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m42** — [Unstick production deploys: fix the flaky gates holding `deploy.yml` red since 2026-09-22](m42/README.md) (7 tasks) ← from `/qa-find-bugs-cli` sweep 5, 2026-09-23 (a sandbox copy 404 traced to production 32h+ behind `main`: 1 success / 20 failures / 39 supersession cancels in the last 60 `deploy.yml` runs; gates failed on a vitest worker-start timeout/hang, `env-groups.test.tsx` 10 s timeouts, and the OpenSandbox `Pool scale` envtest timeout). **Immediate unblock (human decision):** re-run `deploy.yml` on current `main`
+
 - [x] **m39** — [Complete Blueprint execution fencing](done/m39/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 1 — done 2026-09-10
 - [x] **m40** — [Make Blueprint ownership reliable during apply](done/m40/README.md) (8 tasks; 3h20m implementation, 5h20m total) ← approved 2026-09-09 pm-brainstorm proposal 2 — done 2026-09-11
 - [x] **m41** — [Bind manual Blueprint sync to its reviewed source](done/m41/README.md) (8 tasks; 2h50m implementation, 4h50m total) ← approved 2026-09-09 pm-brainstorm proposal 3 — done 2026-09-11
@@ -62,7 +64,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-_(empty — `013`–`018` implemented 2026-09-15 and moved to `done/`)_
+- `019` — `blueprints validate` stops at the first semantic error, drops its line/column, leaks an inner `bad request:` (~1h) ← `/qa-find-bugs-cli` sweep 5, 2026-09-23
+- `020` — `bex logs --type build --tail` exits 0 with no reason when no build pod exists yet (queued) or anymore; the WebSocket path drops `ErrBuildNotRunning` (~1h) ← `/qa-find-bugs-cli` sweep 6, 2026-09-23
+- `021` — every 404 says "app not found" (a missing deploy reads as a missing service; `app not found: project: not found`) (~45m) ← `/qa-find-bugs-cli` sweep 7, 2026-09-23
+- `022` — **major:** deploying a specific image (`deploys create --image`, deploy hook `?imgURL=`, GraphQL/MCP `imageUrl`) always ends `canceled`: `triggerFetched` patches only the CR's projector-owned `spec.image`, never the row (`Rollback` is row-first) (~1h) ← `/qa-find-bugs-cli` sweep 7, 2026-09-23
 
 > `018.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`, sweep 4) — moved to `done/`. Persistent state (`installation_id`, notice marker) lived in `~/.render/state` because `BEX_CLI_CONFIG_DIR` was mapped to `RENDER_CLI_CONFIG_PATH`. Now DIR maps to `RENDER_CLI_CONFIG_DIR` (default `$HOME/.bex`); new installs mint a bex-owned id rather than copying Render's.
 
