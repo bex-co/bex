@@ -15,6 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m136** — [Datastore and deploy log viewers stop at the newest 100 lines with no warning](m136/README.md) (7 tasks, ~3h 10m) ← live `/qa-find-bugs` 2026-09-25 pass 159 (w4-targeted, `muse.env` credentials), journeys 12 + 7. `w4/m107` gave only the service Logs tab paging and a truncation notice. The Key Value and Postgres Logs tabs still issue one `limit:100` query and ignore `hasMore`. On `beancount-forum-db`, "Last 24 hours" reaches only 01:05Z–05:00Z (API `hasMore:true`), with no notice and no load-older control, and a Key Value's creation logs become unreachable once the hour holds >100 lines. Deploy logs are reasoned to share the gap (t002 verifies).
 - [x] **m133** — [Report resources detached by blueprint sync](done/m133/README.md) (6 tasks) ← promoted from w4/119; m125 fixed claim release, detach notices remain.
 - [x] **m132** — [Make unapplied Postgres overrides visible](done/m132/README.md) (6 tasks) ← promoted from w4/115; saved configuration gains runtime diagnostics across API and dashboard.
 - [x] **m131** — [Service placement reads reflect committed moves](done/m131/README.md) (7 tasks) ← promoted from w4/109. Managed Get/List reads committed placement in one bounded query; three-surface, authorization and real-Postgres regressions pass. REST omission remains compatible with the pinned Render schema.
@@ -287,3 +288,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **138** — [Refresh cron Recent Runs while the page stays open](done/138.md) — page 1 now polls on the shared visible-tab cadence with the loaded tail held outside the cache entry, so a poll cannot truncate it; adds last-good retention on a failed refresh and drops a tail the refreshed head no longer joins rather than hiding a run mid-history. Live re-probe still owed.
 
 - [x] **139** — [Re-key restored environment drafts through the live allocator](done/139.md) — a restored row and a newly added one could share an id, and `updateRow` acts on every matching row, so one edit rewrote two and one delete removed two; restoration now re-keys through this mount's counter, preserving every other field. Live re-probe still owed.
+
+- [ ] **141** — [A Key Value restarting after a config change reports "creating", and "available" while it is down](141.md) ← live `/qa-find-bugs` 2026-09-25 pass 159, journey 12. `kvStatus` maps every non-Ready phase to `creating`, where Render has `config_restart`.
