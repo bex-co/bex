@@ -1204,9 +1204,12 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 // keep the pod silent for minutes in production, and a subscriber connecting
 // the moment its deploy opens must wait for the first line rather than receive
 // the terminal "no running build" event and give up right before the build
-// speaks. ErrBuildNotRunning is returned only when nothing is pending or
-// running — the honestly-terminal case (no build, or it already completed and
-// its history belongs to Loki). Each wait tick also re-reads the deploy row
+// speaks. With no pod at all it keeps waiting while the deploy row is still
+// open before or during its build (w8/020: a tail started while the deploy was
+// queued used to end in a second). ErrBuildNotRunning is returned only when
+// nothing is pending or running and the row is not building — the
+// honestly-terminal case (no build, or it already completed and its history
+// belongs to Loki). Each wait tick also re-reads the deploy row
 // through prog (nil-safe) so phase transitions narrate live while the pod is
 // still silent.
 func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressFollower, emit func(LogEntry) error) (corev1.Pod, []string, error) {
@@ -1247,11 +1250,11 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressF
 			// either a container starts or the phase turns terminal.
 			waiting = true
 		}
-		if !waiting {
-			return corev1.Pod{}, nil, ErrBuildNotRunning
-		}
 		if err := prog.emitReached(ctx, emit); err != nil {
 			return corev1.Pod{}, nil, err
+		}
+		if !waiting && !prog.buildOpen() {
+			return corev1.Pod{}, nil, ErrBuildNotRunning
 		}
 		select {
 		case <-ctx.Done():
