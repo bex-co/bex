@@ -31,8 +31,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       BEX_CI_STREAK_THRESHOLD: ${{ inputs.threshold || '3' }}
-      # Wide enough that a low-frequency workflow still has several runs in
-      # view, since a streak of 3 out of 3 is exactly the "shipped broken" case.
+      # Per workflow: wide enough that a busy workflow's streak survives its
+      # supersession cancels, and a low-frequency one still has several runs.
       BEX_CI_RUN_LIMIT: "100"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -54,7 +54,13 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 1.25.7
-          cache-dependency-path: ${{ steps.upstream.outputs.path }}/kubernetes/go.sum
+          # The persistent runner already keeps ~/go/pkg/mod, so the remote
+          # cache only re-extracted ~82k read-only files over identical copies
+          # (`tar: Cannot open: File exists`, 3+ min of disk I/O on the shared
+          # host) right before an envtest whose etcd writes then timed out
+          # (w8/m42 t003). Same choice as backend/operator; see
+          # docs/runbooks/runner-pool-relabel.md.
+          cache: false
       - name: Real-controller envtest suite
         working-directory: ${{ steps.upstream.outputs.path }}/kubernetes
         run: make test

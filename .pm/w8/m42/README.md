@@ -1,17 +1,17 @@
 # w8 · m42 — Unstick production deploys: fix the flaky gates that have held `deploy.yml` red since 2026-09-22
 
-**Worker:** worker8 **Goal:** `main` reaches production again on every push, and a stalled deploy is noticed in hours, not days. **Status:** todo
+**Worker:** worker8 **Goal:** `main` reaches production again on every push, and a stalled deploy is noticed in hours, not days. **Status:** in-progress
 
 ## Tasks (in order)
 
 | id   | title                                                                       | est | depends_on             |
 | ---- | --------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | Root-cause the dashboard vitest worker-start timeout and the 53-minute hang | 60m | —                      |
-| t002 | Root-cause the `env-groups.test.tsx` 10 s test timeouts under CI load       | 40m | —                      |
-| t003 | Root-cause the OpenSandbox `Pool scale` BeforeEach `Eventually` timeout     | 45m | —                      |
-| t004 | Make ci-red-streak see deploy.yml — fetch runs per workflow, not a global window | 40m | —                      |
-| t005 | Simplify                                                                    | 20m | t001, t002, t003, t004 |
-| t006 | Test coverage                                                               | 30m | t005                   |
+| t001 | Root-cause the dashboard vitest worker-start timeout and the 53-minute hang — **DONE** | 60m | —                      |
+| t002 | Root-cause the `env-groups.test.tsx` 10 s test timeouts under CI load — **DONE**       | 40m | —                      |
+| t003 | Root-cause the OpenSandbox `Pool scale` BeforeEach `Eventually` timeout — **DONE**     | 45m | —                      |
+| t004 | Make ci-red-streak see deploy.yml — fetch runs per workflow, not a global window — **DONE** | 40m | —                      |
+| t005 | Simplify — **DONE**                                                                    | 20m | t001, t002, t003, t004 |
+| t006 | Test coverage — **DONE**                                                               | 30m | t005                   |
 | t007 | Closeout                                                                    | 15m | t006                   |
 
 ## Definition of done

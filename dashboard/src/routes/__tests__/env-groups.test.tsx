@@ -435,7 +435,9 @@ describe("EnvGroupDetailPage", () => {
     const renameDialog = screen.getByRole("dialog");
     const name = within(renameDialog).getByLabelText("Group name");
     await user.clear(name);
-    await user.type(name, "shared-renamed");
+    // Paste, not per-keystroke type: each keystroke re-renders the whole detail
+    // page, which under a starved CI worker pushed this test past 10 s (w8/m42).
+    await user.paste("shared-renamed");
     await user.click(
       within(renameDialog).getByRole("button", { name: "Save name" }),
     );
@@ -455,7 +457,14 @@ describe("EnvGroupDetailPage", () => {
         name: "Delete Environment Group",
       }),
     ).toBeDisabled();
-    await user.type(confirm, "sudo delete env group shared");
+    await user.click(confirm);
+    await user.paste("sudo delete env group");
+    expect(
+      within(deleteDialog).getByRole("button", {
+        name: "Delete Environment Group",
+      }),
+    ).toBeDisabled();
+    await user.paste(" shared");
     await user.click(
       within(deleteDialog).getByRole("button", {
         name: "Delete Environment Group",
