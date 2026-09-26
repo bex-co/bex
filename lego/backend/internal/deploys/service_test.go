@@ -415,6 +415,9 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 	}
 	if _, err := svc.Get(context.Background(), "web", "dep-doesnotexist"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("unknown deploy: want core.ErrNotFound, got %v", err)
+	} else if err.Error() != "deploy not found" {
+		// The service exists; the message must name what is missing (w8/021).
+		t.Errorf("unknown deploy message = %q, want %q", err.Error(), "deploy not found")
 	}
 }
 

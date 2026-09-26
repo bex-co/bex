@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand/v2"
+	"strings"
 	"sync"
 	"time"
 
@@ -79,7 +80,12 @@ var (
 func MapError(err error) error {
 	switch {
 	case errors.Is(err, ErrNotFound):
-		return fmt.Errorf("%w: %v", core.ErrNotFound, err)
+		// "project: not found" → "project not found"; anything less regular
+		// keeps the neutral sentinel rather than a doubled "not found: …".
+		if kind, ok := strings.CutSuffix(err.Error(), ": "+ErrNotFound.Error()); ok && kind != "" && !strings.Contains(kind, ":") {
+			return core.NotFound(kind)
+		}
+		return core.ErrNotFound
 	case errors.Is(err, ErrConflict):
 		return fmt.Errorf("%w: %v", core.ErrConflict, err)
 	case errors.Is(err, ErrInvalid):
