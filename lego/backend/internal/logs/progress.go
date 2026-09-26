@@ -74,10 +74,15 @@ type DeployProgress struct {
 // label-less Apps simply resolve to no rows.
 type DeployProgressSource func(ctx context.Context, resource string, end time.Time) ([]DeployProgress, error)
 
-// deployStatusQueued is store.DeployQueued. The logs domain stays store-free
-// (DeployProgress carries the status as a plain string), so the one value the
-// narration branches on is restated here rather than imported.
-const deployStatusQueued = "queued"
+// These are store.DeployCreated/DeployQueued/DeployBuildInProgress. The logs
+// domain stays store-free (DeployProgress carries the status as a plain
+// string), so the values the tail branches on are restated here rather than
+// imported.
+const (
+	deployStatusCreated         = "created"
+	deployStatusQueued          = "queued"
+	deployStatusBuildInProgress = "build_in_progress"
+)
 
 // buildWait is the App's CURRENT reason for a not-yet-running build, read from
 // the `Ready` condition the operator writes (`BuildQueued` for every
@@ -409,6 +414,22 @@ type progressFollower struct {
 	resource string
 	pc       progressContext
 	emitted  map[string]bool
+	status   string // the followed deploy row's status at the last read
+}
+
+// buildOpen reports that the followed deploy has not finished building: its
+// row is still created/queued/build_in_progress. A build tail with no pod yet
+// (the registry-credentials wait, the workspace/cluster slot caps, the gap
+// before the Job exists) waits on it rather than calling the build over.
+func (f *progressFollower) buildOpen() bool {
+	if f == nil {
+		return false
+	}
+	switch f.status {
+	case deployStatusCreated, deployStatusQueued, deployStatusBuildInProgress:
+		return true
+	}
+	return false
 }
 
 // newProgressFollower returns nil when no source is wired — every method is
@@ -452,6 +473,7 @@ func (f *progressFollower) emitReached(ctx context.Context, emit func(LogEntry) 
 	if !f.q.keepPod(d.ID) {
 		return nil
 	}
+	f.status = d.Status
 	f.refreshWait(ctx, d)
 	for _, e := range progressLines(d, f.pc) {
 		// logID is the adapters' stable line identity — reusing it here keeps

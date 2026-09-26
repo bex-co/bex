@@ -64,8 +64,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `020` — `bex logs --type build --tail` exits 0 with no reason when no build pod exists yet (queued) or anymore; the WebSocket path drops `ErrBuildNotRunning` (~1h) ← `/qa-find-bugs-cli` sweep 6, 2026-09-23
 - `021` — every 404 says "app not found" (a missing deploy reads as a missing service; `app not found: project: not found`) (~45m) ← `/qa-find-bugs-cli` sweep 7, 2026-09-23
+
+> `020.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweep 6) and fixed 2026-09-25 — moved to `done/`. A build tail with no pod now waits while its deploy row is still `created`/`queued`/`build_in_progress`, and the WebSocket path ends a refused tail with a Log-shaped `==> no running build is available to follow` line instead of closing silently.
 
 > `019.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweeps 5 and 8) and fixed 2026-09-25 — moved to `done/`. `blueprints validate` now reports every per-service semantic refusal (not the first), each located to its field or `envVars[i]` entry with line/column, and never with an inner `bad request:`; apply-path errors are unchanged. Compiler-plus-semantic aggregation (`b.yaml`) was left out as the note allowed.
 
