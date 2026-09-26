@@ -295,3 +295,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [ ] **142** — [Custom-domain copy ignores the pending state: "without at least one custom domain" while one is listed, and a delete that removes an Ingress that never existed](142.md) ← live `/qa-find-bugs` 2026-09-25 pass 162, journey 5. The subdomain guard requires a verified domain, but its message says any domain and leaks `RenderSubdomainPolicy`. The delete dialog is state-blind.
 
 - [ ] **143** — [The service header's Connect menu says only "SSH isn't available": its reason lives in a hover-only tooltip](143.md) ← live `/qa-find-bugs` 2026-09-25 pass 163, journey 8. `service-detail-header.tsx:411-416` puts the reason in `title=`, and the Shell tab's only action (manage SSH keys) cannot help a Free service.
+
+- [ ] **144** — [A Key Value or Postgres placed in a project shows no project in its breadcrumb, only "Key Value red-…"](144.md) ← live `/qa-find-bugs` 2026-09-25 pass 165, journey 1. `dashboard-breadcrumbs.tsx` gives Project › Environment only to services; datastores fall back to type + raw id.
