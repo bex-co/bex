@@ -317,3 +317,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [ ] **152** — [Private services run on the Free tier, which Render does not offer, and no ADR decides it (workers got that decision in `w6/025`)](152.md) ← live `/qa-find-bugs` 2026-09-26 pass 189. A private service defaulted to `free` while a worker defaulted to `starter`. Needs a decision: extend ADR030 §7, or record a divergence. Public unreachability verified.
 
 - [ ] **153** — [ADR004 says tenant pods keep "the two Kubernetes variables"; production shows the kubelet injects eight](153.md) ← `w4/m123` live re-probe, `/qa-find-bugs` 2026-09-26 pass 193. The m123 fix holds (no sibling or `CM_ACME_*` vars); only the documented count is wrong.
+
+- [ ] **154** — [After `w8/021`, a missing job, env var, secret file, or custom domain on a real service still reads as a bare "not found"](154.md) ← live `/qa-find-bugs` 2026-09-26 pass 195 (read-only). Deploy, project, and blueprint misses are now named; child misses on an existing service are not.
