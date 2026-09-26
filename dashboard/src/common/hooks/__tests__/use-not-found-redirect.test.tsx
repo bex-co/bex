@@ -82,7 +82,7 @@ describe("useNotFoundRedirect (w9/m55)", () => {
 // and /webhook.
 describe("resourceNotFound / resourceFailed (w6/m44)", () => {
   const resource = { id: "srv-1" };
-  const notFoundErr = new Error("app not found");
+  const notFoundErr = new Error("not found");
   const outage = new Error("Failed to fetch");
 
   it("a dead id is not-found even though the backend reports it as an error", () => {
@@ -133,7 +133,7 @@ describe("resourceUnauthenticated (w3/m80)", () => {
     response: new Response("no", { status: 502 }),
     bodyText: "no",
   });
-  const notFoundErr = new Error("app not found");
+  const notFoundErr = new Error("not found");
 
   it("claims a 401 and takes it away from resourceFailed", () => {
     expect(resourceUnauthenticated(null, false, unauthorized)).toBe(true);

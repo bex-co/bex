@@ -363,12 +363,12 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 	}
 	appID := appStoreID(a)
 	if appID == "" {
-		return DeployView{}, core.ErrNotFound
+		return DeployView{}, core.NotFound("deploy")
 	}
 	d, err := s.Store.GetDeploy(ctx, appID, deployID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return DeployView{}, core.ErrNotFound
+			return DeployView{}, core.NotFound("deploy")
 		}
 		return DeployView{}, err
 	}
@@ -776,12 +776,12 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	}
 	appID := appStoreID(a)
 	if appID == "" {
-		return DeployView{}, core.ErrNotFound
+		return DeployView{}, core.NotFound("deploy")
 	}
 	d, err := s.Store.GetDeploy(ctx, appID, deployID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return DeployView{}, core.ErrNotFound
+			return DeployView{}, core.NotFound("deploy")
 		}
 		return DeployView{}, err
 	}
@@ -895,7 +895,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	target, err := s.Store.GetDeploy(ctx, appID, deployID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return DeployView{}, core.ErrNotFound
+			return DeployView{}, core.NotFound("deploy")
 		}
 		return DeployView{}, err
 	}

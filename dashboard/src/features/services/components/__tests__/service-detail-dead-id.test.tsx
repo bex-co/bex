@@ -13,7 +13,7 @@ import type { UseServerResult } from "@/features/services/hooks/use-server";
 // w6/m44: `/services/<dead-id>` must go back to redirecting home, and a genuine
 // backend failure must still keep the user on the inline retry state. The two
 // branches differ only in the error bex-api reports — a dead id is answered with
-// `server: null` PLUS `errors: [{message: "app not found"}]` — so a layout that
+// `server: null` PLUS `errors: [{message: "not found"}]` — so a layout that
 // tests `!error` alone renders a fully-chromed ghost service for a resource that
 // does not exist (the regression of w9/m55 this milestone closes).
 
@@ -103,7 +103,7 @@ beforeEach(() => {
 
 describe("service detail, dead id (w6/m44 — regression of w9/m55)", () => {
   it("redirects home when bex-api reports the id as not found", async () => {
-    serverState.error = new Error("app not found");
+    serverState.error = new Error("not found");
     const router = renderDetail();
 
     expect(await screen.findByText("home page")).toBeInTheDocument();
@@ -116,12 +116,12 @@ describe("service detail, dead id (w6/m44 — regression of w9/m55)", () => {
   });
 
   // w3/m81: once a service's deletion is accepted, bex-api returns the SAME
-  // "app not found" for its by-id read that a never-existed id gets — so the
+  // "not found" for its by-id read that a never-existed id gets — so the
   // detail route lands on the existing not-found path (redirect + "was deleted")
   // instead of rendering `phase: Deleting` plus a dead URL. This pins that the
   // deleting-service contract is served by the not-found branch, not a new one.
   it("redirects with the deleted toast when a deleting service reads not-found", async () => {
-    serverState.error = new Error("app not found");
+    serverState.error = new Error("not found");
     const router = renderDetail();
 
     expect(await screen.findByText("home page")).toBeInTheDocument();

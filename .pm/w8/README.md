@@ -64,7 +64,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `021` — every 404 says "app not found" (a missing deploy reads as a missing service; `app not found: project: not found`) (~45m) ← `/qa-find-bugs-cli` sweep 7, 2026-09-23
+
+> `021.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweep 7) and fixed 2026-09-25 — moved to `done/`. `core.ErrNotFound` now reads `not found`, store misses name their entity through `store.MapError` (`project not found`, `deploy not found`), and deploys lookups return `deploy not found`; status codes and `id: not_found` are unchanged.
 
 > `020.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweep 6) and fixed 2026-09-25 — moved to `done/`. A build tail with no pod now waits while its deploy row is still `created`/`queued`/`build_in_progress`, and the WebSocket path ends a refused tail with a Log-shaped `==> no running build is available to follow` line instead of closing silently.
 

@@ -9,7 +9,7 @@ import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
  * predicate every detail page feeds `useNotFoundRedirect`.
  *
  * A dead id is not a silent null. bex-api answers `server(id: "<dead>")` with
- * `data.server = null` AND an `errors` entry saying why (`app not found`), so a
+ * `data.server = null` AND an `errors` entry saying why (`not found`), so a
  * page that reads a bare `!error` treats every deleted resource as an outage and
  * never redirects. Both halves are needed: settled-and-empty, and the error —
  * if any — is a not-found one.

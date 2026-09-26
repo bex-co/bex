@@ -179,7 +179,7 @@ func PageArgs(args graphql.FieldConfigArgument) graphql.FieldConfigArgument {
 // inherits the fix rather than the bug — including the hand-written
 // `&graphql.Field{Resolve: ...}` literals that never go through KeyVerb. The
 // error itself is passed through untouched, so the response still carries why
-// (`app not found`) and REST/MCP, which never see the executor, are unaffected.
+// (`not found`) and REST/MCP, which never see the executor, are unaffected.
 func NilOnError(schema *graphql.Schema) {
 	for name, t := range schema.TypeMap() {
 		obj, ok := t.(*graphql.Object)
