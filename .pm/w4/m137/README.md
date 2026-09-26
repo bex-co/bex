@@ -9,7 +9,8 @@
 | t001 | Key Value: `kvStatus` distinguishes a restart from creation, and a stale Ready from a live one | 30m | —                |
 | t002 | Postgres: `dbStatus` distinguishes a restart from creation                                     | 30m | —                |
 | t003 | Dashboard: map the restart status on both datastores, and name the restart in KV config copy   | 30m | t001, t002       |
-| t004 | Render parity across REST / GraphQL / MCP / UI                                                | 20m | t003             |
+| t008 | Resume reports "available" before the store serves, and a config save never fast-polls the header | 30m | t001, t003 |
+| t004 | Render parity across REST / GraphQL / MCP / UI                                                | 20m | t003, t008             |
 | t005 | Simplify                                                                                      | 15m | t004             |
 | t006 | Test coverage                                                                                 | 30m | t004             |
 | t007 | Closeout                                                                                      | 10m | t006             |
@@ -20,6 +21,7 @@ Each bullet is a probe that was run at filing and can be repeated on production 
 
 - **Key Value config change.** Create a Free public Key Value and wait for Available. Poll `redis-cli --tls --sni <host> -u <external URL> CONFIG GET maxmemory-policy` and GraphQL `keyValue(id:){status}` every 4s, then change Maxmemory Policy. While `redis-cli` reports `SSL_connect failed`, status is `config_restart` (UI: "Restarting"), never `creating`, and never `available`. At filing (pass 159, `red-darktcjbdpcs73f5eha0`, times UTC): status was `available` from 04:57:43 to :57 and `creating` from 04:58:01 to :17, while the store was unreachable from 04:57:43 to 04:58:22.
 - **Postgres manual restart.** Create a Free public Postgres, poll `psql "<external URL>" -c 'select 1'` (with `PGSSLROOTCERT` set to the downloaded CA) and GraphQL `database(id:){status}` every 3–4s, then Restart Database. While psql is refused, status is the same restart value, never `creating`. At filing (pass 160, `dpg-darl85bthimc73a1m01g`): `creating` in both UI and GraphQL from 05:17:32 to 05:18:19, and psql refused from 05:17:35 to 05:18:16.
+- **Resume and config saves tell the truth (t008).** After Resume, status stays off `available` until `redis-cli` answers (pass 166: `available` from 06:14:10Z while unreachable until 06:14:28Z). After a Persistence Mode or Maxmemory save, the open detail page shows the restart without a reload (pass 166: GraphQL `creating` 06:15:44–06:16:01Z while the page read "Available" throughout).
 - **Creation still says creating.** A brand-new store of either kind reports `creating` until its first Ready (the control case, observed correct in both passes).
 - **The dashboard never shows "Unknown" for the new value.** List rows, project pages, and the detail header all label it.
 
