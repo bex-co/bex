@@ -1,6 +1,6 @@
 # w8 · m42 — Unstick production deploys: fix the flaky gates that have held `deploy.yml` red since 2026-09-22
 
-**Worker:** worker8 **Goal:** `main` reaches production again on every push, and a stalled deploy is noticed in hours, not days. **Status:** in-progress
+**Worker:** worker8 **Goal:** `main` reaches production again on every push, and a stalled deploy is noticed in hours, not days. **Status:** blocked
 
 ## Tasks (in order)
 
