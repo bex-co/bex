@@ -9,9 +9,9 @@ allowed-tools: Bash(git:*), Bash(docker:*), Bash(ssh:*), Bash(scp:*), Bash(curl:
 
 # Task: deploy a local checkout to prod Hetzner (manual image-import runbook)
 
-**There is no build-from-git-in-cluster shortcut.** `App.spec.repo` + the operator's `build.Build()` (`lego/operator/internal/build/build.go`) is unimplemented in prod: the deployed operator image is `distroless/static:nonroot` (`lego/Dockerfile`) with no `git`/`docker`/`pack` binaries and no volumes (`lego/operator/config/manager/manager.yaml`). The original demo built locally and `ctr`-imported by hand (see `docs/ADR004-app-deployment.md`). So this skill runs `docs/ADR004-app-deployment.md`'s manual runbook end-to-end. Do **not** use the `restart` verb as a substitute for a deploy — it only rolls pods on the App's existing cached `spec.image` (see `app_controller.go:120`); it never rebuilds anything.
+Use this runbook only when the code to deploy exists on local disk and not in Git (uncommitted or unpushed work). Committed code goes through the operator's in-cluster build (BuildKit/kpack Jobs, `lego/operator/internal/build/`), which this skill bypasses by running `docs/ADR004-app-deployment.md`'s manual image-import runbook end-to-end. Do **not** use the `restart` verb as a substitute for a deploy — it only rolls pods on the App's existing `spec.image`; it never rebuilds anything.
 
-This _is_ a genuine build-from-local-disk flow (unlike the old, wrong version of this skill): the image is built from whatever is on disk in `$ARGUMENTS`'s repo path right now, not from `origin/main`. If you want "latest remote main" instead, `git pull --ff-only` first.
+The image is built from whatever is on disk in `$ARGUMENTS`'s repo path right now, not from `origin/main`. If you want "latest remote main" instead, `git pull --ff-only` first.
 
 ## Step 0 — Confirm scope with the user before touching prod
 
@@ -19,7 +19,7 @@ This SSHes into a live Hetzner node and patches a running App CR — state a one
 
 ## Step 1 — Fetch the app-cluster kubeconfig (self-managed, no infra node)
 
-Since the w1/m19.1 pivot there is no mgmt cluster — `scripts/fetch-app-kubeconfig.sh` discovers a control-plane node via the hcloud API (label `caph-cluster-bex`) and SSH-fetches `/etc/kubernetes/admin.conf`:
+There is no management cluster — `scripts/fetch-app-kubeconfig.sh` discovers a control-plane node via the hcloud API (label `caph-cluster-bex`) and SSH-fetches `/etc/kubernetes/admin.conf`:
 
 ```bash
 # from the bex repo root (where this command runs)
@@ -82,7 +82,7 @@ KUBECONFIG=/tmp/bex-app.kubeconfig kubectl get app <app-name>   # PHASE Running,
 curl -s https://<app-name>.onbex.co/ | grep -i '<something only in the new build>'
 ```
 
-A `200` alone doesn't prove anything — grep for content that only exists in the new commit (e.g. the new blog post title, a changed string). This is the step that actually confirms a deploy happened, unlike the old skill's mistake of trusting a `restart` call's `200`.
+A `200` alone doesn't prove anything — grep for content that only exists in the new commit (e.g. the new blog post title, a changed string). This is the step that actually confirms a deploy happened.
 
 ## Step 7 — Report
 

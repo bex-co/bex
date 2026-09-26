@@ -95,14 +95,14 @@ What is **not** a bug: upstream Ory Elements cosmetics, anything in `.pm/DO_NOT_
 
 ## Phase 3 — Triage
 
-Reproduce every candidate at least once from a fresh page load before believing it. Four traps this hunt actually fell into — check each before you write a finding down:
+Reproduce every candidate at least once from a fresh page load before believing it. Four traps produce false findings — check each before you write a finding down:
 
 - **Your own sweep rate is not a user's.** Navigating dozens of pages back to back drains the `BEX_RATE_LIMIT` bucket (500/min, keyed on the caller identity) and every later page starts returning `429 RATE_LIMITED`. Before blaming the product for throttling, idle 30–60s and redo the journey at human pace with pauses. Only a 429 that survives that is real.
 - **Accessibility heuristics lie.** A DOM scan for "button with no innerText and no aria-label" flags every control labelled by a sibling `<label for>`. Re-check with the real accessibility tree — `await page.locator('main').ariaSnapshot()` — and keep only controls that come back genuinely unnamed.
 - **A tab that redirects is not a broken tab.** `/services/<id>/headers` and `/redirects` land on `/settings` because those are static-site surfaces; identical page sizes across URLs usually means a deliberate redirect, so check `location.pathname` before calling it a rendering bug.
 - **Non-browser clients hit different infrastructure.** `api.bex.co` sits behind Cloudflare, which answers a `Python-urllib/*` User-Agent with `403 error code 1010`. Probe the API from inside the page (`page.evaluate` + `fetch(..., {credentials:'include'})`), not from a bare script, or you will file a bot-protection response as an API bug.
 
-When the UI looks wrong, query the API directly from the page before concluding where the bug lives — this hunt's main finding only became clear from the raw GraphQL response, which showed the backend returning an all-empty object where the UI merely looked confused. For each: exact steps, expected vs actual, evidence paths, and severity — **blocker** (a core hosting journey cannot be completed), **major** (completes but the product misleads or loses data), **minor** (cosmetic / copy / polish). Drop what you cannot reproduce; note it as unreproduced rather than filing it.
+When the UI looks wrong, query the API directly from the page before concluding where the bug lives — the raw GraphQL response shows whether the backend returned bad data or the UI mishandled good data. For each: exact steps, expected vs actual, evidence paths, and severity — **blocker** (a core hosting journey cannot be completed), **major** (completes but the product misleads or loses data), **minor** (cosmetic / copy / polish). Drop what you cannot reproduce; note it as unreproduced rather than filing it.
 
 ## Phase 4 — Research the fix
 
@@ -159,7 +159,7 @@ Do this for every finding, and record the outcome in its record:
 2. Re-read `.pm/DO_NOT_DO.md`. A finding that matches an anti-goal is not filed; say so in the report with the item it matches.
 3. Scan open milestones everywhere, not just the target workstream: `find .pm -path '*/done' -prune -o -name README.md -print`.
 4. Check whether the fix already landed but is not deployed: `git log --oneline -40 -- dashboard lego` plus a targeted `git log -S"<symbol>"`. If it is on `main`, it is a deploy-lag note in the report, not a bug to file.
-5. Prior live hunts and their residuals are precedent — `w9/m89`, `w9/m92`, `.pm/w9/051.md`. Match their shape, don't re-file their contents.
+5. Prior live hunts and their residuals are precedent — `w9/m89`, `w9/m92` (under `.pm/w9/done/`). Match their shape, don't re-file their contents.
 
 ## Phase 6 — Hand over to `/pm` (default `w6`)
 
