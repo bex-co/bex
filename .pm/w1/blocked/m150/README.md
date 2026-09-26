@@ -210,3 +210,16 @@ No screenshots were taken; the transcripts above are the evidence.
 Fixture: `srv-dalpa0b00vpc73coftmg` (`qa-20260917-a735c9-web3`, free Docker web service, deleted after the sweep), workspace `bex-canary`, `bex v0.2.1`.
 
 One scope note carried over: services have no `--clear-ip-allow-list` flag, which matches render.com and is not a defect — the live re-verify in t007 must plan around it (clear through the dashboard or GraphQL).
+
+## Environment-layer live re-probe (2026-09-26, `/qa-find-bugs` pass 205)
+
+The environment allow-list (`spec.environmentIPAllowList` → the `<app>-env-ip-allow` middleware, `app_controller.go:2945`) fails the same way as the service layer. That confirms this milestone's blast-radius row on the second layer, which neither earlier hunt probed. Production, workspace `bex`, deployed `726042a28`. The fixture was a free Docker web service `srv-das30uhsmc7s73cq5ltg` in environment `env-das30ugd0qnc73d7a1t0` of project `prj-das30uhsmc7s73cq5lsg`; all three were deleted afterwards and all return `404`. Each allow-list was set with `PATCH /v1/environments/{id} {"ipAllowList":[…]}` (`200`, echoed back). Then `curl -s -o /dev/null -w '%{http_code}' https://qa-20260926-acl-web.onbex.co/` ran six times over ~60s:
+
+| Environment `ipAllowList` | Expected | Actual |
+| --- | --- | --- |
+| seeded default (`0.0.0.0/0`, `::/0`) | `200` | `200`. The app sees `X-Forwarded-For: 10.10.0.7`, `X-Real-Ip: 10.10.0.7` |
+| `10.0.0.0/8` only | `403` (the caller is a public IPv4) | **`200` ×6**: the whole internet is admitted |
+| `203.0.113.0/24` only (TEST-NET control) | `403` | `403` ×6 within ~20s, so enforcement is live and propagation is not the cause |
+| the caller's own public `/32` | `200` | **`403` ×6**: the owner is locked out |
+
+State of the rollout as seen from outside: t001's `proxyProtocol.trustedIPs: [10.10.0.7/32]` is on `main` (`deploy/gitops/overlays/prod/values/traefik.values.yaml:53-55,66-68`), and `infra/terraform/main.tf:208,226` still have `proxyprotocol = false`. That matches the upstream seeing `10.10.0.7`: t002's listener flip is the remaining step, and the environment layer needs no code beyond it. t007's live re-verify should repeat the four rows above on an environment as well as on a service.
