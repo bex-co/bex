@@ -308,3 +308,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [ ] **148** — [The API-key "created" dialog still says `Optional scope=bex.read bex.write bex.sensitive`, but `w4/112` made Hydra refuse every one of them](148.md) ← live `/qa-find-bugs` 2026-09-26 pass 172. Following the copy yields `invalid_scope`. The stale sentence is in en/zh locales and ADR012:186. Revocation was verified immediate.
 
 - [ ] **149** — [A registry credential saved as `https://ghcr.io/` is accepted with a success toast and can never be used](149.md) ← live `/qa-find-bugs` 2026-09-26 pass 173. The host is stored verbatim while every matcher compares it against a bare `registryHost(image)`, and binding it is refused with "is for https://ghcr.io/, not ghcr.io".
+
+- [ ] **150** — [Team table: every role picker is an unnamed combobox and every row's delete control is just "Remove"](150.md) ← live `/qa-find-bugs` 2026-09-26 pass 175 (read-only). `member-row.tsx:119,145,159` is a sibling of `w4/084`'s fix, which covered only `RevokeIconButton`.
