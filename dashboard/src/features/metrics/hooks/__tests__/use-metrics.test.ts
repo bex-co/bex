@@ -228,7 +228,7 @@ describe("useMetrics", () => {
 
   it("surfaces an unrelated GraphQL error as a real error, not unavailable", () => {
     const otherError = new CombinedGraphQLErrors({
-      errors: [{ message: "app not found" }],
+      errors: [{ message: "not found" }],
     } as never);
     mockUseQuery.mockReturnValue({
       data: undefined,
