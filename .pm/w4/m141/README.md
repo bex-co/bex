@@ -42,6 +42,10 @@ Each bullet was probed at filing (pass 178, 2026-09-26) on a throwaway no-build 
 - **Why now:** the silent path defeats a capability design that was just built (`w6/m143`) and affects every static site. A user who believes they rolled back a broken site is still serving it.
 - **Render parity task included:** UI behavior and possibly the rollback verb's static-site support change.
 
+## Control (pass 179, 2026-09-26)
+
+The same Rollback flow works on an **image-backed** web service. On throwaway `qa-20260926-rb` (`srv-darnj0psmc7s73cq5gu0`, Existing Image `docker.io/traefik/whoami:v1.10.1`, deleted the same pass): Update Source to `:v1.10` → Deploy latest image → Rollback on the first deploy → Proceed. The dispatch sent `DeployActions` then `RollbackService`, the toast read "Rollback triggered.", and REST `GET /v1/services/{id}/deploys` showed `…q5h1g:live:rollback:docker.io/traefik/whoami:v1.10.1` above `…q5h00:deactivated:api:…:v1.10`. The failure in this milestone is therefore specific to deploys without a `ResolvedImage`, as the root cause states. The same pass noticed that an image-backed service's Manual Deploy menu also offers "Clear build cache & deploy" with no build to clear. t001 should decide it alongside the static-site copy.
+
 ## Unverified
 
 - A static site **with** a build command (which produces an image) was not exercised. Its deploys may be eligible, and whether rollback then re-publishes correctly is t001's to prove.
