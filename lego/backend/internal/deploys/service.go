@@ -612,6 +612,14 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 			return DeployView{}, fmt.Errorf("clear rollback image override: %w", err)
 		}
 	}
+	// imageUrl is the same row-owned field: patching only the CR let the
+	// projector restore the row's old image, re-rolling the pods and closing
+	// this deploy canceled (w8/022). Row-first, like Rollback.
+	if p.ImageURL != "" {
+		if err := s.Store.SetAppImage(ctx, appID, p.ImageURL); err != nil {
+			return DeployView{}, fmt.Errorf("update source of truth: %w", err)
+		}
+	}
 	previousGeneration := a.Generation
 	releaseGeneration := previousGeneration + 1
 	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {

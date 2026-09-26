@@ -67,7 +67,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - `019` — `blueprints validate` stops at the first semantic error, drops its line/column, leaks an inner `bad request:` (~1h) ← `/qa-find-bugs-cli` sweep 5, 2026-09-23
 - `020` — `bex logs --type build --tail` exits 0 with no reason when no build pod exists yet (queued) or anymore; the WebSocket path drops `ErrBuildNotRunning` (~1h) ← `/qa-find-bugs-cli` sweep 6, 2026-09-23
 - `021` — every 404 says "app not found" (a missing deploy reads as a missing service; `app not found: project: not found`) (~45m) ← `/qa-find-bugs-cli` sweep 7, 2026-09-23
-- `022` — **major:** deploying a specific image (`deploys create --image`, deploy hook `?imgURL=`, GraphQL/MCP `imageUrl`) always ends `canceled`: `triggerFetched` patches only the CR's projector-owned `spec.image`, never the row (`Rollback` is row-first) (~1h) ← `/qa-find-bugs-cli` sweep 7, 2026-09-23
+
+> `022.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweep 7) and fixed 2026-09-25 — moved to `done/`. An `imageUrl` trigger (`deploys create --image`, deploy hook `?imgURL=`, GraphQL/MCP) patched only the CR's projector-owned `spec.image`, so the projector restored the old image and the deploy closed `canceled`; `triggerFetched` now writes the row first, like `Rollback`.
 
 > `018.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`, sweep 4) — moved to `done/`. Persistent state (`installation_id`, notice marker) lived in `~/.render/state` because `BEX_CLI_CONFIG_DIR` was mapped to `RENDER_CLI_CONFIG_PATH`. Now DIR maps to `RENDER_CLI_CONFIG_DIR` (default `$HOME/.bex`); new installs mint a bex-owned id rather than copying Render's.
 

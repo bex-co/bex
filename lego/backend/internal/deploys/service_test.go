@@ -692,6 +692,9 @@ func TestTriggerImageURLRejectsRepoBacked(t *testing.T) {
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("imageUrl for repo-backed: want core.ErrBadRequest, got %v", err)
 	}
+	if img, wrote := ds.setImage["srv-10"]; wrote {
+		t.Errorf("refused trigger wrote row image %q", img)
+	}
 }
 
 func TestTriggerImageURLAcceptsImageBacked(t *testing.T) {
@@ -706,6 +709,35 @@ func TestTriggerImageURLAcceptsImageBacked(t *testing.T) {
 	// The App spec must carry the new image so the operator pulls the override.
 	if got := getApp(t, cl, "svc").Spec.Image; got != "nginx:1.27" {
 		t.Errorf("spec.image after imageUrl trigger = %q, want nginx:1.27", got)
+	}
+}
+
+// The projector owns spec.image for store-managed Apps (store.Reconciler
+// projectApp: Spec.Image = row image). An imageUrl trigger that patched only
+// the CR was reverted on the next projection, so every image deploy re-rolled
+// to the old image and closed canceled (w8/022). Write the row, then replay the
+// projection and require the new image to survive it.
+func TestTriggerImageURLWritesRowBeforeProjection(t *testing.T) {
+	ds := newFakeStore()
+	app := sampleApp("svc", "srv-11")
+	app.Spec.Image = "nginx:1.26"
+	svc, cl := newService(ds, app)
+
+	d, err := svc.Trigger(context.Background(), "svc", TriggerParams{ImageURL: "nginx:1.27"})
+	if err != nil {
+		t.Fatalf("Trigger(imageUrl): %v", err)
+	}
+	if d.Image != "nginx:1.27" {
+		t.Errorf("deploy row image = %q, want nginx:1.27", d.Image)
+	}
+	rowImage, wrote := ds.setImage["srv-11"]
+	if !wrote {
+		rowImage = "nginx:1.26" // no write-through: the row still holds the old image
+	}
+	projected := getApp(t, cl, "svc")
+	projected.Spec.Image = rowImage
+	if projected.Spec.Image != "nginx:1.27" {
+		t.Fatalf("spec.image after projection = %q, want nginx:1.27 (row not written before the CR patch)", projected.Spec.Image)
 	}
 }
 
