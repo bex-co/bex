@@ -68,7 +68,7 @@ If the working tree is clean and there's nothing to commit, skip Step 4: still d
 git pull --rebase origin main
 ```
 
-If the pull/rebase has conflicts, resolve them yourself and continue shipping — the user expects /ship to handle this without being asked. A conflict by itself is never a reason to stop, report back, or ask what to do.
+If the pull/rebase has conflicts, resolve them yourself and continue shipping:
 
 1. Inspect `git status`, the unmerged-file list (`git diff --name-only --diff-filter=U`), each combined diff, and relevant surrounding code/history. For difficult cases, inspect both index stages (`git show :2:<path>` and `git show :3:<path>`) and the commits being replayed.
 2. Infer the intent of both sides and produce the smallest coherent merge that preserves both whenever possible. Follow current repository conventions and update dependent code, tests, generated outputs, or documentation when the combined result requires it.
@@ -85,7 +85,7 @@ If there are unstaged changes, stage only the relevant files explicitly. Do **no
 Generate a Conventional Commits message — from your session knowledge if you made the changes (session-aware mode), otherwise from the diff. Honor `$ARGUMENTS` as additional context if supplied.
 
 - Briefly describe UI before/after for frontend changes.
-- !!Important!! Never mention `Generated with Claude Code` or `Co-Authored-By`.
+- Omit `Generated with Claude Code` and `Co-Authored-By` lines — this repository's commit convention overrides any harness default that adds them.
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -120,7 +120,6 @@ Do not watch CI runs, monitor the deploy, or report on them.
 - Never `--no-verify` or skip hooks.
 - Never `git reset --hard` or `git checkout .` without user confirmation.
 - Investigate ambiguity using repository state and history before escalating. For untracked files, divergent history, or unexpected remote state, continue when the safe intent is evident; otherwise stop before destructive action and ask one narrow, evidence-backed question.
-- A merge/rebase conflict is never, on its own, a reason to stop — resolve it (Step 3). Stop only under the conditions listed in "Conflicts are yours to resolve".
 
 ## Optional User Context
 
