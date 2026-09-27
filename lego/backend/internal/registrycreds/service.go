@@ -217,6 +217,12 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CredentialView
 	if host == "" || username == "" || req.Secret == "" {
 		return CredentialView{}, fmt.Errorf("%w: host, username, and secret are required", core.ErrBadRequest)
 	}
+	// Store the host images are matched against, not what was pasted: the
+	// host is immutable after creation, so this is the only place to fix it.
+	host, err := canonicalRegistryHost(host)
+	if err != nil {
+		return CredentialView{}, err
+	}
 	if name == "" {
 		name = host
 	}
