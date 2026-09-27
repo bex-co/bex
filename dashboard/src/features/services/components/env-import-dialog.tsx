@@ -18,6 +18,19 @@ import {
   type DotenvEntry,
 } from "@/features/services/lib/dotenv-import";
 
+const PARSE_ERROR_MESSAGE: Record<
+  DotenvParseError["reason"],
+  | "services.envImportLineError"
+  | "services.envImportKeyError"
+  | "services.envImportQuoteError"
+  | "services.envImportTrailingError"
+> = {
+  assignment: "services.envImportLineError",
+  key: "services.envImportKeyError",
+  quote: "services.envImportQuoteError",
+  trailing: "services.envImportTrailingError",
+};
+
 export function EnvImportDialog({
   open,
   onOpenChange,
@@ -30,7 +43,11 @@ export function EnvImportDialog({
   const { t } = useTranslations();
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
-  const [errorLine, setErrorLine] = useState<number | "file" | null>(null);
+  // A parse failure keeps its reason, so the message names what is wrong on
+  // that line instead of one catch-all (w4/159).
+  const [errorLine, setErrorLine] = useState<DotenvParseError | "file" | null>(
+    null,
+  );
 
   function close() {
     setText("");
@@ -44,7 +61,7 @@ export function EnvImportDialog({
       onImport(entries);
       close();
     } catch (error) {
-      setErrorLine(error instanceof DotenvParseError ? error.line : "file");
+      setErrorLine(error instanceof DotenvParseError ? error : "file");
     }
   }
 
@@ -96,7 +113,9 @@ export function EnvImportDialog({
           <p className="text-destructive text-sm" role="alert">
             {errorLine === "file"
               ? t("services.envImportFileError")
-              : t("services.envImportLineError", { line: errorLine })}
+              : t(PARSE_ERROR_MESSAGE[errorLine.reason], {
+                  line: errorLine.line,
+                })}
           </p>
         ) : null}
         <input
