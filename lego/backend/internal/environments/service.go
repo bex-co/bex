@@ -629,7 +629,8 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 		return EnvironmentView{}, err
 	}
 	if err := s.Store.RenameEnvironment(ctx, id, name); err != nil {
-		return EnvironmentView{}, store.MapError(err)
+		// A rename onto a taken name answers like a create does (w4/155).
+		return EnvironmentView{}, conflictOrMapError(err, name)
 	}
 	e.Name = name
 	return s.toFullView(ctx, e)
@@ -665,7 +666,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	}
 	if patch.Name != nil {
 		if err := s.Store.RenameEnvironment(ctx, id, name); err != nil {
-			return EnvironmentView{}, store.MapError(err)
+			return EnvironmentView{}, conflictOrMapError(err, name)
 		}
 		e.Name = name
 	}
