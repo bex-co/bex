@@ -2125,3 +2125,20 @@ func TestSubscribeRefusesWhenAnyResourceIsUnknown(t *testing.T) {
 		t.Errorf("subscribe with an unknown second resource = %d %q, want 404 before streaming", rec.Code, rec.Body.String())
 	}
 }
+
+// w8/025: after an eviction the kubelet answers the pod-log read with its own
+// untimestamped "unable to retrieve container logs for containerd://<id>",
+// which was served as the tenant's `app` output with the internal id in it.
+func TestKubeletLogsGonePlaceholderIsAPlatformLine(t *testing.T) {
+	got := parseContainerLogLine("web", "web-1", "app", LogTypeApp,
+		"unable to retrieve container logs for containerd://4336b7cbe0f1")
+	if got.Message != logsGoneMessage || got.Labels["container"] != progressContainer || strings.Contains(got.Message, "containerd") {
+		t.Errorf("placeholder = %+v, want the platform line without the containerd id", got)
+	}
+	// The tenant's own timestamped line with the same words stays theirs.
+	own := parseContainerLogLine("web", "web-1", "app", LogTypeApp,
+		"2026-09-26T19:05:33.351680017Z unable to retrieve container logs for containerd://mine")
+	if own.Labels["container"] != "app" || own.Message != "unable to retrieve container logs for containerd://mine" {
+		t.Errorf("tenant line = %+v, want it untouched", own)
+	}
+}
