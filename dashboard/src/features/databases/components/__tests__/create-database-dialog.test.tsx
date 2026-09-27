@@ -49,6 +49,7 @@ const FREE: DatabaseInstanceTypeView = {
   cpu: "100m",
   memory: "256Mi",
   storageGB: 1,
+  supportsHighAvailability: false,
 };
 const BASIC: DatabaseInstanceTypeView = {
   id: "basic-1gb",
@@ -56,6 +57,7 @@ const BASIC: DatabaseInstanceTypeView = {
   cpu: "500m",
   memory: "1Gi",
   storageGB: 5,
+  supportsHighAvailability: false,
 };
 
 beforeEach(() => {

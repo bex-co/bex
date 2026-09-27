@@ -126,6 +126,7 @@ func TestValidateBlueprintEstimatedPricingInvalidManifestHasNone(t *testing.T) {
 }
 
 func TestValidateBlueprintEstimatedPricingVariableCosts(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	manifest := `services:
   - name: nightly

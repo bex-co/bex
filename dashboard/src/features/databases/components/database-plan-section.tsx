@@ -38,7 +38,15 @@ export function DatabasePlanSection({
   const [confirming, setConfirming] = useState(false);
 
   const selectedType = instanceTypes.find((it) => it.id === selected);
-  const canSave = selected != null && selected !== database.plan;
+  // The API refuses a plan without HA while HA is on (w8/m43); say so here
+  // rather than let Save fail.
+  const haBlocked =
+    database.highAvailabilityEnabled &&
+    selectedType != null &&
+    selectedType.id !== database.plan &&
+    !selectedType.supportsHighAvailability;
+  const dirty = selected != null && selected !== database.plan;
+  const canSave = dirty && !haBlocked;
 
   async function handleConfirm() {
     if (operateDenied) return;
@@ -80,11 +88,19 @@ export function DatabasePlanSection({
           />
         )}
 
+        {haBlocked ? (
+          <p className="text-destructive text-sm" role="alert">
+            {t("databases.planPickerHAUnsupported", {
+              name: selectedType.name,
+            })}
+          </p>
+        ) : null}
+
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button
             variant="outline"
             onClick={() => setSelected(database.plan)}
-            disabled={!canSave || busy || operateDenied}
+            disabled={!dirty || busy || operateDenied}
           >
             {t("databases.planPickerCancel")}
           </Button>

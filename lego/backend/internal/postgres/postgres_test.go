@@ -774,6 +774,14 @@ func TestInstanceTypesCatalog(t *testing.T) {
 	if b.Name != "Basic 1GB" || b.CPU == "" || b.Memory == "" || b.StorageGB <= 0 {
 		t.Fatalf("basic-1gb projection wrong: %+v", b)
 	}
+	// The dashboard reads HA availability from here, not from cpu (w8/m43).
+	if b.SupportsHighAvailability {
+		t.Errorf("basic-1gb (500m) must not advertise high availability")
+	}
+	allowHighAvailabilityOnEveryPlan(t)
+	if tt, _ := svc.InstanceTypes(context.Background()); !tt[0].SupportsHighAvailability {
+		t.Errorf("supportsHighAvailability must follow the shared predicate")
+	}
 }
 
 func TestPGTierDisplayName(t *testing.T) {
@@ -868,7 +876,8 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 		t.Errorf("plan should be untouched by a disk-only update, got %q", got.Spec.Plan)
 	}
 
-	// HA toggle alone, no plan — must succeed.
+	// HA toggle alone, no plan — must succeed (on a plan that offers HA).
+	allowHighAvailabilityOnEveryPlan(t)
 	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"enableHighAvailability":true}`)
 	if w.Code != 200 {
 		t.Fatalf("HA-only PATCH => 200, got %d: %s", w.Code, w.Body.String())
