@@ -74,3 +74,22 @@ The simplify pass is folded into the shipped code rather than bolted on after: `
 
 3. **t005 — a live browser run against production auth.** The helper-staleness half is **already fixed**, not by this milestone: `6cf17cb12` (w9/062, 2026-09-20) rewrote `scripts/render-cli-auth-browser.cjs` to drive whichever of `/auth/login`, `/auth/device`, `/auth/consent`, `/auth/device/success` is on screen, which is exactly what this task's step 2 asked for. What remains is step 1 — why the `use-ory-flow.ts:281-292` short-circuit does not fire, which needs request-level evidence (does the flow-creation fetch carry the seconds-old session cookie?) from a real device-login ceremony against production. w9/062 is parked in `.pm/w9/blocked/062.md` waiting on the same disposable human identity; these two should clear together.
 4. **t010 — the live closeout.** Four of the six DoD bullets are shipped but **not one has been re-probed live**: no production access from this session. Bullets 1, 2 and 3's "or refused with a named error" half are ready for a QA pass the moment the fixes deploy.
+
+## Live verification of DoD bullet 2 (2026-09-26, `/qa-find-bugs-cli` w8 sweep 36)
+
+Production `726042a28`, released `bex v0.2.1` (pin v2.27.0), human device login, workspace `bex-canary`. Fixture: free Key Value `red-das3qk1smc7s73cq5mig`, created private (deleted afterwards). **DoD bullet 2 holds live:**
+
+- Before publishing: `connection-info` → `externalConnectionString: ""` and a `.svc` `cliCommand`.
+- `bex keyvalues update <id> --ip-allow-list cidr=<caller>/32,description=qa36` → exit 0. Within 10 s, `connection-info` carries `rediss://…@red-….kv.bex.co:6379` and `cliCommand` is `redis-cli --sni red-….kv.bex.co -u rediss://…`.
+- `bex kv-cli <id> -o interactive -- PING|SET|GET|CONFIG GET maxmemory-policy|DEL` (PTY) → `PONG` / `OK` / `"hello"` / `noeviction` / `(integer) 1`.
+- Also clean: `--memory-policy allkeys_lru` reached the running server (`CONFIG GET` → `allkeys-lru`) within about 35 s. Suspend → `suspended`, connection refused; resume → `available` plus `PONG` in about 2 min, and a key written before the suspend read back (`v1`). Re-listing to `203.0.113.0/24` refused the caller within 10 s.
+
+The t002 half of the closeout (t010) is therefore satisfied. t003/t005 remain the blockers.
+
+## Live verification of DoD bullets 1 and 4 (2026-09-26, `/qa-find-bugs-cli` w8 sweep 37)
+
+Production `726042a28`, human device login, workspace `bex-canary`, no `~/.postgresql/root.crt`, no `PGSSLROOTCERT`. Fixture: free Postgres `dpg-das4du9smc7s73cq5mlg` (deleted).
+
+- **Bullet 1:** holds on a HEAD build (`c65e32db9`): `bex psql <dpg> --command 'SELECT 1'` → the probe row. The released `v0.2.1` still fails with `root certificate file … does not exist`. That is release lag, owned by `w9/066`.
+- **Bullet 4 holds:** marker row written → `postgres suspend` → `suspended` → `postgres resume` → status `creating` for about 50 s → the first poll that read `available` (≈52 s after resume) also returned the marker row through `psql`. The status never claimed `available` ahead of the data path.
+- **Caveat for re-runs:** with only the caller's IPv4 `/32` allow-listed, a dual-stack client fails intermittently with `SSL error: unexpected eof` over IPv6 (`w9/m164`'s trap) before and after suspend. That can masquerade as a resume failure. Allow-list the IPv6 `/128` too when timing the data path.
