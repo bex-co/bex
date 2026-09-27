@@ -2996,12 +2996,72 @@ func TestRESTListBlueprints(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list blueprints => 200, got %d: %s", rec.Code, rec.Body)
 	}
-	var out []BlueprintView
+	// Render's blueprintWithCursor envelope (w4/157): the row is nested under
+	// "blueprint" beside its cursor, and the manifest stays on the by-id read.
+	var out []struct {
+		Blueprint map[string]any `json:"blueprint"`
+		Cursor    string         `json:"cursor"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(out) != 1 || out[0].ID != "blp-1" {
-		t.Errorf("list blueprints: want [blp-1], got %+v", out)
+	if len(out) != 1 || out[0].Blueprint["id"] != "blp-1" || out[0].Cursor != "blp-1" {
+		t.Fatalf("list blueprints: want [{blueprint: blp-1, cursor: blp-1}], got %+v", out)
+	}
+	for _, key := range []string{"id", "name", "status", "autoSync", "repo", "branch", "path"} {
+		if _, ok := out[0].Blueprint[key]; !ok {
+			t.Errorf("blueprint lacks Render's required %q: %v", key, out[0].Blueprint)
+		}
+	}
+	if _, ok := out[0].Blueprint["manifest"]; ok {
+		t.Error("a list row must not carry the whole manifest")
+	}
+}
+
+// w4/157: limit + cursor walk every blueprint exactly once, like every other
+// bex list.
+func TestRESTListBlueprintsPagesByCursor(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(
+		store.Blueprint{ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/one", Branch: "main", Status: "active", Name: "one"},
+		store.Blueprint{ID: "blp-2", TenantID: "tea-a", Repo: "https://github.com/a/two", Branch: "main", Status: "active", Name: "two"},
+		store.Blueprint{ID: "blp-3", TenantID: "tea-a", Repo: "https://github.com/a/three", Branch: "main", Status: "active", Name: "three"},
+	)
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	var seen []string
+	cursor := ""
+	for page := 0; page < 5; page++ {
+		target := "/v1/blueprints?ownerId=tea-a&limit=1"
+		if cursor != "" {
+			target += "&cursor=" + cursor
+		}
+		req := httptest.NewRequest("GET", target, nil)
+		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		var out []struct {
+			Blueprint struct {
+				ID string `json:"id"`
+			} `json:"blueprint"`
+			Cursor string `json:"cursor"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil || rec.Code != http.StatusOK {
+			t.Fatalf("page %d: %d %s", page, rec.Code, rec.Body)
+		}
+		if len(out) == 0 {
+			break
+		}
+		if len(out) != 1 {
+			t.Fatalf("page %d: %d rows at limit=1", page, len(out))
+		}
+		seen = append(seen, out[0].Blueprint.ID)
+		cursor = out[0].Cursor
+	}
+	if strings.Join(seen, ",") != "blp-1,blp-2,blp-3" {
+		t.Fatalf("paged walk = %v, want each blueprint exactly once", seen)
 	}
 }
 
@@ -3030,12 +3090,30 @@ func TestRESTListBlueprintSyncsIncludesErrorMessage(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list blueprint syncs => 200, got %d: %s", rec.Code, rec.Body)
 	}
-	var out []BlueprintSyncView
-	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+	// Render's syncWithCursor envelope, with commit.id nested (w4/157).
+	var wrapped []struct {
+		Sync struct {
+			BlueprintSyncView
+			Commit *struct {
+				ID *string `json:"id"`
+			} `json:"commit"`
+		} `json:"sync"`
+		Cursor string `json:"cursor"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(out) != 2 {
-		t.Fatalf("list blueprint syncs: want 2 rows, got %d", len(out))
+	if len(wrapped) != 2 {
+		t.Fatalf("list blueprint syncs: want 2 rows, got %d", len(wrapped))
+	}
+	for _, w := range wrapped {
+		if w.Cursor != w.Sync.ID || w.Sync.Commit == nil || w.Sync.Commit.ID == nil {
+			t.Errorf("sync row %q lacks its cursor or Render's required commit.id: %+v", w.Sync.ID, w)
+		}
+	}
+	out := make([]BlueprintSyncView, len(wrapped))
+	for i, w := range wrapped {
+		out[i] = w.Sync.BlueprintSyncView
 	}
 	if out[0].ErrorMessage == nil || *out[0].ErrorMessage != errMsg {
 		t.Errorf("REST errored row ErrorMessage = %v, want %q", out[0].ErrorMessage, errMsg)
