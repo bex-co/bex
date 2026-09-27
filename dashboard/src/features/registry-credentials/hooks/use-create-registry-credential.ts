@@ -39,7 +39,7 @@ export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult
     async (input: CreateRegistryCredentialInput) => {
       setBusy(true);
       try {
-        await mutate({
+        const { data } = await mutate({
           variables: {
             ownerId: currentWorkspaceId,
             host: input.host,
@@ -49,8 +49,12 @@ export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult
             expiresAt: input.expiresAt || null,
           },
         });
+        // Name the host bex-api stored (it drops a pasted scheme or trailing
+        // slash and folds Docker Hub aliases), not the text typed (w4/149).
         toast.success(
-          t("registryCredentials.createSuccess", { host: input.host }),
+          t("registryCredentials.createSuccess", {
+            host: data?.createRegistryCredential?.host || input.host,
+          }),
         );
         return true;
       } catch (err) {

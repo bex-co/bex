@@ -51,6 +51,8 @@ func TestRegistryHost(t *testing.T) {
 		"nginx:latest":                     "docker.io", // Docker Hub, no "/" at all
 		"acme/private-app:1.0":             "docker.io", // Docker Hub, implicit host
 		"library/nginx":                    "docker.io",
+		"index.docker.io/library/nginx:1":  "docker.io", // Hub alias folds (w4/149)
+		"GHCR.IO/acme/app:1":               "ghcr.io",
 	}
 	for image, want := range cases {
 		if got := registryHost(image); got != want {
