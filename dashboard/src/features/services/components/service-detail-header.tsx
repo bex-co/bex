@@ -47,6 +47,7 @@ import {
   SERVICE_TYPE_LABEL,
 } from "@/features/services/lib/service-type";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
+import { sshRemedy } from "@/features/services/lib/ssh-remedy";
 import { isSleeping, isDeleting } from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
@@ -408,15 +409,40 @@ function ServiceConnectButton({ service }: { service: ServiceView }) {
             />
           </RequiresSshKey>
         ) : (
-          <p
-            className="text-muted-foreground text-xs"
-            title={t("services.sshUnavailableHint")}
-          >
-            {t("services.sshUnavailable")}
-          </p>
+          <SshUnavailable service={service} />
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * The Connect menu's SSH section when the service has no SSH address: the
+ * reason as visible text (it used to live in a hover-only `title`), and a link
+ * to the remedy when the user holds one (w4/143).
+ */
+function SshUnavailable({ service }: { service: ServiceView }) {
+  const { t } = useTranslations();
+  const remedy = sshRemedy(service);
+  return (
+    <div className="space-y-1 text-xs">
+      <p className="font-medium">{t("services.sshUnavailable")}</p>
+      <p className="text-muted-foreground">{t(remedy.reason)}</p>
+      {remedy.action ? (
+        <Link
+          to={
+            remedy.action.path === "plan"
+              ? "/services/$serviceId/plan"
+              : "/services/$serviceId/settings"
+          }
+          params={{ serviceId: service.id }}
+          hash={remedy.action.path === "settings" ? "suspend" : undefined}
+          className="text-foreground inline-block underline underline-offset-2"
+        >
+          {t(remedy.action.label)}
+        </Link>
+      ) : null}
+    </div>
   );
 }
 

@@ -71,6 +71,25 @@ const enServices: Record<string, TranslationEntry> = {
       "SSH requires a running paid web, private, or background service and an active gateway.",
     description: "Explanation for a service without an SSH address",
   },
+  "services.sshUnavailableSuspended": {
+    message: "This service is suspended. Resume it to connect over SSH.",
+    description: "Why SSH is unavailable on a suspended service (w4/143)",
+  },
+  "services.sshUnavailableFree": {
+    message:
+      "SSH needs a paid instance type. Free services don't include shell access.",
+    description: "Why SSH is unavailable on a Free-plan service (w4/143)",
+  },
+  "services.sshRemedyResume": {
+    message: "Resume service",
+    description:
+      "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
+  },
+  "services.sshRemedyChangePlan": {
+    message: "Change instance type",
+    description:
+      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+  },
   "services.shellTitle": {
     message: "Shell",
     description: "Running-instance SSH connection page title",

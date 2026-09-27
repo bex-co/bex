@@ -70,6 +70,24 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "SSH 需要正在运行的付费 Web、私有或后台服务，以及已启用的网关。",
     description: "服务没有 SSH 地址时的说明",
   },
+  "services.sshUnavailableSuspended": {
+    message: "此服务已暂停。恢复后即可通过 SSH 连接。",
+    description: "Why SSH is unavailable on a suspended service (w4/143)",
+  },
+  "services.sshUnavailableFree": {
+    message: "SSH 需要付费实例类型。免费服务不包含 Shell 访问。",
+    description: "Why SSH is unavailable on a Free-plan service (w4/143)",
+  },
+  "services.sshRemedyResume": {
+    message: "恢复服务",
+    description:
+      "Link from an SSH-unavailable state to the service's suspend/resume setting (w4/143)",
+  },
+  "services.sshRemedyChangePlan": {
+    message: "更改实例类型",
+    description:
+      "Link from an SSH-unavailable state on a Free service to its instance-type page (w4/143)",
+  },
   "services.shellTitle": {
     message: "Shell",
     description: "Running-instance SSH connection page title",
