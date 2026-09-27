@@ -62,6 +62,13 @@ query ValidateBlueprint($bexYaml: String!) {
   validateBlueprint(bexYaml: $bexYaml) {
     valid
     errors
+    # Each error's source location (w8/019), rendered beside it (w4/151).
+    errorDetails {
+      line
+      column
+      path
+      error
+    }
   }
 }
 
@@ -89,6 +96,12 @@ query BlueprintPreview(
     validation {
       valid
       errors
+      errorDetails {
+        line
+        column
+        path
+        error
+      }
       plan {
         mode
         services

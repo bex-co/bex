@@ -9,6 +9,7 @@ import type {
   BlueprintPreviewResult,
   BlueprintPreviewValidation,
   BlueprintSyncView,
+  BlueprintValidationError,
   BlueprintValidationResult,
   BlueprintView,
   SyncBlueprintResult,
@@ -99,13 +100,29 @@ export function toBlueprintSyncView(row: SyncRow): BlueprintSyncView {
 export function toBlueprintValidationResult(
   v: ValidationResultData,
 ): BlueprintValidationResult {
-  return { valid: v.valid ?? false, errors: strings(v.errors) ?? [] };
+  return {
+    valid: v.valid ?? false,
+    errors: strings(v.errors) ?? [],
+    errorDetails: toErrorDetails(v.errorDetails),
+  };
+}
+
+function toErrorDetails(
+  details: ValidationData["errorDetails"],
+): BlueprintValidationError[] {
+  return (details ?? []).filter(nonNull).map((d) => ({
+    error: d.error ?? "",
+    line: d.line ?? 0,
+    column: d.column ?? 0,
+    path: d.path ?? "",
+  }));
 }
 
 function toPreviewValidation(v: ValidationData): BlueprintPreviewValidation {
   return {
     valid: v.valid,
     errors: strings(v.errors),
+    errorDetails: toErrorDetails(v.errorDetails),
     plan: v.plan ? toPreviewPlan(v.plan) : null,
     estimatedPricing: v.estimatedPricing
       ? toEstimatedPricing(v.estimatedPricing)

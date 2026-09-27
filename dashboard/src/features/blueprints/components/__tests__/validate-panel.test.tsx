@@ -35,7 +35,7 @@ describe("ValidatePanel", () => {
 
   it("shows a valid result after validate succeeds", async () => {
     validateState.validate = vi.fn(async () => {
-      validateState.result = { valid: true, errors: [] };
+      validateState.result = { valid: true, errors: [], errorDetails: [] };
       return validateState.result;
     });
 
@@ -54,8 +54,9 @@ describe("ValidatePanel", () => {
         errors: [
           "at '/services/0/plan': additional properties 'plan' not allowed",
           "at '/services/1': additional properties 'totallyUnknownField' not allowed",
-          "service \"qa-static-bp\": staticPublishPath is required for a static_site",
+          'service "qa-static-bp": staticPublishPath is required for a static_site',
         ],
+        errorDetails: [],
       };
       return validateState.result;
     });
@@ -67,7 +68,9 @@ describe("ValidatePanel", () => {
 
     expect(await screen.findByText(/manifest has errors/i)).toBeInTheDocument();
     expect(
-      screen.getByText("at '/services/0/plan': additional properties 'plan' not allowed"),
+      screen.getByText(
+        "at '/services/0/plan': additional properties 'plan' not allowed",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -86,5 +89,41 @@ describe("ValidatePanel", () => {
     expect(
       screen.getByRole("button", { name: /run validate/i }),
     ).toBeDisabled();
+  });
+
+  // w4/151: each error carries its line/column and path when the API has them.
+  it("shows where each error is when the API reports a location", async () => {
+    validateState.validate = vi.fn(async () => {
+      validateState.result = {
+        valid: false,
+        errors: ["additional properties 'healthCheckPth' not allowed"],
+        errorDetails: [
+          {
+            error: "additional properties 'healthCheckPth' not allowed",
+            line: 6,
+            column: 21,
+            path: "services[0].healthCheckPth",
+          },
+          {
+            error: "Blueprint is not valid YAML",
+            line: 2,
+            column: 1,
+            path: "",
+          },
+        ],
+      };
+      return validateState.result;
+    });
+
+    render(<ValidatePanel manifest="services:\n  - name: api" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /run validate/i }),
+    );
+
+    expect(
+      await screen.findByText("line 6, column 21 · services[0].healthCheckPth"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("line 2, column 1")).toBeInTheDocument();
+    expect(screen.getByText("Blueprint is not valid YAML")).toBeInTheDocument();
   });
 });

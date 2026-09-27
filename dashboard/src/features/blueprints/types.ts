@@ -29,9 +29,19 @@ export interface BlueprintSyncView {
   note: string | null;
 }
 
+/** One validation error with its source location (w8/019). line/column are 0
+ *  when the position is unknown; path is "" for a document-level error. */
+export interface BlueprintValidationError {
+  error: string;
+  line: number;
+  column: number;
+  path: string;
+}
+
 export interface BlueprintValidationResult {
   valid: boolean;
   errors: string[];
+  errorDetails: BlueprintValidationError[];
 }
 
 export interface BlueprintPreviewPlan {
@@ -90,6 +100,7 @@ export interface BlueprintEstimatedPricing {
 export interface BlueprintPreviewValidation {
   valid: boolean | null;
   errors: string[] | null;
+  errorDetails: BlueprintValidationError[];
   plan: BlueprintPreviewPlan | null;
   estimatedPricing: BlueprintEstimatedPricing | null;
 }

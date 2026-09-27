@@ -225,6 +225,15 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section success line, with the plan's total resource count (plural)",
   },
+  "blueprints.errorAtLineColumn": {
+    message: "line {line}, column {column}",
+    description: "Source location beside a Blueprint validation error (w4/151)",
+  },
+  "blueprints.errorAtLine": {
+    message: "line {line}",
+    description:
+      "Source location beside a Blueprint validation error when only the line is known (w4/151)",
+  },
   "blueprints.previewNoChanges": {
     message:
       "Blueprint file parsed successfully — no changes. Every resource already matches this file.",

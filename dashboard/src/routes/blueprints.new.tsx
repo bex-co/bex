@@ -33,6 +33,7 @@ import {
 import { useCreateBlueprint } from "@/features/blueprints/hooks/use-create-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
+import { BlueprintErrorList } from "@/features/blueprints/components/blueprint-error-list";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 import { isTakeoverOnlyConflict } from "@/features/blueprints/lib/views";
@@ -357,11 +358,10 @@ export function NewBlueprintPage() {
                       )}
                     </AlertTitle>
                     <AlertDescription>
-                      <ul className="list-disc space-y-1 pl-4">
-                        {validationErrors.map((e, i) => (
-                          <li key={i}>{e}</li>
-                        ))}
-                      </ul>
+                      <BlueprintErrorList
+                        errors={validationErrors}
+                        details={preview.validation?.errorDetails ?? []}
+                      />
                     </AlertDescription>
                   </Alert>
                 ) : preview ? (
