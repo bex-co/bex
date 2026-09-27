@@ -473,6 +473,10 @@ type TriggerParams struct {
 	// restart marks a Restart's trigger: CommitID is the live deploy's commit,
 	// not a caller-chosen ref. Unexported, so no surface can set it.
 	restart bool
+	// rollbackOf marks Rollback re-publishing a static site's earlier commit
+	// (w4/m141): the new deploy row records it as a rollback of this deploy.
+	// Unexported, so no surface can set it.
+	rollbackOf *store.Deploy
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -728,6 +732,13 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	}, func(release int64) (store.Deploy, error) {
 		// The row records this call's own request: the image just patched
 		// under the lock, never a value another trigger wrote meanwhile.
+		if p.rollbackOf != nil {
+			// Provenance is the target's, whether or not the ref resolved again.
+			if commit.Hash == "" {
+				commit = store.CommitInfo{Hash: p.rollbackOf.Commit, Message: p.rollbackOf.CommitMessage}
+			}
+			return s.Store.CreateRollbackDeploy(ctx, appID, a.Spec.Image, p.rollbackOf.ID, release, commit, triggeredBy)
+		}
 		return s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, release, commit, triggeredBy)
 	})
 	if err != nil {
@@ -966,23 +977,29 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 		}
 		return DeployView{}, err
 	}
-	if !RollbackEligible(target) {
+	if !RollbackEligible(a, target) {
 		return DeployView{}, fmt.Errorf("%w: deploy %q never went live — nothing to roll back to", core.ErrConflict, deployID)
 	}
-	// Rolling back to the currently-live deploy WHEN it is already the running
-	// image is a no-op: it changes no image but still patches RestartedAt + a new
-	// generation, so it silently restarts the service and creates a redundant
-	// deploy (w4/051 — the dashboard detail page offered it, the list did not).
-	// Reject it on every surface. This is narrower than "reject any live target":
-	// a deploy stays DeployLive until a NEWER one goes live (a failed deploy never
-	// deactivates it), so after a failed rollout spec.image can drift off the
-	// still-live last-good deploy — rolling back to it then restores that image
-	// and is a legitimate recovery (TestRollbackRestoresPreviousLiveImage), which
-	// the image comparison preserves.
+	// Rolling back to the currently-live deploy WHEN it is already what is
+	// running is a no-op: it changes nothing but still patches RestartedAt + a
+	// new generation, so it silently restarts the service and creates a
+	// redundant deploy (w4/051 — the dashboard detail page offered it, the list
+	// did not). Reject it on every surface. This is narrower than "reject any
+	// live target": a deploy stays DeployLive until a NEWER one goes live (a
+	// failed deploy never deactivates it), so after a failed rollout the spec
+	// can drift off the still-live last-good deploy — rolling back to it then
+	// restores it and is a legitimate recovery
+	// (TestRollbackRestoresPreviousLiveImage), which the comparison preserves.
 	// Shared with the capability projection (RollbackActionable) so the answer
 	// deployActions gives and the answer this verb gives cannot drift (w4/110).
-	if !RollbackActionable(target, a.Spec.Image) {
+	if !RollbackActionable(a, target) {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already live — nothing to roll back to", core.ErrConflict, deployID)
+	}
+	// A static site published straight from its repository has no image to
+	// restore; re-publishing the target's commit restores its files (w4/m141).
+	// It is the commit-pinned trigger path, recorded as a rollback of target.
+	if rollbackRepublishes(a, target) {
+		return s.triggerFetched(ctx, service, a, TriggerParams{CommitID: target.Commit, rollbackOf: &target}, store.TriggerRollback)
 	}
 	// Row-first: the projector owns spec.image for store-managed Apps, so the
 	// row updates before the CR patch below — the same writeThroughStore
