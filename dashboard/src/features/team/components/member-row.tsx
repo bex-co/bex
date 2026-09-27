@@ -116,7 +116,11 @@ export function MemberRow({
                 onChangeRole(member.subject, value as Role)
               }
             >
-              <SelectTrigger size="sm" className="w-[150px]">
+              <SelectTrigger
+                size="sm"
+                className="w-[150px]"
+                aria-label={t("team.roleFor", { identity })}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -142,7 +146,7 @@ export function MemberRow({
               variant="ghost"
               size="icon"
               disabled
-              aria-label={t("team.remove")}
+              aria-label={t("team.removeMember", { identity })}
             >
               <Trash2 className="text-muted-foreground" />
             </Button>
@@ -156,7 +160,7 @@ export function MemberRow({
                 variant="ghost"
                 size="icon"
                 disabled={removing}
-                aria-label={t("team.remove")}
+                aria-label={t("team.removeMember", { identity })}
               >
                 {removing ? (
                   <Loader2 className="animate-spin" />

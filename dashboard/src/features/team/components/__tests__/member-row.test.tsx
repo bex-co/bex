@@ -101,7 +101,7 @@ describe("MemberRow — membership invariants (w5/m101)", () => {
 
     expect(screen.getByText("You")).toBeInTheDocument();
     // The control is present but refused — not hidden (the m50 pattern).
-    expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Remove \S/ })).toBeDisabled();
     expect(screen.getByRole("combobox")).toBeDisabled();
     expectExplainedTriggers(2); // the role picker and the Remove action
   });
@@ -110,7 +110,7 @@ describe("MemberRow — membership invariants (w5/m101)", () => {
     renderRow({ isOwner: true });
 
     expect(screen.getByText("Owner")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Remove \S/ })).toBeDisabled();
     expect(screen.getByRole("combobox")).toBeDisabled();
     expectExplainedTriggers(2);
   });
@@ -120,7 +120,7 @@ describe("MemberRow — membership invariants (w5/m101)", () => {
 
     expect(screen.queryByText("You")).toBeNull();
     expect(screen.queryByText("Owner")).toBeNull();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^Remove \S/ })).toBeEnabled();
     expect(screen.getByRole("combobox")).toBeEnabled();
     expectExplainedTriggers(0); // nothing to explain — nothing is refused
   });
@@ -142,5 +142,18 @@ describe("MemberRow — membership invariants (w5/m101)", () => {
       removeReason: "team.removeSelfReason",
       roleReason: "team.changeOwnRoleReason",
     });
+  });
+
+  // w4/150: every row used to read "combobox, Admin" and "Remove, button".
+  it("names the role picker and the remove control after the member (w4/150)", () => {
+    renderRow({});
+    const identity = screen.getAllByRole("row")[0]?.textContent ?? "";
+    expect(
+      screen.getByRole("combobox", { name: /^Role for \S/ }),
+    ).toBeInTheDocument();
+    const remove = screen.getByRole("button", { name: /^Remove \S/ });
+    expect(identity).toContain(
+      remove.getAttribute("aria-label")!.replace(/^Remove /, ""),
+    );
   });
 });

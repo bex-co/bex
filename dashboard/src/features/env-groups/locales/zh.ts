@@ -393,6 +393,11 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "取消关联",
     description: "Unlink service from env group",
   },
+  "envGroups.unlinkServiceAria": {
+    message: "取消关联 {name}",
+    description:
+      "Accessible name of a linked-service row's Unlink control, naming the service (w4/150)",
+  },
   "envGroups.noLinkedServices": {
     message: "此组尚未关联任何服务，但仍可完整编辑。",
     description: "No linked services state",
