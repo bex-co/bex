@@ -69,8 +69,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `031` — `bex logs --level warning` (and `notice`/`critical`/`alert`/`emergency`) never matches: the pinned CLI only sends Render's level names, the shipper stores `warn`, and `loki.go:213` matches the label exactly (~45m) ← `/qa-find-bugs-cli` sweep 45, 2026-09-27
 
+
+> `031.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 45) and fixed 2026-09-27 — moved to `done/`. `bex logs --level warning|notice|critical|alert|emergency` now matches: queries map Render's level names onto the stored buckets, and the shipper emits `warning` (not `warn`) from now on.
 
 > `030.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 44) and fixed 2026-09-27 — moved to `done/`. Postgres logs drop CNPG's instance-manager chatter and unwrap `logger=postgres` records into PostgreSQL's own line shape with a `level`, in the shipper (verified with a local Alloy v1.20.0 run) and in both direct-pod fallbacks.
 

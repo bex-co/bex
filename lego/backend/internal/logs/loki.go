@@ -343,7 +343,7 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 			matchers = append(matchers, m)
 		}
 	}
-	add(lokiLabelFor(LabelLevel), q.Level)
+	add(lokiLabelFor(LabelLevel), storedLevels(q.Level))
 	add(lokiLabelFor(LabelInstance), q.Instance)
 	add(lokiLabelFor(LabelMethod), q.Method)
 	// statusCode is the one filter with a class shorthand (`4xx`), expanded here —
@@ -444,6 +444,41 @@ func labelMatcher(name string, values []string) string {
 		alts = append(alts, strings.ReplaceAll(regexp.QuoteMeta(v), `\*`, ".*"))
 	}
 	return fmt.Sprintf("%s=~%q", name, "^("+strings.Join(alts, "|")+")$")
+}
+
+// storedLevels maps Render's level names — the only ones the pinned CLI
+// accepts: debug, info, notice, warning, error, critical, alert, emergency —
+// onto the buckets the log shipper stores (w8/031). The shipper normalizes
+// severities to debug|info|warning|error (warning was stored as `warn` before
+// w8/031; both spellings match so older streams stay findable), so an exact
+// match on `warning`, `notice` or `critical` used to find nothing.
+func storedLevels(values []string) []string {
+	if len(values) == 0 {
+		return values
+	}
+	seen := map[string]bool{}
+	var out []string
+	add := func(vs ...string) {
+		for _, v := range vs {
+			if !seen[v] {
+				seen[v] = true
+				out = append(out, v)
+			}
+		}
+	}
+	for _, v := range values {
+		switch strings.ToLower(v) {
+		case "warning", "warn":
+			add("warning", "warn")
+		case "notice":
+			add("info", "notice")
+		case "critical", "alert", "emergency", "fatal":
+			add("error", strings.ToLower(v))
+		default:
+			add(v)
+		}
+	}
+	return out
 }
 
 // statusClasses rewrites Render's status-code class shorthand (`2xx`) as the
