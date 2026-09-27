@@ -37,6 +37,7 @@ import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
+import { BlueprintErrorList } from "@/features/blueprints/components/blueprint-error-list";
 import {
   useSyncBlueprint,
   type ReviewedBlueprintSource,
@@ -657,13 +658,13 @@ export function BlueprintDetailPage() {
             <p className="font-medium text-destructive">
               {t("blueprints.syncPreviewInvalid")}
             </p>
-            <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-              {(syncPreview.validation?.errors ?? [syncPreview.error])
-                .filter((e): e is string => !!e)
-                .map((e, i) => (
-                  <li key={i}>{e}</li>
-                ))}
-            </ul>
+            <BlueprintErrorList
+              className="text-muted-foreground"
+              errors={(
+                syncPreview.validation?.errors ?? [syncPreview.error]
+              ).filter((e): e is string => !!e)}
+              details={syncPreview.validation?.errorDetails ?? []}
+            />
             <Button
               size="sm"
               variant="outline"

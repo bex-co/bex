@@ -123,6 +123,7 @@ function validPreview(): BlueprintPreviewResult {
     validation: {
       valid: true,
       errors: [],
+      errorDetails: [],
       plan: {
         mode: null,
         services: ["api", "worker"],

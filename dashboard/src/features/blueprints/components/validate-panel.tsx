@@ -8,6 +8,7 @@ import {
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useValidateBlueprint } from "@/features/blueprints/hooks/use-validate-blueprint";
+import { BlueprintErrorList } from "./blueprint-error-list";
 
 interface ValidatePanelProps {
   manifest: string;
@@ -54,11 +55,11 @@ export function ValidatePanel({ manifest }: ValidatePanelProps) {
               <p className="text-sm font-medium text-destructive">
                 {t("blueprints.validateInvalid")}
               </p>
-              <ul className="list-disc pl-4 text-sm text-muted-foreground">
-                {result.errors.map((e, i) => (
-                  <li key={i}>{e}</li>
-                ))}
-              </ul>
+              <BlueprintErrorList
+                errors={result.errors}
+                details={result.errorDetails}
+                className="text-sm text-muted-foreground"
+              />
             </div>
           )}
         </CardContent>
