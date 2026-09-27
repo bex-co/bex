@@ -3587,6 +3587,11 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 		cj.Spec.Suspend = &scheduleSuspended
 		cj.Spec.JobTemplate.Labels = template.Labels // so the Jobs it creates carry labelApp
 		cj.Spec.JobTemplate.Spec.Template = template
+		// One run is one execution (w8/028). Kubernetes' default backoffLimit
+		// of 6 re-ran a failing command up to 7 times over ~11 minutes —
+		// repeating the tenant's side effects — while ForbidConcurrent skipped
+		// every tick in between.
+		cj.Spec.JobTemplate.Spec.BackoffLimit = new(int32(cronRunBackoffLimit))
 		return controllerutil.SetControllerReference(app, cj, r.Scheme)
 	}); err != nil {
 		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
@@ -3747,6 +3752,10 @@ func manualRunSettled(app *appv1alpha1.App) bool {
 // ensureManualRun creates the one-off Job for the current spec.runAt if it does
 // not already exist. The Job carries labelApp (so it shows up in run history) and
 // is owned by the App (so it is garbage-collected with it).
+// cronRunBackoffLimit is every cron run's Job backoffLimit: a failed run is
+// reported failed and the next tick runs on time, never retried in place.
+const cronRunBackoffLimit = 0
+
 func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) error {
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 		Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
@@ -3760,6 +3769,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	}
 	job.Labels = template.Labels
 	job.Spec.Template = template
+	job.Spec.BackoffLimit = new(int32(cronRunBackoffLimit)) // one execution, like a scheduled run (w8/028)
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
 		return err
 	}
