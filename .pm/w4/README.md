@@ -302,7 +302,7 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **145** — [Static-site rule errors name the row by its zero-based wire index ("Routes[1]") in a toast, with nothing marked in the table](done/145.md) ← live `/qa-find-bugs` 2026-09-25 pass 167, journey 9. There is no per-row validation, and the server's `routes[i]` reaches the user verbatim. Redirects, rewrites, and header rules all served correctly. — **done 2026-09-27**: invalid rule fields are marked in their row and hold Save, and a server refusal names "Row N" instead of the wire index.
 
-- [ ] **146** — [A webhook's filtered delivery list says "No deliveries yet — trigger a deploy" while the Failed tab holds eight](146.md) ← live `/qa-find-bugs` 2026-09-25 pass 168, webhooks. The first-run empty state ignores the status tab and date filters (`webhook-deliveries-card.tsx:194-199`). Delivery, retries, and response detail are correct.
+- [x] **146** — [A webhook's filtered delivery list says "No deliveries yet — trigger a deploy" while the Failed tab holds eight](done/146.md) ← live `/qa-find-bugs` 2026-09-25 pass 168, webhooks. The first-run empty state ignores the status tab and date filters (`webhook-deliveries-card.tsx:194-199`). Delivery, retries, and response detail are correct. — **done 2026-09-27**: a filtered-empty delivery list names its filter and offers Clear filters, and first-run copy appears only unfiltered.
 
 - [ ] **147** — [Global search can't find a renamed service by its original name/slug, or a blueprint at all](147.md) ← live `/qa-find-bugs` 2026-09-25 pass 171 (read-only). The service haystack is `name + id`, and blueprints are not indexed. Substring and id matching are otherwise correct.
 
