@@ -1,16 +1,16 @@
 # w9 · m166 — Reject invalid service patches before applying any settings
 
-**Worker:** worker9 **Goal:** a rejected multi-field service update leaves the service unchanged and does not trigger a deployment. **Status:** todo
+**Worker:** worker9 **Goal:** a rejected multi-field service update leaves the service unchanged and does not trigger a deployment. **Status:** in progress — t001–t004 done (fix, blast-radius, cross-surface parity, simplify); t005 blocked on live CLI acceptance, t006 gated behind it
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Validate and authorize the whole service patch before its first write | 60m | — |
-| t002 | Verify the shared patch and setter blast radius | 45m | t001 |
-| t003 | Render parity across CLI, REST, MCP, GraphQL, and dashboard | 25m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage and live CLI regression | 40m | t003, t004 |
+| t001 | Validate and authorize the whole service patch before its first write — **DONE** | 60m | — |
+| t002 | Verify the shared patch and setter blast radius — **DONE** | 45m | t001 |
+| t003 | Render parity across CLI, REST, MCP, GraphQL, and dashboard — **DONE** | 25m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage and live CLI regression — **BLOCKED** (steps 1–2 done; live acceptance needs a deployed build + QA credentials) | 40m | t003, t004 |
 | t006 | Closeout | 10m | t005 |
 
 ## Definition of done
@@ -23,7 +23,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** user-requested looping `/qa-find-bugs-cli`, filed in w9; production sweep 1 on 2026-09-22 UTC using the authorized QA user's human device-login session. Complete sanitized reproduction, wire exchange, and diagnosis are in [t001](t001.md).
+- **Source:** user-requested looping `/qa-find-bugs-cli`, filed in w9; production sweep 1 on 2026-09-22 UTC using the authorized QA user's human device-login session. Complete sanitized reproduction, wire exchange, and diagnosis are in [t001](done/t001.md).
 - **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) requires dependable hosting operations for people and agents; [ADR006](../../../docs/ADR006-bex-api.md) puts these semantics in one shared core behind thin adapters. A command reporting rejection while changing live configuration makes safe automation impossible.
 - **Expected outcome:** invalid compound updates cannot rename a service or roll its running workload before returning an error.
 - **Why now:** the installed customer CLI reproduced both effects on production. A rejected shutdown-delay change created a deployment that reached `live`; this is observable behavior, not a hypothetical ordering concern. The shared table has 22 entries and two production adapters, so repairing only the demonstrated field pair would leave the same failure class elsewhere.

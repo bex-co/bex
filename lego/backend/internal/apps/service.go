@@ -669,6 +669,14 @@ func maintenanceModeView(m *appv1alpha1.MaintenanceModeSpec) MaintenanceModeView
 	return MaintenanceModeView{Enabled: m.Enabled, URI: m.URI}
 }
 
+// maintenanceModeSpec is maintenanceModeView's inverse: the neutral view back
+// onto the CR spec. Used by the writers that already validated the view, so it
+// deliberately does no validation of its own (validatedMaintenanceModeSpec is
+// the checking direction).
+func maintenanceModeSpec(in MaintenanceModeView) *appv1alpha1.MaintenanceModeSpec {
+	return &appv1alpha1.MaintenanceModeSpec{Enabled: in.Enabled, URI: in.URI}
+}
+
 // normalizeMaintenanceMode validates Render's maintenanceMode input and
 // projects it onto the CRD spec type. nil input means unset (create didn't
 // mention it) => nil spec, the same as never having enabled it. A non-empty
@@ -3266,24 +3274,8 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if err != nil {
 		return AppView{}, err
 	}
-	t, ok := tiers.Compute.ByRenderPlan(plan)
-	if !ok {
-		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
-	}
-	tier := t.ID
-	if a.Spec.Type == appv1alpha1.TypeBackgroundWorker && !core.PaidPlan(tier) {
-		return AppView{}, errWorkerFreePlan()
-	}
-	if err := diskPlanError(a, tier); err != nil {
-		return AppView{}, err
-	}
-	if err := s.RequirePlanBilling(ctx, a.Labels[core.LabelTenant], tier); err != nil {
-		return AppView{}, err
-	}
-	if tier == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
-		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
-	}
-	if err := planDowngradeError(a, tier, plan); err != nil {
+	tier, err := s.checkPlan(ctx, a, plan)
+	if err != nil {
 		return AppView{}, err
 	}
 	fromPlan := ""
@@ -3462,8 +3454,8 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 	if err != nil {
 		return AppView{}, err
 	}
-	if seconds < 0 || seconds > MaxIdleTTLSeconds {
-		return AppView{}, fmt.Errorf("%w: idleTTLSeconds must be 0-%d", core.ErrBadRequest, MaxIdleTTLSeconds)
+	if err := checkIdleTTL(seconds); err != nil {
+		return AppView{}, err
 	}
 	previous := a.Spec.IdleTTLSeconds
 	view, err := s.writeThroughStoreFetched(ctx, a,
@@ -3495,16 +3487,8 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
-	// What gets built is what runs, so this is the same identity change that
-	// repointing the source is (w4/m126).
-	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+	if err := s.checkRootDir(ctx, a, name, rootDir); err != nil {
 		return AppView{}, err
-	}
-	if err := requireRepoBacked(a, name, "root directory only applies to build-from-git"); err != nil {
-		return AppView{}, err
-	}
-	if !store.ValidRootDir(rootDir) {
-		return AppView{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetRootDir, a, func(a *appv1alpha1.App) {
 		a.Spec.RootDir = rootDir
@@ -3526,22 +3510,9 @@ func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath st
 	if err != nil {
 		return AppView{}, err
 	}
-	// What gets built is what runs, so this is the same identity change that
-	// repointing the source is (w4/m126).
-	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+	dockerfilePath, err = s.checkDockerfilePath(ctx, a, name, dockerfilePath)
+	if err != nil {
 		return AppView{}, err
-	}
-	if err := requireRepoBacked(a, name, "dockerfile path only applies to Dockerfile builds"); err != nil {
-		return AppView{}, err
-	}
-	runtime := strings.ToLower(strings.TrimSpace(a.Spec.Runtime))
-	builder := strings.ToLower(strings.TrimSpace(a.Spec.Builder))
-	if (runtime != "" && runtime != "docker") || builder == "native" || builder == "buildpack" {
-		return AppView{}, fmt.Errorf("%w: dockerfile path only applies to a Dockerfile-built service", core.ErrBadRequest)
-	}
-	dockerfilePath = strings.TrimSpace(dockerfilePath)
-	if dockerfilePath != "" && !store.ValidRootDir(dockerfilePath) {
-		return AppView{}, fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetDockerfilePath, a, func(a *appv1alpha1.App) {
 		a.Spec.DockerfilePath = dockerfilePath
@@ -3562,10 +3533,7 @@ func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *Build
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := requireRepoBacked(a, name, "build filters only apply to build-from-git"); err != nil {
-		return AppView{}, err
-	}
-	bf, err := normalizeBuildFilter(filter)
+	bf, err := checkBuildFilter(a, name, filter)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3591,14 +3559,8 @@ func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string)
 	if err != nil {
 		return AppView{}, err
 	}
-	// Same class as the build/start commands below: attacker-chosen code the
-	// service runs with its own identity, so a protected environment asks
-	// (w4/m126).
-	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+	if err := s.checkPreDeployCommand(ctx, a); err != nil {
 		return AppView{}, err
-	}
-	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeStaticSite {
-		return AppView{}, fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, a.Spec.Type)
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetPreDeployCommand, a, func(a *appv1alpha1.App) {
 		a.Spec.PreDeployCommand = strings.TrimSpace(command)
@@ -3617,13 +3579,8 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 	if err != nil {
 		return AppView{}, err
 	}
-	// What gets built is what runs, so this is the same identity change that
-	// repointing the source is (w4/m126).
-	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
+	if err := s.checkCommands(ctx, a, startCommand); err != nil {
 		return AppView{}, err
-	}
-	if a.Spec.Type == appv1alpha1.TypeStaticSite && startCommand != nil {
-		return AppView{}, fmt.Errorf("%w: start command is not applicable to a static_site", core.ErrBadRequest)
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetCommands, a, func(a *appv1alpha1.App) {
 		if buildCommand != nil {
@@ -3680,43 +3637,12 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if err != nil {
 		return AppView{}, err
 	}
-	if patch.ImageOwnerID != nil {
-		ownerID := strings.TrimSpace(*patch.ImageOwnerID)
-		if ownerID != "" && ownerID != a.Labels[core.LabelTenant] {
-			return AppView{}, fmt.Errorf("%w: image.ownerId does not match the service owner", core.ErrBadRequest)
-		}
-	}
-	// A protected environment guards what the service RUNS, not only whether it
-	// runs (w4/m126). Placed before resolveSourcePatch's own no-op return, so a
-	// caller cannot learn whether a change would have applied by watching which
-	// error comes back.
-	if verb := protectedSourceVerb(patch); verb != "" {
-		if err := s.requireUnprotected(ctx, a, verb); err != nil {
-			return AppView{}, err
-		}
-	}
-	next, err := resolveSourcePatch(a, patch)
+	next, changed, err := s.checkSourcePatch(ctx, a, patch)
 	if err != nil {
 		return AppView{}, err
 	}
-	if next.repo == a.Spec.Repo &&
-		next.image == a.Spec.Image &&
-		next.branch == a.Spec.Branch &&
-		sameStringPtr(next.registryCredentialID, a.Spec.RegistryCredentialID) {
+	if !changed {
 		return s.view(a), nil
-	}
-	probe := a.DeepCopy()
-	probe.Spec.Repo = next.repo
-	probe.Spec.Image = next.image
-	probe.Spec.Branch = next.branch
-	probe.Spec.RegistryCredentialID = clonePtr(next.registryCredentialID)
-	if err := s.validateExternalRegistryCredential(ctx, probe); err != nil {
-		return AppView{}, err
-	}
-	if next.repo != "" && next.repo != a.Spec.Repo && s.GitHub != nil {
-		if err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo); err != nil {
-			return AppView{}, err
-		}
 	}
 	// Stamp the pending generation before writing the projector-owned source
 	// row. If the following CR patch loses a race or the API becomes unavailable,
@@ -3750,10 +3676,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	// to keep the active artifact until a later deploy verb stamps
 	// AnnotationReleaseGeneration at this generation or newer.
 	updated, err := s.patchUntracked(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.Repo = next.repo
-		a.Spec.Image = next.image
-		a.Spec.Branch = next.branch
-		a.Spec.RegistryCredentialID = clonePtr(next.registryCredentialID)
+		next.applyTo(a)
 		if repoChanged {
 			a.Spec.CloneSecret = "" // clear stale token; reminted on next deploy
 		}
@@ -3786,6 +3709,18 @@ type sourceFields struct {
 	image                string
 	branch               string
 	registryCredentialID *string
+}
+
+// applyTo writes the resolved source onto a's spec. One writer for all three
+// places that need it — the credential probe's scratch App, the preflight's
+// probe, and the real patch — because "these four move together" is the whole
+// reason the type exists; a fifth source field added to sourceFields must not
+// be able to reach the write while the two probes still validate the old four.
+func (f sourceFields) applyTo(a *appv1alpha1.App) {
+	a.Spec.Repo = f.repo
+	a.Spec.Image = f.image
+	a.Spec.Branch = f.branch
+	a.Spec.RegistryCredentialID = clonePtr(f.registryCredentialID)
 }
 
 // resolveSourcePatch folds a sourcePatch onto the App's current source,
@@ -3887,25 +3822,8 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 	if err != nil {
 		return AppView{}, err
 	}
-	// The same split one line down: changing what the cron runs is the identity
-	// change a protected environment asks about (w4/m126); rescheduling when it
-	// runs is not.
-	if command != nil {
-		if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
-			return AppView{}, err
-		}
-	}
-	if schedule != nil {
-		trimmed := strings.TrimSpace(*schedule)
-		if trimmed == "" {
-			return AppView{}, fmt.Errorf("%w: schedule is required", core.ErrBadRequest)
-		}
-		if !validCronSchedule(trimmed) {
-			return AppView{}, fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
-		}
-	}
-	if a.Spec.Type != appv1alpha1.TypeCronJob {
-		return AppView{}, fmt.Errorf("%w: service %q is not a cron_job", core.ErrBadRequest, name)
+	if err := s.checkCronJob(ctx, a, name, schedule, command); err != nil {
+		return AppView{}, err
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		if schedule != nil {
@@ -3952,12 +3870,9 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 	if err != nil {
 		return AppView{}, err
 	}
-	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeBackgroundWorker {
-		return AppView{}, fmt.Errorf("%w: health check path is not applicable to a %s", core.ErrBadRequest, a.Spec.Type)
-	}
-	trimmed := strings.TrimSpace(path)
-	if trimmed != "" && !strings.HasPrefix(trimmed, "/") {
-		return AppView{}, fmt.Errorf("%w: health check path must start with /", core.ErrBadRequest)
+	trimmed, err := checkHealthCheckPath(a, path)
+	if err != nil {
+		return AppView{}, err
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.HealthCheckPath = trimmed
@@ -4008,11 +3923,7 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
-	if !a.Spec.InternallyAddressable() {
-		return AppView{}, fmt.Errorf("%w: port only applies to a web_service or private_service; %q has no listening port",
-			core.ErrBadRequest, effectiveType(a.Spec.Type))
-	}
-	if err := validateServicePort(port); err != nil {
+	if err := checkPort(a, port); err != nil {
 		return AppView{}, err
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetPort, a, func(a *appv1alpha1.App) {
@@ -4134,27 +4045,18 @@ func (s *Service) noVerifiedDomainError(ctx context.Context, a *appv1alpha1.App)
 }
 
 func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (AppView, error) {
-	normalized, err := normalizeSubdomainPolicy(policy)
-	if err != nil {
+	// The enum is validated before authorization — a malformed value is a 400
+	// regardless of who asked. The App-dependent guards below need the App.
+	if _, err := normalizeSubdomainPolicy(policy); err != nil {
 		return AppView{}, err
 	}
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
 	}
-	// renderSubdomainPolicy toggles the platform subdomain, which only a web
-	// service or static site HAS. A private service, background worker or cron
-	// job has no ingress, so there is no subdomain to enable or disable — refuse
-	// with exactly that reason, not the misleading custom-domain guard below
-	// (which then sends the caller into an add-domain call that itself 400s
-	// because the type has no ingress) and not a silent success (w6/m130).
-	if !a.Spec.PubliclyRoutable() {
-		return AppView{}, fmt.Errorf("%w: renderSubdomainPolicy applies only to web services and static sites; a %s has no platform subdomain to toggle", core.ErrBadRequest, effectiveType(a.Spec.Type))
-	}
-	if normalized == appv1alpha1.SubdomainPolicyDisabled {
-		if a.Spec.Host == "" && len(a.Spec.Hosts) == 0 {
-			return AppView{}, s.noVerifiedDomainError(ctx, a)
-		}
+	normalized, err := s.checkSubdomainPolicy(ctx, a, policy)
+	if err != nil {
+		return AppView{}, err
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetSubdomainPolicy, a, func(a *appv1alpha1.App) {
 		a.Spec.SubdomainPolicy = normalized
@@ -4197,23 +4099,13 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 	if err != nil {
 		return AppView{}, err
 	}
-	in.URI = strings.TrimSpace(in.URI)
-	if err := s.validateMaintenanceMode(ctx, a, in); err != nil {
+	in, err = s.checkMaintenanceMode(ctx, a, in)
+	if err != nil {
 		return AppView{}, err
 	}
 	current := maintenanceModeView(a.Spec.MaintenanceMode)
 	if current == in {
 		return s.view(a), nil
-	}
-	// Turning maintenance mode ON takes availability away exactly as Suspend
-	// does — every host answers 503 — so it is guarded on the same rule
-	// (w4/m126). Turning it OFF restores availability, which is why Resume is
-	// ungated, and a URI-only edit changes neither. The confirmation phrase is
-	// distinct from suspend's so neither can arm the other.
-	if in.Enabled && !current.Enabled {
-		if err := s.requireUnprotected(ctx, a, "take offline"); err != nil {
-			return AppView{}, err
-		}
 	}
 	uriChanged := current.URI != in.URI
 	var enabledChanged *bool
@@ -4222,7 +4114,7 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 		enabledChanged = &enabled
 	}
 	result, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: in.Enabled, URI: in.URI}
+		a.Spec.MaintenanceMode = maintenanceModeSpec(in)
 	})
 	if err != nil {
 		return AppView{}, err
@@ -4715,10 +4607,7 @@ func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) 
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := validatePublishPath(publishPath); err != nil {
-		return AppView{}, err
-	}
-	if err := requireStaticSite(a, name); err != nil {
+	if err := checkPublishPath(a, name, publishPath); err != nil {
 		return AppView{}, err
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetPublishPath, a, func(a *appv1alpha1.App) {
@@ -4865,10 +4754,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	if a.Spec.Disk != nil {
-		return AutoscalingView{}, fmt.Errorf("%w: detach the disk before enabling autoscaling", core.ErrBadRequest)
-	}
-	as, err := autoscalingSpec(req, a.Spec.Type, a.Spec.Tier)
+	as, err := checkAutoscaling(a, req)
 	if err != nil {
 		return AutoscalingView{}, err
 	}
