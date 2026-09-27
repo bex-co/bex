@@ -170,6 +170,61 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(app.Status.URL).To(Equal("https://" + name + ".onbex.co"))
 	})
 
+	// w4/160: with the activator configured, a suspended static site answers
+	// through the same suspended responder as a suspended web service (a 503
+	// that says "suspended"), not the static-server's "no static site for host"
+	// 404. The host and certificate stay (w3/m46), and resume points the
+	// Ingress back at the static-server.
+	It("routes a suspended site to the activator's suspended responder, and back on resume (w4/160)", func() {
+		const name = "site-suspend-activator"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		withActivator := func() *AppReconciler {
+			r := staticReconciler()
+			r.ActivatorService = "bex-activator"
+			r.ActivatorNamespace = "bex-system"
+			r.ActivatorPort = 8888
+			return r
+		}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: appv1alpha1.AppSpec{
+				Type:        appv1alpha1.TypeStaticSite,
+				Repo:        "https://github.com/bex-co/site",
+				PublishPath: "dist",
+				Expose:      true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Status.ActiveRevision = revFor(app)
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+		reconcileN(withActivator(), nn)
+
+		By("suspending the site")
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Spec.Suspended = true
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		reconcileN(withActivator(), nn)
+
+		var ing networkingv1.Ingress
+		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
+		backend := ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service
+		Expect(backend.Name).To(Equal(activatorAliasName(name)))
+		Expect(backend.Port.Number).To(Equal(int32(8888)))
+		Expect(ing.Spec.Rules[0].Host).To(Equal(name + ".onbex.co"))
+		Expect(ing.Spec.TLS).NotTo(BeEmpty(), "the managed certificate is kept while suspended")
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
+		Expect(app.Status.URL).To(Equal("https://"+name+".onbex.co"), "the activator finds the site by its URL")
+
+		By("resuming the site")
+		app.Spec.Suspended = false
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		reconcileN(withActivator(), nn)
+		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
+		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal(staticServerAliasName(name)))
+	})
+
 	It("keeps an already-published labeled site on the empty/legacy prefix across reconcile", func() {
 		const name = "site-upgrade-prefix"
 		const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
