@@ -17,9 +17,12 @@ limitations under the License.
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql/gqlerrors"
 
@@ -59,5 +62,30 @@ func TestSanitizeGraphQLErrors(t *testing.T) {
 	}
 	if out[3].Message != "Syntax Error: unexpected }" {
 		t.Errorf("parse/validation error wrongly redacted: %q", out[3].Message)
+	}
+}
+
+// TestGraphQLExecutionBudgetFitsInsideTheWriteDeadline pins w4/m140's fix: with
+// the two equal, a resolver that ran to the deadline lost its connection before
+// the error could be written, and the edge answered with a CORS-less 502.
+func TestGraphQLExecutionBudgetFitsInsideTheWriteDeadline(t *testing.T) {
+	if margin := HTTPWriteTimeout - gqlExecTimeout; margin < 3*time.Second {
+		t.Fatalf("gqlExecTimeout %v leaves only %v under WriteTimeout %v", gqlExecTimeout, margin, HTTPWriteTimeout)
+	}
+}
+
+// A resolver whose upstream call hit the execution deadline (here as the
+// *url.Error net/http returns) reads as a named, retry-free QUERY_TIMEOUT, not
+// a redacted "internal error" (w4/m140).
+func TestSanitizeGraphQLErrorsNamesAQueryTimeout(t *testing.T) {
+	upstream := &url.Error{Op: "Get", URL: "http://loki/loki/api/v1/query_range", Err: context.DeadlineExceeded}
+	out := sanitizeGraphQLErrors([]gqlerrors.FormattedError{
+		gqlerrors.FormatError(gqlerrors.NewError(upstream.Error(), nil, "", nil, nil, fmt.Errorf("query logs: %w", upstream))),
+	})
+	if out[0].Message != queryTimeoutMessage {
+		t.Fatalf("message = %q, want the timeout guidance", out[0].Message)
+	}
+	if out[0].Extensions["code"] != core.CodeQueryTimeout {
+		t.Fatalf("extensions = %v, want code %s", out[0].Extensions, core.CodeQueryTimeout)
 	}
 }

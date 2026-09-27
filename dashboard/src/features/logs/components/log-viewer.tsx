@@ -20,6 +20,7 @@ import {
 import { mergeLogLines } from "../lib/map";
 import {
   EMPTY_LOG_FILTERS,
+  LOG_PAGE_SIZE,
   hasActiveLogFilters,
   usesStoreOnlyFilters,
   type LogFilters,
@@ -169,6 +170,16 @@ export function LogViewer({
         description={t("logs.storeRequiredBody")}
       />
     );
+  } else if (history.timedOut) {
+    // The search could not cover any of the range in the server's budget;
+    // the same search would time out again (w4/m140).
+    body = (
+      <EmptyState
+        iconName="AlertCircle"
+        title={t("logs.timeoutTitle")}
+        description={t("logs.timeoutBody")}
+      />
+    );
   } else if (history.error) {
     body = (
       <EmptyState
@@ -180,7 +191,7 @@ export function LogViewer({
   } else if (history.loading && history.lines.length === 0) {
     body = <LogPanelSkeleton />;
   } else if (lines.length === 0) {
-    body = (
+    const empty = (
       <EmptyState
         iconName="ScrollText"
         title={filtered ? t("logs.emptyFilteredTitle") : t("logs.emptyTitle")}
@@ -189,11 +200,26 @@ export function LogViewer({
         }
       />
     );
+    // Nothing in the part searched so far, but the rest of the range is still
+    // unsearched: say so, and offer to keep going (w4/m140).
+    body = history.hasMore ? (
+      <div className="space-y-2">
+        <LogTruncationNotice
+          partial
+          loadingOlder={history.loadingOlder}
+          onLoadOlder={history.loadOlder}
+        />
+        {empty}
+      </div>
+    ) : (
+      empty
+    );
   } else {
     body = (
       <div className="space-y-2">
         {history.hasMore ? (
           <LogTruncationNotice
+            partial={history.lines.length < LOG_PAGE_SIZE}
             loadingOlder={history.loadingOlder}
             onLoadOlder={history.loadOlder}
           />

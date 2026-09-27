@@ -19,7 +19,6 @@ package logs
 import (
 	"context"
 	"slices"
-	"sort"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -155,27 +154,15 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		q.Limit = in.Limit
 
-		var all []LogEntry
-		for _, id := range resources {
-			q.App = id
-			entries, err := s.QueryLogs(ctx, q)
-			if err != nil {
-				return nil, listLogsResult{}, err
-			}
-			all = append(all, entries...)
+		page, err := s.queryLogPage(ctx, resources, q)
+		if err != nil {
+			return nil, listLogsResult{}, err
 		}
-		// Re-sort across resources; the limit is a total, not per-instance
-		// (QueryLogs already applied the per-App cap), and the direction decides
-		// which end of the window survives the cap.
-		sort.SliceStable(all, func(i, j int) bool { return all[i].Timestamp < all[j].Timestamp })
-		n := q.normalized()
-		all = n.capToLimit(all)
-		hasMore, nextStart, nextEnd := pageCursors(all, n.Limit, n.Since, n.End, n.Direction)
 		return nil, listLogsResult{
-			HasMore:       hasMore,
-			NextStartTime: nextStart,
-			NextEndTime:   nextEnd,
-			Logs:          all,
+			HasMore:       page.HasMore,
+			NextStartTime: page.NextStartTime,
+			NextEndTime:   page.NextEndTime,
+			Logs:          page.Entries,
 		}, nil
 	})
 

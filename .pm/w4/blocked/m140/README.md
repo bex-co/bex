@@ -1,18 +1,18 @@
 # w4 · m140 — A 7-day log search on a busy service dies at 30s as an edge 502, and the Logs tab spins ~90s before "Failed to fetch"
 
-**Worker:** worker4 **Goal:** a log search the server cannot finish in time comes back as a named, CORS-carrying API error that tells the user to narrow the range, and the Logs tab shows it promptly instead of retrying a doomed request for a minute and a half **Status:** todo
+**Worker:** worker4 **Goal:** a log search the server cannot finish in time comes back as a named, CORS-carrying API error that tells the user to narrow the range, and the Logs tab shows it promptly instead of retrying a doomed request for a minute and a half **Status:** blocked (t001–t006 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                           | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Put the GraphQL execution deadline strictly inside the server WriteTimeout and name the timeout | 40m | —          |
-| t002 | Establish why a no-match 7-day text search needs >30s, and bound it at the source               | 45m | —          |
-| t003 | Logs tab: no automatic retry of a search timeout; say "narrow the range" instead of "Failed to fetch" | 30m | t001   |
-| t004 | Render parity across REST / GraphQL / MCP / UI                                                 | 20m | t001, t002, t003 |
-| t005 | Simplify                                                                                        | 15m | t004       |
-| t006 | Test coverage                                                                                   | 30m | t004       |
-| t007 | Closeout                                                                                        | 10m | t006       |
+| t001 | Put the GraphQL execution deadline strictly inside the server WriteTimeout and name the timeout — **DONE** | 40m | —          |
+| t002 | Establish why a no-match 7-day text search needs >30s, and bound it at the source — **DONE**               | 45m | —          |
+| t003 | Logs tab: no automatic retry of a search timeout; say "narrow the range" instead of "Failed to fetch" — **DONE** | 30m | t001   |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                 | 20m | t001, t002, t003 |
+| t005 | Simplify — **DONE**                                                                                        | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                                                   | 30m | t004       |
+| t007 | Closeout — **BLOCKED**                                                                                        | 10m | t006       |
 
 ## Definition of done
 

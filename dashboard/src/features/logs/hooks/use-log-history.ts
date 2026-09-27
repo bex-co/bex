@@ -1,20 +1,29 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { LogsDocument } from "@/graphql/definitions";
+import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 import { dedupeLogLines, toLogLines } from "../lib/map";
 import { useOlderLogPages } from "./use-older-log-pages";
-import { LOG_TYPE_ALL, type LogFilters, type LogLine } from "../types";
+import {
+  LOG_PAGE_SIZE,
+  LOG_TYPE_ALL,
+  type LogFilters,
+  type LogLine,
+} from "../types";
 
 // bex-api's GraphQL logs query defaults to 20 lines and caps at 100 (Render's
 // paging range, internal/logs/service.go). The viewer asks for the max so the
 // historical panel is as full as the contract allows before the live tail takes
 // over.
-const HISTORY_LIMIT = 100;
+const HISTORY_LIMIT = LOG_PAGE_SIZE;
 
 // The message bex-api returns when a request-log / structured-filter query hits
 // a deployment with no durable store wired (core.ErrLogStoreUnavailable → 503).
 // The viewer renders this as an explanatory state, not a generic error toast.
 const STORE_UNAVAILABLE_MARKER = "durable log store";
+
+// bex-api's code for a read that ran out of its time budget (w4/m140).
+const QUERY_TIMEOUT = "QUERY_TIMEOUT";
 
 export interface UseLogHistoryResult {
   lines: LogLine[];
@@ -26,6 +35,12 @@ export interface UseLogHistoryResult {
    * (local dev). A distinct, non-error state — not "logs are broken".
    */
   storeUnavailable: boolean;
+  /**
+   * True when the search ran out of the server's time budget before covering
+   * any of the range (`QUERY_TIMEOUT`, w4/m140). Retrying the same search times
+   * out again, so the viewer asks for a narrower one instead.
+   */
+  timedOut: boolean;
   /** True when the server says more history exists older than the loaded pages. */
   hasMore: boolean;
   loadingOlder: boolean;
@@ -105,12 +120,14 @@ export function useLogHistory(
 
   const storeUnavailable =
     !!error && error.message.includes(STORE_UNAVAILABLE_MARKER);
+  const timedOut = hasGraphQLErrorCode(error, QUERY_TIMEOUT);
 
   return {
     lines,
     loading: loading && lines.length === 0,
     error,
     storeUnavailable,
+    timedOut,
     hasMore: pages.hasMore,
     loadingOlder: pages.loadingOlder,
     loadOlder: pages.loadOlder,

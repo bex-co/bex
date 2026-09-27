@@ -482,6 +482,12 @@ func (s *Service) Logs(ctx context.Context, name string, tail int64) ([]LogEntry
 	if s.History != nil {
 		// Durable history: the unfiltered tail-N read is a limit-only query.
 		entries, err := s.History(ctx, app.Namespace, LogQuery{App: app.Name, Limit: tail}.normalized())
+		// A tail is best-effort: the newest lines a budget-limited scan found
+		// are the answer, not a failure.
+		var partial *ScanIncompleteError
+		if errors.As(err, &partial) {
+			entries, err = partial.Entries, nil
+		}
 		return setLogResource(entries, resource), err
 	}
 	entries, err := s.collectPodLogs(ctx, app.Namespace, LogQuery{App: app.Name}, tail)
@@ -542,7 +548,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		// oldest-first, capped at q.Limit.
 		entries, err := s.History(ctx, appNS, q)
 		if err != nil {
-			return nil, err
+			return labelHistory(nil, err, resource)
 		}
 		entries = s.synthesizeProgress(ctx, q, resource, newProgressContext(app), entries)
 		return setLogResource(entries, resource), nil
@@ -592,7 +598,7 @@ func (s *Service) queryPostgresLogs(ctx context.Context, q LogQuery) ([]LogEntry
 	s.translateInstanceFilter(ctx, requested, database.Namespace, &q, candidatesFromPods(pods))
 	if s.History != nil {
 		entries, err := s.History(ctx, database.Namespace, q)
-		return setLogResource(entries, requested), err
+		return labelHistory(entries, err, requested)
 	}
 	entries, err := s.collectDatastorePodLogs(ctx, database.Namespace, q, pods, datastore{
 		name:      q.Database,
@@ -603,6 +609,18 @@ func (s *Service) queryPostgresLogs(ctx context.Context, q LogQuery) ([]LogEntry
 		return nil, err
 	}
 	return setLogResource(q.filterAndCap(entries), requested), nil
+}
+
+// labelHistory attributes a durable-history read to the requested resource,
+// including the covered part of a scan that ran out of time, which travels as
+// a *ScanIncompleteError for the adapters to page on from (w4/m140).
+func labelHistory(entries []LogEntry, err error, resource string) ([]LogEntry, error) {
+	var partial *ScanIncompleteError
+	if errors.As(err, &partial) {
+		partial.Entries = setLogResource(partial.Entries, resource)
+		return nil, partial
+	}
+	return setLogResource(entries, resource), err
 }
 
 func isPostgresResource(resource string) bool {
@@ -648,7 +666,7 @@ func (s *Service) queryKeyValueLogs(ctx context.Context, q LogQuery) ([]LogEntry
 	s.translateInstanceFilter(ctx, requested, kv.Namespace, &q, candidatesFromPods(pods))
 	if s.History != nil {
 		entries, err := s.History(ctx, kv.Namespace, q)
-		return setLogResource(entries, requested), err
+		return labelHistory(entries, err, requested)
 	}
 	entries, err := s.collectDatastorePodLogs(ctx, kv.Namespace, q, pods, datastore{
 		name:      q.KeyValue,

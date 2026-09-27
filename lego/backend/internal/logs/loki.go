@@ -55,22 +55,155 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
 		start, end := lokiRange(q, time.Now())
-		u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
-			"query": {lokiQueryFor(namespace, q)},
-			"start": {strconv.FormatInt(start.UnixNano(), 10)},
-			"end":   {strconv.FormatInt(end.UnixNano(), 10)},
-			"limit": {strconv.FormatInt(lokiLimit(q), 10)},
-			// Render's direction decides which end of the window `limit` keeps:
-			// backward (default) the newest lines, forward the oldest.
-			"direction": {lokiDirection(q)},
-		}.Encode())
-
-		var lr lokiRangeResponse
-		if err := lokiGet(ctx, hc, u, &lr); err != nil {
-			return nil, err
+		query := lokiQueryFor(namespace, q)
+		fetch := func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
+			u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
+				"query": {query},
+				"start": {strconv.FormatInt(from.UnixNano(), 10)},
+				"end":   {strconv.FormatInt(to.UnixNano(), 10)},
+				"limit": {strconv.FormatInt(lokiLimit(q), 10)},
+				// Render's direction decides which end of the window `limit` keeps:
+				// backward (default) the newest lines, forward the oldest.
+				"direction": {lokiDirection(q)},
+			}.Encode())
+			var lr lokiRangeResponse
+			if err := lokiGet(ctx, hc, u, &lr); err != nil {
+				return nil, err
+			}
+			return parseLokiStreams(lr, q)
 		}
-		return parseLokiStreams(lr, q)
+		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, fetch)
 	}
+}
+
+// A line-filtered history read (text, path, or host) makes Loki scan every
+// line in the window, so a search with few or no matches over a week of a busy
+// service outlasts the HTTP write deadline and reaches the browser as an edge
+// 502 (w4/m140). Such reads are scanned in slices from the end the direction
+// keeps (newest-first by default), each twice the last, so the common case (the
+// newest hour already holds a page) costs one request. A scan stops at
+// lokiScanBudget and returns what it covered, and the adapters page on from
+// there. Label-only reads stop at `limit` inside Loki and stay one request.
+const (
+	lokiFirstSlice = time.Hour
+	// lokiScanBudget is how long one read may spend scanning. It sits well under
+	// the GraphQL execution budget (api.gqlExecTimeout) and the server's
+	// WriteTimeout, so the answer (partial or whole) is always written.
+	lokiScanBudget = 18 * time.Second
+	// lokiScanMargin is kept back from a caller deadline for serializing the page.
+	lokiScanMargin = 2 * time.Second
+)
+
+// ScanIncompleteError reports a history read that ran out of time before
+// covering its whole window. Entries are every match in the covered part, and
+// ScannedTo is where coverage stops. A backward read covered [ScannedTo, end]
+// and a forward read covered [start, ScannedTo). The adapters turn it into an
+// honest page (hasMore, with the cursor at ScannedTo) rather than an error.
+type ScanIncompleteError struct {
+	Entries   []LogEntry
+	ScannedTo time.Time
+}
+
+func (e *ScanIncompleteError) Error() string {
+	return fmt.Sprintf("log search covered only up to %s before its time budget ran out", e.ScannedTo.UTC().Format(time.RFC3339))
+}
+
+// lokiScansLines reports whether q carries a line filter, which Loki can only
+// answer by reading every line in the window.
+func lokiScansLines(q LogQuery) bool {
+	return q.Search != "" || len(q.Path) > 0 || len(q.Host) > 0
+}
+
+// scanLokiWindow walks [start, end] until q's limit is filled, the window is
+// covered, or budget is spent. sliced reads it in growing slices from the
+// direction's end; otherwise it is one request under the same budget. fetch
+// reads one slice.
+func scanLokiWindow(
+	ctx context.Context,
+	q LogQuery,
+	start, end time.Time,
+	sliced bool,
+	budget time.Duration,
+	fetch func(ctx context.Context, from, to time.Time) ([]LogEntry, error),
+) ([]LogEntry, error) {
+	deadline := time.Now().Add(budget)
+	if d, ok := ctx.Deadline(); ok && d.Add(-lokiScanMargin).Before(deadline) {
+		deadline = d.Add(-lokiScanMargin)
+	}
+	scanCtx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+
+	forward := lokiDirection(q) == DirectionForward
+	limit := lokiLimit(q)
+	var out []LogEntry
+	seen := map[string]struct{}{}
+	covered := end // backward: [covered, end] is done; forward: [start, covered)
+	if forward {
+		covered = start
+	}
+	initial := covered
+	slice := lokiFirstSlice
+	if !sliced {
+		slice = end.Sub(start)
+	}
+	for {
+		from, to := covered.Add(-slice), covered
+		if forward {
+			from, to = covered, covered.Add(slice)
+		}
+		if from.Before(start) {
+			from = start
+		}
+		if to.After(end) {
+			to = end
+		}
+		page, err := fetch(scanCtx, from, to)
+		if err != nil {
+			if ctx.Err() != nil || scanCtx.Err() == nil {
+				return nil, err // the caller went away, or Loki itself failed
+			}
+			// Our own budget ran out mid-slice: report what is covered, or, if
+			// not even the first slice finished, a named timeout.
+			if covered.Equal(initial) {
+				return nil, errLogSearchTimeout
+			}
+			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
+		}
+		// Adjacent slices share a boundary instant; a line exactly on it may come
+		// back from both, and must count once.
+		for _, e := range page {
+			key := e.Timestamp + "\x00" + e.Labels[LabelInstance] + "\x00" + e.Message
+			if _, dup := seen[key]; dup {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(out, e)
+		}
+		if forward {
+			covered = to
+		} else {
+			covered = from
+		}
+		done := int64(len(out)) >= limit || (forward && !covered.Before(end)) || (!forward && !covered.After(start))
+		if done {
+			return q.capToLimit(sortedEntries(out)), nil
+		}
+		if scanCtx.Err() != nil {
+			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
+		}
+		slice *= 2
+	}
+}
+
+// errLogSearchTimeout is the answer when even the first slice of a search cannot
+// finish inside the budget: nothing honest can be paged, so the caller is told
+// to narrow the search (a 503 on REST, a QUERY_TIMEOUT-coded error on GraphQL).
+var errLogSearchTimeout = core.NewUnavailableError(core.CodeQueryTimeout,
+	"log search timed out before it covered any of the time range; narrow the range or search a more specific term", nil)
+
+func sortedEntries(entries []LogEntry) []LogEntry {
+	sort.SliceStable(entries, func(i, j int) bool { return entries[i].Timestamp < entries[j].Timestamp })
+	return entries
 }
 
 // NewLokiLabelValuesSource returns the production LogLabelValuesSource, backed by

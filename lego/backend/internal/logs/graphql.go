@@ -107,17 +107,15 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err := s.checkWindow(q); err != nil {
 					return nil, err
 				}
-				entries, err := s.QueryLogs(p.Context, q)
+				page, err := s.queryLogPage(p.Context, []string{q.App}, q)
 				if err != nil {
 					return nil, err
 				}
-				n := q.normalized()
-				hasMore, nextStart, nextEnd := pageCursors(entries, n.Limit, n.Since, n.End, n.Direction)
 				return map[string]any{
-					"hasMore":       hasMore,
-					"nextStartTime": nextStart,
-					"nextEndTime":   nextEnd,
-					"logs":          entries,
+					"hasMore":       page.HasMore,
+					"nextStartTime": page.NextStartTime,
+					"nextEndTime":   page.NextEndTime,
+					"logs":          page.Entries,
 				}, nil
 			},
 		},

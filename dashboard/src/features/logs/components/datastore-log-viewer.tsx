@@ -21,7 +21,7 @@ import {
 } from "../lib/datastore-log-range";
 import { type RangeSelection } from "@/features/metrics/lib/range";
 import { useLogHistory } from "../hooks/use-log-history";
-import { EMPTY_LOG_FILTERS } from "../types";
+import { EMPTY_LOG_FILTERS, LOG_PAGE_SIZE } from "../types";
 
 const ALL_INSTANCES = "all";
 
@@ -86,6 +86,16 @@ export function DatastoreLogViewer({
         description={t(`${kind}.logsUnauthorizedBody`)}
       />
     );
+  } else if (history.timedOut) {
+    // The search could not cover any of the range in the server's budget;
+    // the same search would time out again (w4/m140).
+    body = (
+      <EmptyState
+        iconName="AlertCircle"
+        title={t("logs.timeoutTitle")}
+        description={t("logs.timeoutBody")}
+      />
+    );
   } else if (history.error) {
     body = (
       <EmptyState
@@ -102,7 +112,7 @@ export function DatastoreLogViewer({
       </div>
     );
   } else if (history.lines.length === 0) {
-    body = (
+    const empty = (
       <EmptyState
         iconName="ScrollText"
         title={t(`${kind}.logsEmptyTitle`)}
@@ -113,11 +123,26 @@ export function DatastoreLogViewer({
         }
       />
     );
+    // Nothing in the part searched so far, but the rest of the range is still
+    // unsearched (w4/m140).
+    body = history.hasMore ? (
+      <div className="space-y-2">
+        <LogTruncationNotice
+          partial
+          loadingOlder={history.loadingOlder}
+          onLoadOlder={history.loadOlder}
+        />
+        {empty}
+      </div>
+    ) : (
+      empty
+    );
   } else {
     body = (
       <div className="space-y-2">
         {history.hasMore ? (
           <LogTruncationNotice
+            partial={history.lines.length < LOG_PAGE_SIZE}
             loadingOlder={history.loadingOlder}
             onLoadOlder={history.loadOlder}
           />

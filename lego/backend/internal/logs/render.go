@@ -17,8 +17,12 @@ limitations under the License.
 package logs
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
+	"slices"
+	"sort"
 	"time"
 )
 
@@ -92,20 +96,91 @@ func toRenderLog(e LogEntry) renderLog {
 	return renderLog{ID: logID(e), Message: e.Message, Timestamp: e.Timestamp, Labels: labels}
 }
 
-// toRenderLogList builds the logs envelope. since/end are the query's own
-// resolved time bounds and direction picks which end of the window limit kept.
-// Render marks nextStartTime/nextEndTime as REQUIRED timestamps (never omitted
-// or empty, verified against the render-oss/cli generated client's
-// Logs200Response: both are plain time.Time, not pointers), so an empty-result
-// query still needs valid cursors; the query's own window is the only bound
-// available when there are no entries to derive one from.
-func toRenderLogList(entries []LogEntry, limit int64, since, end time.Time, direction string) renderLogList {
-	out := renderLogList{Logs: make([]renderLog, 0, len(entries))}
-	for _, e := range entries {
+// toRenderLogList builds the REST logs envelope from a resolved page. Render
+// marks nextStartTime/nextEndTime as REQUIRED timestamps (never omitted or
+// empty, verified against the render-oss/cli generated client's
+// Logs200Response: both are plain time.Time, not pointers), which logPage
+// guarantees.
+func toRenderLogList(page logPage) renderLogList {
+	out := renderLogList{
+		Logs:          make([]renderLog, 0, len(page.Entries)),
+		HasMore:       page.HasMore,
+		NextStartTime: page.NextStartTime,
+		NextEndTime:   page.NextEndTime,
+	}
+	for _, e := range page.Entries {
 		out.Logs = append(out.Logs, toRenderLog(e))
 	}
-	out.HasMore, out.NextStartTime, out.NextEndTime = pageCursors(entries, limit, since, end, direction)
 	return out
+}
+
+// logPage is one resolved page of a logs query: the lines, oldest-first, and
+// Render's paging fields. REST, GraphQL, and MCP all build it with
+// Service.queryLogPage, so the three surfaces page identically.
+type logPage struct {
+	Entries       []LogEntry
+	HasMore       bool
+	NextStartTime string
+	NextEndTime   string
+}
+
+// queryLogPage reads every resource in Render's `resource` array, merges their
+// lines, applies the limit as a total, and resolves the paging cursors.
+//
+// A durable-history scan that ran out of time (*ScanIncompleteError) is not an
+// error here: its covered part is a valid page, and hasMore with the cursor at
+// the coverage edge lets the caller page on into the rest of the window
+// instead of a week-long search dying at the HTTP write deadline (w4/m140).
+// Across several resources, the least-covered one bounds the page, and lines
+// beyond that edge are dropped so the next page does not repeat them.
+func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQuery) (logPage, error) {
+	n := q.normalized()
+	forward := n.Direction == DirectionForward
+	var all []LogEntry
+	var edge *time.Time
+	for _, id := range resources {
+		q.App = id
+		entries, err := s.QueryLogs(ctx, q)
+		var partial *ScanIncompleteError
+		if errors.As(err, &partial) {
+			entries, err = partial.Entries, nil
+			if to := partial.ScannedTo; edge == nil || (forward && to.Before(*edge)) || (!forward && to.After(*edge)) {
+				edge = &to
+			}
+		}
+		if err != nil {
+			return logPage{}, err
+		}
+		all = append(all, entries...)
+	}
+	if edge != nil {
+		all = slices.DeleteFunc(all, func(e LogEntry) bool {
+			t, err := time.Parse(time.RFC3339Nano, e.Timestamp)
+			if err != nil {
+				return false
+			}
+			if forward {
+				return !t.Before(*edge)
+			}
+			return t.Before(*edge)
+		})
+	}
+	sort.SliceStable(all, func(i, j int) bool { return all[i].Timestamp < all[j].Timestamp })
+	all = n.capToLimit(all) // the limit is a total across resources, not per resource
+	page := logPage{Entries: all}
+	page.HasMore, page.NextStartTime, page.NextEndTime = pageCursors(all, n.Limit, n.Since, n.End, n.Direction)
+	if edge != nil && !page.HasMore {
+		since, end := resolveCursorWindow(n.Since, n.End)
+		page.HasMore = true
+		if forward {
+			page.NextStartTime = edge.UTC().Format(time.RFC3339Nano)
+			page.NextEndTime = end.UTC().Format(time.RFC3339Nano)
+		} else {
+			page.NextStartTime = since.UTC().Format(time.RFC3339Nano)
+			page.NextEndTime = edge.Add(-time.Nanosecond).UTC().Format(time.RFC3339Nano)
+		}
+	}
+	return page, nil
 }
 
 // pageCursors computes the Render paging envelope fields shared by REST,

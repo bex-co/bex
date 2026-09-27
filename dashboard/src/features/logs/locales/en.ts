@@ -131,6 +131,21 @@ const enLogs: Record<string, TranslationEntry> = {
     description:
       "Banner when hasMore is true: the selected range holds more than the 100-line page, so the view is truncated until the user pages back",
   },
+  "logs.partialSearchNotice": {
+    message:
+      "Only the newest part of this range has been searched so far — load older to keep searching.",
+    description:
+      "Banner when a time-boxed search returned less than a page but hasMore is true: the older part of the range is unsearched, not empty (w4/m140)",
+  },
+  "logs.timeoutTitle": {
+    message: "This search took too long",
+    description:
+      "State title when the logs query ran out of the server's time budget (QUERY_TIMEOUT, w4/m140)",
+  },
+  "logs.timeoutBody": {
+    message: "Try a shorter time range or a more specific search term.",
+    description: "State body under logs.timeoutTitle",
+  },
   "logs.streaming": {
     message: "Live — streaming new lines",
     description: "Status under the log list when the SSE tail is connected",

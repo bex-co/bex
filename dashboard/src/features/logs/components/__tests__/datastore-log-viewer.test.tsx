@@ -14,6 +14,7 @@ const state: UseLogHistoryResult = {
   loading: false,
   error: undefined,
   storeUnavailable: false,
+  timedOut: false,
   hasMore: false,
   loadingOlder: false,
   loadOlder: () => undefined,
@@ -54,6 +55,7 @@ beforeEach(() => {
   state.loading = false;
   state.error = undefined;
   state.hasMore = false;
+  state.timedOut = false;
   state.loadingOlder = false;
   state.loadOlder = () => undefined;
   useHistorySpy.mockReset();
@@ -118,7 +120,7 @@ describe("DatastoreLogViewer", () => {
   });
 
   it("states truncation only when the server has more (w4/m136)", () => {
-    state.lines = [line(0)];
+    state.lines = Array.from({ length: 100 }, (_, i) => line(i));
     const { rerender } = render(
       <DatastoreLogViewer kind="databases" resource="dpg-example" />,
     );

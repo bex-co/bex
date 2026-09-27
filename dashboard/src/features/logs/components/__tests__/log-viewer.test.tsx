@@ -13,6 +13,7 @@ const historyState: UseLogHistoryResult = {
   loading: false,
   error: undefined,
   storeUnavailable: false,
+  timedOut: false,
   hasMore: false,
   loadingOlder: false,
   loadOlder: () => undefined,
@@ -45,6 +46,7 @@ beforeEach(() => {
   historyState.loading = false;
   historyState.error = undefined;
   historyState.storeUnavailable = false;
+  historyState.timedOut = false;
   historyState.hasMore = false;
   historyState.loadingOlder = false;
   historyState.loadOlder = () => undefined;
@@ -155,11 +157,54 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
       screen.queryByText(/Showing the newest 100 matching lines/),
     ).not.toBeInTheDocument();
 
+    // A full page with more behind it is a capped view (w4/m107)...
+    historyState.lines = Array.from({ length: 100 }, (_, i) => ({
+      ...historyState.lines[0],
+      key: `k${i}`,
+    }));
     historyState.hasMore = true;
     rerender(<LogViewer resource="web" />);
     expect(
       screen.getByText(/Showing the newest 100 matching lines/),
     ).toBeInTheDocument();
+
+    // ...while a short page with more behind it is a search the server
+    // time-boxed: the rest of the range is unsearched, not capped (w4/m140).
+    historyState.lines = historyState.lines.slice(0, 3);
+    rerender(<LogViewer resource="web" />);
+    expect(
+      screen.getByText(/Only the newest part of this range has been searched/),
+    ).toBeInTheDocument();
+  });
+
+  it("says a time-boxed search found nothing yet and offers to keep searching (w4/m140)", () => {
+    historyState.hasMore = true;
+    historyState.loadOlder = vi.fn();
+    render(
+      <LogViewer
+        resource="web"
+        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "zzqqxx-no-such-token" }}
+      />,
+    );
+    expect(screen.getByText("No matching logs")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Only the newest part of this range has been searched/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load older" }));
+    expect(historyState.loadOlder).toHaveBeenCalled();
+  });
+
+  it("shows a search timeout as advice to narrow it, not a transport error (w4/m140)", () => {
+    historyState.timedOut = true;
+    historyState.error = new Error("query timed out");
+    render(<LogViewer resource="web" />);
+    expect(screen.getByText("This search took too long")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Try a shorter time range or a more specific search term.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load logs")).not.toBeInTheDocument();
   });
 
   it("keeps the truncation notice while live tail remains available (w4/m107)", () => {
@@ -181,9 +226,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
     historyState.loadOlder = vi.fn();
     render(<LogViewer resource="web" />);
     expect(screen.getByText("historical")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Showing the newest 100 matching lines/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
     // Live tail is still offered (default live=true) alongside page-back.
     expect(useLiveLogsSpy).toHaveBeenCalled();
     const liveOpts = useLiveLogsSpy.mock.calls.at(-1)?.[0] as {
@@ -319,7 +362,9 @@ describe("LogViewer zero-result empty state (w6/m47, w6/m111)", () => {
       />,
     );
     expect(screen.getByText("No matching logs")).toBeInTheDocument();
-    expect(screen.getByText("No logs match these filters.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No logs match these filters."),
+    ).toBeInTheDocument();
     // The contradictory pairing is the bug: these two must never co-render.
     expect(
       screen.queryByText("No logs in this time range"),
