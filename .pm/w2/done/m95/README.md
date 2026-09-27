@@ -1,6 +1,6 @@
 # w2 · m95 — Environment values mean what the user typed: round-trip escapes, multi-line values, and `PORT`
 
-**Worker:** worker2 **Goal:** a value that leaves the dashboard through Export comes back identical through Import; a multi-line value pasted into any env value field is saved with its line breaks; and a user-set `PORT` key is refused with a coded reason on every write surface instead of being saved and silently ignored. **Status:** t001–t006 done; **t007 closeout BLOCKED** on live production verification (see Blocker)
+**Worker:** worker2 **Goal:** a value that leaves the dashboard through Export comes back identical through Import; a multi-line value pasted into any env value field is saved with its line breaks; and a user-set `PORT` key is refused with a coded reason on every write surface instead of being saved and silently ignored. **Status:** done (live Definition of done re-probed and passed 2026-09-26, `/qa-find-bugs` pass 218)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE**                                                                                                      | 15m | t001, t002, t003 |
 | t005 | Simplify — **DONE**                                                                                                           | 15m | t004             |
 | t006 | Test coverage — **DONE**                                                                                                      | 35m | t004             |
-| t007 | Closeout                                                                                                                      | 10m | t006             |
+| t007 | Closeout                                                                                                                      | 10m | t006 — **DONE** |
 
 ## Decisions
 
@@ -119,3 +119,22 @@ Run each bullet on the production dashboard against a throwaway free web service
 - **Goal linkage:** pillar 2 (agent-readable, deterministic state): a value must survive the dashboard untouched, and a saved key must mean what it says. ADR018 rows 112 and 113 claim full env-var/secret-file parity while `PORT` is an unrecorded divergence from Render's "set `PORT` to pick the port".
 - **Expected outcome:** no secret is silently altered on the way in (JSON escapes and newlines survive export → import and paste → save), and a migrating Render user learns immediately, with a code, that bex owns `PORT` and where to change the service port instead.
 - **Why now:** 099 corrupts secrets on save with no warning, the worst class of dashboard defect, and its fix is contained to two dashboard libraries plus the value fields. `PORT` is decided as **option (a)**: keep the operator-owned invariant (a user `PORT` in an env group would otherwise silently change routing and health checks for every linked service) and refuse rather than honor. Render parity is **included**: t003 touches REST, GraphQL, MCP, Blueprint validation and both dashboard editors, and t001/t002 change what the dashboard stores.
+
+## Live Definition-of-done re-probe (2026-09-26, `/qa-find-bugs` pass 218) — all pass
+
+Production `dashboard.bex.co` / `api.bex.co`, deployed `726042a28`, workspace `bex`, `muse.env` QA credentials. Fixtures were a free web service `srv-das9cj9smc7s73cq5nv0` (`qa-20260926-m95`) and env group `evg-das9ck0d0qnc73d7a3sg` (`qa-20260926-m95eg`), both deleted afterwards (`DELETE` 204, then `GET` 404). **Deviation:** the service ran the `docker.io/traefik/whoami:v1.10` image instead of building `examples/hello-go`. Env handling is independent of the build path.
+
+- **Export/Import round trip is byte-exact — PASS.** `PUT …/env-vars/CTRL {"value":"esc\u001bend"}` read back char codes `[101,115,99,27,101,110,100]`. Environment → Export → **Copy env vars** put `CTRL="esc\u001bend"` on the clipboard. `CTRL` was then overwritten over the API with `changed`, and Edit → Add variable → **Import from .env** → paste → **Add variables** → **Save and deploy** ran (toast "Environment saved and deployment started"). `GET …/env-vars/CTRL` came back as `[101,115,99,27,101,110,100]` again: the ESC byte was restored.
+- **A pasted multi-line value keeps its line breaks — PASS.** A new row `MULTI` got `first⏎second⏎third` in its value field. The draft textarea held 3 lines (auto-grown, scrollHeight 72). After Save and deploy, `GET …/env-vars/MULTI` returned `"first\nsecond\nthird"`.
+- **An imported multi-line draft displays truthfully — PASS.** Importing `PEM="-----BEGIN KEY-----\nline-one\nline-two\n-----END KEY-----"` gave a draft textarea of 4 lines (scrollHeight 92). It saved unchanged: `GET …/env-vars/PEM` returned `"-----BEGIN KEY-----\nline-one\nline-two\n-----END KEY-----"`.
+- **`PORT` is refused with a code on every surface — PASS.**
+  - REST `PUT …/env-vars/PORT`, REST `PATCH …/environment {saveMode:"save_only", envVars:[PORT]}`, `PUT /v1/env-groups/<evg>/env-vars/PORT` and `PATCH …/contents {saveMode:"save_only", …}` each returned `400 {"code":"ENVIRONMENT_VARIABLE_RESERVED", "error":"environment variable \"PORT\" is reserved: bex sets it from the service port; change the service's port field instead (REST PATCH /v1/services/{id} port, GraphQL setPort, MCP update_service port, or Settings in the dashboard)"}`.
+  - GraphQL `patchServiceEnvironment` returned the same message with `extensions.code: "ENVIRONMENT_VARIABLE_RESERVED"`.
+  - MCP `patch_service_environment` returned `isError` text `ENVIRONMENT_VARIABLE_RESERVED: …`.
+  - `POST /v1/blueprints/validate` gave `valid:false` with `envVars["PORT"] … is reserved` at `services[0].envVars[0]`.
+  - Afterwards, neither the service nor the group stored a `PORT` key.
+  - Dashboard: typing `PORT` as a key in the Environment editor showed "PORT is set by bex from the service port. Change the service's port field instead. Change the service's port in Settings", and **Save and deploy** went disabled. The create form (`/services/new`) showed the same hint ending "Set the service's port above".
+- **The rule is recorded — PASS.** `docs/ADR018-render-parity.md:117` carries the `PORT` deliberate-divergence row, citing ADR004 and stating "reserved for every App type — web, private, worker, cron and static". `docs/ADR004-app-deployment.md:152` states the operator-owned `PORT` rule.
+
+Residual (filed separately, not part of this DoD): a **literal** multi-line double-quoted value in a pasted `.env` is still refused by the import parser. See `w4/159`.
+
