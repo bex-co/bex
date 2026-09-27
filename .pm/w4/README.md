@@ -300,7 +300,7 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **144** — [A Key Value or Postgres placed in a project shows no project in its breadcrumb, only "Key Value red-…"](done/144.md) ← live `/qa-find-bugs` 2026-09-25 pass 165, journey 1. `dashboard-breadcrumbs.tsx` gives Project › Environment only to services; datastores fall back to type + raw id. — **done 2026-09-27**: datastore pages now read Project › Environment › name with the service breadcrumb's switchers, and an ungrouped store shows type › name.
 
-- [ ] **145** — [Static-site rule errors name the row by its zero-based wire index ("Routes[1]") in a toast, with nothing marked in the table](145.md) ← live `/qa-find-bugs` 2026-09-25 pass 167, journey 9. There is no per-row validation, and the server's `routes[i]` reaches the user verbatim. Redirects, rewrites, and header rules all served correctly.
+- [x] **145** — [Static-site rule errors name the row by its zero-based wire index ("Routes[1]") in a toast, with nothing marked in the table](done/145.md) ← live `/qa-find-bugs` 2026-09-25 pass 167, journey 9. There is no per-row validation, and the server's `routes[i]` reaches the user verbatim. Redirects, rewrites, and header rules all served correctly. — **done 2026-09-27**: invalid rule fields are marked in their row and hold Save, and a server refusal names "Row N" instead of the wire index.
 
 - [ ] **146** — [A webhook's filtered delivery list says "No deliveries yet — trigger a deploy" while the Failed tab holds eight](146.md) ← live `/qa-find-bugs` 2026-09-25 pass 168, webhooks. The first-run empty state ignores the status tab and date filters (`webhook-deliveries-card.tsx:194-199`). Delivery, retries, and response detail are correct.
 

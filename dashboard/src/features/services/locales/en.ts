@@ -2539,6 +2539,35 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Save routes",
     description: "Save the routes list",
   },
+  "services.staticRuleRequired": {
+    message: "Required",
+    description: "Inline error under an empty static-site rule field (w4/145)",
+  },
+  "services.staticRulePathSlash": {
+    message: "Must be a path starting with /",
+    description:
+      "Inline error under a static-site rule path that doesn't start with / (w4/145)",
+  },
+  "services.staticRuleLocalPath": {
+    message: "Must be a path on this site, not //host",
+    description:
+      "Inline error under a redirect/rewrite destination that is a network-path reference (w4/145)",
+  },
+  "services.staticRuleFixRows": {
+    message: "Fix the marked rows to save.",
+    description:
+      "Note beside a disabled Save while a static-site rule row is invalid (w4/145)",
+  },
+  "services.staticRuleEmptyRow": {
+    message: "Fill in or remove the empty row to save.",
+    description:
+      "Note beside a disabled Save while a static-site rule row is still completely empty (w4/145)",
+  },
+  "services.staticRuleRow": {
+    message: "Row {row}:",
+    description:
+      "Prefix naming the 1-based rule row in a server refusal, replacing its zero-based wire index (w4/145)",
+  },
   "services.staticRoutesSaved": {
     message: "Routes updated",
     description: "Toast after saving routes",

@@ -175,3 +175,60 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
     );
   });
 });
+
+// w4/145: an invalid rule is marked in its row before Save, instead of a toast
+// naming it by its zero-based wire index after the round trip.
+describe("edge-rule row validation (w4/145)", () => {
+  it("marks the second redirect's absolute destination in its row and holds Save", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => ({ ok: true }));
+    render(
+      <RoutesEditor
+        routes={[
+          { type: "redirect", source: "/blog/*", destination: "/posts/*" },
+        ]}
+        onSave={onSave}
+        busy={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Add rule/ }));
+    const sources = screen.getAllByRole("textbox", { name: "Source" });
+    const destinations = screen.getAllByRole("textbox", {
+      name: "Destination",
+    });
+    await user.type(sources[1], "/old");
+    await user.type(destinations[1], "https://example.org/landing");
+
+    expect(destinations[1]).toHaveAttribute("aria-invalid", "true");
+    expect(destinations[1]).toHaveAccessibleDescription(
+      "Must be a path starting with /",
+    );
+    expect(destinations[0]).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();
+    expect(
+      screen.getByText("Fix the marked rows to save."),
+    ).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("does not shout at a freshly added empty row, but says why Save waits", async () => {
+    const user = userEvent.setup();
+    render(
+      <HeadersEditor
+        headers={[]}
+        onSave={vi.fn(async () => ({ ok: true }))}
+        busy={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Add header/ }));
+    expect(screen.getByRole("textbox", { name: "Name" })).not.toHaveAttribute(
+      "aria-invalid",
+    );
+    expect(screen.getByRole("button", { name: "Save headers" })).toBeDisabled();
+    expect(
+      screen.getByText("Fill in or remove the empty row to save."),
+    ).toBeInTheDocument();
+  });
+});

@@ -8,6 +8,7 @@ import {
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { humanizeRuleError } from "@/features/services/lib/static-rule-validation";
 import type {
   ServiceView,
   StaticRouteView,
@@ -62,6 +63,14 @@ export function useStaticSiteMutations(
   const [setStaticHeaders] = useMutation(SetStaticHeadersDocument);
   const [setPublishPathMut] = useMutation(SetPublishPathDocument);
   const [busy, setBusy] = useState(false);
+  // A server refusal names the rule by its wire index; say the row instead.
+  const ruleError = useCallback(
+    (err: unknown, generic: string) =>
+      humanizeRuleError(mutationErrorMessage(err, generic), (row) =>
+        t("services.staticRuleRow", { row }),
+      ),
+    [t],
+  );
 
   const setRoutes = useCallback(
     async (routes: StaticRouteView[]) => {
@@ -77,13 +86,13 @@ export function useStaticSiteMutations(
         toast.success(t("services.staticRoutesSaved"));
         return saved ? { ok: true, saved: saved.routes } : { ok: true };
       } catch (err) {
-        toast.error(mutationErrorMessage(err, t("services.staticRoutesError")));
+        toast.error(ruleError(err, t("services.staticRoutesError")));
         return { ok: false };
       } finally {
         setBusy(false);
       }
     },
-    [serviceId, setStaticRoutes, refetch, t],
+    [serviceId, setStaticRoutes, refetch, t, ruleError],
   );
 
   const setHeaders = useCallback(
@@ -97,15 +106,13 @@ export function useStaticSiteMutations(
         toast.success(t("services.staticHeadersSaved"));
         return saved ? { ok: true, saved: saved.headers } : { ok: true };
       } catch (err) {
-        toast.error(
-          mutationErrorMessage(err, t("services.staticHeadersError")),
-        );
+        toast.error(ruleError(err, t("services.staticHeadersError")));
         return { ok: false };
       } finally {
         setBusy(false);
       }
     },
-    [serviceId, setStaticHeaders, refetch, t],
+    [serviceId, setStaticHeaders, refetch, t, ruleError],
   );
 
   const setPublishPath = useCallback(
