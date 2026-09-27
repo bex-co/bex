@@ -245,6 +245,52 @@ describe("WebhookDeliveriesCard", () => {
     });
   });
 
+  // w4/146: a filter that narrows an existing history to nothing is not
+  // "No deliveries yet — trigger a deploy".
+  it("says the Successful tab is empty, not that nothing was ever delivered", async () => {
+    useWebhookDeliveries.mockImplementation(
+      (_endpointId: string, filter: { status?: string } = {}) => ({
+        deliveries: filter.status === "delivered" ? [] : deliveries,
+        loading: false,
+        loadingMore: false,
+        error: undefined,
+        hasMore: false,
+        loadMore,
+        refresh,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+    await user.click(screen.getByRole("tab", { name: "Successful" }));
+
+    expect(screen.getByText("No successful deliveries")).toBeInTheDocument();
+    expect(screen.queryByText("No deliveries yet")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(screen.getByRole("tab", { name: "All" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText("Build Ended")).toBeInTheDocument();
+  });
+
+  it("keeps the first-run empty state for an endpoint that has never delivered", () => {
+    useWebhookDeliveries.mockReturnValue({
+      deliveries: [],
+      loading: false,
+      loadingMore: false,
+      error: undefined,
+      hasMore: false,
+      loadMore,
+      refresh,
+    });
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+    expect(screen.getByText("No deliveries yet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear filters" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not crawl every history page when a filter is active", async () => {
     hasMore = true;
     loadMore.mockReset();

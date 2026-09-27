@@ -122,6 +122,13 @@ export function WebhookDeliveriesCard({
     [services, servicesError, servicesLoading],
   );
 
+  const filtered = filter !== "all" || sentAfter !== "" || sentBefore !== "";
+  function clearFilters() {
+    setFilter("all");
+    setSentAfter("");
+    setSentBefore("");
+  }
+
   async function handleResend(attemptId: string) {
     const queued = await resend(endpointId, attemptId);
     if (queued) await refresh();
@@ -191,6 +198,26 @@ export function WebhookDeliveriesCard({
           />
         ) : loading ? (
           <PanelTableSkeleton />
+        ) : deliveries.length === 0 && filtered ? (
+          // A status tab or date range narrowed an existing history to nothing:
+          // that is not "no deliveries yet", and the fix is not a deploy
+          // (w4/146).
+          <div className="space-y-3 text-center">
+            <PanelCenteredState
+              icon={<Inbox />}
+              title={t(
+                filter === "successful"
+                  ? "webhooks.historyFilteredEmptySuccessfulTitle"
+                  : filter === "failed"
+                    ? "webhooks.historyFilteredEmptyFailedTitle"
+                    : "webhooks.historyFilteredEmptyRangeTitle",
+              )}
+              body={t("webhooks.historyFilteredEmptyBody")}
+            />
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              {t("webhooks.historyClearFilters")}
+            </Button>
+          </div>
         ) : deliveries.length === 0 ? (
           <PanelCenteredState
             icon={<Inbox />}

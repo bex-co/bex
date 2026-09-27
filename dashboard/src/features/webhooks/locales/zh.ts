@@ -282,6 +282,30 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "触发一个已订阅的事件（例如一次部署）后即可在这里看到。",
     description: "Delivery-history empty-state body",
   },
+  "webhooks.historyFilteredEmptySuccessfulTitle": {
+    message: "没有成功的投递",
+    description:
+      "Delivery-history state when the Successful tab (and any date range) matches nothing (w4/146)",
+  },
+  "webhooks.historyFilteredEmptyFailedTitle": {
+    message: "没有失败的投递",
+    description:
+      "Delivery-history state when the Failed tab (and any date range) matches nothing (w4/146)",
+  },
+  "webhooks.historyFilteredEmptyRangeTitle": {
+    message: "此时间范围内没有投递",
+    description:
+      "Delivery-history state when the Sent after/before range matches nothing (w4/146)",
+  },
+  "webhooks.historyFilteredEmptyBody": {
+    message: "其他投递可能符合不同的状态或时间范围。",
+    description: "Body under a filtered-empty delivery history (w4/146)",
+  },
+  "webhooks.historyClearFilters": {
+    message: "清除筛选",
+    description:
+      "Resets the delivery-history status tab and date range (w4/146)",
+  },
   "webhooks.historyErrorTitle": {
     message: "无法加载投递记录",
     description: "Delivery-history error-state title",

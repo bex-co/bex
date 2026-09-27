@@ -288,6 +288,30 @@ const enWebhooks: Record<string, TranslationEntry> = {
       "Trigger a subscribed event — a deploy, for example — to see it here.",
     description: "Delivery-history empty-state body",
   },
+  "webhooks.historyFilteredEmptySuccessfulTitle": {
+    message: "No successful deliveries",
+    description:
+      "Delivery-history state when the Successful tab (and any date range) matches nothing (w4/146)",
+  },
+  "webhooks.historyFilteredEmptyFailedTitle": {
+    message: "No failed deliveries",
+    description:
+      "Delivery-history state when the Failed tab (and any date range) matches nothing (w4/146)",
+  },
+  "webhooks.historyFilteredEmptyRangeTitle": {
+    message: "No deliveries in this range",
+    description:
+      "Delivery-history state when the Sent after/before range matches nothing (w4/146)",
+  },
+  "webhooks.historyFilteredEmptyBody": {
+    message: "Other deliveries may match a different status or time range.",
+    description: "Body under a filtered-empty delivery history (w4/146)",
+  },
+  "webhooks.historyClearFilters": {
+    message: "Clear filters",
+    description:
+      "Resets the delivery-history status tab and date range (w4/146)",
+  },
   "webhooks.historyErrorTitle": {
     message: "Couldn't load deliveries",
     description: "Delivery-history error-state title",
