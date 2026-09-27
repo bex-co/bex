@@ -393,3 +393,35 @@ func dockerRepoAppManaged(name string) *appv1alpha1.App {
 	}
 	return a
 }
+
+// A name conflict is raised by the STORE during the write (w8/m47), not by a
+// check the preflight can run — so it is the one patch refusal that still lands
+// mid-apply. It is harmless only because displayName owns the FIRST table row:
+// nothing can have been written before it. That makes this test a guard on the
+// table ORDER as much as on the refusal, which is why it asserts the later
+// field too.
+func TestDisplayNameConflictAppliesNoOtherField(t *testing.T) {
+	st := &recordingStore{takenDisplayNames: map[string]bool{"Taken": true}}
+	svc, cl := newService(st, managedRepoApp("web"))
+	before := getApp(t, cl, "web")
+
+	taken, health := "Taken", "/livez"
+	_, err := svc.ApplyServicePatch(context.Background(), "web", ServicePatch{
+		DisplayName: &taken, HealthCheckPath: &health,
+	})
+	if err == nil {
+		t.Fatal("ApplyServicePatch succeeded, want the name conflict")
+	}
+
+	after := getApp(t, cl, "web")
+	if after.Spec.DisplayName != before.Spec.DisplayName {
+		t.Errorf("displayName = %q, want unchanged %q", after.Spec.DisplayName, before.Spec.DisplayName)
+	}
+	if after.Spec.HealthCheckPath != before.Spec.HealthCheckPath {
+		t.Errorf("healthCheckPath = %q, want unchanged %q — a conflict on row 1 must not let a later row through",
+			after.Spec.HealthCheckPath, before.Spec.HealthCheckPath)
+	}
+	if len(st.deployCalls) != 0 {
+		t.Errorf("conflicted patch opened %d deploy rows, want none", len(st.deployCalls))
+	}
+}

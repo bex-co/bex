@@ -716,6 +716,8 @@ type recordingStore struct {
 	// an id absent from the map reports "unprotected", matching the store's
 	// own default for an App outside any environment.
 	protectedStatus map[string]string
+	// takenDisplayNames are names SetAppDisplayName refuses as already in use.
+	takenDisplayNames map[string]bool
 	// protectedCalls counts GetAppProtectedStatus round trips, so a test can
 	// assert the per-request memo (requestmemo.go) actually collapses them.
 	protectedCalls int
@@ -833,6 +835,11 @@ func (r *recordingStore) SetAppIdleTTL(_ context.Context, id string, seconds int
 func (r *recordingStore) SetAppDisplayName(_ context.Context, id string, displayName string) error {
 	if r.err != nil {
 		return r.err
+	}
+	// takenDisplayNames reproduces w8/m47's uniqueness refusal, which the store
+	// (not the verb) raises during the write.
+	if r.takenDisplayNames[displayName] {
+		return store.ErrConflict
 	}
 	r.displayNameCalls = append(r.displayNameCalls, struct {
 		id          string
