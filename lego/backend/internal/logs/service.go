@@ -1474,7 +1474,21 @@ func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod
 	sc := bufio.NewScanner(rc)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // allow long lines
 	for sc.Scan() {
-		entries = append(entries, parseContainerLogLine(service, pod, container, logType, sc.Text()))
+		entry := parseContainerLogLine(service, pod, container, logType, sc.Text())
+		// A CNPG postgres container wraps PostgreSQL's output in its instance
+		// manager's JSON; unwrap it and drop the manager's own chatter, the
+		// rule the shipper applies to history (w8/030).
+		if logType == datastorelogs.KindPostgres {
+			message, level, keep := datastorelogs.CNPGLine(entry.Message)
+			if !keep {
+				continue
+			}
+			entry.Message = message
+			if level != "" {
+				entry.Labels[LabelLevel] = level
+			}
+		}
+		entries = append(entries, entry)
 	}
 	return entries, sc.Err()
 }

@@ -2142,3 +2142,25 @@ func TestKubeletLogsGonePlaceholderIsAPlatformLine(t *testing.T) {
 		t.Errorf("tenant line = %+v, want it untouched", own)
 	}
 }
+
+// w8/030: the direct-pod Postgres read unwraps CNPG's envelope and drops the
+// instance manager's chatter, like the shipper does for history.
+func TestManagedPostgresPodLogsUnwrapCNPG(t *testing.T) {
+	pod := postgresID + "-1"
+	svc := newService(map[string][]string{
+		pod: {
+			`2026-07-05T00:00:01Z {"level":"info","logger":"instance-manager","msg":"Starting EventSource"}`,
+			`2026-07-05T00:00:02Z {"logger":"postgres","msg":"record","record":{"log_time":"2026-07-05 00:00:02.000 UTC","process_id":"7","error_severity":"FATAL","message":"password authentication failed for user \"app\""}}`,
+		},
+	}, sampleDatabase(postgresID), databasePod(postgresID, pod))
+
+	env := decodeLogList(t, serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID))
+	if len(env.Logs) != 1 || env.Logs[0].Message != `2026-07-05 00:00:02.000 UTC [7] FATAL:  password authentication failed for user "app"` {
+		t.Fatalf("Postgres logs = %+v, want only the unwrapped record", env.Logs)
+	}
+	for _, label := range env.Logs[0].Labels {
+		if label.Name == LabelLevel && label.Value != "error" {
+			t.Errorf("level = %q, want error", label.Value)
+		}
+	}
+}
