@@ -941,6 +941,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
       "操作员将在下次协调时调整数据库的计算资源，滚动重启期间连接会短暂中断。",
     description: "Database plan-picker confirm dialog body",
   },
+  "databases.planPickerConfirmPrice": {
+    message: "新方案每月 ${price}。",
+    description:
+      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
+  },
   "databases.planPickerSuccess": {
     message: "正在更新规格至 {name}……",
     description: "Toast after a plan update is accepted",

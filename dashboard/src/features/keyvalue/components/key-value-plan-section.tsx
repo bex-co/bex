@@ -101,7 +101,11 @@ export function KeyValuePlanSection({
             ? t("keyvalue.planPickerConfirmTitle", { name: selectedType.name })
             : ""
         }
-        description={t("keyvalue.planPickerConfirmBody")}
+        description={
+          selectedType?.monthlyUsd
+            ? `${t("keyvalue.planPickerConfirmBody")} ${t("keyvalue.planPickerConfirmPrice", { price: selectedType.monthlyUsd })}`
+            : t("keyvalue.planPickerConfirmBody")
+        }
         cancelLabel={t("keyvalue.planPickerCancel")}
         confirmLabel={t("keyvalue.planPickerSave")}
         // Changing plan is the primary action, not a destructive one.

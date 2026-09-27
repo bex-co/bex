@@ -965,6 +965,11 @@ const enDatabases: Record<string, TranslationEntry> = {
       "The operator will resize the database's compute resources on the next reconcile. Connections drop briefly during the rolling restart.",
     description: "Database plan-picker confirm dialog body",
   },
+  "databases.planPickerConfirmPrice": {
+    message: "The new plan costs ${price}/month.",
+    description:
+      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
+  },
   "databases.planPickerSuccess": {
     message: "Updating plan to {name}…",
     description: "Toast after a plan update is accepted",

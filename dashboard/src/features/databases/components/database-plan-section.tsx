@@ -127,7 +127,11 @@ export function DatabasePlanSection({
             ? t("databases.planPickerConfirmTitle", { name: selectedType.name })
             : ""
         }
-        description={t("databases.planPickerConfirmBody")}
+        description={
+          selectedType?.monthlyUsd
+            ? `${t("databases.planPickerConfirmBody")} ${t("databases.planPickerConfirmPrice", { price: selectedType.monthlyUsd })}`
+            : t("databases.planPickerConfirmBody")
+        }
         cancelLabel={t("databases.planPickerCancel")}
         confirmLabel={t("databases.planPickerSave")}
         // Changing plan is the primary action, not a destructive one.

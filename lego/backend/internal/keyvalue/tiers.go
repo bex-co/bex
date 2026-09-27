@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 )
 
@@ -37,6 +39,9 @@ type KeyValueInstanceType struct {
 	CPU       string
 	Memory    string
 	StorageGB int32
+	// MonthlyUSD is the always-on monthly price from pricing.yaml, "" for an
+	// unlisted tier (w4/156, the postgres sibling's rule).
+	MonthlyUSD string
 }
 
 // InstanceTypes lists every plan in the shared Valkey catalog, in ladder order —
@@ -50,12 +55,14 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]KeyValueInstanceType, er
 	out := make([]KeyValueInstanceType, len(ids))
 	for i, id := range ids {
 		t, _ := tiers.Valkey.ByID(id)
+		monthlyUSD, _ := pricing.Default.InstanceMonthlyUSD(id, store.ResourceKindKeyValue)
 		out[i] = KeyValueInstanceType{
-			ID:        t.ID,
-			Name:      kvTierDisplayName(id),
-			CPU:       t.CPU,
-			Memory:    t.Memory,
-			StorageGB: t.StorageGB,
+			MonthlyUSD: monthlyUSD,
+			ID:         t.ID,
+			Name:       kvTierDisplayName(id),
+			CPU:        t.CPU,
+			Memory:     t.Memory,
+			StorageGB:  t.StorageGB,
 		}
 	}
 	return out, nil

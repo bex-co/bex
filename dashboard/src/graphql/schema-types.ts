@@ -499,6 +499,7 @@ export type DatabaseInstanceType = {
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   memory: Maybe<Scalars['String']['output']>;
+  monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
   supportsHighAvailability: Maybe<Scalars['Boolean']['output']>;
@@ -916,6 +917,7 @@ export type KeyValueInstanceType = {
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   memory: Maybe<Scalars['String']['output']>;
+  monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
 };

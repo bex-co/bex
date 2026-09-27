@@ -38,6 +38,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -1341,6 +1343,26 @@ func TestKVInstanceTypesCatalog(t *testing.T) {
 		if it.CPU == "" || it.Memory == "" || it.StorageGB <= 0 {
 			t.Fatalf("%q projection incomplete: %+v", want, it)
 		}
+	}
+}
+
+// w4/156: every Key Value tier carries its pricing.yaml price.
+func TestKVInstanceTypesArePricedFromTheSheet(t *testing.T) {
+	svc, _ := newService()
+	tt, err := svc.InstanceTypes(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]string{}
+	for _, it := range tt {
+		want, _ := pricing.Default.InstanceMonthlyUSD(it.ID, store.ResourceKindKeyValue)
+		if it.MonthlyUSD != want {
+			t.Errorf("%s monthlyUsd = %q, want the sheet's %q", it.ID, it.MonthlyUSD, want)
+		}
+		byID[it.ID] = it.MonthlyUSD
+	}
+	if byID["free"] != "0.00" || byID["starter"] != "7.00" || byID["standard"] != "21.00" {
+		t.Errorf("free/starter/standard = %q/%q/%q, want 0.00/7.00/21.00 (bex.co/pricing)", byID["free"], byID["starter"], byID["standard"])
 	}
 }
 

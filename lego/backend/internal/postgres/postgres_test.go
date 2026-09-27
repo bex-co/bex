@@ -46,6 +46,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -781,6 +783,29 @@ func TestInstanceTypesCatalog(t *testing.T) {
 	allowHighAvailabilityOnEveryPlan(t)
 	if tt, _ := svc.InstanceTypes(context.Background()); !tt[0].SupportsHighAvailability {
 		t.Errorf("supportsHighAvailability must follow the shared predicate")
+	}
+}
+
+// w4/156: every tier carries the price the one price sheet lists for it, so
+// the plan picker can say what a paid datastore costs.
+func TestInstanceTypesArePricedFromTheSheet(t *testing.T) {
+	svc, _ := newService()
+	tt, err := svc.InstanceTypes(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range tt {
+		want, _ := pricing.Default.InstanceMonthlyUSD(it.ID, store.ResourceKindPostgres)
+		if it.MonthlyUSD != want {
+			t.Errorf("%s monthlyUsd = %q, want the sheet's %q", it.ID, it.MonthlyUSD, want)
+		}
+	}
+	byID := map[string]string{}
+	for _, it := range tt {
+		byID[it.ID] = it.MonthlyUSD
+	}
+	if byID["free"] != "0.00" || byID["basic-1gb"] != "14.00" {
+		t.Errorf("free/basic-1gb = %q/%q, want 0.00/14.00 (bex.co/pricing)", byID["free"], byID["basic-1gb"])
 	}
 }
 

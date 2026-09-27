@@ -145,6 +145,7 @@ const instanceTypes: DatabaseInstanceTypeView[] = [
     memory: "256Mi",
     storageGB: 1,
     supportsHighAvailability: false,
+    monthlyUsd: "",
   },
 ];
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({

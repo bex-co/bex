@@ -30,6 +30,7 @@ export function useKeyValueInstanceTypes(): UseKeyValueInstanceTypesResult {
           cpu: t.cpu ?? "",
           memory: t.memory ?? "",
           storageGB: t.storageGB ?? 0,
+          monthlyUsd: t.monthlyUsd ?? "",
         })),
     [data],
   );

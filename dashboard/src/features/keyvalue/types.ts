@@ -47,6 +47,8 @@ export interface KeyValueInstanceTypeView {
   cpu: string;
   memory: string;
   storageGB: number;
+  /** Always-on monthly price ("7.00"), "" when the sheet lists none (w4/156). */
+  monthlyUsd: string;
 }
 
 /** A resolved status key (i18n label) + the badge variant it renders as. */

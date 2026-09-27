@@ -11,13 +11,21 @@ const updatePlan = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
   useKeyValueInstanceTypes: () => ({
     instanceTypes: [
-      { id: "free", name: "Free", cpu: "0.1", memory: "256Mi", storageGB: 1 },
+      {
+        id: "free",
+        name: "Free",
+        cpu: "0.1",
+        memory: "256Mi",
+        storageGB: 1,
+        monthlyUsd: "0.00",
+      },
       {
         id: "starter",
         name: "Starter",
         cpu: "0.5",
         memory: "1Gi",
         storageGB: 10,
+        monthlyUsd: "7.00",
       },
     ],
     loading: false,
@@ -66,6 +74,21 @@ describe("KeyValuePlanSection", () => {
       "Starter",
     );
     expect(onChanged).toHaveBeenCalledOnce();
+  });
+
+  // w4/156: a free store became a paid one in two clicks with no cost shown.
+  it("prices every plan card and states the new price before the change", async () => {
+    const user = userEvent.setup();
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+
+    expect(screen.getByRole("radio", { name: /Starter/ })).toHaveTextContent(
+      "$7.00/month",
+    );
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+      "The new plan costs $7.00/month.",
+    );
   });
 
   it("disables plan controls for a viewer with the operate reason", async () => {
