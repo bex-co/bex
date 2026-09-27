@@ -153,6 +153,21 @@ const ConditionDiskReady = "DiskReady"
 // than the permanent strand this condition replaced.
 const ConditionBuild = "Build"
 
+// ConditionRollout is ConditionBuild's rollout sibling (w8/m44): the durable
+// record of a rollout that failed over a release that had already served. Its
+// Ready condition then describes the prior release that keeps serving
+// (PriorReleaseServing, True), so without this record the failed deploy row
+// kept no trace of why: bex-api waited out its health-gate timeout and closed
+// with the generic "did not become healthy" line while the operator had
+// already named an image pull, a crash loop, a failing health check or a quota.
+//
+// Written only as False, stamped with the RELEASE generation that failed to
+// roll out, with the operator's diagnosis as Reason (ImagePullBackOff,
+// CrashLoopBackOff, CreateContainerConfigError, HealthCheckFailing,
+// RolloutBlockedByQuota, or ProgressDeadlineExceeded when nothing was found)
+// and its user-facing text as Message. Bounded to one slot like ConditionBuild.
+const ConditionRollout = "Rollout"
+
 // Build-failure condition reasons. These are part of the CR contract, not an
 // operator-internal detail: the operator writes them onto the Ready condition
 // and bex-api reads them to classify a deploy, so they live here where both

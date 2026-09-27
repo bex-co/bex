@@ -2847,10 +2847,6 @@ func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
 // served ⇒ PhaseFailed. ActiveRevision set ⇒ prior release still describes what
 // is (or was) serving ⇒ Running / Hibernated, deploy fact only.
 func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (ctrl.Result, error) {
-	if releaseHasServed(app) {
-		r.settleFailureOverPriorRelease(ctx, app, "the latest rollout failed")
-		return ctrl.Result{}, nil
-	}
 	reason, msg := r.stuckPodMessage(ctx, dep, port)
 	if msg == "" {
 		if qr, qm := r.rolloutQuotaBlockMessage(ctx, dep); qm != "" {
@@ -2859,6 +2855,17 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 			reason = "ProgressDeadlineExceeded"
 			msg = "rollout did not become healthy within the progress deadline"
 		}
+	}
+	if releaseHasServed(app) {
+		// The diagnosis outlives the Ready condition, which now describes the
+		// serving release: ConditionRollout carries it to the failed deploy
+		// row (w8/m44), in the same status write.
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
+			Message: msg, ObservedGeneration: releaseGeneration(app),
+		})
+		r.settleFailureOverPriorRelease(ctx, app, "the latest rollout failed: "+strings.TrimSuffix(msg, "."))
+		return ctrl.Result{}, nil
 	}
 	app.Status.Phase = appv1alpha1.PhaseFailed
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
@@ -4881,6 +4888,17 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	case predeploy.StateFailed:
 		return r.failPreDeploy(ctx, app, failedPD(job.Name, predeploy.FailureMessage(ctx, r.Client, job)))
 	default: // Pending/Running — keep the old revision serving and requeue
+		// An image that cannot be pulled fails the step once the kubelet has
+		// retried past the grace window, not at the 10-minute Job deadline
+		// (w8/m44). The Job is deleted first so a pull that succeeds later can
+		// never run the migration after the deploy was declared failed; a
+		// failed delete retries rather than recording a verdict it can't back.
+		if msg := predeploy.PullFailure(ctx, r.Client, job, time.Now()); msg != "" {
+			if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
+				return ctrl.Result{}, true, err
+			}
+			return r.failPreDeploy(ctx, app, failedPD(job.Name, msg))
+		}
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
 			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeployRunning,
