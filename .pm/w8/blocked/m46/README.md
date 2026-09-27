@@ -1,18 +1,18 @@
 # w8 · m46 — Near-simultaneous deploy triggers race: the newest can lose, both can be canceled, and a deploy row can record the wrong image
 
-**Worker:** worker8 **Goal:** concurrent deploy triggers on one service resolve deterministically, Render-style: the most recently accepted trigger wins, every earlier open deploy closes `canceled` (superseded), and each deploy row records exactly the image or commit its caller requested. **Status:** todo
+**Worker:** worker8 **Goal:** concurrent deploy triggers on one service resolve deterministically, Render-style: the most recently accepted trigger wins, every earlier open deploy closes `canceled` (superseded), and each deploy row records exactly the image or commit its caller requested. **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                                                                             | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Reproduce in a backend test: two concurrent `Trigger(imageUrl)` calls against a fake store + CR, and pin the bad outcomes | 45m | —          |
-| t002 | Serialize triggers per service (store-level per-app lock/CAS around row write + deploy row + release stamp)         | 60m | t001       |
-| t003 | CR patch with optimistic concurrency and a fresh generation (no stale `previousGeneration+1`)                       | 40m | t002       |
-| t004 | Newest-wins: an accepted trigger explicitly supersedes earlier open deploys; deploy hook + restart + rollback share it | 40m | t002       |
-| t005 | Render parity                                                                                                     | 20m | t003, t004 |
-| t006 | Simplify                                                                                                          | 15m | t005       |
-| t007 | Test coverage                                                                                                     | 30m | t006       |
+| t001 | Reproduce in a backend test: two concurrent `Trigger(imageUrl)` calls against a fake store + CR, and pin the bad outcomes — **DONE** | 45m | —          |
+| t002 | Serialize triggers per service (store-level per-app lock/CAS around row write + deploy row + release stamp) — **DONE**         | 60m | t001       |
+| t003 | CR patch with optimistic concurrency and a fresh generation (no stale `previousGeneration+1`) — **DONE**                       | 40m | t002       |
+| t004 | Newest-wins: an accepted trigger explicitly supersedes earlier open deploys; deploy hook + restart + rollback share it — **DONE** | 40m | t002       |
+| t005 | Render parity — **DONE**                                                                                                     | 20m | t003, t004 |
+| t006 | Simplify — **DONE**                                                                                                          | 15m | t005       |
+| t007 | Test coverage — **DONE**                                                                                                     | 30m | t006       |
 | t008 | Closeout                                                                                                          | 15m | t007       |
 
 ## Definition of done
@@ -52,3 +52,7 @@ The CLI exits 1 for each canceled trigger (`--wait`), so a CI job would report a
 - The exact step that mislabels run 2's second row (the projector vs. the `CreateDeploy` input).
 - Repo-backed commit triggers racing each other (image path only was exercised).
 - Render's exact tie-break for triggers within milliseconds. Assumed newest-accepted wins, per Render's deploy docs; t005 should confirm.
+
+## Blocked (2026-09-27)
+
+t001–t007 are done. Deploy triggers on one service are serialized (per-app advisory lock, fresh read, optimistic-lock patch, deploy row inside the same section), so the newest accepted trigger wins and each row records its own image. Only **t008** remains: the live 10-iteration same-second A/B loop on a production fixture. It needs the deploy to land (`blocked/m42`) and a logged-in `bex` CLI.
