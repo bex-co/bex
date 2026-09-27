@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import { LogsDocument } from "@/graphql/definitions";
@@ -8,6 +8,7 @@ import {
   type EventSourceFactory,
   type LiveStatus,
 } from "@/features/logs/hooks/use-live-logs";
+import { useOlderLogPages } from "@/features/logs/hooks/use-older-log-pages";
 import { LOG_TYPE_BUILD } from "@/features/logs/types";
 import type { LogLine } from "@/features/logs/types";
 
@@ -48,6 +49,11 @@ export interface UseDeployLogsResult {
   buildStoreUnavailable: boolean;
   /** SSE state while the active build pod is being followed. */
   buildLiveStatus: LiveStatus;
+  /** True while any leg reports history older than what's loaded. */
+  hasMore: boolean;
+  loadingOlder: boolean;
+  /** Fetch the next older page of every leg that has more. */
+  loadOlder: () => void;
 }
 
 interface LogsWindow {
@@ -62,20 +68,27 @@ interface LogsWindow {
 // `skip`. Still three separate hook calls (GraphQL's `type` arg is single-
 // valued and `predeploy` must be requested alone, internal/logs/service.go's
 // validate()) — this just removes the per-call options boilerplate.
+//
+// Each leg pages backwards on its own (w4/m136): a long build overflows the
+// 100-row page while its app leg may not, so each keeps its own cursor and the
+// merge below interleaves whatever each has loaded.
 function useTypedDeployLogs(
   type: string,
   window: LogsWindow,
   poll: boolean,
   skip?: boolean,
 ) {
-  return useQuery(LogsDocument, {
-    variables: { ...window, type },
+  const variables = useMemo(() => ({ ...window, type }), [window, type]);
+  const query = useQuery(LogsDocument, {
+    variables,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     pollInterval: poll ? POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
     skip,
   });
+  const pages = useOlderLogPages(variables, query.data?.logs);
+  return { ...query, pages };
 }
 
 // True while the windowed queries should still poll: always for an open window,
@@ -166,12 +179,37 @@ export function useDeployLogs(
   // windowed query results. Memoize it on the query data identities so a
   // streamed live line never re-maps or re-sorts it.
   const history = useMemo(() => {
-    const merged = [build.data, predeploy.data, app.data].flatMap((d) =>
-      toLogLines(d?.logs?.logs),
-    );
+    const merged = [
+      build.pages.older,
+      predeploy.pages.older,
+      app.pages.older,
+      ...[build.data, predeploy.data, app.data].map((d) =>
+        toLogLines(d?.logs?.logs),
+      ),
+    ].flat();
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return dedupeLogLines(merged);
-  }, [build.data, predeploy.data, app.data]);
+  }, [
+    build.data,
+    predeploy.data,
+    app.data,
+    build.pages.older,
+    predeploy.pages.older,
+    app.pages.older,
+  ]);
+
+  const legs = [build.pages, predeploy.pages, app.pages];
+  const hasMore = legs.some((leg) => leg.hasMore);
+  const loadingOlder = legs.some((leg) => leg.loadingOlder);
+  const loadBuild = build.pages.loadOlder;
+  const loadPredeploy = predeploy.pages.loadOlder;
+  const loadApp = app.pages.loadOlder;
+  // Each leg's loadOlder is a no-op while that leg has nothing older.
+  const loadOlder = useCallback(() => {
+    loadBuild();
+    loadPredeploy();
+    loadApp();
+  }, [loadBuild, loadPredeploy, loadApp]);
 
   const historyKeys = useMemo(
     () => new Set(history.map((line) => line.key)),
@@ -202,5 +240,8 @@ export function useDeployLogs(
     error: queryError,
     buildStoreUnavailable,
     buildLiveStatus: liveBuild.status,
+    hasMore,
+    loadingOlder,
+    loadOlder,
   };
 }

@@ -1,18 +1,18 @@
 # w4 · m136 — Datastore and deploy log viewers stop at the newest 100 lines with no warning
 
-**Worker:** worker4 **Goal:** the Key Value and Postgres Logs tabs keep the range control's promise the way the service Logs tab has since `w4/m107`: reaching the top of the pane loads older entries, and a capped view says it is capped **Status:** todo
+**Worker:** worker4 **Goal:** the Key Value and Postgres Logs tabs keep the range control's promise the way the service Logs tab has since `w4/m107`: reaching the top of the pane loads older entries, and a capped view says it is capped **Status:** blocked (t001–t006 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on                  |
 | ---- | ----------------------------------------------------------------------------------------- | --- | --------------------------- |
-| t001 | Key Value and Postgres Logs tabs page backward through `useLogHistory` and state truncation | 50m | —                           |
-| t002 | Verify the deploy-log panel against a >100-line build, and page or warn if it truncates    | 40m | —                           |
-| t003 | Blast radius: every `LogsDocument` consumer either pages or states why it cannot need to   | 20m | t001, t002                  |
-| t004 | Render parity across REST / GraphQL / MCP / UI                                            | 20m | t003                        |
-| t005 | Simplify                                                                                  | 20m | t004                        |
-| t006 | Test coverage                                                                             | 30m | t004                        |
-| t007 | Closeout                                                                                  | 10m | t006                        |
+| t001 | Key Value and Postgres Logs tabs page backward through `useLogHistory` and state truncation — **DONE** | 50m | —                           |
+| t002 | Verify the deploy-log panel against a >100-line build, and page or warn if it truncates — **DONE**    | 40m | —                           |
+| t003 | Blast radius: every `LogsDocument` consumer either pages or states why it cannot need to — **DONE**   | 20m | t001, t002                  |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                            | 20m | t003                        |
+| t005 | Simplify — **DONE**                                                                                  | 20m | t004                        |
+| t006 | Test coverage — **DONE**                                                                             | 30m | t004                        |
+| t007 | Closeout — **BLOCKED**                                                                                  | 10m | t006                        |
 
 ## Definition of done
 
