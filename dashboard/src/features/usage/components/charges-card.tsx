@@ -122,7 +122,9 @@ function ResourceRow({ resource }: { resource: ResourceEstimate }) {
         />
         <span
           className="min-w-0 flex-1 truncate text-sm font-medium"
-          title={named ? `${label} (${resource.serviceId})` : resource.serviceId}
+          title={
+            named ? `${label} (${resource.serviceId})` : resource.serviceId
+          }
         >
           {label}
           {resource.deleted ? (
@@ -209,7 +211,9 @@ function CoverageCaveat({ coverage }: { coverage: Coverage }) {
     // Date only, sliced from the UTC RFC3339 string: deterministic across the
     // SSR/hydration boundary, unlike a locale/timezone-formatted date.
     parts.push(
-      t("usage.coveragePartialThrough", { through: coverage.through.slice(0, 10) }),
+      t("usage.coveragePartialThrough", {
+        through: coverage.through.slice(0, 10),
+      }),
     );
   }
   if (coverage.degradedSources.length > 0) {
@@ -274,7 +278,7 @@ export function ChargesCard({
   period,
   now = new Date(),
 }: ChargesCardProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const hydrated = useIsHydrated();
   const [expandAll, setExpandAll] = useState(false);
 
@@ -283,7 +287,11 @@ export function ChargesCard({
     [estimatedCost],
   );
 
-  const invoiced = invoicedUsd == null ? null : usd(invoicedUsd);
+  const isCurrentMonth = period === "" || period === currentPeriod(now);
+  // Stripe's figure is the *current* subscription period's. It says nothing
+  // about a past month on screen, so it never heads a past month's tree.
+  const invoiced =
+    invoicedUsd == null || !isCurrentMonth ? null : usd(invoicedUsd);
   // Zero is not a rating. Stripe prices the period from meter events that land
   // asynchronously, so a workspace can hold a real charge tree while Stripe's
   // gross charge is still 0 — and "$0.00 month to date" above a tree summing to
@@ -295,9 +303,16 @@ export function ChargesCard({
   // backend rounds the raw total once, the tree rounds every resource — and a
   // page whose parts visibly fail to add up to its own total reads as a bug
   // even when both numbers are defensible. A rated amount is Stripe's own
-  // rating, not ours, so it is shown verbatim; the tree explains it rather
-  // than deriving it.
-  const total = rated ?? categories.reduce((sum, c) => sum + c.totalUsd, 0);
+  // rating, not ours, so it is shown verbatim.
+  //
+  // The two cover different windows: the tree is the calendar month to date
+  // (`estimatedCost`), while a rated total is Stripe's subscription period,
+  // anchored on the subscription's day of month, so it can start mid-month or
+  // span two months. Neither explains the other, so each is labelled with the
+  // window it covers, and the tree gets its own sum under a rated headline
+  // (w4/m139: "$75.30 month to date" sat over a $292.85 tree).
+  const treeTotal = categories.reduce((sum, c) => sum + c.totalUsd, 0);
+  const total = rated ?? treeTotal;
   // Credit grants and Mode B comps sit between the charge and the bill. The
   // charge stays the headline — it is what the tree adds up to — and the
   // amount actually collected gets its own line, but only when the two differ.
@@ -305,7 +320,6 @@ export function ChargesCard({
   const dueAfterCredit =
     rated != null && due != null && due !== rated ? due : null;
 
-  const isCurrentMonth = period === "" || period === currentPeriod(now);
   // A rated total accrued over Stripe's subscription period, not the calendar
   // month; projecting it over the month's elapsed fraction understated the
   // figure ~2.4× on a mid-month-anchored subscription (w6/050). Each total is
@@ -320,6 +334,13 @@ export function ChargesCard({
   // client render owns the clock, the same deferral `LocalDateTime` uses
   // (w6/030).
   const ratedWindow = billingWindow(ratedPeriodStart, ratedPeriodEnd);
+  // Subscription periods start and end at midnight UTC; format them in UTC so
+  // "Sep 16" is the anchor day in every time zone (and at SSR).
+  const windowDate = new Intl.DateTimeFormat(i18n.language || "en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
   const projected =
     !hydrated || !isCurrentMonth
       ? null
@@ -393,14 +414,33 @@ export function ChargesCard({
                 that a straddling render would keep the server's label
                 (w6/049). */}
             <dt className="font-medium" suppressHydrationWarning>
-              {isCurrentMonth
-                ? t("usage.totalToDate")
-                : t("usage.totalForPeriod")}
+              {rated != null
+                ? ratedWindow
+                  ? t("usage.totalBillingPeriodWindow", {
+                      start: windowDate.format(ratedWindow.start),
+                      end: windowDate.format(ratedWindow.end),
+                    })
+                  : t("usage.totalBillingPeriod")
+                : isCurrentMonth
+                  ? t("usage.totalToDate")
+                  : t("usage.totalForPeriod")}
             </dt>
             <dd className="font-mono text-lg font-semibold tabular-nums">
               {money(total)} USD
             </dd>
           </div>
+          {rated != null && categories.length > 0 && (
+            <div className="flex items-baseline justify-between gap-4 text-sm text-muted-foreground">
+              {/* The tree's own window, so a reader can see why it does not
+                  add up to Stripe's subscription-period headline. */}
+              <dt>
+                {t("usage.breakdownMonthToDate", {
+                  month: periodLabel(currentPeriod(now)).split(" ")[0] ?? "",
+                })}
+              </dt>
+              <dd className="font-mono tabular-nums">{money(treeTotal)} USD</dd>
+            </div>
+          )}
           {dueAfterCredit != null && (
             <div className="flex items-baseline justify-between gap-4 text-sm text-muted-foreground">
               <dt>{t("usage.amountDueAfterCredits")}</dt>
