@@ -36,6 +36,12 @@ import { useServiceBase } from "@/features/services/lib/service-base";
 import { useStaticSiteMutations } from "@/features/services/hooks/use-static-site";
 import type { StaticRuleSaveResult } from "@/features/services/hooks/use-static-site";
 import { rootDirPrefix } from "@/features/services/lib/format";
+import {
+  headerErrors,
+  routeErrors,
+  type RuleFieldErrors,
+} from "@/features/services/lib/static-rule-validation";
+import type { en } from "@/i18n";
 import type {
   ServiceView,
   StaticRouteView,
@@ -184,6 +190,12 @@ export function RoutesEditor({
   const [draft, setDraft] = useState<StaticRouteView[]>(routes);
   const dirty = JSON.stringify(draft) !== JSON.stringify(routes);
   const save = useAdoptAcceptedRows(draft, setDraft, onSave);
+  const errors = draft.map(routeErrors);
+  const blocked = rulesBlocked(
+    errors,
+    draft,
+    (r) => !!(r.source || r.destination),
+  );
 
   function update(i: number, patch: Partial<StaticRouteView>) {
     setDraft((d) => d.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -246,22 +258,30 @@ export function RoutesEditor({
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell>
-                  <Input
+                <TableCell className="align-top">
+                  <RuleInput
+                    id={`route-${i}-source`}
                     value={r.source}
-                    onChange={(e) => update(i, { source: e.target.value })}
-                    aria-label={t("services.routeSource")}
+                    onChange={(source) => update(i, { source })}
+                    label={t("services.routeSource")}
                     placeholder="/old/*"
-                    className="font-mono text-xs"
+                    error={
+                      r.source || r.destination ? errors[i].source : undefined
+                    }
                   />
                 </TableCell>
-                <TableCell>
-                  <Input
+                <TableCell className="align-top">
+                  <RuleInput
+                    id={`route-${i}-destination`}
                     value={r.destination}
-                    onChange={(e) => update(i, { destination: e.target.value })}
-                    aria-label={t("services.routeDestination")}
+                    onChange={(destination) => update(i, { destination })}
+                    label={t("services.routeDestination")}
                     placeholder="/index.html"
-                    className="font-mono text-xs"
+                    error={
+                      r.source || r.destination
+                        ? errors[i].destination
+                        : undefined
+                    }
                   />
                 </TableCell>
                 <TableCell>
@@ -285,7 +305,11 @@ export function RoutesEditor({
             {t("services.staticCancel")}
           </Button>
         )}
-        <Button disabled={busy || !dirty} onClick={() => void save()}>
+        <SaveBlockedNote blocked={dirty ? blocked : null} />
+        <Button
+          disabled={busy || !dirty || blocked !== null}
+          onClick={() => void save()}
+        >
           {t("services.routesSave")}
         </Button>
       </div>
@@ -311,6 +335,11 @@ export function HeadersEditor({
   const [draft, setDraft] = useState<StaticHeaderView[]>(headers);
   const dirty = JSON.stringify(draft) !== JSON.stringify(headers);
   const save = useAdoptAcceptedRows(draft, setDraft, onSave);
+  const errors = draft.map(headerErrors);
+  // A new header row starts with the "/*" path filled in, so it counts as
+  // begun once a name or value is typed.
+  const started = (h: StaticHeaderView) => !!(h.name || h.value);
+  const blocked = rulesBlocked(errors, draft, started);
 
   function update(i: number, patch: Partial<StaticHeaderView>) {
     setDraft((d) => d.map((h, j) => (j === i ? { ...h, ...patch } : h)));
@@ -348,27 +377,29 @@ export function HeadersEditor({
           <TableBody>
             {draft.map((h, i) => (
               <TableRow key={i}>
-                <TableCell>
+                <TableCell className="align-top">
                   {/* Same pattern as RoutesEditor: the column heading doubles
                       as each control's accessible name. */}
-                  <Input
+                  <RuleInput
+                    id={`header-${i}-path`}
                     value={h.path}
-                    onChange={(e) => update(i, { path: e.target.value })}
-                    aria-label={t("services.headerPath")}
+                    onChange={(path) => update(i, { path })}
+                    label={t("services.headerPath")}
                     placeholder="/*"
-                    className="font-mono text-xs"
+                    error={errors[i].path}
                   />
                 </TableCell>
-                <TableCell>
-                  <Input
+                <TableCell className="align-top">
+                  <RuleInput
+                    id={`header-${i}-name`}
                     value={h.name}
-                    onChange={(e) => update(i, { name: e.target.value })}
-                    aria-label={t("services.headerName")}
+                    onChange={(name) => update(i, { name })}
+                    label={t("services.headerName")}
                     placeholder="X-Frame-Options"
-                    className="font-mono text-xs"
+                    error={started(h) ? errors[i].name : undefined}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="align-top">
                   <Input
                     value={h.value}
                     onChange={(e) => update(i, { value: e.target.value })}
@@ -398,10 +429,80 @@ export function HeadersEditor({
             {t("services.staticCancel")}
           </Button>
         )}
-        <Button disabled={busy || !dirty} onClick={() => void save()}>
+        <SaveBlockedNote blocked={dirty ? blocked : null} />
+        <Button
+          disabled={busy || !dirty || blocked !== null}
+          onClick={() => void save()}
+        >
           {t("services.headersSave")}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Why a rules list can't be saved yet: a started row with a marked field, or a
+ * row left completely empty. Null when every row is valid (w4/145).
+ */
+function rulesBlocked<T>(
+  errors: RuleFieldErrors<T>[],
+  rows: T[],
+  started: (row: T) => boolean,
+): "invalid" | "empty" | null {
+  const bad = errors.flatMap((e, i) =>
+    Object.keys(e).length > 0 ? [rows[i]] : [],
+  );
+  if (bad.length === 0) return null;
+  return bad.some(started) ? "invalid" : "empty";
+}
+
+function SaveBlockedNote({ blocked }: { blocked: "invalid" | "empty" | null }) {
+  const { t } = useTranslations();
+  if (!blocked) return null;
+  return (
+    <p className="text-muted-foreground self-center text-xs">
+      {blocked === "invalid"
+        ? t("services.staticRuleFixRows")
+        : t("services.staticRuleEmptyRow")}
+    </p>
+  );
+}
+
+/** A rule field: the column heading as its accessible name, and an inline,
+ *  announced error under it when the value breaks the server's rule. */
+function RuleInput({
+  id,
+  value,
+  onChange,
+  label,
+  placeholder,
+  error,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  placeholder: string;
+  error: keyof typeof en | undefined;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-1">
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        placeholder={placeholder}
+        className="font-mono text-xs"
+      />
+      {error ? (
+        <p id={`${id}-error`} className="text-destructive text-xs">
+          {t(error)}
+        </p>
+      ) : null}
     </div>
   );
 }

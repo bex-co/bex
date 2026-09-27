@@ -2485,6 +2485,35 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "保存路由",
     description: "Save the routes list",
   },
+  "services.staticRuleRequired": {
+    message: "必填",
+    description: "Inline error under an empty static-site rule field (w4/145)",
+  },
+  "services.staticRulePathSlash": {
+    message: "必须是以 / 开头的路径",
+    description:
+      "Inline error under a static-site rule path that doesn't start with / (w4/145)",
+  },
+  "services.staticRuleLocalPath": {
+    message: "必须是本站点的路径，不能是 //host",
+    description:
+      "Inline error under a redirect/rewrite destination that is a network-path reference (w4/145)",
+  },
+  "services.staticRuleFixRows": {
+    message: "请修正标记的行后再保存。",
+    description:
+      "Note beside a disabled Save while a static-site rule row is invalid (w4/145)",
+  },
+  "services.staticRuleEmptyRow": {
+    message: "请填写或删除空行后再保存。",
+    description:
+      "Note beside a disabled Save while a static-site rule row is still completely empty (w4/145)",
+  },
+  "services.staticRuleRow": {
+    message: "第 {row} 行：",
+    description:
+      "Prefix naming the 1-based rule row in a server refusal, replacing its zero-based wire index (w4/145)",
+  },
   "services.staticRoutesSaved": {
     message: "路由已更新",
     description: "Toast after saving routes",
