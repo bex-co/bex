@@ -119,7 +119,7 @@ const enApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.exchangeHelp": {
     message:
-      "This is an OAuth2 client_credentials client, not a bearer token. Exchange it at {tokenEndpoint}:\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nOptional scope=bex.read bex.write bex.sensitive. Use the returned access_token as Authorization: Bearer.",
+      "This is an OAuth2 client_credentials client, not a bearer token. Exchange it at {tokenEndpoint}:\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\nDo not send a scope: the key acts with full authority in this workspace, including connection strings, so treat it like a password. Use the returned access_token as Authorization: Bearer.",
     description:
       "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
   },

@@ -118,7 +118,7 @@ const zhApiKeys: Record<string, TranslationEntry> = {
   },
   "apiKeys.exchangeHelp": {
     message:
-      "这是 OAuth2 client_credentials 客户端，不是 Bearer 令牌。请先在 {tokenEndpoint} 交换：\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\n可选 scope=bex.read bex.write bex.sensitive。将返回的 access_token 用作 Authorization: Bearer。",
+      "这是 OAuth2 client_credentials 客户端，不是 Bearer 令牌。请先在 {tokenEndpoint} 交换：\n\ngrant_type=client_credentials&client_id=…&client_secret=…\n\n请勿传 scope：此密钥在该工作空间内拥有完整权限（包括连接字符串），请像密码一样保管。将返回的 access_token 用作 Authorization: Bearer。",
     description:
       "Mint dialog usage copy for the client_credentials exchange (token endpoint from config)",
   },
