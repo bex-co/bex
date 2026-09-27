@@ -271,6 +271,11 @@ export function CreateDatabaseDialog({
                   <SelectItem key={it.id} value={it.id}>
                     {it.name} — {formatInstanceMemory(it.memory)} RAM,{" "}
                     {formatInstanceCPU(it.cpu)}, {it.storageGB} GB
+                    {/* Priced at the point of choice, like the service
+                        picker (w4/156); nothing is shown for an unlisted tier. */}
+                    {it.monthlyUsd
+                      ? ` · ${t("common.pricePerMonth", { price: it.monthlyUsd })}`
+                      : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

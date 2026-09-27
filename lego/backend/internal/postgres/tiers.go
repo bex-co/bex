@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -42,6 +44,11 @@ type DatabaseInstanceType struct {
 	StorageGB int32
 	// SupportsHighAvailability is PlanSupportsHighAvailability for this plan.
 	SupportsHighAvailability bool
+	// MonthlyUSD is the always-on monthly price from the one price sheet
+	// (pricing.yaml, which bex.co/pricing and billing also read), "" for an
+	// unlisted tier. The plan picker showed none, so a paid datastore was
+	// chosen blind (w4/156).
+	MonthlyUSD string
 }
 
 // InstanceTypes lists every plan in the shared Postgres catalog, in ladder
@@ -55,7 +62,9 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 	out := make([]DatabaseInstanceType, len(ids))
 	for i, id := range ids {
 		t, _ := tiers.Postgres.ByID(id)
+		monthlyUSD, _ := pricing.Default.InstanceMonthlyUSD(id, store.ResourceKindPostgres)
 		out[i] = DatabaseInstanceType{
+			MonthlyUSD:               monthlyUSD,
 			ID:                       t.ID,
 			Name:                     pgTierDisplayName(id),
 			CPU:                      t.CPU,

@@ -31,6 +31,7 @@ export function useDatabaseInstanceTypes(): UseDatabaseInstanceTypesResult {
           memory: t.memory ?? "",
           storageGB: t.storageGB ?? 0,
           supportsHighAvailability: t.supportsHighAvailability ?? false,
+          monthlyUsd: t.monthlyUsd ?? "",
         })),
     [data],
   );

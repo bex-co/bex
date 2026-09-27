@@ -63,11 +63,12 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 var keyValueInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValueInstanceType",
 	Fields: graphql.Fields{
-		"id":        gqlutil.StrField(func(t KeyValueInstanceType) any { return t.ID }),
-		"name":      gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Name }),
-		"cpu":       gqlutil.StrField(func(t KeyValueInstanceType) any { return t.CPU }),
-		"memory":    gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Memory }),
-		"storageGB": gqlutil.IntField(func(t KeyValueInstanceType) any { return t.StorageGB }),
+		"id":         gqlutil.StrField(func(t KeyValueInstanceType) any { return t.ID }),
+		"name":       gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Name }),
+		"cpu":        gqlutil.StrField(func(t KeyValueInstanceType) any { return t.CPU }),
+		"memory":     gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Memory }),
+		"storageGB":  gqlutil.IntField(func(t KeyValueInstanceType) any { return t.StorageGB }),
+		"monthlyUsd": gqlutil.StrField(func(t KeyValueInstanceType) any { return t.MonthlyUSD }),
 	},
 })
 

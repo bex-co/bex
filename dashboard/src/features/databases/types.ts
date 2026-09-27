@@ -89,6 +89,8 @@ export interface DatabaseInstanceTypeView {
   storageGB: number;
   /** The plan offers high availability (at least 1 CPU; w8/m43). */
   supportsHighAvailability: boolean;
+  /** Always-on monthly price ("14.00"), "" when the sheet lists none (w4/156). */
+  monthlyUsd: string;
 }
 
 /** A resolved status key (i18n label) + the badge variant it renders as. */
