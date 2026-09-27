@@ -1,18 +1,18 @@
 # w8 · m45 — A service name given to the CLI resolves in the caller's default workspace, not the selected one, so name-based verbs can act on another workspace's service
 
-**Worker:** worker8 **Goal:** a service addressed by **name** resolves only within the workspace the caller selected. When no workspace is selected and the name is ambiguous across the caller's workspaces, it is refused with the candidate ids instead of silently picking one. `bex restart <name>` / `bex deploys create <name>` can never act on a service in a workspace other than the one `bex workspace current` shows. **Status:** todo
+**Worker:** worker8 **Goal:** a service addressed by **name** resolves only within the workspace the caller selected. When no workspace is selected and the name is ambiguous across the caller's workspaces, it is refused with the candidate ids instead of silently picking one. `bex restart <name>` / `bex deploys create <name>` can never act on a service in a workspace other than the one `bex workspace current` shows. **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                                                                       | est | depends_on       |
 | ---- | ----------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Decide how the selected workspace reaches name resolution (request hint vs. refuse-ambiguous), record it     | 30m | —                |
-| t002 | Server: name resolution refuses a name that matches services in more than one accessible workspace (409 + ids) | 45m | t001             |
+| t001 | Decide how the selected workspace reaches name resolution (request hint vs. refuse-ambiguous), record it — **DONE**     | 30m | —                |
+| t002 | Server: name resolution refuses a name that matches services in more than one accessible workspace (409 + ids) — **DONE** | 45m | t001             |
 | t003 | Carry the CLI's selected workspace to name-based by-path verbs, per t001's decision                           | 45m | t001             |
-| t004 | Enumerate every name-accepting by-path verb (deploys, restart, instances, jobs, logs, …) and cover each       | 30m | t002, t003       |
-| t005 | Render parity                                                                                                | 20m | t004             |
-| t006 | Simplify                                                                                                     | 15m | t005             |
-| t007 | Test coverage                                                                                                | 30m | t006             |
+| t004 | Enumerate every name-accepting by-path verb (deploys, restart, instances, jobs, logs, …) and cover each — **DONE**       | 30m | t002, t003       |
+| t005 | Render parity — **DONE**                                                                                                | 20m | t004             |
+| t006 | Simplify — **DONE**                                                                                                     | 15m | t005             |
+| t007 | Test coverage — **DONE**                                                                                                | 30m | t006             |
 | t008 | Closeout                                                                                                     | 15m | t007             |
 
 ## Definition of done
@@ -59,3 +59,10 @@ Before the fixture existed, `bex deploys list tianpan-v4-web` with `bex-canary` 
 - Mutations by name (not exercised against the real service by design; t004 proves them on fixtures).
 - Whether GraphQL/MCP name-addressed verbs share the same default-workspace preference (same `AuthorizeApp`, so likely).
 - ~~Datastore resolution across workspaces~~ **checked in sweep 17: not affected.** `bex postgres get <name>` / `bex keyvalues get <name>` for a datastore that exists only in another member workspace answer `No Postgres database named '…' in workspace tea-daif…` (the pinned CLI resolves datastore names client-side, scoped to the selected workspace). By id, they correctly work across workspaces. The gap is specific to services addressed through by-path verbs.
+
+## Blocked (2026-09-26)
+
+t001, t002, t004–t007 are done. With no workspace named, a service name visible in several of the caller's workspaces is refused `409 SERVICE_NAME_AMBIGUOUS` with every candidate id, on every by-path verb. The silent wrong-target mutation is gone. Open:
+
+1. **t003: user sign-off** on the launcher header (t001 option (a)) that lets the selected workspace win for names, which DoD bullet 1 needs.
+2. **t008: live closeout** after deploy (`blocked/m42`) with a logged-in CLI, fixtures only.
