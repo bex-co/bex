@@ -716,6 +716,9 @@ type recordingStore struct {
 	// an id absent from the map reports "unprotected", matching the store's
 	// own default for an App outside any environment.
 	protectedStatus map[string]string
+	// protectedCalls counts GetAppProtectedStatus round trips, so a test can
+	// assert the per-request memo (requestmemo.go) actually collapses them.
+	protectedCalls int
 	// protectedErr is the protection lookup's own failure, deliberately separate
 	// from err: err stands for "a row write failed", and several verbs are
 	// specified to survive that (the spec patch already landed). A protection
@@ -736,6 +739,7 @@ func (r *recordingStore) GetEnvironment(_ context.Context, id string) (store.Env
 }
 
 func (r *recordingStore) GetAppProtectedStatus(_ context.Context, id string) (string, error) {
+	r.protectedCalls++
 	if r.protectedErr != nil {
 		return "", r.protectedErr
 	}

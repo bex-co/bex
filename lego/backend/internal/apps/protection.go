@@ -104,7 +104,11 @@ func (s *Service) appProtected(ctx context.Context, a *appv1alpha1.App) (bool, e
 	if id == "" {
 		return false, nil
 	}
-	protectedStatus, err := s.Store.GetAppProtectedStatus(ctx, id)
+	// Memoized: a multi-field patch asks this once per guarded row, in each of
+	// its two passes, and the answer cannot change mid-request.
+	protectedStatus, err := memoized(ctx, "appProtected:"+id, func() (string, error) {
+		return s.Store.GetAppProtectedStatus(ctx, id)
+	})
 	if err != nil {
 		// Delete is deliberately row-first. If a process dies or the request is
 		// cancelled after removing that source row but before deleting the CR,
