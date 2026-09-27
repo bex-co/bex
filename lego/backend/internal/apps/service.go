@@ -4220,7 +4220,16 @@ func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) 
 	trimmed := strings.TrimSpace(displayName)
 	previous := a.Spec.DisplayName
 	view, err := s.writeThroughStoreFetched(ctx, a,
-		func(ctx context.Context, id string) error { return s.Store.SetAppDisplayName(ctx, id, trimmed) },
+		func(ctx context.Context, id string) error {
+			// The store refuses a name another service in the workspace was
+			// created as or is displayed as (w8/m47) — create's rule and answer.
+			if err := s.Store.SetAppDisplayName(ctx, id, trimmed); errors.Is(err, store.ErrConflict) {
+				return core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", trimmed), nil)
+			} else if err != nil {
+				return err
+			}
+			return nil
+		},
 		func(a *appv1alpha1.App) { a.Spec.DisplayName = trimmed })
 	if err != nil {
 		return AppView{}, err
@@ -4291,6 +4300,12 @@ func (s *Service) writeThroughStoreFetched(
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
 			if err := writeRow(ctx, id); err != nil {
+				// A refusal the row write already phrased for the caller (a
+				// coded 4xx) passes through unprefixed.
+				var coded *core.CodedError
+				if errors.As(err, &coded) {
+					return AppView{}, err
+				}
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}

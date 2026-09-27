@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -290,5 +292,24 @@ func TestMCPDisplayNameRoundTrip(t *testing.T) {
 	noop := call("update_service", map[string]any{"serviceId": "web"})
 	if noop["id"] != "web" || noop["displayName"] != "Customer API" {
 		t.Fatalf("no-op update_service = %#v", noop)
+	}
+}
+
+// w8/m47: a rename to a name another service in the workspace was created as
+// or is shown as got 200 — two services listed as "hello-go". The store
+// refuses it; the verb answers exactly like create's duplicate (409 CONFLICT
+// "name … is already in use", unprefixed) and the CR keeps its old name.
+func TestSetDisplayNameTakenNameIsCreatesConflict(t *testing.T) {
+	rec := &recordingStore{err: fmt.Errorf("service name %q: %w", "hello-go", store.ErrConflict)}
+	svc, cl := newService(rec, manage(displayNameApp("immutable-id"), "srv-1"))
+
+	_, err := svc.SetDisplayName(context.Background(), "immutable-id", "hello-go")
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "CONFLICT" ||
+		err.Error() != `name "hello-go" is already in use` {
+		t.Fatalf("rename to a taken name = %v, want create's 409 CONFLICT", err)
+	}
+	if got := getApp(t, cl, "immutable-id").Spec.DisplayName; got != "Original label" {
+		t.Errorf("CR spec.displayName = %q, want unchanged after the refusal", got)
 	}
 }

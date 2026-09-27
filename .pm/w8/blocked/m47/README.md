@@ -1,17 +1,17 @@
 # w8 · m47 — A renamed service keeps answering to its old name: rename skips the uniqueness rule, and name lookup ignores the name you see
 
-**Worker:** worker8 **Goal:** the name a user sees for a service (`bex services`, the dashboard) is the name every by-name verb acts on, and it stays unique within the workspace, so `bex restart <name shown in the list>` always acts on the service shown with that name. **Status:** todo
+**Worker:** worker8 **Goal:** the name a user sees for a service (`bex services`, the dashboard) is the name every by-name verb acts on, and it stays unique within the workspace, so `bex restart <name shown in the list>` always acts on the service shown with that name. **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                                                                        | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Rename (`SetDisplayName`) enforces the same workspace-uniqueness rule as create: 409 against every displayed and creation-time name | 40m | —          |
-| t002 | Server name resolution matches the displayed name (display name, falling back to the creation name) and refuses ambiguity | 45m | t001       |
-| t003 | Audit production for existing duplicate displayed names per workspace; record the handling (no silent renames) | 20m | t001       |
-| t004 | Render parity                                                                                                | 20m | t002, t003 |
-| t005 | Simplify                                                                                                     | 15m | t004       |
-| t006 | Test coverage                                                                                                | 30m | t005       |
+| t001 | Rename (`SetDisplayName`) enforces the same workspace-uniqueness rule as create: 409 against every displayed and creation-time name — **DONE** | 40m | —          |
+| t002 | Server name resolution matches the displayed name (display name, falling back to the creation name) and refuses ambiguity — **DONE** | 45m | t001       |
+| t003 | Audit production for existing duplicate displayed names per workspace; record the handling (no silent renames) — **DONE** | 20m | t001       |
+| t004 | Render parity — **DONE**                                                                                                | 20m | t002, t003 |
+| t005 | Simplify — **DONE**                                                                                                     | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                                                                | 30m | t005       |
 | t007 | Closeout                                                                                                     | 15m | t006       |
 
 ## Definition of done
@@ -64,3 +64,7 @@ So `bex restart …-a`, `bex deploys create …-a` and `bex deploys cancel …-a
 
 - Render's own rename-uniqueness behavior (w4/m19 records creates as unique on Render; renames not checked). t004 must confirm before t001's 409 ships.
 - GraphQL `setDisplayName` / MCP `update_service(displayName:)`: same verb, presumed identical.
+
+## Blocked (2026-09-27)
+
+t001–t006 are done. Renames follow create's workspace-uniqueness rule (409, race-safe under a shared advisory lock), and by-name resolution matches the name each service is shown as, so the sweep-19 swap now targets the listed service. Production has no duplicate displayed names. Only **t007** remains: the live closeout on production fixtures, which needs the deploy to land (`blocked/m42`) and a logged-in `bex` CLI.
