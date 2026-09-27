@@ -229,6 +229,8 @@ query DatabaseInstanceTypes {
     memory
     storageGB
     supportsHighAvailability
+    # The price from bex-api's one price sheet (w4/156).
+    monthlyUsd
   }
 }
 

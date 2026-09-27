@@ -66,6 +66,8 @@ query KeyValueInstanceTypes {
     cpu
     memory
     storageGB
+    # The price from bex-api's one price sheet (w4/156).
+    monthlyUsd
   }
 }
 

@@ -56,6 +56,7 @@ const FREE: KeyValueInstanceTypeView = {
   cpu: "100m",
   memory: "128Mi",
   storageGB: 1,
+  monthlyUsd: "0.00",
 };
 const STARTER: KeyValueInstanceTypeView = {
   id: "starter",
@@ -63,6 +64,7 @@ const STARTER: KeyValueInstanceTypeView = {
   cpu: "100m",
   memory: "256Mi",
   storageGB: 1,
+  monthlyUsd: "7.00",
 };
 
 function renderPage() {

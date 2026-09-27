@@ -50,6 +50,7 @@ const FREE: DatabaseInstanceTypeView = {
   memory: "256Mi",
   storageGB: 1,
   supportsHighAvailability: false,
+  monthlyUsd: "0.00",
 };
 const BASIC: DatabaseInstanceTypeView = {
   id: "basic-1gb",
@@ -58,6 +59,7 @@ const BASIC: DatabaseInstanceTypeView = {
   memory: "1Gi",
   storageGB: 5,
   supportsHighAvailability: false,
+  monthlyUsd: "14.00",
 };
 
 beforeEach(() => {
@@ -208,5 +210,20 @@ describe("CreateDatabaseDialog", () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ environmentId: "env-1" }),
     );
+  });
+
+  // w4/156: the plan options state their price, like the service picker.
+  it("prices each plan option", async () => {
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByLabelText("Instance type"));
+    expect(
+      await screen.findByRole("option", {
+        name: /Basic 1GB .*\$14\.00\/month/,
+      }),
+    ).toBeInTheDocument();
   });
 });

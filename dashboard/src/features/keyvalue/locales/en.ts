@@ -309,7 +309,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description: "Connection-info field label (public rediss:// URL)",
   },
   "keyvalue.connExternalUnavailable": {
-    message: "Not public. Add an inbound IP rule under Networking to enable external access.",
+    message:
+      "Not public. Add an inbound IP rule under Networking to enable external access.",
     description:
       "Shown instead of the external URL when the store isn't public",
   },
@@ -411,6 +412,11 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message:
       "The operator will resize the store's compute resources on the next reconcile. Connections drop briefly during the rolling restart.",
     description: "Key Value plan-picker confirm dialog body",
+  },
+  "keyvalue.planPickerConfirmPrice": {
+    message: "The new plan costs ${price}/month.",
+    description:
+      "Plan-change confirm: the new plan's monthly price, from the API's price sheet (w4/156)",
   },
   "keyvalue.planPickerSuccess": {
     message: "Updating plan to {name}…",
