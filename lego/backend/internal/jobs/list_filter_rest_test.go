@@ -60,6 +60,14 @@ func (s *recordingJobStore) UpdateJobStatus(context.Context, string, string) (st
 
 func filterHarness(t *testing.T) (*recordingJobStore, *http.ServeMux) {
 	t.Helper()
+	st := &recordingJobStore{}
+	_, mux := filterHarnessWith(t, st)
+	return st, mux
+}
+
+// filterHarnessWith mounts the jobs REST routes over store st and one App "web".
+func filterHarnessWith(t *testing.T, st JobStore) (JobStore, *http.ServeMux) {
+	t.Helper()
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
@@ -68,7 +76,6 @@ func filterHarness(t *testing.T) (*recordingJobStore, *http.ServeMux) {
 		Spec:       appv1alpha1.AppSpec{Image: "web:v1"},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(client.Object(app)).Build()
-	st := &recordingJobStore{}
 	svc := &Service{Base: &core.Base{Authz: allowAllChecker{}, Client: cl, Namespace: "default"}, Store: st}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)

@@ -105,7 +105,7 @@ func (s *Service) GetSecretFile(ctx context.Context, service, name string) (Secr
 	}
 	content, ok := files[name]
 	if !ok {
-		return SecretFileView{}, core.ErrNotFound
+		return SecretFileView{}, core.NotFound("secret file")
 	}
 	return SecretFileView{Name: name, Content: content}, nil
 }
@@ -396,7 +396,7 @@ func NewCreateSecretsSeeder(service *Service) CreateSecretsSeeder {
 }
 
 // DeleteSecretFile removes one file (Render's DELETE .../secret-files/{name}),
-// re-projecting the reduced set. Unknown file => core.ErrNotFound.
+// re-projecting the reduced set. Unknown file => core.NotFound("secret file"), after the service authorized (w4/154).
 func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) error {
 	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
@@ -409,7 +409,7 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 		return err
 	}
 	if !nameFound {
-		return core.ErrNotFound
+		return core.NotFound("secret file")
 	}
 	return nil
 }
