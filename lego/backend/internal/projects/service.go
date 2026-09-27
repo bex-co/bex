@@ -466,7 +466,8 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 		return ProjectView{}, core.ErrBadRequest
 	}
 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
-		return ProjectView{}, store.MapError(err)
+		// A rename onto a taken name answers like a create does (w4/155).
+		return ProjectView{}, conflictOrMapError(err, name)
 	}
 	// Re-read so UpdatedAt reflects the store's now() stamp — the pre-rename
 	// row still carries the old timestamp (w4/m109).
