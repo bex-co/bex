@@ -51,7 +51,7 @@ import (
 func registryHost(image string) string {
 	first, _, found := strings.Cut(image, "/")
 	if found && (first == "localhost" || strings.ContainsAny(first, ".:")) {
-		return first
+		return foldRegistryHost(first)
 	}
 	return "docker.io"
 }
@@ -91,7 +91,7 @@ func (s *Service) resolvePullCredential(ctx context.Context, workspaceID, image 
 		if lookupErr == nil && cred.WorkspaceID != workspaceID {
 			return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q does not belong to the target workspace", core.ErrForbidden, id)
 		}
-		if lookupErr == nil && host != "" && !strings.EqualFold(cred.Host, host) {
+		if lookupErr == nil && host != "" && !sameRegistryHost(cred.Host, host) {
 			return "", store.RegistryCredential{}, "", false, fmt.Errorf("%w: registry credential %q is for %s, not %s", core.ErrBadRequest, id, cred.Host, host)
 		}
 		if lookupErr == nil && host == "" {
@@ -102,6 +102,11 @@ func (s *Service) resolvePullCredential(ctx context.Context, workspaceID, image 
 			return "", store.RegistryCredential{}, "", false, nil // repo builds never guess which private FROM registry to use
 		}
 		cred, lookupErr = s.Store.GetRegistryCredentialByHost(ctx, workspaceID, host)
+		if errors.Is(lookupErr, store.ErrNotFound) {
+			// A row stored before hosts were canonicalized ("https://ghcr.io/",
+			// "index.docker.io") misses the exact lookup; match it canonically.
+			cred, lookupErr = s.credentialForHost(ctx, workspaceID, host)
+		}
 	}
 	if lookupErr != nil {
 		if errors.Is(lookupErr, store.ErrNotFound) {
@@ -290,9 +295,25 @@ func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, 
 			}
 			continue // explicit binding to a different (or cleared) credential overrides host matching
 		}
-		if a.Spec.Image != "" && strings.EqualFold(registryHost(a.Spec.Image), cred.Host) {
+		if a.Spec.Image != "" && sameRegistryHost(cred.Host, registryHost(a.Spec.Image)) {
 			return a.Name, true, nil
 		}
 	}
 	return "", false, nil
+}
+
+// credentialForHost is the canonical-comparison fallback for the host
+// auto-match: the newest workspace credential whose stored host, however it
+// was spelled, is host. store.ErrNotFound when none is.
+func (s *Service) credentialForHost(ctx context.Context, workspaceID, host string) (store.RegistryCredential, error) {
+	rows, err := s.Store.ListRegistryCredentials(ctx, workspaceID)
+	if err != nil {
+		return store.RegistryCredential{}, err
+	}
+	for _, c := range rows { // newest first
+		if sameRegistryHost(c.Host, host) {
+			return c, nil
+		}
+	}
+	return store.RegistryCredential{}, store.ErrNotFound
 }

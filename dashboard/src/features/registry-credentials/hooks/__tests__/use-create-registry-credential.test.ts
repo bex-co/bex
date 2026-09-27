@@ -54,6 +54,25 @@ describe("useCreateRegistryCredential", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
+  // w4/149: bex-api stores the canonical host, so the toast names that one.
+  it("names the host the server stored, not the pasted URL", async () => {
+    const mutate = vi.fn().mockResolvedValue({
+      data: { createRegistryCredential: { host: "ghcr.io" } },
+    });
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateRegistryCredential());
+    await act(async () => {
+      await result.current.create({
+        host: "https://ghcr.io/",
+        username: "alice",
+        authToken: "hunter2",
+      });
+    });
+
+    expect(toastSuccess).toHaveBeenCalledWith("Added a credential for ghcr.io");
+  });
+
   it("normalizes an empty name/expiresAt to null (server default)", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockReturnValue([mutate]);
