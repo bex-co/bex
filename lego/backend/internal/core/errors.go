@@ -309,6 +309,11 @@ func NewNotFoundError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrNotFound, msg: msg}
 }
 
+// CodeQueryTimeout marks a read that ran out of its execution budget. Retrying
+// the same request will time out again, so clients should narrow it instead
+// (w4/m140).
+const CodeQueryTimeout = "QUERY_TIMEOUT"
+
 // NewConflictError returns a machine-readable 409 error for a valid operation
 // that the resource's current state makes unsafe.
 func NewConflictError(code, msg string, params map[string]any) *CodedError {

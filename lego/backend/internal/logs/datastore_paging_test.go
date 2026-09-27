@@ -34,8 +34,8 @@ import (
 
 const keyValueID = "red-c185th5c2rvvnhbfiltg"
 
-// logPage is the one envelope every adapter returns, decoded the same way.
-type logPage struct {
+// wirePage is the one envelope every adapter returns, decoded the same way.
+type wirePage struct {
 	HasMore       bool   `json:"hasMore"`
 	NextStartTime string `json:"nextStartTime"`
 	NextEndTime   string `json:"nextEndTime"`
@@ -87,38 +87,38 @@ func TestDatastoreLogsPageCursorsChainOnEveryAdapter(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = cs.Close() })
 
-	adapters := map[string]func(resource, from, to string) logPage{
-		"REST": func(resource, from, to string) logPage {
+	adapters := map[string]func(resource, from, to string) wirePage{
+		"REST": func(resource, from, to string) wirePage {
 			q := url.Values{"resource": {resource}, "startTime": {from}, "endTime": {to}, "limit": {fmt.Sprint(limit)}}
 			rec := serveREST(svc, http.MethodGet, "/v1/logs?"+q.Encode())
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST %s => %d %s", resource, rec.Code, rec.Body.String())
 			}
-			var page logPage
+			var page wirePage
 			if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 				t.Fatalf("REST decode: %v", err)
 			}
 			return page
 		},
-		"GraphQL": func(resource, from, to string) logPage {
+		"GraphQL": func(resource, from, to string) wirePage {
 			data := runQuery(t, schema, fmt.Sprintf(
 				`{ logs(resource:%q, startTime:%q, endTime:%q, limit:%d) { hasMore nextStartTime nextEndTime logs { message } } }`,
 				resource, from, to, limit))
 			raw, _ := json.Marshal(data["logs"])
-			var page logPage
+			var page wirePage
 			if err := json.Unmarshal(raw, &page); err != nil {
 				t.Fatalf("GraphQL decode: %v", err)
 			}
 			return page
 		},
-		"MCP": func(resource, from, to string) logPage {
+		"MCP": func(resource, from, to string) wirePage {
 			result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
 				"resource": []string{resource}, "startTime": from, "endTime": to, "limit": limit,
 			}})
 			if err != nil || result.IsError {
 				t.Fatalf("MCP %s = %+v, err=%v", resource, result, err)
 			}
-			var page logPage
+			var page wirePage
 			if err := json.Unmarshal([]byte(result.Content[0].(*mcp.TextContent).Text), &page); err != nil {
 				t.Fatalf("MCP decode: %v", err)
 			}
