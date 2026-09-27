@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -1271,8 +1272,12 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		return s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), q.Get("ownerId"), q.Get("cursor"), limit)
 	}))
-	mux.HandleFunc("POST /v1/blueprints/validate", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST "+BlueprintValidationPath, func(w http.ResponseWriter, r *http.Request) {
 		ownerID, bexYAML, blueprintID, err := decodeBlueprintValidationRequest(w, r)
+		if errors.Is(err, errBlueprintTooLarge) {
+			core.WriteErrStatus(w, http.StatusRequestEntityTooLarge, err.Error())
+			return
+		}
 		if err != nil {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
@@ -1475,13 +1480,32 @@ func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
 // valid 10 MiB upload is not rejected merely for its MIME headers.
 const (
 	maxBlueprintValidationFileBytes = 10 << 20
-	maxBlueprintValidationBodyBytes = maxBlueprintValidationFileBytes + (1 << 20)
+	// MaxBlueprintValidationBodyBytes is the validate route's body cap. The
+	// composition root mounts it in place of the global API body limit on
+	// that one route, which would otherwise refuse anything past 2 MiB before
+	// this handler runs (w8/026).
+	MaxBlueprintValidationBodyBytes = maxBlueprintValidationFileBytes + (1 << 20)
 )
+
+// BlueprintValidationPath is the route MaxBlueprintValidationBodyBytes covers.
+const BlueprintValidationPath = "/v1/blueprints/validate"
+
+// errBlueprintTooLarge is the validate route's own size refusal (413).
+var errBlueprintTooLarge = errors.New("Blueprint file exceeds the 10 MiB validation limit")
 
 // decodeBlueprintValidationRequest accepts Render's multipart contract used by
 // the official CLI (ownerId field + file part), while retaining bex's original
 // JSON contract for the dashboard and direct API callers.
 func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (ownerID, bexYAML, blueprintID string, err error) {
+	// Keep a local bound because feature-level tests and embedders can mount this
+	// router without the composition root's middleware. It is intentionally the
+	// Blueprint-specific file/envelope cap, not the stricter global API default.
+	r.Body = http.MaxBytesReader(w, r.Body, MaxBlueprintValidationBodyBytes)
+	defer func() {
+		if tooLarge := new(http.MaxBytesError); errors.As(err, &tooLarge) {
+			err = errBlueprintTooLarge
+		}
+	}()
 	contentType := r.Header.Get("Content-Type")
 	mediaType := "application/json"
 	if contentType != "" {
@@ -1499,17 +1523,19 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 			OwnerID     string `json:"ownerId"`
 			BlueprintID string `json:"blueprintId"`
 		}
-		if err := core.DecodeJSON(r, &body); err != nil || body.BexYAML == "" {
+		if err := core.DecodeJSON(r, &body); err != nil {
+			return "", "", "", err
+		}
+		if body.BexYAML == "" {
 			return "", "", "", core.ErrBadRequest
+		}
+		if len(body.BexYAML) > maxBlueprintValidationFileBytes {
+			return "", "", "", errBlueprintTooLarge
 		}
 		return body.OwnerID, body.BexYAML, body.BlueprintID, nil
 	}
 
-	// Keep a local bound because feature-level tests and embedders can mount this
-	// router without the composition root's middleware. It is intentionally the
-	// Blueprint-specific file/envelope cap, not the stricter global API default.
-	r.Body = http.MaxBytesReader(w, r.Body, maxBlueprintValidationBodyBytes)
-	if err := r.ParseMultipartForm(maxBlueprintValidationBodyBytes); err != nil {
+	if err := r.ParseMultipartForm(MaxBlueprintValidationBodyBytes); err != nil {
 		return "", "", "", err
 	}
 	if r.MultipartForm != nil {
@@ -1529,7 +1555,7 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 		return "", "", "", core.ErrBadRequest
 	}
 	if len(content) > maxBlueprintValidationFileBytes {
-		return "", "", "", fmt.Errorf("Blueprint file exceeds the 10 MiB validation limit")
+		return "", "", "", errBlueprintTooLarge
 	}
 	return ownerID, string(content), strings.TrimSpace(r.FormValue("blueprintId")), nil
 }
