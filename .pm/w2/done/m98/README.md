@@ -1,6 +1,6 @@
 # w2 · m98 — A suspended web service answers with a bex response
 
-**Worker:** worker2 **Goal:** a suspended web service's public host answers with a bex "this service is suspended" response, content-negotiated for browsers and API clients, instead of Traefik's raw `503 no available server`. The URL and certificate stay the same, the App stays at zero replicas, and nothing about the response wakes it. Resume restores the App's own backend. **Status:** t001–t006 done; live re-probe 2026-09-26 (pass 221): bullets 1–5, 7, 9 and the static-site half of 8 pass; bullet 6 passes on every externally visible signal (the `last-active` annotation needs cluster access); the sleeping-free-service control (8b) is being run with an idle fixture; t007 closeout waits on 8b
+**Worker:** worker2 **Goal:** a suspended web service's public host answers with a bex "this service is suspended" response, content-negotiated for browsers and API clients, instead of Traefik's raw `503 no available server`. The URL and certificate stay the same, the App stays at zero replicas, and nothing about the response wakes it. Resume restores the App's own backend. **Status:** done (live Definition of done re-probed 2026-09-26/27, `/qa-find-bugs` passes 221–222; every bullet passes on its externally observable signals, see the re-probe section)
 
 ## Tasks (in order)
 
@@ -12,8 +12,7 @@
 | t004 | Render parity | 10m | t003 | — **DONE** |
 | t005 | Simplify | 15m | t004 | — **DONE** |
 | t006 | Test coverage | 40m | t004 | — **DONE** |
-| t007 | Closeout | 10m | t006 | blocked on live production verification |
-
+| t007 | Closeout — **DONE** | 10m | t006 |
 ## Definition of done
 
 Run on production, workspace `bex`, with a throwaway free web service (`examples/hello-go`) created and deleted inside the run:
@@ -70,4 +69,8 @@ Production, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. Th
 7. **PASS.** `POST …/resume` → `202`. After about 15 s, `curl https://qa-20260926-susp.onbex.co/` → `200` from the app itself (`Hostname: tea-d98210cbbpdc73dcrkvg-qa-20260926-susp-…`).
 8. **Static half PASS; sleeping half pending.** The suspended static site answered `HTTP/2 404`, `content-type: text/plain`, `no static site for host`, over the valid managed certificate. That is the `w3/m46` t001 behavior ("the static-server serves its ordinary 404"). Its copy reads as though the site does not exist; filed as `w4/160`. The sleeping-free-service control needs a free service idle for `defaultIdleTTL` (15 min, `app_controller.go:1985`). Fixture `srv-dasavh9smc7s73cq5ogg` (`qa-20260926-sleep`) was created at 2026-09-27T05:55Z and left idle for the next pass to probe and delete.
 9. **PASS.** `DELETE` → `204`, then `GET` → `404` (both fixtures).
+
+**8b, sleeping-free-service control: PASS (pass 222, 2026-09-27).** Fixture `srv-dasavh9smc7s73cq5ogg` (`qa-20260926-sleep`, free, `whoami` image) was created at 05:55:17Z and left untouched. The feed shows `deploy_ended` at 05:55:39Z and `service_hibernated` at **06:10:39Z**, exactly `defaultIdleTTL` (15 min) later; `GET` read `phase: Hibernated`, `suspended: not_suspended`, `instances: []`. `curl -H 'Accept: text/html' https://qa-20260926-sleep.onbex.co/` → `HTTP/2 503`, `content-type: text/html`, `retry-after: 5`. That is the activator's wake interstitial (`w6/m94`), distinct from the suspended responder's `retry-after: 3600`. The body text was not captured. The app itself answered `200` 12 s later, and the feed recorded `service_woken` at 06:27:55Z. The contrast is the point: no request to the *suspended* service produced a `service_woken`. The fixture was deleted (`DELETE` 204, then `GET` 404).
+
+**Closeout basis.** Every bullet was re-probed live and passes on what production exposes. The one sub-signal outside an API user's reach is bullet 6's `app.bex.co/last-active` annotation. It is covered by the operator suite (`TestSuspendedWebServiceRoutesToActivator` routes suspended traffic to the activator's no-wake responder), and live, the three requests left the service at zero instances with no `service_woken`, which is what an advanced `last-active` would have produced. Bullet 5's "subject CN = the slug host" wording was wrong for this platform: the certificate is the `*.onbex.co` wildcard, unchanged across suspend.
 
