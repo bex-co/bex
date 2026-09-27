@@ -1,6 +1,6 @@
 # w2 · m99 — A queued deploy says why it waits
 
-**Worker:** worker2 **Goal:** while a deploy row is `queued`, every log surface states the operator's current reason for the wait, so a capacity wait is distinguishable from a stuck deploy. The operator already writes the reason to the App's `Ready` condition; today bex-api drops it until the row times out. **Status:** t001–t006 done (code, copy, cross-surface proof, parity, simplify, tests); **t007 blocked on live production verification** — this run had no working production credential (the `.env` QA password and the CLI token are both stale), so no Definition-of-done bullet could be re-probed live.
+**Worker:** worker2 **Goal:** while a deploy row is `queued`, every log surface states the operator's current reason for the wait, so a capacity wait is distinguishable from a stuck deploy. The operator already writes the reason to the App's `Ready` condition; today bex-api drops it until the row times out. **Status:** done (live Definition of done re-probed and passed 2026-09-27, `/qa-find-bugs` pass 223)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE**| 15m | t002, t003 |
 | t005 | Simplify — **DONE**| 15m | t004       |
 | t006 | Test coverage — **DONE**| 30m | t004       |
-| t007 | Closeout                                                                                                                               | 10m | t006       |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -100,3 +100,18 @@ t007 stays open on exactly this: re-probe every bullet on production after the d
 - `lego/backend/internal/logs/progress_wait_test.go` (new) — six tests.
 - `lego/backend/internal/store/queued_wait_failure_reason_test.go` (new) — the terminal-only guard.
 - `docs/ADR018-render-parity.md` — one new bullet in § bex ahead of Render.
+
+## Live Definition-of-done re-probe (2026-09-27, `/qa-find-bugs` pass 223) — pass
+
+Production, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. Three free Docker web services were built from `bex-co/bex` `examples/hello-go` (`qa-20260926-q1` `srv-dasbtohsmc7s73cq5oig`, `-q2` `srv-dasbtp9smc7s73cq5ok0`, `-q3` `srv-dasbtpod0qnc73d7a4m0`), created back to back so the workspace cap (2) queued the third. All three were deleted (`DELETE` 204, then `GET` 404).
+
+- **The workspace-cap wait is narrated — PASS.**
+  - Round 1 (initial deploys): while q2 and q3 were `build_in_progress`, q1 stayed `queued` for about 60 s. Its REST build log (`GET /v1/logs?type=build`) carried `==> Waiting for a build slot: this workspace has 2/2 builds running`.
+  - Round 2 (three simultaneous manual deploys): with q3's deploy `dep-dasc0e9smc7s73cq5on0` still `queued`, REST `GET /v1/logs`, GraphQL `logs(resource, type:"build")` and MCP `list_logs` all returned the same line after `==> Build queued`. The deploy page `/services/<q3>/deploys/<dep>` showed it under **Queued**.
+  - The SSE tail was not separately captured.
+- **A reason change emits a new line — PASS.** q1's narration went `==> Build queued` → `==> Preparing registry credentials` → `==> Waiting for a build slot: this workspace has 2/2 builds running` → `==> Building from …`. Each reason appeared once across 15 s polls; the same reason was never repeated per tick.
+- **The cluster cap leaks nothing — unit test only (as the bullet allows).** A cluster-cap wait cannot be induced from a tenant workspace. It is covered by the t006 unit test.
+- **`failureReason` stays terminal-only — PASS.** Throughout both waits, REST `failureReason` and GraphQL `deploys { failureReason }` were empty. `==> Build queued` and `==> Building from https://github.com/bex-co/bex@9ba638d` were unchanged.
+
+Observation, not a DoD item: the narration is synthesized from the live `Ready` condition and is **not retained**. Once the deploy leaves `queued`, REST, GraphQL and MCP history show only `Build queued` / `Building from` / `live`, so a finished deploy no longer says why it waited. That matches the goal ("while a deploy row is `queued`").
+
