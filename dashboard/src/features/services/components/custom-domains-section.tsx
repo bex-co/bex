@@ -101,8 +101,7 @@ function ownershipSiblings(
   if (!key) return [];
   return domains
     .filter(
-      (other) =>
-        other.name !== domain.name && ownershipHostKey(other) === key,
+      (other) => other.name !== domain.name && ownershipHostKey(other) === key,
     )
     .map((other) => ({
       domain: other.name,
@@ -208,6 +207,7 @@ export function CustomDomainsSection({
               serviceId={serviceId}
               url={subdomain.url}
               renderSubdomainPolicy={subdomain.renderSubdomainPolicy}
+              domains={domains}
             />
           </>
         )}
@@ -244,7 +244,16 @@ function CustomDomainRow({
     () => !domain.ownershipVerified || !domain.verified,
   );
   let deleteDescription = t("services.domainDeleteConfirmBody");
-  if (sibling) {
+  if (!domain.ownershipVerified) {
+    // A pending claim was never routed and never got a certificate: deleting
+    // it removes nothing that was serving (w4/142).
+    deleteDescription = sibling
+      ? t("services.domainDeletePendingPairConfirmBody", {
+          name: domain.name,
+          sibling: sibling.name,
+        })
+      : t("services.domainDeletePendingConfirmBody", { name: domain.name });
+  } else if (sibling) {
     if (domain.redirectForName) {
       deleteDescription = t("services.domainDeleteGeneratedConfirmBody", {
         name: domain.name,

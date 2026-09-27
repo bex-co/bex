@@ -2678,7 +2678,7 @@ func resolveCreateSubdomainPolicy(req CreateRequest) (string, error) {
 		return "", err
 	}
 	if subdomainPolicy == appv1alpha1.SubdomainPolicyDisabled && len(req.Hosts) == 0 {
-		return "", fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
+		return "", fmt.Errorf("%w: %s", core.ErrBadRequest, subdomainNeedsVerifiedDomain)
 	}
 	return subdomainPolicy, nil
 }
@@ -4102,6 +4102,32 @@ func (s *Service) SetNotificationsToSend(ctx context.Context, name, value string
 // whether the platform host <slug>.<domain> appears in the Ingress and status
 // URL. Cannot be set to "disabled" without at least one custom host already
 // configured on the App — that would leave the service silently unreachable.
+// subdomainNeedsVerifiedDomain is the rule the subdomain guard enforces, in the
+// user's terms. A custom domain only serves the app once its ownership is
+// verified (projectDomainClaims admits verified claims into spec.hosts), so a
+// pending domain does not count. The old message said "without at least one
+// custom domain" to a user looking at one (w4/142).
+const subdomainNeedsVerifiedDomain = "the platform subdomain can't be disabled until a custom domain is verified, since the service would have no address left"
+
+// noVerifiedDomainError refuses disabling the platform subdomain, naming the
+// custom domains still pending verification when there are any.
+func (s *Service) noVerifiedDomainError(ctx context.Context, a *appv1alpha1.App) error {
+	var pending []string
+	if claims, appID, ok := s.managedDomainClaims(a); ok {
+		if rows, err := claims.ListDomainClaims(ctx, appID); err == nil {
+			for _, row := range rows {
+				if row.ClaimState == "pending" {
+					pending = append(pending, row.Host)
+				}
+			}
+		}
+	}
+	if len(pending) == 0 {
+		return fmt.Errorf("%w: %s", core.ErrBadRequest, subdomainNeedsVerifiedDomain)
+	}
+	return fmt.Errorf("%w: %s (%s still pending verification)", core.ErrBadRequest, subdomainNeedsVerifiedDomain, strings.Join(pending, ", "))
+}
+
 func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (AppView, error) {
 	normalized, err := normalizeSubdomainPolicy(policy)
 	if err != nil {
@@ -4122,7 +4148,7 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 	}
 	if normalized == appv1alpha1.SubdomainPolicyDisabled {
 		if a.Spec.Host == "" && len(a.Spec.Hosts) == 0 {
-			return AppView{}, fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
+			return AppView{}, s.noVerifiedDomainError(ctx, a)
 		}
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetSubdomainPolicy, a, func(a *appv1alpha1.App) {

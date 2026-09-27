@@ -103,4 +103,57 @@ describe("PlatformSubdomainRow", () => {
     await user.click(toggle);
     expect(mockSetSubdomainPolicy).toHaveBeenCalledWith("my-svc", "disabled");
   });
+
+  // w4/142: the server keeps the subdomain on until a custom domain is
+  // verified; the switch says so before the click instead of a refusal toast
+  // that also leaked the field name.
+  it("explains before the click that a pending domain can't replace the subdomain yet", () => {
+    render(
+      <PlatformSubdomainRow
+        serviceId="my-svc"
+        url="https://web.onbex.co"
+        renderSubdomainPolicy="enabled"
+        domains={[
+          { name: "qa-20260925.example.com", ownershipVerified: false },
+        ]}
+      />,
+    );
+
+    const toggle = screen.getByRole("switch", {
+      name: "Toggle platform subdomain",
+    });
+    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveAccessibleDescription(
+      "qa-20260925.example.com must finish verifying before the platform subdomain can be turned off.",
+    );
+  });
+
+  it("lets a service with a verified domain turn the subdomain off", () => {
+    render(
+      <PlatformSubdomainRow
+        serviceId="my-svc"
+        url="https://web.onbex.co"
+        renderSubdomainPolicy="enabled"
+        domains={[{ name: "www.example.com", ownershipVerified: true }]}
+      />,
+    );
+    expect(
+      screen.getByRole("switch", { name: "Toggle platform subdomain" }),
+    ).toBeEnabled();
+    expect(screen.queryByText(/must finish verifying/)).not.toBeInTheDocument();
+  });
+
+  it("never blocks turning a disabled subdomain back on", () => {
+    render(
+      <PlatformSubdomainRow
+        serviceId="my-svc"
+        url="https://web.onbex.co"
+        renderSubdomainPolicy="disabled"
+        domains={[]}
+      />,
+    );
+    expect(
+      screen.getByRole("switch", { name: "Toggle platform subdomain" }),
+    ).toBeEnabled();
+  });
 });

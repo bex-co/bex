@@ -412,7 +412,7 @@ func TestSpecFromCreateNormalizationErrors(t *testing.T) {
 			name:    "subdomain disabled without custom hosts",
 			svcType: appv1alpha1.TypeWebService,
 			req:     CreateRequest{SubdomainPolicy: appv1alpha1.SubdomainPolicyDisabled},
-			wantErr: "bad request: renderSubdomainPolicy cannot be disabled without at least one custom domain",
+			wantErr: "bad request: the platform subdomain can't be disabled until a custom domain is verified, since the service would have no address left",
 		},
 		{
 			name:    "invalid ip allowlist entry",

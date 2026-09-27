@@ -96,6 +96,18 @@ const apexDomain: CustomDomainView = {
   },
 };
 
+// The routed state of a pair fixture: ownership verified and certificate issued,
+// the only state whose delete removes serving routes and certificates.
+function verifiedPair(domain: CustomDomainView): CustomDomainView {
+  return {
+    ...domain,
+    ownershipVerified: true,
+    verified: true,
+    active: true,
+    ownershipDnsRecord: null,
+  };
+}
+
 const wwwSiblingDomain: CustomDomainView = {
   name: "www.foo.com",
   domainType: "subdomain",
@@ -297,8 +309,12 @@ describe("CustomDomainsSection", () => {
     expect(
       screen.getByRole("button", { name: "Copy CNAME target" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Host" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Target" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Host" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Target" }),
+    ).not.toBeInTheDocument();
   });
 
   it("strips a legacy FQDN ownership Host so paste stays relative (w4/092)", () => {
@@ -448,6 +464,41 @@ describe("CustomDomainsSection", () => {
     expect(screen.getByText("Redirects to foo.com")).toBeInTheDocument();
   });
 
+  // w4/142: a pending claim was never routed and never got a certificate, so
+  // its delete must not warn about removing either.
+  it("says deleting a pending domain removes only the unverified claim", async () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Open domain actions menu" }),
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "This removes the pending claim for api.example.com. It was never verified, so nothing was served on it and no certificate was issued.",
+    );
+    expect(dialog).not.toHaveTextContent(/Ingress|expire/);
+  });
+
+  it("says deleting a pending auto-pair removes both unverified claims", async () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([apexDomain, wwwSiblingDomain]),
+    );
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Open domain actions menu" })[0],
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "This removes the pending claims for foo.com and www.foo.com.",
+    );
+  });
+
   it("deletes a domain after confirming from the row menu", async () => {
     mockUseCustomDomains.mockReturnValue(domainsResult([verifiedDomain]));
     const user = userEvent.setup();
@@ -471,7 +522,7 @@ describe("CustomDomainsSection", () => {
 
   it("names both removals when deleting an auto-pair canonical domain", async () => {
     mockUseCustomDomains.mockReturnValue(
-      domainsResult([apexDomain, wwwSiblingDomain]),
+      domainsResult([verifiedPair(apexDomain), verifiedPair(wwwSiblingDomain)]),
     );
     const user = userEvent.setup();
     render(<CustomDomainsSection serviceId="web" />);
@@ -493,7 +544,7 @@ describe("CustomDomainsSection", () => {
 
   it("discloses the unchanged canonical when deleting only the generated redirect", async () => {
     mockUseCustomDomains.mockReturnValue(
-      domainsResult([apexDomain, wwwSiblingDomain]),
+      domainsResult([verifiedPair(apexDomain), verifiedPair(wwwSiblingDomain)]),
     );
     const user = userEvent.setup();
     render(<CustomDomainsSection serviceId="web" />);
@@ -511,8 +562,8 @@ describe("CustomDomainsSection", () => {
   it("treats explicitly claimed www and apex domains as independent", async () => {
     mockUseCustomDomains.mockReturnValue(
       domainsResult([
-        apexDomain,
-        { ...wwwSiblingDomain, redirectForName: null },
+        verifiedPair(apexDomain),
+        verifiedPair({ ...wwwSiblingDomain, redirectForName: null }),
       ]),
     );
     const user = userEvent.setup();

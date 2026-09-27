@@ -1484,6 +1484,18 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Custom-domain delete confirmation when deleting only the generated redirecting sibling",
   },
+  "services.domainDeletePendingConfirmBody": {
+    message:
+      "This removes the pending claim for {name}. It was never verified, so nothing was served on it and no certificate was issued.",
+    description:
+      "Custom-domain delete confirmation for a domain whose ownership is still pending: it was never routed (w4/142)",
+  },
+  "services.domainDeletePendingPairConfirmBody": {
+    message:
+      "This removes the pending claims for {name} and {sibling}. Neither was verified, so nothing was served on them and no certificate was issued.",
+    description:
+      "Custom-domain delete confirmation for a still-pending domain and its auto-paired sibling (w4/142)",
+  },
   "services.domainAdd": {
     message: "Add Custom Domain",
     description: "Custom-domains button to open the add-domain dialog",
@@ -1710,6 +1722,18 @@ const enServices: Record<string, TranslationEntry> = {
   "services.platformSubdomainToggleLabel": {
     message: "Toggle platform subdomain",
     description: "Accessible label for the platform-subdomain Switch",
+  },
+  "services.platformSubdomainNeedsVerifiedDomain": {
+    message:
+      "Verify a custom domain before turning the platform subdomain off, so the service keeps an address.",
+    description:
+      "Hint beside the platform-subdomain switch when no custom domain is verified yet (w4/142)",
+  },
+  "services.platformSubdomainNeedsVerifiedDomainPending": {
+    message:
+      "{names} must finish verifying before the platform subdomain can be turned off.",
+    description:
+      "Hint beside the platform-subdomain switch when custom domains exist but are all still pending verification (w4/142)",
   },
   "services.subdomainPolicySuccess": {
     message: "Platform subdomain setting updated.",

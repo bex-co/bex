@@ -1457,6 +1457,18 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Custom-domain delete confirmation when deleting only the generated redirecting sibling",
   },
+  "services.domainDeletePendingConfirmBody": {
+    message:
+      "这会删除 {name} 的待验证声明。该域名从未通过验证，因此从未在其上提供服务，也未签发证书。",
+    description:
+      "Custom-domain delete confirmation for a domain whose ownership is still pending: it was never routed (w4/142)",
+  },
+  "services.domainDeletePendingPairConfirmBody": {
+    message:
+      "这会删除 {name} 和 {sibling} 的待验证声明。两者均未通过验证，因此从未在其上提供服务，也未签发证书。",
+    description:
+      "Custom-domain delete confirmation for a still-pending domain and its auto-paired sibling (w4/142)",
+  },
   "services.domainAdd": {
     message: "添加自定义域名",
     description: "Custom-domains button to open the add-domain dialog",
@@ -1673,6 +1685,16 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.platformSubdomainToggleLabel": {
     message: "切换平台子域名",
     description: "Accessible label for the platform-subdomain Switch",
+  },
+  "services.platformSubdomainNeedsVerifiedDomain": {
+    message: "请先验证一个自定义域名，再关闭平台子域名，以确保服务仍有访问地址。",
+    description:
+      "Hint beside the platform-subdomain switch when no custom domain is verified yet (w4/142)",
+  },
+  "services.platformSubdomainNeedsVerifiedDomainPending": {
+    message: "{names} 需完成验证后才能关闭平台子域名。",
+    description:
+      "Hint beside the platform-subdomain switch when custom domains exist but are all still pending verification (w4/142)",
   },
   "services.subdomainPolicySuccess": {
     message: "平台子域名设置已更新。",
