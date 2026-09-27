@@ -2440,3 +2440,24 @@ func TestCertificateReasonAbsentWhenIssued(t *testing.T) {
 		t.Errorf("GraphQL certificateReason = %v, want null", gqlDomain["certificateReason"])
 	}
 }
+
+// w4/142: the subdomain guard counts only verified domains (a pending claim
+// never serves), so its refusal must say that and name the pending domain,
+// rather than "without at least one custom domain" next to a listed one.
+func TestDisablingTheSubdomainNamesThePendingDomain(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	svc, _ := newService(claims, managedApp("web", "srv-1"))
+	if _, err := svc.AddDomain(context.Background(), "web", "app.qa-example.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+
+	_, err := svc.SetSubdomainPolicy(context.Background(), "web", appv1alpha1.SubdomainPolicyDisabled)
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("err = %v, want a 400", err)
+	}
+	if msg := err.Error(); !strings.Contains(msg, "until a custom domain is verified") ||
+		!strings.Contains(msg, "app.qa-example.com still pending verification") ||
+		strings.Contains(msg, "renderSubdomainPolicy") {
+		t.Fatalf("message = %q, want the verified-domain rule naming the pending domain", msg)
+	}
+}

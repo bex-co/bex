@@ -4,6 +4,7 @@ import { Label } from "@/common/components/ui/label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { safeHttpHref } from "@/common/lib/external-url";
 import { useSubdomainPolicy } from "@/features/services/hooks/use-subdomain-policy";
+import type { CustomDomainView } from "@/features/services/types";
 
 /**
  * The platform-subdomain toggle row (URL link/note + on-off switch): bex's
@@ -17,16 +18,34 @@ export function PlatformSubdomainRow({
   serviceId,
   url,
   renderSubdomainPolicy,
+  domains,
   withHeading = true,
 }: {
   serviceId: string;
   url: string | null;
   renderSubdomainPolicy: string | null | undefined;
+  /**
+   * The service's custom domains, when the caller has them. The server keeps
+   * the platform subdomain on until one of them is verified (a pending domain
+   * never serves), so the switch explains that up front instead of a refusal
+   * toast after the click (w4/142). Absent => no pre-check.
+   */
+  domains?: Pick<CustomDomainView, "name" | "ownershipVerified">[];
   withHeading?: boolean;
 }) {
   const { t } = useTranslations();
   const { setSubdomainPolicy, busy } = useSubdomainPolicy();
   const enabled = (renderSubdomainPolicy ?? "enabled") === "enabled";
+  const pending = (domains ?? []).filter((d) => !d.ownershipVerified);
+  const cannotDisable =
+    enabled && !!domains && !domains.some((d) => d.ownershipVerified);
+  const disableHint = !cannotDisable
+    ? null
+    : pending.length > 0
+      ? t("services.platformSubdomainNeedsVerifiedDomainPending", {
+          names: pending.map((d) => d.name).join(", "),
+        })
+      : t("services.platformSubdomainNeedsVerifiedDomain");
   // Never place a non-http(s) scheme into href (codex-security target #4).
   const safeUrl = safeHttpHref(url);
 
@@ -77,7 +96,7 @@ export function PlatformSubdomainRow({
           <Switch
             id="platform-subdomain-switch"
             checked={enabled}
-            disabled={busy}
+            disabled={busy || cannotDisable}
             onCheckedChange={(checked) =>
               void setSubdomainPolicy(
                 serviceId,
@@ -85,9 +104,20 @@ export function PlatformSubdomainRow({
               )
             }
             aria-label={t("services.platformSubdomainToggleLabel")}
+            aria-describedby={
+              disableHint ? "platform-subdomain-hint" : undefined
+            }
           />
         </div>
       </div>
+      {disableHint && (
+        <p
+          id="platform-subdomain-hint"
+          className="text-muted-foreground text-sm"
+        >
+          {disableHint}
+        </p>
+      )}
     </div>
   );
 }
