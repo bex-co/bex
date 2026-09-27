@@ -36,6 +36,10 @@ Found from the CLI side: `bex ea sandboxes copy` returned `Error: received respo
 
 All of these run on the shared self-hosted pool `[self-hosted, Linux, ARM64, bex-ci]` (`.github/workflows/dashboard-test.yml:24`, `opensandbox-controller-test.yml:24`). The common thread is timing under load. `dashboard/vitest.config.ts` sets `testTimeout: 10000` and leaves pool size and worker count at the defaults. Runner concurrency and host load were **not measured** (the runners API needs admin).
 
+## Status update (2026-09-26, sweep 10)
+
+`deploy.yml` run `36217068753` on `dbf24a217` went green end to end, and the deploy step finished at 05:12Z. That was the first success since `8f07882f6` (2026-09-22T00:36Z), and production caught up. Live checks that were previously blocked now pass: on `sbx-darl9oi9slkc73beqt9g` (stopped), directory upload, single-file upload to an absolute path, file download, and directory download all round-tripped. That meets the sandbox-copy DoD bullet. **Not** resolved by this: none of t001–t003's flakes were fixed (the run passed on a fresh roll of the dice) (t004's detector fix landed separately). The "three consecutive successful runs" bullet is 1/3.
+
 ## Source + Goal linkage
 
 - **Source:** live `/qa-find-bugs-cli` sweep 5, 2026-09-23 (w8). The CLI symptom (sandbox copy 404) was traced to deploy lag, and the deploy lag to red gates.
