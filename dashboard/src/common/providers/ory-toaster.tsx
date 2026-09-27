@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { IntlProvider } from "react-intl";
 import { OryLocales } from "@ory/elements-react";
+import { toast } from "sonner";
 import { Toaster } from "@/common/components/ui/sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -39,6 +41,40 @@ export default function OryToaster() {
       messages={messages ?? OryLocales.en}
     >
       <Toaster />
+      <ReplayEarlyToasts />
     </IntlProvider>
   );
+}
+
+/**
+ * Shows the toasts raised before this lazily loaded Toaster subscribed.
+ *
+ * sonner delivers a toast only to the Toasters subscribed when it is raised
+ * and never replays its store into one that subscribes later. Since the
+ * Toaster became a lazy chunk (w9/m60 t004), a toast raised during hydration
+ * (the "That resource doesn't exist" toast `useNotFoundRedirect` fires when a
+ * directly opened dead-id URL resolves) landed before the chunk did and was
+ * silently lost on six of eight route families (w4/158).
+ *
+ * This renders after <Toaster/>, so its mount effect runs after the Toaster's
+ * own subscribe effect. It re-publishes each still-active toast through
+ * `toast.message`, whose create path updates an existing id in place and
+ * notifies subscribers, so the now-subscribed Toaster adds it once. It runs
+ * once per page load: every active toast at that moment was raised before any
+ * Toaster could show it. The sonner behavior it relies on is pinned by
+ * ory-toaster.test.tsx.
+ */
+function ReplayEarlyToasts() {
+  useEffect(() => {
+    for (const early of toast.getToasts()) {
+      if ("dismiss" in early && early.dismiss) continue;
+      const { title, ...rest } = early as Parameters<
+        typeof toast.message
+      >[1] & {
+        title?: Parameters<typeof toast.message>[0];
+      };
+      toast.message(title ?? "", rest);
+    }
+  }, []);
+  return null;
 }
