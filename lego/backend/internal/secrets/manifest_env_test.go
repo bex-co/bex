@@ -263,3 +263,50 @@ func TestNonManifestKeysStayWritable(t *testing.T) {
 		t.Error("TOKEN was replaced away by the whole-set write and must not be listed")
 	}
 }
+
+// w8/027: a create before the fix stored invalid names on spec.Env, where they
+// read as `managedBy: blueprint` on a service with no Blueprint; DELETE sent
+// the owner to a render.yaml that did not exist and `PUT []` answered [] while
+// the var stayed. Such debris is listed as the store's, and removable.
+func TestInvalidNameDebrisIsListedAndRemovable(t *testing.T) {
+	debrisApp := func() *appv1alpha1.App {
+		a := sampleApp("svc")
+		a.Spec.Env = []appv1alpha1.EnvVar{{Name: "1BAD", Value: "x"}, {Name: "BAD KEY", Value: "y"}, {Name: "MESSAGE", Value: "kept"}}
+		return a
+	}
+	ctx := context.Background()
+
+	svc := newService(newFakeSecretStore(), debrisApp())
+	list, err := svc.ListEnvVars(ctx, "svc")
+	if err != nil {
+		t.Fatalf("ListEnvVars: %v", err)
+	}
+	for _, v := range list {
+		if (v.Key == "1BAD" || v.Key == "BAD KEY") && v.ManagedBy != "" {
+			t.Errorf("%q reads managedBy %q; nothing manages an invalid name", v.Key, v.ManagedBy)
+		}
+	}
+	if err := svc.DeleteEnvVar(ctx, "svc", "1BAD"); err != nil {
+		t.Fatalf("DELETE 1BAD: %v", err)
+	}
+	if err := svc.DeleteEnvVar(ctx, "svc", "1BAD"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("second DELETE 1BAD = %v, want ErrNotFound", err)
+	}
+	if got := getApp(t, svc.Client, "svc").Spec.Env; len(got) != 2 || got[0].Name != "BAD KEY" || got[1].Name != "MESSAGE" {
+		t.Errorf("spec.Env after DELETE = %+v, want only 1BAD removed", got)
+	}
+
+	svc = newService(newFakeSecretStore(), debrisApp())
+	if _, err := svc.SetEnvVars(ctx, "svc", []EnvVarView{}); err != nil {
+		t.Fatalf("PUT []: %v", err)
+	}
+	list, err = svc.ListEnvVars(ctx, "svc")
+	if err != nil {
+		t.Fatalf("ListEnvVars: %v", err)
+	}
+	for _, v := range list {
+		if v.Key == "1BAD" || v.Key == "BAD KEY" {
+			t.Errorf("PUT [] left %q listed", v.Key)
+		}
+	}
+}

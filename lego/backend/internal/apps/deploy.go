@@ -1796,7 +1796,8 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	for _, egDecl := range envGroups {
 		pg, err := parseEnvGroup(egDecl.value)
 		if err != nil {
-			return parsedStack{}, err
+			// Located like a service's or database's refusal (w8/027).
+			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err}}
 		}
 		if err := registerUniqueName(pg.name, groupNames); err != nil {
 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
@@ -2094,6 +2095,10 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 		if e.Key == "" {
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
 		}
+		if !core.ValidEnvKey(e.Key) {
+			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit)",
+				core.ErrBadRequest, name, e.Key)
+		}
 		if core.IsReservedEnvKey(e.Key) {
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
 				core.ErrBadRequest, name, e.Key, core.ReservedEnvKeySentence(e.Key))
@@ -2332,6 +2337,10 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		// message carries the location the way every neighbouring Blueprint
 		// parse error does — the validation surface renders the error string,
 		// not a code (w2/m95 t003).
+		if !core.ValidEnvKey(e.Key) {
+			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit)",
+				core.ErrBadRequest, a.Name, e.Key)
+		}
 		if core.IsReservedEnvKey(e.Key) {
 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
 				core.ErrBadRequest, a.Name, e.Key, core.ReservedEnvKeySentence(e.Key))
