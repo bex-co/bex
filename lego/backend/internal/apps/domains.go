@@ -654,7 +654,8 @@ func filterDomains(domains []DomainView, verificationStatus, domainType string) 
 	}), nil
 }
 
-// GetDomain returns one custom domain by hostname, or core.ErrNotFound.
+// GetDomain returns one custom domain by hostname, or core.NotFound("custom
+// domain") once the service has authorized (w4/154).
 func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)
 	if err != nil {
@@ -665,7 +666,7 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 	if claims, appID, ok := s.managedDomainClaims(app); ok {
 		row, err := claims.GetDomainClaim(ctx, appID, hostname)
 		if errors.Is(err, store.ErrNotFound) {
-			return DomainView{}, core.ErrNotFound
+			return DomainView{}, core.NotFound("custom domain")
 		}
 		if err != nil {
 			return DomainView{}, err
@@ -677,7 +678,7 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 			return s.domainView(ctx, app, h, platformHost), nil
 		}
 	}
-	return DomainView{}, core.ErrNotFound
+	return DomainView{}, core.NotFound("custom domain")
 }
 
 func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
@@ -703,11 +704,11 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 				return s.domainView(ctx, app, host, s.platformHost(app)), nil
 			}
 		}
-		return DomainView{}, core.ErrNotFound
+		return DomainView{}, core.NotFound("custom domain")
 	}
 	claim, err := claims.GetDomainClaim(ctx, appID, hostname)
 	if errors.Is(err, store.ErrNotFound) {
-		return DomainView{}, core.ErrNotFound
+		return DomainView{}, core.NotFound("custom domain")
 	}
 	if err != nil {
 		return DomainView{}, err

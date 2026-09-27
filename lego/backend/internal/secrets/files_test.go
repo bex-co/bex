@@ -68,8 +68,8 @@ func TestSecretFiles_RoundTripAndProjection(t *testing.T) {
 	if err != nil || one.Content != "----CERT----" {
 		t.Fatalf("GetSecretFile: %+v err=%v", one, err)
 	}
-	if _, err := svc.GetSecretFile(ctx, "web", "missing"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("unknown file => ErrNotFound, got %v", err)
+	if _, err := svc.GetSecretFile(ctx, "web", "missing"); !errors.Is(err, core.ErrNotFound) || err.Error() != "secret file not found" {
+		t.Errorf("unknown file => \"secret file not found\" (w4/154), got %v", err)
 	}
 
 	// Deleting the last file removes the Secret and drops the mount reference.
