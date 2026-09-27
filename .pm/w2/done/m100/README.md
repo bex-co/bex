@@ -1,6 +1,6 @@
 # w2 · m100 — REST routes a Render client cannot reach: the shadowed `event-types` route and the missing overrides list
 
-**Worker:** worker2 **Goal:** every REST route bex registers is reachable through the strict Render validator, and every Render list operation a client would use to audit notification overrides is served. `GET /v1/webhooks/event-types` answers with the vocabulary instead of a `400` minted by Render's `{webhookId}` template, and `GET /v1/notification-settings/overrides` returns the caller's workspace overrides in Render's envelope instead of bex's bare `404`. A reverse inventory test keeps the next bex-native literal route from being shadowed. **Status:** t001–t005 done; **t006 closeout BLOCKED** on live production verification (same credential gate as m95/m96 — see the workstream README)
+**Worker:** worker2 **Goal:** every REST route bex registers is reachable through the strict Render validator, and every Render list operation a client would use to audit notification overrides is served. `GET /v1/webhooks/event-types` answers with the vocabulary instead of a `400` minted by Render's `{webhookId}` template, and `GET /v1/notification-settings/overrides` returns the caller's workspace overrides in Render's envelope instead of bex's bare `404`. A reverse inventory test keeps the next bex-native literal route from being shadowed. **Status:** done (live bullets re-probed and passed 2026-09-27, `/qa-find-bugs` pass 224)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — **DONE**                                                                                                                               | 15m | t001, t002 |
 | t004 | Simplify — **DONE**                                                                                                                                    | 15m | t003       |
 | t005 | Test coverage — **DONE**                                                                                                                               | 35m | t003       |
-| t006 | Closeout                                                                                                                                               | 10m | t005       |
+| t006 | Closeout — **DONE** | 10m | t005 |
 
 ## Render semantics (t002 step 1)
 
@@ -62,3 +62,19 @@ Run each bullet against a composed bex-api server that mounts the strict Render 
 - **Expected outcome:** no registered REST route is unreachable, the overrides list is either served in Render's shape or explicitly recorded as a divergence, and a reverse inventory test makes the next shadowed route a CI failure instead of a QA finding.
 - **Why now:** `w1/089`'s exhaustive comparison found exactly one shadowed route out of 183. The guard is cheap while there is one and expensive after the second. `w1/093` is a 30-minute read-only projection over the same `App.spec.notificationsToSend` the per-service route already reads, and it closes a gap the ledger currently claims does not exist.
 - **Render parity:** included (t003). Both tasks change the REST surface a Render client sees, and t003 confirms GraphQL and MCP already expose the same vocabulary and per-service override data, compares against Render's `retrieve-webhook` and `list-notification-overrides` operations in the pinned spec, and records the outcome in ADR018 rows 227 and 228 and in `docs/render-artifacts/notify-on-fail.md`.
+
+## Live re-probe (2026-09-27, `/qa-find-bugs` pass 224) — pass
+
+Production `api.bex.co`, signed-in QA session (`muse.env`), workspace `bex` (`tea-d98210cbbpdc73dcrkvg`), deployed `726042a28`. Read-only.
+
+- **The shadowed route answers.** `GET /v1/webhooks/event-types` → `200` with the vocabulary array (`["auto_deploy_disabled","auto_deploy_enabled","autoscaling_config_changed",…]`). Adding `?ownerId=tea-d98210cbbpdc73dcrkvg` → `200`, same array.
+- **Real intersections are still validated.** `GET /v1/webhooks/whk-doesnotexist00000000` (a well-formed 20-char id) → `404 {"error":"not found","id":"not_found"}`. The text is now `not found` rather than the bullet's `app not found`, because `w8/021` renamed the sentinel. `GET /v1/webhooks/not-an-id` → the validator's `400 invalid path parameter "webhookId"`.
+- **The overrides list is served.**
+  - `GET /v1/notification-settings/overrides?ownerId=<tea>` → `200`, 5 entries of `{"override":{"type":"service","serviceId":…,"previewNotificationsEnabled":"default","notificationsToSend":"default"},"cursor":"srv-…"}`. The key is Render's own `notificationOverrideWithCursor` shape (`override` + `type`, `required: [override, cursor]` in the pinned spec). The bullet's `notificationOverride` wording was imprecise; the served shape is the Render one.
+  - `?serviceId=<srv>` narrows to that one service, and `?limit=1` returns 1.
+  - With no `ownerId`, the list defaults to the session's workspace.
+  - A workspace the caller does not belong to (`?ownerId=tea-d0000000000000000000`) → `403 forbidden`. A workspace the caller *is* a member of (`tian-personal`) returns that workspace's own overrides, which is correct scoping.
+- **Control.** `GET /v1/notification-settings/overrides/services/<srv>` → `200 {"notificationsToSend":"default","previewNotificationsEnabled":"default"}`.
+
+Not re-run live: the `notificationsToSend: failure` patch-then-list check and the reverse route-inventory guard. Both are composed-server and test-level bullets, covered by t001–t005's tests as the DoD's first paragraph specifies.
+
