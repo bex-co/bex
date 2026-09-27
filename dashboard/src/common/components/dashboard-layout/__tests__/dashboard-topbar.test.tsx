@@ -25,6 +25,14 @@ const mocks = vi.hoisted(() => ({
     { id: "srv-api", name: "storefront-api", type: "web_service" },
     { id: "srv-worker", name: "queue-worker", type: "background_worker" },
     { id: "srv-billing", name: "billing-api", type: "web_service" },
+    // Renamed: its immutable name and slug stay in its host (w4/147).
+    {
+      id: "srv-dash",
+      name: "eden-dash-v3",
+      immutableName: "block-eden-mono",
+      slug: "block-eden-mono",
+      type: "web_service",
+    },
   ],
   projects: [
     {
@@ -114,6 +122,14 @@ vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
   }),
 }));
 
+vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
+  useBlueprints: () => ({
+    blueprints: [{ id: "blp-forum", name: "discourse_docker" }],
+    loading: false,
+    error: undefined,
+  }),
+}));
+
 vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
   useEnvGroups: () => ({
     groups: [{ id: "evg-shared", name: "Shared secrets" }],
@@ -154,6 +170,11 @@ function buildRouter(pathname: string, component: () => React.ReactNode) {
     path: "/env-groups/$groupId",
     component: () => null,
   });
+  const blueprint = createRoute({
+    getParentRoute: () => root,
+    path: "/blueprints/$blueprintId",
+    component: () => null,
+  });
   return createRouter({
     routeTree: root.addChildren([
       index,
@@ -162,6 +183,7 @@ function buildRouter(pathname: string, component: () => React.ReactNode) {
       database,
       keyValue,
       envGroup,
+      blueprint,
     ]),
     history: createMemoryHistory({ initialEntries: [pathname] }),
     context: {} as never,
@@ -296,6 +318,37 @@ describe("dashboard topbar navigation", () => {
     expect(screen.queryByText("Storefront")).not.toBeInTheDocument();
     expect(screen.queryByText("Billing")).not.toBeInTheDocument();
     expect(screen.queryByText("session-cache")).not.toBeInTheDocument();
+  });
+
+  // w4/147: a renamed service answers to its original name and slug, and
+  // blueprints are indexed.
+  it("finds a renamed service by its original name, showing why it matched", async () => {
+    const user = userEvent.setup();
+    const router = buildRouter("/", GlobalSearch);
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("button", { name: "Search" });
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await screen.findByPlaceholderText("Search pages and resources…");
+    await user.type(screen.getByRole("combobox"), "block-eden-mono");
+
+    expect(await screen.findByText("eden-dash-v3")).toBeInTheDocument();
+    expect(screen.getByText("block-eden-mono")).toBeInTheDocument();
+    expect(screen.queryByText("storefront-api")).not.toBeInTheDocument();
+  });
+
+  it("finds a blueprint by name and opens it", async () => {
+    const user = userEvent.setup();
+    const router = buildRouter("/", GlobalSearch);
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("button", { name: "Search" });
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await screen.findByPlaceholderText("Search pages and resources…");
+    await user.type(screen.getByRole("combobox"), "discourse");
+
+    await user.click(await screen.findByText("discourse_docker"));
+    expect(router.state.location.pathname).toBe("/blueprints/blp-forum");
   });
 
   it("still finds a resource by a raw id fragment (w6/m50)", async () => {

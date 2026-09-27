@@ -18,6 +18,8 @@ function node(overrides: Partial<ServiceNode> = {}): ServiceNode {
     __typename: "Service",
     id: "app",
     name: "app",
+    immutableName: null,
+    slug: null,
     displayName: null,
     type: "web_service",
     suspended: "not_suspended",

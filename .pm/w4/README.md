@@ -304,7 +304,7 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **146** — [A webhook's filtered delivery list says "No deliveries yet — trigger a deploy" while the Failed tab holds eight](done/146.md) ← live `/qa-find-bugs` 2026-09-25 pass 168, webhooks. The first-run empty state ignores the status tab and date filters (`webhook-deliveries-card.tsx:194-199`). Delivery, retries, and response detail are correct. — **done 2026-09-27**: a filtered-empty delivery list names its filter and offers Clear filters, and first-run copy appears only unfiltered.
 
-- [ ] **147** — [Global search can't find a renamed service by its original name/slug, or a blueprint at all](147.md) ← live `/qa-find-bugs` 2026-09-25 pass 171 (read-only). The service haystack is `name + id`, and blueprints are not indexed. Substring and id matching are otherwise correct.
+- [x] **147** — [Global search can't find a renamed service by its original name/slug, or a blueprint at all](done/147.md) ← live `/qa-find-bugs` 2026-09-25 pass 171 (read-only). The service haystack is `name + id`, and blueprints are not indexed. Substring and id matching are otherwise correct. — **done 2026-09-27**: services match by immutable name and slug (shown when it differs), blueprints are indexed, and webhooks are deliberately left out.
 
 - [ ] **148** — [The API-key "created" dialog still says `Optional scope=bex.read bex.write bex.sensitive`, but `w4/112` made Hydra refuse every one of them](148.md) ← live `/qa-find-bugs` 2026-09-26 pass 172. Following the copy yields `invalid_scope`. The stale sentence is in en/zh locales and ADR012:186. Revocation was verified immediate.
 

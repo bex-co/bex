@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { GlobalSearchDialog } from "../global-search-dialog";
 
-// The dialog resolves resources through five feature hooks + the router; mock
+// The dialog resolves resources through six feature hooks + the router; mock
 // them so the test drives only the service-result rendering. Only services are
 // populated (with distinct types); the other kinds stay empty.
 vi.mock("@tanstack/react-router", () => ({
@@ -29,6 +29,9 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
 }));
 vi.mock("@/features/env-groups/hooks/use-env-groups", () => ({
   useEnvGroups: () => ({ groups: [], loading: false }),
+}));
+vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
+  useBlueprints: () => ({ blueprints: [], loading: false }),
 }));
 
 describe("GlobalSearchDialog", () => {
