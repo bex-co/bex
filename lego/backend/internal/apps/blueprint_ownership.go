@@ -577,6 +577,28 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 		}
 		return []BlueprintValidationError{blueprintValidationError(ir, msg)}
 	}
+	// fromService `property: host` may name a service outside the file (an
+	// existing workspace service). Apply resolves it with GetApp; validate
+	// used to skip it, so a target that existed nowhere validated clean
+	// (w8/026). Same lookup, same located wording as the file-scoped check.
+	declared := make(map[string]bool, len(st.services))
+	for _, svc := range st.services {
+		declared[svc.req.Name] = true
+	}
+	for _, svc := range st.services {
+		for _, ref := range svc.hostRefs {
+			if declared[ref.target] {
+				continue
+			}
+			if _, err := s.GetApp(ctx, core.RelCanView, ref.target); errors.Is(err, core.ErrNotFound) {
+				msg := fmt.Sprintf("service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", svc.req.Name, ref.target)
+				if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
+					return []BlueprintValidationError{blueprintLocatedError(source, msg, pointer)}
+				}
+				return []BlueprintValidationError{blueprintValidationError(ir, msg)}
+			}
+		}
+	}
 	return nil
 }
 
