@@ -131,6 +131,7 @@ function validPreview(
     validation: {
       valid: true,
       errors: [],
+      errorDetails: [],
       plan: {
         mode: "current_state",
         services: ["web"],

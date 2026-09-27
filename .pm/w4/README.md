@@ -312,7 +312,7 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **150** — [Team table: every role picker is an unnamed combobox and every row's delete control is just "Remove"](done/150.md) ← live `/qa-find-bugs` 2026-09-26 pass 175 (read-only). `member-row.tsx:119,145,159` is a sibling of `w4/084`'s fix, which covered only `RevokeIconButton`. — **done 2026-09-27**: role pickers, Remove, and env-group Unlink controls are named after their member or service.
 
-- [ ] **151** — [The dashboard shows Blueprint errors without the line, column, or path the API already returns](151.md) ← live `/qa-find-bugs` 2026-09-26 pass 182 (read-only). `w8/019` added `errorDetails`, but no dashboard query selects it. Three renderers print bare strings.
+- [x] **151** — [The dashboard shows Blueprint errors without the line, column, or path the API already returns](done/151.md) ← live `/qa-find-bugs` 2026-09-26 pass 182 (read-only). `w8/019` added `errorDetails`, but no dashboard query selects it. Three renderers print bare strings. — **done 2026-09-27**: all three Blueprint error lists show line/column and field path from `errorDetails`.
 
 - [ ] **152** — [Private services run on the Free tier, which Render does not offer, and no ADR decides it (workers got that decision in `w6/025`)](152.md) ← live `/qa-find-bugs` 2026-09-26 pass 189. A private service defaulted to `free` while a worker defaulted to `starter`. Needs a decision: extend ADR030 §7, or record a divergence. Public unreachability verified.
 

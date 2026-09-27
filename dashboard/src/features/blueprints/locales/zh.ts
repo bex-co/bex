@@ -213,6 +213,15 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section success line, with the plan's total resource count",
   },
+  "blueprints.errorAtLineColumn": {
+    message: "第 {line} 行，第 {column} 列",
+    description: "Source location beside a Blueprint validation error (w4/151)",
+  },
+  "blueprints.errorAtLine": {
+    message: "第 {line} 行",
+    description:
+      "Source location beside a Blueprint validation error when only the line is known (w4/151)",
+  },
   "blueprints.previewNoChanges": {
     message: "蓝图文件解析成功 — 没有变更，所有资源都已与此文件一致。",
     description:
