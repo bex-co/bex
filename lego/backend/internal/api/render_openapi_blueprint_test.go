@@ -268,12 +268,37 @@ func TestBlueprintIDRoutesPassTheRenderOpenAPIGate(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET syncs = %d %s, want 200", rec.Code, rec.Body)
 		}
-		var out []apps.BlueprintSyncView
+		// Render's syncWithCursor envelope (w4/157), not a bare row array.
+		var out []struct {
+			Sync   apps.BlueprintSyncView `json:"sync"`
+			Cursor string                 `json:"cursor"`
+		}
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if len(out) != 1 {
-			t.Errorf("syncs = %+v, want the one run recorded for this blueprint", out)
+		if len(out) != 1 || out[0].Sync.ID == "" || out[0].Cursor != out[0].Sync.ID {
+			t.Errorf("syncs = %+v, want the one run recorded for this blueprint, with its cursor", out)
+		}
+		// The one accepted divergence: a sync id is bex's bsr- id, not Render's
+		// exe- pattern (ADR020 keeps bex's own id prefixes).
+		var problems []string
+		for _, p := range loadRenderSpec(t).validate("list-blueprint-syncs", rec.Body.Bytes()) {
+			if !strings.Contains(p, "/sync/id: string doesn't match the regular expression") {
+				problems = append(problems, p)
+			}
+		}
+		if len(problems) > 0 {
+			t.Errorf("GET syncs does not match Render's pinned schema: %v", problems)
+		}
+	})
+
+	t.Run("GET list matches Render's blueprintWithCursor schema", func(t *testing.T) {
+		rec := blueprintRequest(t, h, http.MethodGet, "/v1/blueprints?ownerId=tea-a", "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /v1/blueprints = %d %s, want 200", rec.Code, rec.Body)
+		}
+		if problems := loadRenderSpec(t).validate("list-blueprints", rec.Body.Bytes()); len(problems) > 0 {
+			t.Errorf("GET /v1/blueprints does not match Render's pinned schema: %v", problems)
 		}
 	})
 

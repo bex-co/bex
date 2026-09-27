@@ -1270,7 +1270,11 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/blueprints/{id}/syncs", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		limit, _ := strconv.Atoi(q.Get("limit"))
-		return s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), q.Get("ownerId"), q.Get("cursor"), limit)
+		runs, err := s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), q.Get("ownerId"), q.Get("cursor"), limit)
+		if err != nil {
+			return nil, err
+		}
+		return renderSyncsWithCursor(runs), nil
 	}))
 	mux.HandleFunc("POST "+BlueprintValidationPath, func(w http.ResponseWriter, r *http.Request) {
 		ownerID, bexYAML, blueprintID, err := decodeBlueprintValidationRequest(w, r)
@@ -1340,7 +1344,15 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 		return s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path, body.BlueprintID)
 	}))
 	mux.HandleFunc("GET /v1/blueprints", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.ListBlueprints(r.Context(), r.URL.Query().Get("ownerId"))
+		q := r.URL.Query()
+		views, err := s.ListBlueprints(r.Context(), q.Get("ownerId"))
+		if err != nil {
+			return nil, err
+		}
+		after, limit := core.PageParams(q)
+		requested := q.Has("cursor") || q.Has("limit")
+		page := core.StablePage(views, after, limit, requested, func(v BlueprintView) string { return v.ID })
+		return renderBlueprintsWithCursor(page), nil
 	}))
 	mux.HandleFunc("POST /v1/blueprints/{id}/sync", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
@@ -1558,4 +1570,80 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 		return "", "", "", errBlueprintTooLarge
 	}
 	return ownerID, string(content), strings.TrimSpace(r.FormValue("blueprintId")), nil
+}
+
+// renderBlueprint is Render's `blueprint` list object (render-public-api-1.json:
+// id name status autoSync repo branch path, plus lastSync). The manifest stays
+// on the by-id read; a list row does not carry a whole YAML file.
+type renderBlueprint struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Status   string  `json:"status"`
+	AutoSync bool    `json:"autoSync"`
+	Repo     string  `json:"repo"`
+	Branch   string  `json:"branch"`
+	Path     string  `json:"path"`
+	LastSync *string `json:"lastSync,omitempty"`
+}
+
+type blueprintWithCursor struct {
+	Blueprint renderBlueprint `json:"blueprint"`
+	Cursor    string          `json:"cursor"`
+}
+
+// renderBlueprintsWithCursor wraps each row in Render's `blueprintWithCursor`,
+// the envelope every other bex list already uses (w4/157). A bare row array
+// decoded as `blueprintWithCursor` gave a Render client empty objects.
+func renderBlueprintsWithCursor(views []BlueprintView) []blueprintWithCursor {
+	out := make([]blueprintWithCursor, len(views))
+	for i, v := range views {
+		out[i] = blueprintWithCursor{
+			Blueprint: renderBlueprint{
+				ID: v.ID, Name: v.Name, Status: v.Status, AutoSync: v.AutoSync,
+				Repo: v.Repo, Branch: v.Branch, Path: v.Path, LastSync: v.LastSync,
+			},
+			Cursor: v.ID,
+		}
+	}
+	return out
+}
+
+// renderSync is Render's `sync` object: `commit.id` is nested and required.
+// A run with no resolved commit (a manual sync from pasted YAML, or before
+// commit pinning) reports an empty id rather than a fabricated one.
+// errorMessage and note are bex extensions.
+type renderSync struct {
+	ID           string           `json:"id"`
+	Commit       renderSyncCommit `json:"commit"`
+	State        string           `json:"state"`
+	StartedAt    string           `json:"startedAt"`
+	CompletedAt  *string          `json:"completedAt,omitempty"`
+	ErrorMessage *string          `json:"errorMessage,omitempty"`
+	Note         string           `json:"note,omitempty"`
+}
+
+type renderSyncCommit struct {
+	ID string `json:"id"`
+}
+
+type syncWithCursor struct {
+	Sync   renderSync `json:"sync"`
+	Cursor string     `json:"cursor"`
+}
+
+// renderSyncsWithCursor wraps each run in Render's `syncWithCursor`. The
+// cursor is the run id, which the store pages past (newest first).
+func renderSyncsWithCursor(runs []BlueprintSyncView) []syncWithCursor {
+	out := make([]syncWithCursor, len(runs))
+	for i, r := range runs {
+		out[i] = syncWithCursor{
+			Sync: renderSync{
+				ID: r.ID, Commit: renderSyncCommit{ID: r.CommitID}, State: r.State,
+				StartedAt: r.StartedAt, CompletedAt: r.CompletedAt,
+				ErrorMessage: r.ErrorMessage, Note: r.Note,
+			},
+			Cursor: r.ID,
+		}
+	}
+	return out
 }
