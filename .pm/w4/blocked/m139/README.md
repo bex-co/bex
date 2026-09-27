@@ -1,6 +1,6 @@
 # w4 · m139 — Billing's Charges card: a subscription-period total labelled "month to date" over a calendar-month tree, and a coverage watermark that never leaves the 1st
 
-**Worker:** worker4 **Goal:** every number on the Billing page's Charges card names the window it covers, the headline and the tree beneath it cover the same window or say plainly that they do not, and `usage.coverage.through` advances with the month (or its failure to advance is traced to a named cause) **Status:** blocked (t001, t003–t006 done 2026-09-26; t002 needs a production read of the usage health tables; t007 awaits the deploy and the live re-probe)
+**Worker:** worker4 **Goal:** every number on the Billing page's Charges card names the window it covers, the headline and the tree beneath it cover the same window or say plainly that they do not, and `usage.coverage.through` advances with the month (or its failure to advance is traced to a named cause) **Status:** blocked (t001, t003–t006 done; live probe 2026-09-27 pass 235 on deploy `4a0422577`: bullets 1–2 pass, bullet 3 still fails — `coverage.through` pinned at 2026-09-01 — so t002 still needs a production read of the usage health tables; t007 waits on t002)
 
 ## Tasks (in order)
 
@@ -46,3 +46,12 @@ Probes were run read-only at filing from an authenticated `https://dashboard.bex
 
 - The coverage stall's cause (t002). Nothing here asserts metering is actually wrong: the dollar amounts may be complete while only the health evidence is missing, which is exactly what t002 must separate.
 - Today's deleted `qa-20260925-*` resources were not yet in the tree at filing. This is consistent with hourly metering lag and is not treated as a defect. Older deleted services appear as bare `srv-…(deleted)` rows, which is `w4/m135`'s pre-fix history.
+
+## Live probe (2026-09-27, `/qa-find-bugs` pass 235, deploy `4a0422577`)
+
+Read-only, `/billing` in workspace `bex`, `muse.env` QA credentials.
+
+- **The headline says which window it is — PASS.** The Charges card reads "Accrued so far this period, as rated by Stripe." / "**Total this billing period (Sep 16 – Oct 16)** $87.77 USD". That matches `usage.billing.currentCost` `{amountUsd: "87.77", periodStart: 2026-09-16T00:00:00Z, periodEnd: 2026-10-16T00:00:00Z}`. "Month to date" no longer labels the rated figure.
+- **The tree and the headline agree, or the card says why — PASS (disclosed).** Directly under the headline: "**Breakdown above: September to date** $303.63 USD" (`estimatedCost.totalUsd` `303.68`). Each figure now names its own window, so the roughly 3.5× gap explains itself.
+- **Coverage advances, or its stall is named — still FAILING.** On 2026-09-27T15:31Z, `usage.coverage` = `{state: "partial", through: "2026-09-01T00:00:00Z", degradedSources: [direct, http, instance, key_value, postgres, sandbox, storage, other]}`. The watermark is still at the month start, and two more sources (`storage`, `other`) are now degraded than at filing. The card shows "Partial data". This is t002's open question, and it still needs a production read of the usage health tables, which a tenant session cannot do.
+
