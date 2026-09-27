@@ -1,6 +1,6 @@
 # w4 · m141 — Rolling back a static site does nothing: an enabled Rollback, a confirm dialog, then silence
 
-**Worker:** worker4 **Goal:** a user who clicks Rollback either gets a rollback or is told, before and at dispatch, exactly why they cannot. For static sites, rollback works the way Render's does (re-publish an earlier revision), or the control is honestly unavailable with that reason **Status:** blocked (t001–t006 done 2026-09-27; t007 awaits the deploy and the live probe with a throwaway static site)
+**Worker:** worker4 **Goal:** a user who clicks Rollback either gets a rollback or is told, before and at dispatch, exactly why they cannot. For static sites, rollback works the way Render's does (re-publish an earlier revision), or the control is honestly unavailable with that reason **Status:** done (live Definition of done passed 2026-09-27, `/qa-find-bugs` pass 230, on deploy `4a0422577`)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                     | 20m | t001, t002, t003 |
 | t005 | Simplify — **DONE**                                                                                            | 15m | t004             |
 | t006 | Test coverage — **DONE**                                                                                       | 30m | t004             |
-| t007 | Closeout — **BLOCKED**                                                                                            | 10m | t006             |
+| t007 | Closeout — **DONE**                                                                                            | 10m | t006             |
 
 ## Definition of done
 
@@ -50,3 +50,18 @@ The same Rollback flow works on an **image-backed** web service. On throwaway `q
 
 - A static site **with** a build command (which produces an image) was not exercised. Its deploys may be eligible, and whether rollback then re-publishes correctly is t001's to prove.
 - Whether the backend `Rollback` verb, called directly on a no-build static deploy, answers a named 409 (expected, from the same `ResolvedImage == ""` arm noted in `w4/051`) was not probed.
+
+## Live Definition-of-done probe (2026-09-27, `/qa-find-bugs` pass 230) — pass
+
+Production after the `53797ca69` pin (images `4a04225777ff`), workspace `bex`, `muse.env` QA credentials. The fixture was a throwaway no-build static site `qa-20260927-rb` (`srv-dasgk7jncejs739qiskg`, `bex-co/bex`, root `examples/static-site`, publish `.`, auto-deploy off), built up to the filing's shape:
+
+- `dep-dasgk7jncejs739qisl0` (create, `53797ca6`)
+- `dep-dasgkeq1pbgc73a24j50` (manual deploy, `53797ca6`)
+- `dep-dasgkm3ncejs739qism0` ("deploy a specific commit" `3c8faf88`, live)
+
+It was deleted afterwards (`DELETE` 204, then `GET` 404).
+
+- **Rollback happens — PASS.** `/static/<id>/deploys` → **Roll back to 53797ca (dep-dasgkeq1pbgc73a24j50)** opened "Roll back to this deploy?" ("The site will be published again from this deploy, 53797ca …"). **Proceed** sent `RollbackService` (200, `rollbackOf: dep-dasgkeq1pbgc73a24j50`), toasted "Rollback triggered.", and navigated to the new deploy. That deploy, `dep-dasgl3jncejs739qisng`, had `trigger: rollback`, went `live` on commit `53797ca6`, and the site answered `200`.
+- **The capability and the control agree — PASS.** `deployActions(serviceId:)` → `{action: "rollback", outcome: "allowed", precondition: null}`, with the rollback buttons enabled.
+- **Rollback controls say which deploy they target — PASS.** Each row's button is named "Roll back to <short-sha> (<dep-id>)".
+
