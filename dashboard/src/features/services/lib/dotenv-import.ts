@@ -61,10 +61,10 @@ export function parseDotenv(text: string): DotenvEntry[] {
     .replaceAll("\r", "\n")
     .split("\n");
 
-  lines.forEach((source, index) => {
+  for (let index = 0; index < lines.length; index += 1) {
     const line = index + 1;
-    let input = source.trim();
-    if (!input || input.startsWith("#")) return;
+    let input = lines[index].trim();
+    if (!input || input.startsWith("#")) continue;
     if (input.startsWith("export ") || input.startsWith("export\t")) {
       input = input.slice(6).trimStart();
     }
@@ -72,14 +72,34 @@ export function parseDotenv(text: string): DotenvEntry[] {
     if (equals < 1) throw new DotenvParseError(line, "assignment");
     const key = input.slice(0, equals).trim();
     if (!VALID_ENV_KEY.test(key)) throw new DotenvParseError(line, "key");
-    const value = parseValue(input.slice(equals + 1), line);
-    entries.set(key, { key, value, line });
-  });
+    // A quoted value may span physical lines until its closing quote, with
+    // the line breaks kept, as dotenv parses a PEM key or certificate (w4/159).
+    // An unquoted value still ends at its line.
+    let raw = input.slice(equals + 1);
+    const quote = raw.trimStart()[0];
+    let parsed = parseValue(raw, line);
+    while (parsed === UNTERMINATED && index + 1 < lines.length) {
+      index += 1;
+      raw += "\n" + lines[index];
+      // Only a line holding the quote character can close the value, so
+      // re-scan then rather than once per line of a long certificate.
+      if (lines[index].includes(quote)) parsed = parseValue(raw, line);
+    }
+    if (parsed === UNTERMINATED) throw new DotenvParseError(line, "quote");
+    entries.set(key, { key, value: parsed, line });
+  }
 
   return [...entries.values()];
 }
 
-function parseValue(source: string, line: number): string {
+// parseValue's answer for a quoted value whose closing quote has not been
+// reached yet: the caller appends the next physical line and tries again.
+const UNTERMINATED = Symbol("unterminated");
+
+function parseValue(
+  source: string,
+  line: number,
+): string | typeof UNTERMINATED {
   const input = source.trim();
   if (!input) return "";
   const quote = input[0];
@@ -92,7 +112,7 @@ function parseValue(source: string, line: number): string {
     const character = input[index];
     if (quote === '"' && character === "\\") {
       const escape = decodeEscape(input, index);
-      if (!escape) throw new DotenvParseError(line, "quote");
+      if (!escape) return UNTERMINATED;
       value += escape.text;
       index = escape.next;
       continue;
@@ -104,10 +124,13 @@ function parseValue(source: string, line: number): string {
     value += character;
     index += 1;
   }
-  if (close < 0) throw new DotenvParseError(line, "quote");
+  if (close < 0) return UNTERMINATED;
   const trailing = input.slice(close + 1).trim();
   if (trailing && !trailing.startsWith("#")) {
-    throw new DotenvParseError(line, "trailing");
+    // Name the physical line the closing quote is on, which a multi-line
+    // value puts below the assignment's own line.
+    const closingLine = line + (input.slice(0, close).split("\n").length - 1);
+    throw new DotenvParseError(closingLine, "trailing");
   }
   return value;
 }

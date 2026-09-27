@@ -4432,8 +4432,20 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Stage parsed dotenv variables",
   },
   "services.envImportLineError": {
-    message: "第 {line} 行不是有效的 dotenv 赋值。",
+    message: "第 {line} 行不是 KEY=value 形式的赋值。",
     description: "Line-numbered dotenv parse error",
+  },
+  "services.envImportKeyError": {
+    message: "第 {line} 行：变量名只能包含字母、数字和下划线，且不能以数字开头。",
+    description: "Dotenv import error: the variable name on a line is invalid (w4/159)",
+  },
+  "services.envImportQuoteError": {
+    message: "第 {line} 行开始的引号没有闭合。",
+    description: "Dotenv import error: a quoted value never closes (w4/159)",
+  },
+  "services.envImportTrailingError": {
+    message: "第 {line} 行的闭合引号后还有多余文本。",
+    description: "Dotenv import error: text after a quoted value's closing quote (w4/159)",
   },
   "services.envImportFileError": {
     message: "请选择不超过 1 MiB 的可读文本文件。",

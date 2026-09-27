@@ -4536,8 +4536,20 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Stage parsed dotenv variables",
   },
   "services.envImportLineError": {
-    message: "Line {line} isn't a valid dotenv assignment.",
+    message: "Line {line} isn't a KEY=value assignment.",
     description: "Line-numbered dotenv parse error",
+  },
+  "services.envImportKeyError": {
+    message: "Line {line}: the name must be letters, digits, and underscores, and not start with a digit.",
+    description: "Dotenv import error: the variable name on a line is invalid (w4/159)",
+  },
+  "services.envImportQuoteError": {
+    message: "The quote opened on line {line} is never closed.",
+    description: "Dotenv import error: a quoted value never closes (w4/159)",
+  },
+  "services.envImportTrailingError": {
+    message: "Line {line} has text after its closing quote.",
+    description: "Dotenv import error: text after a quoted value's closing quote (w4/159)",
   },
   "services.envImportFileError": {
     message: "Choose a readable text file no larger than 1 MiB.",
