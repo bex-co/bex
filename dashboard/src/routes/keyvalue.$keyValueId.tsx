@@ -30,7 +30,7 @@ import { KeyValuePlanSection } from "@/features/keyvalue/components/key-value-pl
 import { KeyValueMaxmemoryPolicySection } from "@/features/keyvalue/components/key-value-maxmemory-policy-section";
 import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/key-value-persistence-mode-section";
 import { KeyValueDetailNavigation } from "@/features/keyvalue/components/key-value-detail-navigation";
-import { KeyValueLogViewer } from "@/features/keyvalue/components/key-value-log-viewer";
+import { DatastoreLogViewer } from "@/features/logs/components/datastore-log-viewer";
 import { DEFAULT_DATASTORE_LOG_RANGE } from "@/features/logs/lib/datastore-log-range";
 import {
   parseRangeSearch,
@@ -192,7 +192,8 @@ export function KeyValueDetailPage() {
             </div>
           ) : keyValue && tab === "logs" ? (
             <div className="mx-auto w-full max-w-4xl space-y-6">
-              <KeyValueLogViewer
+              <DatastoreLogViewer
+                kind="keyvalue"
                 resource={keyValue.id}
                 range={rangeFromSearch(search, DEFAULT_DATASTORE_LOG_RANGE)}
                 onRangeChange={(range) =>

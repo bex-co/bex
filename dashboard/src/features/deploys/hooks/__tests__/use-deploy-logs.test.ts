@@ -4,8 +4,10 @@ import { useDeployLogs } from "@/features/deploys/hooks/use-deploy-logs";
 import type { EventSourceLike } from "@/features/logs/hooks/use-live-logs";
 
 const mockUseQuery = vi.fn();
+const mockClientQuery = vi.fn();
 vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
+  useApolloClient: () => ({ query: mockClientQuery }),
 }));
 
 interface Call {
@@ -48,9 +50,27 @@ const entry = (timestamp: string, message: string, type: string) => ({
 // three separate windowed queries (GraphQL's `type` arg is single-valued).
 // Responses use Render's LogList envelope (w4/m107).
 function stubByType(
-  responses: Record<string, { logs: unknown[] } | undefined>,
+  responses: Record<
+    string,
+    { logs: unknown[]; hasMore?: boolean; nextEndTime?: string } | undefined
+  >,
   calls: Call[],
 ) {
+  // One stable data object per type, as Apollo's cache would hand back —
+  // a fresh object per render would re-seed the paging cursor forever.
+  const data = new Map<string, unknown>();
+  for (const [type, response] of Object.entries(responses)) {
+    if (!response) continue;
+    data.set(type, {
+      logs: {
+        __typename: "LogList",
+        hasMore: response.hasMore ?? false,
+        nextStartTime: "2026-07-14T00:00:00Z",
+        nextEndTime: response.nextEndTime ?? "2026-07-14T00:05:00Z",
+        logs: response.logs,
+      },
+    });
+  }
   mockUseQuery.mockImplementation(
     (_doc: unknown, opts: Record<string, unknown>) => {
       const variables = opts.variables as { type: string };
@@ -58,19 +78,8 @@ function stubByType(
         type: variables.type,
         skip: opts.skip as boolean | undefined,
       });
-      const page = responses[variables.type]?.logs;
       return {
-        data: page
-          ? {
-              logs: {
-                __typename: "LogList",
-                hasMore: false,
-                nextStartTime: "2026-07-14T00:00:00Z",
-                nextEndTime: "2026-07-14T00:05:00Z",
-                logs: page,
-              },
-            }
-          : undefined,
+        data: data.get(variables.type),
         loading: false,
         error: undefined,
       };
@@ -90,10 +99,78 @@ function logList(entries: unknown[]) {
 
 beforeEach(() => {
   mockUseQuery.mockReset();
+  mockClientQuery.mockReset();
   stream = null;
 });
 
 describe("useDeployLogs", () => {
+  it("pages a truncated build leg back to its first line (w4/m136)", async () => {
+    const calls: Call[] = [];
+    stubByType(
+      {
+        build: {
+          logs: [entry("2026-07-14T00:01:10Z", "==> step 9", "build")],
+          hasMore: true,
+          nextEndTime: "2026-07-14T00:01:10Z",
+        },
+        app: { logs: [entry("2026-07-14T00:02:00Z", "app started", "app")] },
+      },
+      calls,
+    );
+    mockClientQuery.mockResolvedValue({
+      data: {
+        logs: logList([
+          entry("2026-07-14T00:00:01Z", "==> Build queued", "build"),
+        ]),
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useDeployLogs(
+        "web",
+        "2026-07-14T00:00:00Z",
+        "2026-07-14T00:05:00Z",
+        false,
+        false,
+      ),
+    );
+    // Only the build leg is capped; the complete app leg adds nothing.
+    expect(result.current.hasMore).toBe(true);
+
+    await act(async () => {
+      result.current.loadOlder();
+    });
+
+    expect(mockClientQuery).toHaveBeenCalledTimes(1);
+    expect(mockClientQuery.mock.calls[0][0].variables).toMatchObject({
+      resource: "web",
+      type: "build",
+      startTime: "2026-07-14T00:00:00Z",
+      endTime: "2026-07-14T00:01:10Z",
+      limit: 100,
+    });
+    expect(result.current.lines.map((l) => l.message)).toEqual([
+      "==> Build queued",
+      "==> step 9",
+      "app started",
+    ]);
+    expect(result.current.hasMore).toBe(false);
+    expect(result.current.loadingOlder).toBe(false);
+  });
+
+  it("reports no truncation when every leg fits one page", () => {
+    stubByType(
+      { build: { logs: [entry("2026-07-14T00:00:01Z", "b", "build")] } },
+      [],
+    );
+    const { result } = renderHook(() =>
+      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, false, false),
+    );
+    expect(result.current.hasMore).toBe(false);
+    result.current.loadOlder();
+    expect(mockClientQuery).not.toHaveBeenCalled();
+  });
+
   it("windows each of the three typed queries to the deploy's resource/startTime/endTime", () => {
     const calls: Call[] = [];
     stubByType({}, calls);
@@ -184,7 +261,11 @@ describe("useDeployLogs", () => {
             error: new Error("logs: the durable log store is not configured"),
           };
         }
-        return { data: { logs: logList([]) }, loading: false, error: undefined };
+        return {
+          data: { logs: logList([]) },
+          loading: false,
+          error: undefined,
+        };
       },
     );
 
@@ -203,7 +284,8 @@ describe("useDeployLogs", () => {
         (_doc: unknown, opts: Record<string, unknown>) => {
           const variables = opts.variables as { type: string };
           return {
-            data: variables.type === failedType ? undefined : { logs: logList([]) },
+            data:
+              variables.type === failedType ? undefined : { logs: logList([]) },
             loading: false,
             error:
               variables.type === failedType

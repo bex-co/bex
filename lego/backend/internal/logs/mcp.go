@@ -44,7 +44,7 @@ import (
 // logFilters is the filter set both tools share, in Render's shape (repeatable
 // filters are arrays). Embedded so the two tools can never drift apart.
 type logFilters struct {
-	Resource   []string `json:"resource" jsonschema:"service or managed Postgres ids to read logs for; all must belong to the same owner"`
+	Resource   []string `json:"resource" jsonschema:"service, managed Postgres (dpg-), or Key Value (red-) ids to read logs for; all must belong to the same owner"`
 	Level      []string `json:"level,omitempty" jsonschema:"filter logs by severity level (debug|info|warn|error|unknown); * wildcards supported"`
 	Type       []string `json:"type,omitempty" jsonschema:"filter logs by type: app (the service's own output) | request (edge access logs) | build (build output)"`
 	Instance   []string `json:"instance,omitempty" jsonschema:"filter logs by the instance (replica) they were emitted from; applies to app logs"`
@@ -134,7 +134,7 @@ func (f logFilters) query() (LogQuery, error) {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_logs",
-		Description: "List log lines for one or more services or managed Postgres databases (Render's `resource` array), filtered by text, time range, and instance; service logs also support type, level, host, statusCode, method, and path. " +
+		Description: "List log lines for one or more services, managed Postgres databases, or Key Value stores (Render's `resource` array), filtered by text, time range, and instance; service logs also support type, level, host, statusCode, method, and path. " +
 			"Timestamp-sorted and aggregated across instances. Returns Render's paging envelope: hasMore, nextStartTime, nextEndTime, and logs. " +
 			"When hasMore is true, call again with startTime=nextStartTime and endTime=nextEndTime (same direction) to fetch the next page — the result is capped at 100 lines. " +
 			"Use list_log_label_values to discover which filter values exist for a resource.",
