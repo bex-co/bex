@@ -4297,6 +4297,9 @@ func (s *Service) writeThroughStoreFetched(
 	writeRow func(ctx context.Context, id string) error,
 	mutate func(*appv1alpha1.App),
 ) (AppView, error) {
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return AppView{}, err
+	}
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
 			if err := writeRow(ctx, id); err != nil {
@@ -4363,6 +4366,11 @@ func (s *Service) recordedPatch(ctx context.Context, verb string, a *appv1alpha1
 
 // patchTracked is patchFetched with an explicit deploy-history trigger.
 func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App)) (AppView, error) {
+	// A service being deleted answers every write the way reads do (w8/023):
+	// 404, before a config_change row or CR patch lands on it.
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return AppView{}, err
+	}
 	err := s.rollouts().Patch(ctx, s.Client, a, trigger, func(a *appv1alpha1.App) error {
 		mutate(a)
 		resourcemeta.Touch(a, s.Now())

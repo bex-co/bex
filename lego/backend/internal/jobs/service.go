@@ -184,6 +184,10 @@ func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID st
 	if err != nil {
 		return JobView{}, err
 	}
+	// No job runs in a service being deleted (w8/023): 404, as reads answer.
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return JobView{}, err
+	}
 	if s.Store == nil {
 		return JobView{}, ErrJobsUnavailable
 	}
