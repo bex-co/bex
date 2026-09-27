@@ -24,7 +24,6 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"sort"
 	"sync"
 	"time"
 
@@ -107,25 +106,16 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Render's `resource` is an array; merge each resource's lines, then sort + cap.
-	// QueryLogs gets the query as parsed — normalizing here first would coerce an
-	// invalid `direction` to the default before the verb could refuse it.
-	var all []LogEntry
-	for _, res := range resources {
-		q.App = res
-		entries, err := s.QueryLogs(r.Context(), q)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		all = append(all, entries...)
+	// Render's `resource` is an array; queryLogPage merges each resource's lines,
+	// then sorts and caps. QueryLogs gets the query as parsed: normalizing here
+	// first would coerce an invalid `direction` to the default before the verb
+	// could refuse it.
+	page, err := s.queryLogPage(r.Context(), resources, q)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
 	}
-	merged := q.normalized() // the limit/direction the merge across resources applies
-	if len(resources) > 1 {
-		sort.SliceStable(all, func(i, j int) bool { return all[i].Timestamp < all[j].Timestamp })
-		all = merged.capToLimit(all) // the limit is a total across resources, not per-App
-	}
-	core.WriteJSON(w, http.StatusOK, toRenderLogList(all, merged.Limit, merged.Since, merged.End, merged.Direction))
+	core.WriteJSON(w, http.StatusOK, toRenderLogList(page))
 }
 
 // logsSubscribe serves GET /v1/logs/subscribe — a live tail, following one

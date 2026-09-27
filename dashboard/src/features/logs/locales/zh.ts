@@ -129,6 +129,20 @@ const zhLogs: Record<string, TranslationEntry> = {
     description:
       "Banner when hasMore is true: the selected range holds more than the 100-line page, so the view is truncated until the user pages back",
   },
+  "logs.partialSearchNotice": {
+    message: "目前只搜索了此范围内最新的一部分——加载更早的日志以继续搜索。",
+    description:
+      "Banner when a time-boxed search returned less than a page but hasMore is true: the older part of the range is unsearched, not empty (w4/m140)",
+  },
+  "logs.timeoutTitle": {
+    message: "此搜索耗时过长",
+    description:
+      "State title when the logs query ran out of the server's time budget (QUERY_TIMEOUT, w4/m140)",
+  },
+  "logs.timeoutBody": {
+    message: "请缩短时间范围，或使用更具体的搜索词。",
+    description: "State body under logs.timeoutTitle",
+  },
   "logs.streaming": {
     message: "实时——正在接收新日志",
     description: "Status under the log list when the SSE tail is connected",

@@ -25,9 +25,18 @@ import (
 	"github.com/graphql-go/graphql/language/source"
 )
 
+// HTTPWriteTimeout is bex-api's http.Server WriteTimeout (cmd/api newHTTPServer).
+// It lives here, beside the execution budget that must stay inside it.
+const HTTPWriteTimeout = 30 * time.Second
+
 // gqlExecTimeout bounds a single GraphQL document's execution so one expensive
-// query can't tie up a resolver goroutine indefinitely (w1/m65 F9).
-const gqlExecTimeout = 30 * time.Second
+// query can't tie up a resolver goroutine indefinitely (w1/m65 F9). It sits
+// strictly inside HTTPWriteTimeout: when the two were equal, a resolver that ran
+// to the deadline had its connection cut before the deadline error could be
+// written, and the edge answered with a CORS-less 502 the browser can only call
+// "Failed to fetch" (w4/m140). The margin covers auth, parsing, and writing the
+// response.
+const gqlExecTimeout = HTTPWriteTimeout - 5*time.Second
 
 // GraphQL query-cost budgets (w1/m65 F9). The rate limiter charges one HTTP
 // request per document, but one document can invoke many independent

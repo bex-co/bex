@@ -34,6 +34,11 @@ export interface LogLine {
 // `build` streams the in-flight build Job's pod stdout via SSE (w3/m14) — only
 // used by the deploy detail page's live build pane, not the Logs tab filter UI.
 export const LOG_TYPE_ALL = "all";
+
+// The most lines one `logs(...)` page carries (bex-api's cap, Render's paging
+// range). A page with fewer lines that still reports `hasMore` is a time-boxed
+// search that stopped early, not a capped one (w4/m140).
+export const LOG_PAGE_SIZE = 100;
 export const LOG_TYPE_APP = "app";
 export const LOG_TYPE_REQUEST = "request";
 // Build is not offered in the service Logs-tab dropdown; deploy detail uses it

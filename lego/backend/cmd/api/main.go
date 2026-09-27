@@ -1386,7 +1386,7 @@ func newHTTPServer(addr string, h http.Handler) *http.Server {
 		Handler:           h,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		WriteTimeout:      api.HTTPWriteTimeout,
 	}
 }
 

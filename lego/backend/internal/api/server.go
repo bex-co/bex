@@ -1532,6 +1532,10 @@ func graphqlResultOutcome(errs []gqlerrors.FormattedError) string {
 	return graphqlOutcome(resolverErr)
 }
 
+// queryTimeoutMessage is what a GraphQL client reads when a resolver hits
+// gqlExecTimeout.
+const queryTimeoutMessage = "query timed out; narrow the time range or the search and try again"
+
 // sanitizeGraphQLErrors applies core.WriteErr's redaction policy on the GraphQL
 // surface: a resolver error that is not a public/classified error (a raw
 // pgx/Kubernetes failure) has its message replaced with a generic string and the
@@ -1545,6 +1549,13 @@ func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError) []gqlerrors.Formatte
 		resolverErr := resolverError(errs[i].OriginalError())
 		// nil → a parse/validation error that wraps no resolver error: keep it.
 		if resolverErr == nil || core.IsPublicError(resolverErr) {
+			continue
+		}
+		// A resolver that ran out of the execution budget is the caller's
+		// signal to narrow the request, not an internal fault (w4/m140).
+		if errors.Is(resolverErr, context.DeadlineExceeded) {
+			errs[i].Message = queryTimeoutMessage
+			errs[i].Extensions = map[string]any{"code": core.CodeQueryTimeout}
 			continue
 		}
 		log.Printf("bex-api graphql: internal error: %v", resolverErr)
