@@ -1,6 +1,6 @@
 # w4 · m136 — Datastore and deploy log viewers stop at the newest 100 lines with no warning
 
-**Worker:** worker4 **Goal:** the Key Value and Postgres Logs tabs keep the range control's promise the way the service Logs tab has since `w4/m107`: reaching the top of the pane loads older entries, and a capped view says it is capped **Status:** blocked (t001–t006 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
+**Worker:** worker4 **Goal:** the Key Value and Postgres Logs tabs keep the range control's promise the way the service Logs tab has since `w4/m107`: reaching the top of the pane loads older entries, and a capped view says it is capped **Status:** done (live Definition of done passed 2026-09-27, `/qa-find-bugs` pass 231, on deploy `4a0422577`)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                            | 20m | t003                        |
 | t005 | Simplify — **DONE**                                                                                  | 20m | t004                        |
 | t006 | Test coverage — **DONE**                                                                             | 30m | t004                        |
-| t007 | Closeout — **BLOCKED**                                                                                  | 10m | t006                        |
+| t007 | Closeout — **DONE**                                                                                  | 10m | t006                        |
 
 ## Definition of done
 
@@ -59,3 +59,20 @@ query ($resource: String!, $startTime: String, $endTime: String, $limit: Int) {
 
 - ~~Deploy-log truncation was not observed live.~~ **Observed in pass 163** (see the DoD bullet). Evidence (local): `.playwright-mcp/qa-deploy-logs-1.png`.
 - Key Value was only probed with the durable (Loki) source. The pod-buffer fallback in `keyvalue-logs.md` § "Durability" was not exercised.
+
+## Live Definition-of-done probe (2026-09-27, `/qa-find-bugs` pass 231) — pass
+
+Production after the `53797ca69` pin (images `4a04225777ff`), workspace `bex`, `muse.env` QA credentials. The Postgres probes are read-only against the existing `beancount-forum-db`. Fixtures were created and deleted in the run (`DELETE` 204, then `GET` 404): a free Docker web service `qa-20260927-logs` `srv-dash4gq1pbgc73a24j7g` (`examples/hello-go`) and a free Key Value `qa-20260927-kv` `red-dash5ra1pbgc73a24ja0` (public, allowlist `0.0.0.0/0`).
+
+- **Postgres Logs reaches the whole selected range — PASS.** On `/databases/dpg-d9nqg95cavls73fp8m20?tab=logs&range=24h` (API first page: `hasMore:true`, 100 lines), repeatedly setting the log pane's `scrollTop = 0` loaded older pages. The topmost line went 05:30 AM → 01:15 AM → 09:45 PM → 05:15 PM → 01:35 PM → 08:55 AM → **06:00:17 AM** (the day before), then stopped: the start of the 24 h window, probed at about 05:57 AM.
+- **Key Value Logs reaches the whole selected range — PASS.**
+  - 30 `BGSAVE`s over the external TLS endpoint gave "Last hour" `hasMore:true`, 100 lines, first line at 13:02:17Z. The first page did not contain the start line.
+  - Two scrolls to the top reached `1:M 27 Sep 2026 12:59:03.481 * oO0OoO0OoO0Oo Valkey is starting oO0OoO0OoO0Oo`.
+  - After 14 `BGSAVE`s the store held only 67 lines (`hasMore:false`), so this run needed more writes than the filing did.
+  - Side note, already known and not filed: `redis-cli -u rediss://…` failed with `SSL_connect … unexpected eof`, because it tried the host's AAAA first and the `0.0.0.0/0` allowlist admits no IPv6 source (the `w9/m164` dual-stack trap). The IPv4 address with `--sni` worked.
+- **A capped view says so, and a complete view does not — PASS.**
+  - Postgres 24 h and Key Value >100 lines both showed "Showing the newest 100 matching lines in this range — scroll up for older history." with a **Load older** control.
+  - Postgres "Last hour" (`hasMore:false`, 25 lines) and Key Value at 67 lines (`hasMore:false`) showed no notice.
+- **The deploy-log panel reaches a long build's first line — PASS.** Build `dep-dash4gq1pbgc73a24j80` ran 12:55:31Z–12:57:53Z; `logs(type:"build", …, limit:100)` returned `hasMore:true`. On `/services/<srv>/deploys/<dep>` the panel first showed 05:56:55 AM at the top. Scrolling to the top reached 05:55:31 AM and **`==> Build queued`**.
+- **The 100-row server cap is unchanged — PASS.** Every first page was exactly 100 lines with `hasMore:true`.
+
