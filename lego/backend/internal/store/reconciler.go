@@ -814,10 +814,32 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 		if matchesObservedRelease {
 			return failureReasonFor(cur, status)
 		}
-	case matchesObservedRelease && status == DeployUpdateFailed:
-		return failureReasonFor(cur, status)
+	case status == DeployUpdateFailed:
+		if msg, reason, ok := recordedRolloutFailure(cur, open.Generation); ok {
+			if reason == "ImagePullBackOff" {
+				return msg, EventReasonImagePullBackoff
+			}
+			return msg, ""
+		}
+		if matchesObservedRelease {
+			return failureReasonFor(cur, status)
+		}
 	}
 	return "", ""
+}
+
+// recordedRolloutFailure reads the operator's durable verdict on a rollout
+// that failed over a release that had already served
+// (status.conditions[Rollout], w8/m44) for one deploy row's release
+// generation: the diagnosis message and its reason. Ready cannot carry it —
+// over a prior release Ready describes the release that keeps serving.
+func recordedRolloutFailure(app *appv1alpha1.App, generation int64) (string, string, bool) {
+	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+	if generation == 0 || cond == nil || cond.ObservedGeneration != generation ||
+		cond.Status != metav1.ConditionFalse || cond.Message == "" {
+		return "", "", false
+	}
+	return cond.Message, cond.Reason, true
 }
 
 // recordedPreDeployFailure is the operator's durable pre-deploy verdict
@@ -1131,6 +1153,11 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		return DeployPreDeployInProgress
 	case PreDeployFailed:
 		return DeployPreDeployFailed
+	}
+	// A rollout the operator settled as failed over the prior release closes
+	// now, with its diagnosis, not at the health-gate timeout (w8/m44).
+	if _, _, ok := recordedRolloutFailure(app, open.Generation); ok {
+		return DeployUpdateFailed
 	}
 
 	reason, conditionCurrent := readyReasonForGeneration(app)

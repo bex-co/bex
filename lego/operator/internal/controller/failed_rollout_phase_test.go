@@ -219,3 +219,78 @@ func TestDeploymentProgressDeadlineExceededHelper(t *testing.T) {
 		t.Fatal("Progressing=True must not settle")
 	}
 }
+
+// w8/m44: over a release that had served, the failed rollout's diagnosis was
+// dropped — Ready (rightly) describes the serving release, so the deploy row
+// waited out bex-api's gate and closed "did not become healthy … check the
+// service logs" 18 minutes in, for an image that was never pulled (and, sweep
+// 39, for w4/m112's failing health check). The diagnosis now rides
+// ConditionRollout, attributed to the failed release generation, and the Ready
+// message names it.
+func TestRolloutDeadlineOverPriorReleaseKeepsTheDiagnosis(t *testing.T) {
+	ctx := context.Background()
+	for name, tc := range map[string]struct {
+		state      corev1.ContainerState
+		ready      bool
+		wantReason string
+		wantMsg    string
+	}{
+		"image pull": {
+			state: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
+				Reason: "ImagePullBackOff", Message: `Back-off pulling image "docker.io/x/y:does-not-exist-999"`,
+			}},
+			wantReason: "ImagePullBackOff", wantMsg: "image pull is failing: Back-off pulling image",
+		},
+		"nothing diagnosed": {
+			state:      corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+			ready:      true,
+			wantReason: "ProgressDeadlineExceeded", wantMsg: "rollout did not become healthy within the progress deadline",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
+				Spec:       appv1alpha1.AppSpec{Image: "docker.io/x/y:does-not-exist-999"},
+				Status: appv1alpha1.AppStatus{
+					Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "rev-2", ObservedGeneration: 2,
+					ReleaseGeneration: 3,
+				},
+			}
+			dep := progressDeadlineDep(app.Name)
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-3", Namespace: "default",
+					Labels: map[string]string{"app": "web", labelRevision: "rev-3"}},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{Name: "app", State: tc.state, Ready: tc.ready}},
+				},
+			}
+			if tc.ready {
+				pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+			}
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).
+				WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+
+			if _, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting"); err != nil {
+				t.Fatalf("reportRolloutProgress: %v", err)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			if stored.Status.Phase != appv1alpha1.PhaseRunning {
+				t.Fatalf("phase = %q, want Running — the prior release keeps serving", stored.Status.Phase)
+			}
+			rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout)
+			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.Reason != tc.wantReason ||
+				!strings.HasPrefix(rollout.Message, tc.wantMsg) || rollout.ObservedGeneration != 3 {
+				t.Fatalf("Rollout = %+v, want False/%s %q at release generation 3", rollout, tc.wantReason, tc.wantMsg)
+			}
+			ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
+			if ready == nil || ready.Reason != appv1alpha1.ReasonPriorReleaseServing ||
+				!strings.HasPrefix(ready.Message, "the latest rollout failed: "+tc.wantMsg) {
+				t.Fatalf("Ready = %+v, want the diagnosis in the prior-release message", ready)
+			}
+		})
+	}
+}

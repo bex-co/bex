@@ -223,6 +223,11 @@ func Observe(j *batchv1.Job) State {
 // is what the App status and the deploy record carry.
 func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
 	const logs = "; check the pre-deploy logs"
+	// A pod that never got its image never ran the command: no log to point
+	// at, and the deadline only measured the pull retries (w8/m44).
+	if w, _ := pullFailure(ctx, cl, j); w != nil {
+		return pullFailureMessage(w)
+	}
 	if execution.JobFailedReason(j) == batchv1.JobReasonDeadlineExceeded {
 		return fmt.Sprintf("the pre-deploy command did not finish within its %d-minute window%s",
 			int(predeployTimeout/time.Minute), logs)
@@ -238,10 +243,61 @@ func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) strin
 	return "the pre-deploy command failed" + logs
 }
 
+// imagePullGrace is how long the Job's pod may wait on a failing image pull
+// before the step fails (w8/m44). The kubelet's first ErrImagePull can be a
+// registry blip; by 90s it has retried with back-off, and a tag that does not
+// exist will not appear. Waiting out the 10-minute Job deadline instead only
+// delayed the same verdict behind a message about a command that never ran.
+const imagePullGrace = 90 * time.Second
+
+// PullFailure explains a pending pre-deploy Job whose pod has been waiting on
+// ErrImagePull/ImagePullBackOff for longer than imagePullGrace, measured from
+// the pod's creation. Empty while the pod is pulling, running, or still inside
+// the grace window.
+func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time.Time) string {
+	w, created := pullFailure(ctx, cl, j)
+	if w == nil || now.Sub(created) < imagePullGrace {
+		return ""
+	}
+	return pullFailureMessage(w)
+}
+
+// pullFailureMessage is the image-pull wording the rollout path's stuck-pod
+// diagnosis also uses ("image pull is failing: <kubelet message>").
+func pullFailureMessage(w *corev1.ContainerStateWaiting) string {
+	return "image pull is failing: " + w.Message + "; the pre-deploy command never ran"
+}
+
+// pullFailure is the pre-deploy container's image-pull wait on the Job's pod,
+// with the pod's creation time, or nil when it is not waiting on a pull error.
+func pullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job) (*corev1.ContainerStateWaiting, time.Time) {
+	for _, p := range jobPods(ctx, cl, j) {
+		for _, cs := range p.Status.ContainerStatuses {
+			if w := cs.State.Waiting; cs.Name == containerName && w != nil &&
+				(w.Reason == "ErrImagePull" || w.Reason == "ImagePullBackOff") {
+				return w, p.CreationTimestamp.Time
+			}
+		}
+	}
+	return nil, time.Time{}
+}
+
 // terminatedContainer is the pre-deploy container's terminated state on the
 // Job's pod, or nil when no pod reports one (reaped, or never started). With
 // BackoffLimit 0 a Job runs exactly one pod.
 func terminatedContainer(ctx context.Context, cl client.Reader, j *batchv1.Job) *corev1.ContainerStateTerminated {
+	for _, p := range jobPods(ctx, cl, j) {
+		for _, cs := range p.Status.ContainerStatuses {
+			if cs.Name == containerName && cs.State.Terminated != nil {
+				return cs.State.Terminated
+			}
+		}
+	}
+	return nil
+}
+
+// jobPods lists the Job's pods, nil on error.
+func jobPods(ctx context.Context, cl client.Reader, j *batchv1.Job) []corev1.Pod {
 	var pods corev1.PodList
 	// The controller-uid label, not the Job name: a TTL-reaped Job recreated
 	// under the same name must never borrow the old run's pod.
@@ -249,14 +305,7 @@ func terminatedContainer(ctx context.Context, cl client.Reader, j *batchv1.Job) 
 		client.MatchingLabels{batchv1.ControllerUidLabel: string(j.UID)}); err != nil {
 		return nil
 	}
-	for i := range pods.Items {
-		for _, cs := range pods.Items[i].Status.ContainerStatuses {
-			if cs.Name == containerName && cs.State.Terminated != nil {
-				return cs.State.Terminated
-			}
-		}
-	}
-	return nil
+	return pods.Items
 }
 
 // CancelSuperseded deletes active (not Complete, not Failed) pre-deploy Jobs for
