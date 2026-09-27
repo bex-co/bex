@@ -260,6 +260,10 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 		if err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
 			return err
 		}
+		// Deleted while the trigger waited for the lock (w8/023).
+		if err := core.NotFoundIfDeleting(a); err != nil {
+			return err
+		}
 		if rowWrite != nil {
 			if err := rowWrite(); err != nil {
 				return err
@@ -641,6 +645,12 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 // the authentication boundary and supplies an already-resolved App; everything
 // after that boundary (validation, CR patch, deploy-history row) is identical.
 func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1alpha1.App, p TriggerParams, trigger string) (DeployView, error) {
+	// A service being deleted is absent to writes as it is to reads (w8/023):
+	// the trigger used to reach its secrets, CR and store row mid-teardown and
+	// surface whatever failed first as a 500.
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return DeployView{}, err
+	}
 	if err := s.validateTrigger(service, a, p); err != nil {
 		return DeployView{}, err
 	}
@@ -849,6 +859,9 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if err != nil {
 		return DeployView{}, err
 	}
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return DeployView{}, err
+	}
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
@@ -955,6 +968,9 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 func (s *Service) Rollback(ctx context.Context, service, deployID string) (DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
+		return DeployView{}, err
+	}
+	if err := core.NotFoundIfDeleting(a); err != nil {
 		return DeployView{}, err
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {

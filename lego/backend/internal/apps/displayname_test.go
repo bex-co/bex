@@ -313,3 +313,24 @@ func TestSetDisplayNameTakenNameIsCreatesConflict(t *testing.T) {
 		t.Errorf("CR spec.displayName = %q, want unchanged after the refusal", got)
 	}
 }
+
+// w8/023: lifecycle writes on a service being deleted answer 404 like reads,
+// before the row write or the CR patch.
+func TestLifecycleWritesOnADeletingServiceAre404(t *testing.T) {
+	rec := &recordingStore{}
+	app := manage(displayNameApp("immutable-id"), "srv-1")
+	now := metav1.Now()
+	app.DeletionTimestamp = &now
+	app.Finalizers = []string{"app.bex.co/finalizer"}
+	svc, _ := newService(rec, app)
+
+	if _, err := svc.SetDisplayName(context.Background(), "immutable-id", "renamed"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("rename a deleting service = %v, want ErrNotFound", err)
+	}
+	if _, err := svc.Restart(context.Background(), "immutable-id"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("restart a deleting service = %v, want ErrNotFound", err)
+	}
+	if len(rec.displayNameCalls) != 0 {
+		t.Errorf("row written for a deleting service: %v", rec.displayNameCalls)
+	}
+}

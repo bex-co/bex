@@ -69,7 +69,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `023` — `bex deploys create` on a just-deleted service returns 500 instead of 404 (the trigger skips `core.NotFoundIfDeleting`; reads 404) (~45m) ← `/qa-find-bugs-cli` sweep 14, 2026-09-26
 - `024` — `bex logs --tail` with several resources silently follows only the first one (`logs/rest.go:145` keeps `resources[0]`; history merges all) (~1h, or ~20m for an honest refusal) ← `/qa-find-bugs-cli` sweep 23, 2026-09-26
 - `025` — Kubernetes' `unable to retrieve container logs for containerd://…` placeholder is served as the tenant's own `type: app` log line (untimestamped kubelet body in `logs/podlogs.go`) (~30m) ← `/qa-find-bugs-cli` sweep 32, 2026-09-26
 - `026` — `blueprints validate`: the 10 MiB limit is unreachable (the global 2 MiB body cap wins → 413), and a `fromService … property: host` to a nonexistent service validates as `valid: true` (~45m) ← `/qa-find-bugs-cli` sweep 33, 2026-09-26
@@ -79,6 +78,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - `030` — Postgres logs are ~85% CloudNativePG instance-manager chatter, and PostgreSQL's own lines arrive JSON-wrapped (`record.message`); the shipper keeps the `postgres` container assuming it is plain PG stdout (~50m) ← `/qa-find-bugs-cli` sweep 44, 2026-09-27
 - `031` — `bex logs --level warning` (and `notice`/`critical`/`alert`/`emergency`) never matches: the pinned CLI only sends Render's level names, the shipper stores `warn`, and `loki.go:213` matches the label exactly (~45m) ← `/qa-find-bugs-cli` sweep 45, 2026-09-27
 
+
+> `023.md` filed 2026-09-26 (`/qa-find-bugs-cli` sweep 14) and fixed 2026-09-27 — moved to `done/`. A deploy trigger (API, restart, hook), rollback, cancel, job create or lifecycle write on a service being deleted now answers `404 not found` before any side effect, like every read, instead of reaching the terminating App and surfacing a 500.
 
 > `021.md` filed 2026-09-23 (`/qa-find-bugs-cli` sweep 7) and fixed 2026-09-25 — moved to `done/`. `core.ErrNotFound` now reads `not found`, store misses name their entity through `store.MapError` (`project not found`, `deploy not found`), and deploys lookups return `deploy not found`; status codes and `id: not_found` are unchanged.
 
