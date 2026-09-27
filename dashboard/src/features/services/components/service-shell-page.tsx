@@ -14,6 +14,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { useServer } from "@/features/services/hooks/use-server";
+import { sshRemedy } from "@/features/services/lib/ssh-remedy";
 import { WebShellPanel } from "@/features/services/components/web-shell-panel";
 
 /**
@@ -31,6 +32,9 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
   const command = service?.sshAddress ? `ssh ${service.sshAddress}` : "";
   const eligible = Boolean(service?.sshAddress);
   const unavailable = !loading && !eligible;
+  // A suspended or Free service says exactly why, and links to that remedy.
+  const remedyFor = unavailable && service ? sshRemedy(service) : null;
+  const remedy = remedyFor?.action ? remedyFor : null;
 
   return (
     <div className="space-y-6">
@@ -73,9 +77,11 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
                 : t("services.shellConnectionTitle")}
             </CardTitle>
             <CardDescription>
-              {unavailable
-                ? t("services.shellUnavailableBody")
-                : t("services.shellConnectionDescription")}
+              {remedy
+                ? t(remedy.reason)
+                : unavailable
+                  ? t("services.shellUnavailableBody")
+                  : t("services.shellConnectionDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -105,12 +111,32 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
               </RequiresSshKey>
             ) : null}
 
-            <Button asChild variant="outline" size="sm">
-              <Link to="/settings" hash="ssh-public-keys">
-                <KeyRound />
-                {t("services.shellManageKeys")}
-              </Link>
-            </Button>
+            {remedy?.action ? (
+              // The fix for this service is its plan or its suspension, not
+              // an SSH key (w4/143).
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  to={
+                    remedy.action.path === "plan"
+                      ? "/services/$serviceId/plan"
+                      : "/services/$serviceId/settings"
+                  }
+                  params={{ serviceId }}
+                  hash={
+                    remedy.action.path === "settings" ? "suspend" : undefined
+                  }
+                >
+                  {t(remedy.action.label)}
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/settings" hash="ssh-public-keys">
+                  <KeyRound />
+                  {t("services.shellManageKeys")}
+                </Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
