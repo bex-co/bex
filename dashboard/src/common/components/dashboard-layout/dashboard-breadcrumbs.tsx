@@ -33,6 +33,8 @@ import { useEnvironments } from "@/features/environments/hooks/use-environments"
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useServices } from "@/features/services/hooks/use-services";
+import { useDatabase } from "@/features/databases/hooks/use-database";
+import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 
 type DashboardParams = {
   agentSessionId?: string;
@@ -57,6 +59,12 @@ export function DashboardBreadcrumbs() {
   }
   if (params.projectId) {
     return <ProjectBreadcrumbs projectId={params.projectId} />;
+  }
+  if (params.databaseId) {
+    return <DatabaseBreadcrumbs id={params.databaseId} />;
+  }
+  if (params.keyValueId) {
+    return <KeyValueBreadcrumbs id={params.keyValueId} />;
   }
   return <PageBreadcrumb pathname={pathname} params={params} />;
 }
@@ -149,6 +157,107 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+    </nav>
+  );
+}
+
+// A datastore's name comes from the page's own detail hook, with polling off:
+// the page polls that query and this leaf follows the cache, instead of a
+// second timer drifting beside it (as ServiceBreadcrumbs does with useServer).
+function DatabaseBreadcrumbs({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const { database } = useDatabase(id, { poll: false });
+  return (
+    <DatastoreBreadcrumbs
+      id={database?.id || id}
+      name={database?.name || id}
+      icon={Database}
+      typeLabel={t("databases.resourceType")}
+      belongsTo={(ids) => ids.databaseIds}
+    />
+  );
+}
+
+function KeyValueBreadcrumbs({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const { keyValue } = useKeyValue(id, { poll: false });
+  return (
+    <DatastoreBreadcrumbs
+      id={keyValue?.id || id}
+      name={keyValue?.name || id}
+      icon={KeyRound}
+      typeLabel={t("keyvalue.resourceType")}
+      belongsTo={(ids) => ids.keyValueIds}
+    />
+  );
+}
+
+/**
+ * Project › Environment › name for a Postgres or Key Value page, the same
+ * trail (and switchers) a service gets. A store in no project keeps its type
+ * crumb, but the leaf is its name either way, not the raw id (w4/144).
+ */
+function DatastoreBreadcrumbs({
+  id,
+  name,
+  icon: Icon,
+  typeLabel,
+  belongsTo,
+}: {
+  id: string;
+  name: string;
+  icon: LucideIcon;
+  typeLabel: string;
+  belongsTo: (owner: {
+    databaseIds: string[];
+    keyValueIds: string[];
+  }) => string[];
+}) {
+  const { t } = useTranslations();
+  const { projects } = useProjects({ poll: false });
+  const project = projects.find((item) => belongsTo(item).includes(id));
+  const { environments } = useEnvironments(project?.id ?? null, {
+    poll: false,
+  });
+  const environment = environments.find((item) => belongsTo(item).includes(id));
+
+  return (
+    <nav
+      aria-label={t("common.topbarBreadcrumbs")}
+      className="flex min-w-0 items-center gap-0.5"
+    >
+      {project ? (
+        <>
+          <div className="hidden sm:contents">
+            <ProjectMenu currentId={project.id} projects={projects} />
+            <BreadcrumbSeparator />
+          </div>
+          {environment ? (
+            <>
+              <EnvironmentMenu
+                projectId={project.id}
+                currentId={environment.id}
+                environments={environments}
+              />
+              <BreadcrumbSeparator />
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <span className="flex items-center gap-1.5 px-2 text-sm font-medium">
+            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="hidden truncate sm:inline">{typeLabel}</span>
+          </span>
+          <BreadcrumbSeparator />
+        </>
+      )}
+      <span className="flex min-w-0 items-center gap-1.5 px-2 text-sm font-medium">
+        {project ? (
+          <Icon className="size-4 shrink-0 text-muted-foreground" />
+        ) : null}
+        <span className="max-w-48 truncate">{name}</span>
+      </span>
     </nav>
   );
 }
