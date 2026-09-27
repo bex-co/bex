@@ -25,6 +25,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { LogLineList } from "@/features/logs/components/log-line-list";
+import { LogTruncationNotice } from "@/features/logs/components/log-truncation-notice";
 import { stripAnsi } from "@/features/logs/lib/ansi";
 import type { EventSourceFactory } from "@/features/logs/hooks/use-live-logs";
 import { useDeployLogs } from "../hooks/use-deploy-logs";
@@ -103,15 +104,23 @@ export function DeployLogPanel({
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [maximized, setMaximized] = useState(false);
 
-  const { lines, loading, error, buildStoreUnavailable, buildLiveStatus } =
-    useDeployLogs(
-      resource,
-      startTime,
-      endTime,
-      hasPreDeploy,
-      followBuild,
-      createEventSource,
-    );
+  const {
+    lines,
+    loading,
+    error,
+    buildStoreUnavailable,
+    buildLiveStatus,
+    hasMore,
+    loadingOlder,
+    loadOlder,
+  } = useDeployLogs(
+    resource,
+    startTime,
+    endTime,
+    hasPreDeploy,
+    followBuild,
+    createEventSource,
+  );
 
   const filtered = useMemo(() => {
     let out =
@@ -187,6 +196,9 @@ export function DeployLogPanel({
         wrap={wrap}
         showTimestamps={showTimestamps}
         fill={maximized}
+        hasMore={hasMore}
+        loadingOlder={loadingOlder}
+        onLoadOlder={loadOlder}
       />
     );
   }
@@ -331,6 +343,12 @@ export function DeployLogPanel({
           </span>{" "}
           {t("deploys.buildLogsStoreUnavailableBody")}
         </div>
+      ) : null}
+      {hasMore && lines.length > 0 ? (
+        <LogTruncationNotice
+          loadingOlder={loadingOlder}
+          onLoadOlder={loadOlder}
+        />
       ) : null}
       {body}
     </div>

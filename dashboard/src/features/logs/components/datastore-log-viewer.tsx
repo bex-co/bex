@@ -11,27 +11,38 @@ import {
 } from "@/common/components/ui/select.tsx";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { LogLineList } from "@/features/logs/components/log-line-list";
-import { useLogLabelValues } from "@/features/logs/hooks/use-log-label-values";
+import { LogLineList } from "./log-line-list";
+import { LogTruncationNotice } from "./log-truncation-notice";
+import { useLogLabelValues } from "../hooks/use-log-label-values";
 import { RangeSelect } from "@/features/metrics/components/range-select";
 import {
   DEFAULT_DATASTORE_LOG_RANGE,
   rangeWindow,
-} from "@/features/logs/lib/datastore-log-range";
+} from "../lib/datastore-log-range";
 import { type RangeSelection } from "@/features/metrics/lib/range";
-import { useKeyValueLogs } from "../hooks/use-key-value-logs";
+import { useLogHistory } from "../hooks/use-log-history";
+import { EMPTY_LOG_FILTERS } from "../types";
 
 const ALL_INSTANCES = "all";
 
+// The Logs tab of a managed datastore — Postgres (`dpg-`) or Key Value (`red-`).
+// The two are one viewer: the same window/text/instance filters (the datastore
+// logs contract answers service-only filters with a named 400,
+// docs/render-artifacts/keyvalue-logs.md), the same paging, and copy that
+// differs only by namespace.
+export type DatastoreLogKind = "databases" | "keyvalue";
+
 // `range`/`onRangeChange` are the URL-persisted selection threaded down from
-// the hosting route (`keyvalue.$keyValueId`, w6/065) — this is a component,
-// not a route, so persistence has to come from its host. A standalone mount
-// (unit tests) falls back to local state.
-export function KeyValueLogViewer({
+// the hosting route (`databases.$databaseId` / `keyvalue.$keyValueId`, w6/065)
+// — this is a component, not a route, so persistence has to come from its
+// host. A standalone mount (unit tests) falls back to local state.
+export function DatastoreLogViewer({
+  kind,
   resource,
   range: rangeProp,
   onRangeChange,
 }: {
+  kind: DatastoreLogKind;
   resource: string;
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
@@ -47,58 +58,78 @@ export function KeyValueLogViewer({
   const debouncedText = useDebounce(text, 300);
   const win = useMemo(() => rangeWindow(range), [range]);
   const queryFilters = useMemo(
-    () => ({ ...win, text: debouncedText, instance }),
-    [win, debouncedText, instance],
+    () => ({ ...EMPTY_LOG_FILTERS, text: debouncedText, instance }),
+    [debouncedText, instance],
   );
-  const result = useKeyValueLogs(resource, queryFilters);
+  // Paged exactly like the service Logs tab (w4/m107): scrolling to the top
+  // loads older pages until `hasMore` is false (w4/m136).
+  const history = useLogHistory(resource, queryFilters, win);
+  const message = history.error?.message.toLowerCase() ?? "";
+  const unavailable = message.includes("logs source not configured");
+  const unauthorized = message.includes("forbidden");
   const instances = useLogLabelValues(resource, "instance");
 
   let body: ReactNode;
-  if (result.unavailable) {
+  if (unavailable) {
     body = (
       <EmptyState
         iconName="Database"
-        title={t("keyvalue.logsUnavailableTitle")}
-        description={t("keyvalue.logsUnavailableBody")}
+        title={t(`${kind}.logsUnavailableTitle`)}
+        description={t(`${kind}.logsUnavailableBody`)}
       />
     );
-  } else if (result.unauthorized) {
+  } else if (unauthorized) {
     body = (
       <EmptyState
         iconName="LockKeyhole"
-        title={t("keyvalue.logsUnauthorizedTitle")}
-        description={t("keyvalue.logsUnauthorizedBody")}
+        title={t(`${kind}.logsUnauthorizedTitle`)}
+        description={t(`${kind}.logsUnauthorizedBody`)}
       />
     );
-  } else if (result.error) {
+  } else if (history.error) {
     body = (
       <EmptyState
         iconName="AlertCircle"
-        title={t("keyvalue.logsErrorTitle")}
-        description={result.error.message}
+        title={t(`${kind}.logsErrorTitle`)}
+        description={history.error.message}
       />
     );
-  } else if (result.loading && result.lines.length === 0) {
+  } else if (history.loading) {
     body = (
       <div className="flex h-64 items-center justify-center rounded-md border text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        {t("keyvalue.logsLoading")}
+        {t(`${kind}.logsLoading`)}
       </div>
     );
-  } else if (result.lines.length === 0) {
+  } else if (history.lines.length === 0) {
     body = (
       <EmptyState
         iconName="ScrollText"
-        title={t("keyvalue.logsEmptyTitle")}
+        title={t(`${kind}.logsEmptyTitle`)}
         description={
           text || instance
-            ? t("keyvalue.logsEmptyFilteredBody")
-            : t("keyvalue.logsEmptyBody")
+            ? t(`${kind}.logsEmptyFilteredBody`)
+            : t(`${kind}.logsEmptyBody`)
         }
       />
     );
   } else {
-    body = <LogLineList lines={result.lines} />;
+    body = (
+      <div className="space-y-2">
+        {history.hasMore ? (
+          <LogTruncationNotice
+            loadingOlder={history.loadingOlder}
+            onLoadOlder={history.loadOlder}
+          />
+        ) : null}
+        <LogLineList
+          lines={history.lines}
+          hasMore={history.hasMore}
+          loadingOlder={history.loadingOlder}
+          onLoadOlder={history.loadOlder}
+        />
+      </div>
+    );
   }
 
   return (
@@ -107,7 +138,7 @@ export function KeyValueLogViewer({
         <RangeSelect
           range={range}
           onRangeChange={setRange}
-          ariaLabel={t("keyvalue.logsRangeLabel")}
+          ariaLabel={t(`${kind}.logsRangeLabel`)}
         />
 
         <Select
@@ -119,13 +150,13 @@ export function KeyValueLogViewer({
           <SelectTrigger
             className="w-56"
             size="sm"
-            aria-label={t("keyvalue.logsInstanceLabel")}
+            aria-label={t(`${kind}.logsInstanceLabel`)}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_INSTANCES}>
-              {t("keyvalue.logsAllInstances")}
+              {t(`${kind}.logsAllInstances`)}
             </SelectItem>
             {instances.map((inst) => (
               <SelectItem key={inst} value={inst}>
@@ -140,8 +171,8 @@ export function KeyValueLogViewer({
           <Input
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder={t("keyvalue.logsSearchPlaceholder")}
-            aria-label={t("keyvalue.logsSearchPlaceholder")}
+            placeholder={t(`${kind}.logsSearchPlaceholder`)}
+            aria-label={t(`${kind}.logsSearchPlaceholder`)}
             className="pl-8"
           />
         </div>

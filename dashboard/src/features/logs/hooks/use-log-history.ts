@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useApolloClient, useQuery } from "@apollo/client/react";
+import { useMemo } from "react";
+import { useQuery } from "@apollo/client/react";
 import { LogsDocument } from "@/graphql/definitions";
 import { dedupeLogLines, toLogLines } from "../lib/map";
+import { useOlderLogPages } from "./use-older-log-pages";
 import { LOG_TYPE_ALL, type LogFilters, type LogLine } from "../types";
 
 // bex-api's GraphQL logs query defaults to 20 lines and caps at 100 (Render's
@@ -50,14 +51,13 @@ function list(value: string): string[] | undefined {
  * rather than an error, per bex-api's honesty contract.
  *
  * Older pages (scroll-to-top) are fetched with the envelope's cursors and kept
- * in local state — not in the URL (w4/m107). A filter/window change drops them.
+ * in local state — not in the URL (w4/m107); `useOlderLogPages` owns them.
  */
 export function useLogHistory(
   resource: string,
   filters: LogFilters,
   window?: { startTime: string; endTime: string },
 ): UseLogHistoryResult {
-  const client = useApolloClient();
   const variables = useMemo(
     () => ({
       resource,
@@ -92,78 +92,16 @@ export function useLogHistory(
     errorPolicy: "all",
   });
 
-  const [older, setOlder] = useState<LogLine[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [cursor, setCursor] = useState<{
-    startTime: string;
-    endTime: string;
-  } | null>(null);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-  // Ignore a late older-page response after filters/window change.
-  const pageGen = useRef(0);
-
-  // Drop prepended pages whenever the first-page query's inputs change.
-  useEffect(() => {
-    pageGen.current += 1;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting paging state when the query inputs change; the bumped generation is what discards an in-flight older page
-    setOlder([]);
-    setLoadingOlder(false);
-  }, [variables]);
-
-  // Seed the paging cursor from the first page. It cannot be derived with
-  // useMemo: loadOlder advances the same cursor and hasMore as it walks
-  // backwards, so this is a seed for mutable state, not a mirror of the query.
-  useEffect(() => {
-    const env = data?.logs;
-    if (!env) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above: seeding state that loadOlder then owns
-    setHasMore(env.hasMore);
-    setCursor({
-      startTime: env.nextStartTime,
-      endTime: env.nextEndTime,
-    });
-  }, [data]);
+  const pages = useOlderLogPages(variables, data?.logs);
 
   const firstPage = useMemo(
     () => toLogLines(data?.logs?.logs),
     [data?.logs?.logs],
   );
   const lines = useMemo(
-    () => dedupeLogLines([...older, ...firstPage]),
-    [older, firstPage],
+    () => dedupeLogLines([...pages.older, ...firstPage]),
+    [pages.older, firstPage],
   );
-
-  const loadOlder = useCallback(() => {
-    if (!hasMore || loadingOlder || !cursor) return;
-    const gen = pageGen.current;
-    setLoadingOlder(true);
-    void client
-      .query({
-        query: LogsDocument,
-        variables: {
-          ...variables,
-          startTime: cursor.startTime,
-          endTime: cursor.endTime,
-        },
-        fetchPolicy: "network-only",
-        errorPolicy: "all",
-      })
-      .then((result) => {
-        if (gen !== pageGen.current) return;
-        const env = result.data?.logs;
-        if (!env) return;
-        const page = toLogLines(env.logs);
-        setOlder((prev) => dedupeLogLines([...page, ...prev]));
-        setHasMore(env.hasMore);
-        setCursor({
-          startTime: env.nextStartTime,
-          endTime: env.nextEndTime,
-        });
-      })
-      .finally(() => {
-        if (gen === pageGen.current) setLoadingOlder(false);
-      });
-  }, [hasMore, loadingOlder, cursor, client, variables]);
 
   const storeUnavailable =
     !!error && error.message.includes(STORE_UNAVAILABLE_MARKER);
@@ -173,8 +111,8 @@ export function useLogHistory(
     loading: loading && lines.length === 0,
     error,
     storeUnavailable,
-    hasMore,
-    loadingOlder,
-    loadOlder,
+    hasMore: pages.hasMore,
+    loadingOlder: pages.loadingOlder,
+    loadOlder: pages.loadOlder,
   };
 }

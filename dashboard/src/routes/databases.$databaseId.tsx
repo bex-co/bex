@@ -30,7 +30,7 @@ import { DatabaseDangerActions } from "@/features/databases/components/database-
 import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
 import { DatabaseDetailNavigation } from "@/features/databases/components/database-detail-navigation";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
-import { PostgresLogViewer } from "@/features/databases/components/postgres-log-viewer";
+import { DatastoreLogViewer } from "@/features/logs/components/datastore-log-viewer";
 import { DEFAULT_DATASTORE_LOG_RANGE } from "@/features/logs/lib/datastore-log-range";
 import {
   parseRangeSearch,
@@ -224,7 +224,8 @@ function DatabaseDetailPage() {
             </div>
           ) : database && tab === "logs" ? (
             <div className="mx-auto w-full max-w-4xl space-y-6">
-              <PostgresLogViewer
+              <DatastoreLogViewer
+                kind="databases"
                 resource={database.id}
                 range={rangeFromSearch(search, DEFAULT_DATASTORE_LOG_RANGE)}
                 onRangeChange={(range) =>

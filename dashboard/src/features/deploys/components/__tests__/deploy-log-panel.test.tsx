@@ -13,6 +13,9 @@ const logState: UseDeployLogsResult = {
   error: undefined,
   buildStoreUnavailable: false,
   buildLiveStatus: "idle",
+  hasMore: false,
+  loadingOlder: false,
+  loadOlder: () => undefined,
 };
 
 vi.mock("../../hooks/use-deploy-logs", () => ({
@@ -29,9 +32,62 @@ beforeEach(() => {
   logState.error = undefined;
   logState.buildStoreUnavailable = false;
   logState.buildLiveStatus = "idle";
+  logState.hasMore = false;
+  logState.loadingOlder = false;
+  logState.loadOlder = () => undefined;
 });
 
+function line(message: string, type: string): LogLine {
+  return {
+    key: message,
+    timestamp: "2026-07-14T00:01:00Z",
+    time: "00:01:00",
+    instance: "",
+    message,
+    spans: null,
+    type,
+    level: "",
+    method: "",
+    statusCode: "",
+  };
+}
+
 describe("DeployLogPanel", () => {
+  it("states a capped build and loads older lines on request (w4/m136)", async () => {
+    logState.lines = [line("==> step 9", "build")];
+    logState.hasMore = true;
+    logState.loadOlder = vi.fn();
+    render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime="2026-07-14T00:05:00Z"
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /newest 100 matching lines/,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Load older" }));
+    expect(logState.loadOlder).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no truncation notice when the deploy's logs are complete", () => {
+    logState.lines = [line("==> Build queued", "build")];
+    render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime="2026-07-14T00:05:00Z"
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    expect(screen.queryByText(/newest 100 matching lines/)).toBeNull();
+  });
+
   it("renders the explanatory log-store state on a build-log 503", () => {
     logState.buildStoreUnavailable = true;
 

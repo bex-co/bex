@@ -115,10 +115,17 @@ const zhLogs: Record<string, TranslationEntry> = {
   },
   "logs.loadingOlder": {
     message: "正在加载更早的日志……",
-    description: "Shown at the top of the pane while a page-back request is in flight",
+    description:
+      "Shown at the top of the pane while a page-back request is in flight",
+  },
+  "logs.loadOlder": {
+    message: "加载更早的日志",
+    description:
+      "Button in the truncation notice that fetches the next older page — the keyboard/underfilled-pane path to what scrolling to the top does",
   },
   "logs.truncatedNotice": {
-    message: "正在显示此范围内最新的 100 条匹配日志——向上滚动可查看更早的历史。",
+    message:
+      "正在显示此范围内最新的 100 条匹配日志——向上滚动可查看更早的历史。",
     description:
       "Banner when hasMore is true: the selected range holds more than the 100-line page, so the view is truncated until the user pages back",
   },

@@ -117,7 +117,13 @@ const enLogs: Record<string, TranslationEntry> = {
   },
   "logs.loadingOlder": {
     message: "Loading older logs…",
-    description: "Shown at the top of the pane while a page-back request is in flight",
+    description:
+      "Shown at the top of the pane while a page-back request is in flight",
+  },
+  "logs.loadOlder": {
+    message: "Load older",
+    description:
+      "Button in the truncation notice that fetches the next older page — the keyboard/underfilled-pane path to what scrolling to the top does",
   },
   "logs.truncatedNotice": {
     message:

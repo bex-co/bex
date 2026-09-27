@@ -26,6 +26,7 @@ import {
 } from "../types";
 import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
+import { LogTruncationNotice } from "./log-truncation-notice";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import { type RangeSelection } from "@/features/metrics/lib/range";
 import { DEFAULT_LOG_RANGE } from "../lib/log-search";
@@ -192,12 +193,10 @@ export function LogViewer({
     body = (
       <div className="space-y-2">
         {history.hasMore ? (
-          <p
-            role="status"
-            className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground"
-          >
-            {t("logs.truncatedNotice")}
-          </p>
+          <LogTruncationNotice
+            loadingOlder={history.loadingOlder}
+            onLoadOlder={history.loadOlder}
+          />
         ) : null}
         {live && liveSupported && stream.status === "error" ? (
           <div className="flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
