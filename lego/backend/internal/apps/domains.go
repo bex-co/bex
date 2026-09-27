@@ -929,11 +929,17 @@ func claimedHostCount(app *appv1alpha1.App) int {
 func (s *Service) hostClaimedElsewhere(ctx context.Context, owner *appv1alpha1.App, host string) (bool, error) {
 	// A host is unique across the whole platform, and Apps are spread across
 	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide.
-	var list appv1alpha1.AppList
-	if err := s.Client.List(ctx, &list); err != nil {
-		return false, err
-	}
-	return hostClaimedInApps(list.Items, owner, host), nil
+	// Memoized per (owner, host): a service patch that sets maintenanceMode.uri
+	// validates it in both the preflight and the apply pass (w9/m166), and this
+	// is the one check in that table whose cost grows with the size of the
+	// platform rather than with the request.
+	return memoized(ctx, "hostClaimed:"+appClaimIdentity(owner)+":"+host, func() (bool, error) {
+		var list appv1alpha1.AppList
+		if err := s.Client.List(ctx, &list); err != nil {
+			return false, err
+		}
+		return hostClaimedInApps(list.Items, owner, host), nil
+	})
 }
 
 // hostClaimedInApps is hostClaimedElsewhere's matching core over an

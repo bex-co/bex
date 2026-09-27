@@ -56,6 +56,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.DeployStack":              "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",
 		"apps.SyncBlueprint":            "Blueprint sync delegates to the same maintenance effects or changed-service deploy rows",
 		"apps.ConfigureMaintenanceMode": "one atomic write records its typed field effects only after the patch succeeds",
+		"apps.ApplyServicePatch":        "w9/m166: its AuthorizeApp is the read-only preflight that decides whether the WHOLE patch may proceed; each present field's own verb still records that field's effect, so naming this one too would double-count every multi-field save",
 		"deploys.Trigger":               "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
 		// w4/m118: the same argument for cron runs. These three are INTENT;
 		// the run itself is recorded by the reconciler as a fact for scheduled
