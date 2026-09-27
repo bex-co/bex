@@ -1061,6 +1061,9 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&a), verb, resolveErr); err != nil {
 				return nil, err
 			}
+			if err := b.refuseAmbiguousName(ctx, name, &a); err != nil {
+				return nil, err
+			}
 			return &a, nil
 		}
 		if !apierrors.IsNotFound(getErr) {
@@ -1107,6 +1110,9 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, list.Items[i].Labels)
 			record := denied < maxFallbackCandidateAudits
 			if err := b.authorizeAndRecord(ctx, relation, object, canonicalAppTarget(&list.Items[i]), verb, resolveErr, record); err == nil {
+				if err := b.refuseAmbiguousName(ctx, name, &list.Items[i]); err != nil {
+					return nil, err
+				}
 				return &list.Items[i], nil
 			} else {
 				lastErr = err
@@ -1147,6 +1153,60 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	return nil, ErrNotFound
 }
 
+// refuseAmbiguousName is the by-NAME guard for a caller who named no workspace
+// (w8/m45). Names are a bex extension on these paths — Render accepts only srv-
+// ids — and they are unique only within a workspace, while the pinned CLI sends
+// no workspace on by-path verbs. The resolver above prefers the caller's
+// DEFAULT workspace, then any workspace, so with a same-named service in two of
+// the caller's workspaces a restart typed while another workspace was selected
+// hit the default workspace's service. When another workspace the caller can
+// view runs a service by this name, the name is refused with every candidate's
+// id instead of silently picking one. Candidates the caller cannot view stay
+// invisible, like the all-denied sweep's ErrNotFound; a membership or authz
+// outage fails closed rather than resolving.
+func (b *Base) refuseAmbiguousName(ctx context.Context, name string, chosen *appv1alpha1.App) error {
+	if _, named := WorkspaceFrom(ctx); named || b.Workspace == nil {
+		return nil
+	}
+	if _, ok := IdentityFrom(ctx); !ok || len(validation.IsValidLabelValue(name)) != 0 {
+		return nil
+	}
+	var list appv1alpha1.AppList
+	if err := b.Client.List(ctx, &list, client.MatchingLabels{LabelServiceName: name}); err != nil {
+		return err
+	}
+	ids := []string{appPublicID(chosen)}
+	for i := range list.Items {
+		other := &list.Items[i]
+		tenant := other.Labels[LabelTenant]
+		if (other.Namespace == chosen.Namespace && other.Name == chosen.Name) || tenant == "" || tenant == chosen.Labels[LabelTenant] {
+			continue
+		}
+		if err := b.checkWorkspaceAccess(ctx, RelCanView, tenant); err != nil {
+			if errors.Is(err, ErrForbidden) {
+				continue
+			}
+			return err
+		}
+		ids = append(ids, appPublicID(other))
+	}
+	if len(ids) == 1 {
+		return nil
+	}
+	return NewConflictError("SERVICE_NAME_AMBIGUOUS",
+		fmt.Sprintf("service name %q exists in several of your workspaces (%s); address it by id", name, strings.Join(ids, ", ")),
+		map[string]any{"name": name, "serviceIds": ids})
+}
+
+// appPublicID is an App's srv- id, falling back to the CR name for a legacy
+// App that predates the id label.
+func appPublicID(a *appv1alpha1.App) string {
+	if id := a.Labels[LabelAppID]; id != "" {
+		return id
+	}
+	return a.Name
+}
+
 // NotFoundIfDeleting implements the m81/m35 read contract for any CR whose
 // deletion Kubernetes has accepted (a stamped DeletionTimestamp): every by-id
 // tenant read reports it as absent — ErrNotFound, indistinguishable from a
@@ -1168,10 +1228,7 @@ func NotFoundIfDeleting(obj client.Object) error {
 // its name is reused before the audit insert completes. Hand-applied CRs have
 // no control-plane id and retain the namespace-unique name fallback.
 func canonicalAppTarget(a *appv1alpha1.App) string {
-	if appID := a.Labels[LabelAppID]; appID != "" {
-		return ServiceTarget(appID)
-	}
-	return ServiceTarget(a.Name)
+	return ServiceTarget(appPublicID(a))
 }
 
 // AuthorizeDatabase is AuthorizeApp for a managed Postgres Database — same
@@ -1511,6 +1568,9 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 			if err := b.AuthorizeLabeled(ctx, relation, a.Labels); err != nil {
 				return nil, err
 			}
+			if err := b.refuseAmbiguousName(ctx, name, &a); err != nil {
+				return nil, err
+			}
 			return &a, nil
 		}
 		if !apierrors.IsNotFound(err) {
@@ -1528,6 +1588,9 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	lastErr := error(ErrNotFound)
 	for i := range list.Items {
 		if err := b.AuthorizeLabeled(ctx, relation, list.Items[i].Labels); err == nil {
+			if err := b.refuseAmbiguousName(ctx, name, &list.Items[i]); err != nil {
+				return nil, err
+			}
 			return &list.Items[i], nil
 		} else {
 			lastErr = err
