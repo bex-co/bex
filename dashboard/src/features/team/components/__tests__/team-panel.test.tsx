@@ -194,7 +194,9 @@ describe("TeamPanel", () => {
     expect(screen.getByTestId("invite-dialog")).toBeInTheDocument();
     // The role dropdown (a combobox) and a remove button are present.
     expect(screen.getByRole("combobox")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Remove \S/ }),
+    ).toBeInTheDocument();
   });
 
   it("a read-only (non-admin) caller sees no invite/role/remove controls", () => {
@@ -216,7 +218,7 @@ describe("TeamPanel", () => {
     expect(screen.queryByTestId("invite-dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Remove" }),
+      screen.queryByRole("button", { name: /^Remove \S/ }),
     ).not.toBeInTheDocument();
     // ...but the role is still shown as text.
     expect(screen.getByText("Viewer")).toBeInTheDocument();
@@ -395,7 +397,7 @@ describe("TeamPanel", () => {
     const user = userEvent.setup();
     render(<TeamPanel />);
 
-    await user.click(screen.getByRole("button", { name: "Remove" }));
+    await user.click(screen.getByRole("button", { name: /^Remove \S/ }));
     const dialog = await screen.findByRole("alertdialog");
     // The confirm dialog interpolates the display identity (email), not the raw subject.
     expect(within(dialog).getByText(/bob@example.com/)).toBeInTheDocument();
@@ -499,7 +501,7 @@ describe("remove-member dialog discloses key revocation", () => {
     render(<TeamPanel />);
 
     const removeButtons = await screen.findAllByRole("button", {
-      name: "Remove",
+      name: /^Remove \S/,
     });
     await user.click(removeButtons[removeButtons.length - 1]);
 

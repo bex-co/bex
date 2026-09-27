@@ -118,6 +118,16 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "移除",
     description: "Remove-member button / confirm label",
   },
+  "team.roleFor": {
+    message: "{identity} 的角色",
+    description:
+      "Accessible name of a member row's role picker, naming the member (w4/150)",
+  },
+  "team.removeMember": {
+    message: "移除 {identity}",
+    description:
+      "Accessible name of a member row's remove control, naming the member (w4/150)",
+  },
   "team.removeTitle": {
     message: "移除成员？",
     description: "Remove-member confirmation dialog title",

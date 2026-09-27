@@ -525,7 +525,7 @@ describe("EnvGroupDetailPage", () => {
     renderDetail();
 
     expect(await screen.findByText("Web API")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Unlink" }));
+    await user.click(screen.getByRole("button", { name: /^Unlink \S/ }));
 
     expect(unlinkGroup).toHaveBeenCalledWith("eg1", "web");
   });

@@ -121,6 +121,16 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "Remove",
     description: "Remove-member button / confirm label",
   },
+  "team.roleFor": {
+    message: "Role for {identity}",
+    description:
+      "Accessible name of a member row's role picker, naming the member (w4/150)",
+  },
+  "team.removeMember": {
+    message: "Remove {identity}",
+    description:
+      "Accessible name of a member row's remove control, naming the member (w4/150)",
+  },
   "team.removeTitle": {
     message: "Remove member?",
     description: "Remove-member confirmation dialog title",

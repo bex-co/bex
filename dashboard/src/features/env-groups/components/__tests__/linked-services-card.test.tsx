@@ -106,3 +106,21 @@ describe("LinkedServicesCard — w6/m48 workspace-scope compatibility", () => {
     expect(screen.queryByText("Select a service")).not.toBeInTheDocument();
   });
 });
+
+// w4/150: each row's Unlink (which redeploys that service) names the service.
+describe("LinkedServicesCard — row control names (w4/150)", () => {
+  it("names each Unlink control after its service", async () => {
+    renderCard({
+      group: { ...WORKSPACE_GROUP, serviceLinks: ["srv-web", "srv-api"] },
+      services: [service("srv-web", "storefront"), service("srv-api", "api")],
+      serviceEnvironmentById: new Map(),
+    });
+
+    expect(
+      await screen.findByRole("button", { name: "Unlink storefront" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Unlink api" }),
+    ).toBeInTheDocument();
+  });
+});
