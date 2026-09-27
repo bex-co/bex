@@ -20,6 +20,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -97,7 +98,7 @@ func TestFailureMessageDeadlineNamesTheWindow(t *testing.T) {
 // the message still never falls back to Kubernetes text.
 func TestFailureMessageWithoutATerminatedPod(t *testing.T) {
 	job := failedJob("BackoffLimitExceeded")
-	waiting := corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff"}}
+	waiting := corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}}
 	for name, cl := range map[string]client.Client{
 		"no pod":                       fakeClient(job),
 		"waiting":                      fakeClient(job, jobPod(jobUID, job.Namespace, waiting)),
@@ -106,6 +107,60 @@ func TestFailureMessageWithoutATerminatedPod(t *testing.T) {
 	} {
 		if got, want := FailureMessage(context.Background(), cl, job), "the pre-deploy command failed; check the pre-deploy logs"; got != want {
 			t.Errorf("%s: message = %q, want %q", name, got, want)
+		}
+	}
+}
+
+// pullWaiting is the kubelet's wait on an image that does not exist.
+func pullWaiting(reason string) corev1.ContainerState {
+	return corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: reason,
+		Message: `rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/x/y:nope": not found`}}
+}
+
+// w8/m44: a pre-deploy Job whose image cannot be pulled failed only when its
+// 10-minute deadline ran out, as "did not finish … check the pre-deploy logs"
+// for a command that never started. A failed Job whose pod is stuck on the
+// pull names the pull instead, whatever the Job's own reason.
+func TestFailureMessageNamesAFailingImagePull(t *testing.T) {
+	for _, reason := range []string{"ImagePullBackOff", "ErrImagePull"} {
+		job := failedJob(batchv1.JobReasonDeadlineExceeded)
+		got := FailureMessage(context.Background(), fakeClient(job, jobPod(jobUID, job.Namespace, pullWaiting(reason))), job)
+		if !strings.HasPrefix(got, "image pull is failing: rpc error") || !strings.Contains(got, "never ran") ||
+			strings.Contains(got, "check the pre-deploy logs") || strings.Contains(got, "did not finish") {
+			t.Errorf("%s: message = %q", reason, got)
+		}
+	}
+}
+
+// PullFailure fails a pending Job fast once its pod has waited on a failing
+// pull past the grace window, and never a pod that is pulling slowly, one
+// still inside the window, or another Job's pod.
+func TestPullFailureAfterGrace(t *testing.T) {
+	job := failedJob("")
+	job.Status.Conditions = nil
+	now := time.Date(2026, 9, 26, 7, 8, 0, 0, time.UTC)
+	pod := func(state corev1.ContainerState, age time.Duration, uid types.UID) *corev1.Pod {
+		p := jobPod(uid, job.Namespace, state)
+		p.CreationTimestamp = metav1.NewTime(now.Add(-age))
+		return p
+	}
+	for name, tc := range map[string]struct {
+		pod  *corev1.Pod
+		fail bool
+	}{
+		"backoff past grace":        {pod(pullWaiting("ImagePullBackOff"), 2*time.Minute, jobUID), true},
+		"err pull past grace":       {pod(pullWaiting("ErrImagePull"), 91*time.Second, jobUID), true},
+		"backoff inside grace":      {pod(pullWaiting("ImagePullBackOff"), 30*time.Second, jobUID), false},
+		"slow pull, still creating": {pod(corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}}, 5*time.Minute, jobUID), false},
+		"running":                   {pod(corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}, 5*time.Minute, jobUID), false},
+		"another Job's pod":         {pod(pullWaiting("ImagePullBackOff"), 5*time.Minute, "9f1e-earlier-run"), false},
+	} {
+		got := PullFailure(context.Background(), fakeClient(job, tc.pod), job, now)
+		if (got != "") != tc.fail {
+			t.Errorf("%s: PullFailure = %q, want fail=%v", name, got, tc.fail)
+		}
+		if tc.fail && !strings.HasPrefix(got, "image pull is failing: ") {
+			t.Errorf("%s: message = %q", name, got)
 		}
 	}
 }

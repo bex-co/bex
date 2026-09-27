@@ -1,17 +1,17 @@
 # w8 · m44 — An unpullable image hides behind a 10–18 minute timeout and a "check the logs" message that has no logs behind it
 
-**Worker:** worker8 **Goal:** when a deploy's image cannot be pulled, the deploy fails promptly with the kubelet's pull error on every path (pre-deploy and rollout, first release or over a prior release), and a failed image deploy does not leave the service configured to re-roll the broken image on its next config change. **Status:** todo
+**Worker:** worker8 **Goal:** when a deploy's image cannot be pulled, the deploy fails promptly with the kubelet's pull error on every path (pre-deploy and rollout, first release or over a prior release), and a failed image deploy does not leave the service configured to re-roll the broken image on its next config change. **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                                                                   | est | depends_on       |
 | ---- | ------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Pre-deploy: detect a Waiting `ImagePullBackOff`/`ErrImagePull` on the Job pod, fail fast, and name it  | 45m | —                |
-| t002 | Rollout over a prior release: keep the stuck-pod diagnosis (image pull) as the deploy's failure reason   | 45m | —                |
+| t001 | Pre-deploy: detect a Waiting `ImagePullBackOff`/`ErrImagePull` on the Job pod, fail fast, and name it — **DONE**  | 45m | —                |
+| t002 | Rollout over a prior release: keep the stuck-pod diagnosis (image pull) as the deploy's failure reason — **DONE**   | 45m | —                |
 | t003 | Decide and implement the configured image after a failed `imageUrl` deploy (row image vs. last live)     | 40m | —                |
-| t004 | Render parity                                                                                           | 20m | t001, t002, t003 |
-| t005 | Simplify                                                                                                | 15m | t004             |
-| t006 | Test coverage                                                                                           | 30m | t005             |
+| t004 | Render parity — **DONE**                                                                                           | 20m | t001, t002, t003 |
+| t005 | Simplify — **DONE**                                                                                                | 15m | t004             |
+| t006 | Test coverage — **DONE**                                                                                           | 30m | t005             |
 | t007 | Closeout                                                                                                | 15m | t006             |
 
 ## Definition of done
@@ -59,3 +59,10 @@ The command never ran and no container ever started, so neither log the messages
 - Render's exact pull-failure timing and wording, and whether Render's service image setting follows a failed `imageUrl` deploy (t003/t004 must establish this before choosing).
 - The first-release path's timing with a pre-deploy command (not exercised).
 - The deploy-hook `?imgURL=` path (same backend path; not exercised live).
+
+## Blocked (2026-09-26)
+
+t001, t002, t004–t006 are done: the pre-deploy gate fails an unpullable image in about 95s with `image pull is failing: …`, and a rollout that fails over a prior release closes when the operator settles, with its diagnosis (image pull, crash loop, health check, quota) via `ConditionRollout`. Open:
+
+1. **t003: user decision + Render evidence.** What the service's configured image is after a failed `imageUrl` deploy. Render's docs don't say, and restoring the row alone is unsafe (see t003). Pick (a) keep, (b) auto-rollback release, or (c) don't write the row for `imageUrl`.
+2. **t007: live closeout** after deploy (`blocked/m42`) with a logged-in `bex` CLI.
