@@ -629,6 +629,14 @@ spec:
                 description: Port the database listens on.
                 format: int32
                 type: integer
+              provisioned:
+                description: |-
+                  Provisioned is set the first time the controller reports the Database
+                  Ready (or suspended, which it can only be after serving) and never
+                  cleared. bex-api reads it to tell a restart of an established database
+                  (Render's `config_restart`) from its first provision (`creating`), since
+                  the controller reuses the Provisioning phase for both (w4/m137).
+                type: boolean
               readReplicaStatuses:
                 description: |-
                   ReadReplicaStatuses has one entry per spec.readReplicas entry with the

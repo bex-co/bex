@@ -31,6 +31,7 @@ export interface UseSetKeyValueMaxmemoryPolicyResult {
  */
 export function useSetKeyValueMaxmemoryPolicy(
   id: string,
+  onSaved?: () => void,
 ): UseSetKeyValueMaxmemoryPolicyResult {
   const { t } = useTranslations();
 
@@ -57,13 +58,15 @@ export function useSetKeyValueMaxmemoryPolicy(
         await setPolicyMut({ variables: { id, maxmemoryPolicy: next } });
         toast.success(t("keyvalue.maxmemorySuccess", { policy: next }));
         void policyQuery.refetch();
+        // Saving restarts the store: let the page watch it happen (w4/m137).
+        onSaved?.();
         return true;
       } catch (err) {
         toast.error(mutationErrorMessage(err, t("keyvalue.maxmemoryError")));
         return false;
       }
     },
-    [setPolicyMut, policyQuery, id, t],
+    [onSaved, setPolicyMut, policyQuery, id, t],
   );
 
   return { policy, loading: policyQuery.loading, saving, save };

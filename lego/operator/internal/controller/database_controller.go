@@ -1061,6 +1061,7 @@ func (r *DatabaseReconciler) reconcileScheduledBackup(ctx context.Context, db *a
 // KeyValue suspend path).
 func (r *DatabaseReconciler) settleSuspended(ctx context.Context, db *appv1alpha1.Database, exportRequeue time.Duration) (ctrl.Result, error) {
 	db.Status.Phase = appv1alpha1.DBPhaseReady
+	db.Status.Provisioned = true
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonSuspended,
 		Message: "postgres suspended (hibernated; PVC and config kept)", ObservedGeneration: db.Generation,
@@ -1288,6 +1289,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 			db.Status.BackupServerName = targetBackupServerName
 		}
 		db.Status.Phase = appv1alpha1.DBPhaseReady
+		db.Status.Provisioned = true
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Provisioned",
 			Message: "postgres ready", ObservedGeneration: db.Generation,

@@ -1,19 +1,19 @@
 # w4 · m137 — A restarting Key Value or Postgres reports "creating", as if it were brand new
 
-**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** todo
+**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** blocked (t001–t006 and t008 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                         | est | depends_on       |
 | ---- | --------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Key Value: `kvStatus` distinguishes a restart from creation, and a stale Ready from a live one | 30m | —                |
-| t002 | Postgres: `dbStatus` distinguishes a restart from creation                                     | 30m | —                |
-| t003 | Dashboard: map the restart status on both datastores, and name the restart in KV config copy   | 30m | t001, t002       |
-| t008 | Resume reports "available" before the store serves, and a config save never fast-polls the header | 30m | t001, t003 |
-| t004 | Render parity across REST / GraphQL / MCP / UI                                                | 20m | t003, t008             |
-| t005 | Simplify                                                                                      | 15m | t004             |
-| t006 | Test coverage                                                                                 | 30m | t004             |
-| t007 | Closeout                                                                                      | 10m | t006             |
+| t001 | Key Value: `kvStatus` distinguishes a restart from creation, and a stale Ready from a live one — **DONE** | 30m | —                |
+| t002 | Postgres: `dbStatus` distinguishes a restart from creation — **DONE**                                     | 30m | —                |
+| t003 | Dashboard: map the restart status on both datastores, and name the restart in KV config copy — **DONE**   | 30m | t001, t002       |
+| t008 | Resume reports "available" before the store serves, and a config save never fast-polls the header — **DONE** | 30m | t001, t003 |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                | 20m | t003, t008             |
+| t005 | Simplify — **DONE**                                                                                      | 15m | t004             |
+| t006 | Test coverage — **DONE**                                                                                 | 30m | t004             |
+| t007 | Closeout — **BLOCKED**                                                                                      | 10m | t006             |
 
 ## Definition of done
 

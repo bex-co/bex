@@ -7,6 +7,7 @@ import {
   isConverging,
   computeStats,
 } from "@/features/databases/lib/status";
+import { statusLabel } from "@/features/databases/lib/labels";
 
 describe("toDatabaseViews", () => {
   it("maps wire Database nodes onto normalized views and drops nulls", () => {
@@ -206,6 +207,16 @@ describe("deriveStatus", () => {
       key: "unknown",
       variant: "outline",
     });
+  });
+});
+
+describe("config_restart (w4/m137)", () => {
+  it("reads Restarting, never Unknown, and keeps the page polling", () => {
+    const db = { status: "config_restart", suspended: "not_suspended" };
+    expect(deriveStatus(db)).toEqual({ key: "restarting", variant: "outline" });
+    expect(statusLabel(db)).toBe("databases.statusRestarting");
+    expect(isConverging(db)).toBe(true);
+    expect(isConverging({ status: "upgrading" })).toBe(true);
   });
 });
 

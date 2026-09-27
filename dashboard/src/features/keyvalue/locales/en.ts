@@ -56,6 +56,11 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Creating",
     description: "Key Value status badge (provisioning)",
   },
+  "keyvalue.statusRestarting": {
+    message: "Restarting",
+    description:
+      "Key Value status badge (Render's config_restart: an established store restarting after a config change, restart, or resume — not a first provision)",
+  },
   "keyvalue.statusUnavailable": {
     message: "Unavailable",
     description: "Key Value status badge (provisioning failed)",
@@ -422,7 +427,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.maxmemoryDescription": {
     message:
-      "Change how keys are evicted once the store reaches its memory limit. The operator applies the new policy on the next reconcile.",
+      "Change how keys are evicted once the store reaches its memory limit. Saving restarts the store, so connections drop for up to a minute.",
     description: "Key Value detail eviction-policy card description",
   },
   "keyvalue.maxmemoryLabel": {
@@ -449,7 +454,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.persistenceDescription": {
     message:
-      "Change how data is written to disk so it survives a restart. The operator applies the new mode on the next reconcile — a rolling update that preserves data.",
+      "Change how data is written to disk so it survives a restart. Saving restarts the store with its data kept, so connections drop for up to a minute.",
     description: "Key Value detail persistence-mode card description",
   },
   "keyvalue.persistenceLabel": {

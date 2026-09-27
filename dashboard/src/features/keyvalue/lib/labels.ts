@@ -10,6 +10,7 @@ import type { KeyValueStatusKey } from "@/features/keyvalue/types";
 export const STATUS_LABEL: Record<KeyValueStatusKey, keyof typeof en> = {
   available: "keyvalue.statusAvailable",
   creating: "keyvalue.statusCreating",
+  restarting: "keyvalue.statusRestarting",
   unavailable: "keyvalue.statusUnavailable",
   suspended: "keyvalue.statusSuspended",
   unknown: "keyvalue.statusUnknown",

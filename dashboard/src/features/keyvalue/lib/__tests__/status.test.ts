@@ -6,6 +6,7 @@ import {
   isConverging,
   computeStats,
 } from "@/features/keyvalue/lib/status";
+import { statusLabel } from "@/features/keyvalue/lib/labels";
 
 describe("toKeyValueViews", () => {
   it("maps wire KeyValue nodes onto normalized views and drops nulls", () => {
@@ -122,6 +123,24 @@ describe("deriveStatus", () => {
       key: "unknown",
       variant: "outline",
     });
+  });
+});
+
+describe("config_restart (w4/m137)", () => {
+  it("reads Restarting, never Unknown, and keeps the page polling", () => {
+    const store = { status: "config_restart", suspended: false };
+    expect(deriveStatus(store)).toEqual({
+      key: "restarting",
+      variant: "outline",
+    });
+    expect(statusLabel(store)).toBe("keyvalue.statusRestarting");
+    expect(isConverging(store)).toBe(true);
+  });
+
+  it("still reads a first provision as Creating", () => {
+    expect(deriveStatus({ status: "creating", suspended: false }).key).toBe(
+      "creating",
+    );
   });
 });
 

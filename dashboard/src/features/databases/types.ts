@@ -95,6 +95,7 @@ export interface DatabaseInstanceTypeView {
 export type DatabaseStatusKey =
   | "available"
   | "creating"
+  | "restarting"
   | "upgrading"
   | "unavailable"
   | "suspended"
