@@ -20,7 +20,19 @@ export interface UseKeyValueResult {
  * databases' `useDatabase`. Connection info is NOT fetched here — it's revealed
  * on demand from the detail page (docs/ADR021-keyvalue-management.md).
  */
-export function useKeyValue(id: string): UseKeyValueResult {
+export function useKeyValue(
+  id: string,
+  {
+    poll = true,
+  }: {
+    /**
+     * Pass `false` on a secondary consumer (the topbar breadcrumb) mounted
+     * beside the page that owns polling: it reads the same cached query, and a
+     * second timer would drift into its own round trips.
+     */
+    poll?: boolean;
+  } = {},
+): UseKeyValueResult {
   const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(
     KeyValueDocument,
     { variables: { id }, fetchPolicy: "cache-first", errorPolicy: "all" },
@@ -38,6 +50,7 @@ export function useKeyValue(id: string): UseKeyValueResult {
     startPolling,
     stopPolling,
     keyValue ? isConverging(keyValue) : true,
+    poll,
   );
 
   return {
