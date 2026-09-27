@@ -318,6 +318,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Restart confirmation dialog body (service header and services list). A restart keeps the running release, as on Render; it never picks up newer commits",
   },
+  "services.confirmRestartBodyStatic": {
+    message: "{name} 将按其当前提供的提交重新发布。之后推送的提交不会被部署。",
+    description:
+      "Restart confirmation body for a static site, which has no instances to replace (w4/m141)",
+  },
   "services.confirmCancel": {
     message: "取消",
     description: "Confirmation dialog cancel button",
@@ -3972,6 +3977,26 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务将从此次部署使用的镜像重新部署，该镜像构建自 {commit}。",
     description:
       "Rollback confirm dialog body naming the commit being restored",
+  },
+  "services.eventsRollbackConfirmBodyStatic": {
+    message: "站点将按此部署重新发布。",
+    description:
+      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
+  },
+  "services.eventsRollbackConfirmBodyStaticCommit": {
+    message: "站点将按此部署（{commit}）重新发布。",
+    description:
+      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
+  },
+  "services.eventsRollbackAria": {
+    message: "回滚到 {target}",
+    description:
+      "Accessible name of a deploy row's Rollback control, naming the deploy it restores (w4/m141)",
+  },
+  "services.eventsCancelDeployAria": {
+    message: "取消部署 {target}",
+    description:
+      "Accessible name of a deploy row's Cancel control, naming the deploy (w4/m141)",
   },
   "services.eventsConfirmProceed": {
     message: "继续",

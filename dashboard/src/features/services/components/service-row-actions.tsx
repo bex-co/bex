@@ -58,6 +58,12 @@ function confirmBodyKey(
   service: ServiceView,
 ): keyof typeof en {
   const body = CONFIRM[action]!.body;
+  if (
+    body === "services.confirmRestartBody" &&
+    service.type === "static_site"
+  ) {
+    return "services.confirmRestartBodyStatic";
+  }
   return body === "services.confirmSuspendBody" &&
     !publiclyRoutable(service.type)
     ? "services.confirmSuspendBodyNoUrl"
