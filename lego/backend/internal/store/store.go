@@ -924,6 +924,15 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 	for attempt := 0; ; attempt++ {
 		deployID := ids.New(ids.Deploy)
 		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+			// The unique index refuses another service's creation name; a name
+			// another service is DISPLAYED as is refused here, under the lock
+			// renames take (w8/m47).
+			if err := lockServiceNames(ctx, tx, a.TenantID); err != nil {
+				return err
+			}
+			if err := refuseTakenServiceName(ctx, tx, a.TenantID, a.ID, a.Name); err != nil {
+				return err
+			}
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id)
 				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''))
@@ -1784,23 +1793,59 @@ func (s *PGStore) SetAppIdleTTL(ctx context.Context, id string, seconds int32) e
 // retained value follows the same "empty means fall back to apps.name" rule,
 // resolved here rather than left for every reader.
 func (s *PGStore) SetAppDisplayName(ctx context.Context, id string, displayName string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET display_name = $2, updated_at = now() WHERE id = $1`,
-		id, displayName)
-	if err != nil {
-		return classify("app", err)
+	return classify("app", pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var tenantID, name string
+		if err := tx.QueryRow(ctx, `SELECT tenant_id, name FROM apps WHERE id = $1`, id).Scan(&tenantID, &name); err != nil {
+			return err
+		}
+		// A rename is a name like any other (w8/m47): unique in the workspace
+		// against every other service's creation AND displayed name, checked
+		// and written under the same lock CreateApp takes, so two concurrent
+		// renames (or a rename racing a create) cannot both land.
+		if displayName != "" && displayName != name {
+			if err := lockServiceNames(ctx, tx, tenantID); err != nil {
+				return err
+			}
+			if err := refuseTakenServiceName(ctx, tx, tenantID, id, displayName); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec(ctx,
+			`UPDATE apps SET display_name = $2, updated_at = now() WHERE id = $1`,
+			id, displayName); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`INSERT INTO resource_display_names (tenant_id, resource_kind, resource_id, display_name)
+			 SELECT a.tenant_id, $2, a.id, COALESCE(NULLIF(a.display_name, ''), a.name)
+			 FROM apps a WHERE a.id = $1
+			 ON CONFLICT (tenant_id, resource_kind, resource_id)
+			 DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()`,
+			id, ResourceKindService)
+		return err
+	}))
+}
+
+// lockServiceNames serializes one workspace's service-name writes — creates
+// and renames — for the rest of the transaction (w8/m47). The unique
+// (tenant_id, name) index covers creation names only; displayed names need
+// the check-then-write below to be atomic.
+func lockServiceNames(ctx context.Context, tx pgx.Tx, tenantID string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "service-names:"+tenantID)
+	return err
+}
+
+// refuseTakenServiceName is ErrConflict when another service in the workspace
+// (not selfID) was created as, or is displayed as, name.
+func refuseTakenServiceName(ctx context.Context, tx pgx.Tx, tenantID, selfID, name string) error {
+	var taken bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM apps WHERE tenant_id = $1 AND id <> $2 AND (name = $3 OR display_name = $3))`,
+		tenantID, selfID, name).Scan(&taken); err != nil {
+		return err
 	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("app: %w", ErrNotFound)
-	}
-	if _, err := s.Pool.Exec(ctx,
-		`INSERT INTO resource_display_names (tenant_id, resource_kind, resource_id, display_name)
-		 SELECT a.tenant_id, $2, a.id, COALESCE(NULLIF(a.display_name, ''), a.name)
-		 FROM apps a WHERE a.id = $1
-		 ON CONFLICT (tenant_id, resource_kind, resource_id)
-		 DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()`,
-		id, ResourceKindService); err != nil {
-		return classify("app", err)
+	if taken {
+		return fmt.Errorf("service name %q: %w", name, ErrConflict)
 	}
 	return nil
 }
