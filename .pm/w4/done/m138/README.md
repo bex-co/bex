@@ -1,6 +1,6 @@
 # w4 · m138 — Blueprint detail: a sync never appears in Sync History, and the plan hides create vs update vs no-change
 
-**Worker:** worker4 **Goal:** the blueprint detail page tells the truth about syncs: a sync that just succeeded appears in Sync History without a reload, and the pre-sync plan shows what will happen to each resource (create, update with the changed fields, no change, detach), the way the backend already classifies it **Status:** blocked (t001–t006 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
+**Worker:** worker4 **Goal:** the blueprint detail page tells the truth about syncs: a sync that just succeeded appears in Sync History without a reload, and the pre-sync plan shows what will happen to each resource (create, update with the changed fields, no change, detach), the way the backend already classifies it **Status:** done (live Definition of done passed 2026-09-27, `/qa-find-bugs` pass 233, on deploy `4a0422577`)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                | 20m | t001, t002, t003 |
 | t005 | Simplify — **DONE**                                                                                      | 15m | t004       |
 | t006 | Test coverage — **DONE**                                                                                 | 30m | t004       |
-| t007 | Closeout — **BLOCKED**                                                                                      | 10m | t006       |
+| t007 | Closeout — **DONE**                                                                                      | 10m | t006       |
 
 ## Definition of done
 
@@ -39,3 +39,15 @@ Every bullet was probed at filing (pass 161) and can be repeated with a throwawa
 
 - Auto-sync-on-push leaving history stale while the page is open was reasoned from the same hook, not observed (no push was made to the fixture branch during the watch).
 - The update case (`operation: "update"` with non-empty `changedFields`) was not produced live this pass, because the fixture file cannot be edited. t002 must produce it (for example via `validateBlueprint` with an edited manifest).
+
+## Live Definition-of-done probe (2026-09-27, `/qa-find-bugs` pass 233) — pass
+
+Production after the `53797ca69` pin (images `4a04225777ff`), workspace `bex`, `muse.env` QA credentials. First I confirmed no service named `static-site` existed; the only blueprint was the user's `discourse_docker`. Then `/blueprints/new` → Public Git URL `https://github.com/bex-co/bex`, branch `main`, path `examples/static-site/render.yaml`, name `qa-20260927-bp`. Afterwards the blueprint was disconnected (`disconnectBlueprint: true`, list back to `discourse_docker` only) and `static-site` `srv-dasiegq1pbgc73a24jr0` was deleted (`DELETE` 204, then `GET` 404).
+
+- **A dashboard sync shows up — PASS.** On `/blueprints/blp-dan9g8rs0ils73bgp500`, Sync History held 15 rows (API 15). **Sync** → dialog **Sync**, staying on the page with no reload: within 3 s the table showed 16 rows, the top row `4613fc2f Success now`, matching `blueprintSyncs(id:)`'s newest `bsr-dasier3ncejs739qit40` (`state: success`).
+- **The plan says "no change" when nothing changes — PASS.** On the unchanged blueprint the Sync dialog read "Blueprint file parsed successfully — no changes. Every resource already matches this file." and listed `static-site` · Service as **No change**.
+- **Create and update are distinguishable — create PASS live; update test-covered.** Before the resource existed, the New Blueprint review step read "Blueprint file parsed successfully — 1 resource will change." with **Create** · `static-site` · Service. The update-with-`changedFields` case needs a manifest variant that cannot be committed to `bex-co/bex` for a probe; it is covered by t002's test, as the bullet says.
+- **The dialog describes the right source — PASS.** "This applies render.yaml exactly as of the commit shown below — not a newer push to the branch. Resources that already match it are left as they are." followed by "Reviewed commit 4613fc2f". The "stored render.yaml" wording is gone.
+
+Side observation, working as designed (`w4/done/120`): the create reclaimed the soft-detached row `blp-dan9g8rs0ils73bgp500` and its 14 earlier syncs back to 2026-09-19. `createdAt` read the new connection's time (14:25:06Z), and the admitting run's note, "re-established a previously disconnected connection to https://github.com/bex-co/bex@main; earlier sync history below belongs to that connection", is shown in the table at the boundary.
+
