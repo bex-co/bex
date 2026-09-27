@@ -356,7 +356,7 @@ func TestCNPGLine(t *testing.T) {
 		},
 		"warning with hint": {
 			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"1","error_severity":"WARNING","message":"checkpoints are occurring too frequently","hint":"Consider increasing max_wal_size."}}`,
-			want: "t [1] WARNING:  checkpoints are occurring too frequently HINT:  Consider increasing max_wal_size.", level: "warn", keep: true,
+			want: "t [1] WARNING:  checkpoints are occurring too frequently HINT:  Consider increasing max_wal_size.", level: "warning", keep: true,
 		},
 		"plain line verbatim": {in: "plain line", want: "plain line", keep: true},
 		"other JSON verbatim": {in: `{"msg":"no logger"}`, want: `{"msg":"no logger"}`, keep: true},
