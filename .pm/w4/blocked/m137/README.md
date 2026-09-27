@@ -1,6 +1,6 @@
 # w4 · m137 — A restarting Key Value or Postgres reports "creating", as if it were brand new
 
-**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** blocked (t001–t006 and t008 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
+**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** blocked (t001–t006 and t008 done; live probe 2026-09-27 pass 232 on deploy `4a0422577`: restart states, creation and Postgres pass, but a Key Value reads `available` before it serves → new t009; t007 closeout waits on t009)
 
 ## Tasks (in order)
 
@@ -13,7 +13,8 @@
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                | 20m | t003, t008             |
 | t005 | Simplify — **DONE**                                                                                      | 15m | t004             |
 | t006 | Test coverage — **DONE**                                                                                 | 30m | t004             |
-| t007 | Closeout — **BLOCKED**                                                                                      | 10m | t006             |
+| t009 | A Key Value reads "available" 10–23 s before clients can connect after a config change or resume | 45m | t006 |
+| t007 | Closeout — **BLOCKED** | 10m | t006, t009 |
 
 ## Definition of done
 
@@ -48,3 +49,21 @@ Each bullet is a probe that was run at filing and can be repeated on production 
 - **What Render reports for a user-initiated Postgres restart** (as opposed to a config change) was not observed. `config_restart` is the closest value in the pinned enum (`lego/backend/internal/api/openapi/render-public-api-1.json` `databaseStatus`). t004 must confirm it or pick the documented alternative (`unavailable`).
 - `dbStatus` also returns `upgrading`, which is **not** in Render's enum. It was not exercised this pass. t004 records it as parity drift rather than folding it in.
 - Key Value instance-type and persistence-mode changes go through the same mapper but were not exercised (instance type is a paid change).
+
+## Live probe (2026-09-27, `/qa-find-bugs` pass 232, deploy `4a0422577`)
+
+Production, workspace `bex`, `muse.env` QA credentials. Fixtures were a free public Key Value `qa-20260927-kvr` `red-dasho9i1pbgc73a24jig` and a free public Postgres `qa-20260927-pgr` `dpg-dasho9rncejs739qit0g`, both deleted afterwards (`DELETE` 204, then `GET` 404).
+
+Reachability was polled from the host every 3 s: `redis-cli --tls --sni <host> -h <A record> PING`, and `psql "<url>&hostaddr=<A record>" -c 'select 1'` with `PGSSLROOTCERT` and `verify-full`. The A record is forced because the host's AAAA path is closed by the `0.0.0.0/0`-only allowlist (`w9/m164`). Status was polled from GraphQL every 2–3 s. Connection strings stayed in 0600 files that were deleted after the run.
+
+- **Key Value config change — FAIL (`available` early).** Restart states are now correct: `config_restart`, never `creating`. Timelines:
+  - Maxmemory → `noeviction`: `config_restart` 13:40:05, **`available` 13:40:24**, `PING` failing from 13:40:05, **back at 13:40:40**.
+  - Repro, Maxmemory → `allkeys_lru`: `config_restart` 13:42:17, **`available` 13:42:34**, down 13:42:28, **back at 13:43:00**.
+  - Cause and fix are in **t009**.
+- **Postgres manual restart — PASS.** `POST /v1/postgres/<id>/restart` (no body) at 13:47:57. `config_restart` 13:48:00 → `available` 13:48:28; `psql` refused 13:48:02 → up 13:48:29.
+- **Resume and config saves tell the truth — partial.**
+  - Resume: `config_restart` 13:49:39 → **`available` 13:50:06** while `PING` was down until **13:50:19** (same gap, t009).
+  - Config save on an open page: **PASS**. Changing Persistence Mode (Journal + Snapshot → Snapshot only) on `/keyvalue/<id>` flipped the header to **Restarting** at once, without a reload, and back to **Available** after ~20 s.
+- **Creation still says creating — PASS.** Both stores read `creating` from creation until first Ready: Key Value 13:37:46 → 13:38:41, Postgres 13:37:46 → 13:39:24.
+- **Never "Unknown" — PASS on the detail header.** The Key Value detail page never showed "Unknown" through the restart. List and project rows were not sampled mid-restart.
+
