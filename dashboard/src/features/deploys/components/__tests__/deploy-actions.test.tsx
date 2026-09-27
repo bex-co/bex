@@ -33,18 +33,37 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: vi.fn(),
 }));
 
+const toastError = vi.fn();
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    warning: vi.fn(),
+    error: (...args: unknown[]) => toastError(...args),
+  },
+}));
+
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
 }));
 
 const allowedSnapshot = toResourceSnapshot("tea-test", "web", [
-  { action: "cancel_deploy", outcome: "allowed", reason: null, precondition: null },
+  {
+    action: "cancel_deploy",
+    outcome: "allowed",
+    reason: null,
+    precondition: null,
+  },
   { action: "rollback", outcome: "allowed", reason: null, precondition: null },
   { action: "deploy", outcome: "allowed", reason: null, precondition: null },
 ]);
 
 const deniedCreateSnapshot = toResourceSnapshot("tea-test", "web", [
-  { action: "cancel_deploy", outcome: "allowed", reason: null, precondition: null },
+  {
+    action: "cancel_deploy",
+    outcome: "allowed",
+    reason: null,
+    precondition: null,
+  },
   {
     action: "rollback",
     outcome: "denied",
@@ -100,6 +119,7 @@ function renderActions(
 }
 
 beforeEach(() => {
+  toastError.mockReset();
   cancelDeploy.mockReset();
   rollbackService.mockReset();
   apolloQuery.mockReset();
@@ -111,8 +131,18 @@ beforeEach(() => {
   apolloQuery.mockResolvedValue({
     data: {
       deployActions: [
-        { action: "cancel_deploy", outcome: "allowed", reason: null, precondition: null },
-        { action: "rollback", outcome: "allowed", reason: null, precondition: null },
+        {
+          action: "cancel_deploy",
+          outcome: "allowed",
+          reason: null,
+          precondition: null,
+        },
+        {
+          action: "rollback",
+          outcome: "allowed",
+          reason: null,
+          precondition: null,
+        },
       ],
     },
   });
@@ -126,7 +156,9 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     renderActions("update_in_progress");
 
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Cancel deploy / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
@@ -144,7 +176,9 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     const router = renderActions("deactivated");
 
-    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
@@ -165,7 +199,9 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     const router = renderActions("deactivated");
 
-    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
         name: "Proceed",
@@ -180,7 +216,7 @@ describe("DeployActions", () => {
     renderActions("deactivated");
 
     expect(
-      await screen.findByRole("button", { name: "Rollback" }),
+      await screen.findByRole("button", { name: /^Roll back to / }),
     ).toBeInTheDocument();
   });
 
@@ -188,7 +224,7 @@ describe("DeployActions", () => {
     renderActions("live");
 
     expect(
-      screen.queryByRole("button", { name: "Rollback" }),
+      screen.queryByRole("button", { name: /^Roll back to / }),
     ).not.toBeInTheDocument();
   });
 
@@ -208,10 +244,10 @@ describe("DeployActions", () => {
     renderActions("build_failed");
 
     expect(
-      screen.queryByRole("button", { name: "Rollback" }),
+      screen.queryByRole("button", { name: /^Roll back to / }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Cancel" }),
+      screen.queryByRole("button", { name: /^Cancel deploy / }),
     ).not.toBeInTheDocument();
   });
 
@@ -224,7 +260,7 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     renderActions("deactivated");
 
-    const btn = await screen.findByRole("button", { name: "Rollback" });
+    const btn = await screen.findByRole("button", { name: /^Roll back to / });
     expect(btn).toBeDisabled();
     await user.click(btn);
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
@@ -257,7 +293,7 @@ describe("DeployActions", () => {
       refresh: vi.fn().mockResolvedValue(undefined),
     };
     renderActions("update_in_progress");
-    const btn = await screen.findByRole("button", { name: "Cancel" });
+    const btn = await screen.findByRole("button", { name: /^Cancel deploy / });
     expect(btn).not.toBeDisabled();
     expect(btn).not.toHaveAttribute("aria-disabled", "true");
   });
@@ -272,9 +308,13 @@ describe("DeployActions", () => {
       commitMessage: "Add Render deployment configuration\n\nbody line",
     });
 
-    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("039c347 Add Render deployment configuration");
+    expect(dialog).toHaveTextContent(
+      "039c347 Add Render deployment configuration",
+    );
     // The subject only — never the commit body.
     expect(dialog).not.toHaveTextContent("body line");
     // No raw interpolation placeholder leaked through.
@@ -285,7 +325,9 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     renderActions("deactivated", { commitId: null, commitMessage: null });
 
-    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent(
       "The service will redeploy from the image used in this deploy.",
@@ -301,7 +343,9 @@ describe("DeployActions", () => {
       commitMessage: "Add Render deployment configuration",
     });
 
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Cancel deploy / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent(
       "The in-progress deploy will be stopped. The last successful deploy remains live.",
@@ -321,7 +365,9 @@ describe("DeployActions — the cancel dialog tells the truth about what stays l
     const user = userEvent.setup();
     renderActions("update_in_progress", { trigger: "create" });
 
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Cancel deploy / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
 
     expect(
@@ -337,7 +383,9 @@ describe("DeployActions — the cancel dialog tells the truth about what stays l
       const user = userEvent.setup();
       renderActions("update_in_progress", { trigger });
 
-      await user.click(await screen.findByRole("button", { name: "Cancel" }));
+      await user.click(
+        await screen.findByRole("button", { name: /^Cancel deploy / }),
+      );
       const dialog = await screen.findByRole("alertdialog");
 
       expect(
@@ -352,11 +400,100 @@ describe("DeployActions — the cancel dialog tells the truth about what stays l
     const user = userEvent.setup();
     renderActions("update_in_progress");
 
-    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Cancel deploy / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
 
     expect(
       within(dialog).getByText(/last successful deploy remains live/i),
+    ).toBeInTheDocument();
+  });
+});
+
+// w4/m141: the button enabled an older rollbackable row over the service-wide
+// no_eligible_rollback_target (w6/m143/t003), and the dispatch recheck then
+// judged the raw summary and returned without a word. One rule now.
+describe("DeployActions dispatch recheck (w4/m141)", () => {
+  const noTargetRows = {
+    data: {
+      deployActions: [
+        {
+          action: "cancel_deploy",
+          outcome: "allowed",
+          reason: null,
+          precondition: "no_active_deploy",
+        },
+        {
+          action: "rollback",
+          outcome: "allowed",
+          reason: null,
+          precondition: "no_eligible_rollback_target",
+        },
+      ],
+    },
+  };
+
+  it("dispatches a rollback of a selected eligible row the service-wide summary missed", async () => {
+    deployState.snapshot = toResourceSnapshot("tea-test", "web", [
+      {
+        action: "rollback",
+        outcome: "allowed",
+        reason: null,
+        precondition: "no_eligible_rollback_target",
+      },
+    ]);
+    apolloQuery.mockResolvedValue(noTargetRows);
+    rollbackService.mockResolvedValue({
+      data: { rollbackService: { id: "dep-9" } },
+    });
+    const user = userEvent.setup();
+    renderActions("deactivated");
+
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Proceed" }));
+
+    expect(rollbackService).toHaveBeenCalledTimes(1);
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("says why when the recheck refuses, instead of closing silently", async () => {
+    apolloQuery.mockResolvedValue({
+      data: {
+        deployActions: [
+          {
+            action: "rollback",
+            outcome: "allowed",
+            reason: null,
+            precondition: "suspended",
+          },
+        ],
+      },
+    });
+    const user = userEvent.setup();
+    renderActions("deactivated");
+
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Proceed" }));
+
+    expect(rollbackService).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(String(toastError.mock.calls[0][0])).not.toBe("");
+  });
+
+  it("names each row's controls after the deploy they act on", async () => {
+    renderActions("deactivated", {
+      commitId: "80b423bc1234",
+      commitMessage: "first",
+    });
+    expect(
+      await screen.findByRole("button", {
+        name: "Roll back to 80b423b (dep-1)",
+      }),
     ).toBeInTheDocument();
   });
 });

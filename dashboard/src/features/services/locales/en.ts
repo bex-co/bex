@@ -324,6 +324,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Restart confirmation dialog body (service header and services list). A restart keeps the running release, as on Render; it never picks up newer commits",
   },
+  "services.confirmRestartBodyStatic": {
+    message:
+      "{name} is published again from the commit it is serving now. Commits pushed since are not deployed.",
+    description:
+      "Restart confirmation body for a static site, which has no instances to replace (w4/m141)",
+  },
   "services.confirmCancel": {
     message: "Cancel",
     description: "Confirmation dialog cancel button",
@@ -4058,6 +4064,26 @@ const enServices: Record<string, TranslationEntry> = {
       "The service will redeploy from the image used in this deploy, built from {commit}.",
     description:
       "Rollback confirm dialog body naming the commit being restored",
+  },
+  "services.eventsRollbackConfirmBodyStatic": {
+    message: "The site will be published again from this deploy.",
+    description:
+      "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
+  },
+  "services.eventsRollbackConfirmBodyStaticCommit": {
+    message: "The site will be published again from this deploy, {commit}.",
+    description:
+      "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
+  },
+  "services.eventsRollbackAria": {
+    message: "Roll back to {target}",
+    description:
+      "Accessible name of a deploy row's Rollback control, naming the deploy it restores (w4/m141)",
+  },
+  "services.eventsCancelDeployAria": {
+    message: "Cancel deploy {target}",
+    description:
+      "Accessible name of a deploy row's Cancel control, naming the deploy (w4/m141)",
   },
   "services.eventsConfirmProceed": {
     message: "Proceed",

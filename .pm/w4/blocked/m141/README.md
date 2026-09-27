@@ -1,18 +1,18 @@
 # w4 · m141 — Rolling back a static site does nothing: an enabled Rollback, a confirm dialog, then silence
 
-**Worker:** worker4 **Goal:** a user who clicks Rollback either gets a rollback or is told, before and at dispatch, exactly why they cannot. For static sites, rollback works the way Render's does (re-publish an earlier revision), or the control is honestly unavailable with that reason **Status:** todo
+**Worker:** worker4 **Goal:** a user who clicks Rollback either gets a rollback or is told, before and at dispatch, exactly why they cannot. For static sites, rollback works the way Render's does (re-publish an earlier revision), or the control is honestly unavailable with that reason **Status:** blocked (t001–t006 done 2026-09-27; t007 awaits the deploy and the live probe with a throwaway static site)
 
 ## Tasks (in order)
 
 | id   | title                                                                                               | est | depends_on       |
 | ---- | --------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Decide and implement static-site rollback: re-publish the target's revision, or refuse it by name | 60m | —                |
-| t002 | Dispatch recheck applies the same selected-row eligibility as the button and surfaces every refusal | 40m | —                |
-| t003 | Name each row's Rollback control after its deploy                                                  | 15m | —                |
-| t004 | Render parity across REST / GraphQL / MCP / UI                                                     | 20m | t001, t002, t003 |
-| t005 | Simplify                                                                                            | 15m | t004             |
-| t006 | Test coverage                                                                                       | 30m | t004             |
-| t007 | Closeout                                                                                            | 10m | t006             |
+| t001 | Decide and implement static-site rollback: re-publish the target's revision, or refuse it by name — **DONE** | 60m | —                |
+| t002 | Dispatch recheck applies the same selected-row eligibility as the button and surfaces every refusal — **DONE** | 40m | —                |
+| t003 | Name each row's Rollback control after its deploy — **DONE**                                                  | 15m | —                |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                     | 20m | t001, t002, t003 |
+| t005 | Simplify — **DONE**                                                                                            | 15m | t004             |
+| t006 | Test coverage — **DONE**                                                                                       | 30m | t004             |
+| t007 | Closeout — **BLOCKED**                                                                                            | 10m | t006             |
 
 ## Definition of done
 

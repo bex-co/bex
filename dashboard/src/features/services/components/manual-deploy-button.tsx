@@ -151,13 +151,17 @@ export function ManualDeployButton({
               {t("services.deployMenuSpecificCommit")}
             </PermissionMenuItem>
           )}
-          <PermissionMenuItem
-            disabled={busy}
-            permissionReason={permissionReason}
-            onSelect={() => void handleDeploy({ clearCache: true })}
-          >
-            {t("services.deployMenuClearCache")}
-          </PermissionMenuItem>
+          {/* An image-backed service has no build, so no build cache to
+              clear (w4/m141). */}
+          {repoBacked && (
+            <PermissionMenuItem
+              disabled={busy}
+              permissionReason={permissionReason}
+              onSelect={() => void handleDeploy({ clearCache: true })}
+            >
+              {t("services.deployMenuClearCache")}
+            </PermissionMenuItem>
+          )}
           <DropdownMenuSeparator />
           <PermissionMenuItem
             disabled={busy}
@@ -173,7 +177,12 @@ export function ManualDeployButton({
         open={dialog === "restart"}
         onOpenChange={(open) => !open && setDialog(null)}
         title={t("services.confirmRestartTitle", { name: service.name })}
-        description={t("services.confirmRestartBody", { name: service.name })}
+        description={t(
+          service.type === "static_site"
+            ? "services.confirmRestartBodyStatic"
+            : "services.confirmRestartBody",
+          { name: service.name },
+        )}
         cancelLabel={t("services.confirmCancel")}
         confirmLabel={t("services.actionRestart")}
         destructive={false}

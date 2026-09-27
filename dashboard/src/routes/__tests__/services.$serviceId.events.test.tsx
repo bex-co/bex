@@ -185,7 +185,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     renderEvents("app");
 
     expect(await screen.findByText("In Progress")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Cancel deploy / })).toBeInTheDocument();
     // The row's <time> hover carries the exact stamp via the shared formatter
     // ("July 14, 2026 at …") — computed through the helper so this holds in
     // any runner timezone.
@@ -219,7 +219,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
     expect(await screen.findByText("Deploy started")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Cancel" }),
+      screen.queryByRole("button", { name: /^Cancel deploy / }),
     ).not.toBeInTheDocument();
   });
 
@@ -265,7 +265,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const user = userEvent.setup();
     const { router } = renderEvents("app");
 
-    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    await user.click(await screen.findByRole("button", { name: /^Roll back to / }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
@@ -290,7 +290,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const user = userEvent.setup();
     const { router } = renderEvents("app");
 
-    await user.click(await screen.findByRole("button", { name: "Rollback" }));
+    await user.click(await screen.findByRole("button", { name: /^Roll back to / }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
@@ -26,6 +27,7 @@ import {
   gateAction,
   gateReason,
   resourceDecision,
+  type ResourceActionDecision,
   type ResourceActionId,
 } from "@/features/capabilities/lib/resource-actions";
 
@@ -75,8 +77,40 @@ export function DeployActions({
   const base = useServiceBase();
   const { currentWorkspaceId } = useWorkspace();
   const deployActions = useDeployActions(serviceId);
+  const statusCancel = isCancelableDeployStatus(status);
+  const statusRollback = isRollbackableDeployStatus(status);
+
+  // The selected row's own status outranks the service-wide summary: a
+  // rollbackable row stays a target when the latest-20 scan found none
+  // (w6/m143/t003), and a cancelable row is open whatever a stale
+  // no_active_deploy says. One rule for enabling and for the dispatch
+  // recheck, which used the raw summary and silently refused (w4/m141).
+  const rowDecision = useCallback(
+    (
+      action: ResourceActionId,
+      decision: ResourceActionDecision | null,
+    ): ResourceActionDecision | null => {
+      if (action === "rollback" && statusRollback) {
+        return decisionForSelectedRollback(decision);
+      }
+      if (
+        action === "cancel_deploy" &&
+        statusCancel &&
+        decision?.outcome === "allowed" &&
+        decision.precondition === "no_active_deploy"
+      ) {
+        return { ...decision, precondition: "" };
+      }
+      return decision;
+    },
+    [statusRollback, statusCancel],
+  );
   const { pending, openConfirm, clearConfirm, recheckBeforeDispatch } =
-    useBoundActionConfirm({ resourceId: serviceId, deployId });
+    useBoundActionConfirm({
+      resourceId: serviceId,
+      deployId,
+      adjustDecision: rowDecision,
+    });
   const [cancelDeploy, { loading: canceling }] = useMutation(
     CancelDeployDocument,
     { refetchQueries: DEPLOY_REFETCH_QUERIES },
@@ -87,34 +121,19 @@ export function DeployActions({
   );
   const busy = canceling || rollingBack;
 
-  const statusCancel = isCancelableDeployStatus(status);
-  const statusRollback = isRollbackableDeployStatus(status);
-
   function reasonFor(action: "cancel_deploy" | "rollback"): string | undefined {
     if (deployActions.status !== "ready") {
       return gateReason(gateAction(null, deployActions.status), t);
     }
-    let decision = resourceDecision(
-      deployActions.snapshot,
-      currentWorkspaceId,
-      serviceId,
+    const decision = rowDecision(
       action,
+      resourceDecision(
+        deployActions.snapshot,
+        currentWorkspaceId,
+        serviceId,
+        action,
+      ),
     );
-    // Exact-target eligibility: do not let the latest-20 summary disable a
-    // selected row that itself is rollbackable by status.
-    if (action === "rollback") {
-      decision = decisionForSelectedRollback(decision);
-    }
-    // Cancel: selected-row status is authoritative for "is this deploy open";
-    // ignore a stale service-wide no_active_deploy when this row is cancelable.
-    if (
-      action === "cancel_deploy" &&
-      decision?.outcome === "allowed" &&
-      decision.precondition === "no_active_deploy" &&
-      statusCancel
-    ) {
-      decision = { ...decision, precondition: "" };
-    }
     return gateReason(gateAction(decision, "ready"), t);
   }
 
@@ -180,11 +199,21 @@ export function DeployActions({
   if (!statusCancel && !statusRollback) return null;
 
   // Name the code the rollback restores; a commit-less deploy keeps the
-  // generic body rather than naming nothing (w4/m110 t003).
+  // generic body rather than naming nothing (w4/m110 t003). A static site is
+  // re-published, with no image or instances to speak of (w4/m141).
   const commit = deployCommitLabel(commitId, commitMessage);
-  const rollbackBody = commit
-    ? t("services.eventsRollbackConfirmBodyCommit", { commit })
-    : t("services.eventsRollbackConfirmBody");
+  const staticSite = base === "/static";
+  const rollbackBody = staticSite
+    ? commit
+      ? t("services.eventsRollbackConfirmBodyStaticCommit", { commit })
+      : t("services.eventsRollbackConfirmBodyStatic")
+    : commit
+      ? t("services.eventsRollbackConfirmBodyCommit", { commit })
+      : t("services.eventsRollbackConfirmBody");
+  // Each row's controls name their deploy, so two rows are not two identical
+  // "Rollback" buttons to a screen reader (w4/m141, as w4/084 did for revoke).
+  const shortSha = (commitId ?? "").trim().slice(0, 7);
+  const target = shortSha ? `${shortSha} (${deployId})` : deployId;
 
   return (
     <>
@@ -196,6 +225,7 @@ export function DeployActions({
               variant="outline"
               disabled={busy || !!cancelReason}
               onClick={() => open("cancel")}
+              aria-label={t("services.eventsCancelDeployAria", { target })}
             >
               {t("services.eventsCancelDeploy")}
             </Button>
@@ -208,6 +238,7 @@ export function DeployActions({
               variant="link"
               disabled={busy || !!rollbackReason}
               onClick={() => open("rollback")}
+              aria-label={t("services.eventsRollbackAria", { target })}
               className="h-8 gap-1.5 px-0 text-muted-foreground hover:text-foreground"
             >
               <RotateCcw />

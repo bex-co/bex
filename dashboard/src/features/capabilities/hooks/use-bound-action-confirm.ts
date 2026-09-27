@@ -3,6 +3,8 @@
 
 import { useCallback, useState } from "react";
 import { useApolloClient } from "@apollo/client/react";
+import { toast } from "sonner";
+import { useTranslations } from "@/common/hooks/use-translations";
 import {
   DeployActionsDocument,
   ServerActionsDocument,
@@ -10,8 +12,11 @@ import {
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
+  gateAction,
+  gateReason,
   toResourceSnapshot,
   resourceDecision,
+  type ResourceActionDecision,
   type ResourceActionId,
 } from "@/features/capabilities/lib/resource-actions";
 
@@ -35,11 +40,22 @@ const SERVER_ACTIONS = new Set<ResourceActionId>([
  * Holds a pending confirmation bound to an exact context. Stale bindings are
  * derived away (not cleared in an effect) when workspace/resource/deploy or
  * access generation drifts; dispatch always rechecks over the network.
+ *
+ * `adjustDecision` is the caller's row-level rule, applied to the rechecked
+ * decision exactly as it was applied when enabling the control. Without it,
+ * a row the button enabled (an older rollback target the service-wide summary
+ * does not see) was refused at dispatch (w4/m141). A refusal is never silent:
+ * it is toasted with its reason before the recheck resolves `ok: false`.
  */
 export function useBoundActionConfirm(opts: {
   resourceId: string;
   deployId?: string;
+  adjustDecision?: (
+    action: ResourceActionId,
+    decision: ResourceActionDecision | null,
+  ) => ResourceActionDecision | null;
 }) {
+  const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
   const { generation } = useCapabilities();
   const client = useApolloClient();
@@ -73,14 +89,23 @@ export function useBoundActionConfirm(opts: {
     setPending(null);
   }, []);
 
+  const { adjustDecision } = opts;
   const recheckBeforeDispatch = useCallback(async (): Promise<{
     ok: boolean;
     binding: ActionConfirmBinding | null;
     precondition: string;
   }> => {
-    if (!binding || !currentWorkspaceId) {
+    // Every refusal says why: a dispatch that quietly does nothing reads as
+    // success to someone who just clicked Proceed (w4/m141).
+    const refuse = (decision: ResourceActionDecision | null) => {
       setPending(null);
+      toast.error(
+        gateReason(gateAction(decision, decision ? "ready" : "unavailable"), t),
+      );
       return { ok: false, binding: null, precondition: "" };
+    };
+    if (!binding || !currentWorkspaceId) {
+      return refuse(null);
     }
 
     try {
@@ -112,8 +137,7 @@ export function useBoundActionConfirm(opts: {
         rows = result.data?.deployActions;
       }
       if (!rows) {
-        setPending(null);
-        return { ok: false, binding: null, precondition: "" };
+        return refuse(null);
       }
       const snapshot = toResourceSnapshot(
         binding.workspaceId,
@@ -131,20 +155,22 @@ export function useBoundActionConfirm(opts: {
             : [],
         ),
       );
-      const decision = resourceDecision(
+      const raw = resourceDecision(
         snapshot,
         binding.workspaceId,
         binding.resourceId,
         binding.action,
       );
+      const decision = adjustDecision
+        ? adjustDecision(binding.action, raw)
+        : raw;
       const ok =
         decision !== null &&
         decision.outcome === "allowed" &&
         (decision.precondition === "" ||
           decision.precondition === "protected_confirmation_required");
       if (!ok) {
-        setPending(null);
-        return { ok: false, binding: null, precondition: "" };
+        return refuse(decision);
       }
       return {
         ok: true,
@@ -152,10 +178,9 @@ export function useBoundActionConfirm(opts: {
         precondition: decision.precondition,
       };
     } catch {
-      setPending(null);
-      return { ok: false, binding: null, precondition: "" };
+      return refuse(null);
     }
-  }, [binding, client, currentWorkspaceId]);
+  }, [binding, client, currentWorkspaceId, adjustDecision, t]);
 
   return {
     pending: binding,

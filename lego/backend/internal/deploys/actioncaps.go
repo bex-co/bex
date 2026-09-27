@@ -26,17 +26,36 @@ import (
 
 // RollbackEligible reports whether a deploy row is a valid rollback target —
 // the exact predicate Rollback enforces: only a deploy that itself reached
-// live (or was deactivated from live) carries a ResolvedImage trustworthy
-// enough to restore blind. Shared by the verb and the capability projection
-// (ADR087, w6/m136) so the projection cannot drift from enforcement.
-func RollbackEligible(d store.Deploy) bool {
-	return (d.Status == store.DeployLive || d.Status == store.DeployDeactivated) && d.ResolvedImage != ""
+// live (or was deactivated from live) carries an artifact trustworthy enough
+// to restore blind. Shared by the verb and the capability projection (ADR087,
+// w6/m136) so the projection cannot drift from enforcement.
+//
+// The artifact is the deploy's ResolvedImage, or, for a static site published
+// straight from its repository with no build image (ADR029), the commit it
+// published (rollbackRepublishes). Before w4/m141 no such static deploy was
+// ever eligible, so rollback on a no-build static site could never happen.
+func RollbackEligible(a *appv1alpha1.App, d store.Deploy) bool {
+	if d.Status != store.DeployLive && d.Status != store.DeployDeactivated {
+		return false
+	}
+	return d.ResolvedImage != "" || rollbackRepublishes(a, d)
+}
+
+// rollbackRepublishes reports whether rolling back to d re-publishes its commit
+// rather than restoring an image: a static site with no build image. Its
+// publish is a clone of the repository at a commit, so publishing that commit
+// again restores the same files. That is how Render rolls a static site back,
+// by redeploying an earlier deploy.
+func rollbackRepublishes(a *appv1alpha1.App, d store.Deploy) bool {
+	return d.ResolvedImage == "" && d.Commit != "" &&
+		a.Spec.Type == appv1alpha1.TypeStaticSite && a.Spec.Repo != ""
 }
 
 // RollbackActionable is RollbackEligible plus the one refusal eligibility does
-// not cover: Rollback rejects the currently-live deploy when it is already the
-// running image, because that changes no image while still restarting the
-// service and minting a redundant deploy (w4/051).
+// not cover: Rollback rejects the currently-live deploy when it is already what
+// is running (the same image, or for a re-published static site the same
+// commit), because that changes nothing while still restarting the service and
+// minting a redundant deploy (w4/051).
 //
 // The projection used RollbackEligible alone, so a freshly created service —
 // whose only deploy is its live first one — was told `rollback: allowed` with
@@ -45,15 +64,22 @@ func RollbackEligible(d store.Deploy) bool {
 // exposure was to a client binding an affordance straight to the capability
 // response, which is what that query is for.
 //
-// currentImage is the App's spec.image. The narrowness is deliberate and
-// mirrors the verb: a deploy stays live until a NEWER one goes live, so after a
-// failed rollout spec.image can drift off the still-live last-good deploy, and
-// rolling back to it then is a legitimate recovery.
-func RollbackActionable(d store.Deploy, currentImage string) bool {
-	if !RollbackEligible(d) {
+// The comparison is against the App's spec (spec.image, or spec.buildCommit),
+// and the narrowness is deliberate and mirrors the verb: a deploy stays live
+// until a NEWER one goes live, so after a failed rollout the spec can drift off
+// the still-live last-good deploy, and rolling back to it then is a legitimate
+// recovery.
+func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
+	if !RollbackEligible(a, d) {
 		return false
 	}
-	return !(d.Status == store.DeployLive && d.ResolvedImage == currentImage)
+	if d.Status != store.DeployLive {
+		return true
+	}
+	if rollbackRepublishes(a, d) {
+		return d.Commit != a.Spec.BuildCommit
+	}
+	return d.ResolvedImage != a.Spec.Image
 }
 
 // eligibilityScanLimit bounds the projection's deploy-history scan. The verb
@@ -139,7 +165,7 @@ func (s *Service) deployPreconditions(ctx context.Context, a *appv1alpha1.App) (
 			// RollbackActionable, not RollbackEligible: the projection has to
 			// answer the question the verb will answer, and the verb also
 			// refuses the live deploy when it is the running image (w4/110).
-			if RollbackActionable(d, a.Spec.Image) {
+			if RollbackActionable(a, d) {
 				rollbackPre = ""
 				break
 			}

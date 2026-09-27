@@ -119,7 +119,12 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
   it("Clear build cache & deploy triggers with clearCache=clear (w3/m46 Render parity)", async () => {
     trigger.mockResolvedValue("dep-clear-1");
     const user = userEvent.setup();
-    render(<ManualDeployButton service={svc()} pending={false} />);
+    render(
+      <ManualDeployButton
+        service={svc({ repo: "https://github.com/bex-co/bex" })}
+        pending={false}
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
     await user.click(screen.getByText("Clear build cache & deploy"));
@@ -132,6 +137,38 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
         params: { serviceId: "web", deployId: "dep-clear-1" },
       }),
     );
+  });
+
+  it("offers no build cache to clear on an image-backed service (w4/m141)", async () => {
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc()} pending={false} />);
+
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    expect(
+      screen.queryByText("Clear build cache & deploy"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("tells a static site's restart that it re-publishes, with no instances to replace (w4/m141)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ManualDeployButton
+        service={svc({
+          type: "static_site",
+          repo: "https://github.com/bex-co/bex",
+        })}
+        pending={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    await user.click(screen.getByText("Restart service"));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "web is published again from the commit it is serving now.",
+    );
+    expect(dialog).not.toHaveTextContent(/instances/);
   });
 
   it("Restart service confirms, then restarts on the running release and opens its deploy (w1/m148)", async () => {
