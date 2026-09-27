@@ -249,7 +249,7 @@ func postgresLevel(severity string) string {
 	case "ERROR", "FATAL", "PANIC":
 		return "error"
 	case "WARNING":
-		return "warn"
+		return "warning"
 	case "LOG", "INFO", "NOTICE":
 		return "info"
 	default:

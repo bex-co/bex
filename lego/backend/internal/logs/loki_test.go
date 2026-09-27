@@ -87,7 +87,22 @@ func TestLokiQueryFor(t *testing.T) {
 			name: "multiple values for one filter OR together",
 			ns:   "default",
 			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"error", "warn"}},
-			want: `{namespace="default", app="web", container="app", level=~"^(error|warn)$"}`,
+			want: `{namespace="default", app="web", container="app", level=~"^(error|warning|warn)$"}`,
+		},
+		{
+			// w8/031: the pinned CLI only sends Render's names; the shipper
+			// stores warning (warn before w8/031), info for notice, and error
+			// for critical/alert/emergency. An exact match found nothing.
+			name: "Render level names match the stored buckets",
+			ns:   "default",
+			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"warning"}},
+			want: `{namespace="default", app="web", container="app", level=~"^(warning|warn)$"}`,
+		},
+		{
+			name: "notice and critical",
+			ns:   "default",
+			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"notice", "critical", "emergency"}},
+			want: `{namespace="default", app="web", container="app", level=~"^(info|notice|error|critical|emergency)$"}`,
 		},
 		{
 			// path/host are NEVER labels (unbounded — the cardinality budget): they

@@ -21,6 +21,70 @@ def run(*args, **kwargs):
     return subprocess.check_output(args, cwd=ROOT, text=True, **kwargs).strip()
 
 
+def run_pipeline(test, pipeline_name, lines, receiver_type):
+    """Render the chart, keep one production loki.process block, feed it lines
+    in the chart's own Alloy image, and return {entry: labels} per echoed line."""
+    with tempfile.TemporaryDirectory(prefix="bex-log-shipper-") as tmp:
+        tmp = Path(tmp)
+        chart = run("bash", "scripts/helm-artifact.sh", "pull", "alloy", str(tmp))
+        values = tmp / "values.yaml"
+        values.write_text(run("yq", "-r", ".spec.source.helm.values",
+                              "deploy/gitops/base/log-shipper.yaml"))
+        rendered = tmp / "rendered.yaml"
+        rendered.write_text(run("helm", "template", "log-shipper", chart,
+                                "-n", "monitoring", "-f", str(values)))
+        config = run("yq", "-r", 'select(.kind == "ConfigMap") | .data["config.alloy"]', str(rendered))
+        image = run("yq", "-r", 'select(.kind == "DaemonSet") | .spec.template.spec.containers[] | select(.name == "alloy") | .image', str(rendered))
+        pipeline = re.search(r'^loki\.process "%s" \{\n.*?^\}' % pipeline_name, config, re.M | re.S)
+        test.assertIsNotNone(pipeline, f"rendered chart is missing the {pipeline_name} pipeline")
+        # Keep every production stage; replace only the input and sink.
+        pipeline = pipeline.group().replace("loki.write.default.receiver", "loki.echo.test.receiver")
+        (tmp / "config.alloy").write_text('''logging {
+  format = "json"
+}
+loki.source.file "test" {
+  targets = [{__path__ = "/tmp/lines.log", database = "dpg-test"}]
+  forward_to = [loki.process.%s.receiver]
+}
+loki.echo "test" {}
+''' % pipeline_name + pipeline)
+        (tmp / "lines.log").write_text("\n".join(lines) + "\n")
+        name = "bex-log-shipper-" + uuid.uuid4().hex[:12]
+        run("docker", "create", "--name", name, "--network", "none", image,
+            "run", "--storage.path=/tmp/alloy", "/tmp/config.alloy")
+        try:
+            # docker cp also works when CI uses a separate Docker daemon.
+            for filename in ("config.alloy", "lines.log"):
+                run("docker", "cp", str(tmp / filename), f"{name}:/tmp/{filename}")
+            run("docker", "start", name)
+            deadline = time.monotonic() + 30
+            actual = {}
+            output = ""
+            while time.monotonic() < deadline:
+                output = run("docker", "logs", name, stderr=subprocess.STDOUT)
+                for line in output.splitlines():
+                    try:
+                        entry = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    # Alloy names the echo component `receiver` (<=1.11) or `component_id`.
+                    if (entry.get("receiver") or entry.get("component_id")) == "loki.echo.test":
+                        labels = dict(re.findall(r'(\w+)="([^"\\]*)"', entry["labels"]))
+                        test.assertEqual(labels.get("type"), receiver_type)
+                        actual[entry["entry"]] = labels
+                if len(actual) >= len(lines):
+                    break
+                if run("docker", "inspect", "-f", "{{.State.Running}}", name) != "true":
+                    test.fail(f"Alloy exited before processing the fixture:\n{output}")
+                time.sleep(0.25)
+            # A pipeline that drops lines never reaches len(lines), so the
+            # full deadline passes first — long enough for a line that should
+            # have been dropped to show up.
+            return actual, output
+        finally:
+            run("docker", "rm", "-f", name)
+
+
 class AppLogLevelsTest(unittest.TestCase):
     def test_structured_severity_and_bounded_labels(self):
         cases = {
@@ -40,74 +104,51 @@ class AppLogLevelsTest(unittest.TestCase):
             'msg="no severity"': "unknown",
             'level=custom-value msg="unrecognized severity"': "unknown",
         }
+        # Render's level names (w8/031): warnings ship as `warning`, the value
+        # the pinned CLI's --level sends.
         for value, expected in {
             "err": "error", "fatal": "error", "panic": "error",
-            "critical": "error", "crit": "error", "warn": "warn",
-            "WARNING": "warn", "info": "info", "notice": "info",
+            "critical": "error", "crit": "error", "warn": "warning",
+            "WARNING": "warning", "info": "info", "notice": "info",
             "DEBUG": "debug", "trace": "debug",
         }.items():
             for key in ("level", "severity"):
                 cases[f'{key}={value} msg="normalization"'] = expected
 
-        with tempfile.TemporaryDirectory(prefix="bex-log-levels-") as tmp:
-            tmp = Path(tmp)
-            chart = run("bash", "scripts/helm-artifact.sh", "pull", "alloy", str(tmp))
-            values = tmp / "values.yaml"
-            values.write_text(run("yq", "-r", ".spec.source.helm.values",
-                                  "deploy/gitops/base/log-shipper.yaml"))
-            rendered = tmp / "rendered.yaml"
-            rendered.write_text(run("helm", "template", "log-shipper", chart,
-                                    "-n", "monitoring", "-f", str(values)))
-            config = run("yq", "-r", 'select(.kind == "ConfigMap") | .data["config.alloy"]', str(rendered))
-            image = run("yq", "-r", 'select(.kind == "DaemonSet") | .spec.template.spec.containers[] | select(.name == "alloy") | .image', str(rendered))
-            pipeline = re.search(r'^loki\.process "app_logs" \{\n.*?^\}', config, re.M | re.S)
-            self.assertIsNotNone(pipeline, "rendered chart is missing the app pipeline")
-            # Keep every production stage; replace only the input and sink.
-            pipeline = pipeline.group().replace("loki.write.default.receiver", "loki.echo.test.receiver")
-            (tmp / "config.alloy").write_text('''logging {
-  format = "json"
-}
-loki.source.file "test" {
-  targets = [{__path__ = "/tmp/lines.log"}]
-  forward_to = [loki.process.app_logs.receiver]
-}
-loki.echo "test" {}
-''' + pipeline)
-            (tmp / "lines.log").write_text("\n".join(cases) + "\n")
-            name = "bex-log-levels-" + uuid.uuid4().hex[:12]
-            run("docker", "create", "--name", name, "--network", "none", image,
-                "run", "--storage.path=/tmp/alloy", "/tmp/config.alloy")
-            try:
-                # docker cp also works when CI uses a separate Docker daemon.
-                for filename in ("config.alloy", "lines.log"):
-                    run("docker", "cp", str(tmp / filename), f"{name}:/tmp/{filename}")
-                run("docker", "start", name)
-                deadline = time.monotonic() + 30
-                actual = {}
-                output = ""
-                while time.monotonic() < deadline:
-                    output = run("docker", "logs", name, stderr=subprocess.STDOUT)
-                    for line in output.splitlines():
-                        try:
-                            entry = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
-                        if entry.get("receiver") == "loki.echo.test":
-                            labels = dict(re.findall(r'(\w+)="([^"\\]*)"', entry["labels"]))
-                            self.assertEqual(labels.get("type"), "app")
-                            actual[entry["entry"]] = labels.get("level")
-                    if len(actual) >= len(cases):
-                        break
-                    if run("docker", "inspect", "-f", "{{.State.Running}}", name) != "true":
-                        self.fail(f"Alloy exited before processing the fixture:\n{output}")
-                    time.sleep(0.25)
-                self.assertEqual(set(actual), set(cases), f"missing or changed log lines:\n{output}")
-                for line, expected in cases.items():
-                    with self.subTest(line=line):
-                        self.assertEqual(actual[line], expected)
-                self.assertEqual(set(actual.values()), {"error", "warn", "info", "debug", "unknown"})
-            finally:
-                run("docker", "rm", "-f", name)
+        actual, output = run_pipeline(self, "app_logs", list(cases), "app")
+        self.assertEqual(set(actual), set(cases), f"missing or changed log lines:\n{output}")
+        for line, expected in cases.items():
+            with self.subTest(line=line):
+                self.assertEqual(actual[line].get("level"), expected)
+        self.assertEqual({labels.get("level") for labels in actual.values()},
+                         {"error", "warning", "info", "debug", "unknown"})
+
+
+class PostgresLogsTest(unittest.TestCase):
+    """w8/030: CNPG's instance-manager chatter is dropped, and PostgreSQL's own
+    records are unwrapped into its stderr shape with a level."""
+
+    def test_cnpg_records_unwrapped_and_chatter_dropped(self):
+        lines = [
+            '{"level":"info","logger":"instance-manager","msg":"Starting EventSource"}',
+            '{"level":"info","logger":"cluster-resource","msg":"Defaulting for Cluster"}',
+            '{"logger":"postgres","msg":"record","record":{"log_time":"2026-09-27 01:00:02.123 UTC","process_id":"42","error_severity":"LOG","message":"database system is ready to accept connections"}}',
+            '{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"77","error_severity":"FATAL","message":"password authentication failed","detail":"pg_hba line 5"}}',
+            '{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"78","error_severity":"WARNING","message":"checkpoints too frequent","hint":"raise max_wal_size"}}',
+            'plain line kept verbatim',
+        ]
+        want = {
+            "2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections": "info",
+            "t [77] FATAL:  password authentication failed DETAIL:  pg_hba line 5": "error",
+            "t [78] WARNING:  checkpoints too frequent HINT:  raise max_wal_size": "warning",
+            "plain line kept verbatim": None,
+        }
+        actual, output = run_pipeline(self, "database_logs", lines, "postgres")
+        self.assertEqual(set(actual), set(want), f"unexpected Postgres lines:\n{output}")
+        for line, level in want.items():
+            with self.subTest(line=line):
+                self.assertEqual(actual[line].get("level"), level)
+                self.assertNotIn("cnpg_logger", actual[line])
 
 
 if __name__ == "__main__":
