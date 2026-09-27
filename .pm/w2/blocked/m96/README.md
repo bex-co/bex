@@ -1,6 +1,6 @@
 # w2 · m96 — Charges and webhook deliveries name their resource, even after deletion
 
-**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** t001–t007 done; **t008 closeout BLOCKED** on live production verification (same credential gate as m95 — see the workstream README)
+**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** t001–t007 done; live re-probe 2026-09-26 (pass 219): bullets 1, 4, 5 pass, bullet 2 fails its intent (→ new t009), bullets 3 and 6 still need a usage rollup / throwaway workspace; t008 closeout waits on t009 and those two probes
 
 ## Tasks (in order)
 
@@ -13,7 +13,8 @@
 | t005 | Render parity — **DONE**                                                                                                               | 15m | t003, t004 |
 | t006 | Simplify — **DONE**                                                                                                                    | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                                                               | 40m | t005       |
-| t008 | Closeout                                                                                                                               | 10m | t007       |
+| t009 | Label a session-less or repo-less sandbox charge by plan and image, so 14 sandboxes stop sharing "starter sandbox" | 45m | t007 |
+| t008 | Closeout | 10m | t007, t009 |
 
 ## Backfill decision (t002 step 5)
 
@@ -70,3 +71,20 @@ Run each bullet on production (workspace `bex` / `tea-d98210cbbpdc73dcrkvg`) aft
 - **Expected outcome:** "what did this cost me" and "which service's event failed" are answerable from the page itself, including for resources deleted since.
 - **Why now:** `w1/088` explicitly asks to be promoted if name retention needs a migration, and it does. Both notes share one root cause — names resolved only from live rows (`usage/service.go:286-313`, `worker.go:346-349` payload not projected to the delivery view) — so one retained-name record closes both.
 - **Render parity included:** REST `GET /v1/usage`, GraphQL `usage` and MCP share `monthToDateAt`, so the name resolution moves together on all three; the webhook delivery view is read on REST and GraphQL and must agree on `serviceName`. Render's own billing view for deleted services and its Recent deliveries column were not captured at filing and t005 records them.
+
+## Live re-probe (2026-09-26, `/qa-find-bugs` pass 219)
+
+Production, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. The fixtures were a free web service `srv-das9tr8d0qnc73d7a44g` (`qa-20260926-whk`) and webhook `whk-das9trod0qnc73d7a460`, which POSTed to the fixture's own URL so nothing left bex. Both were deleted, and both `GET`s now return 404.
+
+- **Deleted services are named in Charges — PASS (within the backfill decision).**
+  - `usage(ownerId) { estimatedCost { resources { serviceId serviceName deleted } } }` and `/billing` → Charges → Expand all both show services created and deleted after the deploy with their name and `(deleted)`: `qa-20260917-web (deleted)` (`srv-dalo003…`, created 2026-09-17T05:52Z) and `qa-20260917-p2-web (deleted)`.
+  - The three 2026-09-14 ids, plus 17 `srv-dak…` ids and `red-dakv3hqsh60c73ao4li0`, read as a bare id with `(deleted)`. Their xid timestamps all fall between 2026-09-05 and 2026-09-16T02:20Z, before `0e490af54` (2026-09-16T05:39Z) could have deployed, so they were deleted before migration 0121 ran. That matches the Backfill decision.
+  - **Discrepancy:** the Backfill decision says pre-migration bare ids render **without** a `(deleted)` marker, but the card shows `srv-dae9lb988i5c7399e9m0(deleted)`. `3757d0ff1` ("tombstone every charge row whose resource is gone", 2026-09-22) superseded that sentence. Update the decision text at closeout.
+  - The "fresh probe" (create → one rollup → delete) was not run end to end in this pass. The `qa-20260917-*` rows are that probe's shape from an earlier run.
+- **Sandboxes are labelled — FAIL (intent).** All 14 sandbox rows read `starter sandbox (deleted)`, including `271ec9ce-a32b-4128-bb43-02a9e57b01b6` at **$78.61**. None is a bare UUID, but none shows repo/branch or `plan · image`, and the costly one cannot be told apart from the other thirteen. Root cause and fix are in **t009**.
+- **Live resources show their current name — NOT RUN.** It needs a rename to show up on the next rated read after a usage rollup. Not attempted this pass.
+- **A delivery row names its service — PASS.** A manual deploy on the fixture produced `deploy_started` / `deploy_ended` deliveries (HTTP 200). `/webhook/<whk>` → Recent deliveries showed `qa-20260926-whk`, linked to `/services/srv-das9tr8d0qnc73d7a44g`, with the id as secondary text and a `title` tooltip. REST `GET /v1/webhooks/<whk>/events` carried `serviceName: "qa-20260926-whk"`.
+- **A delivery for a deleted service keeps its name — PASS.** After `DELETE /v1/services/<srv>` (204), the same rows read `qa-20260926-whk(deleted)`, with the service link removed and the id tooltip kept. REST `serviceName` and GraphQL `webhookDeliveries(endpointId:) { serviceName }` both still returned `qa-20260926-whk`.
+- **Workspace deletion purges retained names — NOT RUN.** It needs a throwaway workspace. The cascade is proven only by `TestResourceDisplayNamesPG`.
+- **Backfill decision recorded — PASS** (see the discrepancy under bullet 1).
+
