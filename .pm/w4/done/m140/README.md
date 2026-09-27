@@ -1,6 +1,6 @@
 # w4 · m140 — A 7-day log search on a busy service dies at 30s as an edge 502, and the Logs tab spins ~90s before "Failed to fetch"
 
-**Worker:** worker4 **Goal:** a log search the server cannot finish in time comes back as a named, CORS-carrying API error that tells the user to narrow the range, and the Logs tab shows it promptly instead of retrying a doomed request for a minute and a half **Status:** blocked (t001–t006 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
+**Worker:** worker4 **Goal:** a log search the server cannot finish in time comes back as a named, CORS-carrying API error that tells the user to narrow the range, and the Logs tab shows it promptly instead of retrying a doomed request for a minute and a half **Status:** done (live Definition of done passed 2026-09-27, `/qa-find-bugs` pass 234, on deploy `4a0422577`)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                 | 20m | t001, t002, t003 |
 | t005 | Simplify — **DONE**                                                                                        | 15m | t004       |
 | t006 | Test coverage — **DONE**                                                                                   | 30m | t004       |
-| t007 | Closeout — **BLOCKED**                                                                                        | 10m | t006       |
+| t007 | Closeout — **DONE**                                                                                        | 10m | t006       |
 
 ## Definition of done
 
@@ -53,3 +53,18 @@ query ($r: String!, $t: String, $s: String, $e: String) {
 - Whether Loki alone would finish the 7-day no-match query given more than 30s (t002).
 - The REST and MCP behavior for the same 7-day search (t004).
 - The exact retry count behind the ~90s spinner. Three attempts × ~30s is inferred from `retry-link.ts`, not traced request by request.
+
+## Live Definition-of-done probe (2026-09-27, `/qa-find-bugs` pass 234) — pass
+
+Production after the `53797ca69` pin (images `4a04225777ff`), `muse.env` QA credentials, read-only against `beancount-cms-v2` (`srv-d9bj8s3eg85c7390eb9g`). The same query as at filing was sent through Playwright's request context with `Origin: https://dashboard.bex.co`, after a 60 s idle.
+
+| window | `text` | result |
+| --- | --- | --- |
+| 1h | `GET` | 200 in 399 ms, `hasMore:true`, 100 lines, `access-control-allow-origin: https://dashboard.bex.co` |
+| 1h | `zzqqxx-no-such-token` | 200 in 380 ms, `{hasMore:false, logs:[]}`, ACAO present |
+| 7d | `zzqqxx-no-such-token` | **200 in 18 213 ms**, `{hasMore:true, logs:[]}` (the partial-page envelope t002 aimed for), ACAO present. At filing: a 502 after 30 218 ms with no CORS. |
+
+- **The API answers within its own budget — PASS.** See the 7d row: a GraphQL 200 with data and CORS, well inside the edge's 30 s, never an edge 502.
+- **The Logs tab tells the truth fast — PASS.** `/services/<srv>/logs?range=7d&text=zzqqxx-no-such-token&live=0` settled at about **22 s** (at filing, about 85–90 s of "Loading logs…" and then "Failed to fetch") into "Only the newest part of this range has been searched so far — load older to keep searching.", with a **Load older** control.
+- **Control stays correct — PASS.** Both 1h searches return 200s, and `range=1h&text=zzqqxx-no-such-token` renders "No matching logs".
+
