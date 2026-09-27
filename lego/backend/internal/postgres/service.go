@@ -377,17 +377,19 @@ func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
 	return validatePhysicalIdentifier("databaseUser", req.DatabaseUser)
 }
 
-// dbStatus maps bex's Database phase onto Render's databaseStatus enum.
-func dbStatus(p appv1alpha1.DatabasePhase) string {
-	switch p {
+// dbStatus maps bex's Database phase onto Render's databaseStatus enum. A
+// restart of a database that has served reads `config_restart`, never
+// `creating` (w4/m137).
+func dbStatus(d *appv1alpha1.Database) string {
+	switch d.Status.Phase {
 	case appv1alpha1.DBPhaseReady:
-		return "available"
+		return core.DatastoreReadyStatus(d.Status.Conditions, d.Generation)
 	case appv1alpha1.DBPhaseUpgrading:
 		return "upgrading"
 	case appv1alpha1.DBPhaseFailed:
 		return "unavailable"
 	default:
-		return "creating"
+		return core.DatastoreNotReadyStatus(d.Status.Provisioned)
 	}
 }
 
@@ -413,7 +415,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if version == "" {
 		version = d.Spec.Version
 	}
-	status := dbStatus(d.Status.Phase)
+	status := dbStatus(d)
 	// Suspension outranks readiness so status matches Render's databaseStatus
 	// enum (the pinned CLI prints Status and omits Suspended in text mode —
 	// w5/061). Deleting still wins.

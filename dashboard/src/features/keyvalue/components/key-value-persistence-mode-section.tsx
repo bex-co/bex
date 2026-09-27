@@ -26,9 +26,19 @@ const PERSISTENCE_LABEL_KEYS: Record<
  * Key Value detail Persistence Mode section — mirrors Maxmemory Policy so the
  * post-create updatable API field is also editable in the dashboard (w4/066).
  */
-export function KeyValuePersistenceModeSection({ id }: { id: string }) {
+export function KeyValuePersistenceModeSection({
+  id,
+  onChanged,
+}: {
+  id: string;
+  /** Fired after a successful save, which restarts the store (w4/m137). */
+  onChanged?: () => void;
+}) {
   const { t } = useTranslations();
-  const { mode, loading, saving, save } = useSetKeyValuePersistenceMode(id);
+  const { mode, loading, saving, save } = useSetKeyValuePersistenceMode(
+    id,
+    onChanged,
+  );
   const options = useMemo(
     () =>
       PERSISTENCE_MODES.map((value) => ({

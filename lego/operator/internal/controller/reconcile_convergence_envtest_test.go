@@ -419,6 +419,7 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 		Expect(divergence(ctx, rec, run, db, "Cluster")).To(BeEmpty())
 		Expect(k8sClient.Get(ctx, nn, db)).To(Succeed())
 		Expect(db.Status.Phase).To(Equal(appv1alpha1.DBPhaseReady))
+		Expect(db.Status.Provisioned).To(BeTrue(), "first Ready records status.provisioned (w4/m137)")
 
 		// A Cluster projected before w7/m90 carries no enablePDB in its recorded
 		// projection and CNPG defaulted it to true. One reconcile must write the

@@ -23,9 +23,19 @@ import { useSetKeyValueMaxmemoryPolicy } from "@/features/keyvalue/hooks/use-set
  * the shared select row (w5/m55): a disabled select + pencil that swaps for
  * Cancel / "Save changes", matching the services Settings page and Render.
  */
-export function KeyValueMaxmemoryPolicySection({ id }: { id: string }) {
+export function KeyValueMaxmemoryPolicySection({
+  id,
+  onChanged,
+}: {
+  id: string;
+  /** Fired after a successful save, which restarts the store (w4/m137). */
+  onChanged?: () => void;
+}) {
   const { t } = useTranslations();
-  const { policy, loading, saving, save } = useSetKeyValueMaxmemoryPolicy(id);
+  const { policy, loading, saving, save } = useSetKeyValueMaxmemoryPolicy(
+    id,
+    onChanged,
+  );
   // Stable identity so EditableFieldRow's focus effect doesn't re-run each render.
   const options = useMemo(
     () =>

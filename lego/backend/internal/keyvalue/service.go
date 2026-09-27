@@ -221,15 +221,18 @@ func validateKeyValueName(name string) error {
 	return nil
 }
 
-// kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus string.
-func kvStatus(p appv1alpha1.KeyValuePhase) string {
-	switch p {
+// kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus
+// string. A restart of a store that has served (CredentialRevision is written
+// only when the operator declares it Ready) reads `config_restart`, never
+// `creating` (w4/m137).
+func kvStatus(kv *appv1alpha1.KeyValue) string {
+	switch kv.Status.Phase {
 	case appv1alpha1.KVPhaseReady:
-		return "available"
+		return core.DatastoreReadyStatus(kv.Status.Conditions, kv.Generation)
 	case appv1alpha1.KVPhaseFailed:
 		return "unavailable"
 	default:
-		return "creating"
+		return core.DatastoreNotReadyStatus(kv.Status.CredentialRevision != "")
 	}
 }
 
@@ -238,7 +241,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	if !kv.CreationTimestamp.IsZero() {
 		created = kv.CreationTimestamp.UTC().Format(time.RFC3339)
 	}
-	status := kvStatus(kv.Status.Phase)
+	status := kvStatus(kv)
 	// Suspension outranks readiness so status matches Render's databaseStatus
 	// enum (which Key Value reuses): the pinned CLI projects Status but drops
 	// the separate Suspended field (w5/061). Deleting still wins.

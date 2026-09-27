@@ -242,10 +242,16 @@ export function KeyValueDetailPage() {
                   />
                 </section>
                 <section id="maxmemory-policy" className="scroll-mt-6">
-                  <KeyValueMaxmemoryPolicySection id={keyValue.id} />
+                  <KeyValueMaxmemoryPolicySection
+                    id={keyValue.id}
+                    onChanged={() => void refetch()}
+                  />
                 </section>
                 <section id="persistence-mode" className="scroll-mt-6">
-                  <KeyValuePersistenceModeSection id={keyValue.id} />
+                  <KeyValuePersistenceModeSection
+                    id={keyValue.id}
+                    onChanged={() => void refetch()}
+                  />
                 </section>
                 <section id="danger-zone" className="scroll-mt-6">
                   <KeyValueDangerActions

@@ -60,6 +60,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "创建中",
     description: "Database status badge (provisioning)",
   },
+  "databases.statusRestarting": {
+    message: "重启中",
+    description:
+      "Database status badge (Render's config_restart: an established store restarting after a config change, restart, or resume — not a first provision)",
+  },
   "databases.statusUpgrading": {
     message: "升级中",
     description: "Database status badge (offline PostgreSQL major upgrade)",
