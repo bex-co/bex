@@ -209,9 +209,58 @@ const zhBlueprints: Record<string, TranslationEntry> = {
       "Review section error title when the fetched manifest fails validation",
   },
   "blueprints.previewValid_other": {
-    message: "蓝图文件解析成功 — 将同步 {count} 个资源。",
+    message: "蓝图文件解析成功 — 将变更 {count} 个资源。",
     description:
       "Review section success line, with the plan's total resource count",
+  },
+  "blueprints.previewNoChanges": {
+    message: "蓝图文件解析成功 — 没有变更，所有资源都已与此文件一致。",
+    description:
+      "Review section success line when every planned action is a no-op (w4/m138)",
+  },
+  "blueprints.previewOpCreate": {
+    message: "创建",
+    description:
+      "Plan row badge: the resource does not exist yet and will be created",
+  },
+  "blueprints.previewOpUpdate": {
+    message: "更新",
+    description: "Plan row badge: an existing resource will be changed",
+  },
+  "blueprints.previewOpNoop": {
+    message: "无变更",
+    description: "Plan row badge: the resource already matches the file",
+  },
+  "blueprints.previewOpError": {
+    message: "无法应用",
+    description:
+      "Plan row badge: the planner refused this resource (reason below)",
+  },
+  "blueprints.previewChangedFields": {
+    message: "变更：{fields}",
+    description:
+      "Plan row detail for an update: the changed field paths (never values)",
+  },
+  "blueprints.previewEnvGroupReapplied": {
+    message: "环境组的值只写不可读，因此每个声明的变量都会重新应用。",
+    description:
+      "Plan row note: env groups always plan as an update because their values can't be compared",
+  },
+  "blueprints.previewKindService": {
+    message: "服务",
+    description: "Plan row resource kind",
+  },
+  "blueprints.previewKindPostgres": {
+    message: "Postgres",
+    description: "Plan row resource kind",
+  },
+  "blueprints.previewKindKeyValue": {
+    message: "Key Value",
+    description: "Plan row resource kind",
+  },
+  "blueprints.previewKindEnvGroup": {
+    message: "环境组",
+    description: "Plan row resource kind",
   },
   "blueprints.previewServices": {
     message: "服务",
@@ -534,7 +583,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.syncConfirmBody": {
     message:
-      "此操作将把存储的 render.yaml 重新应用到您的工作空间。应用是幂等的——已与清单匹配的资源不会被替换。",
+      "此操作会按下方所示提交中的 render.yaml 原样应用，而不是分支上更新的推送。已与其一致的资源将保持不变。",
     description: "Sync confirm dialog description",
   },
   "blueprints.syncConfirmAction": {

@@ -214,14 +214,67 @@ const enBlueprints: Record<string, TranslationEntry> = {
       "Review section error title when the fetched manifest fails validation",
   },
   "blueprints.previewValid_one": {
-    message: "Blueprint file parsed successfully — {count} resource to sync.",
+    message:
+      "Blueprint file parsed successfully — {count} resource will change.",
     description:
       "Review section success line, with the plan's total resource count (singular)",
   },
   "blueprints.previewValid_other": {
-    message: "Blueprint file parsed successfully — {count} resources to sync.",
+    message:
+      "Blueprint file parsed successfully — {count} resources will change.",
     description:
       "Review section success line, with the plan's total resource count (plural)",
+  },
+  "blueprints.previewNoChanges": {
+    message:
+      "Blueprint file parsed successfully — no changes. Every resource already matches this file.",
+    description:
+      "Review section success line when every planned action is a no-op (w4/m138)",
+  },
+  "blueprints.previewOpCreate": {
+    message: "Create",
+    description:
+      "Plan row badge: the resource does not exist yet and will be created",
+  },
+  "blueprints.previewOpUpdate": {
+    message: "Update",
+    description: "Plan row badge: an existing resource will be changed",
+  },
+  "blueprints.previewOpNoop": {
+    message: "No change",
+    description: "Plan row badge: the resource already matches the file",
+  },
+  "blueprints.previewOpError": {
+    message: "Can't apply",
+    description:
+      "Plan row badge: the planner refused this resource (reason below)",
+  },
+  "blueprints.previewChangedFields": {
+    message: "Changes: {fields}",
+    description:
+      "Plan row detail for an update: the changed field paths (never values)",
+  },
+  "blueprints.previewEnvGroupReapplied": {
+    message:
+      "Group values are write-only, so every declared variable is re-applied.",
+    description:
+      "Plan row note: env groups always plan as an update because their values can't be compared",
+  },
+  "blueprints.previewKindService": {
+    message: "Service",
+    description: "Plan row resource kind",
+  },
+  "blueprints.previewKindPostgres": {
+    message: "Postgres",
+    description: "Plan row resource kind",
+  },
+  "blueprints.previewKindKeyValue": {
+    message: "Key Value",
+    description: "Plan row resource kind",
+  },
+  "blueprints.previewKindEnvGroup": {
+    message: "Environment group",
+    description: "Plan row resource kind",
   },
   "blueprints.previewServices": {
     message: "Services",
@@ -548,7 +601,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.syncConfirmBody": {
     message:
-      "This re-applies the stored render.yaml to your workspace. The apply is idempotent — resources that already match the manifest are not replaced.",
+      "This applies render.yaml exactly as of the commit shown below — not a newer push to the branch. Resources that already match it are left as they are.",
     description: "Sync confirm dialog description",
   },
   "blueprints.syncConfirmAction": {

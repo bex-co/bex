@@ -40,7 +40,11 @@ export interface UseSyncBlueprintResult {
 export function useSyncBlueprint(): UseSyncBlueprintResult {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const [mutate] = useMutation(SyncBlueprintDocument);
+  // A sync records a run and moves the blueprint's status: re-read both, so
+  // Sync History gains its new top row without a reload (w4/m138).
+  const [mutate] = useMutation(SyncBlueprintDocument, {
+    refetchQueries: ["BlueprintSyncs", "Blueprint"],
+  });
   const [busy, setBusy] = useState(false);
   const paymentGate = usePaymentRequiredGate();
 

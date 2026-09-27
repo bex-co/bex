@@ -1,18 +1,18 @@
 # w4 · m138 — Blueprint detail: a sync never appears in Sync History, and the plan hides create vs update vs no-change
 
-**Worker:** worker4 **Goal:** the blueprint detail page tells the truth about syncs: a sync that just succeeded appears in Sync History without a reload, and the pre-sync plan shows what will happen to each resource (create, update with the changed fields, no change, detach), the way the backend already classifies it **Status:** todo
+**Worker:** worker4 **Goal:** the blueprint detail page tells the truth about syncs: a sync that just succeeded appears in Sync History without a reload, and the pre-sync plan shows what will happen to each resource (create, update with the changed fields, no change, detach), the way the backend already classifies it **Status:** blocked (t001–t006 done 2026-09-26; t007 awaits the deploy and the live production probes in the Definition of done)
 
 ## Tasks (in order)
 
 | id   | title                                                                                         | est | depends_on |
 | ---- | --------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Sync History refreshes after a dashboard sync and while a blueprint is open                   | 30m | —          |
-| t002 | The plan summary shows each action's operation and changed fields, and counts real changes     | 40m | —          |
-| t003 | Sync dialog copy names what is applied: the reviewed repository commit, not "the stored render.yaml" | 10m | —          |
-| t004 | Render parity across REST / GraphQL / MCP / UI                                                | 20m | t001, t002, t003 |
-| t005 | Simplify                                                                                      | 15m | t004       |
-| t006 | Test coverage                                                                                 | 30m | t004       |
-| t007 | Closeout                                                                                      | 10m | t006       |
+| t001 | Sync History refreshes after a dashboard sync and while a blueprint is open — **DONE**                   | 30m | —          |
+| t002 | The plan summary shows each action's operation and changed fields, and counts real changes — **DONE**     | 40m | —          |
+| t003 | Sync dialog copy names what is applied: the reviewed repository commit, not "the stored render.yaml" — **DONE** | 10m | —          |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                | 20m | t001, t002, t003 |
+| t005 | Simplify — **DONE**                                                                                      | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                                                 | 30m | t004       |
+| t007 | Closeout — **BLOCKED**                                                                                      | 10m | t006       |
 
 ## Definition of done
 
