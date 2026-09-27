@@ -174,3 +174,8 @@ caller's own address and reveals nothing about which resources exist, so the
    the only candidate that closes the trap for an unmodified pinned client —
    plus (b′) above as the independent legibility fix, and keep (c) (surface both
    families in the API/dashboard) as the human-facing complement.
+
+
+## CLI QA corroboration — 2026-09-22
+
+A fresh free PG18 fixture (`dpg-dap1em14dm7c7390q7u0`) passed verify-full TLS queries over forced IPv4 and IPv6 at 05:54 UTC, then passed both families and the installed `bex psql` at 06:06 UTC after suspend/resume; its harmless row persisted. The allowlist included the actual route-selected database IPv6 source, which differed from the address returned by a generic external-IP lookup. Thus the earlier EOF after resume did not reproduce with the correct source allowed; do not file a new resume/data-loss bug or treat an IP-lookup result as proof of the database connection's source. This corroborates this milestone's address-family diagnostics concern without changing its blocked decision or authorizing DNS changes. The fixture was deleted; detail returned 404 and its former verify-full connection failed at 08:12 UTC. Personal source addresses and connection credentials remain private.
