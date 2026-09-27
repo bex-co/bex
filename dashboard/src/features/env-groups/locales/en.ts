@@ -405,6 +405,11 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Unlink",
     description: "Unlink service from env group",
   },
+  "envGroups.unlinkServiceAria": {
+    message: "Unlink {name}",
+    description:
+      "Accessible name of a linked-service row's Unlink control, naming the service (w4/150)",
+  },
   "envGroups.noLinkedServices": {
     message:
       "This group isn't linked to any services yet. It is still fully editable.",

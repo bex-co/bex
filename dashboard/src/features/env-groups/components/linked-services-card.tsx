@@ -145,6 +145,9 @@ export function LinkedServicesCard({
                     size="sm"
                     disabled={busy}
                     onClick={() => void unlinkGroup(group.id, serviceId)}
+                    aria-label={t("envGroups.unlinkServiceAria", {
+                      name: service?.name ?? serviceId,
+                    })}
                   >
                     <Link2Off />
                     {t("envGroups.unlinkButton")}
