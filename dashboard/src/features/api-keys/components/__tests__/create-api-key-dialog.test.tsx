@@ -74,6 +74,11 @@ describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003, w4/m105)", ()
     expect(
       within(dialog).getByText(/https:\/\/oauth\.example\.test\/oauth2\/token/),
     ).toBeInTheDocument();
+    // w4/148: machine keys carry no capability scopes (w4/112), so the dialog
+    // must not advertise any: Hydra answers them with invalid_scope.
+    const help = within(dialog).getByText(/client_credentials/i);
+    expect(help).not.toHaveTextContent(/bex\.read|bex\.write|bex\.sensitive/);
+    expect(help).toHaveTextContent(/full authority in this workspace/);
   });
 
   it("the secret exists nowhere after the dialog is dismissed and reopened", async () => {
