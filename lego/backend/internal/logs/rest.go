@@ -118,8 +118,12 @@ func (s *Service) logsQuery(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusOK, toRenderLogList(page))
 }
 
-// logsSubscribe serves GET /v1/logs/subscribe — a live tail, following one
-// resource. Three wire formats are supported:
+// logsSubscribe serves GET /v1/logs/subscribe — a live tail of every
+// requested resource, merged onto one stream in arrival order (w8/024; it
+// used to follow resources[0] and silently drop the rest). Each resource is
+// authorized and holds its own subscription slot before the stream opens, so
+// an unreadable resource refuses the whole request rather than being merged
+// or skipped. Three wire formats are supported:
 //
 //   - WebSocket upgrade → WS text frames, one per log line; the Render CLI
 //     v2+ sends Upgrade: websocket and expects this protocol.
@@ -132,7 +136,7 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, err)
 		return
 	}
-	q.App = resources[0] // subscribe follows a single App
+	q.App = resources[0] // validated once below; followed per resource after admission
 
 	// Resume where this client's previous connection stopped. A browser
 	// EventSource reconnects on its own — invisibly to the page — and replays
@@ -166,26 +170,68 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Admission retains a final process ceiling and adds caller/workspace shares
-	// after resource authorization, leaving capacity for unrelated tenants.
-	release, err := s.acquireSubscription(r.Context(), q)
-	if err != nil {
-		if errors.Is(err, errSubscriptionLimit) {
-			// Render's one error dialect ({error,message,id}) on every branch, so a
-			// Render client reads .message here too, not a bare {error} (w9/m39).
-			core.WriteErrStatus(w, http.StatusTooManyRequests, "too many active log subscriptions")
-		} else {
-			core.WriteErr(w, err)
+	// after resource authorization, leaving capacity for unrelated tenants —
+	// one slot per followed resource, so a multi-resource tail costs what that
+	// many single tails would.
+	queries := make([]LogQuery, len(resources))
+	for i, resource := range resources {
+		queries[i] = q
+		queries[i].App = resource
+		release, err := s.acquireSubscription(r.Context(), queries[i])
+		if err != nil {
+			if errors.Is(err, errSubscriptionLimit) {
+				// Render's one error dialect ({error,message,id}) on every branch, so a
+				// Render client reads .message here too, not a bare {error} (w9/m39).
+				core.WriteErrStatus(w, http.StatusTooManyRequests, "too many active log subscriptions")
+			} else {
+				core.WriteErr(w, err)
+			}
+			return
 		}
-		return
+		defer release()
 	}
-	defer release()
 
 	// Render CLI v2+ sends an upgrade request; everyone else gets SSE or NDJSON.
 	if websocket.IsWebSocketUpgrade(r) {
-		s.subscribeWebSocket(w, r, q)
+		s.subscribeWebSocket(w, r, queries)
 		return
 	}
-	s.subscribeStream(w, r, q)
+	s.subscribeStream(w, r, queries)
+}
+
+// followAll is followLogs over every subscribed resource, merged: one follower
+// per resource, their frames and keepalives serialized onto the single
+// transport writer. The first follower to fail ends the whole tail with its
+// error (the transports turn it into their refusal frame); a client
+// disconnect ends every follower quietly.
+func (s *Service) followAll(ctx context.Context, queries []LogQuery, emit func(LogEntry) error, heartbeat func() error) error {
+	if len(queries) == 1 {
+		return s.followLogs(ctx, queries[0], emit, heartbeat)
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var mu sync.Mutex
+	serialized := func(write func() error) error {
+		mu.Lock()
+		defer mu.Unlock()
+		return write()
+	}
+	done := make(chan error, len(queries))
+	for _, q := range queries {
+		go func() {
+			done <- s.followLogs(ctx, q,
+				func(e LogEntry) error { return serialized(func() error { return emit(e) }) },
+				func() error { return serialized(heartbeat) })
+		}()
+	}
+	var first error
+	for range queries {
+		if err := <-done; err != nil && first == nil && !errors.Is(err, context.Canceled) {
+			first = err
+			cancel()
+		}
+	}
+	return first
 }
 
 // resumeFrom parses an SSE Last-Event-ID back into the lower bound it stands
@@ -310,7 +356,7 @@ func decrementSubscriptionKey(counts map[string]int, key string) {
 }
 
 // subscribeWebSocket streams the follow as WS text frames, one per log line.
-func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, q LogQuery) {
+func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, queries []LogQuery) {
 	conn, wsErr := wsUpgrader.Upgrade(w, r, nil)
 	if wsErr != nil {
 		return // upgrader already wrote the error response
@@ -325,7 +371,7 @@ func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, q L
 			}
 		}
 	}()
-	followErr := s.followLogs(r.Context(), q, func(e LogEntry) error {
+	followErr := s.followAll(r.Context(), queries, func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {
 			return mErr
@@ -364,7 +410,7 @@ func refusalLogEntry(err error) LogEntry {
 
 // subscribeStream streams the follow as SSE (Accept: text/event-stream) or
 // NDJSON. The two differ only in content type and per-line framing.
-func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, q LogQuery) {
+func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, queries []LogQuery) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		core.WriteErrStatus(w, http.StatusInternalServerError, "streaming unsupported")
@@ -423,7 +469,7 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, q LogQ
 		flusher.Flush()
 		return nil
 	}
-	err := s.followLogs(r.Context(), q, func(e LogEntry) error {
+	err := s.followAll(r.Context(), queries, func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {
 			return mErr
