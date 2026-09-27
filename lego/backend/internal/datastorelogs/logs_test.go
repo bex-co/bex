@@ -331,3 +331,57 @@ func equal(got, want []string) bool {
 	}
 	return true
 }
+
+// w8/030: a CNPG postgres container is ~85% instance-manager chatter, and
+// PostgreSQL's own lines arrive wrapped as logger=postgres msg=record. The
+// fallback read unwraps them the way the shipper does.
+func TestCNPGLine(t *testing.T) {
+	for name, tc := range map[string]struct {
+		in, want, level string
+		keep            bool
+	}{
+		"instance manager dropped": {
+			in: `{"level":"info","ts":"2026-09-27T01:00:00Z","logger":"instance-manager","msg":"Starting EventSource"}`,
+		},
+		"cluster resource dropped": {
+			in: `{"level":"info","logger":"cluster-resource","msg":"Defaulting for Cluster"}`,
+		},
+		"record unwrapped": {
+			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"2026-09-27 01:00:02.123 UTC","process_id":"42","error_severity":"LOG","message":"database system is ready to accept connections"}}`,
+			want: "2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections", level: "info", keep: true,
+		},
+		"failed login is an error with its detail": {
+			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":77,"error_severity":"FATAL","message":"password authentication failed for user \"app\"","detail":"Connection matched pg_hba.conf line 5"}}`,
+			want: `t [77] FATAL:  password authentication failed for user "app" DETAIL:  Connection matched pg_hba.conf line 5`, level: "error", keep: true,
+		},
+		"warning with hint": {
+			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"1","error_severity":"WARNING","message":"checkpoints are occurring too frequently","hint":"Consider increasing max_wal_size."}}`,
+			want: "t [1] WARNING:  checkpoints are occurring too frequently HINT:  Consider increasing max_wal_size.", level: "warn", keep: true,
+		},
+		"plain line verbatim": {in: "plain line", want: "plain line", keep: true},
+		"other JSON verbatim": {in: `{"msg":"no logger"}`, want: `{"msg":"no logger"}`, keep: true},
+	} {
+		got, level, keep := CNPGLine(tc.in)
+		if keep != tc.keep || got != tc.want || level != tc.level {
+			t.Errorf("%s: CNPGLine = (%q, %q, %v), want (%q, %q, %v)", name, got, level, keep, tc.want, tc.level, tc.keep)
+		}
+	}
+}
+
+// The fallback reader applies it to Postgres pods only; a Key Value's JSON
+// lines are its own and pass through.
+func TestCollectUnwrapsPostgresOnly(t *testing.T) {
+	stream := "2026-09-27T01:00:00Z {\"logger\":\"instance-manager\",\"msg\":\"Starting EventSource\"}\n" +
+		"2026-09-27T01:00:01Z {\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":\"9\",\"error_severity\":\"LOG\",\"message\":\"ready\"}}\n"
+	source := func(context.Context, string, string, string, int64) (io.ReadCloser, error) {
+		return io.NopCloser(strings.NewReader(stream)), nil
+	}
+	pg, err := Collect(context.Background(), Instance{Name: "dpg-x", Kind: KindPostgres, Pods: []string{"dpg-x-1"}, PodLogs: source}, Query{Limit: 10})
+	if err != nil || len(pg) != 1 || pg[0].Message != "t [9] LOG:  ready" || pg[0].Labels["level"] != "info" {
+		t.Errorf("postgres entries = %+v, %v; want only the unwrapped record", pg, err)
+	}
+	kv, err := Collect(context.Background(), Instance{Name: "red-x", Kind: KindKeyValue, Pods: []string{"red-x-0"}, PodLogs: source}, Query{Limit: 10})
+	if err != nil || len(kv) != 2 {
+		t.Errorf("key value entries = %+v, %v; want both lines untouched", kv, err)
+	}
+}

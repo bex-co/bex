@@ -69,9 +69,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `030` — Postgres logs are ~85% CloudNativePG instance-manager chatter, and PostgreSQL's own lines arrive JSON-wrapped (`record.message`); the shipper keeps the `postgres` container assuming it is plain PG stdout (~50m) ← `/qa-find-bugs-cli` sweep 44, 2026-09-27
 - `031` — `bex logs --level warning` (and `notice`/`critical`/`alert`/`emergency`) never matches: the pinned CLI only sends Render's level names, the shipper stores `warn`, and `loki.go:213` matches the label exactly (~45m) ← `/qa-find-bugs-cli` sweep 45, 2026-09-27
 
+
+> `030.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 44) and fixed 2026-09-27 — moved to `done/`. Postgres logs drop CNPG's instance-manager chatter and unwrap `logger=postgres` records into PostgreSQL's own line shape with a `level`, in the shipper (verified with a local Alloy v1.20.0 run) and in both direct-pod fallbacks.
 
 > `029.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 41) and fixed 2026-09-27 — moved to `done/`. Binary secret files are altered in transit by the upstream client and the JSON-string contract. `docs/bex-cli.md` and the CLI checklist document it with a base64 recipe, and the dashboard upload refuses a non-UTF-8 file with that hint instead of saving a mangled copy.
 

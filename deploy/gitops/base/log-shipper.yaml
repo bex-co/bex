@@ -355,8 +355,8 @@ spec:
                   regex         = "database"
                   action        = "keep"
                 }
-                // CNPG pods include an instance-manager sidecar. PostgreSQL's
-                // own stdout is the public datastore log source.
+                // The postgres container carries PostgreSQL's output, wrapped
+                // by CNPG's instance manager; database_logs below unwraps it.
                 rule {
                   source_labels = ["__meta_kubernetes_pod_container_name"]
                   regex         = "postgres"
@@ -392,6 +392,55 @@ spec:
                   expression          = "^$"
                   drop_counter_reason = "missing_database_id"
                 }
+
+                // In CNPG the postgres container's PID 1 is the instance
+                // manager: it logs its own JSON (controller start-up, leases,
+                // config reloads) and re-emits PostgreSQL's csvlog as
+                // logger=postgres msg=record with the line under record.*
+                // (w8/030). Only PostgreSQL's output is the tenant's log: the
+                // operator chatter is dropped, and each record is rewritten to
+                // PostgreSQL's own stderr shape with its severity as `level`.
+                // A line that is not JSON passes through verbatim.
+                stage.json {
+                  expressions = {
+                    cnpg_logger = "logger",
+                    pg_time     = "record.log_time",
+                    pg_pid      = "record.process_id",
+                    pg_severity = "record.error_severity",
+                    pg_message  = "record.message",
+                    pg_detail   = "record.detail",
+                    pg_hint     = "record.hint",
+                  }
+                }
+                stage.labels {
+                  values = { cnpg_logger = "" }
+                }
+                stage.match {
+                  selector            = "{cnpg_logger=~\".+\", cnpg_logger!=\"postgres\"}"
+                  action              = "drop"
+                  drop_counter_reason = "cnpg_instance_manager"
+                }
+                stage.match {
+                  selector = "{cnpg_logger=\"postgres\"}"
+                  stage.template {
+                    source   = "pg_line"
+                    template = "{{ "{{" }} .pg_time {{ "}}" }} [{{ "{{" }} .pg_pid {{ "}}" }}] {{ "{{" }} .pg_severity {{ "}}" }}:  {{ "{{" }} .pg_message {{ "}}" }}{{ "{{" }} if .pg_detail {{ "}}" }} DETAIL:  {{ "{{" }} .pg_detail {{ "}}" }}{{ "{{" }} end {{ "}}" }}{{ "{{" }} if .pg_hint {{ "}}" }} HINT:  {{ "{{" }} .pg_hint {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
+                  }
+                  stage.template {
+                    source   = "level"
+                    template = "{{ "{{" }} $s := .pg_severity {{ "}}" }}{{ "{{" }} if or (eq $s \"ERROR\") (eq $s \"FATAL\") (eq $s \"PANIC\") {{ "}}" }}error{{ "{{" }} else if eq $s \"WARNING\" {{ "}}" }}warn{{ "{{" }} else if or (eq $s \"LOG\") (eq $s \"INFO\") (eq $s \"NOTICE\") {{ "}}" }}info{{ "{{" }} else {{ "}}" }}debug{{ "{{" }} end {{ "}}" }}"
+                  }
+                  stage.labels {
+                    values = { level = "level" }
+                  }
+                  stage.output {
+                    source = "pg_line"
+                  }
+                }
+                stage.label_drop {
+                  values = ["cnpg_logger"]
+                }
+
                 stage.static_labels {
                   values = { type = "postgres" }
                 }
