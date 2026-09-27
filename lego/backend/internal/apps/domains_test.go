@@ -106,8 +106,8 @@ func TestGetDomainFoundAndNotFound(t *testing.T) {
 		t.Errorf("name = %q", d.Name)
 	}
 
-	if _, err := svc.GetDomain(context.Background(), "web", "nope.example.com"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("missing domain => ErrNotFound, got %v", err)
+	if _, err := svc.GetDomain(context.Background(), "web", "nope.example.com"); !errors.Is(err, core.ErrNotFound) || err.Error() != "custom domain not found" {
+		t.Errorf("missing domain => \"custom domain not found\" (w4/154), got %v", err)
 	}
 }
 

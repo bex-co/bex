@@ -385,7 +385,7 @@ func applyPageLimits[T any](items []T, after string, limit int, cursorOf func(T)
 }
 
 // GetEnvVar returns a single variable (Render's GET .../env-vars/{key}), the bare
-// {key,value}. Unknown service or key => core.ErrNotFound. Sensitive read.
+// {key,value}. Unknown service => the neutral not-found; unknown key on an authorized service => core.NotFound("env var") (w4/154). Sensitive read.
 func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarView, error) {
 	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
 	if err != nil {
@@ -394,7 +394,7 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 	merged, owned := mergeManifestEnv(env, a)
 	v, ok := merged[key]
 	if !ok {
-		return EnvVarView{}, core.ErrNotFound
+		return EnvVarView{}, core.NotFound("env var")
 	}
 	return EnvVarView{Key: key, Value: v, Revision: revision, ManagedBy: managedBy(owned, key)}, nil
 }
@@ -574,7 +574,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 }
 
 // DeleteEnvVar removes one variable (Render's DELETE .../env-vars/{key}),
-// re-projecting the reduced set. Unknown key => core.ErrNotFound.
+// re-projecting the reduced set. Unknown key => core.NotFound("env var") (w4/154).
 func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
@@ -597,7 +597,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 			return err
 		}
 		if !stripped {
-			return core.ErrNotFound
+			return core.NotFound("env var")
 		}
 		s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
 		return nil
@@ -609,7 +609,7 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 		return err
 	}
 	if !keyFound {
-		return core.ErrNotFound
+		return core.NotFound("env var")
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
 	return nil
@@ -713,7 +713,7 @@ func (s *Service) EnvVarValue(ctx context.Context, service, key string) (core.En
 	merged, owned := mergeManifestEnv(env, a)
 	value, ok := merged[key]
 	if !ok {
-		return core.EnvVar{}, core.ErrNotFound
+		return core.EnvVar{}, core.NotFound("env var")
 	}
 	return core.EnvVar{ID: key, Key: key, Value: value, Revision: revision, ManagedBy: managedBy(owned, key)}, nil
 }

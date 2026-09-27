@@ -226,8 +226,10 @@ func TestEnvVar_SingleKey(t *testing.T) {
 	if err != nil || one.Value != "2" {
 		t.Fatalf("GetEnvVar: %+v err=%v", one, err)
 	}
-	if _, err := svc.GetEnvVar(ctx, "web", "MISSING"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("GetEnvVar unknown key: %v", err)
+	// w4/154: a missing key on a real service names the key's kind, so it is
+	// not mistaken for a missing service.
+	if _, err := svc.GetEnvVar(ctx, "web", "MISSING"); !errors.Is(err, core.ErrNotFound) || err.Error() != "env var not found" {
+		t.Errorf("GetEnvVar unknown key: %v, want \"env var not found\"", err)
 	}
 
 	// core.EnvVarReader: EnvVarKeys is keys-only (value empty), EnvVarValue reads one.
@@ -265,6 +267,11 @@ func TestEnvVars_Errors(t *testing.T) {
 		svc := newService(newFakeSecretStore(), sampleApp("web"))
 		if _, err := svc.ListEnvVars(ctx, "nope"); !errors.Is(err, core.ErrNotFound) {
 			t.Errorf("List: %v", err)
+		}
+		// The parent miss stays neutral: a child is named only after the
+		// service authorizes, so naming never becomes an existence oracle.
+		if _, err := svc.GetEnvVar(ctx, "nope", "A"); !errors.Is(err, core.ErrNotFound) || err.Error() == "env var not found" {
+			t.Errorf("GetEnvVar on a missing service: %v, want the neutral service miss", err)
 		}
 		if _, err := svc.SetEnvVars(ctx, "nope", []EnvVarView{{Key: "A", Value: "b"}}); !errors.Is(err, core.ErrNotFound) {
 			t.Errorf("Set: %v", err)

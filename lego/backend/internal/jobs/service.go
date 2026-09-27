@@ -267,7 +267,7 @@ func (s *Service) Get(ctx context.Context, serviceID, jobID string) (JobView, er
 	j, err := s.Store.GetJob(ctx, serviceID, tenantID, jobID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return JobView{}, core.ErrNotFound
+			return JobView{}, core.NotFound("job")
 		}
 		return JobView{}, err
 	}
@@ -296,7 +296,7 @@ func (s *Service) Cancel(ctx context.Context, serviceID, jobID string) (JobView,
 	j, err := s.Store.GetJob(ctx, serviceID, tenantID, jobID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return JobView{}, core.ErrNotFound
+			return JobView{}, core.NotFound("job")
 		}
 		return JobView{}, err
 	}
