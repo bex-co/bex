@@ -256,6 +256,54 @@ describe("ServiceDetailHeader", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w4/143: the reason used to sit in a hover-only title; it is visible text
+  // now, with a link to the remedy the user can take.
+  it("says a Free service needs a paid instance type for SSH, and links to the plan", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ sshAddress: null, plan: "free" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(
+      screen.getByText(
+        "SSH needs a paid instance type. Free services don't include shell access.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Change instance type" }),
+    ).toHaveAttribute("href", "/services/app/plan");
+  });
+
+  it("points a suspended service's SSH section at Resume", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ sshAddress: null, suspended: true, plan: "starter" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(
+      screen.getByText(
+        "This service is suspended. Resume it to connect over SSH.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Resume service" }),
+    ).toHaveAttribute("href", "/services/app/settings#suspend");
+  });
+
+  it("keeps the general explanation, visibly, when the user holds no remedy", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ sshAddress: null, plan: "starter" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(
+      screen.getByText(
+        "SSH requires a running paid web, private, or background service and an active gateway.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Resume service" })).toBeNull();
+  });
+
   it("carries the facts the retired Overview tab showed: id, source, instance type, revision", async () => {
     renderHeader(svc());
 
