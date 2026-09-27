@@ -1981,6 +1981,11 @@ func (s createSeed) empty() bool { return len(s.files) == 0 && len(s.env) == 0 }
 // resolves, not a name the user is claiming.
 func checkReservedSpecEnv(env []appv1alpha1.EnvVar) error {
 	for _, item := range env {
+		// A name every later env write refuses is refused at create too
+		// (w8/027): stored, it became a var no verb could edit or delete.
+		if !core.ValidEnvKey(item.Name) {
+			return core.CheckEnvKey(item.Name)
+		}
 		if item.ValueFrom == nil && core.IsReservedEnvKey(item.Name) {
 			return core.ReservedEnvKeyError(item.Name)
 		}
@@ -1998,16 +2003,16 @@ func checkReservedSpecEnv(env []appv1alpha1.EnvVar) error {
 // beats `envFrom` — so every later edit or delete would be silently ignored by
 // the process.
 //
-// Entries the env store cannot represent stay exactly where they are: a
-// ValueFrom entry is a Secret key reference, not a literal (the shape a bex.yml
-// fromDatabase reference resolves to), and a name outside core.ValidEnvKey
-// would fail the projection Secret's write — both keep their spec-only
-// behavior rather than newly failing a create that works today.
+// A ValueFrom entry stays exactly where it is: it is a Secret key reference,
+// not a literal (the shape a bex.yml fromDatabase reference resolves to). A
+// name outside core.ValidEnvKey never reaches here — create refuses it
+// (checkReservedSpecEnv, w8/027) instead of leaving it on spec.Env, where it
+// read as Blueprint-managed and no env verb could remove it.
 func takeCreateEnvLiterals(spec *appv1alpha1.AppSpec) map[string]string {
 	var literals map[string]string
 	kept := make([]appv1alpha1.EnvVar, 0, len(spec.Env))
 	for _, item := range spec.Env {
-		if item.ValueFrom != nil || !core.ValidEnvKey(item.Name) {
+		if item.ValueFrom != nil {
 			kept = append(kept, item)
 			continue
 		}
