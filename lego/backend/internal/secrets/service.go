@@ -252,9 +252,32 @@ func mergeManifestEnv(env map[string]string, a *appv1alpha1.App) (map[string]str
 	owned := make(map[string]bool, len(manifest))
 	for k, v := range manifest {
 		merged[k] = v
-		owned[k] = true
+		// A name no Blueprint (nor any env verb) accepts is debris from a
+		// create before w8/027, not manifest-owned: listed, but deletable.
+		owned[k] = core.ValidEnvKey(k)
 	}
 	return merged, owned
+}
+
+// dropInvalidSpecEnv removes spec.Env literals whose names no env verb accepts
+// — debris a create stored before w8/027 validated names — keeping only
+// entries for which keep is true. It reports whether anything was removed.
+func dropInvalidSpecEnv(a *appv1alpha1.App, drop func(name string) bool) bool {
+	kept := a.Spec.Env[:0:0]
+	for _, item := range a.Spec.Env {
+		if item.ValueFrom == nil && !core.ValidEnvKey(item.Name) && drop(item.Name) {
+			continue
+		}
+		kept = append(kept, item)
+	}
+	if len(kept) == len(a.Spec.Env) {
+		return false
+	}
+	if len(kept) == 0 {
+		kept = nil
+	}
+	a.Spec.Env = kept
+	return true
 }
 
 // ListEnvVars returns a service's environment variables, sorted by key for a
@@ -416,7 +439,7 @@ func refuseManifestKeys(a *appv1alpha1.App, keys ...string) error {
 		if key == "" || seen[key] {
 			continue
 		}
-		if _, owns := owned[key]; owns {
+		if _, owns := owned[key]; owns && core.ValidEnvKey(key) {
 			seen[key] = true
 			offenders = append(offenders, key)
 		}
@@ -471,7 +494,16 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return nil, err
 	}
-	if err := s.materializeEnv(ctx, a, env); err != nil {
+	// A whole-set replace also clears invalid-name debris from spec.Env, or
+	// `PUT []` answered [] while the list still showed it (w8/027).
+	if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+		if err := s.projectEnv(ctx, a, env); err != nil {
+			return err
+		}
+		dropInvalidSpecEnv(a, func(string) bool { return true })
+		s.bumpRestart(a)
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVars)
@@ -550,6 +582,25 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	}
 	if err := refuseManifestKeys(a, key); err != nil {
 		return err
+	}
+	// An invalid-name literal a pre-w8/027 create left on spec.Env is removed
+	// from the App itself — it was never in the env store.
+	if !core.ValidEnvKey(key) {
+		stripped := false
+		if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+			stripped = dropInvalidSpecEnv(a, func(name string) bool { return name == key })
+			if stripped {
+				s.bumpRestart(a)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if !stripped {
+			return core.ErrNotFound
+		}
+		s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
+		return nil
 	}
 	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, func(current map[string]string) error {
 		return s.materializeEnv(ctx, a, current)

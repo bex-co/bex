@@ -465,11 +465,9 @@ func TestCreateTimeSecretsThreadThroughEverySurface(t *testing.T) {
 	})
 }
 
-// Only what the env store can represent moves: a ValueFrom entry is a Secret
-// key reference (the shape a bex.yml fromDatabase reference resolves to) and a
-// name outside core.ValidEnvKey would fail the projection Secret's write — both
-// keep their spec-only behavior rather than newly failing a working create.
-func TestCreationTimeEnvVarsLeaveReferencesAndUnprojectableNamesOnTheSpec(t *testing.T) {
+// Only literals move: a ValueFrom entry is a Secret key reference (the shape a
+// bex.yml fromDatabase reference resolves to) and stays on spec.Env.
+func TestCreationTimeEnvVarsLeaveReferencesOnTheSpec(t *testing.T) {
 	seeder := &recordingCreateSecretsSeeder{}
 	svc, cl := newService(nil)
 	svc.CreateSecrets = seeder
@@ -477,7 +475,6 @@ func TestCreationTimeEnvVarsLeaveReferencesAndUnprojectableNamesOnTheSpec(t *tes
 		Name: "web", Image: "nginx:alpine",
 		Env: []appv1alpha1.EnvVar{
 			{Name: "MESSAGE", Value: "marker"},
-			{Name: "bad-key", Value: "kept"},
 			{Name: "DATABASE_URL", ValueFrom: &appv1alpha1.EnvVarSource{
 				SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "db-app", Key: "uri"},
 			}},
@@ -486,11 +483,34 @@ func TestCreationTimeEnvVarsLeaveReferencesAndUnprojectableNamesOnTheSpec(t *tes
 		t.Fatal(err)
 	}
 	if len(seeder.env) != 1 || seeder.env["MESSAGE"] != "marker" {
-		t.Fatalf("seeded env = %#v, want only the projectable literal", seeder.env)
+		t.Fatalf("seeded env = %#v, want only the literal", seeder.env)
 	}
 	got := getApp(t, cl, "web")
-	if len(got.Spec.Env) != 2 || got.Spec.Env[0].Name != "bad-key" || got.Spec.Env[1].Name != "DATABASE_URL" {
-		t.Fatalf("spec.Env = %#v, want the unprojectable name and the reference kept in order", got.Spec.Env)
+	if len(got.Spec.Env) != 1 || got.Spec.Env[0].Name != "DATABASE_URL" {
+		t.Fatalf("spec.Env = %#v, want only the reference kept", got.Spec.Env)
+	}
+}
+
+// w8/027: a name every later env write refuses used to be kept on spec.Env at
+// create — where it read as Blueprint-managed and no verb could remove it.
+// Create refuses it now, with the same 400 the env verbs give, and writes
+// nothing.
+func TestCreateRefusesInvalidEnvVarNames(t *testing.T) {
+	for _, name := range []string{"1BAD", "BAD KEY", "BAD-DASH"} {
+		seeder := &recordingCreateSecretsSeeder{}
+		svc, cl := newService(nil)
+		svc.CreateSecrets = seeder
+		_, err := svc.Create(context.Background(), CreateRequest{
+			Name: "web", Image: "nginx:alpine",
+			Env: []appv1alpha1.EnvVar{{Name: "OK", Value: "1"}, {Name: name, Value: "x"}},
+		})
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "invalid environment variable name") {
+			t.Errorf("create with %q = %v, want the invalid-name 400", name, err)
+		}
+		var list appv1alpha1.AppList
+		if err := cl.List(context.Background(), &list); err != nil || len(list.Items) != 0 || seeder.env != nil {
+			t.Errorf("create with %q wrote %d Apps / seeded %v", name, len(list.Items), seeder.env)
+		}
 	}
 }
 

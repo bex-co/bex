@@ -105,3 +105,40 @@ func TestValidateBlueprintSizeRefusalIsItsOwn413(t *testing.T) {
 		}
 	}
 }
+
+// w8/027: `blueprints validate` passed envVars with names every env write
+// refuses; each is now a located validation error.
+func TestValidateBlueprintRefusesInvalidEnvVarNames(t *testing.T) {
+	svc, _ := connectionService(t)
+	manifest := `services:
+  - type: worker
+    name: qa35-wrk
+    runtime: image
+    image: {url: busybox:1.36}
+    envVars:
+      - key: OK_NAME
+        value: "1"
+      - key: 1BAD
+        value: x
+envVarGroups:
+  - name: qa35-group
+    envVars:
+      - key: "BAD KEY"
+        value: y
+`
+	v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, manifest, "")
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if v.Valid || len(v.Errors) == 0 {
+		t.Fatalf("invalid env var names validated: %+v", v)
+	}
+	for _, e := range v.Errors {
+		if !strings.Contains(e.Error, "invalid environment variable name") {
+			t.Errorf("entry %+v, want the invalid-name refusal", e)
+		}
+	}
+	if e := v.Errors[0]; e.Line == nil {
+		t.Errorf("first entry %+v has no location", e)
+	}
+}
