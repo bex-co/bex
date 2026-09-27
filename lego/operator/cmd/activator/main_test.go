@@ -774,6 +774,34 @@ func TestSuspendedHandlerNegotiatesContentAndNeverWakes(t *testing.T) {
 
 // TestSuspendedHTMLHeadHasNoBody mirrors the wake path's HEAD contract: the
 // suspended page's own reload probe uses HEAD, so it must carry headers only.
+// w4/160: a suspended static site is routed here too, and gets the same
+// suspended answer as a web service. A static site has no Deployment, so the
+// answer cannot depend on one.
+func TestSuspendedStaticSiteGetsTheSuspendedResponse(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "site", Namespace: "bex-system"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Suspended: true},
+		Status:     appv1alpha1.AppStatus{URL: "https://site.onbex.co"},
+	}
+	cache, base := primedHostCache(t, app)
+	cl := &countingClient{Client: base}
+
+	req := httptest.NewRequest(http.MethodGet, "https://site.onbex.co/index.html", nil)
+	req.Header.Set("Accept", "application/json")
+	rr := httptest.NewRecorder()
+	newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != suspendedRetryAfter {
+		t.Fatalf("status %d, Retry-After %q; want 503 with %q", rr.Code, rr.Header().Get("Retry-After"), suspendedRetryAfter)
+	}
+	if body := rr.Body.String(); body != suspendedJSON {
+		t.Fatalf("body = %q, want %q", body, suspendedJSON)
+	}
+	if cl.patches.Load() != 0 {
+		t.Fatalf("a suspended site must not be woken: %d patches", cl.patches.Load())
+	}
+}
+
 func TestSuspendedHTMLHeadHasNoBody(t *testing.T) {
 	for _, accept := range []string{"text/html", "application/json", ""} {
 		rr := httptest.NewRecorder()

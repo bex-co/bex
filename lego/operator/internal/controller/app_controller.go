@@ -2020,14 +2020,16 @@ func isWebService(app *appv1alpha1.App) bool {
 }
 
 // suspendedRoutable reports whether a manually suspended App's public Ingress
-// should be handed to the activator's suspended responder instead of its own
-// endpoint-less Service (w2/m98). Web services only: a static_site already has
-// its own suspended path through the static-server (w3/m46), and a
-// private_service, background_worker or cron_job has no public host to answer
-// at. With no activator configured there is nothing to route to, so the App
-// keeps its own Service and Traefik's raw 503 — exactly the pre-m98 behavior.
+// should be handed to the activator's suspended responder (w2/m98): a web
+// service instead of its own endpoint-less Service, and a static site instead
+// of the static-server, whose resolver answers a suspended site's host with
+// the 404 it gives an unknown one (w4/160). One responder, so the two suspended
+// states cannot drift. A private_service, background_worker or cron_job has no
+// public host to answer at. With no activator configured there is nothing to
+// route to, so each keeps its pre-m98 backend.
 func (r *AppReconciler) suspendedRoutable(app *appv1alpha1.App) bool {
-	return app.Spec.Suspended && isWebService(app) && r.ActivatorService != ""
+	return app.Spec.Suspended && r.ActivatorService != "" &&
+		(isWebService(app) || app.Spec.Type == appv1alpha1.TypeStaticSite)
 }
 
 // shouldAutoHibernate reports whether an auto-sleep-eligible app should scale
@@ -3277,22 +3279,30 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	}
 	r.setPublicRoutingCondition(app, hosts)
 
-	// Suspended: keep the host Ingress + its TLS certificate pointed at the shared
-	// static-server, exactly as when running. The static-server resolver already
-	// drops a suspended App from its host→site map (staticserver/resolver.go), so
-	// it answers its ordinary "no static site for host" 404 — but now that 404 is
-	// served over the App's own managed certificate instead of Traefik's default
-	// self-signed cert. Removing the Ingress (the pre-w3/m46 behavior) left Traefik
-	// with no route or cert for the host, so visitors hit a TLS error and the
-	// dashboard's "URL and certificates are kept" promise was false. This mirrors a
-	// suspended compute service, whose Ingress + cert are likewise retained
-	// (parkKubernetes). The published content stays in the object store; resume just
-	// re-adds the App to the resolver.
+	// Suspended: keep the host Ingress and its TLS certificate (w3/m46), so the
+	// site answers over its own managed certificate instead of Traefik's default
+	// self-signed one. Removing the Ingress (the pre-w3/m46 behavior) left
+	// visitors with a TLS error. The backend is the activator's suspended
+	// responder, the same one a suspended web service uses (w2/m98): a
+	// content-negotiated 503 with Retry-After, so a visitor, monitor, or crawler
+	// reads "suspended" rather than the static-server's "no static site for
+	// host" 404, which says the site is gone (w4/160). With no activator
+	// configured, the static-server's 404 is the fallback. The published content
+	// stays in the object store, and resume points the Ingress back at the
+	// static-server on the next reconcile.
 	if app.Spec.Suspended {
 		if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
 			return r.fail(ctx, app, "MiddlewareCleanupFailed", err)
 		}
-		if reason, err := r.reconcileStaticIngress(ctx, app, hosts, nil); err != nil {
+		if r.suspendedRoutable(app) {
+			activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
+			if err != nil {
+				return r.fail(ctx, app, "ActivatorAliasFailed", err)
+			}
+			if err := r.reconcileIngress(ctx, app, hosts, activatorSvc, int32(r.ActivatorPort), nil); err != nil {
+				return r.fail(ctx, app, "IngressFailed", err)
+			}
+		} else if reason, err := r.reconcileStaticIngress(ctx, app, hosts, nil); err != nil {
 			return r.fail(ctx, app, reason, err)
 		}
 		app.Status.ActiveRevision = rev
@@ -3300,7 +3310,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
 		}
 		return r.hibernated(ctx, app, image, hosts, reasonSuspended,
-			"static site suspended (published content kept; host and certificate retained, serving 404)")
+			"static site suspended (published content kept; host and certificate retained)")
 	}
 
 	staticMWNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
