@@ -7,9 +7,10 @@ import type {
 } from "@/features/keyvalue/types";
 
 // Render's keyValueStatus enum (backend/internal/keyvalue/service.go kvView):
-// "available" once the Valkey StatefulSet is ready, "creating" while
-// provisioning, "unavailable" on failure, "suspended" when Spec.Suspended
-// (Render's databaseStatus vocabulary, reused by Key Value — w5/061).
+// "available" once the Valkey StatefulSet is ready, "creating" while first
+// provisioning, "config_restart" while a store that has served restarts,
+// "unavailable" on failure, "suspended" when Spec.Suspended (Render's
+// databaseStatus vocabulary, reused by Key Value — w5/061, w4/m137).
 export const AVAILABLE = "available";
 export const CREATING = "creating";
 export const UNAVAILABLE = "unavailable";
@@ -62,6 +63,9 @@ export function toKeyValueViews(
 const STATUS_MAP: Record<string, KeyValueStatus> = {
   available: { key: "available", variant: "default" },
   creating: { key: "creating", variant: "outline" },
+  // Render's config_restart: a store that has served restarting after a config
+  // change or a resume (w4/m137), distinct from a first provision.
+  config_restart: { key: "restarting", variant: "outline" },
   unavailable: { key: "unavailable", variant: "destructive" },
   suspended: { key: "suspended", variant: "secondary" },
 };
@@ -87,7 +91,8 @@ export function deriveStatus(d: {
 
 /** True while the store is still converging (used to poll the list/detail live). */
 export function isConverging(d: { status: string }): boolean {
-  return fromStatus(d.status).key === "creating";
+  const key = fromStatus(d.status).key;
+  return key === "creating" || key === "restarting";
 }
 
 /** Stat-tile counts computed from the live list (total / available / creating). */

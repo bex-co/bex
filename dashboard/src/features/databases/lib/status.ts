@@ -91,6 +91,9 @@ export function toDatabaseDetailView(
 const STATUS_MAP: Record<string, DatabaseStatus> = {
   available: { key: "available", variant: "default" },
   creating: { key: "creating", variant: "outline" },
+  // Render's config_restart: a database that has served restarting (a manual
+  // restart or a resume), distinct from a first provision (w4/m137).
+  config_restart: { key: "restarting", variant: "outline" },
   upgrading: { key: "upgrading", variant: "secondary" },
   unavailable: { key: "unavailable", variant: "destructive" },
   suspended: { key: "suspended", variant: "secondary" },
@@ -118,7 +121,7 @@ export function deriveStatus(d: {
 /** True while the database is still converging (used to poll the list live). */
 export function isConverging(d: { status: string }): boolean {
   const key = fromStatus(d.status).key;
-  return key === "creating" || key === "upgrading";
+  return key === "creating" || key === "restarting" || key === "upgrading";
 }
 
 /** Stat-tile counts computed from the live list (total / available / creating). */

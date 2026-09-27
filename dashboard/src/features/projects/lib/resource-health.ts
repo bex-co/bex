@@ -25,13 +25,15 @@ export function classifyResourceHealth(row: ResourceRow): ResourceHealth {
   if (row.kind === "database" && row.database) {
     const key = deriveDatabaseStatus(row.database).key;
     if (key === "available") return "healthy";
-    if (key === "creating" || key === "upgrading") return "converging";
+    if (key === "creating" || key === "restarting" || key === "upgrading") {
+      return "converging";
+    }
     return "attention";
   }
   if (row.kind === "keyvalue" && row.keyValue) {
     const key = deriveKeyValueStatus(row.keyValue).key;
     if (key === "available") return "healthy";
-    if (key === "creating") return "converging";
+    if (key === "creating" || key === "restarting") return "converging";
     return "attention";
   }
   return "healthy";

@@ -60,6 +60,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Creating",
     description: "Database status badge (provisioning)",
   },
+  "databases.statusRestarting": {
+    message: "Restarting",
+    description:
+      "Database status badge (Render's config_restart: an established store restarting after a config change, restart, or resume — not a first provision)",
+  },
   "databases.statusUpgrading": {
     message: "Upgrading",
     description: "Database status badge (offline PostgreSQL major upgrade)",

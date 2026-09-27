@@ -22,6 +22,7 @@ export interface UseSetKeyValuePersistenceModeResult {
  */
 export function useSetKeyValuePersistenceMode(
   id: string,
+  onSaved?: () => void,
 ): UseSetKeyValuePersistenceModeResult {
   const { t } = useTranslations();
 
@@ -44,13 +45,15 @@ export function useSetKeyValuePersistenceMode(
         await setModeMut({ variables: { id, persistenceMode: next } });
         toast.success(t("keyvalue.persistenceSuccess", { mode: next }));
         void modeQuery.refetch();
+        // Saving restarts the store: let the page watch it happen (w4/m137).
+        onSaved?.();
         return true;
       } catch (err) {
         toast.error(mutationErrorMessage(err, t("keyvalue.persistenceError")));
         return false;
       }
     },
-    [setModeMut, modeQuery, id, t],
+    [onSaved, setModeMut, modeQuery, id, t],
   );
 
   return { mode, loading: modeQuery.loading, saving, save };

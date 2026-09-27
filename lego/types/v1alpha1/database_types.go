@@ -494,6 +494,14 @@ type DatabaseStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// Provisioned is set the first time the controller reports the Database
+	// Ready (or suspended, which it can only be after serving) and never
+	// cleared. bex-api reads it to tell a restart of an established database
+	// (Render's `config_restart`) from its first provision (`creating`), since
+	// the controller reuses the Provisioning phase for both (w4/m137).
+	// +optional
+	Provisioned bool `json:"provisioned,omitempty"`
+
 	// LastBackup is the most recent terminal base backup CNPG reported for this
 	// database, projected so the control plane can turn "a backup finished" into
 	// a durable event without ever reading CNPG resources itself. Nil until the

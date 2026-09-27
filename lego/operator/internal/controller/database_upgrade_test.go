@@ -171,6 +171,11 @@ func TestReconcileMajorVersionUpgradeLifecycle(t *testing.T) {
 	if db.Status.Phase != appv1alpha1.DBPhaseReady || db.Status.CurrentVersion != "17" || db.Status.BackupServerName != "upgrade-db-pg17" {
 		t.Fatalf("completed status = phase %q current %q backup server %q", db.Status.Phase, db.Status.CurrentVersion, db.Status.BackupServerName)
 	}
+	// Ready marks the database as having served, so a later restart reads
+	// config_restart rather than creating (w4/m137).
+	if !db.Status.Provisioned {
+		t.Fatal("a Ready database must record status.provisioned")
+	}
 	backup := &unstructured.Unstructured{}
 	backup.SetGroupVersionKind(cnpgBackupGVK)
 	if err := cl.Get(ctx, types.NamespacedName{Name: "upgrade-db-post-upgrade-pg17", Namespace: "default"}, backup); err != nil {

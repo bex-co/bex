@@ -56,6 +56,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "创建中",
     description: "Key Value status badge (provisioning)",
   },
+  "keyvalue.statusRestarting": {
+    message: "重启中",
+    description:
+      "Key Value status badge (Render's config_restart: an established store restarting after a config change, restart, or resume — not a first provision)",
+  },
   "keyvalue.statusUnavailable": {
     message: "不可用",
     description: "Key Value status badge (provisioning failed)",
@@ -418,7 +423,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.maxmemoryDescription": {
     message:
-      "更改存储达到内存上限后如何淘汰键。操作员将在下次协调时应用新策略。",
+      "更改存储达到内存上限后淘汰键的方式。保存会重启存储，连接会中断最多一分钟。",
     description: "Key Value detail eviction-policy card description",
   },
   "keyvalue.maxmemoryLabel": {
@@ -445,7 +450,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.persistenceDescription": {
     message:
-      "更改数据写入磁盘的方式，以便在重启后保留。操作器将在下次协调时应用新模式——滚动更新，数据得以保留。",
+      "更改数据写入磁盘的方式，以便在重启后保留。保存会重启存储并保留数据，连接会中断最多一分钟。",
     description: "Key Value detail persistence-mode card description",
   },
   "keyvalue.persistenceLabel": {

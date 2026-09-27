@@ -53,6 +53,7 @@ export interface KeyValueInstanceTypeView {
 export type KeyValueStatusKey =
   | "available"
   | "creating"
+  | "restarting"
   | "unavailable"
   | "suspended"
   | "unknown";
