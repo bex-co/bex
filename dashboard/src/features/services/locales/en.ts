@@ -4520,7 +4520,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.secretFileUploadError": {
     message:
-      "Some files were skipped. Use unique safe names, text content, and files no larger than 1 MiB.",
+      "Some files were skipped. Use unique safe names, UTF-8 text content, and files no larger than 1 MiB. For a binary file (keystore, .p12, DER certificate), upload it base64-encoded and decode it at start, e.g. base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12.",
     description: "Secret-file upload validation summary",
   },
   "services.secretFileDuplicateName": {

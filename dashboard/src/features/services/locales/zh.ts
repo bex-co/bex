@@ -1705,7 +1705,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Accessible label for the platform-subdomain Switch",
   },
   "services.platformSubdomainNeedsVerifiedDomain": {
-    message: "请先验证一个自定义域名，再关闭平台子域名，以确保服务仍有访问地址。",
+    message:
+      "请先验证一个自定义域名，再关闭平台子域名，以确保服务仍有访问地址。",
     description:
       "Hint beside the platform-subdomain switch when no custom domain is verified yet (w4/142)",
   },
@@ -4415,7 +4416,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.secretFileUploadError": {
     message:
-      "部分文件已跳过。请使用唯一且安全的名称、文本内容，并确保文件不超过 1 MiB。",
+      "部分文件已跳过。请使用唯一且安全的名称、UTF-8 文本内容，并确保文件不超过 1 MiB。二进制文件（密钥库、.p12、DER 证书）请以 base64 编码上传，并在启动时解码，例如 base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12。",
     description: "Secret-file upload validation summary",
   },
   "services.secretFileDuplicateName": {

@@ -69,10 +69,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `029` — Binary secret files are silently corrupted in transit (pinned CLI sends `string(data)` in a JSON string; invalid UTF-8 → U+FFFD); document the text-only limit and a base64 recipe (~20m, docs) ← `/qa-find-bugs-cli` sweep 41, 2026-09-27
 - `030` — Postgres logs are ~85% CloudNativePG instance-manager chatter, and PostgreSQL's own lines arrive JSON-wrapped (`record.message`); the shipper keeps the `postgres` container assuming it is plain PG stdout (~50m) ← `/qa-find-bugs-cli` sweep 44, 2026-09-27
 - `031` — `bex logs --level warning` (and `notice`/`critical`/`alert`/`emergency`) never matches: the pinned CLI only sends Render's level names, the shipper stores `warn`, and `loki.go:213` matches the label exactly (~45m) ← `/qa-find-bugs-cli` sweep 45, 2026-09-27
 
+
+> `029.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 41) and fixed 2026-09-27 — moved to `done/`. Binary secret files are altered in transit by the upstream client and the JSON-string contract. `docs/bex-cli.md` and the CLI checklist document it with a base64 recipe, and the dashboard upload refuses a non-UTF-8 file with that hint instead of saving a mangled copy.
 
 > `028.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 40) and fixed 2026-09-27 — moved to `done/`. Scheduled and manual cron runs carry `backoffLimit: 0`: a failing run executes once and ends `failed`, instead of re-running the command up to 7× over ~11 minutes while every tick in between was skipped.
 

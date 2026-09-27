@@ -420,12 +420,30 @@ describe("ServiceEnvironmentEditor", () => {
     const certificate = new File(["certificate"], "cert.pem", {
       type: "text/plain",
     });
-    Object.defineProperty(certificate, "text", {
-      value: vi.fn().mockResolvedValue("certificate"),
+    Object.defineProperty(certificate, "arrayBuffer", {
+      value: vi
+        .fn()
+        .mockResolvedValue(new TextEncoder().encode("certificate").buffer),
     });
     await user.upload(upload!, certificate);
     expect(await screen.findByDisplayValue("cert.pem")).toBeInTheDocument();
     expect(save).not.toHaveBeenCalled();
+
+    // A binary file (w8/029) is refused with the base64 hint, never staged
+    // with its invalid bytes replaced by U+FFFD.
+    const keystore = new File(["binary"], "keystore.p12", {
+      type: "application/x-pkcs12",
+    });
+    Object.defineProperty(keystore, "arrayBuffer", {
+      value: vi
+        .fn()
+        .mockResolvedValue(new Uint8Array([0x30, 0x82, 0xff, 0xfe]).buffer),
+    });
+    await user.upload(upload!, keystore);
+    expect(
+      await screen.findByText(/upload it base64-encoded/),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("keystore.p12")).not.toBeInTheDocument();
   });
 
   it("retries only deploy after configuration was already saved", async () => {

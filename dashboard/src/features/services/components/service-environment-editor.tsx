@@ -495,7 +495,12 @@ export function EnvironmentEditor({
         continue;
       }
       try {
-        const content = await file.text();
+        // Secret files travel as JSON strings, so only UTF-8 text survives:
+        // file.text() would silently swap every invalid byte for U+FFFD and
+        // save a mangled keystore (w8/029). A strict decode refuses it.
+        const content = new TextDecoder("utf-8", { fatal: true }).decode(
+          await file.arrayBuffer(),
+        );
         if (content.includes("\0")) {
           rejected = true;
           continue;

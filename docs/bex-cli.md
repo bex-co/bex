@@ -134,6 +134,21 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **Package-manager installs are left alone.** When the binary lives under a Homebrew path (Cellar / `opt/homebrew` / Linuxbrew), `bex upgrade` prints `brew upgrade bex` instead of overwriting files the package manager owns.
 - Signature verification is in-process (no `cosign` binary required) and **fail-closed**: if the sigstore trusted root can't be fetched, or the signature/identity/checksum doesn't verify, the upgrade aborts.
 
+## Secret files must be UTF-8 text
+
+`--secret-file name:./path` (on `services create`) sends the file as a JSON string, the only shape Render's API takes on every surface. The pinned client sends `string(data)`, and JSON encoding replaces every invalid UTF-8 byte with U+FFFD, so a **binary** file (a keystore, `.p12`, DER certificate) reaches `/etc/secrets/` silently altered, with the command still exiting 0 (w8/029). The unmodified `render` binary does the same against Render. Text files of any size up to the limit round-trip byte for byte.
+
+For a binary file, store it base64-encoded and decode it when the service starts:
+
+```bash
+base64 < keystore.p12 > keystore.b64            # locally (macOS or Linux)
+bex services create … --secret-file keystore.b64:./keystore.b64
+# in the start command:
+base64 -d /etc/secrets/keystore.b64 > /tmp/keystore.p12
+```
+
+The dashboard's secret-file upload refuses a non-UTF-8 file with the same hint instead of saving a mangled copy.
+
 ## Compatibility and branding limits
 
 `bex` imports the pinned upstream command package; it does not fork or vendor it. A Layer-1 overlay in `lego/cli/internal/branding` mutates the exported `cmd.RootCmd` after Bex-native commands attach:
