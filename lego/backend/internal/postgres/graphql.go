@@ -169,6 +169,9 @@ var databaseInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"cpu":       gqlutil.StrField(func(t DatabaseInstanceType) any { return t.CPU }),
 		"memory":    gqlutil.StrField(func(t DatabaseInstanceType) any { return t.Memory }),
 		"storageGB": gqlutil.IntField(func(t DatabaseInstanceType) any { return t.StorageGB }),
+		// The plan offers high availability (w8/m43) — the same predicate the
+		// write paths enforce, so the dashboard never re-derives it from cpu.
+		"supportsHighAvailability": gqlutil.BoolField(func(t DatabaseInstanceType) any { return t.SupportsHighAvailability }),
 	},
 })
 

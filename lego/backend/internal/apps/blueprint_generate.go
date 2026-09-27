@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -494,7 +495,10 @@ func generateDatabaseEntry(d *appv1alpha1.Database) map[string]any {
 	if d.Spec.Version != "" {
 		entry["postgresMajorVersion"] = d.Spec.Version
 	}
-	if d.Spec.HighAvailability {
+	// HA on a plan that cannot offer it (a database enabled before w8/m43) is
+	// left out rather than exported as a field validate refuses; an omitted
+	// highAvailability preserves the live setting on sync.
+	if d.Spec.HighAvailability && postgres.CheckHighAvailabilityPlan(d.Spec.Plan) == nil {
 		entry["highAvailability"] = map[string]any{"enabled": true}
 	}
 	if len(d.Spec.ReadReplicas) > 0 {

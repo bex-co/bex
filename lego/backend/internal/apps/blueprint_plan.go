@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -398,6 +399,13 @@ func ApplyBlueprintDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.
 	}
 	if present("highAvailability") {
 		dst.HighAvailability = want.HighAvailability
+	}
+	// A plan change must not strand high availability on a plan that cannot
+	// run it (w8/m43); the author disables it in the same sync instead.
+	if dst.HighAvailability && dst.Plan != before.Plan {
+		if err := postgres.CheckHighAvailabilityPlan(dst.Plan); err != nil {
+			return false, &BlueprintFieldConflictError{Path: "plan", Message: err.Error() + "; disable high availability first"}
+		}
 	}
 	return !reflect.DeepEqual(before, *dst), nil
 }

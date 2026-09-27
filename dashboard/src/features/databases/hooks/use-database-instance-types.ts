@@ -30,6 +30,7 @@ export function useDatabaseInstanceTypes(): UseDatabaseInstanceTypesResult {
           cpu: t.cpu ?? "",
           memory: t.memory ?? "",
           storageGB: t.storageGB ?? 0,
+          supportsHighAvailability: t.supportsHighAvailability ?? false,
         })),
     [data],
   );

@@ -138,7 +138,14 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
 // unconditionally in the page header; stub their hooks (mirrors
 // databases.index.test.tsx's handling of the same create dialog).
 const instanceTypes: DatabaseInstanceTypeView[] = [
-  { id: "free", name: "Free", cpu: "100m", memory: "256Mi", storageGB: 1 },
+  {
+    id: "free",
+    name: "Free",
+    cpu: "100m",
+    memory: "256Mi",
+    storageGB: 1,
+    supportsHighAvailability: false,
+  },
 ];
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({

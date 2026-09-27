@@ -101,6 +101,7 @@ func generateFixtureService() *Service {
 }
 
 func TestGenerateBlueprintRoundTrip(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	svc := generateFixtureService()
 	out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
 		ServiceIDs:  []string{"web"},
@@ -259,6 +260,7 @@ func TestGenerateBlueprintEmptySelectionRejected(t *testing.T) {
 }
 
 func TestGenerateBlueprintEnvGroupsRoundTrip(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	svc := generateFixtureService()
 	web := &appv1alpha1.App{}
 	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, web); err != nil {
@@ -375,6 +377,7 @@ func TestGenerateBlueprintUnselectedTargetFallsBackToSyncFalse(t *testing.T) {
 }
 
 func TestGenerateBlueprintCrossSurface(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	svc := generateFixtureService()
 	want, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{
 		ServiceIDs: []string{"web"}, PostgresIDs: []string{"dpg-abc123"}, KeyValueIDs: []string{"red-xyz789"},

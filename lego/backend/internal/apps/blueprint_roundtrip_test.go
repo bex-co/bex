@@ -126,6 +126,7 @@ func roundTripFixture() (*Service, GenerateBlueprintRequest) {
 //     live CR reads back nil (Kubernetes drops empty slices), and
 //     reflect.DeepEqual(nil, []T{}) is false.
 func TestGeneratedBlueprintRePlansAsNoop(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	svc, req := roundTripFixture()
 	ctx := context.Background()
 
@@ -166,6 +167,7 @@ func TestGeneratedBlueprintRePlansAsNoop(t *testing.T) {
 // manifests differing in maxmemoryPolicy produced byte-identical plans — a
 // field list that does not depend on the diff is not a diff.
 func TestPlanNamesOnlyTheFieldThatChanged(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	svc, req := roundTripFixture()
 	ctx := context.Background()
 	out, err := svc.GenerateBlueprint(ctx, req)

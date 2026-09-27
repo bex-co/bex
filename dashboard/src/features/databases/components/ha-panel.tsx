@@ -38,6 +38,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { FailoverDatabaseDocument } from "@/graphql/definitions";
+import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 interface HAPanelProps {
@@ -59,6 +60,11 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
   const { t } = useTranslations();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [failover, { loading }] = useMutation(FailoverDatabaseDocument);
+  const { instanceTypes } = useDatabaseInstanceTypes();
+  // Unknown while the catalog loads: keep the neutral "not enabled" line.
+  const planOffersHA =
+    instanceTypes.find((it) => it.id === database.plan)
+      ?.supportsHighAvailability ?? true;
 
   const hasContent =
     database.highAvailabilityEnabled || database.readReplicas.length > 0;
@@ -157,7 +163,9 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
             </div>
           ) : database.highAvailabilityEnabled ? null : (
             <p className="text-sm text-muted-foreground">
-              {t("databases.haNotEnabled")}
+              {planOffersHA
+                ? t("databases.haNotEnabled")
+                : t("databases.haPlanUnsupported")}
             </p>
           )}
 

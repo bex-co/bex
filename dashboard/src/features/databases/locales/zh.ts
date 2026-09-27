@@ -899,6 +899,16 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "该数据库未启用高可用。",
     description: "HA panel state when HA is off and there are no replicas",
   },
+  "databases.haPlanUnsupported": {
+    message: "高可用需要至少 1 个 CPU 的规格，当前规格不支持。",
+    description:
+      "HA panel state when HA is off and the current plan is below 1 CPU (w8/m43, Render's rule)",
+  },
+  "databases.planPickerHAUnsupported": {
+    message: "{name} 不支持高可用（需要至少 1 个 CPU）。请先关闭高可用。",
+    description:
+      "Plan picker refusal when an HA database selects a plan below 1 CPU; mirrors the API message (w8/m43)",
+  },
   // --- Plan section (m16) ---
   "databases.planTitle": {
     message: "实例规格",

@@ -501,6 +501,7 @@ export type DatabaseInstanceType = {
   memory: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
+  supportsHighAvailability: Maybe<Scalars['Boolean']['output']>;
 };
 
 export type DatabaseLogEntry = {
@@ -795,6 +796,7 @@ export type EnvironmentEnvVarPatchInput = {
 export type EnvironmentPatchResult = {
   __typename: 'EnvironmentPatchResult';
   envVarKeys: Array<Scalars['String']['output']>;
+  revision: Maybe<Scalars['String']['output']>;
   rolledOut: Scalars['Boolean']['output'];
   secretFileNames: Array<Scalars['String']['output']>;
 };
@@ -2695,6 +2697,7 @@ export type Query = {
   serverActions: Array<ActionDecision>;
   service: Maybe<Service>;
   serviceEvent: Maybe<ServiceEvent>;
+  /** Service activity, newest first. Without startTime, returns the last hour; pass an explicit range for older history. */
   serviceEvents: Maybe<Array<Maybe<ServiceEvent>>>;
   serviceInstances: Maybe<Array<Maybe<ServiceInstance>>>;
   serviceNameAvailable: Maybe<NameAvailability>;
