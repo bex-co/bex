@@ -24,7 +24,19 @@ export interface UseDatabaseResult {
  * info is NOT fetched here — it's revealed on demand from the detail page
  * (docs/ADR006-bex-api.md §Managed Postgres: the password is surfaced only on request).
  */
-export function useDatabase(id: string): UseDatabaseResult {
+export function useDatabase(
+  id: string,
+  {
+    poll = true,
+  }: {
+    /**
+     * Pass `false` on a secondary consumer (the topbar breadcrumb) mounted
+     * beside the page that owns polling: it reads the same cached query, and a
+     * second timer would drift into its own round trips.
+     */
+    poll?: boolean;
+  } = {},
+): UseDatabaseResult {
   const { data, loading, error, startPolling, stopPolling, refetch } = useQuery(
     DatabaseDocument,
     { variables: { id }, fetchPolicy: "cache-first", errorPolicy: "all" },
@@ -42,6 +54,7 @@ export function useDatabase(id: string): UseDatabaseResult {
     startPolling,
     stopPolling,
     database ? isConverging(database) : true,
+    poll,
   );
 
   return {

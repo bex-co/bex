@@ -116,6 +116,18 @@ vi.mock("@/features/keyvalue/hooks/use-set-key-value-persistence-mode", () => ({
 vi.mock("@/features/keyvalue/hooks/use-rename-key-value", () => ({
   useRenameKeyValue: () => ({ rename: vi.fn(), busy: false }),
 }));
+// The topbar breadcrumb places the store in its project and environment
+// (w4/144); mocked at the hook boundary like every other data hook here.
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({ projects: [], loading: false, error: undefined }),
+}));
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: () => ({
+    environments: [],
+    loading: false,
+    error: undefined,
+  }),
+}));
 function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   return {
     id: "red-sessions",
