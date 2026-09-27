@@ -1050,6 +1050,18 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		}
 		return nil, lastErr
 	}
+	if shown, err := b.appByDisplayedName(ctx, acting, name); err != nil {
+		return nil, err
+	} else if shown != nil {
+		object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, shown.Labels)
+		if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(shown), verb, resolveErr); err != nil {
+			return nil, err
+		}
+		if err := b.refuseAmbiguousName(ctx, name, shown); err != nil {
+			return nil, err
+		}
+		return shown, nil
+	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {
 		if len(pathvalidation.IsValidPathSegmentName(candidate)) != 0 {
@@ -1151,6 +1163,58 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		return nil, err
 	}
 	return nil, ErrNotFound
+}
+
+// appByDisplayedName resolves a by-NAME argument against the name each
+// service in the acting workspace is SHOWN as (w8/m47): its display name when
+// renamed, else its creation name. Every list, the dashboard and the CLI show
+// that name, but resolution used to match only the hidden creation name, so
+// after two services swapped names `bex deploys list a` answered with the
+// service listed as `b`. One match wins; none falls through to the
+// creation-name lookups (an old name keeps working until another service is
+// shown under it); more than one — duplicates that predate the rename
+// uniqueness rule — is refused with every id rather than guessed.
+func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*appv1alpha1.App, error) {
+	if acting == "" || name == "" {
+		return nil, nil
+	}
+	var list appv1alpha1.AppList
+	if err := b.Client.List(ctx, &list, client.InNamespace(b.AppNamespace(acting)),
+		client.MatchingLabels{LabelTenant: acting}); err != nil {
+		return nil, err
+	}
+	var matches []*appv1alpha1.App
+	for i := range list.Items {
+		if displayedAppName(&list.Items[i]) == name {
+			matches = append(matches, &list.Items[i])
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return nil, nil
+	case 1:
+		return matches[0], nil
+	}
+	ids := make([]string, len(matches))
+	for i, m := range matches {
+		ids[i] = appPublicID(m)
+	}
+	return nil, NewConflictError("SERVICE_NAME_AMBIGUOUS",
+		fmt.Sprintf("several services in this workspace are named %q (%s); address it by id", name, strings.Join(ids, ", ")),
+		map[string]any{"name": name, "serviceIds": ids})
+}
+
+// displayedAppName is the name a service is shown as: spec.displayName when
+// set, else its creation name (LabelServiceName, or the object name for a
+// hand-applied App).
+func displayedAppName(a *appv1alpha1.App) string {
+	if a.Spec.DisplayName != "" {
+		return a.Spec.DisplayName
+	}
+	if n := a.Labels[LabelServiceName]; n != "" {
+		return n
+	}
+	return a.Name
 }
 
 // refuseAmbiguousName is the by-NAME guard for a caller who named no workspace
@@ -1557,6 +1621,17 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 			}
 		}
 		return nil, lastErr
+	}
+	if shown, err := b.appByDisplayedName(ctx, acting, name); err != nil {
+		return nil, err
+	} else if shown != nil {
+		if err := b.AuthorizeLabeled(ctx, relation, shown.Labels); err != nil {
+			return nil, err
+		}
+		if err := b.refuseAmbiguousName(ctx, name, shown); err != nil {
+			return nil, err
+		}
+		return shown, nil
 	}
 	var a appv1alpha1.App
 	for _, candidate := range appCandidateNames(acting, name) {

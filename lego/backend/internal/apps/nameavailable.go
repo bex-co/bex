@@ -84,6 +84,11 @@ func (s *Service) tenantNames(ctx context.Context) (map[string]bool, error) {
 	names := make(map[string]bool, len(list.Items))
 	for i := range list.Items {
 		names[publicName(&list.Items[i])] = true
+		// A name a service is displayed as is taken too (w8/m47): the store
+		// refuses it on create and rename alike.
+		if dn := list.Items[i].Spec.DisplayName; dn != "" {
+			names[dn] = true
+		}
 	}
 	return names, nil
 }
