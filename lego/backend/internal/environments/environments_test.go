@@ -117,6 +117,12 @@ func (f *fakeStore) RenameEnvironment(_ context.Context, id, name string) error 
 	if !ok {
 		return fmt.Errorf("environment: %w", store.ErrNotFound)
 	}
+	for otherID, other := range f.envs {
+		if otherID != id && other.ProjectID == e.ProjectID && other.Name == name {
+			// The real store's UNIQUE(project_id, name) on UPDATE (w4/155).
+			return fmt.Errorf("environment: %w", store.ErrConflict)
+		}
+	}
 	e.Name = name
 	f.envs[id] = e
 	return nil
@@ -425,6 +431,33 @@ func TestRenameEnvironment(t *testing.T) {
 	renamed, err := svc.Rename(ctxAs("user-a"), e.ID, "staging-v2")
 	if err != nil || renamed.Name != "staging-v2" {
 		t.Fatalf("Rename: %+v, %v", renamed, err)
+	}
+}
+
+// w4/155: both rename paths (Rename, and Update's name half behind REST PATCH
+// and MCP update_environment) answer a taken name like a create does.
+func TestRenameOntoATakenEnvironmentNameIsANamedConflict(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc := newService(st)
+	ctx := ctxAs("user-a")
+	if _, err := svc.Create(ctx, "prj-1", "qa-dev"); err != nil {
+		t.Fatal(err)
+	}
+	staging, _ := svc.Create(ctx, "prj-1", "qa-staging")
+
+	want := `an environment named "qa-dev" already exists in this project`
+	_, renameErr := svc.Rename(ctx, staging.ID, "qa-dev")
+	name := "qa-dev"
+	_, updateErr := svc.Update(ctx, staging.ID, EnvironmentPatch{Name: &name})
+	for verb, err := range map[string]error{"Rename": renameErr, "Update": updateErr} {
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != "CONFLICT" || err.Error() != want {
+			t.Errorf("%s onto a taken name: got %v, want CONFLICT %q", verb, err, want)
+		}
+	}
+	if _, err := svc.Rename(ctx, staging.ID, "qa-staging"); err != nil {
+		t.Fatalf("renaming to its own name must not self-conflict: %v", err)
 	}
 }
 

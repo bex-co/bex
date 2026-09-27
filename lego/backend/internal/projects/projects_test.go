@@ -98,6 +98,12 @@ func (f *fakeProjectStore) RenameProject(_ context.Context, projectID, name stri
 	if !ok {
 		return fmt.Errorf("project: %w", store.ErrNotFound)
 	}
+	for id, other := range f.projects {
+		if id != projectID && other.TenantID == p.TenantID && other.Name == name {
+			// The real store's UNIQUE(tenant_id, name) on UPDATE (w4/155).
+			return fmt.Errorf("project: %w", store.ErrConflict)
+		}
+	}
 	p.Name = name
 	p.UpdatedAt = advanceProjectTime(p)
 	f.projects[projectID] = p
@@ -311,6 +317,29 @@ func TestCreateDuplicateNameIsConflict(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), `"dup"`) {
 		t.Errorf("message = %q, want it to name the attempted name", err.Error())
+	}
+}
+
+// w4/155: a rename onto a taken name answers like a create does, and a rename
+// to the row's own name is not a conflict with itself.
+func TestRenameOntoATakenNameIsANamedConflict(t *testing.T) {
+	st := newFakeProjectStore(
+		store.Project{ID: "prj-a", TenantID: "tea-a", Name: "alpha"},
+		store.Project{ID: "prj-b", TenantID: "tea-a", Name: "beta"},
+	)
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
+	ctx := ctxAs("user-a")
+
+	_, err := svc.Rename(ctx, "prj-b", "alpha")
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "CONFLICT" {
+		t.Fatalf("rename onto a taken name: got %v, want a CONFLICT-coded 409", err)
+	}
+	if err.Error() != `a project named "alpha" already exists in this workspace` {
+		t.Errorf("message = %q, want the create path's wording", err.Error())
+	}
+	if _, err := svc.Rename(ctx, "prj-b", "beta"); err != nil {
+		t.Fatalf("renaming to its own name must not self-conflict: %v", err)
 	}
 }
 
