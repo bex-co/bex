@@ -69,7 +69,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `025` — Kubernetes' `unable to retrieve container logs for containerd://…` placeholder is served as the tenant's own `type: app` log line (untimestamped kubelet body in `logs/podlogs.go`) (~30m) ← `/qa-find-bugs-cli` sweep 32, 2026-09-26
 - `026` — `blueprints validate`: the 10 MiB limit is unreachable (the global 2 MiB body cap wins → 413), and a `fromService … property: host` to a nonexistent service validates as `valid: true` (~45m) ← `/qa-find-bugs-cli` sweep 33, 2026-09-26
 - `027` — `services create` accepts invalid env var names (`1BAD`, `BAD KEY`), which then read as `managedBy: blueprint` and can never be updated or deleted (`takeCreateEnvLiterals` leaves them on `spec.Env`; create never runs `CheckEnvKey`) (~50m) ← `/qa-find-bugs-cli` sweep 35, 2026-09-26
 - `028` — A failing cron run executes the tenant's command 7 times over ~11 minutes and skips every tick in between (no `BackoffLimit` on the CronJob/manual Job → Kubernetes default 6) (~30m) ← `/qa-find-bugs-cli` sweep 40, 2026-09-27
@@ -77,6 +76,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - `030` — Postgres logs are ~85% CloudNativePG instance-manager chatter, and PostgreSQL's own lines arrive JSON-wrapped (`record.message`); the shipper keeps the `postgres` container assuming it is plain PG stdout (~50m) ← `/qa-find-bugs-cli` sweep 44, 2026-09-27
 - `031` — `bex logs --level warning` (and `notice`/`critical`/`alert`/`emergency`) never matches: the pinned CLI only sends Render's level names, the shipper stores `warn`, and `loki.go:213` matches the label exactly (~45m) ← `/qa-find-bugs-cli` sweep 45, 2026-09-27
 
+
+> `025.md` filed 2026-09-26 (`/qa-find-bugs-cli` sweep 32) and fixed 2026-09-27 — moved to `done/`. The kubelet's untimestamped `unable to retrieve container logs for containerd://…` placeholder is now a platform `==> logs for this instance are no longer available: its container was removed` line instead of the tenant's `app` output.
 
 > `024.md` filed 2026-09-26 (`/qa-find-bugs-cli` sweep 23) and fixed 2026-09-27 — moved to `done/`. `bex logs -r A,B --tail` followed only the first resource. Subscribe now authorizes and slots every resource, then merges all of them onto one stream (WS/SSE/NDJSON).
 
