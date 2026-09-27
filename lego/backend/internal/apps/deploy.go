@@ -1810,7 +1810,8 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	for _, d := range databases {
 		ds, err := parseDatabase(d.value)
 		if err != nil {
-			return parsedStack{}, err
+			// Refused as a located resource error, like a service's (w8/m43).
+			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourcePostgres, name: d.value.Name, err: err}}
 		}
 		if err := registerUniqueName(ds.name, idx.names); err != nil {
 			return parsedStack{}, err
@@ -2441,6 +2442,11 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		}
 	}
 	ha := d.HighAvailability != nil && d.HighAvailability.Enabled
+	if ha {
+		if err := postgres.CheckHighAvailabilityPlan(plan); err != nil {
+			return parsedDatabase{}, fmt.Errorf("%w: database %q highAvailability: %s", core.ErrBadRequest, d.Name, err.Error())
+		}
+	}
 	if d.ConnectionPool != "" && d.ConnectionPool != "none" && d.ConnectionPool != "pgbouncer" {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q connectionPool must be pgbouncer or none", core.ErrBadRequest, d.Name)
 	}

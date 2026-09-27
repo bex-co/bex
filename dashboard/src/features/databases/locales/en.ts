@@ -921,6 +921,18 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "High availability is not enabled for this database.",
     description: "HA panel state when HA is off and there are no replicas",
   },
+  "databases.haPlanUnsupported": {
+    message:
+      "High availability requires a plan with at least 1 CPU. This database's plan does not offer it.",
+    description:
+      "HA panel state when HA is off and the current plan is below 1 CPU (w8/m43, Render's rule)",
+  },
+  "databases.planPickerHAUnsupported": {
+    message:
+      "{name} does not support high availability (it requires at least 1 CPU). Disable high availability first.",
+    description:
+      "Plan picker refusal when an HA database selects a plan below 1 CPU; mirrors the API message (w8/m43)",
+  },
   // --- Plan section (m16) ---
   "databases.planTitle": {
     message: "Instance type",

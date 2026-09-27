@@ -460,3 +460,22 @@ postgres:
 		}
 	}
 }
+
+// TestPostgresSupportsHighAvailability pins Render's "at least 1 CPU" HA rule
+// (w8/m43): every shipped sub-1-CPU rung refuses, and a ≥1-CPU rung accepts.
+func TestPostgresSupportsHighAvailability(t *testing.T) {
+	for _, id := range []string{"free", "basic-256mb", "basic-1gb"} {
+		tier, ok := Postgres.ByID(id)
+		if !ok {
+			t.Fatalf("plan %q missing from catalog", id)
+		}
+		if tier.SupportsHighAvailability() {
+			t.Errorf("%s (cpu %s) must not support HA", id, tier.CPU)
+		}
+	}
+	for cpu, want := range map[string]bool{"999m": false, "1": true, "1000m": true, "2": true, "": false} {
+		if got := (PostgresTier{CPU: cpu}).SupportsHighAvailability(); got != want {
+			t.Errorf("cpu %q: SupportsHighAvailability = %v, want %v", cpu, got, want)
+		}
+	}
+}

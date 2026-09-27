@@ -242,6 +242,22 @@ func (c PostgresCatalog) EffectiveStorageGB(planID string, requestedGB, allocate
 	return max(plan.StorageGB, requestedGB, allocatedGB)
 }
 
+// highAvailabilityMinCPU is the smallest per-instance CPU a Postgres plan needs
+// to offer high availability (w8/m43). Render's CLI help reads "available for
+// plans with at least 1 CPU" and its API refuses HA on free/basic-256mb/
+// basic-1gb; ADR030 §6 keeps a $0 plan from running a second instance.
+var highAvailabilityMinCPU = resource.MustParse("1")
+
+// SupportsHighAvailability reports whether the plan may run a replicated
+// primary + standby cluster: its per-instance CPU is at least one core. It is
+// the one predicate every write surface (REST, GraphQL, MCP, Blueprint) and
+// the dashboard's plan metadata consult, so adding a ≥1-CPU rung to
+// tiers.yaml is all it takes to offer HA on it.
+func (t PostgresTier) SupportsHighAvailability() bool {
+	cpu, err := resource.ParseQuantity(t.CPU)
+	return err == nil && cpu.Cmp(highAvailabilityMinCPU) >= 0
+}
+
 // --- Valkey ---
 
 // Default returns the plan an empty/unknown KeyValue spec.plan resolves to

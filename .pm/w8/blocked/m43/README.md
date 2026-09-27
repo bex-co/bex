@@ -1,18 +1,18 @@
 # w8 · m43 — Postgres high availability runs on free and sub-1-CPU plans: gate it by plan like Render
 
-**Worker:** worker8 **Goal:** `enableHighAvailability` is honored only on Postgres plans that support it (at least 1 CPU), on every write path, so a free database can never become a replicated multi-instance cluster for $0. **Status:** todo
+**Worker:** worker8 **Goal:** `enableHighAvailability` is honored only on Postgres plans that support it (at least 1 CPU), on every write path, so a free database can never become a replicated multi-instance cluster for $0. **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                                                                          | est | depends_on       |
 | ---- | -------------------------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Gate HA by plan in the shared Postgres service: create, PATCH, and plan downgrade while HA is on               | 45m | —                |
-| t002 | Blueprint: refuse `highAvailability: true` on a sub-1-CPU plan at validate and apply, with a location          | 30m | t001             |
-| t003 | Dashboard: disable the HA control with a reason on unsupported plans; plan picker refuses a downgrade under HA | 40m | t001             |
-| t004 | Audit existing HA databases on unsupported plans; record the transition, no silent conversion                  | 20m | t001             |
-| t005 | Render parity                                                                                                  | 20m | t002, t003, t004 |
-| t006 | Simplify                                                                                                       | 15m | t005             |
-| t007 | Test coverage                                                                                                  | 30m | t006             |
+| t001 | Gate HA by plan in the shared Postgres service: create, PATCH, and plan downgrade while HA is on — **DONE**               | 45m | —                |
+| t002 | Blueprint: refuse `highAvailability: true` on a sub-1-CPU plan at validate and apply, with a location — **DONE**          | 30m | t001             |
+| t003 | Dashboard: disable the HA control with a reason on unsupported plans; plan picker refuses a downgrade under HA — **DONE** | 40m | t001             |
+| t004 | Audit existing HA databases on unsupported plans; record the transition, no silent conversion — **DONE**                  | 20m | t001             |
+| t005 | Render parity — **DONE**                                                                                                  | 20m | t002, t003, t004 |
+| t006 | Simplify — **DONE**                                                                                                       | 15m | t005             |
+| t007 | Test coverage — **DONE**                                                                                                  | 30m | t006             |
 | t008 | Closeout                                                                                                       | 15m | t007             |
 
 ## Definition of done
@@ -56,3 +56,10 @@ $ bex postgres get dpg-darlq2q9slkc73beqtr0 -o json   →  plan free · status a
 - Whether the dashboard already hides the HA toggle on free plans (only CLI/REST was exercised).
 - How metering bills the standby instance-seconds on a free plan.
 - Whether `--read-replica` has the same gap. It was not exercised to avoid creating extra free replicas; t004 should check.
+
+## Blocked (2026-09-26)
+
+t001–t007 are done (gate in the shared service, Blueprint, dashboard, audit, parity, tests). t008 cannot close:
+
+1. **User decision: there is no ≥1-CPU Postgres plan.** bex ships `free` (100m), `basic-256mb` (100m) and `basic-1gb` (500m), so the DoD line "on a supported plan, HA still enables" has no plan to hold on, and HA is refused everywhere. Either add a ≥1-CPU rung (a `tiers.yaml` postgres entry + a `pricing.yaml` rate + the Stripe catalog, i.e. a pricing call), which re-enables HA with no code change, or accept "no HA until then" and amend this DoD line.
+2. **Live closeout** after this ships to production: `bex postgres update <free-dpg> --high-availability` and `bex postgres create --plan free --high-availability` exit non-zero with the 400. Needs the deploy to land (see `blocked/m42`) and a logged-in CLI (`bex login`).

@@ -228,6 +228,7 @@ query DatabaseInstanceTypes {
     cpu
     memory
     storageGB
+    supportsHighAvailability
   }
 }
 

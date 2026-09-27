@@ -70,7 +70,7 @@ type createPostgresArgs struct {
 	// IPAllowListEntries is the description-carrying form (w4/m24); when
 	// present it wins over ipAllowList.
 	IPAllowListEntries     []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
-	EnableHighAvailability bool                    `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability"`
+	EnableHighAvailability bool                    `json:"enableHighAvailability,omitempty" jsonschema:"provision a replicated cluster (primary + standby) for high availability; requires a plan with at least 1 CPU"`
 	DryRun                 bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 

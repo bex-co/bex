@@ -1845,7 +1845,7 @@ func blueprintErrorPath(ir BlueprintIR, message string) string {
 }
 
 func blueprintErrorField(message string) string {
-	for _, field := range []string{"maintenanceMode", "plan", "domains", "schedule", "runtime", "type", "image", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
+	for _, field := range []string{"maintenanceMode", "highAvailability", "plan", "domains", "schedule", "runtime", "type", "image", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
 			return "." + field
 		}

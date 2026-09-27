@@ -87,6 +87,8 @@ export interface DatabaseInstanceTypeView {
   memory: string;
   /** The plan's bundled storage floor, in GB. */
   storageGB: number;
+  /** The plan offers high availability (at least 1 CPU; w8/m43). */
+  supportsHighAvailability: boolean;
 }
 
 /** A resolved status key (i18n label) + the badge variant it renders as. */

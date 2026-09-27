@@ -137,6 +137,7 @@ func TestPostgresSetPlanAuditVerbAndPlanPair(t *testing.T) {
 // postgres_disk_size_changed each have a producer instead of landing as one
 // undifferentiated postgres.UpdatePostgres row.
 func TestPostgresConfigurationEffectsProjectRenderNames(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	enabled, disabled := true, false
 	grown := int32(40)
 	cases := []struct {

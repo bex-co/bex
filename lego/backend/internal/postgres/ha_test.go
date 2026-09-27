@@ -19,16 +19,30 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// allowHighAvailabilityOnEveryPlan lets a test exercise the HA-enable path:
+// the shipped catalog has no ≥1-CPU Postgres plan yet (w8/m43).
+func allowHighAvailabilityOnEveryPlan(t *testing.T) {
+	t.Helper()
+	prev := PlanSupportsHighAvailability
+	PlanSupportsHighAvailability = func(tiers.PostgresTier) bool { return true }
+	t.Cleanup(func() { PlanSupportsHighAvailability = prev })
+}
+
 func TestHACreate(t *testing.T) {
+	allowHighAvailabilityOnEveryPlan(t)
 	svc, cl := newService()
 	// Create with enableHighAvailability — verify the CR spec intent is wired.
 	w := serveREST(svc, "POST", "/v1/postgres",
@@ -44,6 +58,93 @@ func TestHACreate(t *testing.T) {
 	}
 	if !cr.Spec.HighAvailability {
 		t.Error("spec.highAvailability want true")
+	}
+}
+
+// TestHARefusedBelowOneCPU pins Render's plan rule on every service write path
+// (w8/m43): create, PATCH, the plan-only SetPlan, and their dry runs refuse HA
+// on a sub-1-CPU plan with a 400 naming the requirement, and nothing is written.
+func TestHARefusedBelowOneCPU(t *testing.T) {
+	const want = "high availability requires a Postgres plan with at least 1 CPU"
+	for _, plan := range []string{"", "free", "basic-256mb", "basic-1gb", "0.5c-1g"} {
+		svc, cl := newService()
+		w := serveREST(svc, "POST", "/v1/postgres",
+			`{"name":"ha-db","plan":"`+plan+`","enableHighAvailability":true}`)
+		if w.Code != 400 || !strings.Contains(w.Body.String(), want) || !strings.Contains(w.Body.String(), "POSTGRES_HA_PLAN_UNSUPPORTED") {
+			t.Errorf("create plan %q + HA => want 400 %q, got %d: %s", plan, want, w.Code, w.Body.String())
+		}
+		var list appv1alpha1.DatabaseList
+		if err := cl.List(context.Background(), &list); err != nil || len(list.Items) != 0 {
+			t.Errorf("create plan %q + HA wrote %d databases (err %v)", plan, len(list.Items), err)
+		}
+	}
+
+	svc, cl := newService()
+	seedDatabase(t, cl, "free-db")
+	for _, body := range []string{`{"enableHighAvailability":true}`, `{"enableHighAvailability":true,"plan":"basic-1gb"}`} {
+		w := serveREST(svc, "PATCH", "/v1/postgres/free-db", body)
+		if w.Code != 400 || !strings.Contains(w.Body.String(), want) {
+			t.Errorf("PATCH %s => want 400 %q, got %d: %s", body, want, w.Code, w.Body.String())
+		}
+	}
+	enabled := true
+	if _, err := svc.PreviewUpdatePostgres(context.Background(), "free-db", PostgresPatch{EnableHighAvailability: &enabled}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("PreviewUpdatePostgres HA on free => want ErrBadRequest, got %v", err)
+	}
+	var cr appv1alpha1.Database
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "free-db"}, &cr); err != nil {
+		t.Fatal(err)
+	}
+	if cr.Spec.HighAvailability {
+		t.Error("refused PATCH must leave spec.highAvailability false")
+	}
+}
+
+// TestHAPlanChangeUnderHARefused: moving an HA database to a plan without HA is
+// refused with the remedy — never by silently switching HA off — while
+// disabling HA, doing both in one PATCH, and unrelated edits stay allowed.
+func TestHAPlanChangeUnderHARefused(t *testing.T) {
+	ctx := context.Background()
+	svc, cl := newService()
+	seedDatabaseSpec(t, cl, "ha-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", HighAvailability: true}, false)
+
+	const remedy = "disable high availability first"
+	w := serveREST(svc, "PATCH", "/v1/postgres/ha-db", `{"plan":"free"}`)
+	if w.Code != 400 || !strings.Contains(w.Body.String(), remedy) {
+		t.Errorf("PATCH plan under HA => want 400 %q, got %d: %s", remedy, w.Code, w.Body.String())
+	}
+	if _, err := svc.SetPlan(ctx, "ha-db", "basic-256mb"); err == nil || !strings.Contains(err.Error(), remedy) {
+		t.Errorf("SetPlan under HA => want %q, got %v", remedy, err)
+	}
+	if _, err := svc.PreviewSetPlan(ctx, "ha-db", "free"); err == nil || !strings.Contains(err.Error(), remedy) {
+		t.Errorf("PreviewSetPlan under HA => want %q, got %v", remedy, err)
+	}
+
+	// A database already running HA on an unsupported plan keeps it through an
+	// unrelated edit and an idempotent re-enable: no silent conversion.
+	if w := serveREST(svc, "PATCH", "/v1/postgres/ha-db", `{"name":"renamed-db"}`); w.Code != 200 {
+		t.Errorf("rename under grandfathered HA => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if w := serveREST(svc, "PATCH", "/v1/postgres/ha-db", `{"enableHighAvailability":true}`); w.Code != 200 {
+		t.Errorf("idempotent HA re-enable => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var cr appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "ha-db"}, &cr); err != nil {
+		t.Fatal(err)
+	}
+	if cr.Spec.Plan != "basic-1gb" || !cr.Spec.HighAvailability {
+		t.Fatalf("refused plan changes must leave plan/HA alone, got plan %q HA %v", cr.Spec.Plan, cr.Spec.HighAvailability)
+	}
+
+	// Disabling HA with the downgrade in the same PATCH is always allowed.
+	if w := serveREST(svc, "PATCH", "/v1/postgres/ha-db", `{"plan":"free","enableHighAvailability":false}`); w.Code != 200 {
+		t.Fatalf("downgrade + HA off => 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "ha-db"}, &cr); err != nil {
+		t.Fatal(err)
+	}
+	if cr.Spec.Plan != "free" || cr.Spec.HighAvailability {
+		t.Errorf("downgrade + HA off => plan free HA false, got plan %q HA %v", cr.Spec.Plan, cr.Spec.HighAvailability)
 	}
 }
 

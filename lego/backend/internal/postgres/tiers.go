@@ -18,11 +18,13 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/types/tiers"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // DatabaseInstanceType is the display-shaped projection of one lego/types/tiers
@@ -38,6 +40,8 @@ type DatabaseInstanceType struct {
 	CPU       string
 	Memory    string
 	StorageGB int32
+	// SupportsHighAvailability is PlanSupportsHighAvailability for this plan.
+	SupportsHighAvailability bool
 }
 
 // InstanceTypes lists every plan in the shared Postgres catalog, in ladder
@@ -52,11 +56,12 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 	for i, id := range ids {
 		t, _ := tiers.Postgres.ByID(id)
 		out[i] = DatabaseInstanceType{
-			ID:        t.ID,
-			Name:      pgTierDisplayName(id),
-			CPU:       t.CPU,
-			Memory:    t.Memory,
-			StorageGB: t.StorageGB,
+			ID:                       t.ID,
+			Name:                     pgTierDisplayName(id),
+			CPU:                      t.CPU,
+			Memory:                   t.Memory,
+			StorageGB:                t.StorageGB,
+			SupportsHighAvailability: PlanSupportsHighAvailability(t),
 		}
 	}
 	return out, nil
@@ -84,4 +89,62 @@ func pgTierDisplayName(id string) string {
 		}
 	}
 	return strings.Join(words, " ")
+}
+
+// CheckHighAvailabilityPlan refuses high availability on a plan below 1 CPU
+// (w8/m43) — Render's rule ("available for plans with at least 1 CPU"), and
+// ADR030 §6's: a $0 plan never runs a second instance. The one refusal REST,
+// GraphQL, MCP and Blueprint share. An empty plan is the catalog default; an
+// unknown one is left to the caller's plan validation, which names the valid
+// plans.
+func CheckHighAvailabilityPlan(plan string) error {
+	tier, ok := tiers.Postgres.ByID(tiers.Postgres.CanonicalID(plan))
+	if !ok {
+		if plan != "" {
+			return nil
+		}
+		tier = tiers.Postgres.Default()
+	}
+	if PlanSupportsHighAvailability(tier) {
+		return nil
+	}
+	return core.NewBadRequestError(
+		"POSTGRES_HA_PLAN_UNSUPPORTED",
+		fmt.Sprintf("high availability requires a Postgres plan with at least 1 CPU; plan %q has %s CPU", tier.ID, tier.CPU),
+		map[string]any{"plan": tier.ID, "cpu": tier.CPU},
+	)
+}
+
+// PlanSupportsHighAvailability is the catalog predicate. It is a variable only
+// so tests of the HA-enable path (here and in the Blueprint package) can run
+// while the shipped catalog has no ≥1-CPU Postgres plan; nothing else assigns it.
+var PlanSupportsHighAvailability = tiers.PostgresTier.SupportsHighAvailability
+
+// checkHighAvailabilityPatch applies CheckHighAvailabilityPlan to a PATCH or
+// plan change against d. Enabling HA checks the resulting plan; a plan change
+// while HA stays on is refused with the remedy, never by silently switching
+// HA off. Disabling HA is always allowed, and a database already running HA
+// on an unsupported plan keeps it through unrelated edits and an idempotent
+// re-enable (no silent conversion; w8/m43 t004).
+func checkHighAvailabilityPatch(d *appv1alpha1.Database, plan *string, enableHA *bool) error {
+	target := d.Spec.Plan
+	if plan != nil {
+		target = *plan
+	}
+	switch {
+	case enableHA != nil && *enableHA:
+		if d.Spec.HighAvailability && plan == nil {
+			return nil
+		}
+		return CheckHighAvailabilityPlan(target)
+	case enableHA == nil && plan != nil && d.Spec.HighAvailability:
+		if err := CheckHighAvailabilityPlan(target); err != nil {
+			return core.NewBadRequestError(
+				"POSTGRES_HA_PLAN_UNSUPPORTED",
+				err.Error()+"; disable high availability first",
+				map[string]any{"plan": tiers.Postgres.CanonicalID(target)},
+			)
+		}
+	}
+	return nil
 }

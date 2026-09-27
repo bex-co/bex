@@ -11,13 +11,29 @@ const updatePlan = vi.fn();
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({
     instanceTypes: [
-      { id: "free", name: "Free", cpu: "0.1", memory: "256Mi", storageGB: 1 },
+      {
+        id: "free",
+        name: "Free",
+        cpu: "0.1",
+        memory: "256Mi",
+        storageGB: 1,
+        supportsHighAvailability: false,
+      },
       {
         id: "starter",
         name: "Starter",
         cpu: "0.5",
         memory: "1Gi",
         storageGB: 10,
+        supportsHighAvailability: false,
+      },
+      {
+        id: "pro",
+        name: "Pro",
+        cpu: "1",
+        memory: "4Gi",
+        storageGB: 20,
+        supportsHighAvailability: true,
       },
     ],
     loading: false,
@@ -85,6 +101,39 @@ describe("DatabasePlanSection", () => {
     ).toBeInTheDocument();
     await user.click(starter);
     expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("blocks a move to a plan without HA while HA is on (w8/m43)", async () => {
+    const user = userEvent.setup();
+    render(
+      <DatabasePlanSection
+        database={{ ...DATABASE, plan: "pro", highAvailabilityEnabled: true }}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Starter does not support high availability (it requires at least 1 CPU). Disable high availability first.",
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    // Cancel still resets the selection.
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("lets a database without HA move to any plan", async () => {
+    const user = userEvent.setup();
+    render(
+      <DatabasePlanSection
+        database={{ ...DATABASE, plan: "pro" }}
+        onChanged={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   it("fail-closes plan controls until capabilities are definitive", () => {
