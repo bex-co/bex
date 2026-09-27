@@ -444,6 +444,51 @@ describe("ChargesCard", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w4/m139: Stripe's figure covers the subscription period (here Jul 6 –
+  // Aug 6), the tree the calendar month. The production shape was "$75.30
+  // month to date" over a $292.85 tree; each figure must name its window.
+  it("labels a rated total by its billing period and gives the tree its own month-to-date sum", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource({ costUsd: "292.85" })], "292.85")}
+        invoicedUsd="75.30"
+        ratedPeriodStart="2026-07-06T00:00:00Z"
+        ratedPeriodEnd="2026-08-06T00:00:00Z"
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+
+    expect(
+      screen.getByText("Total this billing period (Jul 6 – Aug 6)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$75.30 USD")).toBeInTheDocument();
+    expect(screen.queryByText("Total month to date")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Breakdown above: July to date"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("$292.85 USD").length).toBeGreaterThan(0);
+  });
+
+  it("never heads a past month's tree with the current period's Stripe figure", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([resource({ costUsd: "40.00" })], "40.00")}
+        invoicedUsd="75.30"
+        ratedPeriodStart="2026-07-06T00:00:00Z"
+        ratedPeriodEnd="2026-08-06T00:00:00Z"
+        loading={false}
+        period="2026-06"
+        now={MID_JULY}
+      />,
+    );
+
+    expect(screen.getByText("Total for the period")).toBeInTheDocument();
+    expect(screen.queryByText("$75.30 USD")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Breakdown above/)).not.toBeInTheDocument();
+  });
+
   it("keeps the estimate as the total while Stripe has rated nothing", () => {
     // A zero from Stripe means its meter events have not landed yet, not that
     // the period was free. Printing that zero over a nonzero tree is the

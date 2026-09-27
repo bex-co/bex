@@ -319,6 +319,21 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Total for the period",
     description: "Charge-tree total row for a completed past month",
   },
+  "usage.totalBillingPeriodWindow": {
+    message: "Total this billing period ({start} – {end})",
+    description:
+      "Charge total row when the headline is Stripe's rated amount: it covers the subscription period (anchored on the subscription's day of month), not the calendar month (w4/m139)",
+  },
+  "usage.totalBillingPeriod": {
+    message: "Total this billing period",
+    description:
+      "Charge total row for Stripe's rated amount when its period bounds are unknown (w4/m139)",
+  },
+  "usage.breakdownMonthToDate": {
+    message: "Breakdown above: {month} to date",
+    description:
+      "Row under a Stripe-rated total: the charge tree's own sum and window (the calendar month), which differs from the subscription period (w4/m139)",
+  },
   "usage.projectedTotal": {
     message: "Projected total for {month}",
     description:
