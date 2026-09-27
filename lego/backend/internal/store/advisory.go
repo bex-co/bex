@@ -56,3 +56,18 @@ func (s *PGStore) WithTenantAdvisoryLock(ctx context.Context, tenantID string, f
 		return fn()
 	})
 }
+
+// WithAppAdvisoryLock runs fn while holding a transaction-scoped Postgres
+// advisory lock for one app's deploy triggers (w8/m46), so two bex-api
+// replicas cannot interleave a trigger's row image, CR patch and deploy-row
+// open. The prefix keeps this lock domain apart from the workspace and
+// subject locks above.
+func (s *PGStore) WithAppAdvisoryLock(ctx context.Context, appID string, fn func() error) error {
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx,
+			`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "deploy-trigger:"+appID); err != nil {
+			return err
+		}
+		return fn()
+	})
+}

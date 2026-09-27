@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -198,6 +199,9 @@ type Service struct {
 	// namespace, must match so the Job identity resolves); empty falls back to
 	// the App's own namespace, the operator's own default (w2/m10).
 	BuildNamespace string
+	// triggerLocks is withTriggerLock's in-process fallback (app id →
+	// *sync.Mutex) for a store without advisory locks.
+	triggerLocks sync.Map
 	// CloneSecrets refreshes a repo-backed App's private-clone credential at
 	// trigger time (apps.Service's reconciler bridge, wired in the composition
 	// root). GitHub App installation tokens live ONE HOUR — a manual trigger or
@@ -229,16 +233,77 @@ func buildJobName(name string, generation int64) string {
 	return appv1alpha1.BuildJobName(name, appv1alpha1.BuildRevision(generation))
 }
 
-// patchApp merge-patches a's spec via mutate — the small CR-write dance
-// (DeepCopy for the patch base, mutate, Patch) Trigger and Rollback both need
-// and neither warrants its own copy of; mirrors apps.Service.patchFetched,
-// which lives on a different package's receiver and so can't be called
-// directly from here. a is updated in place with the server's response
-// (including its bumped metadata.generation), which Trigger relies on.
-func (s *Service) patchApp(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) error {
-	base := client.MergeFrom(a.DeepCopy())
-	mutate(a)
-	return s.Client.Patch(ctx, a, base)
+// openRelease is the one critical section every deploy trigger shares —
+// Trigger (API, deploy hook, restart) and Rollback (w8/m46). Near-simultaneous
+// triggers used to interleave: each wrote the row image, computed its release
+// generation from its OWN earlier read, and merge-patched the CR without a
+// resourceVersion, so the newest trigger could lose, both could close
+// canceled, and a deploy row could record another caller's image. Now, per
+// app:
+//
+//   - one trigger at a time (a Postgres advisory lock when the store provides
+//     one, so bex-api replicas agree; an in-process lock otherwise);
+//   - the App is re-read under the lock, so the release generation derives
+//     from the newest accepted trigger, never a stale pre-lock copy;
+//   - rowWrite (the projector-owned row image) runs before the CR patch, and
+//     the patch carries an optimistic lock, re-read and re-applied on conflict;
+//   - the deploy row opens inside the same section with the generation the
+//     patch produced, so rows are ordered like releases and the newest one is
+//     the release the CR names — the reconciler's superseded-row close then
+//     cancels every earlier open row by that ordering.
+//
+// a is updated in place with the patched CR.
+func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID string, rowWrite func() error,
+	mutate func(a *appv1alpha1.App, release int64), open func(release int64) (store.Deploy, error)) (store.Deploy, error) {
+	var d store.Deploy
+	err := s.withTriggerLock(ctx, appID, func() error {
+		if err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+			return err
+		}
+		if rowWrite != nil {
+			if err := rowWrite(); err != nil {
+				return err
+			}
+		}
+		for range 5 {
+			previous := a.Generation
+			base := client.MergeFromWithOptions(a.DeepCopy(), client.MergeFromWithOptimisticLock{})
+			mutate(a, previous+1)
+			err := s.Client.Patch(ctx, a, base)
+			if err == nil {
+				d, err = open(patchedGeneration(previous, a.Generation))
+				return err
+			}
+			if !apierrors.IsConflict(err) {
+				return err
+			}
+			if err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+				return err
+			}
+		}
+		return fmt.Errorf("%w: too many concurrent updates to service %q; retry the deploy", core.ErrConflict, a.Name)
+	})
+	return d, err
+}
+
+var _ AppLocker = (*store.PGStore)(nil)
+
+// AppLocker is the optional store capability openRelease serializes on across
+// replicas; *store.PGStore provides it.
+type AppLocker interface {
+	WithAppAdvisoryLock(ctx context.Context, appID string, fn func() error) error
+}
+
+// withTriggerLock runs fn holding the per-app trigger lock. A hand-applied App
+// (no row id) still serializes in-process on its object name.
+func (s *Service) withTriggerLock(ctx context.Context, appID string, fn func() error) error {
+	if locker, ok := s.Store.(AppLocker); ok && appID != "" {
+		return locker.WithAppAdvisoryLock(ctx, appID, fn)
+	}
+	mu, _ := s.triggerLocks.LoadOrStore(appID, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	defer mu.(*sync.Mutex).Unlock()
+	return fn()
 }
 
 // appStoreID resolves an already-fetched App CR to its control-plane row id
@@ -601,30 +666,39 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// starts the rollout (w9/001) — best-effort provenance: the deploy row
 	// opens either way, so a GitHub hiccup can never block a deploy.
 	commit := s.resolveCommit(ctx, a, p.CommitID)
-	// Rollback temporarily points a repo-backed service at the selected deploy's
-	// resolved image so that exact artifact can run without rebuilding it. A
-	// subsequent source deploy must leave that override behind; otherwise
-	// spec.image wins over the freshly built artifact forever and, once registry
-	// retention removes the old tag, every later deploy fails ErrImagePull.
-	// Clear the row first because the control-plane projector owns spec.image.
-	if a.Spec.Repo != "" {
-		if err := s.Store.SetAppImage(ctx, appID, ""); err != nil {
-			return DeployView{}, fmt.Errorf("clear rollback image override: %w", err)
-		}
+	// Deploy-hook URLs are unauthenticated; git paths use TriggerNewCommit
+	// elsewhere. Manual/API (and any other authenticated Trigger) stamps the
+	// request subject — including API keys — the same form audit uses (w4/072).
+	triggeredBy := ""
+	if trigger != store.TriggerDeployHook {
+		triggeredBy = core.SubjectFrom(ctx)
 	}
-	// imageUrl is the same row-owned field: patching only the CR let the
-	// projector restore the row's old image, re-rolling the pods and closing
-	// this deploy canceled (w8/022). Row-first, like Rollback.
-	if p.ImageURL != "" {
-		if err := s.Store.SetAppImage(ctx, appID, p.ImageURL); err != nil {
-			return DeployView{}, fmt.Errorf("update source of truth: %w", err)
+	rowWrite := func() error {
+		// Rollback temporarily points a repo-backed service at the selected
+		// deploy's resolved image so that exact artifact can run without
+		// rebuilding it. A subsequent source deploy must leave that override
+		// behind; otherwise spec.image wins over the freshly built artifact
+		// forever and, once registry retention removes the old tag, every later
+		// deploy fails ErrImagePull. Clear the row first because the
+		// control-plane projector owns spec.image.
+		if a.Spec.Repo != "" {
+			if err := s.Store.SetAppImage(ctx, appID, ""); err != nil {
+				return fmt.Errorf("clear rollback image override: %w", err)
+			}
 		}
+		// imageUrl is the same row-owned field: patching only the CR let the
+		// projector restore the row's old image, re-rolling the pods and closing
+		// this deploy canceled (w8/022). Row-first, like Rollback.
+		if p.ImageURL != "" {
+			if err := s.Store.SetAppImage(ctx, appID, p.ImageURL); err != nil {
+				return fmt.Errorf("update source of truth: %w", err)
+			}
+		}
+		return nil
 	}
-	previousGeneration := a.Generation
-	releaseGeneration := previousGeneration + 1
-	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
-		stampReleaseGeneration(a, releaseGeneration)
-		stampClearCacheRelease(a, releaseGeneration, p.ClearCache)
+	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) {
+		stampReleaseGeneration(a, release)
+		stampClearCacheRelease(a, release, p.ClearCache)
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		if a.Spec.Repo != "" {
 			a.Spec.Image = ""
@@ -651,18 +725,11 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		if p.ImageURL != "" {
 			a.Spec.Image = p.ImageURL
 		}
-	}); err != nil {
-		return DeployView{}, err
-	}
-	releaseGeneration = patchedGeneration(previousGeneration, a.Generation)
-	// Deploy-hook URLs are unauthenticated; git paths use TriggerNewCommit
-	// elsewhere. Manual/API (and any other authenticated Trigger) stamps the
-	// request subject — including API keys — the same form audit uses (w4/072).
-	triggeredBy := ""
-	if trigger != store.TriggerDeployHook {
-		triggeredBy = core.SubjectFrom(ctx)
-	}
-	d, err := s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, releaseGeneration, commit, triggeredBy)
+	}, func(release int64) (store.Deploy, error) {
+		// The row records this call's own request: the image just patched
+		// under the lock, never a value another trigger wrote meanwhile.
+		return s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, release, commit, triggeredBy)
+	})
 	if err != nil {
 		return DeployView{}, err
 	}
@@ -921,21 +988,19 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	// row updates before the CR patch below — the same writeThroughStore
 	// discipline apps.Service's suspend/plan/scale verbs follow, applied here
 	// since Rollback is deploys' first verb that changes a row-owned field.
-	if err := s.Store.SetAppImage(ctx, appID, target.ResolvedImage); err != nil {
-		return DeployView{}, fmt.Errorf("update source of truth: %w", err)
-	}
-	previousGeneration := a.Generation
-	releaseGeneration := previousGeneration + 1
-	if err := s.patchApp(ctx, a, func(a *appv1alpha1.App) {
-		stampReleaseGeneration(a, releaseGeneration)
+	d, err := s.openRelease(ctx, a, appID, func() error {
+		if err := s.Store.SetAppImage(ctx, appID, target.ResolvedImage); err != nil {
+			return fmt.Errorf("update source of truth: %w", err)
+		}
+		return nil
+	}, func(a *appv1alpha1.App, release int64) {
+		stampReleaseGeneration(a, release)
 		a.Spec.Image = target.ResolvedImage
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
-	}); err != nil {
-		return DeployView{}, err
-	}
-	releaseGeneration = patchedGeneration(previousGeneration, a.Generation)
-	d, err := s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, releaseGeneration,
-		store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage}, core.SubjectFrom(ctx))
+	}, func(release int64) (store.Deploy, error) {
+		return s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, release,
+			store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage}, core.SubjectFrom(ctx))
+	})
 	if err != nil {
 		return DeployView{}, err
 	}

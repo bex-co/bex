@@ -63,3 +63,49 @@ func TestWithTenantAdvisoryLockSerializesSameWorkspace(t *testing.T) {
 		t.Fatalf("second lock: %v", err)
 	}
 }
+
+// w8/m46: one app's deploy triggers serialize across bex-api replicas, and a
+// different app's trigger never waits on them.
+func TestWithAppAdvisoryLockSerializesOneApp(t *testing.T) {
+	st := newReplayTestStore(t)
+	ctx := context.Background()
+	firstEntered, releaseFirst := make(chan struct{}), make(chan struct{})
+	firstDone := make(chan error, 1)
+	go func() {
+		firstDone <- st.WithAppAdvisoryLock(ctx, "srv-race", func() error {
+			close(firstEntered)
+			<-releaseFirst
+			return nil
+		})
+	}()
+	<-firstEntered
+
+	if err := st.WithAppAdvisoryLock(ctx, "srv-other", func() error { return nil }); err != nil {
+		t.Fatalf("another app's trigger: %v", err)
+	}
+	secondEntered := make(chan struct{})
+	secondDone := make(chan error, 1)
+	go func() {
+		secondDone <- st.WithAppAdvisoryLock(ctx, "srv-race", func() error {
+			close(secondEntered)
+			return nil
+		})
+	}()
+	select {
+	case <-secondEntered:
+		t.Fatal("second trigger entered while the first held the app's lock")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(releaseFirst)
+	if err := <-firstDone; err != nil {
+		t.Fatalf("first lock: %v", err)
+	}
+	select {
+	case <-secondEntered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("second trigger did not enter after the first released")
+	}
+	if err := <-secondDone; err != nil {
+		t.Fatalf("second lock: %v", err)
+	}
+}
