@@ -2058,3 +2058,70 @@ func TestQuietServiceAndDarkPipelineAreTheSameResponse(t *testing.T) {
 		t.Fatalf("expected identical responses, got %q vs %q", quiet, dark)
 	}
 }
+
+// w8/024: `bex logs -r A,B --tail` streamed A only — subscribe followed
+// resources[0] and dropped the rest without a word, while the history query
+// over the same pair merged both. Every requested resource is followed now,
+// on every transport.
+func TestSubscribeFollowsEveryRequestedResource(t *testing.T) {
+	newPair := func() *Service {
+		return newService(map[string][]string{
+			"web-1": {"2026-07-05T00:00:01Z from web"},
+			"api-1": {"2026-07-05T00:00:02Z from api"},
+		}, sampleApp("web"), podFor("web", "web-1"), sampleApp("api"), podFor("api", "api-1"))
+	}
+	for _, accept := range []string{"text/event-stream", ""} {
+		for _, query := range []string{"resource=web&resource=api", "resource=api&resource=web"} {
+			mux := http.NewServeMux()
+			newPair().RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?"+query, nil)
+			if accept != "" {
+				req.Header.Set("Accept", accept)
+			}
+			serveSubscribe(mux, rec, req)
+			body := rec.Body.String()
+			if rec.Code != 200 || !strings.Contains(body, "from web") || !strings.Contains(body, "from api") {
+				t.Errorf("accept %q, %s: %d %q, want both services' lines", accept, query, rec.Code, body)
+			}
+		}
+	}
+
+	srv := httptest.NewServer(func() http.Handler {
+		mux := http.NewServeMux()
+		newPair().RegisterREST(mux)
+		return mux
+	}())
+	defer srv.Close()
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http")+"/v1/logs/subscribe?resource=web&resource=api", nil)
+	if err != nil {
+		t.Fatalf("WS dial: %v", err)
+	}
+	defer conn.Close()
+	seen := map[string]bool{}
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	for !(seen["from web"] && seen["from api"]) {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("WS read after %v: %v", seen, err)
+		}
+		for _, want := range []string{"from web", "from api"} {
+			if strings.Contains(string(msg), want) {
+				seen[want] = true
+			}
+		}
+	}
+}
+
+// A resource the caller may not read refuses the whole tail before it opens;
+// it is never merged or silently skipped.
+func TestSubscribeRefusesWhenAnyResourceIsUnknown(t *testing.T) {
+	svc := newService(map[string][]string{"web-1": {"2026-07-05T00:00:01Z from web"}}, sampleApp("web"), podFor("web", "web-1"))
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	serveSubscribe(mux, rec, httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe?resource=web&resource=ghost", nil))
+	if rec.Code != 404 || strings.Contains(rec.Body.String(), "from web") {
+		t.Errorf("subscribe with an unknown second resource = %d %q, want 404 before streaming", rec.Code, rec.Body.String())
+	}
+}
