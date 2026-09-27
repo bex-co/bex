@@ -23,6 +23,7 @@ import {
 } from "@/common/components/ui/command";
 import { DialogDescription, DialogTitle } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
@@ -103,6 +104,10 @@ function SearchResults({
   const { keyValues, loading: keyValuesLoading } = useKeyValues();
   const { projects, loading: projectsLoading } = useProjects();
   const { groups: envGroups, loading: envGroupsLoading } = useEnvGroups();
+  // Blueprints are a first-class sidebar resource (w4/147). Webhooks stay out
+  // on purpose: an endpoint is named by its URL, a workspace has a handful, and
+  // the Webhooks page is one Navigation result away.
+  const { blueprints, loading: blueprintsLoading } = useBlueprints();
 
   function select(run: () => void) {
     close();
@@ -157,13 +162,15 @@ function SearchResults({
     databasesLoading ||
     keyValuesLoading ||
     projectsLoading ||
-    envGroupsLoading;
+    envGroupsLoading ||
+    blueprintsLoading;
   const resourceCount =
     services.length +
     databases.length +
     keyValues.length +
     projects.length +
-    envGroups.length;
+    envGroups.length +
+    blueprints.length;
 
   const filteredPages = pages.filter((page) => matchesQuery(page.label, query));
   const filteredProjects = projects.filter((r) =>
@@ -174,7 +181,7 @@ function SearchResults({
   );
   const filteredServices = services.filter((r) =>
     matchesQuery(
-      `${r.name} ${r.id} ${t("common.topbarServiceResource")}`,
+      `${serviceSearchText(r)} ${t("common.topbarServiceResource")}`,
       query,
     ),
   );
@@ -187,6 +194,9 @@ function SearchResults({
   const filteredEnvGroups = envGroups.filter((r) =>
     matchesQuery(`${r.name} ${r.id} ${t("envGroups.resourceType")}`, query),
   );
+  const filteredBlueprints = blueprints.filter((r) =>
+    matchesQuery(`${r.name} ${r.id} ${t("blueprints.resourceType")}`, query),
+  );
 
   // shouldFilter={false} means cmdk never prunes an itemless group for us — an
   // unguarded group would float its heading over zero children (w6/046). Render
@@ -198,6 +208,7 @@ function SearchResults({
     filteredDatabases.length > 0 ||
     filteredKeyValues.length > 0 ||
     filteredEnvGroups.length > 0 ||
+    filteredBlueprints.length > 0 ||
     (loading && resourceCount === 0);
 
   return (
@@ -255,7 +266,7 @@ function SearchResults({
                 key={`service:${service.id}`}
                 // Keep the generic token so typing "service" still matches every
                 // service, and add the specific words so "cron"/"private" match too.
-                value={`${service.name} ${service.id} ${t("common.topbarServiceResource")} ${typeLabel}`}
+                value={`${serviceSearchText(service)} ${t("common.topbarServiceResource")} ${typeLabel}`}
                 onSelect={() =>
                   select(() => {
                     // Canonical base per type — routing a static_site through
@@ -275,7 +286,13 @@ function SearchResults({
                 }
               >
                 <TypeIcon />
-                <SearchResultLabel name={service.name} kind={typeLabel} />
+                <SearchResultLabel
+                  name={service.name}
+                  // A renamed service still answers to its original name (its
+                  // host and Blueprint `name:`), so show why it matched.
+                  aka={originalName(service)}
+                  kind={typeLabel}
+                />
               </CommandItem>
             );
           })}
@@ -339,16 +356,71 @@ function SearchResults({
               />
             </CommandItem>
           ))}
+          {filteredBlueprints.map((blueprint) => (
+            <CommandItem
+              key={`blueprint:${blueprint.id}`}
+              value={`${blueprint.name} ${blueprint.id} ${t("blueprints.resourceType")}`}
+              onSelect={() =>
+                select(() => {
+                  void navigate({
+                    to: "/blueprints/$blueprintId",
+                    params: { blueprintId: blueprint.id },
+                  });
+                })
+              }
+            >
+              <Layers />
+              <SearchResultLabel
+                name={blueprint.name}
+                kind={t("blueprints.resourceType")}
+              />
+            </CommandItem>
+          ))}
         </CommandGroup>
       ) : null}
     </>
   );
 }
 
-function SearchResultLabel({ name, kind }: { name: string; kind: string }) {
+/** Every name a service answers to: its display name, the immutable name and
+ *  slug a rename keeps (its host, a Blueprint's `name:`), and its id (w4/147). */
+function serviceSearchText(service: {
+  name: string;
+  id: string;
+  immutableName?: string | null;
+  slug: string | null;
+}): string {
+  return [service.name, service.immutableName, service.slug, service.id]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** The original name to show beside a renamed service, or undefined. */
+function originalName(service: {
+  name: string;
+  immutableName?: string | null;
+}): string | undefined {
+  const original = service.immutableName ?? "";
+  return original && original !== service.name ? original : undefined;
+}
+
+function SearchResultLabel({
+  name,
+  aka,
+  kind,
+}: {
+  name: string;
+  aka?: string;
+  kind: string;
+}) {
   return (
     <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-      <span className="truncate">{name}</span>
+      <span className="truncate">
+        {name}
+        {aka ? (
+          <span className="ml-2 text-xs text-muted-foreground">{aka}</span>
+        ) : null}
+      </span>
       <span className="shrink-0 text-xs text-muted-foreground">{kind}</span>
     </span>
   );
