@@ -1,6 +1,6 @@
 # w2 · m94 — Linked environment groups: precedence, auto-deploy, and quota parity
 
-**Worker:** worker2 **Goal:** a linked environment group behaves the way Render documents and the way bex's own Environment page claims. A Render-shaped group write opens a deploy only on linked services with auto-deploy on. A service's own secret file always beats a linked group's file of the same name, the rule env vars already follow. When two linked groups define the same key or file, the page shows which one the service runs. A group already over the secret-map quota can shrink through a batch patch. Every rule is written down. **Status:** t001–t008 done; **t009 closeout BLOCKED** on live production verification (see Decisions)
+**Worker:** worker2 **Goal:** a linked environment group behaves the way Render documents and the way bex's own Environment page claims. A Render-shaped group write opens a deploy only on linked services with auto-deploy on. A service's own secret file always beats a linked group's file of the same name, the rule env vars already follow. When two linked groups define the same key or file, the page shows which one the service runs. A group already over the secret-map quota can shrink through a batch patch. Every rule is written down. **Status:** t001–t008 done; live re-probe 2026-09-27 (pass 225): bullets 1, 3, 4 and 6 pass; bullet 2 passes on behavior but its page-copy half fails (→ new t010); bullet 5 (over-quota shrink) cannot be seeded from outside and rests on t004 tests; t009 closeout waits on t010
 
 ## Tasks (in order)
 
@@ -14,7 +14,8 @@
 | t006 | Render parity — **DONE**                                                                                                                                               | 20m | t004, t005 |
 | t007 | Simplify — **DONE**                                                                                                                                                    | 20m | t006       |
 | t008 | Test coverage — **DONE**                                                                                                                                               | 45m | t006       |
-| t009 | Closeout                                                                                                                                                    | 10m | t008       |
+| t010 | Env-group link and delete copy says only auto-deploy services redeploy | 20m | t008 |
+| t009 | Closeout | 10m | t008, t010 |
 
 
 ## Decisions
@@ -53,3 +54,29 @@ Run every bullet on production (`https://dashboard.bex.co`, workspace `bex`), wi
 - **Expected outcome:** no release ships that an owner opted out of by turning auto-deploy off; no credential file is silently swapped at runtime; a collision on the Environment page shows which value wins; a group that outgrew the quota can be brought back under it. Every rule has a written home.
 - **Why now:** two of the four are major severity (092, 095) and silent, on a surface Render clients drive through REST with no dashboard in the loop. The quota fix reuses `patchWithinQuota`, which `w1/m147` wrote days ago, so the helper is fresh. The four fixes share `lego/backend/internal/envgroups` and the operator's env/file projection, so one milestone avoids three separate passes over the same code. Independent of the blocked `w1/blocked/m152` (what cancel does), which does not change when a deploy opens.
 - **Render parity is included** (t006): REST, GraphQL, MCP and the dashboard all change. The auto-deploy gate touches every Render-shaped group verb; the link order lands on the service read on three adapters; the panel changes the UI.
+
+## Live re-probe (2026-09-27, `/qa-find-bugs` pass 225)
+
+Production, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. Fixtures:
+
+- groups `qa-20260927-egA` `evg-dascv5psmc7s73cq5opg` (`MESSAGE=v1`, `qa.txt=from-group-A`) and `qa-20260927-egB` `evg-dascv7od0qnc73d7a4r0` (`MESSAGE=from-B`, `qa.txt=from-group-B`);
+- repo-backed free Docker services from `bex-co/bex`: `qa-20260927-s1` (`examples/hello-go`, `autoDeploy: no`), `-s2` (`hello-go`, `autoDeploy: yes`), and `-s3` (`examples/hello-python`, `dockerCommand: python -m http.server $PORT --directory /etc/secrets`, own secret file `qa.txt=from-service`).
+
+All were deleted afterwards (`DELETE` 204, then `GET` 404).
+
+- **Auto-deploy off means no deploy — PASS.**
+  - Linking A to s1 opened no deploy (deploy count 1 → 1).
+  - `PUT /v1/env-groups/<A>/env-vars/MESSAGE {"value":"v2"}` → `200 {"key":"MESSAGE"}`. s1's deploy count stayed at 1, its Events feed after the write was empty, the group read back `v2`, and `https://qa-20260927-s1.onbex.co/` kept serving **`v1`**.
+  - Observation matching the Decisions section: s1 *did* start serving `v1` after the link without any deploy row. The link still changes the Deployment's `envFrom`, which Kubernetes rolls out; the gate withholds the deploy row and forced restart, not the ref change.
+- **Auto-deploy on still deploys — PASS on behavior; copy FAIL.**
+  - The same write opened a `config_change` deploy on s2, which then served `v2`.
+  - `PATCH /v1/env-groups/<A>/contents {"saveMode":"deploy", …}` → `affectedServiceIds` [s1, s2, s3], `pendingServiceIds: ["<s1>"]`. That names the untouched service, on the batch response as the Decisions section chose.
+  - **Copy:** the group page still reads "Linking or unlinking redeploys every affected service." (`envGroups.servicesDescription`), not the gate-aware sentence t001 step 4 required. → **t010**.
+- **The service's own secret file wins — PASS.** s3 served `from-service` at `/qa.txt` before, and still after, group A (holding `qa.txt=from-group-A`) was linked and its link deploy went live. The unlink-then-remove fallback was not exercised.
+- **Group-vs-group collisions are marked — PASS.**
+  - B was linked to s2, then A. s2 served `v1` (A's value, last linked wins).
+  - `/services/<s2>/env` → Linked Environment Groups lists **qa-20260927-egA** before **qa-20260927-egB**.
+  - B's `MESSAGE` and `qa.txt` render struck through, each with the title "Overridden by qa-20260927-egA, which is linked later".
+- **An over-quota group can shrink — NOT RUN.** A group over 500 entries / 512 KiB cannot be created through the API, because the quota refuses the growth that would seed it. This rests on t004's tests.
+- **The rules are written down — PASS.** `docs/ADR013-secrets.md:96-99` states service-over-group (env vars and files), last-linked-wins, and the auto-deploy gate. The ADR018 environment-groups row (line 120) records last-linked-wins as a deliberate divergence from Render's most-recently-created.
+
