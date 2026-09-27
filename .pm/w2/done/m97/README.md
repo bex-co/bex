@@ -1,6 +1,6 @@
 # w2 · m97 — Blueprint preview names the reason a fetch failed
 
-**Worker:** worker2 **Goal:** the Blueprint preview tells an author what to fix. Every fetch failure carries a coded `reason` on REST, GraphQL and MCP, the dashboard picks its title and body from that reason, and no raw `github:` error text or commit SHA reaches any surface. The existing-Blueprint sync view and the auto-sync worker classify the same failures the same way. **Status:** t001–t006 done; **t007 closeout BLOCKED** on live production verification (same credential gate as m95/m96/m100 — see the workstream README)
+**Worker:** worker2 **Goal:** the Blueprint preview tells an author what to fix. Every fetch failure carries a coded `reason` on REST, GraphQL and MCP, the dashboard picks its title and body from that reason, and no raw `github:` error text or commit SHA reaches any surface. The existing-Blueprint sync view and the auto-sync worker classify the same failures the same way. **Status:** done (live Definition of done re-probed and passed 2026-09-26, `/qa-find-bugs` pass 220)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE** | 15m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004       |
 | t006 | Test coverage — **DONE** | 30m | t004       |
-| t007 | Closeout                                                                                                                              | 10m | t006       |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Decisions
 
@@ -62,3 +62,21 @@ Across every row above, the wire `blueprintPreview` carries `reason` set to one 
 - **Expected outcome:** at the review step a Blueprint author can tell whether the path, the branch, or the repository is wrong, and API clients receive a stable `reason` instead of parsing prose. The same classification governs manual sync and auto-sync, so the leak is closed in three places at once.
 - **Why now:** the classifier is one function shared by preview, sync, and the auto-sync worker; building it once now is cheaper than patching three call sites later. The current wire also carries the commit SHA `discoverBlueprintFile` pinned, which is internal state that has no business on the preview surface.
 - **Render parity:** included (t004). The change adds a field to the `BlueprintPreview` shape on REST, GraphQL and MCP and changes dashboard copy, so all four surfaces must agree. Render's own preview copy for these failure cases was not captured during filing; t004 captures it and records any drift. Missing-repo and no-access stay one combined reason on purpose: GitHub returns 404 for a private repository the installation cannot see, and splitting them would turn the preview into a private-repo existence oracle.
+
+## Live Definition-of-done re-probe (2026-09-26, `/qa-find-bugs` pass 220) — all pass
+
+Production `dashboard.bex.co/blueprints/new` → **Public Git URL** tab, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. The run was read-only; nothing was deployed. The wire checks replayed the page's `blueprintPreview(repo, branch, path, ownerId)` GraphQL query. Titles and bodies were read from the rendered review panel, and **Deploy Blueprint**'s `disabled` state was read after each input.
+
+| input | wire `reason` / `error` | rendered title / body | Deploy |
+| --- | --- | --- | --- |
+| `render.yaml` (root, absent) | `file_not_found` / `Blueprint file "render.yaml" not found on branch "main".` | **Blueprint file not found** / "render.yaml does not exist on branch main. Check the path, or commit the file to that branch." | disabled |
+| `examples/nope/render.yaml` | `file_not_found` / same shape with that path | **Blueprint file not found** / same shape | disabled |
+| branch `qa-no-such-branch` | `branch_not_found` / `Branch "qa-no-such-branch" does not exist in this repository.` | **Branch not found** / names the branch (the page run typed onto the prefilled `main`, so the body read `mainqa-no-such-branch`, which was my input; the wire run used the exact name) | disabled |
+| repo `https://github.com/bex-co/qa-no-such-repo.git` | `repo_not_found_or_no_access` / `Repository not found, or bex's GitHub app cannot access it.` | **Repository not found** / "This repository does not exist, or bex's GitHub app cannot access it. …". One combined reason; missing and private are indistinguishable. The title is the short form, and the combined wording is in the body. | disabled |
+| `examples/hello-go` | `invalid_path` / `Blueprint path must be a .yaml or .yml file` | no not-found panel; the path field is `aria-invalid=true` with "The Blueprint path must be a .yaml or .yml file." | disabled |
+| `../render.yaml`, `/render.yaml` | `invalid_path` / `Blueprint path must be a clean repository-relative path` | no not-found panel; the path field is `aria-invalid=true` with "…clean, repository-relative path (no leading slash, no ..)." | disabled |
+| control `examples/hello-go/render.yaml` | `found: true`, `reason: ""` | **Blueprint file parsed successfully — 1 resource to sync.** (Services: hello-go) | **enabled** |
+| control `examples/whoami-app.yaml` | `found: true` | **Blueprint file has errors** / "at '': additional properties 'apiVersion', 'kind', 'metadata', 'spec' not allowed" | disabled |
+
+Across every row, `error` held no `github:` prefix and no 40-hex SHA. No Retry control appeared, which is correct: no row was `rate_limited` or `unavailable`, and those were not induced.
+
