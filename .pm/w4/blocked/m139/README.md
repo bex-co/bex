@@ -1,18 +1,18 @@
 # w4 · m139 — Billing's Charges card: a subscription-period total labelled "month to date" over a calendar-month tree, and a coverage watermark that never leaves the 1st
 
-**Worker:** worker4 **Goal:** every number on the Billing page's Charges card names the window it covers, the headline and the tree beneath it cover the same window or say plainly that they do not, and `usage.coverage.through` advances with the month (or its failure to advance is traced to a named cause) **Status:** todo
+**Worker:** worker4 **Goal:** every number on the Billing page's Charges card names the window it covers, the headline and the tree beneath it cover the same window or say plainly that they do not, and `usage.coverage.through` advances with the month (or its failure to advance is traced to a named cause) **Status:** blocked (t001, t003–t006 done 2026-09-26; t002 needs a production read of the usage health tables; t007 awaits the deploy and the live re-probe)
 
 ## Tasks (in order)
 
 | id   | title                                                                                       | est | depends_on       |
 | ---- | ------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Label the rated headline by its real window, and reconcile or disclose the tree's window     | 45m | —                |
-| t002 | Trace why `coverage.through` is pinned at the month start with every source degraded         | 60m | —                |
-| t003 | Correct `w6/m98/t007`'s recorded mechanism for the estimate/rated gap                        | 10m | t001             |
-| t004 | Render parity across REST / GraphQL / MCP / UI                                              | 20m | t001, t002       |
-| t005 | Simplify                                                                                    | 15m | t004             |
-| t006 | Test coverage                                                                               | 30m | t004             |
-| t007 | Closeout                                                                                    | 10m | t006             |
+| t001 | Label the rated headline by its real window, and reconcile or disclose the tree's window — **DONE**     | 45m | —                |
+| t002 | Trace why `coverage.through` is pinned at the month start with every source degraded — **BLOCKED**         | 60m | —                |
+| t003 | Correct `w6/m98/t007`'s recorded mechanism for the estimate/rated gap — **DONE**                        | 10m | t001             |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                              | 20m | t001, t002       |
+| t005 | Simplify — **DONE**                                                                                    | 15m | t004             |
+| t006 | Test coverage — **DONE**                                                                               | 30m | t004             |
+| t007 | Closeout — **BLOCKED**                                                                                    | 10m | t006             |
 
 ## Definition of done
 
