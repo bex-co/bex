@@ -336,3 +336,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **166** — [Five MCP tools fail without `workspaceId`, and the error exposes bex's internal OpenFGA URL and store id](done/166.md) — done 2026-09-27.
 
 - [x] **167** — [Postgres top-queries answers `[]` for a database that does not exist, and Render's `/query/*` insight paths 404](done/167.md) — done 2026-09-27.
+
+- [x] **168** — [Render's Postgres recovery, Postgres credentials and owner notification-settings paths are unmounted; bex serves them under other names](done/168.md) — done 2026-09-27.

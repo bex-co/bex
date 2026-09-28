@@ -18,6 +18,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"slices"
@@ -241,7 +242,46 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.Failover(ctx, r.PathValue("id"))
 	}))
 
-	// --- recovery / exports (Render: recovery-info, recover, export) ---
+	// Render recovery routes adapt its wire names to the shared recovery verbs.
+	mux.HandleFunc("GET "+base+"/{id}/recovery", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		info, err := s.RecoveryInfo(r.Context(), r.PathValue("id"))
+		if err != nil {
+			return nil, err
+		}
+		status := "NOT_AVAILABLE"
+		if info.Enabled {
+			status = "BACKUP_NOT_READY"
+			if info.EarliestRecoveryTime != "" && info.LatestRecoveryTime != "" {
+				status = "AVAILABLE"
+			}
+		}
+		return struct {
+			Status   string `json:"recoveryStatus"`
+			StartsAt string `json:"startsAt,omitempty"`
+		}{status, info.EarliestRecoveryTime}, nil
+	}))
+	mux.HandleFunc("POST "+base+"/{id}/recovery", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			RestoreName   string  `json:"restoreName"`
+			RestoreTime   string  `json:"restoreTime"`
+			Plan          string  `json:"plan"`
+			EnvironmentID *string `json:"environmentId"`
+			DatadogAPIKey *string `json:"datadogApiKey"`
+			DatadogSite   *string `json:"datadogSite"`
+		}
+		if !decodeOr400(w, r, &req) {
+			return
+		}
+		for field, present := range map[string]bool{"environmentId": req.EnvironmentID != nil, "datadogApiKey": req.DatadogAPIKey != nil, "datadogSite": req.DatadogSite != nil} {
+			if present {
+				core.WriteErr(w, fmt.Errorf("%w: recovery field %s is unsupported", core.ErrBadRequest, field))
+				return
+			}
+		}
+		pg, err := s.Recover(r.Context(), r.PathValue("id"), RecoverRequest{Name: req.RestoreName, TargetTime: req.RestoreTime, Plan: req.Plan})
+		s.respondPostgres(w, r, http.StatusOK, pg, err)
+	})
+	// Native aliases keep their existing request/response contracts.
 	mux.HandleFunc("POST "+base+"/{id}/recovery-info", core.HandleByID(s.RecoveryInfo))
 	mux.HandleFunc("POST "+base+"/{id}/recover", func(w http.ResponseWriter, r *http.Request) {
 		var req RecoverRequest
@@ -282,6 +322,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		s.respondPostgres(w, r, http.StatusOK, pg, err)
 	})
 	mux.HandleFunc("GET "+base+"/{id}/users", core.HandleByID(s.ListUsers))
+	mux.HandleFunc("GET "+base+"/{id}/credentials", core.HandleByID(s.ListCredentials))
 	mux.HandleFunc("POST "+base+"/{id}/users", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Name string `json:"name"`
@@ -297,6 +338,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, res)
 	})
 	mux.HandleFunc("DELETE "+base+"/{id}/users/{user}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteUser(r.Context(), r.PathValue("id"), r.PathValue("user"))
+	}))
+	mux.HandleFunc("DELETE "+base+"/{id}/credentials/{user}", core.HandleNoBody(http.StatusOK, func(r *http.Request) error {
 		return s.DeleteUser(r.Context(), r.PathValue("id"), r.PathValue("user"))
 	}))
 
