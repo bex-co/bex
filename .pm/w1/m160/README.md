@@ -1,6 +1,6 @@
 # w1 · m160 — Release identity: a never-served first release must not read Running, and an autoscaled worker must keep autoscaling
 
-**Worker:** worker1 **Goal:** the phase a service reports after a failed or canceled build reflects what it can actually serve — Running only when a release really served — and a background worker's autoscaling transition ends, so it keeps reading metrics after its first scale. **Status:** todo (t001, t002, t003, t006 and t007 done; t004 live and t005 parity wait on the deploy)
+**Worker:** worker1 **Goal:** the phase a service reports after a failed or canceled build reflects what it can actually serve — Running only when a release really served — and a background worker's autoscaling transition ends, so it keeps reading metrics after its first scale. **Status:** todo (t001, t002, t003, t006 and t007 done; t004 live and t005 parity are unblocked 2026-09-27 — the deploy gate cleared, production advanced through `4a0422577`)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity | 20m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 45m | t005 |
-| t008 | Closeout | 10m | t007 |
+| t008 | Closeout | 10m | t007, t004, t005 |
 
 ## Implementation (2026-09-15)
 
