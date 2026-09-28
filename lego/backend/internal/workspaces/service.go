@@ -595,7 +595,8 @@ func (s *Service) GetWorkspace(ctx context.Context, ownerID string) (WorkspaceVi
 	if strings.HasPrefix(ownerID, ownIDPrefix) {
 		return s.defaultWorkspace(ctx)
 	}
-	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
+	ownerID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, ownerID)
+	if err != nil {
 		return WorkspaceView{}, err
 	}
 	if s.Store == nil {
@@ -821,7 +822,8 @@ type MemberView struct {
 // workspace id is ErrNotFound; a workspace the caller isn't a member of is
 // ErrForbidden.
 func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(ownerID)); err != nil {
+	ownerID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, ownerID)
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
@@ -924,7 +926,8 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 // Rename changes a workspace's display name. Admin-only (can_manage on the exact
 // workspace). The id stays the key, so a rename breaks no references.
 func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
+	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, id)
+	if err != nil {
 		return WorkspaceView{}, err
 	}
 	if s.Store == nil {
@@ -958,13 +961,14 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 // Refusing here instead means the admin learns what to revoke while they still
 // remember sending it.
 func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
+	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, id)
+	if err != nil {
 		return WorkspaceView{}, err
 	}
 	if s.Store == nil {
 		return WorkspaceView{}, core.ErrWorkspacesUnavailable
 	}
-	plan, err := normalizePlan(plan)
+	plan, err = normalizePlan(plan)
 	if err != nil {
 		return WorkspaceView{}, err
 	}
@@ -1141,7 +1145,8 @@ func DeleteConfirmation(name string) string { return "sudo delete workspace " + 
 // destroyed workspace). Every purger and the revoke tolerate already-gone
 // tuples/resources so the retry converges.
 func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
+	id, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, id)
+	if err != nil {
 		return err
 	}
 	// codex-security round-6 #16: destroying a workspace is the most

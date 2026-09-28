@@ -461,7 +461,8 @@ func (s *Service) List(ctx context.Context, projectID string) ([]EnvironmentView
 // the label-backed resource scans remain one-per-kind for the whole workspace.
 // This is the backend for the dashboard's one-shot scope index.
 func (s *Service) ListWorkspace(ctx context.Context, workspaceID string) ([]EnvironmentView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(workspaceID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, workspaceID)
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {

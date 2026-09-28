@@ -675,7 +675,8 @@ func (b *Base) resolveWorkspaceUncached(ctx context.Context) (string, error) {
 	// picking one.
 	if acting, ok := ActingTenantFrom(ctx); ok {
 		if named, namedOK := WorkspaceFrom(ctx); namedOK && named != acting {
-			return "", fmt.Errorf("%w: acting tenant %q conflicts with named workspace %q", ErrAuthzUnavailable, acting, named)
+			log.Printf("core: acting tenant %q conflicts with named workspace %q", acting, named)
+			return "", ErrAuthzUnavailable
 		}
 		return acting, nil
 	}
@@ -780,6 +781,9 @@ func checkCapability(ctx context.Context, relation string) error {
 // fails closed with ErrAuthzUnavailable — never a pass-through, so the three
 // surfaces stay authorization-identical.
 func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
+	if object == WorkspaceObject("") {
+		return fmt.Errorf("%w: workspace id is required", ErrBadRequest)
+	}
 	if err := checkCapability(ctx, relation); err != nil {
 		return err
 	}
@@ -792,7 +796,8 @@ func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 	}
 	allowed, err := b.Authz.Check(ctx, "user:"+id.Subject, relation, object)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
+		log.Printf("core: authorization unavailable: %v", err)
+		return ErrAuthzUnavailable
 	}
 	if !allowed {
 		return ErrForbidden
@@ -806,6 +811,9 @@ func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 // contract: nil checker allows, no identity or a negative check is ErrForbidden,
 // an unreachable checker is ErrAuthzUnavailable.
 func (b *Base) checkAuthzFresh(ctx context.Context, relation, object string) error {
+	if object == WorkspaceObject("") {
+		return fmt.Errorf("%w: workspace id is required", ErrBadRequest)
+	}
 	if err := checkCapability(ctx, relation); err != nil {
 		return err
 	}
@@ -819,7 +827,8 @@ func (b *Base) checkAuthzFresh(ctx context.Context, relation, object string) err
 	}
 	allowed, err := fresh.CheckFresh(ctx, "user:"+id.Subject, relation, object)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
+		log.Printf("core: authorization unavailable: %v", err)
+		return ErrAuthzUnavailable
 	}
 	if !allowed {
 		return ErrForbidden
@@ -932,7 +941,8 @@ func (b *Base) AuthorizeMintClass(ctx context.Context) error {
 		// immutable, so it has no upstream marker or positive cache to go stale.
 		platform, err := b.PlatformClients.IsPlatformClientFresh(ctx, id.ClientID)
 		if err != nil {
-			return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
+			log.Printf("core: authorization unavailable: %v", err)
+			return ErrAuthzUnavailable
 		}
 		if !platform {
 			return ErrForbidden
@@ -970,6 +980,38 @@ func (b *Base) WorkspaceOrDefault(ctx context.Context) string {
 		return tenantID
 	}
 	return DefaultTenant
+}
+
+// AuthorizeWorkspace gates a verb whose workspace argument is optional. An
+// omitted argument resolves the caller's selected/default workspace; resolution
+// failures are audited against the requested workspace and never fall back.
+func (b *Base) AuthorizeWorkspace(ctx context.Context, relation, workspaceID string) (string, error) {
+	workspaceID, resolveErr := b.workspaceArgument(ctx, workspaceID)
+	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), "", callerVerb(verbFrameSkip), resolveErr)
+	return workspaceID, err
+}
+
+// AuthorizeWorkspaceTarget is AuthorizeWorkspace with a named sub-resource
+// target, preserving member/invite identity in both allowed and denied audits.
+func (b *Base) AuthorizeWorkspaceTarget(ctx context.Context, relation, workspaceID, target string) (string, error) {
+	workspaceID, resolveErr := b.workspaceArgument(ctx, workspaceID)
+	err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(workspaceID), target, callerVerb(verbFrameSkip), resolveErr)
+	return workspaceID, err
+}
+
+func (b *Base) workspaceArgument(ctx context.Context, workspaceID string) (string, error) {
+	if workspaceID != "" {
+		return workspaceID, nil
+	}
+	resolved, err := b.resolveWorkspace(ctx)
+	if err != nil {
+		requested, _ := WorkspaceFrom(ctx)
+		return requested, err
+	}
+	if resolved == "" {
+		resolved = DefaultTenant
+	}
+	return resolved, nil
 }
 
 // AppWorkspace resolves the workspace whose GitHub connection owns an App's
@@ -1747,7 +1789,8 @@ func (b *Base) checkWorkspaceAccess(ctx context.Context, relation, tenantID stri
 func (b *Base) requireMember(ctx context.Context, id Identity, tenantID string) error {
 	member, err := b.Workspace.IsMember(ctx, id, tenantID)
 	if err != nil {
-		return fmt.Errorf("%w: workspace membership: %v", ErrAuthzUnavailable, err)
+		log.Printf("core: workspace membership unavailable: %v", err)
+		return ErrAuthzUnavailable
 	}
 	if !member {
 		return ErrForbidden
