@@ -286,7 +286,8 @@ describe("useEnvGroupMutations", () => {
     expect(toastSuccess).toHaveBeenCalledWith(
       "Service linked",
       expect.objectContaining({
-        description: "Linked services are redeploying to apply the change.",
+        description:
+          "Linked services with auto-deploy on are redeploying to apply the change.",
       }),
     );
   });
@@ -469,7 +470,8 @@ describe("useEnvGroupVarMutations", () => {
     expect(toastSuccess).toHaveBeenCalledWith(
       "Saved TOKEN",
       expect.objectContaining({
-        description: "Linked services are redeploying to apply the change.",
+        description:
+          "Linked services with auto-deploy on are redeploying to apply the change.",
       }),
     );
   });
