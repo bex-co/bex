@@ -1,6 +1,6 @@
 # w1 · m161 — A WebSocket whose traffic is only client→server does not keep a free service awake
 
-**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** todo (t001, t002, t005 and t006 done; t003 live and t004 parity wait on the Traefik roll)
+**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** todo (t001, t002, t005 and t006 done; t003 live and t004 parity are unblocked 2026-09-27 — the image pin this waited on has landed, production advanced through `4a0422577`)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout | 10m | t006, t003, t004 |
 
 ## Definition of done
 
@@ -84,6 +84,8 @@
 - **The 300 s window is confirmed applied**, independently of REST projecting `idleTTLSeconds` as absent: each wake was followed by a hibernate exactly 300 s later (02:28:58 → 02:33:58, 02:46:09 → 02:51:10).
 
 **After the fix.** Pending the roll that pins the plugin and the operator; the same probe re-runs unchanged.
+
+**Post-fix live verification: unblocked 2026-09-27, still to run.** The image pin this waited on has landed — `deploy.yml` reached its pin step on 2026-09-26 05:53Z (`726042a28`) and twice on 2026-09-27 (`d55061dbb`, `4a0422577`) — so the re-check below can be run as written. The paragraph that follows records the state on 2026-09-16 04:48Z and is kept because the pre-fix evidence was captured under it.
 
 **Post-fix live verification: still outstanding (2026-09-16 04:48Z).** The fix is on `main` and green; what is missing is the production re-check, and it is blocked on an image pin that never landed. Production still runs the `w1/m158` build (`eb035151a`): every deploy run tonight either was superseded before its write-back or failed on an unrelated gate, because 13 commits landed on `main` in the final hour against a pipeline that takes ~50 minutes. Nothing about this milestone's code is implicated.
 
