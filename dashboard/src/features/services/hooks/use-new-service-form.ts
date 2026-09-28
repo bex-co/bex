@@ -123,7 +123,7 @@ export function useNewServiceForm(search: {
   // Background Workers are paid-only (w6/025): Free is not offered to them,
   // so the plan grid renders the filtered catalog, the default is its first
   // (cheapest paid) tier, and a Free selection made under another service type
-  // never survives a switch into a worker submission — an override the current
+  // never survives a switch into a paid-only-type submission — an override the current
   // type is not offered falls back to the default.
   const offeredTypes = offeredInstanceTypes(fields.serviceType, instanceTypes);
   const planOverride =

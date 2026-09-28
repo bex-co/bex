@@ -113,6 +113,23 @@ describe("InstanceTypePicker", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(2); // Standard + Pro only
   });
 
+  it("offers no Free tier for a private service either (w1/111 paid-only)", async () => {
+    renderPicker("standard", "private_service");
+
+    expect(await screen.findByText("Paid")).toBeInTheDocument();
+    expect(screen.queryByText("Free")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(2); // Standard + Pro only
+  });
+
+  it("still offers Free to the types Render sells on it (w1/111 control)", async () => {
+    // The rule is a two-type allowlist, not "everything but web": a cron job
+    // keeps Free, so narrowing it further would fail here.
+    renderPicker("standard", "cron_job");
+
+    expect(await screen.findAllByText("Free")).toHaveLength(2); // group label + card title
+    expect(screen.getByText("Paid")).toBeInTheDocument();
+  });
+
   it("confirms and fires updateServicePlan with the picked Render-spelled id, then navigates to Settings on success", async () => {
     const user = userEvent.setup();
     renderPicker("standard");

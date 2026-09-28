@@ -26,7 +26,7 @@ export interface InstanceTypePickerProps {
   serviceId: string;
   /** The App's current plan (Render spelling), or null if untiered. */
   currentPlan: string | null;
-  /** The service's type — a background_worker is never offered Free (w6/025). */
+  /** The service's type — a background_worker (w6/025) and a private_service (w1/111) are never offered Free. */
   serviceType: string | null;
 }
 
