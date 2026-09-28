@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -165,4 +166,90 @@ func ptrValue[T any](p *T) any {
 		return nil
 	}
 	return *p
+}
+
+func TestValidateBlueprintAggregatesAcrossResourceKinds(t *testing.T) {
+	const manifest = `services:
+  - type: web
+    name: bad-service
+    runtime: image
+    image:
+      url: nginx:1
+    envVars:
+      - key: BAD-KEY
+        value: bad
+  - type: keyvalue
+    name: bad-kv
+    ipAllowList:
+      - source: not-a-cidr
+databases:
+  - name: bad-db
+    databaseName: BadName
+envVarGroups:
+  - name: bad-group
+    envVars:
+      - key: 1BAD
+        value: bad
+`
+	// Apply still sees the first refusal in parse order (groups precede
+	// databases and services), even though validate presents source order.
+	_, applyErr := parseStack(DeployRequest{Manifest: manifest})
+	if !errors.Is(applyErr, core.ErrBadRequest) || !strings.Contains(applyErr.Error(), "1BAD") {
+		t.Fatalf("apply error = %v, want the first env-group refusal", applyErr)
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Valid || len(v.Errors) != 4 {
+		t.Fatalf("want all four resource refusals, got %+v", v)
+	}
+	for i, want := range []struct {
+		path string
+		line int
+	}{
+		{"services[0].envVars[0]", 8},
+		{"services[1].ipAllowList", 13},
+		{"databases[0].databaseName", 16},
+		{"envVarGroups[0].envVars[0]", 20},
+	} {
+		e := v.Errors[i]
+		if e.Path == nil || *e.Path != want.path || e.Line == nil || *e.Line != want.line || e.Column == nil || *e.Column <= 0 {
+			t.Errorf("error %d: path=%v line=%v column=%v, want %s line %d: %s", i, ptrValue(e.Path), ptrValue(e.Line), ptrValue(e.Column), want.path, want.line, e.Error)
+		}
+	}
+}
+
+func TestValidateBlueprintRefusedGroupDoesNotCascade(t *testing.T) {
+	const manifest = `envVarGroups:
+  - name: bad-group
+    envVars:
+      - key: 1BAD
+        value: bad
+services:
+  - type: web
+    name: web
+    runtime: image
+    image:
+      url: nginx:1
+    envVars:
+      - fromGroup: bad-group
+      - key: OTHER
+        fromService:
+          type: web
+          name: absent
+          property: host
+`
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Valid || len(v.Errors) != 1 {
+		t.Fatalf("want only the group refusal, got %+v", v)
+	}
+	if e := v.Errors[0]; e.Path == nil || *e.Path != "envVarGroups[0].envVars[0]" || !strings.Contains(e.Error, "1BAD") {
+		t.Fatalf("want located group refusal, got %+v", e)
+	}
 }
