@@ -1783,7 +1783,7 @@ func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *ap
 	}
 
 	var cron batchv1.CronJob
-	if err := r.Get(ctx, key, &cron); err == nil {
+	if err := r.Get(ctx, client.ObjectKey{Name: appv1alpha1.CronJobName(app.Name), Namespace: app.Namespace}, &cron); err == nil {
 		if err := patch(&cron, &cron.Spec.JobTemplate.Spec.Template.Spec); err != nil {
 			return fmt.Errorf("backfill CronJob %s/%s imagePullSecrets: %w", app.Namespace, app.Name, err)
 		}
@@ -3616,7 +3616,7 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 	}
 	scheduleSuspended := suspended || manualRunActive
 
-	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.CronJobName(app.Name), Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cj, func() error {
 		cj.Spec.Schedule = app.Spec.Schedule
 		// Render runs at most one cron execution at a time. Scheduled overlap is
@@ -5173,7 +5173,7 @@ func (r *AppReconciler) holdPendingCronArtifact(ctx context.Context, app *appv1a
 		return false, ctrl.Result{}, nil
 	}
 	var prior batchv1.CronJob
-	if err := r.Get(ctx, client.ObjectKeyFromObject(app), &prior); err != nil {
+	if err := r.Get(ctx, client.ObjectKey{Name: appv1alpha1.CronJobName(app.Name), Namespace: app.Namespace}, &prior); err != nil {
 		return true, buildHalt, client.IgnoreNotFound(err)
 	}
 	res, err := r.convergeCronRuntime(ctx, app, prior.Spec.JobTemplate.Spec.Template)
