@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -211,5 +212,79 @@ func TestRESTListPostgresNameFilterAcceptsCommaAndRepeatedForms(t *testing.T) {
 		if !slices.Equal(got, []string{"pg-alpha", "pg-bravo"}) {
 			t.Errorf("GET /v1/postgres%s = %v, want [pg-alpha pg-bravo]", query, got)
 		}
+	}
+}
+
+// TestRESTListPostgresSuspendedFilterIsAnArray pins w1/110: Render declares
+// GET /postgres' `suspended` an ARRAY (components.parameters,
+// `type: array, items: {enum: [suspended, not_suspended]}`), so both supported
+// serializations — repeated `?suspended=` and one comma-joined value — must OR
+// their members. Before this, postgresListFilter read a single `q.Get`, so a
+// repeated pair silently kept only the first value and a comma pair was rejected
+// as one invalid enum member. Every case below fails against that handler.
+func TestRESTListPostgresSuspendedFilterIsAnArray(t *testing.T) {
+	svc, _ := newService()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	seedPGWithLabels(t, svc, "active-db", appv1alpha1.DatabaseSpec{Plan: "free"}, nil)
+	seedPGWithLabels(t, svc, "susp-db", appv1alpha1.DatabaseSpec{Plan: "free", Suspended: true}, nil)
+
+	both := []string{"active-db", "susp-db"}
+
+	// Both members, in both serializations and both orders, plus duplicates —
+	// every one selects the whole fixture set.
+	for _, query := range []string{
+		"?suspended=suspended&suspended=not_suspended",
+		"?suspended=not_suspended&suspended=suspended",
+		"?suspended=suspended,not_suspended",
+		"?suspended=not_suspended,suspended",
+		"?suspended=suspended,suspended,not_suspended",
+		"?suspended=suspended&suspended=suspended&suspended=not_suspended",
+		"?suspended=%20suspended%20,%20not_suspended%20",
+	} {
+		got := listPGNames(t, mux, query)
+		slices.Sort(got)
+		if !slices.Equal(got, both) {
+			t.Errorf("%s = %v, want %v", query, got, both)
+		}
+	}
+
+	// A single member still narrows, in either serialization.
+	for query, want := range map[string]string{
+		"?suspended=suspended":      "susp-db",
+		"?suspended=not_suspended":  "active-db",
+		"?suspended=suspended,":     "susp-db",
+		"?suspended=,not_suspended": "active-db",
+	} {
+		got := listPGNames(t, mux, query)
+		if len(got) != 1 || got[0] != want {
+			t.Errorf("%s = %v, want [%s]", query, got, want)
+		}
+	}
+
+	// An invalid member is a named 400 even when a valid one accompanies it, in
+	// either position — never a filter that quietly matches nothing.
+	for _, query := range []string{
+		"?suspended=suspended&suspended=true",
+		"?suspended=true&suspended=suspended",
+		"?suspended=suspended,true",
+		"?suspended=true,suspended",
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/postgres"+query, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s => 400, got %d: %s", query, rec.Code, rec.Body.String())
+		}
+		if !strings.Contains(rec.Body.String(), "suspended") {
+			t.Errorf("%s 400 body does not name the filter: %s", query, rec.Body.String())
+		}
+	}
+
+	// Composed with another filter, the array still ANDs across keys and ORs
+	// within its own — a two-member suspension plus a name narrows to that name.
+	got := listPGNames(t, mux, "?suspended=suspended,not_suspended&name=susp-db")
+	if len(got) != 1 || got[0] != "susp-db" {
+		t.Errorf("composed suspended+name = %v, want [susp-db]", got)
 	}
 }
