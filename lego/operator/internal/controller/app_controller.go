@@ -2819,6 +2819,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 			Message: msg, ObservedGeneration: app.Generation,
 		})
 	}
+	r.observeServingRevision(ctx, app, dep, replicas)
 	// Best-effort progress stamp: the 5s requeue below re-writes it if lost.
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		logf.FromContext(ctx).V(1).Info("rollout progress status write failed; requeue re-stamps",
