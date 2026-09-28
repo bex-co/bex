@@ -81,7 +81,6 @@ var emptyListCases = []emptyListCase{
 	{route: "GET /v1/postgres/{id}/export", path: "/v1/postgres/pg1/export", withApp: true},
 	{route: "GET /v1/postgres/{id}/users", path: "/v1/postgres/pg1/users", withApp: true},
 	{route: "GET /v1/postgres/{id}/parameters", path: "/v1/postgres/pg1/parameters", withApp: true},
-	{route: "GET /v1/postgres/{id}/top-queries", path: "/v1/postgres/pg1/top-queries", withApp: true},
 	// Every /v1/metrics/… series route shares metrics.toRenderMetrics; each one
 	// is probed with a source that answers no series at all.
 	{route: "GET /v1/metrics/cpu", path: "/v1/metrics/cpu?resource=web", withApp: true},
@@ -126,6 +125,8 @@ var neverEmptyArrayRoutes = map[string]string{
 // session). Each entry cites the construction that makes its empty answer
 // non-nil, so the claim is checkable by reading rather than by running.
 var unreachableArrayRoutes = map[string]string{
+	"GET /v1/postgres/{id}/top-queries":          "live datastore connection; topQueryViews make (postgres/insights.go)",
+	"GET /v1/postgres/{id}/query/top-queries":    "live datastore connection; topQueryViews make (postgres/insights.go)",
 	"GET /v1/blueprints":                         "BEX_CP_DB_URI; make([]BlueprintView, len(bs)) (apps/blueprint.go)",
 	"GET /v1/blueprints/{id}/syncs":              "BEX_CP_DB_URI; make([]BlueprintSyncView, len(runs)) (apps/blueprint.go)",
 	"GET /v1/disks":                              "BEX_CP_DB_URI; toDiskList make (apps/disks.go)",
@@ -159,8 +160,11 @@ var unreachableArrayRoutes = map[string]string{
 	"GET /v1/key-value/{id}/logs":                "needs a log source; same datastorelogs.Collect",
 	"GET /v1/users/deletion-preview":             "needs a direct browser session; Preview's delete/leave/blocked start as empty slices (accounts/service.go)",
 	"GET /v1/postgres/{id}/processes":            "opens a live connection to the datastore; processViews make (postgres/insights.go)",
+	"GET /v1/postgres/{id}/query/processes":      "opens a live connection to the datastore; processViews make (postgres/insights.go)",
 	"GET /v1/postgres/{id}/table-scans":          "live datastore connection; make([]TableScanView, 0, …) (postgres/insights.go)",
+	"GET /v1/postgres/{id}/query/table-scans":    "live datastore connection; make([]TableScanView, 0, …) (postgres/insights.go)",
 	"GET /v1/postgres/{id}/sizes":                "live datastore connection; tables is make([]TableSizeView, 0, …) (postgres/insights.go)",
+	"GET /v1/postgres/{id}/query/sizes":          "live datastore connection; tables is make([]TableSizeView, 0, …) (postgres/insights.go)",
 	"GET /v1/postgres/{id}/parameter-overrides":  "live datastore connection; make([]ParameterOverrideView, 0, …) (postgres/insights.go)",
 	"GET /v1/metrics/kv-memory":                  "resolves a Key Value through the live datastore path this fixture cannot satisfy; shares metrics.toRenderMetrics with the proven series routes",
 	"GET /v1/metrics/kv-connections":             "same Key Value resolution; same toRenderMetrics",

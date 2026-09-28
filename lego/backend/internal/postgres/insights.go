@@ -24,7 +24,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -327,21 +326,22 @@ func processViews(rows [][]any) []ProcessView {
 }
 
 // TopQueries returns the top 25 queries by total execution time from
-// pg_stat_statements. Returns an empty list (not an error) when pg_stat_statements
-// is not yet available on the cluster — a graceful path for databases provisioned
-// before pg_stat_statements was enabled.
+// pg_stat_statements. Unavailable statistics must not look like an empty result.
 // Requires RelCanViewSensitive because query texts may contain literal values.
 func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, error) {
-	res, err := s.runInsight(ctx, core.RelCanViewSensitive, dbID, sqlTopQueries)
+	db, err := s.fetchDatabaseForRead(ctx, core.RelCanViewSensitive, dbID)
 	if err != nil {
-		// An auth refusal must still refuse — everything else (unknown db,
-		// pg_stat_statements not installed, connection failure) falls through to
-		// an empty list, same as before this verb's fetch started gating on
-		// workspace membership too (w6/m17).
-		if errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrAuthzUnavailable) {
-			return nil, err
-		}
-		return []TopQueryView{}, nil
+		return nil, err
+	}
+	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, db); err != nil {
+		return nil, err
+	}
+	if db.Spec.Suspended {
+		return nil, fmt.Errorf("%w: database is suspended", core.ErrUnavailable)
+	}
+	res, err := s.runAuthorizedInsight(ctx, db, sqlTopQueries)
+	if err != nil {
+		return nil, fmt.Errorf("%w: top query statistics could not be read; the database must be reachable with pg_stat_statements enabled", core.ErrUnavailable)
 	}
 	return topQueryViews(res.Rows), nil
 }
