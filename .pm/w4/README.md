@@ -314,7 +314,7 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 - [x] **151** — [The dashboard shows Blueprint errors without the line, column, or path the API already returns](done/151.md) ← live `/qa-find-bugs` 2026-09-26 pass 182 (read-only). `w8/019` added `errorDetails`, but no dashboard query selects it. Three renderers print bare strings. — **done 2026-09-27**: all three Blueprint error lists show line/column and field path from `errorDetails`.
 
-- **152 transferred** — [Paid-only private services](../w1/111.md) now lives in w1/111; the user approved the Render-parity choice on 2026-09-28. Not marked implemented.
+- **152 transferred** — [Paid-only private services](../w1/done/111.md) now lives in w1/111; the user approved the Render-parity choice on 2026-09-28. Not marked implemented.
 
 - [x] **153** — [ADR004 says tenant pods keep "the two Kubernetes variables"; production shows the kubelet injects eight](done/153.md) ← `w4/m123` live re-probe, `/qa-find-bugs` 2026-09-26 pass 193. The m123 fix holds (no sibling or `CM_ACME_*` vars); only the documented count is wrong. — **done 2026-09-27**: ADR004 (and ADR018's PORT row) now name the eight kubelet variables.
 
