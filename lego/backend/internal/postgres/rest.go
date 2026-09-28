@@ -92,10 +92,20 @@ func postgresListFilter(q url.Values) (func(PostgresView) bool, error) {
 	// narrow to exactly one match).
 	names := core.QueryList(q, "name")
 	envIDs := core.QueryList(q, "environmentId")
-	// suspended= filters by Render's string enum (w2/m53). Unknown value → 400.
-	suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
-	if err != nil {
-		return nil, err
+	// suspended= filters by Render's string enum (w2/m53), and Render declares it
+	// an ARRAY — `components.parameters` for GET /postgres gives
+	// `type: array, items: {enum: [suspended, not_suspended]}` — so repeated and
+	// comma-joined values are OR'd, the same shape `name` and `environmentId`
+	// above already have and the same loop apps/rest.go uses for services
+	// (w1/110). A single `q.Get` here silently dropped every value but the first,
+	// and read a comma pair as one invalid enum member. Every member is validated,
+	// so an unknown value is still a named 400 rather than a filter that quietly
+	// matches nothing.
+	suspended := core.QueryList(q, "suspended")
+	for _, value := range suspended {
+		if _, err := core.ParseEnum("suspended", value, core.RenderSuspended, core.RenderNotSuspended); err != nil {
+			return nil, err
+		}
 	}
 	// Time-window filters (w2/m53): RFC3339, named 400 on malformed, empty
 	// timestamp passes (legacy DBs without stored timestamps are never excluded).
@@ -110,7 +120,7 @@ func postgresListFilter(q url.Values) (func(PostgresView) bool, error) {
 	return func(p PostgresView) bool {
 		return (len(names) == 0 || slices.Contains(names, p.Name) || slices.Contains(names, p.ID)) &&
 			(len(envIDs) == 0 || slices.Contains(envIDs, p.EnvironmentID)) &&
-			(suspended == "" || p.Suspended == suspended) &&
+			(len(suspended) == 0 || slices.Contains(suspended, p.Suspended)) &&
 			created.Contains(p.CreatedAt) && updated.Contains(p.UpdatedAt)
 	}, nil
 }
