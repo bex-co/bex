@@ -20,22 +20,28 @@ if [[ ! -f "$webhook_fixture" ]]; then
   exit 1
 fi
 
-# Fail locally before any network call if counts, normalized set differences,
-# or disposition data in the hand-audited dashboard/API fixture disagree.
-jq -e '
-  .renderOpenAPI as $api |
-  .renderDashboard as $dashboard |
-  ($api | length) == 67 and
-  ($dashboard | length) == 64 and
-  ([ $api[] | select(. as $event | $dashboard | index($event) | not) ] | sort) == (.apiOnly | sort) and
-  ([ $dashboard[] | select(. as $event | $api | index($event) | not) ] | sort) == (.dashboardOnly | sort) and
-  (.apiOnly | length) == 6 and
-  (.dashboardOnly | length) == 3 and
-  (.bexSupported | length) == 35
-' "$webhook_fixture" >/dev/null || {
-  echo "Render webhook vocabulary fixture is internally inconsistent: $webhook_fixture" >&2
-  exit 1
-}
+# The fixture's INTERNAL consistency is not checked here, deliberately (w1/m165
+# t001). It is owned by lego/backend/internal/webhooks/vocabulary_test.go, which
+# asserts strictly more, by value rather than by count:
+#
+#   TestRenderDashboardAndAPIVocabulariesStayDistinct  — capturedAt, the 67/64
+#     dated Render counts, and both set differences against .apiOnly/.dashboardOnly
+#   TestBexWebhookVocabularyHasOneTruthfulDispositionPerValue — .bexSupported ==
+#     bex's real EventTypes, every non-OpenAPI value dispositioned, and the
+#     unsupported ledger exactly covering Render's union
+#
+# A jq block here used to duplicate those clauses as hardcoded literals, and that
+# is precisely why this job had never once passed: bex's advertised vocabulary grew
+# 35 -> 42 -> 53 as w3/m82 and its siblings shipped, the fixture and the Go test
+# tracked it, and the literal `(.bexSupported | length) == 35` did not. Six of its
+# seven clauses still agreed; that one aborted the script before any network call,
+# so the REST drift comparison below — the only thing this script uniquely does —
+# never ran for five weeks. Bumping the literal to 53 would only restart the same
+# clock, so the duplicate is gone instead. The Go test runs on every
+# `go test ./...`, which gates deploys, making it the stronger of the two.
+#
+# What remains below is this script's actual job, which no Go test can do: compare
+# the pinned repository bytes against what Render publishes upstream, right now.
 
 sha256() {
   shasum -a 256 "$1" | awk '{print $1}'
