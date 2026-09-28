@@ -2799,6 +2799,9 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	if deploymentProgressDeadlineExceeded(dep) {
 		return r.settleFailedRollout(ctx, app, dep, port)
 	}
+	if msg := r.permanentRolloutPullFailure(ctx, dep, time.Now()); msg != "" {
+		return r.settleFailedRolloutMessage(ctx, app, "ImagePullBackOff", msg)
+	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := "RolloutProgressing"
 	if r.currentRevisionFullyReady(ctx, dep, replicas) {
@@ -2859,6 +2862,10 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 			msg = "rollout did not become healthy within the progress deadline"
 		}
 	}
+	return r.settleFailedRolloutMessage(ctx, app, reason, msg)
+}
+
+func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *appv1alpha1.App, reason, msg string) (ctrl.Result, error) {
 	if releaseHasServed(app) {
 		// The diagnosis outlives the Ready condition, which now describes the
 		// serving release: ConditionRollout carries it to the failed deploy
@@ -2879,6 +2886,29 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
+}
+
+// permanentRolloutPullFailure only considers live pods of the desired revision.
+// Old ReplicaSets and deleting pods cannot condemn a replacement rollout.
+func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *appsv1.Deployment, now time.Time) string {
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 || dep.Spec.Template.Labels[labelRevision] == "" {
+		return ""
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return ""
+	}
+	for _, pod := range pods.Items {
+		if pod.DeletionTimestamp != nil || pod.Labels[labelRevision] != dep.Spec.Template.Labels[labelRevision] {
+			continue
+		}
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.Name == "app" && predeploy.PermanentPullFailure(cs.State.Waiting, pod.CreationTimestamp.Time, now) {
+				return fmt.Sprintf("image pull is failing: %s: %s", cs.Image, cs.State.Waiting.Message)
+			}
+		}
+	}
+	return ""
 }
 
 // deploymentRolloutReady follows the Deployment controller's rollout-complete

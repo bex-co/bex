@@ -20,6 +20,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -290,6 +291,69 @@ func TestRolloutDeadlineOverPriorReleaseKeepsTheDiagnosis(t *testing.T) {
 			if ready == nil || ready.Reason != appv1alpha1.ReasonPriorReleaseServing ||
 				!strings.HasPrefix(ready.Message, "the latest rollout failed: "+tc.wantMsg) {
 				t.Fatalf("Ready = %+v, want the diagnosis in the prior-release message", ready)
+			}
+		})
+	}
+}
+
+func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
+	for _, tc := range []struct {
+		name, reason, message, revision string
+		age                             time.Duration
+		failed                          bool
+	}{
+		{"missing tag", "ErrImagePull", "rpc error: code = NotFound desc = manifest missing", "rev-1", 91 * time.Second, true},
+		{"manifest unknown", "ImagePullBackOff", "manifest unknown", "rev-1", 91 * time.Second, true},
+		{"unauthorized", "ErrImagePull", "unauthorized: authentication required", "rev-1", 91 * time.Second, true},
+		{"grace", "ErrImagePull", "rpc error: code = NotFound", "rev-1", 89 * time.Second, false},
+		{"timeout", "ErrImagePull", "dial tcp: i/o timeout", "rev-1", 10 * time.Minute, false},
+		{"registry unavailable", "ErrImagePull", "503 Service Unavailable", "rev-1", 10 * time.Minute, false},
+		{"rate limit", "ImagePullBackOff", "429 Too Many Requests", "rev-1", 10 * time.Minute, false},
+		{"slow pull", "ContainerCreating", "", "rev-1", 10 * time.Minute, false},
+		{"old revision", "ErrImagePull", "rpc error: code = NotFound", "old", 10 * time.Minute, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
+				Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "old", ReleaseGeneration: 3}}
+			dep := progressDeadlineDep("web")
+			dep.Status.Conditions = nil
+			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-new", Namespace: "default",
+				Labels: map[string]string{"app": "web", labelRevision: tc.revision}, CreationTimestamp: metav1.NewTime(time.Now().Add(-tc.age))},
+				Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "app", Image: "example.org/web:missing",
+					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: tc.reason, Message: tc.message}}}}}}
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+			result, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout)
+			if !tc.failed {
+				if rollout != nil && rollout.Status == metav1.ConditionFalse {
+					t.Fatalf("transient/irrelevant pull failed rollout: %+v", rollout)
+				}
+				if result.RequeueAfter == 0 || stored.Status.Phase != appv1alpha1.PhaseDeploying {
+					t.Fatalf("did not preserve rollout budget: %+v %+v", result, stored.Status)
+				}
+				return
+			}
+			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.ObservedGeneration != 3 || !strings.Contains(rollout.Message, "example.org/web:missing") {
+				t.Fatalf("missing image failure: %+v", rollout)
+			}
+			if stored.Status.Phase != appv1alpha1.PhaseRunning || stored.Status.ActiveRevision != "old" {
+				t.Fatalf("prior release changed: %+v", stored.Status)
+			}
+			var unchanged appsv1.Deployment
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(dep), &unchanged); err != nil {
+				t.Fatal(err)
+			}
+			if *unchanged.Spec.Replicas != 1 {
+				t.Fatal("scaled down serving release")
 			}
 		})
 	}
