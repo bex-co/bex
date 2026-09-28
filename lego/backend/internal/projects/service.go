@@ -322,7 +322,8 @@ func (s *Service) view(ctx context.Context, p store.Project) (ProjectView, error
 
 // List returns all projects in a workspace, each with its current resource lists.
 func (s *Service) List(ctx context.Context, workspaceID string) ([]ProjectView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(workspaceID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, workspaceID)
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
@@ -359,7 +360,8 @@ func (s *Service) Create(ctx context.Context, workspaceID, name string) (Project
 
 // CreateWithEnvironments creates the project and requested environments in one transaction.
 func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name string, environments []EnvironmentInput) (ProjectView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanCreate, core.WorkspaceObject(workspaceID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanCreate, workspaceID)
+	if err != nil {
 		return ProjectView{}, err
 	}
 	if s.Store == nil {

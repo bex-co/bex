@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -301,7 +302,8 @@ func (s *Service) isWorkspaceAdmin(ctx context.Context, workspace string) (bool,
 	}
 	allowed, err := check(ctx, "user:"+id.Subject, core.RelCanManage, core.WorkspaceObject(workspace))
 	if err != nil {
-		return false, fmt.Errorf("%w: %v", core.ErrAuthzUnavailable, err)
+		log.Printf("sandbox: workspace authorization unavailable: %v", err)
+		return false, core.ErrAuthzUnavailable
 	}
 	return allowed, nil
 }
