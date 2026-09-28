@@ -91,6 +91,47 @@
 
 The pre-fix evidence above was captured deliberately while that was still true, so the "before" half is real. To finish: once any pin newer than `eb035151a` lands, re-create a fixture and re-run the same probe for a client-only WebSocket keeping a free service awake — the tooling is in the session scratchpad (`m159-verify.mjs`, `m160-postfix.py`, `m161-idle-probe.py` with `m161-ws-client.py`).
 
+## t003 fixture gate (2026-09-28, `/loopx w1`)
+
+**The code is in the deployed range; the probe is blocked on a fixture that no longer
+exists.** `430f1ee27` ("a client-only WebSocket keeps a free service awake (w1/m161)")
+is an ancestor of the deployed `4a0422577`. But note **what** it changed:
+`deploy/gitops/charts/traefik-plugins/websocketegress/websocketegress.go` — that plugin
+rolls with **Traefik via Argo CD**, not with the operator image the deploy pipeline
+pins, so "the image pin landed" is not the same statement as "the plugin is live". That
+distinction is why this milestone's gate was always worded as the Traefik roll.
+
+**What t003 actually needs, and why it could not run here.** t003 says to "reuse
+`w1/m151`'s fixture shape and the scratchpad WebSocket client/server". That scratchpad
+belonged to the 2026-09-16 session and is gone. Rebuilding it is not incidental,
+because the probe has to **discriminate**:
+
+- The pre-fix plugin counted only **server→client** frames. So an ordinary WebSocket
+  echo server (`jmalloc/echo-server` and friends) is useless as a fixture: it sends
+  frames back, which the pre-fix code already counted, so it would keep the service
+  awake either way and prove nothing.
+- The fixture must therefore be a server that accepts a WebSocket upgrade and then
+  **stays silent**, while the client keeps sending. Nothing in `examples/` does this —
+  `hello-go` is plain HTTP — and no public image does it either.
+
+**Two viable routes, neither free:**
+
+1. **Add a tiny WebSocket example to the repo** (`examples/ws-silent/`), ship it, and
+   deploy a repo-backed free service from it. Clean and reusable for the two controls
+   this task also needs, but it means shipping code to `main` whose only purpose is a
+   test fixture — worth a deliberate yes rather than a side effect.
+2. **Image-backed with an inline command** — e.g. a `python:3-alpine` service whose
+   `dockerCommand` runs a stdlib-only WebSocket handshake and then reads without
+   writing. Touches no repo file, but the handshake (base64 + SHA-1 + frame parsing)
+   inline in a command string is fragile, and sandbox/service egress may block
+   installing a library.
+
+**Also still required by t003 regardless of route:** both controls (server→client keeps
+it awake; a genuinely idle service still sleeps), and a window free of scanner traffic
+on `*.onbex.co`, which `w1/m151` and `w1/m157` both had to wait for.
+
+t004 (parity) depends on t003, so it is held behind the same fixture.
+
 ## Blast radius
 
 - **Who is hit.** Free web services whose WebSocket clients push without server replies — telemetry, log shippers, collaborative editors between server pushes.
