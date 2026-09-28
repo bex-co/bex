@@ -127,6 +127,7 @@ func (s *Service) requireDomainOwnership(ctx context.Context, app *appv1alpha1.A
 
 // DomainView is the neutral bex projection of a custom domain on an App.
 type DomainView struct {
+	CreatedAt          string // RFC3339 claim creation time; empty for legacy storeless domains.
 	Name               string
 	DomainType         string // "apex" or "subdomain" (Render's enum)
 	OwnershipStatus    string // "pending" or "verified" (durable DNS-TXT claim)
@@ -501,6 +502,9 @@ func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, cla
 		VerificationStatus: "pending",
 		ServerStatus:       "pending",
 		RedirectForName:    claim.RedirectForName,
+	}
+	if !claim.CreatedAt.IsZero() {
+		view.CreatedAt = claim.CreatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	view.DNSRecord = dnsRecordFor(claim.Host, view.DomainType, platformHost)
 	if claim.ClaimState == "pending" {

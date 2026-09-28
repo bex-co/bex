@@ -1105,6 +1105,14 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
+		names := core.QueryList(q, "name")
+		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+		if err != nil {
+			return nil, err
+		}
+		domains = core.Filter(domains, func(d DomainView) bool {
+			return (len(names) == 0 || slices.Contains(names, d.Name)) && created.Contains(d.CreatedAt)
+		})
 		// Cursor/limit pagination — cursor is the domain name, matching the per-item cursor
 		// emitted by toCustomDomainList. Pagination is applied only when either cursor or
 		// limit is explicitly provided (StablePage's "requested" flag).
