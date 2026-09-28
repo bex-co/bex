@@ -1,6 +1,6 @@
-# w9 · m167 — Preserve configured commands when cloning image cron jobs
+# w1 · m167 — Preserve configured commands when cloning image cron jobs
 
-**Worker:** worker9 **Goal:** A successful CLI clone executes the source cron command. **Status:** todo
+**Worker:** worker1 **Goal:** A successful CLI clone executes the source cron command. **Status:** todo
 
 ## Tasks (in order)
 
@@ -37,7 +37,10 @@
 
 Original `srv-dap1fa14dm7c7390q810` and clones `srv-dap1i4jbdpcs73f5ee30`, `srv-dap1l9p4dm7c7390q88g` were deleted after dependent runs/deploys/domains were inventoried. All three details returned 404 and the CLI service list contained only the original baseline service at 08:12 UTC. No baseline resource was mutated. Cluster-internal teardown was not inspected with admin credentials. This filing schedules a fix; no implementation is included.
 
-
 ## Subsequent native-service control — 2026-09-22
 
 At 08:29 UTC, installed `bex` cloned a fresh native Go web service with `services create --from srv-dap3meh4dm7c7390q900 --name qa-20260922-c26dd9-multiline --region frankfurt --env-var MESSAGE=<HARMLESS_MULTILINE_VALUE> --confirm -o json`. Clone `srv-dap3omjbdpcs73f5ees0` retained `runtime: go`, `buildCommand: go build -o app .`, and `startCommand: ./app`. The source reached live at 08:27:12 and the clone at 08:31:58; both served HTTP 200, and the clone body preserved the configured newline, equals sign, and spaces exactly. This is a passing native-web clone control, not a native-cron control or a fix to the image-cron bug. Both fixtures were deleted in clone/source order; detail, list, and former runtime absence were verified afterward.
+
+## Scheduling history
+
+Transferred intact from w9/m167 to w1/m167 by user-approved `/pm all for w1` on 2026-09-28. Original QA evidence and related w9 completion history remain authoritative. No implementation task was completed by this transfer.
