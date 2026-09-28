@@ -1,6 +1,6 @@
 # w1 · m159 — Dashboard truth: a datastore's own Status row, the landing after "Move to project", and seven count strings
 
-**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001, t002, t003, t005 and t006 done; t004 parity and the live DoD are unblocked 2026-09-27 — the deploy gate cleared, production advanced through `4a0422577`)
+**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001–t006 done; only t007 closeout remains, pending the live dashboard walk — see § Closeout gate)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | The Key Value and Postgres Details cards translate status and plan instead of printing wire values — **DONE** | 40m | — |
 | t002 | "Move to project" lands on the environment the resource is actually in — **DONE** | 45m | — |
 | t003 | Seven `{count}` strings get native plurals, and the locale test fails when a count message has none — **DONE** | 40m | — |
-| t004 | Render parity | 20m | t001, t002, t003 |
+| t004 | Render parity — **DONE** | 20m | t001, t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
 | t007 | Closeout | 10m | t006, t004 |
@@ -107,17 +107,43 @@ The pre-fix evidence above was captured deliberately while that was still true, 
 
 ## Render parity (t004)
 
-**The three API surfaces agree, and they keep Render's shape.** Read live at 01:47Z against the suspended fixture `red-dakv3hqsh60c73ao4li0`:
+**Re-run live 2026-09-28 (`/loopx w1`), and the 2026-09-15 conclusion below it was wrong.** Fixture `qa-20260928-kv` (`red-dat0lijncejs739qiuvg`) created free in `tea-d98210cbbpdc73dcrkvg`, waited to `available`, suspended (`POST …/suspend` → 202), read on all three surfaces, then deleted (`204`, then `GET` → `404`):
 
 | Surface                       | status      | suspended   | plan   |
 | ----------------------------- | ----------- | ----------- | ------ |
-| REST `GET /v1/key-value/{id}` | `available` | `suspended` | `free` |
-| GraphQL `keyValue(id:)`       | `available` | `suspended` | `free` |
-| MCP `get_key_value`           | `available` | `suspended` | `free` |
+| REST `GET /v1/key-value/{id}` | `suspended` | `suspended` | `free` |
+| GraphQL `keyValue(id:)`       | `suspended` | `suspended` | `free` |
+| MCP `get_key_value`           | `suspended` | `suspended` | `free` |
 
-- **This is the contract, not a bug.** Render keeps `status` and `suspended` as separate fields, and bex mirrors that on all three surfaces — a suspended store legitimately reports `status: "available"`. Nothing on the wire should change, and **no divergence is recorded in ADR018**.
-- **Which is exactly why the dashboard must derive what it shows.** The presentation layer is the only place these two facts are combined into the one word a user reads; printing `status` raw is what made the Details card contradict the badge beside it. `deriveStatus` (suspension wins over the enum) is that combination, and after m159 both the badge and the Details row call it through one `statusLabel()`.
-- **Plan.** All three surfaces return the plan _id_ (`free`), which is also correct — the human-readable name lives in the instance-type catalog the dashboard already queries for its plan picker, and the Details row now resolves it there.
+- **The wire now reports `suspended`, and that is the correct Render shape.** Render's own pinned `databaseStatus` enum — which Key Value reuses, there being no separate `keyValueStatus` schema — **contains `suspended`**: `['creating','available','unavailable','config_restart','suspended','maintenance_scheduled','maintenance_in_progress','recovery_failed','recovery_in_progress','unknown','updating_instance']` (`lego/backend/internal/api/openapi/render-public-api-1.json`, `components.schemas.databaseStatus`). A suspended datastore reporting `available` was therefore never Render's shape.
+- **Correction to the original t004 write-up.** It recorded `status: available` on all three surfaces and concluded "Render keeps `status` and `suspended` as separate fields … a suspended store legitimately reports `status: available`. Nothing on the wire should change." That was mistaken: the two fields are not orthogonal, because Render's status enum carries `suspended` as one of its values. The wire was fixed the same day by **`b465b6100` "fix(api): report suspended datastore status for CLI parity"** — suspension now outranks readiness in `keyvalue/service.go:244-252` and `postgres/service.go:423`, with `deleting` still winning over both. The motivation recorded there is the pinned CLI, which projects `Status` and drops the separate `Suspended` field (`w5/061`), so a suspended store read as available in `bex key-value list`.
+- **The dashboard derivation is still required, and still correct.** `deriveStatus` does more than fold in suspension — it also resolves `creating`/`deleting` and the readiness conditions into the one word a user reads. Both the badge and the Details row now call it through a single `statusLabel()`, so they cannot drift regardless of what the enum reports. m159's fix is unaffected by `b465b6100`; the two changes are the presentation half and the wire half of the same defect.
+- **Plan.** All three surfaces return the plan _id_ (`free`), matching Render, whose API returns the plan id while its dashboard shows a display name. The Details row resolves the id through the instance-type catalog the plan picker already queries.
+- **No ADR018 change.** All three surfaces agree with each other and with Render's enum, so there is no divergence to record. The single-region substitution observed in passing (create requested `region: "oregon"`, every surface reports `fsn1`) is already recorded deliberate behavior — responses carry the configured `BEX_REGION` (ADR018 §250) — not a new finding.
+
+## Closeout gate (2026-09-28, `/loopx w1`)
+
+**t001–t006 are done. t007 closeout is held on one thing: nobody has looked at the live dashboard.**
+
+What *is* verified, and how:
+
+| DoD bullet | Evidence | Level |
+| --- | --- | --- |
+| A suspended datastore reads suspended everywhere | REST + GraphQL + MCP all report `status: suspended` / `plan: free` on live fixture `qa-20260928-kv` (created, suspended, read, deleted). Both Details cards asserted by `key-value-metadata-card.test.tsx` and `database-metadata-card.test.tsx` — "reads the suspended status, not a stale ready label (w1/m159)" + "reads the plan…" | live API + mounted component |
+| A moved resource is visible where it landed | `environments-panel.test.tsx` — "lands on Unassigned when every Environment is empty (w1/m159)" | mounted component |
+| Counts read correctly at one | the five `_one`/`_other` pairs, asserted per namespace | catalog + mounted |
+| The rule is enforced from now on | `locale-parity.test.ts:113` `it.each(NAMESPACES)("$name: count messages are pluralized")` | green |
+
+All four ran green on 2026-09-28: `4 files / 169 tests passed`.
+
+**What is missing is only the browser walk the DoD prescribes** ("observable on `https://dashboard.bex.co` with throwaway `qa-<yyyymmdd>-` fixtures"). This session did not perform it, and the reason is deliberate rather than technical: signing the dashboard in requires putting `QA_PASSWORD` into a tool-call argument, which writes a live production credential into the session transcript. `.pm`/AGENTS.md's "never commit/print `.env`" is the rule being honored; the Kratos session token minted for the API probes has the same problem if injected as a cookie.
+
+**To clear this gate, either:**
+
+1. **Accept the evidence above** — every DoD bullet is asserted at component level against the exact states named, and the API half is verified live on production. Say so and t007 can run.
+2. **Do the walk** — sign the browser in (`! ` prefix in this session works, or hand over an already-authenticated browser profile) and confirm the three visual bullets: a suspended Key Value and Postgres reading Suspended in both the header badge and the Details Status row in both locales, a row-level "Move to project" landing on Unassigned with the resource on screen, and `/blueprints/new` on `examples/hello-go/render.yaml` reading "1 resource to sync".
+
+Nothing else in the milestone is outstanding.
 
 ## Blast radius
 
