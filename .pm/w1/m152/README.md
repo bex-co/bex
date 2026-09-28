@@ -10,6 +10,71 @@ Triaged on `main` at `5523f684e`: the bug is still real and nothing has fixed it
 - Cancel only annotates (`deploys/service.go:720`), and `settleCanceledRelease` re-dispatches the old image against the current spec (`app_controller.go:634`).
 - Rollback sets only image and `restartedAt` (`deploys/service.go:843-845`).
 
+## t001 design (2026-09-28, `/loopx w1`) — three corrections to the 2026-09-15 decisions
+
+Premise re-verified unchanged on current `main` first: `Cancel` writes only
+`AnnotationCanceledReleaseGeneration`, `Rollback` writes only `Spec.Image` +
+`Spec.RestartedAt`, and no snapshot concept exists anywhere in `lego/`.
+
+### 1. Snapshot per source, NOT one flattened Secret per release
+
+The obvious shape — flatten groups + the service's own map into one
+`<name>-env-r<gen>` with precedence pre-applied — **is wrong, and would reintroduce a
+bug the current quota exists to prevent.**
+
+`secrets/service.go:741-745` sets `maxSecretMapBytes = 512 << 10` **per map**, and
+`ValidateEnvMapQuota` is shared by the service and env-group paths, so *each* map is
+independently ≤512 KiB. That constant's own comment states why: "The byte quota stays
+under Kubernetes' 1 MiB Secret ceiling, so a map that passes the quota can always
+materialize; before this, a >1 MiB map wrote to OpenBao first and then FAILED at the k8s
+projection (source/projection divergence)."
+
+A service with its own 512 KiB env plus two linked groups at 512 KiB each flattens to
+~1.5 MiB — **over the 1 MiB Secret ceiling**, and every individual map passed its quota.
+Flattening therefore recreates exactly that divergence.
+
+**So:** one immutable copy **per source per release** — `<evg-id>-env-r<gen>` for each
+linked group, `<name>-env-r<gen>` for the service's own, and the same for files. The pod
+template keeps its existing `envFrom` **list** and projected-source list, in the same
+order, with snapshot names substituted. Precedence is therefore unchanged and never
+re-derived: it stays a property of list order (`envFromSources`, and the deferred-own
+rule at `app_controller.go:4174-4186`), which is already tested. Each snapshot is a copy
+of a quota-checked map, so the ≤512 KiB guarantee and the quota comment both stay true.
+
+### 2. Retention is 20, not 10 — and the number has a real anchor
+
+Decision 3 said "the last 10 releases … if [the rollback depth] is deeper than 10,
+retention matches that window instead." The rollback depth is **unbounded at the verb**:
+`Rollback` takes an explicit `deployID` and resolves it with `Store.GetDeploy`, and
+`RollbackActionable` applies no age window at all — so "matching the window" is
+impossible.
+
+What *is* bounded is what the product **offers**: `eligibilityScanLimit = 20`
+(`deploys/actioncaps.go`), whose comment says "a target older than this reads as
+`no_eligible_rollback_target`, matching what a client paging recent history would offer
+anyway." **Retention = 20 generations**, so every rollback the product actually offers can
+restore configuration exactly.
+
+Bound on object count: 20 × (1 service source + one per linked group), per App. That
+multiplier needs a cap recorded in the ADR alongside the group-link limit.
+
+### 3. A rollback older than the window must SAY it cannot restore config
+
+Falling out of 1+2: an explicitly-named target older than 20 generations has no snapshot,
+so it can only restore the image — today's behaviour. That is acceptable, but it must not
+be silent: this milestone's whole complaint is a cancel/rollback that quietly does less
+than the UI promises. So an out-of-window rollback has to report image-only restoration on
+the surfaces that offer it. **This is a surface requirement the milestone did not have**,
+and it belongs to t009 (rollback) rather than t001.
+
+### Lazy migration, unchanged from decision 2
+
+The snapshot is written when a release is dispatched, so existing Apps have none and keep
+referencing the mutable Secrets until their next deploy. `envFromSources` and the files
+projection return snapshot names only when the serving generation has them, else today's
+names; cancel and rollback fall back to today's behaviour for any release that predates
+snapshots. t004's blast radius covers that mixed state.
+
 ## Decisions (2026-09-15)
 
 All three questions were answered by the user ("act as you recommended"), so this milestone is unblocked and proceeds in task order.
