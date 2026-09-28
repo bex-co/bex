@@ -17,7 +17,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 - [ ] **m158** — [Repair recurring registry garbage-collection failures](m158/README.md) (6 tasks; 150m implementation, 220m total) ← approved second platform-log brainstorm, 2026-09-28, priority 1.
 - [x] **m159** — [Detect tenant-node disk pressure before workload disruption](done/m159/README.md) — done 2026-09-28: NodeDiskPressure (critical) / Recovered (info, 6h) / SignalMissing (warning) on the kube-state-metrics condition; live in prod with the 03:39Z `bnzl6` episode surfaced; no node-exporter ⇒ no fill-rate early warning (ADR010).
-- [ ] **m160** — [Add etcd latency and scrape-health coverage](m160/README.md) (6 tasks; 180m implementation, 250m total) ← approved second platform-log brainstorm, 2026-09-28, priority 3.
+- [x] **m160** — [Add etcd latency and scrape-health coverage](done/m160/README.md) — done 2026-09-28: kube-rbac-proxy per CP node (InternalIP, TokenReview/SAR, private-CA TLS; 401/403 verified), all 3 members scraped, six etcd rules live and quiet (fsync p99 3–5ms).
 
 - [x] **m153** — [Repair analytics Secret ownership and root GitOps sync](done/m153/README.md) — done 2026-09-28: sealed payload verified identical to live, Secret adopted by its SealedSecret, `bex-platform-prod` Synced/Healthy, both analytics datasources healthy; bootstrap now honors sealed custody (`SEAL_TO` reseal, CA-drift fail-closed). Follow-up `060`.
 - [ ] **m154** — [Bound cron resource names across lifecycle operations](m154/README.md) (7 tasks; ~3h 40m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 2.
