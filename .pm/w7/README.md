@@ -21,7 +21,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 - [x] **m153** — [Repair analytics Secret ownership and root GitOps sync](done/m153/README.md) — done 2026-09-28: sealed payload verified identical to live, Secret adopted by its SealedSecret, `bex-platform-prod` Synced/Healthy, both analytics datasources healthy; bootstrap now honors sealed custody (`SEAL_TO` reseal, CA-drift fail-closed). Follow-up `060`.
 - [ ] **m154** — [Bound cron resource names across lifecycle operations](m154/README.md) (7 tasks; ~3h 40m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 2.
-- [ ] **m155** — [Parse mixed application log formats without error floods](m155/README.md) (6 tasks; ~3h 10m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 3.
+- [x] **m155** — [Parse mixed application log formats without error floods](done/m155/README.md) — done 2026-09-28: logfmt stage gated to non-JSON severity-bearing lines; prod decode errors 190/2h → 0 after reload; real-Alloy harness asserts levels and zero diagnostics.
 - [ ] **m156** — **BLOCKED (user/operator must approve a CNPG 1.30.0→1.30.1 operator upgrade window — it restarts all 7 Postgres clusters incl. 3 single-instance tenant DBs — or first enabling in-place instance-manager updates; isolated recovery verification also needs the local substrate restored)** — [Repair CNPG replica WAL metric collection](blocked/m156/README.md) (t001 done: reproduced on `bex-db-2` only; upstream fix cloudnative-pg#11207 in 1.30.1 / chart 0.29.1 identified; bump prepared, not applied).
 - [ ] **m157** — [Retain core platform logs across rollouts](m157/README.md) (7 tasks; ~3h 40m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 5.
 
