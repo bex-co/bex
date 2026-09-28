@@ -15,7 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m166** — [Truthful Key Value readiness](m166/README.md) (7 tasks; 2h implementation, 3h30m total) ← approved 2026-09-28 item 1; absorbs w4/m137/t009, with original milestone live closeout retained.
+- [ ] **m166** — [Truthful Key Value readiness](m166/README.md) (7 tasks; 2h implementation, 3h30m total) ← approved 2026-09-28 item 1; absorbs w4/m137/t009, with original milestone live closeout retained. **t001 done 2026-09-28** — measured live on a public fixture (deleted): the available-but-unreachable window is **24.6s / 26.3s / 26.5s** across a maxmemory change, a persistence change and a resume, larger than the 10–23s filed. The material finding is the **shape** — it is a *flap*, not a gap: the client alternates SERVING/DOWN three or four times after the API says `available`, so a single pre-publish probe would have passed at +32.3s and published Ready into a path that failed 1.3s later. t002 therefore cannot be "probe once" — readiness needs sustained success or the flap itself must go. Dominant failure is `tls:SSLEOFError` (not `conn:refused`, not `-LOADING`), pointing at a stale-endpoint routing problem rather than Valkey load time. Timeline in `m166/t001-timeline.md`.
 
 ### Approved brainstorm disposition — 2026-09-28
 
