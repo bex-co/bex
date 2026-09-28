@@ -1,6 +1,6 @@
 # w7 · m154 — Bound cron resource names across lifecycle operations
 
-**Worker:** worker7 **Goal:** Allow accepted long cron service names to execute and preserve existing schedules and lifecycle operations. **Status:** in-progress
+**Worker:** worker7 **Goal:** Allow accepted long cron service names to execute and preserve existing schedules and lifecycle operations. **Status:** done
 
 **Estimate:** 120m implementation; 220m including standing closing tasks.
 
@@ -10,19 +10,19 @@
 | --- | --- | --- | --- |
 | t001 | Derive bounded collision-resistant CronJob names — **DONE** | 40m | — |
 | t002 | Converge all cron lookups and lifecycle paths on the naming rule — **DONE** | 45m | t001 |
-| t003 | Verify boundary-length scheduled and manual execution | 35m | t002 |
+| t003 | Verify boundary-length scheduled and manual execution — **DONE** | 35m | t002 |
 | t004 | Render parity — **DONE** | 30m | t003 |
 | t005 | Simplify — **DONE** | 20m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
 - [x] Derived names fit the 52-character boundary and remain stable and distinct for different Apps.
 - [x] All relevant paths resolve the same CronJob; previously valid short-name resources keep their identity and long-name Apps do not create duplicate schedules.
-- [ ] Long accepted names execute on schedule and manually; lifecycle actions target the right resource and cleanup leaves no orphan schedule. Record actual runtime evidence, not only fake-client success.
+- [x] Long accepted names execute on schedule and manually; lifecycle actions target the right resource and cleanup leaves no orphan schedule. Record actual runtime evidence, not only fake-client success.
 
-- [ ] All required closing tasks are complete; production-dependent claims have dated runtime evidence, not just green unit tests.
+- [x] All required closing tasks are complete; production-dependent claims have dated runtime evidence, not just green unit tests.
 
 ## Source + Goal linkage
 
@@ -52,3 +52,5 @@ This is planned work, not an implemented fix. The read-only audit did not author
 **Simplify (t005 of the standing set):** inline self-review; the three call sites share one helper and the old KV-specific truncation was deleted.
 
 **Remaining (t003):** after the operator rolls out, recheck the reported production App read-only: CronJob admitted, App leaves `Failed`, a scheduled run executes.
+
+**Production (t003, 2026-09-28):** operator image `sha256:b16d0269…` (deploy `6b6d99ea8`, includes `bc4200bf4`) rolled out at 09:11Z. At 09:12:14Z the reported App reconciled: `Ready=True` "cron scheduled: * * * * *", phase **Failed → Running**. CronJob `tea-daif693dqjvc73e7as3g-qa-20260922-cd-111410f14aed` (52 chars, ownerReference = the App, `suspend: false`) ran on schedule; `status.runs` shows four **Succeeded** scheduled runs (`…-29843114`…`…-29843117`), last success 09:17:07Z; the CronJob controller prunes history normally. `must be no more than 52 characters` in the operator log since rollout: **0**. Manual trigger, suspend/resume and deletion against the long name are verified by the real-apiserver envtest, not exercised on this production tenant App (no tenant-facing mutation made).
