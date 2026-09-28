@@ -361,7 +361,8 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group variable editor empty body",
   },
   "envGroups.varDeleteConfirmBody": {
-    message: "Every linked service will redeploy without this variable.",
+    message:
+      "Linked services with auto-deploy on redeploy without this variable. A repo-backed service with auto-deploy off keeps serving its current release and picks the change up on its next deploy.",
     description: "Delete env-group variable warning",
   },
   "envGroups.filesTitle": {
@@ -382,7 +383,8 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group secret-file editor empty body",
   },
   "envGroups.fileDeleteConfirmBody": {
-    message: "Every linked service will redeploy without this file.",
+    message:
+      "Linked services with auto-deploy on redeploy without this file. A repo-backed service with auto-deploy off keeps serving its current release and picks the change up on its next deploy.",
     description: "Delete env-group secret-file warning",
   },
   "envGroups.servicesTitle": {
@@ -390,7 +392,8 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group linked-services card title",
   },
   "envGroups.servicesDescription": {
-    message: "Linking or unlinking redeploys every affected service.",
+    message:
+      "Linking or unlinking redeploys linked services that have auto-deploy on. A repo-backed service with auto-deploy off keeps serving its current release and picks the change up on its next deploy.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -465,7 +468,8 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     description: "Environment Group table updated-time column",
   },
   "envGroups.rolloutNote": {
-    message: "Linked services are redeploying to apply the change.",
+    message:
+      "Linked services with auto-deploy on are redeploying to apply the change.",
     description: "Env-group write rollout toast detail",
   },
   "envGroups.createSuccess": {

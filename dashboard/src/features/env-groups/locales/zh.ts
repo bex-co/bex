@@ -350,7 +350,8 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group variable editor empty body",
   },
   "envGroups.varDeleteConfirmBody": {
-    message: "所有关联服务都将在没有此变量的情况下重新部署。",
+    message:
+      "已开启自动部署的关联服务将在没有此变量的情况下重新部署。基于代码仓库且已关闭自动部署的服务会继续运行当前版本，并在下次部署时应用此更改。",
     description: "Delete env-group variable warning",
   },
   "envGroups.filesTitle": {
@@ -370,7 +371,8 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group secret-file editor empty body",
   },
   "envGroups.fileDeleteConfirmBody": {
-    message: "所有关联服务都将在没有此文件的情况下重新部署。",
+    message:
+      "已开启自动部署的关联服务将在没有此文件的情况下重新部署。基于代码仓库且已关闭自动部署的服务会继续运行当前版本，并在下次部署时应用此更改。",
     description: "Delete env-group secret-file warning",
   },
   "envGroups.servicesTitle": {
@@ -378,7 +380,8 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Env-group linked-services card title",
   },
   "envGroups.servicesDescription": {
-    message: "关联或取消关联都会重新部署每个受影响的服务。",
+    message:
+      "关联或取消关联会重新部署已开启自动部署的关联服务。基于代码仓库且已关闭自动部署的服务会继续运行当前版本，并在下次部署时应用此更改。",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -451,7 +454,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "Environment Group table updated-time column",
   },
   "envGroups.rolloutNote": {
-    message: "关联服务正在重新部署以应用更改。",
+    message: "已开启自动部署的关联服务正在重新部署以应用更改。",
     description: "Env-group write rollout toast detail",
   },
   "envGroups.createSuccess": {
