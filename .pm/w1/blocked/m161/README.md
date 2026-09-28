@@ -1,6 +1,6 @@
 # w1 · m161 — A WebSocket whose traffic is only client→server does not keep a free service awake
 
-**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** todo (t001, t002, t005 and t006 done; t003 live and t004 parity are unblocked 2026-09-27 — the image pin this waited on has landed, production advanced through `4a0422577`)
+**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** blocked (t001, t002, t005 and t006 done; t003 awaits approved fixture w1/114, then live acceptance and t004 parity remain)
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | The `websocketegress` plugin counts client→server frames as well as server→client — **DONE** | 45m | — |
 | t002 | The operator's activity read sums both directions — **DONE** | 30m | t001 |
-| t003 | Live: a client-only WebSocket holds a free service past its idle window | 45m | t002 |
+| t003 | Live: a client-only WebSocket holds a free service past its idle window | 45m | t002, w1/114 |
 | t004 | Render parity | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
@@ -93,42 +93,19 @@ The pre-fix evidence above was captured deliberately while that was still true, 
 
 ## t003 fixture gate (2026-09-28, `/loopx w1`)
 
-**The code is in the deployed range; the probe is blocked on a fixture that no longer
-exists.** `430f1ee27` ("a client-only WebSocket keeps a free service awake (w1/m161)")
-is an ancestor of the deployed `4a0422577`. But note **what** it changed:
-`deploy/gitops/charts/traefik-plugins/websocketegress/websocketegress.go` — that plugin
-rolls with **Traefik via Argo CD**, not with the operator image the deploy pipeline
-pins, so "the image pin landed" is not the same statement as "the plugin is live". That
-distinction is why this milestone's gate was always worded as the Traefik roll.
+**The code is in the deployed range; the probe is blocked on a fixture that no longer exists.** `430f1ee27` ("a client-only WebSocket keeps a free service awake (w1/m161)") is an ancestor of the deployed `4a0422577`. But note **what** it changed: `deploy/gitops/charts/traefik-plugins/websocketegress/websocketegress.go` — that plugin rolls with **Traefik via Argo CD**, not with the operator image the deploy pipeline pins, so "the image pin landed" is not the same statement as "the plugin is live". That distinction is why this milestone's gate was always worded as the Traefik roll.
 
-**What t003 actually needs, and why it could not run here.** t003 says to "reuse
-`w1/m151`'s fixture shape and the scratchpad WebSocket client/server". That scratchpad
-belonged to the 2026-09-16 session and is gone. Rebuilding it is not incidental,
-because the probe has to **discriminate**:
+**What t003 actually needs, and why it could not run here.** t003 says to "reuse `w1/m151`'s fixture shape and the scratchpad WebSocket client/server". That scratchpad belonged to the 2026-09-16 session and is gone. Rebuilding it is not incidental, because the probe has to **discriminate**:
 
-- The pre-fix plugin counted only **server→client** frames. So an ordinary WebSocket
-  echo server (`jmalloc/echo-server` and friends) is useless as a fixture: it sends
-  frames back, which the pre-fix code already counted, so it would keep the service
-  awake either way and prove nothing.
-- The fixture must therefore be a server that accepts a WebSocket upgrade and then
-  **stays silent**, while the client keeps sending. Nothing in `examples/` does this —
-  `hello-go` is plain HTTP — and no public image does it either.
+- The pre-fix plugin counted only **server→client** frames. So an ordinary WebSocket echo server (`jmalloc/echo-server` and friends) is useless as a fixture: it sends frames back, which the pre-fix code already counted, so it would keep the service awake either way and prove nothing.
+- The fixture must therefore be a server that accepts a WebSocket upgrade and then **stays silent**, while the client keeps sending. Nothing in `examples/` does this — `hello-go` is plain HTTP — and no public image does it either.
 
 **Two viable routes, neither free:**
 
-1. **Add a tiny WebSocket example to the repo** (`examples/ws-silent/`), ship it, and
-   deploy a repo-backed free service from it. Clean and reusable for the two controls
-   this task also needs, but it means shipping code to `main` whose only purpose is a
-   test fixture — worth a deliberate yes rather than a side effect.
-2. **Image-backed with an inline command** — e.g. a `python:3-alpine` service whose
-   `dockerCommand` runs a stdlib-only WebSocket handshake and then reads without
-   writing. Touches no repo file, but the handshake (base64 + SHA-1 + frame parsing)
-   inline in a command string is fragile, and sandbox/service egress may block
-   installing a library.
+1. **Add a tiny WebSocket example to the repo** (`examples/ws-silent/`), ship it, and deploy a repo-backed free service from it. Clean and reusable for the two controls this task also needs, but it means shipping code to `main` whose only purpose is a test fixture — worth a deliberate yes rather than a side effect.
+2. **Image-backed with an inline command** — e.g. a `python:3-alpine` service whose `dockerCommand` runs a stdlib-only WebSocket handshake and then reads without writing. Touches no repo file, but the handshake (base64 + SHA-1 + frame parsing) inline in a command string is fragile, and sandbox/service egress may block installing a library.
 
-**Also still required by t003 regardless of route:** both controls (server→client keeps
-it awake; a genuinely idle service still sleeps), and a window free of scanner traffic
-on `*.onbex.co`, which `w1/m151` and `w1/m157` both had to wait for.
+**Also still required by t003 regardless of route:** both controls (server→client keeps it awake; a genuinely idle service still sleeps), and a window free of scanner traffic on `*.onbex.co`, which `w1/m151` and `w1/m157` both had to wait for.
 
 t004 (parity) depends on t003, so it is held behind the same fixture.
 
@@ -145,3 +122,7 @@ t004 (parity) depends on t003, so it is held behind the same fixture.
 - **Expected outcome:** the idle clock reflects all WebSocket traffic, not half of it.
 - **Why now:** it is the last open behavior note in w1's inbox, and it completes the activity signal `w1/m151` shipped.
 - **Render parity is included** because the sleep behavior is visible through the service phase and events on every read surface.
+
+## Approved fixture extraction — 2026-09-28
+
+User-approved `/pm all for w1` assigns reusable fixture preparation to [w1/114](../../114.md). This supersedes the historical request for a fixture-choice approval below/above. The missing fixture remains a dependency, not a permission gate. t003 retains all live controls and cleanup, t004 retains Render parity, and t007 cannot close before those pass.
