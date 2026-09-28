@@ -523,6 +523,17 @@ var _ = Describe("App Controller", func() {
 		})
 
 		It("projects spec.env (PORT unshadowable) and spec.envFromSecret onto the container", func() {
+			By("creating the env Secret the spec references, so the release has something to snapshot")
+			// w1/m152: without a real source there is nothing to copy, and
+			// copyConfigSecret deliberately skips a missing source rather than wedging
+			// the deploy. Creating it keeps this spec honest — it used to reference a
+			// Secret that never existed — and lets the snapshot assertions below prove
+			// the copy carries the values, not just the name.
+			Expect(k8sClient.Create(ctx, &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: name + "-env", Namespace: "default"},
+				Data:       map[string][]byte{"FROM_SECRET": []byte("v1")},
+			})).To(Succeed())
+
 			By("creating an App with user env, a PORT shadow attempt, and an envFrom secret ref")
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
@@ -553,10 +564,54 @@ var _ = Describe("App Controller", func() {
 			Expect(envVal("PORT")).To(Equal("3000"), "user PORT=9999 must not shadow the injected port")
 			Expect(c.Env[len(c.Env)-1].Name).To(Equal("PORT"), "PORT is appended last so it wins")
 
-			By("envFromSecret wires an envFrom SecretRef")
+			By("envFromSecret wires an envFrom SecretRef, pointing at the release's snapshot")
 			Expect(c.EnvFrom).To(HaveLen(1))
 			Expect(c.EnvFrom[0].SecretRef).NotTo(BeNil())
-			Expect(c.EnvFrom[0].SecretRef.Name).To(Equal(name + "-env"))
+			// w1/m152: the template references the release's IMMUTABLE copy, not the
+			// mutable `<name>-env` that a later save rewrites in place. That is the
+			// whole point — a running release keeps its own values, and a canceled
+			// deploy has something to restore. The name carries the generation the
+			// snapshot was taken for.
+			fresh := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, nn, fresh)).To(Succeed())
+			Expect(fresh.Status.ConfigSnapshotGeneration).To(Equal(fresh.Status.ReleaseGeneration),
+				"a dispatched release must have snapshotted its configuration")
+			Expect(c.EnvFrom[0].SecretRef.Name).To(
+				Equal(releaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration)))
+
+			By("the snapshot holds the values the release ran with")
+			snap := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      releaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration),
+				Namespace: "default",
+			}, snap)).To(Succeed())
+			Expect(snap.Labels).To(HaveKeyWithValue(snapshotOfLabel, name+"-env"))
+			Expect(snap.Data).To(HaveKeyWithValue("FROM_SECRET", []byte("v1")),
+				"the snapshot must carry the values, not just the name")
+
+			By("a later save to the mutable Secret does not change what this release reads")
+			// The acceptance criterion of t001: a running release's pods keep reading
+			// their release's values after a later save, including a crash-restarted pod,
+			// because the template names the immutable copy.
+			live := &corev1.Secret{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name + "-env", Namespace: "default"}, live)).To(Succeed())
+			live.Data = map[string][]byte{"FROM_SECRET": []byte("v2-should-not-reach-this-release")}
+			Expect(k8sClient.Update(ctx, live)).To(Succeed())
+			reconcileN()
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      releaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration),
+				Namespace: "default",
+			}, snap)).To(Succeed())
+			Expect(snap.Data).To(HaveKeyWithValue("FROM_SECRET", []byte("v1")),
+				"copy-once: the snapshot holds what the release ran with, never a later save")
+
+			By("a release that predates snapshots still references the mutable Secret")
+			// The lazy-migration guarantee: nothing rolls on operator upgrade. With no
+			// snapshot recorded for the current generation the projection is byte-identical
+			// to the pre-m152 behaviour.
+			legacy := fresh.DeepCopy()
+			legacy.Status.ConfigSnapshotGeneration = 0
+			Expect(envFromSources(legacy)[0].SecretRef.Name).To(Equal(name + "-env"))
 		})
 	})
 
