@@ -36,6 +36,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
+	"github.com/bex-co/bex/lego/types/k8sname"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -114,13 +115,7 @@ func keyValueBackupsEnabled(plan tiers.ValkeyTier, store BackupStore) bool {
 }
 
 func keyValueBackupName(name string) string {
-	const prefix = "kvbak-"
-	candidate := prefix + name
-	if len(candidate) <= 63 {
-		return candidate
-	}
-	sum := sha256.Sum256([]byte(name))
-	return fmt.Sprintf("%s%.43s-%x", prefix, name, sum[:4])
+	return k8sname.FitCronJob("kvbak-" + name)
 }
 
 // keyValueBackupSchedule spreads tenant snapshots across 03:20–03:39 UTC.

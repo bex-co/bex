@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -213,7 +214,7 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 	if got := keyValueBackupSchedule(kv.Name); got != spec.Schedule {
 		t.Fatalf("schedule drifted for the same resource: %q != %q", got, spec.Schedule)
 	}
-	if got := keyValueBackupName(strings.Repeat("a", 80)); len(got) > 63 {
+	if got := keyValueBackupName(strings.Repeat("a", 80)); len(got) > k8sname.MaxCronJob {
 		t.Fatalf("bounded CronJob name is %d bytes: %q", len(got), got)
 	}
 	longKV := kv.DeepCopy()

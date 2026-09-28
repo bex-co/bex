@@ -85,3 +85,32 @@ func TestStableNeverEndsTheBaseOnASeparator(t *testing.T) {
 		t.Fatalf("name %q is %d chars, over the limit", got, len(got))
 	}
 }
+
+// TestFitCronJobBoundsLongNamesAndKeepsFittingOnes (w7/m154): a 54-character
+// App name failed CronJob admission on every reconcile. Names at the boundary
+// keep their identity; longer ones fit and stay distinct across shared prefixes.
+func TestFitCronJobBoundsLongNamesAndKeepsFittingOnes(t *testing.T) {
+	atLimit := strings.Repeat("c", MaxCronJob)
+	if got := FitCronJob(atLimit); got != atLimit {
+		t.Fatalf("FitCronJob renamed a %d-char name to %q", MaxCronJob, got)
+	}
+	reported := "tea-daif693dqjvc73e7as3g-qa-20260922-cd9361-longcronxx"
+	got := FitCronJob(reported)
+	if len(got) > MaxCronJob {
+		t.Fatalf("FitCronJob(%q) = %q is %d chars, over %d", reported, got, len(got), MaxCronJob)
+	}
+	if got != FitCronJob(reported) {
+		t.Fatal("FitCronJob is not deterministic")
+	}
+	seen := map[string]string{}
+	for _, name := range []string{reported, reported + "2", strings.Repeat("c", MaxCronJob+1), strings.Repeat("c", MaxCronJob+2), strings.Repeat("c", 63)} {
+		out := FitCronJob(name)
+		if len(out) > MaxCronJob || strings.HasSuffix(out, "-") {
+			t.Fatalf("FitCronJob(%q) = %q is not a valid bounded name", name, out)
+		}
+		if prev, dup := seen[out]; dup {
+			t.Fatalf("%q and %q both fit to %q", prev, name, out)
+		}
+		seen[out] = name
+	}
+}
