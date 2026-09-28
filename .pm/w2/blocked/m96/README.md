@@ -1,20 +1,23 @@
 # w2 · m96 — Charges and webhook deliveries name their resource, even after deletion
 
-**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** t001–t007 done; live re-probe 2026-09-26 (pass 219): bullets 1, 4, 5 pass, bullet 2 fails its intent (→ new t009), bullets 3 and 6 still need a usage rollup / throwaway workspace; t008 closeout waits on t009 and those two probes
+**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** waiting on `w1/112` and the existing live acceptance; prior completed tasks remain done.
+
+## Scope transfer — 2026-09-28
+
+User approved moving t009 implementation to `w1/112` in w1. Its original file was removed after preserving its scope/evidence at the destination; t009 is retired, not done and must not be reused. Historical references below describe the original filing. Closeout now depends on the external item plus all existing acceptance obligations. This milestone remains open.
 
 ## Tasks (in order)
 
-| id   | title                                                                                                                                  | est | depends_on |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Retain a tenant-scoped last display name per metered id, written on create and rename, surviving deletion, purged with the workspace — **DONE** | 45m | —          |
-| t002 | Usage cost rows resolve names from the retained record on REST, GraphQL and MCP; sandboxes label by session repo and branch — **DONE** | 35m | t001       |
-| t003 | Charges card renders `name (deleted)` for a resource that no longer resolves and falls back to the id only when no name was recorded — **DONE** | 20m | t002       |
-| t004 | Webhook delivery view carries `serviceName` from the stored payload; the deliveries table shows the linked name with the id secondary — **DONE** | 30m | —          |
-| t005 | Render parity — **DONE**                                                                                                               | 15m | t003, t004 |
-| t006 | Simplify — **DONE**                                                                                                                    | 15m | t005       |
-| t007 | Test coverage — **DONE**                                                                                                               | 40m | t005       |
-| t009 | Label a session-less or repo-less sandbox charge by plan and image, so 14 sandboxes stop sharing "starter sandbox" | 45m | t007 |
-| t008 | Closeout | 10m | t007, t009 |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Retain a tenant-scoped last display name per metered id, written on create and rename, surviving deletion, purged with the workspace — **DONE** | 45m | — |
+| t002 | Usage cost rows resolve names from the retained record on REST, GraphQL and MCP; sandboxes label by session repo and branch — **DONE** | 35m | t001 |
+| t003 | Charges card renders `name (deleted)` for a resource that no longer resolves and falls back to the id only when no name was recorded — **DONE** | 20m | t002 |
+| t004 | Webhook delivery view carries `serviceName` from the stored payload; the deliveries table shows the linked name with the id secondary — **DONE** | 30m | — |
+| t005 | Render parity — **DONE** | 15m | t003, t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 40m | t005 |
+| t008 | Closeout | 10m | t007, w1/112 |
 
 ## Backfill decision (t002 step 5)
 
@@ -29,12 +32,12 @@ This is why the DoD's first bullet is written the way it is: the three `srv-…`
 
 ## Decisions
 
-- **Postgres/Key Value/sandbox names are captured at *meter read* time, not at their create/rename verbs** — a deliberate deviation from t001 step 2, which asked for hooks in all four packages' create paths. Services **do** get the create/rename hooks it asked for (`store.CreateApp`, in the app's own transaction, and `store.SetAppDisplayName`), because they have a store row to hang them off. The other three do not: their creates live in `internal/postgres`, `internal/keyvalue` and `internal/sandbox`, and a missed path there fails **silently** — you find out months later when a charge line has no name and the name is already unrecoverable. `resolveServiceNames` is, by construction, the one place every *metered* resource is enumerated, so capturing there cannot miss a path; and "the name it had while the usage accrued" is precisely the value the charge line wants. The write is batched, skips unchanged names, and is best-effort — a failure is logged and never fails the usage read.
+- **Postgres/Key Value/sandbox names are captured at _meter read_ time, not at their create/rename verbs** — a deliberate deviation from t001 step 2, which asked for hooks in all four packages' create paths. Services **do** get the create/rename hooks it asked for (`store.CreateApp`, in the app's own transaction, and `store.SetAppDisplayName`), because they have a store row to hang them off. The other three do not: their creates live in `internal/postgres`, `internal/keyvalue` and `internal/sandbox`, and a missed path there fails **silently** — you find out months later when a charge line has no name and the name is already unrecoverable. `resolveServiceNames` is, by construction, the one place every _metered_ resource is enumerated, so capturing there cannot miss a path; and "the name it had while the usage accrued" is precisely the value the charge line wants. The write is batched, skips unchanged names, and is best-effort — a failure is logged and never fails the usage read.
 - **Purge rides the tenants cascade, not a new `WorkspacePurger`.** `resource_display_names.tenant_id` is `REFERENCES tenants (id) ON DELETE CASCADE`, so the existing `DeleteTenant` in the workspace teardown removes every row. Adding a purger would have been a second thing to keep in sync for no gain. Proven by `TestResourceDisplayNamesPG` against real Postgres.
 - **Keyed by id, so a re-created resource is a separate line.** Two services that shared a display name across a delete/re-create are two rows and two charge lines — which is what the DoD asks for, and what billing correctness requires.
-- **`deleted` is a third state, not the absence of a name.** `serviceName` set + `deleted: false` = live. Set + `deleted: true` = gone, name retained. Empty + `deleted: false` = bex never recorded a name (a pre-migration row). The card renders those three as *name*, *name (deleted)*, and the bare id.
+- **`deleted` is a third state, not the absence of a name.** `serviceName` set + `deleted: false` = live. Set + `deleted: true` = gone, name retained. Empty + `deleted: false` = bex never recorded a name (a pre-migration row). The card renders those three as _name_, _name (deleted)_, and the bare id.
 - **A live name always beats a retained one**, so renaming a service moves its charges to the new name on the next read, and the retained record is moved forward at the same time.
-- **Sandbox labels are derived by SQL join, not stored on the sandbox.** A sandbox has no name field and is reaped long before its charges stop mattering. `SandboxLabels` reads the owning agent session (current sandbox *or* a dispatch's `previous_sandbox_id`), so a rehydrated session labels every sandbox in its chain.
+- **Sandbox labels are derived by SQL join, not stored on the sandbox.** A sandbox has no name field and is reaped long before its charges stop mattering. `SandboxLabels` reads the owning agent session (current sandbox _or_ a dispatch's `previous_sandbox_id`), so a rehydrated session labels every sandbox in its chain.
 
 ## Verification note
 
@@ -49,7 +52,7 @@ The migration, its two backfills, the cascade purge and the sandbox join were ru
 
 ## Corrections to the task specs, found while implementing
 
-- **MCP *does* have a delivery read.** t004's "Out of scope" said "MCP delivery reads (none exist today; note if that changes in t005)". `listDeliveries` returns `[]DeliveryView`, so MCP picks `serviceName` up through the JSON tag for free — recorded here as t005 asked.
+- **MCP _does_ have a delivery read.** t004's "Out of scope" said "MCP delivery reads (none exist today; note if that changes in t005)". `listDeliveries` returns `[]DeliveryView`, so MCP picks `serviceName` up through the JSON tag for free — recorded here as t005 asked.
 - **A delivery's `serviceId` is not a deletion signal.** The stored attempt keeps its id string forever, so absence of a name means "recorded before this field existed", not "deleted". The deliveries table therefore detects deletion by resolving the id against the live service list, fails **open** while that list is loading or errored, and only marks `srv-…` subjects (a `dpg-…` datastore subject is never in the services list and must not be mislabelled).
 
 ## Definition of done
@@ -87,4 +90,3 @@ Production, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. Th
 - **A delivery for a deleted service keeps its name — PASS.** After `DELETE /v1/services/<srv>` (204), the same rows read `qa-20260926-whk(deleted)`, with the service link removed and the id tooltip kept. REST `serviceName` and GraphQL `webhookDeliveries(endpointId:) { serviceName }` both still returned `qa-20260926-whk`.
 - **Workspace deletion purges retained names — NOT RUN.** It needs a throwaway workspace. The cascade is proven only by `TestResourceDisplayNamesPG`.
 - **Backfill decision recorded — PASS** (see the discrepancy under bullet 1).
-

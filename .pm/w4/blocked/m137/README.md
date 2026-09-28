@@ -1,20 +1,23 @@
 # w4 · m137 — A restarting Key Value or Postgres reports "creating", as if it were brand new
 
-**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** blocked (t001–t006 and t008 done; live probe 2026-09-27 pass 232 on deploy `4a0422577`: restart states, creation and Postgres pass, but a Key Value reads `available` before it serves → new t009; t007 closeout waits on t009)
+**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** waiting on `w1/m166/t007` and the existing live acceptance; prior completed tasks remain done.
+
+## Scope transfer — 2026-09-28
+
+User approved moving t009 implementation to `w1/m166/t007` in w1. Its original file was removed after preserving its scope/evidence at the destination; t009 is retired, not done and must not be reused. Historical references below describe the original filing. Closeout now depends on the external item plus all existing acceptance obligations. This milestone remains open.
 
 ## Tasks (in order)
 
-| id   | title                                                                                         | est | depends_on       |
-| ---- | --------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Key Value: `kvStatus` distinguishes a restart from creation, and a stale Ready from a live one — **DONE** | 30m | —                |
-| t002 | Postgres: `dbStatus` distinguishes a restart from creation — **DONE**                                     | 30m | —                |
-| t003 | Dashboard: map the restart status on both datastores, and name the restart in KV config copy — **DONE**   | 30m | t001, t002       |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Key Value: `kvStatus` distinguishes a restart from creation, and a stale Ready from a live one — **DONE** | 30m | — |
+| t002 | Postgres: `dbStatus` distinguishes a restart from creation — **DONE** | 30m | — |
+| t003 | Dashboard: map the restart status on both datastores, and name the restart in KV config copy — **DONE** | 30m | t001, t002 |
 | t008 | Resume reports "available" before the store serves, and a config save never fast-polls the header — **DONE** | 30m | t001, t003 |
-| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE**                                                | 20m | t003, t008             |
-| t005 | Simplify — **DONE**                                                                                      | 15m | t004             |
-| t006 | Test coverage — **DONE**                                                                                 | 30m | t004             |
-| t009 | A Key Value reads "available" 10–23 s before clients can connect after a config change or resume | 45m | t006 |
-| t007 | Closeout — **BLOCKED** | 10m | t006, t009 |
+| t004 | Render parity across REST / GraphQL / MCP / UI — **DONE** | 20m | t003, t008 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 30m | t004 |
+| t007 | Closeout — **BLOCKED** | 10m | t006, w1/m166/t007 |
 
 ## Definition of done
 
@@ -66,4 +69,3 @@ Reachability was polled from the host every 3 s: `redis-cli --tls --sni <host> -
   - Config save on an open page: **PASS**. Changing Persistence Mode (Journal + Snapshot → Snapshot only) on `/keyvalue/<id>` flipped the header to **Restarting** at once, without a reload, and back to **Available** after ~20 s.
 - **Creation still says creating — PASS.** Both stores read `creating` from creation until first Ready: Key Value 13:37:46 → 13:38:41, Postgres 13:37:46 → 13:39:24.
 - **Never "Unknown" — PASS on the detail header.** The Key Value detail page never showed "Unknown" through the restart. List and project rows were not sampled mid-restart.
-
