@@ -15,7 +15,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m158** — [Repair recurring registry garbage-collection failures](m158/README.md) (6 tasks; 150m implementation, 220m total) ← approved second platform-log brainstorm, 2026-09-28, priority 1.
+- [ ] **m158** — **BLOCKED (user decides how to fix the Zot defect upstream — file an issue/PR with project-zot, or carry a patched build; the defect is unchanged through v2.1.21)** — [Repair recurring registry garbage-collection failures](blocked/m158/README.md) (t001, t003–t005 done: diagnosed the empty-repo/restart metaDB gap; stranded repo repaired and removed in production after three clean GC runs; repair runbook in ADR060 D4. Prevention (t002 part 2) and t006 remain).
 - [x] **m159** — [Detect tenant-node disk pressure before workload disruption](done/m159/README.md) — done 2026-09-28: NodeDiskPressure (critical) / Recovered (info, 6h) / SignalMissing (warning) on the kube-state-metrics condition; live in prod with the 03:39Z `bnzl6` episode surfaced; no node-exporter ⇒ no fill-rate early warning (ADR010).
 - [x] **m160** — [Add etcd latency and scrape-health coverage](done/m160/README.md) — done 2026-09-28: kube-rbac-proxy per CP node (InternalIP, TokenReview/SAR, private-CA TLS; 401/403 verified), all 3 members scraped, six etcd rules live and quiet (fsync p99 3–5ms).
 
