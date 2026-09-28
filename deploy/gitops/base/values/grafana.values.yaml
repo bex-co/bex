@@ -5572,6 +5572,37 @@ dashboards:
                  "legendFormat": "pending pods"
                 }
               ]
+            },
+            {
+             "id": 12,
+             "type": "timeseries",
+             "title": "Node DiskPressure",
+             "description": "Per-node kubelet DiskPressure (node-local ephemeral storage, not PVCs): 1 means the kubelet is evicting pods. NodeDiskPressure pages after 2m; a shorter episode stays visible here and as the info NodeDiskPressureRecovered for 6h. No series for a node is NodeDiskPressureSignalMissing, never healthy. No node-exporter: there is no fill-rate early warning.",
+             "gridPos": { "h": 9, "w": 24, "x": 0, "y": 49 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0,
+                 "max": 1,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max by (node) (kube_node_status_condition{condition=\"DiskPressure\", status=\"true\"})",
+                 "legendFormat": "{{node}}"
+                }
+              ]
             }
           ]
         }
