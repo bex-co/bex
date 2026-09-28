@@ -1,6 +1,6 @@
 # w1 · m159 — Dashboard truth: a datastore's own Status row, the landing after "Move to project", and seven count strings
 
-**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001, t002, t003, t005 and t006 done; t004 parity and the live DoD wait on the deploy)
+**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001, t002, t003, t005 and t006 done; t004 parity and the live DoD are unblocked 2026-09-27 — the deploy gate cleared, production advanced through `4a0422577`)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity | 20m | t001, t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout | 10m | t006, t004 |
 
 ## Definition of done
 

@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE** | 20m | t004       |
 | t006 | Simplify — **DONE** | 15m | t005       |
 | t007 | Test coverage — **DONE** | 40m | t005       |
-| t008 | Closeout                                                                                                  | 10m | t007       |
+| t008 | Closeout | 10m | t007, t004 |
 
 ## Definition of done
 
