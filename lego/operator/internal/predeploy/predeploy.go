@@ -40,6 +40,7 @@ package predeploy
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -250,16 +251,32 @@ func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) strin
 // delayed the same verdict behind a message about a command that never ran.
 const imagePullGrace = 90 * time.Second
 
-// PullFailure explains a pending pre-deploy Job whose pod has been waiting on
-// ErrImagePull/ImagePullBackOff for longer than imagePullGrace, measured from
-// the pod's creation. Empty while the pod is pulling, running, or still inside
-// the grace window.
+// PullFailure explains a pending pre-deploy Job whose pod has a permanent
+// image-pull error beyond imagePullGrace, measured from pod creation. Transient
+// errors retain the Job deadline, just as they retain the rollout deadline.
 func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time.Time) string {
 	w, created := pullFailure(ctx, cl, j)
-	if w == nil || now.Sub(created) < imagePullGrace {
+	if !PermanentPullFailure(w, created, now) {
 		return ""
 	}
 	return pullFailureMessage(w)
+}
+
+// PermanentPullFailure is shared by pre-deploy Jobs and rollout pods. Only
+// explicit missing-image or denied-authentication answers can shorten their
+// deadlines; network errors, registry overload, and a plain backoff cannot.
+func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Time) bool {
+	if w == nil || (w.Reason != "ErrImagePull" && w.Reason != "ImagePullBackOff") ||
+		created.IsZero() || now.Sub(created) < imagePullGrace {
+		return false
+	}
+	message := strings.ToLower(w.Message)
+	for _, answer := range []string{"code = notfound", "manifest unknown", "manifest_unknown", ": not found", "404 not found", "unauthorized", "authentication required"} {
+		if strings.Contains(message, answer) {
+			return true
+		}
+	}
+	return false
 }
 
 // pullFailureMessage is the image-pull wording the rollout path's stuck-pod

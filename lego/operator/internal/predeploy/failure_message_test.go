@@ -153,6 +153,7 @@ func TestPullFailureAfterGrace(t *testing.T) {
 		"backoff inside grace":      {pod(pullWaiting("ImagePullBackOff"), 30*time.Second, jobUID), false},
 		"slow pull, still creating": {pod(corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}}, 5*time.Minute, jobUID), false},
 		"running":                   {pod(corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}, 5*time.Minute, jobUID), false},
+		"transient registry error":  {pod(corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ErrImagePull", Message: "503 Service Unavailable"}}, 5*time.Minute, jobUID), false},
 		"another Job's pod":         {pod(pullWaiting("ImagePullBackOff"), 5*time.Minute, "9f1e-earlier-run"), false},
 	} {
 		got := PullFailure(context.Background(), fakeClient(job, tc.pod), job, now)
@@ -162,5 +163,31 @@ func TestPullFailureAfterGrace(t *testing.T) {
 		if tc.fail && !strings.HasPrefix(got, "image pull is failing: ") {
 			t.Errorf("%s: message = %q", name, got)
 		}
+	}
+}
+
+func TestPermanentPullFailureClassification(t *testing.T) {
+	now := time.Now()
+	for _, tc := range []struct {
+		message   string
+		permanent bool
+	}{
+		{"failed to resolve reference: 404 Not Found", true},
+		{"MANIFEST_UNKNOWN: manifest unknown", true},
+		{"unauthorized: authentication required", true},
+		{"Back-off pulling image example.org/web:missing", false},
+		{"429 Too Many Requests", false},
+		{"503 Service Unavailable", false},
+		{"dial tcp: i/o timeout", false},
+	} {
+		t.Run(tc.message, func(t *testing.T) {
+			w := &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff", Message: tc.message}
+			if got := PermanentPullFailure(w, now.Add(-90*time.Second), now); got != tc.permanent {
+				t.Fatalf("permanent=%v, want %v", got, tc.permanent)
+			}
+			if PermanentPullFailure(w, time.Time{}, now) {
+				t.Fatal("unknown pod age failed early")
+			}
+		})
 	}
 }
