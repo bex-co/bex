@@ -1433,6 +1433,24 @@ type AppStatus struct {
 	// +optional
 	ReleaseArtifactFingerprint string `json:"releaseArtifactFingerprint,omitempty"`
 
+	// ConfigSnapshotGeneration is the release generation whose configuration
+	// sources have been copied into immutable per-release Secrets (0 = none, the
+	// pre-w1/m152 state and every App that has not dispatched a release since).
+	//
+	// It exists so the pod-template projection stays a pure function of the App:
+	// when this equals ReleaseGeneration the projection substitutes the snapshot
+	// names for that generation, and otherwise it references today's mutable
+	// `<name>-env` / `<evg-id>-env` Secrets unchanged. That is what makes the
+	// migration lazy — nothing rolls on operator upgrade, and a release that
+	// predates snapshots keeps its current template until its next deploy.
+	//
+	// It records a generation only, never Secret contents. See
+	// docs/ADR004-app-deployment.md §Per-release configuration snapshots for the
+	// per-source (never flattened) shape, the 20-generation retention window, and
+	// why flattening would breach Kubernetes' 1 MiB Secret ceiling.
+	// +optional
+	ConfigSnapshotGeneration int64 `json:"configSnapshotGeneration,omitempty"`
+
 	// PendingReleaseGeneration is the newest requested release generation coalesced
 	// while a build is in flight (0 = none). It is observability + SLI bookkeeping:
 	// the pending spec itself remains the source of truth and is picked up once the

@@ -2114,6 +2114,16 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		}
 	}
 
+	// Snapshot this release's configuration BEFORE projecting the template, so the
+	// template can reference immutable copies that already exist (w1/m152). Setting
+	// the status field in memory here is what flips the projection over; the write
+	// rides this pass's existing status update. If that write is lost the snapshots
+	// still exist and the next pass re-runs this idempotently, so the Deployment
+	// never references a Secret that is missing.
+	if err := r.ensureReleaseConfigSnapshot(ctx, app); err != nil {
+		return r.fail(ctx, app, "DeployFailed", err)
+	}
+
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
 		applyDeploymentSpec(dep, app, deploymentParams{
@@ -2137,6 +2147,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// every requeue would flap the service header against the deploy row (w4/m103).
 	if rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
+	}
+	// Reclaim snapshots outside the retained window only after the Deployment is in
+	// place, so a reference the live template still needs is never deleted first. A
+	// failure here is logged, not returned: losing an old copy must not fail a
+	// release that is otherwise healthy.
+	if err := r.gcReleaseConfigSnapshots(ctx, app); err != nil {
+		logf.FromContext(ctx).Error(err, "reclaiming release config snapshots", "app", app.Name)
 	}
 
 	// Clean up any per-App NetworkPolicy a pre-ADR043 reconcile left behind
@@ -4109,13 +4126,17 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
 	var out []corev1.EnvFromSource
 	optional := true
+	// snapshotOrSource substitutes this release's immutable copy when one is active
+	// (w1/m152). The ORDER is untouched: groups first, the service's own last, so
+	// the documented precedence stays a property of list position and the existing
+	// precedence tests keep covering it.
 	for _, name := range app.Spec.EnvFromSecrets {
 		if name == "" {
 			continue
 		}
 		out = append(out, corev1.EnvFromSource{
 			SecretRef: &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
 				Optional:             &optional,
 			},
 		})
@@ -4123,7 +4144,7 @@ func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {
 	if name := runtimeEnvSecret(app); name != "" {
 		out = append(out, corev1.EnvFromSource{
 			SecretRef: &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
 			},
 		})
 	}
@@ -4147,10 +4168,15 @@ const (
 func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount) {
 	var sources []corev1.VolumeProjection
 	optional := true
+	// project takes the MUTABLE source name and substitutes this release's
+	// immutable copy when one is active (w1/m152), so every caller below keeps
+	// naming sources the way the precedence comment explains. containsSecretProjection
+	// is fed the same substituted name, so the pending-annotation de-duplication
+	// still compares like with like.
 	project := func(name string) {
 		sources = append(sources, corev1.VolumeProjection{
 			Secret: &corev1.SecretProjection{
-				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
 				Optional:             &optional,
 			},
 		})
@@ -4186,7 +4212,7 @@ func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount
 	if deferred {
 		project(own)
 	}
-	if name := app.Annotations[appv1alpha1.PendingFilesSecretAnnotation]; name != "" && !containsSecretProjection(sources, name) {
+	if name := app.Annotations[appv1alpha1.PendingFilesSecretAnnotation]; name != "" && !containsSecretProjection(sources, snapshotOrSource(app, name)) {
 		project(name)
 	}
 	if len(sources) == 0 {
