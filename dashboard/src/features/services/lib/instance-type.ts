@@ -18,15 +18,32 @@ export function formatInstanceMemory(memory: string): string {
 }
 
 /**
- * The catalog tiers a service of this type may be offered. Background Workers
- * are paid-only (w6/025, matching Render): Free never appears in their create
- * or instance-type pickers — bex-api refuses a free worker plan server-side
- * too, so this filter is presentation, not the enforcement.
+ * Service types bex never offers the compute `free` tier, because Render sells
+ * neither on it: Background Workers (w6/025) and Private Services (w1/111).
+ *
+ * Web services and cron jobs keep Free — Render sells both that way — and a
+ * static site runs no instance at all, so this is a two-type allowlist rather
+ * than "everything but web".
+ */
+const PAID_ONLY_SERVICE_TYPES = new Set([
+  "background_worker",
+  "private_service",
+]);
+
+/**
+ * The catalog tiers a service of this type may be offered. For a paid-only type
+ * Free never appears in the create form's plan grid or the instance-type picker,
+ * and a Free selection made under another type does not survive a switch into
+ * one. bex-api refuses a free plan for these types server-side as well
+ * (`paidOnlyServiceType` / `errFreePlanForType`), so this filter is
+ * presentation, not the enforcement.
  */
 export function offeredInstanceTypes<T extends { id: string }>(
   serviceType: string | null,
   instanceTypes: T[],
 ): T[] {
-  if (serviceType !== "background_worker") return instanceTypes;
+  if (serviceType === null || !PAID_ONLY_SERVICE_TYPES.has(serviceType)) {
+    return instanceTypes;
+  }
   return instanceTypes.filter((it) => it.id !== "free");
 }

@@ -2925,7 +2925,7 @@ func normalizeTierOrPlan(v string) (string, error) {
 // paid tier instead of the catalog's free default, and an explicit free plan is
 // refused. Every other type keeps normalizeTierOrPlan's defaulting.
 func normalizeTierForType(svcType, plan string) (string, error) {
-	if svcType != appv1alpha1.TypeBackgroundWorker {
+	if !paidOnlyServiceType(svcType) {
 		return normalizeTierOrPlan(plan)
 	}
 	if plan == "" {
@@ -2936,9 +2936,26 @@ func normalizeTierForType(svcType, plan string) (string, error) {
 		return "", err
 	}
 	if !core.PaidPlan(tier) {
-		return "", errWorkerFreePlan()
+		return "", errFreePlanForType(svcType)
 	}
 	return tier, nil
+}
+
+// paidOnlyServiceType reports whether a service type may never run on the
+// compute `free` tier.
+//
+// Render sells neither a free background worker nor a free private service
+// (render.com/docs/your-first-deploy#explore-other-service-types, checked
+// 2026-09-28). ADR030 §7 decided the worker half on 2026-09-06 (w6/025) and
+// left the sibling type accepting free, which is the divergence w1/111 closes:
+// a private service created with no plan came out `free` while a worker came out
+// `starter`, from this one function, for no recorded reason.
+//
+// Web services and cron jobs keep free — Render sells both that way — and a
+// static site runs no instance at all, so the rule is a two-type allowlist
+// rather than "everything but web".
+func paidOnlyServiceType(svcType string) bool {
+	return svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypePrivateService
 }
 
 // defaultPaidTierID is the cheapest paid rung of the compute ladder — the
@@ -2954,17 +2971,21 @@ func defaultPaidTierID() string {
 	return tiers.Compute.Default().ID
 }
 
-// errWorkerFreePlan refuses the free plan on a background worker — workers are
-// paid-only (w6/025). Built in one place so the create path and the plan-change
-// verbs word the refusal identically, listing only the plans a worker may use.
-func errWorkerFreePlan() error {
+// errFreePlanForType refuses the free plan on a paid-only service type — a
+// background worker (w6/025) or a private service (w1/111). Built in one place so
+// the create path and both plan-change verbs word the refusal identically,
+// listing only the plans that type may use.
+func errFreePlanForType(svcType string) error {
 	paid := make([]string, 0, len(tiers.Compute.RenderPlans()))
 	for _, plan := range tiers.Compute.RenderPlans() {
 		if core.PaidPlan(plan) {
 			paid = append(paid, plan)
 		}
 	}
-	return fmt.Errorf("%w: a background_worker requires a paid plan; plan must be one of %s", core.ErrBadRequest, strings.Join(paid, "|"))
+	// Name the type the caller actually asked for, not a fixed noun: the same
+	// refusal now serves background_worker and private_service, and a message
+	// naming the wrong one sends the reader to the wrong docs (w1/111).
+	return fmt.Errorf("%w: a %s requires a paid plan; plan must be one of %s", core.ErrBadRequest, svcType, strings.Join(paid, "|"))
 }
 
 // redeploy bumps spec.restartedAt to force the operator to roll a new revision
@@ -3308,8 +3329,8 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppVie
 	if !ok {
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 	}
-	if a.Spec.Type == appv1alpha1.TypeBackgroundWorker && !core.PaidPlan(t.ID) {
-		return AppView{}, errWorkerFreePlan()
+	if paidOnlyServiceType(a.Spec.Type) && !core.PaidPlan(t.ID) {
+		return AppView{}, errFreePlanForType(a.Spec.Type)
 	}
 	if err := diskPlanError(a, t.ID); err != nil {
 		return AppView{}, err
