@@ -451,7 +451,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_top_queries",
-		Description: "List the top 25 queries by total execution time for a managed Postgres database (pg_stat_statements). Returns query text, call count, total/mean time in milliseconds, row count, and block hit/read stats. A row whose query PostgreSQL hid from the reading role reports masked=true with an empty query, its statistics still real. Returns an empty list when pg_stat_statements is not yet available.",
+		Description: "List the top 25 queries by total execution time for a managed Postgres database (pg_stat_statements). Returns query text, call count, total/mean time in milliseconds, row count, and block hit/read stats. A row whose query PostgreSQL hid from the reading role reports masked=true with an empty query, its statistics still real. Returns unavailable when the database or pg_stat_statements cannot be read.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, topQueriesResult, error) {
 		out, err := s.TopQueries(ctx, in.PostgresID)
 		if err != nil {

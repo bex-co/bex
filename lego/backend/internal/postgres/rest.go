@@ -322,6 +322,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 
 	// --- observability: processes / top-queries / sizes / table-scans / parameter-overrides ---
+	mux.HandleFunc("GET "+base+"/{id}/query/processes", core.HandleMapped(http.StatusOK, func(r *http.Request) ([]ProcessView, error) {
+		return s.Processes(r.Context(), r.PathValue("id"))
+	}, toRenderProcesses))
+	mux.HandleFunc("GET "+base+"/{id}/query/top-queries", core.HandleMapped(http.StatusOK, func(r *http.Request) ([]TopQueryView, error) {
+		return s.TopQueries(r.Context(), r.PathValue("id"))
+	}, toRenderTopQueries))
+	mux.HandleFunc("GET "+base+"/{id}/query/sizes", core.HandleMapped(http.StatusOK, func(r *http.Request) (SizesView, error) {
+		return s.Sizes(r.Context(), r.PathValue("id"))
+	}, toRenderSizes))
+	mux.HandleFunc("GET "+base+"/{id}/query/table-scans", core.HandleMapped(http.StatusOK, func(r *http.Request) ([]TableScanView, error) {
+		return s.TableScans(r.Context(), r.PathValue("id"))
+	}, toRenderTableScans))
 	mux.HandleFunc("GET "+base+"/{id}/processes", core.HandleByID(s.Processes))
 	mux.HandleFunc("GET "+base+"/{id}/top-queries", core.HandleByID(s.TopQueries))
 	mux.HandleFunc("GET "+base+"/{id}/sizes", core.HandleByID(s.Sizes))

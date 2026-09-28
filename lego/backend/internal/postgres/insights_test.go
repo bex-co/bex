@@ -50,11 +50,10 @@ func TestInsightInputGuards(t *testing.T) {
 	if _, err := svc.ParameterOverrides(ctx, "no-db"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("ParameterOverrides unknown db => %v, want ErrNotFound", err)
 	}
-	// TopQueries silences errors (pg_stat_statements unavailable is the same code
-	// path as connection failure) and returns an empty list — never an error.
-	if out, err := svc.TopQueries(ctx, "no-db"); err != nil || len(out) != 0 {
-		t.Errorf("TopQueries unknown db => (%v, %v), want ([], nil)", out, err)
+	if _, err := svc.TopQueries(ctx, "no-db"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("TopQueries unknown db => %v, want ErrNotFound", err)
 	}
+
 }
 
 // TestSetParameterOverrides covers the write path (CR patching) without a live DB.
@@ -109,8 +108,7 @@ func TestSetParameterOverrides(t *testing.T) {
 
 // TestRESTInsightEndpoints verifies routing for the five GET endpoints and the
 // PUT parameter-overrides handler. The seeded DB uses a non-routable URI so
-// GET endpoints that require a real dial return 503; TopQueries returns 200 with
-// an empty list; PUT doesn't dial at all so it returns 200.
+// TopQueries returns 503 on a failed dial; PUT does not dial and returns 200.
 func TestRESTInsightEndpoints(t *testing.T) {
 	svc, cl := newService()
 	seedDatabase(t, cl, "ins-db")
@@ -123,7 +121,7 @@ func TestRESTInsightEndpoints(t *testing.T) {
 	}{
 		// DB exists but URI is a fake internal hostname — dial fails → 500.
 		{"GET", "/v1/postgres/ins-db/processes", "", 500},
-		{"GET", "/v1/postgres/ins-db/top-queries", "", 200}, // TopQueries never errors
+		{"GET", "/v1/postgres/ins-db/top-queries", "", 503},
 		{"GET", "/v1/postgres/ins-db/sizes", "", 500},
 		{"GET", "/v1/postgres/ins-db/table-scans", "", 500},
 		{"GET", "/v1/postgres/ins-db/parameter-overrides", "", 500},
@@ -267,12 +265,22 @@ func TestTopQueriesIntegration(t *testing.T) {
 		t.Fatalf("admin connect: %v", err)
 	}
 	_, _ = admin.Exec(context.Background(), `SELECT 1`)
+	var hasStatements bool
+	if err := admin.QueryRow(context.Background(), `SELECT to_regclass('pg_stat_statements') IS NOT NULL`).Scan(&hasStatements); err != nil {
+		t.Fatal(err)
+	}
 	admin.Close(context.Background())
 
 	svc, _ := newService()
 	seedDatabaseAt(t, svc, "topq-live", uri)
 
 	out, err := svc.TopQueries(context.Background(), "topq-live")
+	if !hasStatements {
+		if !errors.Is(err, core.ErrUnavailable) {
+			t.Fatalf("missing extension error = %v", err)
+		}
+		return
+	}
 	if err != nil {
 		t.Fatalf("TopQueries => %v", err)
 	}
