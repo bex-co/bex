@@ -1346,7 +1346,7 @@ func (e blueprintResourceError) Error() string { return e.err.Error() }
 func (e blueprintResourceError) Unwrap() error { return e.err }
 
 // blueprintResourceErrors is every independent per-resource refusal, in
-// declaration order. As an error it reads and unwraps as the first, so apply
+// parse order. As an error it reads and unwraps as the first, so apply
 // reports exactly what it did when these checks stopped at the first failure;
 // validation expands the whole list (ADR049: every independently actionable
 // error it can safely discover).
@@ -1791,13 +1791,14 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
 	}
 
+	var problems blueprintResourceErrors
 	// Env groups first (validated + name-deduped); a service's fromGroup links one.
 	groupNames := make(map[string]bool, len(envGroups))
 	for _, egDecl := range envGroups {
 		pg, err := parseEnvGroup(egDecl.value)
 		if err != nil {
-			// Located like a service's or database's refusal (w8/027).
-			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err}}
+			problems = append(problems, blueprintResourceError{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err})
+			continue
 		}
 		if err := registerUniqueName(pg.name, groupNames); err != nil {
 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
@@ -1811,8 +1812,8 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	for _, d := range databases {
 		ds, err := parseDatabase(d.value)
 		if err != nil {
-			// Refused as a located resource error, like a service's (w8/m43).
-			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourcePostgres, name: d.value.Name, err: err}}
+			problems = append(problems, blueprintResourceError{kind: BlueprintResourcePostgres, name: d.value.Name, err: err})
+			continue
 		}
 		if err := registerUniqueName(ds.name, idx.names); err != nil {
 			return parsedStack{}, err
@@ -1833,7 +1834,6 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		refVars []bexEnvVar // fromDatabase / fromService — resolved in pass 2
 	}
 	pendings := make([]pending, 0, len(services))
-	var problems blueprintResourceErrors
 	for _, a := range services {
 		if isKeyValueType(a.value.Type) {
 			kv, err := parseKeyValue(a.value)

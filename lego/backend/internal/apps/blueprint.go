@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -735,6 +736,16 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 		}
 		out = append(out, blueprintLocatedError(source, msg, pointer))
 	}
+	// Parsing visits resource kinds separately; present refusals in source order.
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Line == nil {
+			return false
+		}
+		if out[j].Line == nil {
+			return true
+		}
+		return *out[i].Line < *out[j].Line
+	})
 	return out
 }
 
@@ -1845,7 +1856,7 @@ func blueprintErrorPath(ir BlueprintIR, message string) string {
 }
 
 func blueprintErrorField(message string) string {
-	for _, field := range []string{"maintenanceMode", "highAvailability", "plan", "domains", "schedule", "runtime", "type", "image", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
+	for _, field := range []string{"maintenanceMode", "highAvailability", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
 			return "." + field
 		}
