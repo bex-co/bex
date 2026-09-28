@@ -140,7 +140,7 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
-- [ ] **061** — [Verify OpenBao revocation recovery after readonly-storage errors](061.md) (45m; todo) ← approved second platform-log brainstorm, 2026-09-28, priority 5.
+- [x] **061** — [Verify OpenBao revocation recovery after readonly-storage errors](done/061.md) — done 2026-09-28: all 71 standby `readonly storage` revocation failures in 72h hash-match leases the uninterrupted active (openbao-0) revoked <1s later; no failover, no residual.
 
 **Approved execution order** (`$pm all for w7`): **054 → 053 → 055**, approximately **2h05m** total. Each was scoped under an hour with no dependency on the others. Remote main has since completed 054 and 053 and moved 055 to blocked after investigation; their approved scopes are preserved at those current paths.
 
