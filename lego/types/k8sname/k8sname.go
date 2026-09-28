@@ -28,6 +28,10 @@ import (
 // MaxLabel is Kubernetes' DNS-1123 label limit.
 const MaxLabel = 63
 
+// MaxCronJob is the API server's CronJob name limit: 11 characters short of a
+// label so the Jobs it spawns (name + "-" + a minutes timestamp) still fit.
+const MaxCronJob = 52
+
 // Stable preserves a readable prefix while binding every truncated name to the
 // complete identity tuple, so names that differ only past the cut cannot
 // collide. Truncation must never discard the revision or purpose that
@@ -35,11 +39,15 @@ const MaxLabel = 63
 // long-named object resolve to ONE name, which silently turns "reuse the
 // existing object for this revision" into "serve the wrong revision".
 func Stable(raw string, parts ...string) string {
+	return stable(MaxLabel, raw, parts...)
+}
+
+func stable(limit int, raw string, parts ...string) string {
 	const hashLength = 12
 	raw = strings.ToLower(raw)
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	suffix := fmt.Sprintf("%x", sum[:hashLength/2])
-	maxBase := MaxLabel - 1 - len(suffix)
+	maxBase := limit - 1 - len(suffix)
 	if len(raw) > maxBase {
 		raw = raw[:maxBase]
 	}
@@ -50,9 +58,19 @@ func Stable(raw string, parts ...string) string {
 // Fit returns raw unchanged when it fits a DNS-1123 label, and its Stable
 // truncation otherwise.
 func Fit(raw string) string {
+	return fit(MaxLabel, raw)
+}
+
+// FitCronJob is Fit bounded by MaxCronJob. Names that already fit keep their
+// identity, so existing CronJobs are never renamed.
+func FitCronJob(raw string) string {
+	return fit(MaxCronJob, raw)
+}
+
+func fit(limit int, raw string) string {
 	raw = strings.ToLower(raw)
-	if len(raw) <= MaxLabel {
+	if len(raw) <= limit {
 		return raw
 	}
-	return Stable(raw, raw)
+	return stable(limit, raw, raw)
 }

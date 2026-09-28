@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
+	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -113,7 +114,7 @@ func (d DiskSnapshotStore) restorable() bool {
 }
 
 func diskBackupName(appName string) string {
-	return appv1alpha1.DiskChildName(diskBackupPrefix, appName)
+	return k8sname.FitCronJob(appv1alpha1.DiskChildName(diskBackupPrefix, appName))
 }
 func diskPurgeName(appName string) string {
 	return appv1alpha1.DiskChildName(diskPurgePrefix, appName)
