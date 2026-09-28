@@ -1,0 +1,49 @@
+# Private trust for the etcd metrics proxy (w7/m160). A self-signed root signs
+# one serving certificate whose identity is the fixed DNS name Prometheus pins
+# with `server_name` — so the scrape verifies the proxy even though targets are
+# node IPs that change when a control-plane machine is replaced. Prometheus
+# mounts only this CA's public ca.crt; the keys never leave cert-manager's
+# Secrets in `monitoring`.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: etcd-metrics-selfsigned
+  namespace: monitoring
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: etcd-metrics-ca
+  namespace: monitoring
+spec:
+  isCA: true
+  commonName: etcd-metrics-ca
+  secretName: etcd-metrics-ca
+  duration: 87600h # 10y root; the serving leaf below rotates
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { name: etcd-metrics-selfsigned, kind: Issuer }
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: etcd-metrics-ca
+  namespace: monitoring
+spec:
+  ca:
+    secretName: etcd-metrics-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: etcd-metrics-serving
+  namespace: monitoring
+spec:
+  secretName: etcd-metrics-serving
+  duration: 2160h # 90d, renewed 30d before expiry; kube-rbac-proxy reloads it
+  renewBefore: 720h
+  dnsNames: [etcd-metrics.monitoring.svc]
+  usages: [server auth, digital signature]
+  privateKey: { algorithm: ECDSA, size: 256, rotationPolicy: Always }
+  issuerRef: { name: etcd-metrics-ca, kind: Issuer }

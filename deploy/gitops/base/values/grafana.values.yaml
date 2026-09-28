@@ -5603,6 +5603,64 @@ dashboards:
                  "legendFormat": "{{node}}"
                 }
               ]
+            },
+            {
+             "id": 13,
+             "type": "timeseries",
+             "title": "etcd disk latency (p99)",
+             "description": "Per control-plane member: WAL fsync p99 (EtcdHighFsyncLatency warns >500ms for 10m) and backend commit p99 (EtcdHighCommitLatency warns >250ms). Scraped through the authenticated etcd-metrics proxy; a gap is EtcdMetricsMissing, not an etcd outage.",
+             "gridPos": { "h": 9, "w": 12, "x": 0, "y": 58 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "s", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "histogram_quantile(0.99, sum by (node, le) (rate(etcd_disk_wal_fsync_duration_seconds_bucket{job=\"etcd\"}[5m])))",
+                 "legendFormat": "fsync {{node}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "histogram_quantile(0.99, sum by (node, le) (rate(etcd_disk_backend_commit_duration_seconds_bucket{job=\"etcd\"}[5m])))",
+                 "legendFormat": "commit {{node}}"
+                }
+              ]
+            },
+            {
+             "id": 14,
+             "type": "timeseries",
+             "title": "etcd leader, scrape and size",
+             "description": "has_leader (EtcdNoLeader pages at 0), leader changes per hour (EtcdFrequentLeaderChanges warns >3), scrape up (EtcdMetricsMissing), and DB size over quota (EtcdDatabaseNearQuota warns >80%).",
+             "gridPos": { "h": 9, "w": 12, "x": 12, "y": 58 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": { "unit": "short", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "etcd_server_has_leader{job=\"etcd\"}",
+                 "legendFormat": "has leader {{node}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "increase(etcd_server_leader_changes_seen_total{job=\"etcd\"}[1h])",
+                 "legendFormat": "leader changes/h {{node}}"
+                },
+                {
+                 "refId": "C",
+                 "expr": "up{job=\"etcd\"}",
+                 "legendFormat": "scrape up {{node}}"
+                },
+                {
+                 "refId": "D",
+                 "expr": "etcd_mvcc_db_total_size_in_bytes{job=\"etcd\"} / etcd_server_quota_backend_bytes{job=\"etcd\"}",
+                 "legendFormat": "db/quota {{node}}"
+                }
+              ]
             }
           ]
         }
