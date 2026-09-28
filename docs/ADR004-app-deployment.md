@@ -186,6 +186,20 @@ The classification is exhaustive and test-guarded: adding an `AppSpec` field wit
 
 Every retained App was normalized to carry artifact and release fingerprints during the w1/m56 fleet migration. A missing fingerprint is now treated like any other missing desired-state identity and enters normal artifact/release reconciliation; the operator no longer infers an identity from an active revision. Operational edits such as replica changes remain no-op releases because their stored canonical fingerprints continue to match.
 
+## Per-release configuration snapshots (w1/m152)
+
+A release's identity is a fingerprint — proof that inputs changed, never a restorable value. Its _configuration_ lived only in mutable objects: one `<name>-env` / `<name>-files` Secret per service, rewritten in place on every save, plus each linked env group's shared `<evg-id>-env` / `<evg-id>-files`, rewritten for every service linked to it. The pod template referenced those by **name**, and kubelet resolved contents at pod creation. So a save changed what a _running_ release would serve on its next pod creation, and canceling the deploy that carried the save could not put the old values back — there were none to put back. A crash-restarted pod of the old release came up with the new values for the same reason.
+
+**Each dispatched release now writes an immutable copy of every configuration source it reads, and its pod template references those copies instead.**
+
+- **One snapshot per source, never flattened.** For release generation _N_: `<name>-env-rN` and `<name>-files-rN` for the service's own maps, plus `<evg-id>-env-rN` / `<evg-id>-files-rN` per linked group. The `envFrom` list and the projected-volume source list keep their existing order with snapshot names substituted, so **precedence is unchanged and never re-derived** — it remains a property of list order (groups first, the service's own last, which is what makes a service's own key and file win).
+- **Why not one flattened Secret per release.** `maxSecretMapBytes` (512 KiB) is a **per-map** quota, deliberately set under Kubernetes' 1 MiB Secret ceiling so that "a map that passes the quota can always materialize". Flattening a 512 KiB service map with two 512 KiB group maps reaches ~1.5 MiB while every input passed its own quota — recreating the source/projection divergence that quota was introduced to stop. A per-source copy inherits the ≤512 KiB guarantee by construction.
+- **Retention: the 20 most recent release generations**, matching `deploys.eligibilityScanLimit`. Rollback's _verb_ accepts any named `deployId` with no age window, so retention cannot match it; 20 is what the product actually **offers** before a target reads `no_eligible_rollback_target`. Every rollback the product offers therefore restores configuration exactly. Object bound per App: 20 × (1 + linked group count).
+- **Beyond the window, rollback restores the image only — and says so.** Silence here would repeat the defect this work exists to fix, so a target older than the retained window reports image-only restoration rather than implying a full restore.
+- **Lazy migration; nothing rolls on upgrade.** Snapshots are written at dispatch, so an App that has not deployed since keeps referencing its mutable Secrets and its pods keep their current template. Cancel and rollback fall back to prior behaviour for any release with no snapshot. The mixed state is deliberate and covered by the milestone's blast-radius pass.
+
+Snapshots are owned by their App (owner reference) so a service delete reclaims them, and they are never written by the control plane — the operator is DB-free, so a release must be restorable from cluster state alone.
+
 ## In-cluster builds (BuildKit/kpack → Zot)
 
 Setting `App.spec.repo` builds the image **on the cluster**, so there is no laptop step and no docker daemon (app nodes run containerd). When the operator reconciles a repo-backed App whose revision changed, it:
