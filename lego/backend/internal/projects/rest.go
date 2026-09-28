@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -129,7 +130,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		after, limit := core.PageParams(r.URL.Query())
+		q := r.URL.Query()
+		names := core.QueryList(q, "name")
+		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+		if err != nil {
+			return nil, err
+		}
+		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+		if err != nil {
+			return nil, err
+		}
+		ps = core.Filter(ps, func(p ProjectView) bool {
+			return (len(names) == 0 || slices.Contains(names, p.Name)) &&
+				created.ContainsTime(p.CreatedAt) && updated.ContainsTime(p.UpdatedAt)
+		})
+		after, limit := core.PageParams(q)
 		ps = core.StablePage(ps, after, limit, true, func(p ProjectView) string { return p.ID })
 		rendered, err := s.renderProjects(r.Context(), ps)
 		if err != nil {
