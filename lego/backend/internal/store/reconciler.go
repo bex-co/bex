@@ -1561,6 +1561,16 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
 			}
 		case metav1.ConditionFalse:
+			// A new revision's container failure is a deploy diagnosis, not an
+			// outage, when the operator has observed the active pods ready.
+			serving := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
+			if app.Status.Phase == appv1alpha1.PhaseDeploying && serving != nil &&
+				serving.ObservedGeneration == app.Generation && serving.Status == metav1.ConditionTrue {
+				obs.Availability = "healthy"
+				obs.AvailabilityObserved = true
+				obs.ReadyTransitionAt = serving.LastTransitionTime.Time
+				break
+			}
 			// A gate that failed before runtime dispatch says nothing about the
 			// serving instance's availability. In particular, do not collapse it
 			// into readiness_failed merely because the deploy row has since closed.
