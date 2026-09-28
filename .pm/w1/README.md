@@ -203,7 +203,7 @@ The user approved all five proposals from the 2026-09-27 w1 brainstorm, with the
 
 > **2026-09-21 (`/pm 2,3,4,5 for w1`):** [106](done/106.md) promoted → **m164**; brainstorm items 2 and 3 filed as **m162** and **m163**; item 5 filed as inbox note **108**. Item 1 (red main: `serviceEventsQuery` lost `stall_reason`, deploy blocked since 2026-09-19) was not scheduled here. Note for the five `blocked/` milestones: their "no pin since 2026-09-16 02:00Z" blocker is stale — pins landed 2026-09-16 09:12Z and 2026-09-17 01:19Z/03:47Z/09:27Z (production runs `f4be22797`), so their live re-checks can resume.
 
-> **2026-09-16 (`/loopx w1`):** [107](done/107.md) fixed and shipped — the agent-session audit now records the real client instead of Traefik's pod IP. [106](blocked/106.md) parked: its fix changes what `successfulReleaseGeneration` reports, a field bex-api's deploy reconciler consumes, so it needs store-reconciler evidence rather than a line change.
+> **2026-09-16 (`/loopx w1`):** [107](done/107.md) fixed and shipped — the agent-session audit now records the real client instead of Traefik's pod IP. [106](done/106.md) parked: its fix changes what `successfulReleaseGeneration` reports, a field bex-api's deploy reconciler consumes, so it needs store-reconciler evidence rather than a line change.
 
 > **Promoted 2026-09-15 (w1 triage, user decision):** [085](done/085.md) + [086](done/086.md) + [098](done/098.md) → **m159**; [101](done/101.md) + [105](done/105.md) → **m160**; [102](done/102.md) → **m161**. Each note moved to `done/` with its promotion line.
 
