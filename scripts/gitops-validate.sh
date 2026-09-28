@@ -1368,11 +1368,24 @@ if [ -f "$LOGSHIP" ]; then
     'dashboard;.*|bex-registry;.*|bex-system;static-server' \
     'regex         = "bex-registry"' \
     'replacement   = "zot"' \
-    'regex         = "bex-system"' \
+    'regex         = "bex-system;static-server"' \
     'replacement   = "static-server"' \
     'type  = "platform"'; do
     echo "$vals" | grep -qF "$required" \
       || { echo "FAIL: log-shipper.yaml migration evidence pipeline lost required rule: $required" >&2; fail=1; }
+  done
+
+  # Core-service incident evidence (w7/m157): bex-api and the operator manager
+  # ship as type=platform under closed service=bex-api|operator labels.
+  echo "==> $LOGSHIP core-service platform retention (w7/m157)"
+  for required in \
+    'bex-system;;bex-api;.*|bex-system;;[^;]*;controller-manager' \
+    'regex         = "bex-system;bex-api"' \
+    'replacement   = "bex-api"' \
+    'regex         = "bex-system;controller-manager"' \
+    'replacement   = "operator"'; do
+    echo "$vals" | grep -qF "$required" \
+      || { echo "FAIL: log-shipper.yaml core-service platform retention lost required rule: $required" >&2; fail=1; }
   done
 
   # Platform edge-host retention (w5/053, ADR088 §6): the w4/m88 RequestHost
