@@ -101,6 +101,29 @@ func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserVie
 	return out, nil
 }
 
+// PostgresCredentialView is Render's credential identity. Connection counts
+// and creation timestamps are omitted because CNPG does not report them here.
+type PostgresCredentialView struct {
+	Username string `json:"username"`
+	Default  bool   `json:"default"`
+}
+
+// ListCredentials includes the CNPG owner as the default credential and the
+// additional managed roles. The native ListUsers contract intentionally keeps
+// only additional roles for its existing editing clients.
+func (s *Service) ListCredentials(ctx context.Context, name string) ([]PostgresCredentialView, error) {
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PostgresCredentialView, 0, len(d.Spec.Users)+1)
+	out = append(out, PostgresCredentialView{Username: d.Spec.EffectiveDatabaseUser(d.Name), Default: true})
+	for _, user := range d.Spec.Users {
+		out = append(out, PostgresCredentialView{Username: user.Name})
+	}
+	return out, nil
+}
+
 // CreateUser adds a managed login role: it generates a password into a
 // generation-specific per-user basic-auth Secret and records the role on the
 // Database (spec.users), which the operator projects to CNPG's managed roles.

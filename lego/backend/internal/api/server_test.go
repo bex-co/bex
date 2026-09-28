@@ -1184,7 +1184,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 341 // +4: datastore conditional placement clears (w7/m151)
+const wantSweptVerbs = 342 // +1: Render Postgres credential identity list (w4/168)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()

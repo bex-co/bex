@@ -303,6 +303,13 @@ func TestRenderConformance(t *testing.T) {
 		check(t, "/v1/postgres/"+dbName, "retrieve-postgres")
 	})
 
+	t.Run("postgres/recovery", func(t *testing.T) {
+		check(t, "/v1/postgres/"+dbName+"/recovery", "retrieve-postgres-recovery-info")
+	})
+	t.Run("postgres/credentials", func(t *testing.T) {
+		check(t, "/v1/postgres/"+dbName+"/credentials", "list-postgres-users")
+	})
+
 	t.Run("keyvalue/list", func(t *testing.T) {
 		// bex returns a flat []KeyValueView; Render expects [{redis:{},cursor}].
 		// The mismatch is in the allowlist (ADR018 §Key Value REST).
