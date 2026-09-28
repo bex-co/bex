@@ -241,6 +241,9 @@ bash scripts/datastore-dns-cloudflare.test.sh || { echo "FAIL: datastore Cloudfl
 echo "==> SSH verifier CLI safety gates"
 bash scripts/ssh-verify.test.sh || { echo "FAIL: SSH verifier CLI safety gates" >&2; fail=1; }
 
+echo "==> analytics reader SealedSecret custody contract"
+bash scripts/analytics-bootstrap.test.sh || { echo "FAIL: analytics reader SealedSecret custody contract" >&2; fail=1; }
+
 echo "==> onbex fallback TLS secret installation safety gates"
 bash scripts/onbex-default-tls-secret.test.sh || { echo "FAIL: onbex fallback TLS secret installation safety gates" >&2; fail=1; }
 

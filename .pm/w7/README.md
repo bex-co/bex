@@ -15,6 +15,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m153** — [Repair analytics Secret ownership and root GitOps sync](done/m153/README.md) — done 2026-09-28: sealed payload verified identical to live, Secret adopted by its SealedSecret, `bex-platform-prod` Synced/Healthy, both analytics datasources healthy; bootstrap now honors sealed custody (`SEAL_TO` reseal, CA-drift fail-closed). Follow-up `060`.
 - [ ] **m154** — [Bound cron resource names across lifecycle operations](m154/README.md) (7 tasks; ~3h 40m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 2.
 - [ ] **m155** — [Parse mixed application log formats without error floods](m155/README.md) (6 tasks; ~3h 10m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 3.
 - [ ] **m156** — [Repair CNPG replica WAL metric collection](m156/README.md) (6 tasks; ~3h 10m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 4.
@@ -153,6 +154,7 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 - [x] **055** — [Honest liveness detection wording](done/055.md) (45m). Approved: retain best-effort scheduling, remove the unsupported detection guarantee, qualify timestamp attribution. The advisory cadence checker remains separately tracked in [w3/042](../w3/042.md); an in-cluster trigger is deferred.
 
+- [ ] **060** — [Reseal the Grafana analytics readers after the bex-db CA renewal](060.md) (20m) ← `m153` follow-up, 2026-09-28; CNPG renews `bex-db-ca` before 2026-10-08T23:06:42Z.
 - [x] **057** — [Consistent webhook deletion confirmation with disk-restore protection](done/057.md) (45–60m). Approved: standard webhook delete phrase; preserve destructive restore protection.
 - [x] **056** — [The `gitops (render)` gate has been red for 5.5 days because its own assertion miscounts under the yq version CI pins](done/056.md) (20m) ← live `/qa-find-bugs` of `dashboard.bex.co` 2026-09-17 sweep 39, found from CI when `main` moved for the first time in fourteen sweeps; the guard that stops broken manifests reaching Argo CD has failed every run since `d82cc98cd` (2026-09-12), and **the manifest it guards is correct**. `scripts/gitops-validate.sh:2628` uses `(.tolerations // [])` after a document-level `select`, and under the pinned **yq 4.44.6** the `//` operator materializes for the filtered-out document, so a two-document file yields `"0\n0"` which never compares equal to `0` — measured under both 4.44.6 (FAIL) and 4.47.1 (PASS) on byte-identical files. The three sibling assertions in the same block pass, because only this one uses `// []`. **The fix is `head -1`, not the in-tree `tr -d '\n'` idiom** — that concatenates to `"00"` and still fails, verified. Blast radius counted: 1 of 10 `// []` sites. 22 commits touching the guarded paths merged unvalidated in the window, and `main` is not branch-protected so nothing was blocked.
 
