@@ -1491,7 +1491,7 @@ func TestRESTListTypeFilter(t *testing.T) {
 }
 
 func TestRESTListSuspendedFilter(t *testing.T) {
-	// GET /v1/services?suspended=true|false filters by suspension state (w2/m52).
+	// GET /v1/services?suspended=suspended|not_suspended filters by suspension state (w2/m52).
 	web := sampleApp("web")
 	susp := sampleApp("susp")
 	susp.Spec.Suspended = true
@@ -1501,22 +1501,22 @@ func TestRESTListSuspendedFilter(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=true", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=suspended", nil))
 	var page []serviceWithCursor
 	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(page) != 1 || page[0].Service.Name != "susp" {
-		t.Errorf("suspended=true = %v, want [susp]", page)
+		t.Errorf("suspended=suspended = %v, want [susp]", page)
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=false", nil))
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=not_suspended", nil))
 	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if len(page) != 1 || page[0].Service.Name != "web" {
-		t.Errorf("suspended=false = %v, want [web]", page)
+		t.Errorf("suspended=not_suspended = %v, want [web]", page)
 	}
 
 	rec = httptest.NewRecorder()
