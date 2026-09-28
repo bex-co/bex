@@ -1,0 +1,69 @@
+# Per-member etcd metrics (w7/m160). kubeadm binds etcd's metrics listener to
+# 127.0.0.1:2381 only, and scraping the client port would need an etcd client
+# certificate — full keyspace access. Instead one kube-rbac-proxy per
+# control-plane node shares the host network, forwards to the loopback
+# listener, and serves TLS on the node's InternalIP (never 0.0.0.0, so not the
+# public interface). Tenant pods cannot reach node IPs
+# (deny-tenant-node-and-metadata-egress); every other caller needs a token
+# authorized for GET /metrics.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: etcd-metrics
+  namespace: monitoring
+  labels: { app.kubernetes.io/name: etcd-metrics }
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/name: etcd-metrics }
+  updateStrategy:
+    rollingUpdate: { maxUnavailable: 1 }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: etcd-metrics }
+    spec:
+      serviceAccountName: etcd-metrics
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: kube-rbac-proxy
+          image: quay.io/brancz/kube-rbac-proxy:v0.22.1@sha256:e8cad21b2f9ad0302f1ec972c555a1d916f51aae6003da3cd2554d5f29bb9bc4
+          args:
+            - --secure-listen-address=$(HOST_IP):9979
+            - --upstream=http://127.0.0.1:2381/
+            - --allow-paths=/metrics
+            - --tls-cert-file=/etc/tls/tls.crt
+            - --tls-private-key-file=/etc/tls/tls.key
+            - --tls-min-version=VersionTLS12
+          env:
+            - name: HOST_IP
+              valueFrom:
+                fieldRef: { fieldPath: status.hostIP }
+          ports:
+            - { name: https-metrics, containerPort: 9979, protocol: TCP }
+          resources:
+            requests: { cpu: 5m, memory: 24Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tls, mountPath: /etc/tls, readOnly: true }
+      volumes:
+        - name: tls
+          secret:
+            secretName: etcd-metrics-serving
+            items:
+              - { key: tls.crt, path: tls.crt }
+              - { key: tls.key, path: tls.key }

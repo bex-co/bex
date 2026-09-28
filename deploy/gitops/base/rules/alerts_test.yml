@@ -1867,3 +1867,90 @@ tests:
             exp_annotations:
               summary: "Node DiskPressure telemetry is missing"
               description: "kube-state-metrics has no DiskPressure condition series for any node for >15m, so NodeDiskPressure cannot fire. Check the kube-state-metrics target and its node collector."
+
+  # w7/m160: a member we cannot scrape is monitoring loss, reported per node,
+  # and is not an etcd health alert; leader loss and latency fire and resolve.
+  - name: etcd scrape loss is reported per control-plane node
+    interval: 1m
+    input_series:
+      - series: 'kube_node_role{role="control-plane",node="cp-a"}'
+        values: "1x30"
+      - series: 'kube_node_role{role="control-plane",node="cp-b"}'
+        values: "1x30"
+      - series: 'up{job="etcd",node="cp-a"}'
+        values: "1x30"
+      - series: 'up{job="etcd",node="cp-b"}'
+        values: "1x5 0x25"
+      - series: 'etcd_server_has_leader{job="etcd",node="cp-a"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: EtcdMetricsMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: EtcdMetricsMissing
+        exp_alerts:
+          - exp_labels: { severity: warning, role: control-plane, node: cp-b }
+            exp_annotations:
+              summary: "etcd metrics are not being scraped on cp-b"
+              description: "Prometheus has no successful etcd scrape for control-plane node cp-b for >10m, so the etcd latency and leader alerts are blind there. This is monitoring loss, not an etcd outage. Debug: kubectl -n monitoring get pods -l app.kubernetes.io/name=etcd-metrics -o wide; kubectl -n monitoring logs ds/etcd-metrics; kubectl -n monitoring get certificate etcd-metrics-serving."
+      - eval_time: 20m
+        alertname: EtcdNoLeader
+        exp_alerts: []
+
+  - name: no etcd scrape target at all is reported
+    interval: 1m
+    input_series:
+      - series: 'up{job="kube-state-metrics"}'
+        values: "1x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: EtcdMetricsMissing
+        exp_alerts:
+          - exp_labels: { severity: warning, job: etcd }
+            exp_annotations:
+              summary: "etcd metrics are not being scraped"
+              description: "Prometheus has no successful etcd scrape at all for >10m, so the etcd latency and leader alerts are blind there. This is monitoring loss, not an etcd outage. Debug: kubectl -n monitoring get pods -l app.kubernetes.io/name=etcd-metrics -o wide; kubectl -n monitoring logs ds/etcd-metrics; kubectl -n monitoring get certificate etcd-metrics-serving."
+
+  - name: etcd leader loss pages and clears
+    interval: 1m
+    input_series:
+      - series: 'etcd_server_has_leader{job="etcd",node="cp-a"}'
+        values: "1x3 0x3 1x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: EtcdNoLeader
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: EtcdNoLeader
+        exp_alerts:
+          - exp_labels: { severity: critical, job: etcd, node: cp-a }
+            exp_annotations:
+              summary: "etcd member on cp-a has no leader"
+              description: "The etcd member on cp-a has reported no Raft leader for >1m: writes through it fail and the API server stalls. Debug: kubectl -n kube-system logs etcd-cp-a --tail=200; kubectl get nodes -l node-role.kubernetes.io/control-plane; check the other members' EtcdNoLeader/EtcdMetricsMissing."
+      - eval_time: 10m
+        alertname: EtcdNoLeader
+        exp_alerts: []
+
+  - name: sustained slow WAL fsync fires, a short burst does not
+    interval: 1m
+    input_series:
+      # Every fsync lands in the 1s bucket (p99 ~1s) from minute 10 on; before
+      # that all land under 10ms.
+      - series: 'etcd_disk_wal_fsync_duration_seconds_bucket{job="etcd",node="cp-a",le="0.01"}'
+        values: "0+60x10 600x30"
+      - series: 'etcd_disk_wal_fsync_duration_seconds_bucket{job="etcd",node="cp-a",le="1"}'
+        values: "0+60x40"
+      - series: 'etcd_disk_wal_fsync_duration_seconds_bucket{job="etcd",node="cp-a",le="+Inf"}'
+        values: "0+60x40"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: EtcdHighFsyncLatency
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: EtcdHighFsyncLatency
+        exp_alerts:
+          - exp_labels: { severity: warning, node: cp-a }
+            exp_annotations:
+              summary: "etcd WAL fsync p99 on cp-a is 990.1ms"
+              description: "Slow WAL fsync on cp-a delays every write and heartbeats (the 'slow fdatasync' / 'apply took too long' log lines). This is disk latency evidence, not a proven need to replace the disk. Debug: kubectl -n kube-system logs etcd-cp-a --tail=300 | grep -Ei 'fdatasync|took too long'."

@@ -30,6 +30,7 @@ resources:
   - barman-cloud-objectstores.yaml # prod backup transports; local overlay excludes (no S3 creds)
   - bex-postgres.yaml            # the control-plane DB Cluster (db `bex`), after CNPG
   - etcd-backup.yaml             # nightly etcd snapshot -> object storage (local overlay excludes)
+  - etcd-metrics.yaml            # per-member etcd metrics behind kube-rbac-proxy on each control-plane node (w7/m160)
   - auth-dbs.yaml                # kratos-db + hydra-db CNPG Clusters, after CNPG
   - kratos.yaml                  # Ory Kratos — platform identity (docs/ADR012-auth.md)
   - hydra.yaml                   # Ory Hydra — platform OAuth2/OIDC (docs/ADR012-auth.md)
