@@ -474,7 +474,8 @@ func (s *Service) Capabilities(ctx context.Context, workspaceID string, fresh bo
 // List returns a workspace's accepted members. Viewer-and-up (can_view on the
 // named workspace) — Render shows the members list to every role.
 func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(workspaceID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, workspaceID)
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
@@ -523,7 +524,8 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 // viewer-and-up like List: Render shows the seat bar to every role, and the
 // numbers reveal nothing the members list doesn't.
 func (s *Service) SeatUsage(ctx context.Context, workspaceID string) (SeatUsageView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(workspaceID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, workspaceID)
+	if err != nil {
 		return SeatUsageView{}, err
 	}
 	if s.Store == nil {
@@ -589,7 +591,8 @@ func (s *Service) memberWithEmail(ctx context.Context, workspaceID, email string
 // ListInvites returns a workspace's outstanding invites. Admin-only (managing
 // members) — the pending list can reveal who was invited, an org-settings view.
 func (s *Service) ListInvites(ctx context.Context, workspaceID string) ([]InviteView, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, workspaceID)
+	if err != nil {
 		return nil, err
 	}
 	if s.Store == nil {
@@ -616,7 +619,8 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	// its target (the invite id) is minted by the store, so recording at
 	// authorize time could carry no target at all. Denials record immediately.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, workspaceID)
+	if err != nil {
 		return InviteView{}, err
 	}
 	// round-5 finding 4: creating an admin invite is a durable-capability
@@ -705,7 +709,8 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 // supersedes the original, which stops redeeming. An accepted or unknown
 // invite is a 404 on every surface.
 func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string) (InviteView, error) {
-	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, workspaceID, core.InviteTarget(inviteID))
+	if err != nil {
 		return InviteView{}, err
 	}
 	// round-19 #3: resending re-issues a redeemable capability — the members
@@ -872,7 +877,8 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	// leaves only the denial/attempt trail. Denials record immediately, with
 	// the member target the caller asked to change.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.MemberTarget(subject)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, workspaceID, core.MemberTarget(subject))
+	if err != nil {
 		return MemberView{}, err
 	}
 	// round-5 finding 4: a role change (including self-promotion back to admin)
@@ -1050,7 +1056,8 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	// denial/attempt trail — never a row claiming it revoked credentials it did
 	// not touch. Denials still record immediately, with the member target.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.MemberTarget(subject)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, workspaceID, core.MemberTarget(subject))
+	if err != nil {
 		return err
 	}
 	// codex round-8 #8: removing a member revokes their access irreversibly —
@@ -1160,7 +1167,8 @@ func (s *Service) LeaveWorkspace(ctx context.Context, workspaceID string) error 
 	if !ok || id.Subject == "" {
 		return core.ErrForbidden
 	}
-	if err := s.AuthorizeOnTarget(ctx, core.RelCanView, core.WorkspaceObject(workspaceID), core.MemberTarget(id.Subject)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanView, workspaceID, core.MemberTarget(id.Subject))
+	if err != nil {
 		return err
 	}
 	if s.Store == nil {
@@ -1309,7 +1317,8 @@ func (a AccountOffboarder) Remove(ctx context.Context, workspaceID, subject stri
 
 // RevokeInvite deletes a pending invite before it's redeemed. Admin-only.
 func (s *Service) RevokeInvite(ctx context.Context, workspaceID, inviteID string) error {
-	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {
+	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, workspaceID, core.InviteTarget(inviteID))
+	if err != nil {
 		return err
 	}
 	// round-19 #3: the members can_manage verbs fail closed while the caller's

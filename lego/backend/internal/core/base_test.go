@@ -321,3 +321,37 @@ func TestEnsureWorkspaceNamespace(t *testing.T) {
 		}
 	})
 }
+
+type unavailableChecker struct{ calls int }
+
+func (c *unavailableChecker) Check(context.Context, string, string, string) (bool, error) {
+	c.calls++
+	return false, errors.New("POST http://openfga.auth.svc:8080/stores/private-store/check returned 400")
+}
+
+func (c *unavailableChecker) CheckFresh(ctx context.Context, user, relation, object string) (bool, error) {
+	return c.Check(ctx, user, relation, object)
+}
+
+func TestAuthzFailuresAreRedactedAndEmptyWorkspaceNeverReachesChecker(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user", Method: "session"})
+	checker := &unavailableChecker{}
+	base := &Base{Authz: checker}
+	for name, check := range map[string]func(context.Context, string, string) error{
+		"cached": base.checkAuthz,
+		"fresh":  base.checkAuthzFresh,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := check(ctx, RelCanView, WorkspaceObject("tea-1")); err != ErrAuthzUnavailable {
+				t.Fatalf("checker error exposed internal details: %v", err)
+			}
+			before := checker.calls
+			if err := check(ctx, RelCanView, WorkspaceObject("")); !errors.Is(err, ErrBadRequest) {
+				t.Fatalf("empty workspace error = %v, want bad request", err)
+			}
+			if checker.calls != before {
+				t.Fatal("empty workspace reached OpenFGA")
+			}
+		})
+	}
+}

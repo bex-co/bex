@@ -332,3 +332,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **165** — [Project and custom-domain lists accept Render's `name` and time filters, then return everything](done/165.md) — done 2026-09-27.
 
 - [x] **164** — [`GET /v1/services?suspended=` refuses every value, and `?env=` is accepted but ignored](done/164.md) — done 2026-09-27.
+
+- [x] **166** — [Five MCP tools fail without `workspaceId`, and the error exposes bex's internal OpenFGA URL and store id](done/166.md) — done 2026-09-27.

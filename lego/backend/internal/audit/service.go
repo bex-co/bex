@@ -225,7 +225,8 @@ func FilterOf(startTime, endTime, direction, cursor string, limit int) (Filter, 
 // the named object directly, so a caller from another workspace naming this
 // one by id gets ErrForbidden, never a leak of its trail through a guessed id.
 func (s *Service) List(ctx context.Context, ownerID string, filter Filter) ([]Event, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(ownerID)); err != nil {
+	ownerID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, ownerID)
+	if err != nil {
 		return nil, err
 	}
 	oldestFirst, err := core.ParseDirection(filter.Direction)
