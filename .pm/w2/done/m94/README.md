@@ -1,6 +1,6 @@
 # w2 · m94 — Linked environment groups: precedence, auto-deploy, and quota parity
 
-**Worker:** worker2 **Goal:** a linked environment group behaves the way Render documents and the way bex's own Environment page claims. A Render-shaped group write opens a deploy only on linked services with auto-deploy on. A service's own secret file always beats a linked group's file of the same name, the rule env vars already follow. When two linked groups define the same key or file, the page shows which one the service runs. A group already over the secret-map quota can shrink through a batch patch. Every rule is written down. **Status:** t001–t008 done; live re-probe 2026-09-27 (pass 225): bullets 1, 3, 4 and 6 pass; bullet 2 passes on behavior but its page-copy half fails (→ new t010); bullet 5 (over-quota shrink) cannot be seeded from outside and rests on t004 tests; t009 closeout waits on t010
+**Worker:** worker2 **Goal:** a linked environment group behaves the way Render documents and the way bex's own Environment page claims. A Render-shaped group write opens a deploy only on linked services with auto-deploy on. A service's own secret file always beats a linked group's file of the same name, the rule env vars already follow. When two linked groups define the same key or file, the page shows which one the service runs. A group already over the secret-map quota can shrink through a batch patch. Every rule is written down. **Status:** done — live closeout 2026-09-28 (`/qa-find-bugs` pass 252, deploy `6b6d99ea8`): t010 copy verified; all DoD bullets pass except bullet 5, which rests on the t004 tests (an over-quota group cannot be seeded from outside)
 
 ## Tasks (in order)
 
@@ -14,8 +14,8 @@
 | t006 | Render parity — **DONE**                                                                                                                                               | 20m | t004, t005 |
 | t007 | Simplify — **DONE**                                                                                                                                                    | 20m | t006       |
 | t008 | Test coverage — **DONE**                                                                                                                                               | 45m | t006       |
-| t010 | Env-group link and delete copy says only auto-deploy services redeploy | 20m | t008 |
-| t009 | Closeout | 10m | t008, t010 |
+| t010 | Env-group link and delete copy says only auto-deploy services redeploy — **DONE** | 20m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008, t010 |
 
 
 ## Decisions
@@ -80,3 +80,11 @@ All were deleted afterwards (`DELETE` 204, then `GET` 404).
 - **An over-quota group can shrink — NOT RUN.** A group over 500 entries / 512 KiB cannot be created through the API, because the quota refuses the growth that would seed it. This rests on t004's tests.
 - **The rules are written down — PASS.** `docs/ADR013-secrets.md:96-99` states service-over-group (env vars and files), last-linked-wins, and the auto-deploy gate. The ADR018 environment-groups row (line 120) records last-linked-wins as a deliberate divergence from Render's most-recently-created.
 
+
+## Live closeout probe (2026-09-28, `/qa-find-bugs` pass 252)
+
+Deploy `6b6d99ea8` (carries `fced75a43`, w1/113). A throwaway group `qa-20260928-copy` (`evg-dat3ue1tipns73c1iccg`) was created in workspace `bex`, its page read, then deleted (`DELETE` 204, then `GET` 404).
+
+- `/env-groups/<evg>` → Linked Services reads **"Linking or unlinking redeploys linked services that have auto-deploy on. A repo-backed service with auto-deploy off keeps serving its current release and picks the change up on its next deploy."** Bullet 2's copy half passes (t010).
+- The delete-secret-file warning source (`dashboard/src/features/env-groups/locales/en.ts:387`) carries the same gate-aware wording; it was not opened live because it needs a group secret file.
+- Bullets 1, 3, 4 and 6 passed in pass 225 and are unchanged. Bullet 5 (over-quota shrink) cannot be seeded from outside and rests on the t004 tests.
