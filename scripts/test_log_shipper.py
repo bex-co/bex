@@ -21,7 +21,7 @@ def run(*args, **kwargs):
     return subprocess.check_output(args, cwd=ROOT, text=True, **kwargs).strip()
 
 
-def run_pipeline(test, pipeline_name, lines, receiver_type):
+def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "dpg-test"'):
     """Render the chart, keep one production loki.process block, feed it lines
     in the chart's own Alloy image, and return {entry: labels} per echoed line."""
     with tempfile.TemporaryDirectory(prefix="bex-log-shipper-") as tmp:
@@ -43,11 +43,11 @@ def run_pipeline(test, pipeline_name, lines, receiver_type):
   format = "json"
 }
 loki.source.file "test" {
-  targets = [{__path__ = "/tmp/lines.log", database = "dpg-test"}]
+  targets = [{__path__ = "/tmp/lines.log", %s}]
   forward_to = [loki.process.%s.receiver]
 }
 loki.echo "test" {}
-''' % pipeline_name + pipeline)
+''' % (target, pipeline_name) + pipeline)
         (tmp / "lines.log").write_text("\n".join(lines) + "\n")
         name = "bex-log-shipper-" + uuid.uuid4().hex[:12]
         run("docker", "create", "--name", name, "--network", "none", image,
@@ -103,6 +103,14 @@ class AppLogLevelsTest(unittest.TestCase):
             'plain text mentioning error': "unknown",
             'msg="no severity"': "unknown",
             'level=custom-value msg="unrecognized severity"': "unknown",
+            # w7/m155: quoted text and JSON are not logfmt. Before the logfmt
+            # stage was gated these produced Alloy's "failed to decode logfmt"
+            # error per line (8,979 in one production day).
+            'GET "/healthz" 200 12ms': "unknown",
+            '{"level":"warn","msg":"quoted \\"json\\" value"}': "warning",
+            '{"level":"error","msg":"truncated json"': "unknown",
+            '  {"msg":"indented json without a severity"}': "unknown",
+            'ts=2026-09-28T06:09:24Z level=warn msg="spaced \\"escaped\\" quotes"': "warning",
         }
         # Render's level names (w8/031): warnings ship as `warning`, the value
         # the pinned CLI's --level sends.
@@ -115,13 +123,22 @@ class AppLogLevelsTest(unittest.TestCase):
             for key in ("level", "severity"):
                 cases[f'{key}={value} msg="normalization"'] = expected
 
-        actual, output = run_pipeline(self, "app_logs", list(cases), "app")
+        # discovery.relabel.app_pods drops every pod without app.bex.co/app,
+        # so every production app_logs entry carries these labels.
+        actual, output = run_pipeline(self, "app_logs", list(cases), "app",
+                                      'namespace = "tenant", app = "web", pod = "web-1", container = "app"')
         self.assertEqual(set(actual), set(cases), f"missing or changed log lines:\n{output}")
         for line, expected in cases.items():
             with self.subTest(line=line):
                 self.assertEqual(actual[line].get("level"), expected)
         self.assertEqual({labels.get("level") for labels in actual.values()},
                          {"error", "warning", "info", "debug", "unknown"})
+        # Every supported format parses without a stage diagnostic: expected
+        # mismatches must not bury genuine ingestion errors.
+        diagnostics = [line for line in output.splitlines()
+                       if '"component_id":"loki.process.app_logs"' in line
+                       and re.search(r'"level":"(error|warn)"', line)]
+        self.assertEqual(diagnostics, [], "app_logs emitted parse diagnostics")
 
 
 class PostgresLogsTest(unittest.TestCase):

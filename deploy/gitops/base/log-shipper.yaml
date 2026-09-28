@@ -221,8 +221,15 @@ spec:
 
                 // slog's TextHandler and logrus's TextFormatter emit logfmt.
                 // Extract only explicit severity keys, never message substrings.
-                stage.logfmt {
-                  mapping = { level = "", severity = "" }
+                // Gated to non-JSON lines carrying a top-level level=/severity=
+                // token: JSON and quoted plain text are not logfmt, and decoding
+                // them logged "failed to decode logfmt" per line (w7/m155, 8,979
+                // in one production day), burying genuine ingestion errors.
+                stage.match {
+                  selector = `{app=~".+"} !~ "^\\s*[{]" |~ "(^|\\s)(level|severity)="`
+                  stage.logfmt {
+                    mapping = { level = "", severity = "" }
+                  }
                 }
 
                 // Normalize the vocabulary to Render's five buckets. Anything not
