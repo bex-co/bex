@@ -1,0 +1,37 @@
+# Source evidence: former w4/m137/t009
+
+Historical evidence only; active work is t001–t007 in this milestone. The unverified probe suggestions below are hypotheses, not a requirement to implement before diagnosis.
+
+## Objective
+
+Make the DoD's first and third bullets true for Key Value. While a client cannot connect, the status must not read `available`. The live probe on 2026-09-27 (`/qa-find-bugs` pass 232, recorded in the milestone README) showed the restart states are now right (`config_restart`, never `creating`), but `available` returns before the store serves:
+
+| Trigger | `config_restart` | `available` | external `PING` over TLS back at | early by |
+| --- | --- | --- | --- | --- |
+| Maxmemory Policy → `noeviction` | 13:40:05 | 13:40:24 | 13:40:40 | ~13–16 s |
+| Maxmemory Policy → `allkeys_lru` (repro) | 13:42:17 | 13:42:34 | 13:43:00 | ~23 s |
+| Resume after suspend | 13:49:39 | 13:50:06 | 13:50:19 | ~10–13 s |
+
+The control, a Postgres manual restart in the same pass, was accurate: `config_restart` 13:48:00 → `available` 13:48:28, with `psql` refused 13:48:02 → up 13:48:29 (3 s sampling).
+
+## Context
+
+- `lego/backend/internal/keyvalue/service.go:228` `kvStatus` → `core.DatastoreReadyStatus(conditions, generation)`: `available` once the KV's `Ready` condition is true at the current generation.
+- `lego/operator/internal/controller/keyvalue_controller.go:~825-835` sets `Ready` when `statefulSetRolloutReady` and `keyValuePodsReady` hold, both keyed off the pod's readiness.
+- The pod's readiness probe (`keyvalue_controller.go:664-666`) is a bare `TCPSocket` on **`kvPort` 6379 (plaintext)**. External clients reach the store through `kv-sni-proxy`, which dials **`<name>.<ns>.svc.cluster.local:6380` (TLS)** (`cmd/kv-sni-proxy/main.go:103,319`). The probe that makes the store "available" does not exercise the path clients use. A TCP accept on 6379 can also succeed before Valkey has loaded its data.
+- Cause, **partly unverified** (no cluster access in this run): either the 6380/TLS listener or data load trails the 6379 accept, or Service-endpoint propagation to the proxy's node lags the pod's Ready. The observed 10–23 s gap fits both. The client-side symptom was `SSL_connect failed: unexpected eof`: the proxy accepts, cannot reach the backend, and closes.
+
+## Steps
+
+1. Replace the TCP probe with one that proves the store serves: an exec probe running `valkey-cli -p 6379 PING` (expects `PONG`, which also fails during `LOADING`), plus a check of the TLS listener on 6380 if it can lag independently.
+2. If endpoint propagation is part of the gap, have the operator confirm reachability through the Service on 6380 before setting `Ready`, or delay `Ready` until the endpoint slice lists the pod ready.
+3. Keep `config_restart` (not `creating`) through the whole window. `available` should appear at most one poll after the first successful client connection.
+4. Tests: an operator test that `Ready` is not set while the probe target does not answer `PING`. Re-run the three triggers above live and record the timelines.
+
+## Acceptance criteria
+
+- [ ] For a Maxmemory change, a Persistence Mode change and a resume, a 3 s external `PING` poll and a 2–3 s `keyValue{status}` poll show no sample where status is `available` and `PING` fails, beyond one sampling interval.
+
+## Out of scope
+
+- The IPv6 allowlist trap (`w9/m164`) that forces IPv4 in the probe.
