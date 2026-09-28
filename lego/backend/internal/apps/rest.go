@@ -684,12 +684,16 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		names := core.QueryList(q, "name")
 		environmentIDs := core.QueryList(q, "environmentId")
 		types := core.QueryList(q, "type")
-		// suspended= is Render's boolean string filter ("true"/"false"). Unknown
-		// values return a named 400; absent means unfiltered.
-		suspended, err := core.ParseEnum("suspended", q.Get("suspended"), "true", "false")
-		if err != nil {
-			return nil, err
+		// Render ORs repeated suspension, runtime (deprecated env alias), and
+		// region values. Region is compared literally with platform metadata.
+		suspended := core.QueryList(q, "suspended")
+		for _, value := range suspended {
+			if _, err := core.ParseEnum("suspended", value, core.RenderSuspended, core.RenderNotSuspended); err != nil {
+				return nil, err
+			}
 		}
+		runtimes := core.QueryList(q, "env")
+		regions := core.QueryList(q, "region")
 		// Time-window filters (w2/m52): Render's createdBefore/createdAfter and
 		// updatedBefore/updatedAfter RFC3339 params.
 		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
@@ -704,7 +708,9 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 			return (len(names) == 0 || slices.Contains(names, a.Name) || slices.Contains(names, renderServiceName(a))) &&
 				(len(environmentIDs) == 0 || slices.Contains(environmentIDs, a.EnvironmentID)) &&
 				(len(types) == 0 || slices.Contains(types, effectiveType(a.Type))) &&
-				(suspended == "" || a.Suspended == (suspended == "true")) &&
+				(len(suspended) == 0 || slices.Contains(suspended, core.SuspendedEnum(a.Suspended))) &&
+				(len(runtimes) == 0 || effectiveType(a.Type) != "static_site" && slices.Contains(runtimes, a.Runtime)) &&
+				(len(regions) == 0 || slices.Contains(regions, a.Region)) &&
 				created.Contains(a.CreatedAt) && updated.Contains(a.UpdatedAt)
 		})
 		// Render's cursor pagination (docs/render-artifacts/owners-api.md): a

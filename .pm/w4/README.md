@@ -330,3 +330,5 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 - [x] **163** — [Blueprint validate still stops at the first bad env group or database, hiding every service error behind it](done/163.md) ← live `/qa-find-bugs` 2026-09-27 pass 240; `w8/019` aggregated services and Key Value, but `parseCompiledStack` still returns early at `deploy.go:1800` (env groups) and `:1815` (databases).
 
 - [x] **165** — [Project and custom-domain lists accept Render's `name` and time filters, then return everything](done/165.md) — done 2026-09-27.
+
+- [x] **164** — [`GET /v1/services?suspended=` refuses every value, and `?env=` is accepted but ignored](done/164.md) — done 2026-09-27.
