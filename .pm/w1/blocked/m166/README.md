@@ -85,6 +85,46 @@ probe is a coin toss over a stale and a live endpoint.
 failure can *itself* satisfy readiness, which needs an authenticated in-cluster probe
 rather than this external one, and must not log secrets.
 
+## t002 gate (2026-09-28, `/loopx w1`)
+
+**t001's measurement redirected this milestone, and the redirection is what blocks
+t002.** The milestone was framed as "probe authenticated serving readiness before
+publishing Ready". t001 shows a single probe cannot work — it would have passed at
++32.3s into a path that failed 1.3s later. Two ways forward, and they are not
+equivalent:
+
+1. **Require sustained success** (N consecutive probes, or a settle window spanning the
+   ~25s flap). Implementable from here, in the operator, with envtest coverage. But it
+   *masks* the flap rather than fixing it, and this milestone's DoD says outright that
+   "root cause is measured, not assumed".
+2. **Fix the flap.** t001's evidence points at it: the dominant failure is
+   `tls:SSLEOFError` — the connection reaches something that closes it — not
+   `conn:refused` (nothing listening) or `-LOADING` (Valkey up, still loading). That is
+   the signature of a stale endpoint still in the Service's set, or kv-sni-proxy holding
+   the old backend, and it explains the coin-toss shape. If that is the cause, Ready is
+   publishing truthfully about the *pod* while the *route* is wrong, and a readiness
+   probe is the wrong layer to fix it at.
+
+**Choosing (2) — the one the DoD points at — requires watching endpoints through a
+transition, and this session cannot.** It needs `kubectl get endpoints` / the
+kv-sni-proxy's backend set sampled across a maxmemory change, which means:
+
+- **production cluster access** — not available here: there is no `infra/*.kubeconfig`,
+  and `BEX_PROD_KUBECONFIG`/`KUBECONFIG` are absent from `.env`. `HCLOUD_TOKEN` is
+  present, but minting cluster access from it is an outward-facing infrastructure action
+  and not something to do unprompted; or
+- **a healthy local cluster** — the same gate that parks `w1/m163` and `w1/108`. The
+  local app cluster is reachable again after this session repaired its kubeconfig port
+  drift, but its control plane is not stable: `kube-scheduler` has **350** restarts and
+  `kube-controller-manager` **354**, each running ~6 minutes before exiting 1, for nine
+  days. Stabilizing it means a `mock-cluster.sh` reprovision, which wipes every other
+  workstream's `dev-N` stack while a concurrent session is active.
+
+**To clear, pick one:** authorize the reprovision (and accept the `dev-N` blast radius),
+supply a production kubeconfig for read-only endpoint observation, or decide that
+option (1) is acceptable and this milestone may mask the flap — in which case say so and
+t002/t003 proceed immediately, since nothing else gates them.
+
 ## Source + Goal linkage
 
 - **Source:** approved w1 brainstorm item 1, 2026-09-28; absorbs former w4/m137/t009, whose full evidence is [preserved here](source-w4-m137-t009.md). Completed work and the remaining production closeout remain in [w4/m137](../../w4/blocked/m137/README.md). No implementation is marked done by this transfer.
