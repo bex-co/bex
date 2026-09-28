@@ -21,9 +21,12 @@ def run(*args, **kwargs):
     return subprocess.check_output(args, cwd=ROOT, text=True, **kwargs).strip()
 
 
-def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "dpg-test"'):
+def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "dpg-test"', relabel=None, expect=None):
     """Render the chart, keep one production loki.process block, feed it lines
-    in the chart's own Alloy image, and return {entry: labels} per echoed line."""
+    in the chart's own Alloy image, and return {entry: labels} per echoed line.
+
+    relabel=(block_name, [target meta labels]) instead routes one line per
+    synthetic pod target through that production discovery.relabel block."""
     with tempfile.TemporaryDirectory(prefix="bex-log-shipper-") as tmp:
         tmp = Path(tmp)
         chart = run("bash", "scripts/helm-artifact.sh", "pull", "alloy", str(tmp))
@@ -39,22 +42,43 @@ def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "
         test.assertIsNotNone(pipeline, f"rendered chart is missing the {pipeline_name} pipeline")
         # Keep every production stage; replace only the input and sink.
         pipeline = pipeline.group().replace("loki.write.default.receiver", "loki.echo.test.receiver")
-        (tmp / "config.alloy").write_text('''logging {
-  format = "json"
-}
+        files = {"lines.log": "\n".join(lines) + "\n"}
+        if relabel:
+            block_name, pods = relabel
+            block = re.search(r'^discovery\.relabel "%s" \{\n.*?^\}' % block_name, config, re.M | re.S)
+            test.assertIsNotNone(block, f"rendered chart is missing discovery.relabel {block_name}")
+            targets = []
+            for i, (meta, line) in enumerate(zip(pods, lines)):
+                files[f"pod{i}.log"] = line + "\n"
+                fields = dict(meta, __path__=f"/tmp/pod{i}.log")
+                targets.append("{" + ", ".join(f"{k} = {json.dumps(v)}" for k, v in fields.items()) + "}")
+            source = block.group().replace("discovery.kubernetes.pods.targets", "[" + ", ".join(targets) + "]")
+            source += '''
 loki.source.file "test" {
+  targets = discovery.relabel.%s.output
+  forward_to = [loki.process.%s.receiver]
+}
+''' % (block_name, pipeline_name)
+        else:
+            source = '''loki.source.file "test" {
   targets = [{__path__ = "/tmp/lines.log", %s}]
   forward_to = [loki.process.%s.receiver]
 }
+''' % (target, pipeline_name)
+        (tmp / "config.alloy").write_text('''logging {
+  format = "json"
+}
 loki.echo "test" {}
-''' % (target, pipeline_name) + pipeline)
-        (tmp / "lines.log").write_text("\n".join(lines) + "\n")
+''' + source + pipeline)
+        for filename, content in files.items():
+            (tmp / filename).write_text(content)
+        expect = len(lines) if expect is None else expect
         name = "bex-log-shipper-" + uuid.uuid4().hex[:12]
         run("docker", "create", "--name", name, "--network", "none", image,
             "run", "--storage.path=/tmp/alloy", "/tmp/config.alloy")
         try:
             # docker cp also works when CI uses a separate Docker daemon.
-            for filename in ("config.alloy", "lines.log"):
+            for filename in ["config.alloy", *files]:
                 run("docker", "cp", str(tmp / filename), f"{name}:/tmp/{filename}")
             run("docker", "start", name)
             deadline = time.monotonic() + 30
@@ -72,7 +96,7 @@ loki.echo "test" {}
                         labels = dict(re.findall(r'(\w+)="([^"\\]*)"', entry["labels"]))
                         test.assertEqual(labels.get("type"), receiver_type)
                         actual[entry["entry"]] = labels
-                if len(actual) >= len(lines):
+                if len(actual) >= expect:
                     break
                 if run("docker", "inspect", "-f", "{{.State.Running}}", name) != "true":
                     test.fail(f"Alloy exited before processing the fixture:\n{output}")
@@ -166,6 +190,54 @@ class PostgresLogsTest(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertEqual(actual[line].get("level"), level)
                 self.assertNotIn("cnpg_logger", actual[line])
+
+
+class PlatformLogsTest(unittest.TestCase):
+    """w7/m157: bex-api and the operator manager ship as type=platform under a
+    closed service= vocabulary; other bex-system components stay out."""
+
+    def test_core_services_collected_with_closed_labels(self):
+        def pod(ns, name, container, **labels):
+            meta = {"__meta_kubernetes_namespace": ns, "__meta_kubernetes_pod_name": name,
+                    "__meta_kubernetes_pod_container_name": container}
+            meta.update({"__meta_kubernetes_pod_label_" + k: v for k, v in labels.items()})
+            return meta
+        pods = [
+            (pod("bex-system", "bex-api-1", "api", app_kubernetes_io_name="bex-api"),
+             "2026/09/28 05:08:12 usage: rolled up window m157-api-marker"),
+            (pod("bex-system", "bex-controller-manager-1", "manager",
+                 app_kubernetes_io_name="control-plane", control_plane="controller-manager"),
+             '2026-09-28T01:09:31Z\tERROR\tm157-operator-marker\t{"controller": "app"}'),
+            (pod("bex-system", "bex-static-server-1", "static-server", app_bex_co_component="static-server"),
+             '{"level":"warn","msg":"m157-static-marker"}'),
+            (pod("dashboard", "dashboard-1", "dashboard"), "m157-dashboard-marker"),
+            (pod("bex-system", "bex-activator-1", "activator", app_bex_co_component="activator"),
+             "m157-activator-must-not-ship"),
+            (pod("bex-system", "bex-ssh-gateway-1", "ssh-gateway", app_kubernetes_io_name="bex-ssh-gateway"),
+             "m157-ssh-gateway-must-not-ship"),
+            (pod("opensandbox-system", "osb-controller-manager-1", "manager", control_plane="controller-manager"),
+             "m157-foreign-operator-must-not-ship"),
+        ]
+        actual, output = run_pipeline(self, "platform_logs", [line for _, line in pods], "platform",
+                                      relabel=("platform_pods", [meta for meta, _ in pods]), expect=4)
+        want = {
+            pods[0][1]: ("bex-api", "bex-system", "bex-api-1", "api", "unknown"),
+            pods[1][1]: ("operator", "bex-system", "bex-controller-manager-1", "manager", "error"),
+            pods[2][1]: ("static-server", "bex-system", "bex-static-server-1", "static-server", "warning"),
+            pods[3][1]: ("dashboard", "dashboard", "dashboard-1", "dashboard", "unknown"),
+        }
+        self.assertEqual(set(actual), set(want), f"unexpected platform lines:\n{output}")
+        for line, (service, ns, pod_name, container, level) in want.items():
+            with self.subTest(line=line):
+                labels = actual[line]
+                self.assertEqual((labels.get("service"), labels.get("namespace"), labels.get("pod"),
+                                  labels.get("container"), labels.get("level")),
+                                 (service, ns, pod_name, container, level))
+                self.assertNotIn("app", labels, "platform streams must stay outside tenant selectors")
+        diagnostics = [line for line in output.splitlines()
+                       if '"component_id":"loki.process.platform_logs"' in line
+                       and re.search(r'"level":"(error|warn)"', line)]
+        self.assertEqual(diagnostics, [], "platform_logs emitted parse diagnostics")
 
 
 if __name__ == "__main__":

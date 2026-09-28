@@ -278,12 +278,15 @@ spec:
               discovery.relabel "platform_pods" {
                 targets = discovery.kubernetes.pods.targets
 
-                // One keep for dashboard + zot + static-server (w2/m93). Closed
-                // service= vocabulary is stamped from namespace below.
+                // One keep for dashboard + zot + static-server (w2/m93) and the
+                // bex-api + operator manager pods (w7/m157), whose logs were
+                // otherwise lost with every replaced replica. Closed service=
+                // vocabulary is stamped below; bex-system's other components
+                // (activator, proxies, egress meter, ssh-gateway) stay out.
                 rule {
-                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_bex_co_component"]
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_bex_co_component", "__meta_kubernetes_pod_label_app_kubernetes_io_name", "__meta_kubernetes_pod_label_control_plane"]
                   separator     = ";"
-                  regex         = "dashboard;.*|bex-registry;.*|bex-system;static-server"
+                  regex         = "dashboard;.*|bex-registry;.*|bex-system;static-server;.*|bex-system;;bex-api;.*|bex-system;;[^;]*;controller-manager"
                   action        = "keep"
                 }
                 rule {
@@ -303,10 +306,25 @@ spec:
                   replacement   = "zot"
                 }
                 rule {
-                  source_labels = ["__meta_kubernetes_namespace"]
-                  regex         = "bex-system"
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_bex_co_component"]
+                  separator     = ";"
+                  regex         = "bex-system;static-server"
                   target_label  = "service"
                   replacement   = "static-server"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+                  separator     = ";"
+                  regex         = "bex-system;bex-api"
+                  target_label  = "service"
+                  replacement   = "bex-api"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_control_plane"]
+                  separator     = ";"
+                  regex         = "bex-system;controller-manager"
+                  target_label  = "service"
+                  replacement   = "operator"
                 }
                 rule {
                   source_labels = ["__meta_kubernetes_pod_name"]
@@ -331,9 +349,15 @@ spec:
                   }
                 }
 
+                // The operator manager logs zap console lines:
+                // "<ts>\t<LEVEL>\t<msg>\t{json}" (w7/m157).
+                stage.regex {
+                  expression = "^\\S+\\t(?P<zap_level>[A-Z]+)\\t"
+                }
+
                 stage.template {
                   source   = "level"
-                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} $l := ToLower (or .Value .severity .zap_level) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warning{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
                 }
 
                 stage.static_labels {
