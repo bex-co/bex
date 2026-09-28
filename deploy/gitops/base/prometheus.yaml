@@ -198,6 +198,18 @@ spec:
             bex.co/pool: platform
           tolerations:
             - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+          # The etcd job verifies the metrics proxy against this private CA
+          # (w7/m160). Only the public ca.crt is projected; optional so a
+          # missing Secret never blocks Prometheus itself.
+          extraVolumes:
+            - name: etcd-metrics-ca
+              secret:
+                secretName: etcd-metrics-ca
+                optional: true
+                items:
+                  - { key: ca.crt, path: ca.crt }
+          extraVolumeMounts:
+            - { name: etcd-metrics-ca, mountPath: /etc/prometheus/etcd-metrics-ca, readOnly: true }
         serverFiles:
           # Server config: rule files + scrape jobs. The `alerting:` block
           # (server → Alertmanager discovery) is injected by the chart because
@@ -412,6 +424,36 @@ spec:
               # those two series so this stays near-zero cardinality. 60s: the whole
               # kubelet /metrics payload is fetched per scrape (keep runs after), and
               # the only consumer is a for:15m alert over slow-moving disk usage.
+              # etcd members (w7/m160): one kube-rbac-proxy per control-plane
+              # node (deploy/gitops/charts/etcd-metrics). TLS is verified against
+              # the proxy's private CA by its fixed DNS identity, and the proxy
+              # authorizes this SA token for GET /metrics. Finite allowlist of
+              # latency, leader/quorum and backend-size series.
+              - job_name: etcd
+                scrape_interval: 30s
+                scheme: https
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [monitoring]
+                tls_config:
+                  ca_file: /etc/prometheus/etcd-metrics-ca/ca.crt
+                  server_name: etcd-metrics.monitoring.svc
+                authorization:
+                  credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                    action: keep
+                    regex: etcd-metrics
+                  - source_labels: [__meta_kubernetes_pod_ip]
+                    target_label: __address__
+                    replacement: ${1}:9979
+                  - source_labels: [__meta_kubernetes_pod_node_name]
+                    target_label: node
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: etcd_server_has_leader|etcd_server_is_leader|etcd_server_leader_changes_seen_total|etcd_server_proposals_failed_total|etcd_server_slow_apply_total|etcd_server_slow_read_indexes_total|etcd_server_heartbeat_send_failures_total|etcd_disk_wal_fsync_duration_seconds_bucket|etcd_disk_backend_commit_duration_seconds_bucket|etcd_network_peer_round_trip_time_seconds_bucket|etcd_mvcc_db_total_size_in_bytes|etcd_server_quota_backend_bytes
+                    action: keep
               - job_name: kubernetes-kubelet
                 scrape_interval: 60s
                 scheme: https
@@ -678,6 +720,71 @@ spec:
                     annotations:
                       summary: "Node {{ $labels.node }} is NotReady"
                       description: "A worker node has been NotReady for >5m. Debug: kubectl describe node {{ $labels.node }}; kubectl get pods -A --field-selector spec.nodeName={{ $labels.node }}"
+
+                  # etcd members (w7/m160), scraped per control-plane node through
+                  # deploy/gitops/charts/etcd-metrics. Telemetry loss and etcd health
+                  # are separate alerts: a member we cannot scrape is
+                  # EtcdMetricsMissing, never evidence of a quorum problem.
+                  - alert: EtcdMetricsMissing
+                    expr: |
+                      (kube_node_role{role="control-plane"} unless on (node) (up{job="etcd"} == 1))
+                      or absent(up{job="etcd"})
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "etcd metrics are not being scraped{{ with $labels.node }} on {{ . }}{{ end }}"
+                      description: "Prometheus has no successful etcd scrape {{ with $labels.node }}for control-plane node {{ . }}{{ else }}at all{{ end }} for >10m, so the etcd latency and leader alerts are blind there. This is monitoring loss, not an etcd outage. Debug: kubectl -n monitoring get pods -l app.kubernetes.io/name=etcd-metrics -o wide; kubectl -n monitoring logs ds/etcd-metrics; kubectl -n monitoring get certificate etcd-metrics-serving."
+
+                  - alert: EtcdNoLeader
+                    expr: etcd_server_has_leader{job="etcd"} == 0
+                    for: 1m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "etcd member on {{ $labels.node }} has no leader"
+                      description: "The etcd member on {{ $labels.node }} has reported no Raft leader for >1m: writes through it fail and the API server stalls. Debug: kubectl -n kube-system logs etcd-{{ $labels.node }} --tail=200; kubectl get nodes -l node-role.kubernetes.io/control-plane; check the other members' EtcdNoLeader/EtcdMetricsMissing."
+
+                  - alert: EtcdFrequentLeaderChanges
+                    expr: increase(etcd_server_leader_changes_seen_total{job="etcd"}[1h]) > 3
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "etcd on {{ $labels.node }} saw {{ $value | humanize }} leader changes in the last hour"
+                      description: "Frequent Raft leader elections usually follow slow disks or network between control-plane nodes (see EtcdHighFsyncLatency). Debug: kubectl -n kube-system logs etcd-{{ $labels.node }} --tail=300 | grep -Ei 'leader|heartbeat|took too long'."
+
+                  # Thresholds are the upstream etcd-mixin warnings: p99 WAL fsync
+                  # 500ms, p99 backend commit 250ms, sustained for 10m.
+                  - alert: EtcdHighFsyncLatency
+                    expr: |
+                      histogram_quantile(0.99, sum by (node, le) (rate(etcd_disk_wal_fsync_duration_seconds_bucket{job="etcd"}[5m]))) > 0.5
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "etcd WAL fsync p99 on {{ $labels.node }} is {{ $value | humanizeDuration }}"
+                      description: "Slow WAL fsync on {{ $labels.node }} delays every write and heartbeats (the 'slow fdatasync' / 'apply took too long' log lines). This is disk latency evidence, not a proven need to replace the disk. Debug: kubectl -n kube-system logs etcd-{{ $labels.node }} --tail=300 | grep -Ei 'fdatasync|took too long'."
+
+                  - alert: EtcdHighCommitLatency
+                    expr: |
+                      histogram_quantile(0.99, sum by (node, le) (rate(etcd_disk_backend_commit_duration_seconds_bucket{job="etcd"}[5m]))) > 0.25
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "etcd backend commit p99 on {{ $labels.node }} is {{ $value | humanizeDuration }}"
+                      description: "Slow bbolt commits on {{ $labels.node }} slow applies and reads (ReadIndex delays). Compare with EtcdHighFsyncLatency and the DB size on the Cluster capacity dashboard before acting."
+
+                  - alert: EtcdDatabaseNearQuota
+                    expr: |
+                      etcd_mvcc_db_total_size_in_bytes{job="etcd"} / etcd_server_quota_backend_bytes{job="etcd"} > 0.8
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "etcd database on {{ $labels.node }} is {{ $value | humanizePercentage }} of its quota"
+                      description: "At the quota etcd raises NOSPACE and rejects writes. Compaction runs automatically; a large gap between size and in-use needs a defrag (docs/ADR011-etcd-backup-restore.md). Debug: kubectl -n kube-system logs etcd-{{ $labels.node }} --tail=200 | grep -i -E 'compact|quota'."
 
                   # Node ephemeral-storage pressure (w7/m159). DiskPressure is the
                   # kubelet's own eviction-threshold condition, so while it holds the

@@ -1,0 +1,37 @@
+# kube-rbac-proxy authenticates each scrape's bearer token (TokenReview) and
+# authorizes `get` on the non-resource URL /metrics (SubjectAccessReview) —
+# the grant prometheus-server's ClusterRole already carries. The proxy itself
+# holds no etcd credential: it forwards to etcd's plaintext loopback metrics
+# listener (--listen-metrics-urls=http://127.0.0.1:2381), which serves nothing
+# but /metrics and /health.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: etcd-metrics
+  namespace: monitoring
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: etcd-metrics-auth
+rules:
+  - apiGroups: [authentication.k8s.io]
+    resources: [tokenreviews]
+    verbs: [create]
+  - apiGroups: [authorization.k8s.io]
+    resources: [subjectaccessreviews]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: etcd-metrics-auth
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: etcd-metrics-auth
+subjects:
+  - kind: ServiceAccount
+    name: etcd-metrics
+    namespace: monitoring

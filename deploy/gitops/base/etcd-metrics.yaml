@@ -1,0 +1,20 @@
+# Authenticated per-member etcd metrics for Prometheus (w7/m160): one
+# kube-rbac-proxy per control-plane node in front of etcd's loopback metrics
+# listener, served with a cert-manager private CA. See
+# deploy/gitops/charts/etcd-metrics/daemonset.yaml and docs/ADR010-observability.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: etcd-metrics
+  namespace: argocd
+spec:
+  project: bex-platform
+  source:
+    repoURL: git@github.com:bex-co/bex.git
+    targetRevision: main
+    path: deploy/gitops/charts/etcd-metrics
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }

@@ -59,6 +59,10 @@ WAIVED_ALERTS=(
   # mirror of the alert's node arithmetic); series matching cannot express
   # this without weakening the context rule (round-4 addendum).
   "EgressMeterTargetMissing"
+  # reason: telemetry-loss alert composed only of context series
+  # (kube_node_role, up); visual coverage = bex-cluster-capacity "etcd leader,
+  # scrape and size" panel's per-node up{job="etcd"} target (w7/m160).
+  "EtcdMetricsMissing"
 )
 
 # ── Context series ───────────────────────────────────────────────────────────
