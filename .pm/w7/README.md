@@ -15,6 +15,11 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m154** — [Bound cron resource names across lifecycle operations](m154/README.md) (7 tasks; ~3h 40m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 2.
+- [ ] **m155** — [Parse mixed application log formats without error floods](m155/README.md) (6 tasks; ~3h 10m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 3.
+- [ ] **m156** — [Repair CNPG replica WAL metric collection](m156/README.md) (6 tasks; ~3h 10m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 4.
+- [ ] **m157** — [Retain core platform logs across rollouts](m157/README.md) (7 tasks; ~3h 40m total) ← approved platform-log brainstorm, 2026-09-28 UTC, priority 5.
+
 - [ ] **m151** — **BLOCKED (user/operator must restore shared VM capacity for the live datastore walkthrough)** — [Coherent datastore placement after moves and deletion](blocked/m151/README.md) (t001–t003, t005–t007 done; t004 live verification and t008 remain). Move/delete/retry repair and cross-surface regressions implemented.
 - [x] **m152** — [Validate grouping mutations before changing members](done/m152/README.md) — done 2026-09-21: complete-set datastore validation, child ACL preflight, 75 composed adapter cases, 89 dashboard tests; local acceptance only, no live claim.
 
