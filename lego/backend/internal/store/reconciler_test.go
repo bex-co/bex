@@ -2478,3 +2478,27 @@ func TestFailedDeployInheritsTheProbeDiagnosis(t *testing.T) {
 		t.Fatalf("failure reason = %q, want the probe diagnosis rather than the generic timeout line", reason)
 	}
 }
+
+func TestFailedReplacementDoesNotEmitOutage(t *testing.T) {
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Generation: 4}, Status: appv1alpha1.AppStatus{
+		Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "rev-old", Conditions: []metav1.Condition{
+			{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "ImagePullBackOff", ObservedGeneration: 4},
+			{Type: appv1alpha1.ConditionServing, Status: metav1.ConditionTrue, Reason: appv1alpha1.ReasonPriorReleaseServing, ObservedGeneration: 4},
+		}}}
+	obs := observedServiceStateFor("srv-image", app, true)
+	if obs.Availability != "healthy" || !obs.AvailabilityObserved {
+		t.Fatalf("observation = %+v", obs)
+	}
+	if facts := observedStateFacts(obs, "Running", "healthy", false); len(facts) != 0 {
+		t.Fatalf("phantom outage: %+v", facts)
+	}
+	// A stale serving observation must not hide a real failure.
+	app.Status.Conditions[1].ObservedGeneration = 3
+	obs = observedServiceStateFor("srv-image", app, true)
+	if obs.Availability != "unhealthy" {
+		t.Fatalf("stale condition hid failure: %+v", obs)
+	}
+	if facts := observedStateFacts(obs, "Running", "healthy", false); len(facts) != 1 || facts[0].Type != EventFactServerFailed {
+		t.Fatalf("missing failure: %+v", facts)
+	}
+}
