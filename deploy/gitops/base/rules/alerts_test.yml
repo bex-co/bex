@@ -1778,3 +1778,92 @@ tests:
             exp_annotations:
               summary: "No Stripe webhook has succeeded in over 72h"
               description: "Either Stripe stopped delivering (endpoint disabled or misconfigured) or nothing is happening. 72h comes from the observed delivery gaps on 2026-09-16: over a 6.7-day sample the largest real gap was 45.7h and p95 was 35.6h, so this clears the quiet periods with headroom. Volume is low, so treat this as a prompt to check the endpoint rather than as a page: bash scripts/stripe-webhook-drift.sh. The '> 0' filter inside max() drops replicas that have never received a webhook — a freshly restarted pod publishes 0, which is not silence — so the alert reads the freshest success across the fleet, not a restarted pod's zero. Runbook: docs/runbooks/stripe-billing-setup.md#operations-reconciliation-and-repair"
+
+  # w7/m159: sustained DiskPressure pages, a short episode stays diagnosable
+  # for 6h after recovery, and missing telemetry is never read as healthy.
+  - name: node disk pressure fires, resolves, and stays diagnosable after recovery
+    interval: 1m
+    input_series:
+      - series: 'kube_node_status_condition{condition="DiskPressure",status="true",node="tenant-a"}'
+        values: "0x4 1x5 0x30"
+      - series: 'kube_node_status_condition{condition="DiskPressure",status="true",node="tenant-b"}'
+        values: "0x40"
+      - series: 'kube_node_info{node="tenant-a"}'
+        values: "1x40"
+      - series: 'kube_node_info{node="tenant-b"}'
+        values: "1x40"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: NodeDiskPressure
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: NodeDiskPressure
+        exp_alerts:
+          - exp_labels:
+              {
+                severity: critical,
+                condition: DiskPressure,
+                status: "true",
+                node: tenant-a,
+              }
+            exp_annotations:
+              summary: "Node tenant-a is under DiskPressure — the kubelet is evicting pods"
+              description: "The kubelet on tenant-a has reported DiskPressure for >2m, so pods are being evicted. Diagnose before deleting anything (docs/ADR010-observability.md, node disk pressure): kubectl describe node tenant-a; kubectl get events -A --field-selector involvedObject.name=tenant-a; kubectl get pods -A --field-selector spec.nodeName=tenant-a,status.phase=Failed."
+      - eval_time: 8m
+        alertname: NodeDiskPressureRecovered
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: NodeDiskPressure
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: NodeDiskPressureRecovered
+        exp_alerts:
+          - exp_labels:
+              {
+                severity: info,
+                condition: DiskPressure,
+                status: "true",
+                node: tenant-a,
+              }
+            exp_annotations:
+              summary: "Node tenant-a was under DiskPressure within the last 6h"
+              description: "tenant-a reported DiskPressure in the last 6h and has since recovered. Evicted pods and EvictionThresholdMet events may still explain workload restarts: kubectl get events -A --field-selector involvedObject.name=tenant-a."
+      - eval_time: 30m
+        alertname: NodeDiskPressureSignalMissing
+        exp_alerts: []
+
+  - name: a node without a DiskPressure series is reported, not assumed healthy
+    interval: 1m
+    input_series:
+      - series: 'kube_node_status_condition{condition="DiskPressure",status="true",node="tenant-a"}'
+        values: "0x30"
+      - series: 'kube_node_info{node="tenant-a"}'
+        values: "1x30"
+      - series: 'kube_node_info{node="tenant-new"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NodeDiskPressureSignalMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: NodeDiskPressureSignalMissing
+        exp_alerts:
+          - exp_labels: { severity: warning, node: tenant-new }
+            exp_annotations:
+              summary: "Node DiskPressure telemetry is missing"
+              description: "kube-state-metrics has no DiskPressure condition series for node tenant-new for >15m, so NodeDiskPressure cannot fire. Check the kube-state-metrics target and its node collector."
+
+  - name: no DiskPressure series at all is reported
+    interval: 1m
+    input_series:
+      - series: 'up{job="kube-state-metrics"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: NodeDiskPressureSignalMissing
+        exp_alerts:
+          - exp_labels:
+              { severity: warning, condition: DiskPressure, status: "true" }
+            exp_annotations:
+              summary: "Node DiskPressure telemetry is missing"
+              description: "kube-state-metrics has no DiskPressure condition series for any node for >15m, so NodeDiskPressure cannot fire. Check the kube-state-metrics target and its node collector."

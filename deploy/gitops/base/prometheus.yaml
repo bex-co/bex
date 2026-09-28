@@ -679,6 +679,49 @@ spec:
                       summary: "Node {{ $labels.node }} is NotReady"
                       description: "A worker node has been NotReady for >5m. Debug: kubectl describe node {{ $labels.node }}; kubectl get pods -A --field-selector spec.nodeName={{ $labels.node }}"
 
+                  # Node ephemeral-storage pressure (w7/m159). DiskPressure is the
+                  # kubelet's own eviction-threshold condition, so while it holds the
+                  # node is already evicting pods — a PAGE. kube-state-metrics is the
+                  # only node-storage signal bex scrapes (no node-exporter), so there
+                  # is no earlier fill-rate warning; ADR010 records that limit. PVCs
+                  # are separate (PersistentVolumeFillingUp below).
+                  - alert: NodeDiskPressure
+                    expr: |
+                      kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+                    for: 2m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Node {{ $labels.node }} is under DiskPressure — the kubelet is evicting pods"
+                      description: "The kubelet on {{ $labels.node }} has reported DiskPressure for >2m, so pods are being evicted. Diagnose before deleting anything (docs/ADR010-observability.md, node disk pressure): kubectl describe node {{ $labels.node }}; kubectl get events -A --field-selector involvedObject.name={{ $labels.node }}; kubectl get pods -A --field-selector spec.nodeName={{ $labels.node }},status.phase=Failed."
+
+                  # A pressure episode shorter than NodeDiskPressure's `for:` (or one
+                  # that recovered before anyone looked) stays visible for 6h, so a
+                  # healthy snapshot does not erase the incident. Dashboard-only.
+                  - alert: NodeDiskPressureRecovered
+                    expr: |
+                      max_over_time(kube_node_status_condition{condition="DiskPressure",status="true"}[6h]) == 1
+                      unless on (node) (kube_node_status_condition{condition="DiskPressure",status="true"} == 1)
+                    labels:
+                      severity: info
+                    annotations:
+                      summary: "Node {{ $labels.node }} was under DiskPressure within the last 6h"
+                      description: "{{ $labels.node }} reported DiskPressure in the last 6h and has since recovered. Evicted pods and EvictionThresholdMet events may still explain workload restarts: kubectl get events -A --field-selector involvedObject.name={{ $labels.node }}."
+
+                  # Missing telemetry must never read as healthy: a node known to
+                  # kube-state-metrics without a DiskPressure series, or no
+                  # DiskPressure series at all, means NodeDiskPressure cannot fire.
+                  - alert: NodeDiskPressureSignalMissing
+                    expr: |
+                      (kube_node_info unless on (node) kube_node_status_condition{condition="DiskPressure",status="true"})
+                      or (absent(kube_node_status_condition{condition="DiskPressure",status="true"}))
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Node DiskPressure telemetry is missing"
+                      description: "kube-state-metrics has no DiskPressure condition series for {{ with $labels.node }}node {{ . }}{{ else }}any node{{ end }} for >15m, so NodeDiskPressure cannot fire. Check the kube-state-metrics target and its node collector."
+
                   - alert: PersistentVolumeFillingUp
                     expr: |
                       kubelet_volume_stats_used_bytes
