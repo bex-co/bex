@@ -298,6 +298,15 @@ export function ServiceDetailHeader({
 
       <HeaderFacts service={service} />
 
+      {service.undeployedChanges ? (
+        // A canceled deploy left saved changes undeployed (w1/m152 t003). Before
+        // this the header said nothing, while the Environment tab showed the saved
+        // values as if they were running.
+        <p className="text-muted-foreground text-sm" role="status">
+          {t("services.undeployedChangesHint")}
+        </p>
+      ) : null}
+
       {isSleeping(service) ? (
         <p className="text-muted-foreground text-sm">
           {t("services.statusSleepingHint")}

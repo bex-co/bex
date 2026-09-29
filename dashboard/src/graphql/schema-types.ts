@@ -3617,6 +3617,7 @@ export type Service = {
   suspended: Maybe<Scalars['String']['output']>;
   suspenders: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   type: Maybe<Scalars['String']['output']>;
+  undeployedChanges: Maybe<Scalars['Boolean']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
   url: Maybe<Scalars['String']['output']>;
 };

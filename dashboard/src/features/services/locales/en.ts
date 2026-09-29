@@ -265,6 +265,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
   },
+  "services.undeployedChangesHint": {
+    message:
+      "Saved changes aren't live yet — the deploy that carried them was canceled. They ship with the next deploy.",
+    description:
+      "Notice on the service header and Environment page when a canceled deploy left saved changes undeployed (w1/m152)",
+  },
   "services.statusSleepingHint": {
     message: "Sleeping to save resources — wakes on the next request.",
     description:
@@ -4109,7 +4115,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsCancelConfirmBody": {
     message:
-      "The in-progress deploy will be stopped. The last successful deploy remains live.",
+      "The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.",
     description:
       "Cancel deploy confirm dialog body — a previous deploy is still serving",
   },
@@ -4540,8 +4546,10 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Line-numbered dotenv parse error",
   },
   "services.envImportKeyError": {
-    message: "Line {line}: the name must be letters, digits, and underscores, and not start with a digit.",
-    description: "Dotenv import error: the variable name on a line is invalid (w4/159)",
+    message:
+      "Line {line}: the name must be letters, digits, and underscores, and not start with a digit.",
+    description:
+      "Dotenv import error: the variable name on a line is invalid (w4/159)",
   },
   "services.envImportQuoteError": {
     message: "The quote opened on line {line} is never closed.",
@@ -4549,7 +4557,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.envImportTrailingError": {
     message: "Line {line} has text after its closing quote.",
-    description: "Dotenv import error: text after a quoted value's closing quote (w4/159)",
+    description:
+      "Dotenv import error: text after a quoted value's closing quote (w4/159)",
   },
   "services.envImportFileError": {
     message: "Choose a readable text file no larger than 1 MiB.",

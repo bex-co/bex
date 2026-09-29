@@ -44,6 +44,13 @@ export interface ServiceView {
    */
   publicRoutingNotice?: string | null;
   /**
+   * The service runs an earlier release than its saved settings because the
+   * deploy carrying them was canceled; they ship with the next deploy (w1/m152
+   * t003). Operator-owned, passed through. Only the detail `server` query selects
+   * it, so a list row reads undefined.
+   */
+  undeployedChanges?: boolean;
+  /**
    * Private-network address sibling services connect to — "<slug>:<port>",
    * scheme-less (Render's Connect → Internal string; ADR041 D4, w9/m58).
    * Web and private services only; null otherwise or when not selected

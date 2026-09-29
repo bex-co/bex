@@ -335,8 +335,11 @@ describe("DeployActions", () => {
     expect(dialog.textContent ?? "").not.toContain("built from");
   });
 
-  // The cancel dialog is untouched by the commit threading.
-  it("leaves the cancel confirm copy byte-identical", async () => {
+  // The cancel dialog is untouched by the commit threading. Its wording was
+  // amended deliberately by w1/m152 t003 — the promise that "the last successful
+  // deploy remains live" is now true, and it says what happens to saved changes —
+  // but it still names no commit.
+  it("leaves the cancel confirm copy free of the commit threading", async () => {
     const user = userEvent.setup();
     renderActions("update_in_progress", {
       commitId: "039c3471",
@@ -348,7 +351,7 @@ describe("DeployActions", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent(
-      "The in-progress deploy will be stopped. The last successful deploy remains live.",
+      "The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.",
     );
     expect(dialog.textContent ?? "").not.toContain("039c347");
   });
