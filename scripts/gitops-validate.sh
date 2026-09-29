@@ -1133,15 +1133,18 @@ if [ "$platform_cnpg_scrape" != "$expected_platform_cnpg_scrape" ]; then
 fi
 
 if command -v promtool >/dev/null 2>&1; then
+  python3 scripts/test_platform_gitops.py || fail=1
   echo "==> promtool check + test rules (extracted from prometheus.yaml)"
   # helm `values:` is a block-scalar string — from_yaml re-parses it in-process so
   # we can pull the rule groups out in a single yq (no second pipe stage).
   yq '.spec.source.helm.values | from_yaml | {"groups": .serverFiles."alerting_rules.yml".groups}' \
     deploy/gitops/base/prometheus.yaml >"$tmp/alerting_rules.yml"
-  cp deploy/gitops/base/rules/alerts_test.yml "$tmp/alerts_test.yml"
+  yq '.spec.source.helm.values | from_yaml | .serverFiles."platform_gitops_expected.yml"' \
+    deploy/gitops/base/prometheus.yaml >"$tmp/platform_gitops_expected.yml"
+  cp deploy/gitops/base/rules/*_test.yml "$tmp/"
   # Run inside $tmp so the test file's `rule_files: [alerting_rules.yml]` resolves
   # to the freshly-extracted pack (promtool resolves rule_files from the CWD).
-  ( cd "$tmp" && promtool check rules alerting_rules.yml && promtool test rules alerts_test.yml ) \
+  ( cd "$tmp" && promtool check rules alerting_rules.yml platform_gitops_expected.yml && promtool test rules *_test.yml ) \
     || { echo "FAIL: alerting rules do not check/test clean — see deploy/gitops/base/prometheus.yaml + rules/alerts_test.yml" >&2; fail=1; }
 else
   echo "WARN: promtool not installed — skipping alerting-rule check/test (docs/ADR010-observability.md)" >&2

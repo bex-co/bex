@@ -217,7 +217,19 @@ spec:
           prometheus.yml:
             rule_files:
               - /etc/config/alerting_rules.yml # the alerting_rules.yml key below
+              - /etc/config/platform_gitops_expected.yml
             scrape_configs:
+              # Native controller metrics, reachable only inside the cluster.
+              - job_name: argocd-applications
+                scrape_interval: 60s
+                static_configs:
+                  - targets: [argocd-metrics.argocd.svc:8082]
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: argocd_app_info
+                    action: keep
+                  - regex: __name__|job|instance|namespace|name|sync_status|health_status
+                    action: labelkeep
               - job_name: traefik
                 scrape_interval: 15s # fine-grained so request-metric rates resolve quickly
                 kubernetes_sd_configs:
@@ -629,6 +641,48 @@ spec:
                   - source_labels: [__name__]
                     regex: redis_.*
                     action: keep
+          # Independent of Argo discovery: missing applications keep an identity.
+          # The local overlay replaces only this expression; validation compares
+          # both inventories with the rendered children and bootstrap root.
+          platform_gitops_expected.yml:
+            groups:
+              - name: platform-gitops-inventory
+                rules:
+                  - record: bex:platform_gitops_expected
+                    labels: {namespace: argocd}
+                    expr: |
+                      label_replace(vector(1), "name", "auth-dbs", "", "")
+                      or label_replace(vector(1), "name", "barman-cloud-objectstores", "", "")
+                      or label_replace(vector(1), "name", "barman-cloud-plugin", "", "")
+                      or label_replace(vector(1), "name", "bex-dashboard", "", "")
+                      or label_replace(vector(1), "name", "bex-operator", "", "")
+                      or label_replace(vector(1), "name", "bex-platform-prod", "", "")
+                      or label_replace(vector(1), "name", "bex-postgres", "", "")
+                      or label_replace(vector(1), "name", "cert-manager", "", "")
+                      or label_replace(vector(1), "name", "cert-manager-issuers", "", "")
+                      or label_replace(vector(1), "name", "cluster-autoscaler", "", "")
+                      or label_replace(vector(1), "name", "cnpg-operator", "", "")
+                      or label_replace(vector(1), "name", "etcd-backup", "", "")
+                      or label_replace(vector(1), "name", "etcd-metrics", "", "")
+                      or label_replace(vector(1), "name", "grafana", "", "")
+                      or label_replace(vector(1), "name", "hydra", "", "")
+                      or label_replace(vector(1), "name", "kpack", "", "")
+                      or label_replace(vector(1), "name", "kratos", "", "")
+                      or label_replace(vector(1), "name", "kubelet-csr-approver", "", "")
+                      or label_replace(vector(1), "name", "log-shipper", "", "")
+                      or label_replace(vector(1), "name", "loki", "", "")
+                      or label_replace(vector(1), "name", "metrics-server", "", "")
+                      or label_replace(vector(1), "name", "onbex-default-tls", "", "")
+                      or label_replace(vector(1), "name", "openbao", "", "")
+                      or label_replace(vector(1), "name", "openbao-backup", "", "")
+                      or label_replace(vector(1), "name", "openfga", "", "")
+                      or label_replace(vector(1), "name", "opensandbox-controller", "", "")
+                      or label_replace(vector(1), "name", "opensandbox-server", "", "")
+                      or label_replace(vector(1), "name", "prometheus", "", "")
+                      or label_replace(vector(1), "name", "sealed-secrets", "", "")
+                      or label_replace(vector(1), "name", "traefik", "", "")
+                      or label_replace(vector(1), "name", "traefik-plugins", "", "")
+                      or label_replace(vector(1), "name", "zot", "", "")
           # ── Alerting rules ──────────────────────────────────────────────────
           # Small, high-signal pack: every alert carries a one-line description
           # with the kubectl command to start debugging. Two groups: `platform`
@@ -640,6 +694,52 @@ spec:
             groups:
               - name: platform
                 rules:
+                  # Aggregate away changing state labels before the grace timer.
+                  - alert: PlatformGitOpsOutOfSync
+                    expr: |
+                      (max by (namespace, name) (argocd_app_info{job="argocd-applications",sync_status!="Synced",sync_status!=""}) == 1)
+                      and on (namespace, name) bex:platform_gitops_expected
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Platform Application {{ $labels.namespace }}/{{ $labels.name }} is out of sync"
+                      description: "Argo has not reported Synced for this required Application for 15m. Inspect kubectl -n {{ $labels.namespace }} get applications.argoproj.io {{ $labels.name }} -o yaml, its failed resource and root sync wave; do not force sync or prune blindly. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+
+                  - alert: PlatformGitOpsUnhealthy
+                    expr: |
+                      (max by (namespace, name) (argocd_app_info{job="argocd-applications",health_status!="Healthy",health_status!=""}) == 1)
+                      and on (namespace, name) bex:platform_gitops_expected
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Platform Application {{ $labels.namespace }}/{{ $labels.name }} is unhealthy"
+                      description: "Argo has not reported Healthy for this required Application for 15m. Inspect kubectl -n {{ $labels.namespace }} get applications.argoproj.io {{ $labels.name }} -o yaml and the failing child resource. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+
+                  - alert: PlatformGitOpsApplicationMissing
+                    expr: |
+                      (bex:platform_gitops_expected unless on (namespace, name)
+                        max by (namespace, name) (argocd_app_info{job="argocd-applications",sync_status!="",health_status!=""}))
+                      and on () (max(up{job="argocd-applications"}) == 1)
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Required platform Application {{ $labels.namespace }}/{{ $labels.name }} has no state metrics"
+                      description: "The Argo scrape succeeds but this required Application has lacked complete sync/health telemetry for 10m. Check kubectl -n {{ $labels.namespace }} get applications.argoproj.io {{ $labels.name }} and compare the root's desired children with its sync result. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+
+                  - alert: PlatformGitOpsMetricsMissing
+                    expr: |
+                      sum(absent(up{job="argocd-applications"}))
+                      or (max(up{job="argocd-applications"}) == 0)
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Platform GitOps metrics are unavailable"
+                      description: "The Argo application metrics scrape is absent or failing for 5m. Application health is unknown. Check the argocd-metrics Service/endpoints and Prometheus target argocd-applications. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+
                   # NB: the platform-namespace allowlist is repeated verbatim in the
                   # next rule (PromQL has no variables) — keep both `namespace=~`
                   # lists in sync when a platform namespace is added.

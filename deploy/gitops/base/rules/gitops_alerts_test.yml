@@ -1,0 +1,519 @@
+# w7/m161: independent fixtures for delivery failures and missing evidence.
+# All required prod apps are named explicitly; an absent root or child cannot
+# disappear with the exporter. Keep the healthy inventory aligned with prod.
+# Extract both rule_files from prometheus.yaml via scripts/gitops-validate.sh.
+rule_files:
+  - platform_gitops_expected.yml
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+group_eval_order:
+  - platform-gitops-inventory
+  - platform
+  - bex
+
+tests:
+  - name: healthy required applications and unrelated failures stay quiet
+    interval: 1m
+    input_series:
+      - &exporter_up
+        series: 'up{job="argocd-applications",instance="argocd-metrics:8082"}'
+        values: "1x40"
+      - &healthy_auth_dbs
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="auth-dbs",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_barman_cloud_objectstores
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="barman-cloud-objectstores",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_barman_cloud_plugin
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="barman-cloud-plugin",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_bex_dashboard
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="bex-dashboard",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_bex_operator
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="bex-operator",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_bex_platform_prod
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="bex-platform-prod",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_bex_postgres
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="bex-postgres",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_cert_manager
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="cert-manager",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_cert_manager_issuers
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="cert-manager-issuers",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_cluster_autoscaler
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="cluster-autoscaler",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_cnpg_operator
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="cnpg-operator",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_etcd_backup
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="etcd-backup",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_etcd_metrics
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="etcd-metrics",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_grafana
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="grafana",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_hydra
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="hydra",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_kpack
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="kpack",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_kratos
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="kratos",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_kubelet_csr_approver
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="kubelet-csr-approver",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_log_shipper
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="log-shipper",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_loki
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="loki",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_metrics_server
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="metrics-server",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_onbex_default_tls
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="onbex-default-tls",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_openbao
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="openbao",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_openbao_backup
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="openbao-backup",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_openfga
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="openfga",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_opensandbox_controller
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="opensandbox-controller",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_opensandbox_server
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="opensandbox-server",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_prometheus
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="prometheus",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_sealed_secrets
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="sealed-secrets",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_traefik
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="traefik",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_traefik_plugins
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="traefik-plugins",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - &healthy_zot
+        series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="zot",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      # Same namespace but not in the independent platform inventory.
+      - series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="tenant-example",sync_status="OutOfSync",health_status="Degraded"}'
+        values: "1x40"
+      # Same app name but a different namespace/job cannot page for the platform.
+      - series: 'argocd_app_info{job="argocd-applications",namespace="tenant",name="grafana",sync_status="OutOfSync",health_status="Degraded"}'
+        values: "1x40"
+      - series: 'argocd_app_info{job="other-exporter",namespace="argocd",name="bex-platform-prod",sync_status="OutOfSync",health_status="Degraded"}'
+        values: "1x40"
+    alert_rule_test:
+      - { eval_time: 25m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 25m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - {
+          eval_time: 25m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 25m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+
+  - name: sustained root failure survives changing state labels and resolves
+    interval: 1m
+    input_series:
+      - *exporter_up
+      - *healthy_auth_dbs
+      - *healthy_barman_cloud_objectstores
+      - *healthy_barman_cloud_plugin
+      - *healthy_bex_dashboard
+      - *healthy_bex_operator
+      - *healthy_bex_postgres
+      - *healthy_cert_manager
+      - *healthy_cert_manager_issuers
+      - *healthy_cluster_autoscaler
+      - *healthy_cnpg_operator
+      - *healthy_etcd_backup
+      - *healthy_etcd_metrics
+      - *healthy_grafana
+      - *healthy_hydra
+      - *healthy_kpack
+      - *healthy_kratos
+      - *healthy_kubelet_csr_approver
+      - *healthy_log_shipper
+      - *healthy_loki
+      - *healthy_metrics_server
+      - *healthy_onbex_default_tls
+      - *healthy_openbao
+      - *healthy_openbao_backup
+      - *healthy_openfga
+      - *healthy_opensandbox_controller
+      - *healthy_opensandbox_server
+      - *healthy_prometheus
+      - *healthy_sealed_secrets
+      - *healthy_traefik
+      - *healthy_traefik_plugins
+      - *healthy_zot
+      # The root stays bad for 21m, but Argo changes both state labels at 8m.
+      # Aggregating before `for` preserves the original pending timer.
+      - series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="bex-platform-prod",sync_status="OutOfSync",health_status="Degraded"}'
+        values: "1x7 stale"
+      - series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="bex-platform-prod",sync_status="Unknown",health_status="Missing"}'
+        values: "_x8 1x12 stale"
+      - <<: *healthy_bex_platform_prod
+        values: "_x21 1x19"
+    alert_rule_test:
+      - { eval_time: 14m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 14m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - eval_time: 15m
+        alertname: PlatformGitOpsOutOfSync
+        exp_alerts: &root_sync_alert
+          - exp_labels:
+              { severity: warning, namespace: argocd, name: bex-platform-prod }
+            exp_annotations:
+              summary: "Platform Application argocd/bex-platform-prod is out of sync"
+              description: "Argo has not reported Synced for this required Application for 15m. Inspect kubectl -n argocd get applications.argoproj.io bex-platform-prod -o yaml, its failed resource and root sync wave; do not force sync or prune blindly. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+      - eval_time: 15m
+        alertname: PlatformGitOpsUnhealthy
+        exp_alerts: &root_health_alert
+          - exp_labels:
+              { severity: warning, namespace: argocd, name: bex-platform-prod }
+            exp_annotations:
+              summary: "Platform Application argocd/bex-platform-prod is unhealthy"
+              description: "Argo has not reported Healthy for this required Application for 15m. Inspect kubectl -n argocd get applications.argoproj.io bex-platform-prod -o yaml and the failing child resource. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+      - eval_time: 20m
+        alertname: PlatformGitOpsOutOfSync
+        exp_alerts: *root_sync_alert
+      - eval_time: 20m
+        alertname: PlatformGitOpsUnhealthy
+        exp_alerts: *root_health_alert
+      - { eval_time: 21m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 21m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - {
+          eval_time: 21m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 21m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+
+  - name: short child rollout recovers before the grace interval
+    interval: 1m
+    input_series:
+      - *exporter_up
+      - *healthy_auth_dbs
+      - *healthy_barman_cloud_objectstores
+      - *healthy_barman_cloud_plugin
+      - *healthy_bex_dashboard
+      - *healthy_bex_operator
+      - *healthy_bex_platform_prod
+      - *healthy_bex_postgres
+      - *healthy_cert_manager
+      - *healthy_cert_manager_issuers
+      - *healthy_cluster_autoscaler
+      - *healthy_cnpg_operator
+      - *healthy_etcd_backup
+      - *healthy_etcd_metrics
+      - *healthy_hydra
+      - *healthy_kpack
+      - *healthy_kratos
+      - *healthy_kubelet_csr_approver
+      - *healthy_log_shipper
+      - *healthy_loki
+      - *healthy_metrics_server
+      - *healthy_onbex_default_tls
+      - *healthy_openbao
+      - *healthy_openbao_backup
+      - *healthy_openfga
+      - *healthy_opensandbox_controller
+      - *healthy_opensandbox_server
+      - *healthy_prometheus
+      - *healthy_sealed_secrets
+      - *healthy_traefik
+      - *healthy_traefik_plugins
+      - *healthy_zot
+      - series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="grafana",sync_status="OutOfSync",health_status="Progressing"}'
+        values: "1x9 stale"
+      - <<: *healthy_grafana
+        values: "_x10 1x30"
+    alert_rule_test:
+      - { eval_time: 9m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 9m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - { eval_time: 15m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 15m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - { eval_time: 25m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 25m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - {
+          eval_time: 25m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+
+  - name: missing root then missing child is named despite healthy siblings and resolves
+    interval: 1m
+    input_series:
+      - *exporter_up
+      - *healthy_auth_dbs
+      - *healthy_barman_cloud_objectstores
+      - *healthy_barman_cloud_plugin
+      - *healthy_bex_dashboard
+      - *healthy_bex_operator
+      - *healthy_bex_postgres
+      - *healthy_cert_manager
+      - *healthy_cert_manager_issuers
+      - *healthy_cluster_autoscaler
+      - *healthy_cnpg_operator
+      - *healthy_etcd_backup
+      - *healthy_etcd_metrics
+      - *healthy_hydra
+      - *healthy_kpack
+      - *healthy_kratos
+      - *healthy_kubelet_csr_approver
+      - *healthy_log_shipper
+      - *healthy_loki
+      - *healthy_metrics_server
+      - *healthy_onbex_default_tls
+      - *healthy_openbao
+      - *healthy_openbao_backup
+      - *healthy_openfga
+      - *healthy_opensandbox_controller
+      - *healthy_opensandbox_server
+      - *healthy_prometheus
+      - *healthy_sealed_secrets
+      - *healthy_traefik
+      - *healthy_traefik_plugins
+      - *healthy_zot
+      # Root first appears at 15m. Grafana later disappears from a healthy
+      # exporter at 20m and returns at 35m; every other required app stays up.
+      - <<: *healthy_bex_platform_prod
+        values: "_x15 1x25"
+      - <<: *healthy_grafana
+        values: "1x19 stale _x14 1x5"
+      # A same-named app from another job or namespace cannot hide the loss.
+      - series: 'argocd_app_info{job="other-exporter",namespace="argocd",name="bex-platform-prod",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+      - series: 'argocd_app_info{job="argocd-applications",namespace="tenant",name="grafana",sync_status="Synced",health_status="Healthy"}'
+        values: "1x40"
+    alert_rule_test:
+      - {
+          eval_time: 9m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 10m
+        alertname: PlatformGitOpsApplicationMissing
+        exp_alerts: &missing_root_alert
+          - exp_labels:
+              { severity: warning, namespace: argocd, name: bex-platform-prod }
+            exp_annotations:
+              summary: "Required platform Application argocd/bex-platform-prod has no state metrics"
+              description: "The Argo scrape succeeds but this required Application has lacked complete sync/health telemetry for 10m. Check kubectl -n argocd get applications.argoproj.io bex-platform-prod and compare the root's desired children with its sync result. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+      - {
+          eval_time: 15m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 29m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 30m
+        alertname: PlatformGitOpsApplicationMissing
+        exp_alerts: &missing_grafana_alert
+          - exp_labels: { severity: warning, namespace: argocd, name: grafana }
+            exp_annotations:
+              summary: "Required platform Application argocd/grafana has no state metrics"
+              description: "The Argo scrape succeeds but this required Application has lacked complete sync/health telemetry for 10m. Check kubectl -n argocd get applications.argoproj.io grafana and compare the root's desired children with its sync result. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+      - {
+          eval_time: 35m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 30m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+      - { eval_time: 30m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 30m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+
+  - name: partial or empty state labels are missing evidence and clear after complete telemetry
+    interval: 1m
+    input_series:
+      - *exporter_up
+      - *healthy_auth_dbs
+      - *healthy_barman_cloud_objectstores
+      - *healthy_barman_cloud_plugin
+      - *healthy_bex_dashboard
+      - *healthy_bex_operator
+      - *healthy_bex_postgres
+      - *healthy_cert_manager
+      - *healthy_cert_manager_issuers
+      - *healthy_cluster_autoscaler
+      - *healthy_cnpg_operator
+      - *healthy_etcd_backup
+      - *healthy_etcd_metrics
+      - *healthy_hydra
+      - *healthy_kpack
+      - *healthy_kratos
+      - *healthy_kubelet_csr_approver
+      - *healthy_log_shipper
+      - *healthy_metrics_server
+      - *healthy_onbex_default_tls
+      - *healthy_openbao
+      - *healthy_openbao_backup
+      - *healthy_openfga
+      - *healthy_opensandbox_controller
+      - *healthy_opensandbox_server
+      - *healthy_prometheus
+      - *healthy_sealed_secrets
+      - *healthy_traefik
+      - *healthy_traefik_plugins
+      - *healthy_zot
+      - series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="bex-platform-prod",sync_status="Synced"}'
+        values: "1x20 stale"
+      - series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="grafana",health_status="Healthy"}'
+        values: "1x20 stale"
+      - series: 'argocd_app_info{job="argocd-applications",namespace="argocd",name="loki",sync_status="",health_status=""}'
+        values: "1x20 stale"
+      - <<: *healthy_bex_platform_prod
+        values: "_x21 1x19"
+      - <<: *healthy_grafana
+        values: "_x21 1x19"
+      - <<: *healthy_loki
+        values: "_x21 1x19"
+    alert_rule_test:
+      - {
+          eval_time: 9m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 10m
+        alertname: PlatformGitOpsApplicationMissing
+        exp_alerts:
+          - exp_labels:
+              { severity: warning, namespace: argocd, name: bex-platform-prod }
+            exp_annotations:
+              summary: "Required platform Application argocd/bex-platform-prod has no state metrics"
+              description: "The Argo scrape succeeds but this required Application has lacked complete sync/health telemetry for 10m. Check kubectl -n argocd get applications.argoproj.io bex-platform-prod and compare the root's desired children with its sync result. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+          - exp_labels: { severity: warning, namespace: argocd, name: grafana }
+            exp_annotations:
+              summary: "Required platform Application argocd/grafana has no state metrics"
+              description: "The Argo scrape succeeds but this required Application has lacked complete sync/health telemetry for 10m. Check kubectl -n argocd get applications.argoproj.io grafana and compare the root's desired children with its sync result. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+          - exp_labels: { severity: warning, namespace: argocd, name: loki }
+            exp_annotations:
+              summary: "Required platform Application argocd/loki has no state metrics"
+              description: "The Argo scrape succeeds but this required Application has lacked complete sync/health telemetry for 10m. Check kubectl -n argocd get applications.argoproj.io loki and compare the root's desired children with its sync result. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+      - { eval_time: 20m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 20m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - { eval_time: 21m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 21m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - {
+          eval_time: 21m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 21m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+
+  - name: absent Argo target reports one monitoring loss instead of missing applications
+    interval: 1m
+    input_series:
+      - series: 'up{job="other-exporter"}'
+        values: "1x40"
+    alert_rule_test:
+      - {
+          eval_time: 4m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 5m
+        alertname: PlatformGitOpsMetricsMissing
+        exp_alerts: &metrics_missing_alert
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "Platform GitOps metrics are unavailable"
+              description: "The Argo application metrics scrape is absent or failing for 5m. Application health is unknown. Check the argocd-metrics Service/endpoints and Prometheus target argocd-applications. Runbook: docs/ADR010-observability.md#platform-gitops-delivery"
+      - eval_time: 20m
+        alertname: PlatformGitOpsMetricsMissing
+        exp_alerts: *metrics_missing_alert
+      - { eval_time: 20m, alertname: PlatformGitOpsOutOfSync, exp_alerts: [] }
+      - { eval_time: 20m, alertname: PlatformGitOpsUnhealthy, exp_alerts: [] }
+      - {
+          eval_time: 20m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+
+  - name: failed target reports monitoring loss and exporter recovery resets the grace timer
+    interval: 1m
+    input_series:
+      # No app metrics at all. A failed scrape must not emit 32 missing-app
+      # alerts. Recovery at 20m clears the exporter alert immediately; a new
+      # 3m scrape failure at 22m must not reuse the previous pending timer.
+      - series: 'up{job="argocd-applications",instance="argocd-metrics:8082"}'
+        values: "0x19 1x1 0x2 1x15"
+      - series: 'up{job="other-exporter"}'
+        values: "1x40"
+    alert_rule_test:
+      - {
+          eval_time: 4m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 5m
+        alertname: PlatformGitOpsMetricsMissing
+        exp_alerts: *metrics_missing_alert
+      - eval_time: 19m
+        alertname: PlatformGitOpsMetricsMissing
+        exp_alerts: *metrics_missing_alert
+      - {
+          eval_time: 19m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformGitOpsApplicationMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 24m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 25m,
+          alertname: PlatformGitOpsMetricsMissing,
+          exp_alerts: [],
+        }

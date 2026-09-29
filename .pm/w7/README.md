@@ -17,7 +17,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 **Approved monitoring queue (2026-09-28):** `$pm all for w7` materializes all five proposals in priority order **m161 → m162 → m163 → m164 → m165** (~17h50m including closing tasks). Work sequentially because the milestones share monitoring configuration. m165/t001 reuses the private Alloy scrape from m163/t001; the other milestones have no hard dependency on one another. Existing blocked work retains its scope.
 
-- [ ] **m161** — [Detect stalled platform GitOps delivery](m161/README.md) (6 tasks; ~3h40m) ← approved brainstorm item 1, 2026-09-28; first task `t001`.
+- [ ] **m161** — [Detect stalled platform GitOps delivery](m161/README.md) (6 tasks; ~3h40m) ← approved brainstorm item 1, 2026-09-28; t001–t002 done; t003 GitOps activation/live coverage next.
 - [ ] **m162** — [Detect missing platform backup telemetry](m162/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 2, 2026-09-28; first task `t001`.
 - [ ] **m163** — [Alert on recurring registry garbage-collection failures](m163/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 3, 2026-09-28; first task `t001`.
 - [ ] **m164** — [Warn before tenant-node storage reaches DiskPressure](m164/README.md) (7 tasks; ~4h10m) ← approved brainstorm item 4, 2026-09-28; first task `t001`.

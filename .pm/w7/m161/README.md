@@ -1,6 +1,6 @@
 # w7 · m161 — Detect stalled platform GitOps delivery
 
-**Worker:** worker7 **Goal:** Surface stalled platform configuration delivery before it silently withholds hosting fixes or monitoring rules. **Status:** todo
+**Worker:** worker7 **Goal:** Surface stalled platform configuration delivery before it silently withholds hosting fixes or monitoring rules. **Status:** in progress (t001–t002 done; GitOps activation and live coverage pending)
 
 **Estimate:** 150m implementation; 220m (~3h40m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -8,8 +8,8 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Add internal Argo metrics collection and expected application coverage](t001.md) | 45m | — |
-| t002 | [Add sustained sync and health alerts with actionable panels](t002.md) | 60m | t001 |
+| t001 | [Add internal Argo metrics collection and expected application coverage](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Add sustained sync and health alerts with actionable panels](done/t002.md) — **DONE** | 60m | t001 |
 | t003 | [Activate collection and record root and child application coverage](t003.md) | 45m | t002 |
 | t004 | [Simplify](t004.md) | 20m | t003 |
 | t005 | [Test coverage](t005.md) | 40m | t003, t004 |
@@ -47,3 +47,12 @@ This filing schedules the approved work; it does not implement or deploy it. Exi
 - Repairing analytics Secret ownership again or changing its credential custody.
 - Tenant deployment alerting, a replacement GitOps engine, or automatic forced sync/pruning.
 - Changing runner hosts, CI trust boundaries, or tenant-facing APIs.
+
+## Implementation verification — 2026-09-29 UTC
+
+- Private Argo controller metrics verified from the existing Prometheus container; all 32 production Applications were Synced/Healthy. The new scrape/rules still require GitOps activation before the live DoD can close.
+- `python3 scripts/test_platform_gitops.py`: locked Helm render and independent identity-set checks passed for production (32) and local (28), including complete exporter absence.
+- `scripts/gitops-validate.sh`: passed, including all alert fixtures and rendered configuration; optional existing FGA CLI drift check skipped because `fga` is unavailable (no authz files changed). `scripts/obs-coverage-check.sh`: passed, with a documented up-only waiver pointing at the GitOps scrape panel.
+- Seven GitOps alert scenarios passed. Four isolated rule mutations failed for the intended behavioral mismatch: remove alerts, retain changing state labels, omit exporter-health gating, or accept incomplete state telemetry. No production failure was injected.
+- `/simplify`: parallel reuse, quality and efficiency reviews completed. Removed a redundant fixed-count inventory assertion and corrected the scrape-panel waiver title; no structural changes were warranted. Focused fixtures passed again after cleanup.
+- Markdown formatting and `git diff --check` passed. Live rule availability, loaded panel configuration and deployed revision remain for t003 before closeout.
