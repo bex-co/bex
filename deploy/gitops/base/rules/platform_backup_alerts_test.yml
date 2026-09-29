@@ -1,0 +1,395 @@
+# Missing evidence is independent of the native archiver timestamp. Healthy
+# siblings, a previous primary, and another job cannot hide a missing database.
+# Extract alerting_rules.yml from prometheus.yaml via scripts/gitops-validate.sh.
+rule_files:
+  - alerting_rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: every expected platform database has current primary telemetry
+    interval: 1m
+    input_series:
+      - &up_bex_db
+        series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1x40"
+      - &archive_bex_db
+        series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1+60x40"
+      - &up_kratos_db
+        series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="kratos-db-1:9187"}'
+        values: "1x40"
+      - &archive_kratos_db
+        series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="kratos-db-1:9187"}'
+        values: "1+60x40"
+      - &up_hydra_db
+        series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="hydra-db",pod="hydra-db-1",instance="hydra-db-1:9187"}'
+        values: "1x40"
+      - &archive_hydra_db
+        series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="hydra-db",pod="hydra-db-1",instance="hydra-db-1:9187"}'
+        values: "1+60x40"
+      - &up_openfga_db
+        series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="openfga-db",pod="openfga-db-1",instance="openfga-db-1:9187"}'
+        values: "1x40"
+      - &archive_openfga_db
+        series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="openfga-db",pod="openfga-db-1",instance="openfga-db-1:9187"}'
+        values: "1+60x40"
+    promql_expr_test:
+      - expr: bex:platform_database_backup_expected
+        eval_time: 0m
+        exp_samples:
+          - labels: 'bex:platform_database_backup_expected{namespace="bex-system",cnpg_io_cluster="bex-db"}'
+            value: 1
+          - labels: 'bex:platform_database_backup_expected{namespace="auth",cnpg_io_cluster="kratos-db"}'
+            value: 1
+          - labels: 'bex:platform_database_backup_expected{namespace="auth",cnpg_io_cluster="hydra-db"}'
+            value: 1
+          - labels: 'bex:platform_database_backup_expected{namespace="auth",cnpg_io_cluster="openfga-db"}'
+            value: 1
+    alert_rule_test:
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+
+  - name: one failed primary target stays visible among healthy siblings and clears on recovery
+    interval: 1m
+    input_series:
+      - *up_kratos_db
+      - *archive_kratos_db
+      - *up_hydra_db
+      - *archive_hydra_db
+      - *up_openfga_db
+      - *archive_openfga_db
+      - series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "0x19 1x20"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "_x20 1201+60x20"
+      # Identical cluster labels from another job cannot satisfy the expectation.
+      - series: 'up{job="tenant-databases",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1x40"
+      - series: 'up{job="cnpg-platform-db",namespace="tenant",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1x40"
+    alert_rule_test:
+      - {
+          eval_time: 9m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 10m
+        alertname: PlatformDatabaseBackupTargetMissing
+        exp_alerts:
+          - exp_labels:
+              {
+                severity: warning,
+                namespace: bex-system,
+                cnpg_io_cluster: bex-db,
+              }
+            exp_annotations:
+              summary: "bex-system/bex-db backup metrics target is unavailable"
+              description: "No healthy primary metrics target has been observed for this platform database for 10m. Backup health is unknown, not proof of data loss. Inspect the cnpg-platform-db target, primary labels and kubectl -n bex-system get cluster.postgresql.cnpg.io bex-db. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+      - {
+          eval_time: 15m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+
+  - name: total target discovery loss reports all four independent expectations
+    interval: 1m
+    input_series:
+      - series: 'up{job="unrelated"}'
+        values: "1x40"
+    alert_rule_test:
+      - {
+          eval_time: 9m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 10m
+        alertname: PlatformDatabaseBackupTargetMissing
+        exp_alerts:
+          - exp_labels:
+              {
+                severity: warning,
+                namespace: bex-system,
+                cnpg_io_cluster: bex-db,
+              }
+            exp_annotations:
+              summary: "bex-system/bex-db backup metrics target is unavailable"
+              description: "No healthy primary metrics target has been observed for this platform database for 10m. Backup health is unknown, not proof of data loss. Inspect the cnpg-platform-db target, primary labels and kubectl -n bex-system get cluster.postgresql.cnpg.io bex-db. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+          - exp_labels:
+              { severity: warning, namespace: auth, cnpg_io_cluster: kratos-db }
+            exp_annotations:
+              summary: "auth/kratos-db backup metrics target is unavailable"
+              description: "No healthy primary metrics target has been observed for this platform database for 10m. Backup health is unknown, not proof of data loss. Inspect the cnpg-platform-db target, primary labels and kubectl -n auth get cluster.postgresql.cnpg.io kratos-db. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+          - exp_labels:
+              { severity: warning, namespace: auth, cnpg_io_cluster: hydra-db }
+            exp_annotations:
+              summary: "auth/hydra-db backup metrics target is unavailable"
+              description: "No healthy primary metrics target has been observed for this platform database for 10m. Backup health is unknown, not proof of data loss. Inspect the cnpg-platform-db target, primary labels and kubectl -n auth get cluster.postgresql.cnpg.io hydra-db. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+          - exp_labels:
+              {
+                severity: warning,
+                namespace: auth,
+                cnpg_io_cluster: openfga-db,
+              }
+            exp_annotations:
+              summary: "auth/openfga-db backup metrics target is unavailable"
+              description: "No healthy primary metrics target has been observed for this platform database for 10m. Backup health is unknown, not proof of data loss. Inspect the cnpg-platform-db target, primary labels and kubectl -n auth get cluster.postgresql.cnpg.io openfga-db. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+
+  - name: cached previous primary timestamps cannot hide collector loss or reset the cluster timer
+    interval: 1m
+    input_series:
+      - *up_hydra_db
+      - *archive_hydra_db
+      - *up_openfga_db
+      - *archive_openfga_db
+      # Old samples remain in Prometheus's lookback after a primary move.
+      # One cluster reuses an IP with a new pod; another reuses its pod name
+      # with a new IP. Both identity labels matter independently.
+      # Neither old sample belongs to the current healthy target.
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1"
+      - series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "0x40"
+      - series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-2",instance="bex-db-1:9187"}'
+        values: "1x7 stale"
+      - series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-3",instance="bex-db-3:9187"}'
+        values: "_x8 1x32"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-3",instance="bex-db-3:9187"}'
+        values: "_x20 1201+60x20"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="kratos-db-1:9187"}'
+        values: "1"
+      - series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="kratos-db-1:9187"}'
+        values: "0x40"
+      - series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="replacement-ip:9187"}'
+        values: "1x40"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="replacement-ip:9187"}'
+        values: "_x20 1201+60x20"
+    promql_expr_test:
+      - expr: 'bex:platform_database_last_archived_time{cnpg_io_cluster=~"bex-db|kratos-db"}'
+        eval_time: 1m
+        exp_samples: []
+    alert_rule_test:
+      - {
+          eval_time: 9m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - eval_time: 10m
+        alertname: PlatformDatabaseBackupTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              {
+                severity: warning,
+                namespace: bex-system,
+                cnpg_io_cluster: bex-db,
+              }
+            exp_annotations:
+              summary: "bex-system/bex-db archiver telemetry is unavailable"
+              description: "The primary metrics scrape succeeds but has no pg_stat_archiver timestamp for 10m. Check the collector query, instance-manager logs and Prometheus metric filtering separately from WAL archiving; missing telemetry does not establish data loss. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+          - exp_labels:
+              { severity: warning, namespace: auth, cnpg_io_cluster: kratos-db }
+            exp_annotations:
+              summary: "auth/kratos-db archiver telemetry is unavailable"
+              description: "The primary metrics scrape succeeds but has no pg_stat_archiver timestamp for 10m. Check the collector query, instance-manager logs and Prometheus metric filtering separately from WAL archiving; missing telemetry does not establish data loss. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+      - {
+          eval_time: 15m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+
+  - name: a primary switchover within the grace interval stays quiet
+    interval: 1m
+    input_series:
+      - *up_kratos_db
+      - *archive_kratos_db
+      - *up_hydra_db
+      - *archive_hydra_db
+      - *up_openfga_db
+      - *archive_openfga_db
+      - series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1x4 stale"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1+60x4 stale"
+      - series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-2",instance="bex-db-2:9187"}'
+        values: "_x9 1x31"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-2",instance="bex-db-2:9187"}'
+        values: "_x9 541+60x31"
+    alert_rule_test:
+      - {
+          eval_time: 8m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 8m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 10m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 10m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 20m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+
+  - name: the existing stale archiver alert fires only past 26 hours and clears on archive recovery
+    interval: 1m
+    input_series:
+      - *up_kratos_db
+      - *archive_kratos_db
+      - *up_hydra_db
+      - *archive_hydra_db
+      - *up_openfga_db
+      - *archive_openfga_db
+      - *up_bex_db
+      # At 30m the timestamp is exactly 26h old; at 31m it is older.
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "-91800x31 1921+60x8"
+    alert_rule_test:
+      - {
+          eval_time: 30m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+      - eval_time: 31m
+        alertname: PlatformDatabaseBackupStale
+        exp_alerts: &bex_stale_alert
+          - exp_labels:
+              {
+                severity: critical,
+                namespace: bex-system,
+                cnpg_io_cluster: bex-db,
+                job: cnpg-platform-db,
+                pod: bex-db-1,
+                instance: "bex-db-1:9187",
+              }
+            exp_annotations:
+              summary: "bex-system/bex-db WAL archiving stalled (>26h)"
+              description: "bex-system/bex-db has not archived a WAL segment in >26h — platform recovery data is at risk. Debug: inspect pg_stat_archiver, the cluster's Barman ObjectStore, the barman-cloud deployment and sidecar logs, then verify the referenced Secret exists without printing it. Runbook: docs/ADR031-platform-data-backup.md"
+      - {
+          eval_time: 32m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 31m,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 31m,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }
+
+  - name: never archived sentinel is present telemetry and eventually stale
+    interval: 1m
+    input_series:
+      - series: 'up{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "1x1561"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="bex-system",cnpg_io_cluster="bex-db",pod="bex-db-1",instance="bex-db-1:9187"}'
+        values: "-1x1561"
+      - series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="kratos-db-1:9187"}'
+        values: "1x1561"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="kratos-db",pod="kratos-db-1",instance="kratos-db-1:9187"}'
+        values: "1+60x1561"
+      - series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="hydra-db",pod="hydra-db-1",instance="hydra-db-1:9187"}'
+        values: "1x1561"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="hydra-db",pod="hydra-db-1",instance="hydra-db-1:9187"}'
+        values: "1+60x1561"
+      - series: 'up{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="openfga-db",pod="openfga-db-1",instance="openfga-db-1:9187"}'
+        values: "1x1561"
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db",namespace="auth",cnpg_io_cluster="openfga-db",pod="openfga-db-1",instance="openfga-db-1:9187"}'
+        values: "1+60x1561"
+    promql_expr_test:
+      - expr: 'bex:platform_database_last_archived_time{namespace="bex-system",cnpg_io_cluster="bex-db"}'
+        eval_time: 10m
+        exp_samples:
+          - labels: 'bex:platform_database_last_archived_time{namespace="bex-system",cnpg_io_cluster="bex-db"}'
+            value: -1
+    alert_rule_test:
+      - {
+          eval_time: 25h59m,
+          alertname: PlatformDatabaseBackupStale,
+          exp_alerts: [],
+        }
+      - eval_time: 26h
+        alertname: PlatformDatabaseBackupStale
+        exp_alerts: *bex_stale_alert
+      - {
+          eval_time: 26h,
+          alertname: PlatformDatabaseBackupTargetMissing,
+          exp_alerts: [],
+        }
+      - {
+          eval_time: 26h,
+          alertname: PlatformDatabaseBackupTelemetryMissing,
+          exp_alerts: [],
+        }

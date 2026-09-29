@@ -18,7 +18,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 **Approved monitoring queue (2026-09-28):** `$pm all for w7` materializes all five proposals in priority order **m161 → m162 → m163 → m164 → m165** (~17h50m including closing tasks). Work sequentially because the milestones share monitoring configuration. m165/t001 reuses the private Alloy scrape from m163/t001; the other milestones have no hard dependency on one another. Existing blocked work retains its scope.
 
 - [x] **m161** — [Detect stalled platform GitOps delivery](done/m161/README.md) — done 2026-09-29 UTC: private Argo scrape, 32 production/28 local expected Applications, sustained sync/health and missing-data alerts, four panels. Live on `32631b053`; all 32 production Applications covered and all four rules healthy/inactive.
-- [ ] **m162** — [Detect missing platform backup telemetry](m162/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 2, 2026-09-28; first task `t001`.
+- [ ] **m162** — [Detect missing platform backup telemetry](m162/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 2, 2026-09-28; t001–t002 done; t003 deployed coverage in progress.
 - [ ] **m163** — [Alert on recurring registry garbage-collection failures](m163/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 3, 2026-09-28; first task `t001`.
 - [ ] **m164** — [Warn before tenant-node storage reaches DiskPressure](m164/README.md) (7 tasks; ~4h10m) ← approved brainstorm item 4, 2026-09-28; first task `t001`.
 - [ ] **m165** — [Detect failures in durable log ingestion](m165/README.md) (6 tasks; ~3h40m) ← approved brainstorm item 5, 2026-09-28; first task `t001` depends on `w7/m163/t001`.
