@@ -648,6 +648,20 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	// Only a release that served can be reverted to; otherwise there is simply
 	// no release yet and the Canceled branch below is the truth (w1/m160).
 	if releaseHasServed(app) {
+		// Revert the CONFIGURATION with the image (w1/m152 t002). Dispatching
+		// app.Status.Image alone rendered the prior image against the CURRENT spec,
+		// so a canceled config_change still shipped: the pod template picked up the
+		// already-rewritten Secrets and a new pod served the canceled value. Pointing
+		// the projection at the last served release's snapshot reverts both together,
+		// and the saved spec is deliberately left alone — the change stays saved and a
+		// later deploy ships it (t002 step 2).
+		//
+		// If that release has no snapshot (it predates t001, or GC reclaimed it beyond
+		// the retained window) the projection is left as it is: restoring the image
+		// only is the honest outcome and matches pre-m152 behaviour.
+		if _, err := r.settleConfigSnapshotTo(ctx, app, successfulReleaseGeneration(app)); err != nil {
+			return r.fail(ctx, app, "DeployFailed", err)
+		}
 		return r.dispatchRuntime(ctx, app, app.Status.Image, port)
 	}
 	// Canceled, not Failed: the Condition below has always said "BuildCanceled",
