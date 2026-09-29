@@ -63,6 +63,9 @@ WAIVED_ALERTS=(
   # (kube_node_role, up); visual coverage = bex-cluster-capacity "etcd leader,
   # scrape and size" panel's per-node up{job="etcd"} target (w7/m160).
   "EtcdMetricsMissing"
+  # reason: up-only source-loss alert; Platform availability's "GitOps metrics
+  # scrape health" panel shows the argocd-applications target including absence.
+  "PlatformGitOpsMetricsMissing"
 )
 
 # ── Context series ───────────────────────────────────────────────────────────

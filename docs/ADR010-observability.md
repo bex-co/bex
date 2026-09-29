@@ -234,6 +234,10 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 | --- | --- | --- | --- |
 | `platform` | `PlatformPodCrashLooping` | a container in a platform namespace is CrashLoopBackOff >10m | warning |
 | `platform` | `PlatformDeploymentNotReady` | a platform Deployment has < desired available replicas >10m | warning |
+| `platform` | `PlatformGitOpsOutOfSync` | an expected Argo Application reports a non-Synced state for 15m | warning |
+| `platform` | `PlatformGitOpsUnhealthy` | an expected Argo Application reports a non-Healthy state for 15m | warning |
+| `platform` | `PlatformGitOpsApplicationMissing` | an expected Application lacks complete sync/health telemetry for 10m while the Argo scrape succeeds | warning |
+| `platform` | `PlatformGitOpsMetricsMissing` | the Argo application scrape is absent or has no successful target for 5m | warning |
 | `platform` | `ControlPlaneNodeNotReady` | a control-plane node is NotReady >5m (single CP node = high blast) | critical |
 | `platform` | `NodeNotReady` | a worker node is NotReady >5m | warning |
 | `platform` | `NodeDiskPressure` | a node's kubelet reports DiskPressure >2m (it is evicting pods) | critical |
@@ -269,6 +273,37 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 **Node disk pressure (w7/m159).** The signal is kube-state-metrics' `kube_node_status_condition{condition="DiskPressure"}` — the kubelet's own eviction-threshold condition for node-local ephemeral storage (container writable layers, `emptyDir`, logs, images). PVCs are a separate budget (`PersistentVolumeFillingUp`). bex runs no node-exporter, so there is **no fill-rate early warning**: `NodeDiskPressure` fires once the kubelet is already evicting, which is why it pages. A shorter episode (the 2026-09-28 03:38 UTC `EvictionThresholdMet` on `bex-tenant-0-bdn2q-bnzl6` cleared by 03:43) surfaces as the info-only `NodeDiskPressureRecovered` for 6h, and Prometheus keeps the condition series for its 3-day retention; Kubernetes Events expire after an hour, so read them first. Diagnose without deleting: `kubectl describe node <node>` (conditions, allocatable ephemeral storage), `kubectl get events -A --field-selector involvedObject.name=<node>`, then the pods on the node — `kubectl get pods -A --field-selector spec.nodeName=<node>` — looking for `Evicted` pods and their `ephemeral-storage` limits (a pod exceeding its own limit is evicted by the kubelet _without_ node DiskPressure; that is the tenant's limit, not node capacity). Resizing machines or pruning images is a separate, evidence-backed decision.
 
 `ControlPlaneNodeNotReady` vs `NodeNotReady` split on `kube_node_role{role="control-plane"}`: the CP pool is a single node until the quota lift restores 3 CP nodes, so its loss pages while a worker's only warns. `OpenBaoSealed` reads the **per-pod** telemetry gauge `vault_core_unsealed` (from the `openbao` scrape) — _not_ readiness or the Service: the chart's readiness probe keeps a sealed member in rotation (`sealedcode` 2xx) so the round-robin Service and a `kube_statefulset_ready` check would both miss a sealed follower; a sealed member still serves `/v1/sys/metrics` reporting `0`, and the alert fires on any member sealed. `StrandedNodeLocalImages` catches the node-local-image failure mode (App images are `ctr` imports, not registry-backed, so node replacement/scale-down strands them) — a platform defect, hence warn not page, even though it fires in the tenant `default` namespace. `BackupCronJobStale` reads `kube_cronjob_status_last_successful_time` from kube-state-metrics (the local overlay removes both backup CronJobs, so the series — and this alert — exist only where the jobs run: prod). `ClusterBuilderNotReady` / `ClusterBuilderImageStale` (docs/ADR060 D7) read operator-exported unlabeled gauges: readiness is the live kpack condition, age is the committed `resolved_at` in `toolchain-freshness.json`, never a mutable tag. Digest movement opens `.github/workflows/build-toolchain-freshness.yml`'s tracking issue; accepting a digest remains a reviewed commit.
+
+#### Platform GitOps delivery
+
+The private `argocd-applications` job scrapes `argocd-metrics.argocd.svc:8082` every 60s. It retains only `argocd_app_info` and its `namespace`, `name`, `sync_status`, `health_status` labels plus scrape identity (`job`, `instance`); revision SHAs, repository URLs and arbitrary Application labels are excluded. No public endpoint or administrator credential is introduced.
+
+`bex:platform_gitops_expected{namespace="argocd",name="…"}=1` is an independent recording rule in `serverFiles.platform_gitops_expected.yml`, derived from constants rather than exporter output. The base inventory names the production root `bex-platform-prod` and its children; the local overlay replaces that inventory with its own root and children. `scripts/gitops-validate.sh` compares each rendered inventory with the corresponding bootstrap root and child Applications, so adding or removing an Application requires updating its expectation. Loss of the exporter cannot erase the expected population.
+
+`PlatformGitOpsOutOfSync` and `PlatformGitOpsUnhealthy` retain only the stable namespace/name identity and warn after 15m; changing among failing state labels does not restart their timers. The 15m grace is a chosen maintenance allowance for normal reconciliation, **not a measured rollout or notification guarantee**. Missing Application state gets 10m, and missing/failed scrapes get 5m. Application-missing alerts require a successful scrape so a controller metrics outage has one diagnosis rather than one alert per missing child. Recovery clears the corresponding condition; email follows the warning digest's separate timers below.
+
+The **Platform availability** dashboard has a current expected-Application table, per-Application sync and health history, and scrape health. The table preserves native state names such as `OutOfSync`, `Degraded` and `Progressing`; its `PRESENT` value means telemetry exists, not that the Application is healthy. Missing/incomplete native data or a failed scrape produces **UNKNOWN (-1)** from the independent inventory, never a green zero. All native panel operands require a successful scrape, so a cached healthy sample cannot mask target loss.
+
+Diagnosis is read-only first:
+
+```sh
+# Confirm root and child state, then inspect the operation that stopped delivery.
+kubectl -n argocd get applications.argoproj.io
+kubectl -n argocd get applications.argoproj.io bex-platform-prod -o yaml
+application=prometheus # replace with the Application named in the alert
+kubectl -n argocd get applications.argoproj.io "$application" -o yaml
+kubectl -n argocd get events --sort-by=.lastTimestamp
+
+# Separate target failure from missing Application telemetry.
+kubectl -n argocd get service argocd-metrics
+kubectl -n argocd get endpointslices -l kubernetes.io/service-name=argocd-metrics
+kubectl -n argocd logs statefulset/argocd-application-controller --since=30m
+kubectl -n monitoring port-forward service/prometheus-server 9090:80
+```
+
+In the root and child YAML, inspect `status.conditions`, `status.operationState.phase/message`, and `status.operationState.syncResult.resources` for the failed resource and its message. Check that resource's `argocd.argoproj.io/sync-wave` annotation and compare earlier-wave resources with the child's desired state: a root failure in an early wave can withhold updated child Application specifications even while those children still report Synced. In the port-forwarded Prometheus UI, inspect the `argocd-applications` target and loaded rules, then compare `bex:platform_gitops_expected` with `argocd_app_info{job="argocd-applications"}`. Check the root's desired revision and the child/config revision actually running; root Synced alone does not establish that every child is healthy. Repair the demonstrated resource or configuration error through its owning workflow. This runbook does not call for forced sync, replacement, pruning or resource deletion.
+
+**Detection limit:** Argo delivers this Prometheus configuration and these dashboards. If that delivery is already stalled, a rule edit is not active until the root and monitoring children reconcile; record the deployed revision and loaded rules separately from fixture-test results. These rules require a functioning Prometheus evaluator and cannot detect a whole-Prometheus outage. The committed rule tests establish failure/recovery behavior on isolated fixtures; they do not establish that production has loaded the change or bound real rollout duration.
 
 #### Webhook admission pressure
 
