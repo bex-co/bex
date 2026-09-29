@@ -1,6 +1,6 @@
 # w7 · m165 — Detect failures in durable log ingestion
 
-**Worker:** worker7 **Goal:** Expose log delivery and ingestion failures before they silently remove tenant diagnostics and platform incident history. **Status:** in progress
+**Worker:** worker7 **Goal:** Expose log delivery and ingestion failures before they silently remove tenant diagnostics and platform incident history. **Status:** done
 
 **Estimate:** 150m implementation; 220m (~3h40m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -8,26 +8,26 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Collect deployed Loki and Alloy ingestion-health metrics](t001.md) | 45m | w7/m163/t001 |
-| t002 | [Alert on unexpected ingestion loss and expose diagnosis panels](t002.md) | 60m | t001 |
-| t003 | [Exercise bounded log delivery failure and recovery](t003.md) | 45m | t002 |
-| t004 | [Simplify](t004.md) | 20m | t003 |
-| t005 | [Test coverage](t005.md) | 40m | t003, t004 |
-| t006 | [Closeout](t006.md) | 10m | t004, t005 |
+| t001 | [Collect deployed Loki and Alloy ingestion-health metrics](done/t001.md) — **DONE** | 45m | w7/m163/t001 |
+| t002 | [Alert on unexpected ingestion loss and expose diagnosis panels](done/t002.md) — **DONE** | 60m | t001 |
+| t003 | [Exercise bounded log delivery failure and recovery](done/t003.md) — **DONE** | 45m | t002 |
+| t004 | [Simplify](done/t004.md) — **DONE** | 20m | t003 |
+| t005 | [Test coverage](done/t005.md) — **DONE** | 40m | t003, t004 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | t004, t005 |
 
 ## Definition of done
 
-- [ ] Deployed Loki and intended Alloy collectors expose the selected native delivery/rejection/target-health series through private scrapes, with no duplicate Alloy scrape.
-- [ ] Unexpected loss/rejection, transient retriable failure and missing collectors have documented distinct behavior, and failures can alert even while process readiness remains healthy.
-- [ ] Intentional filtering, including cnpg_instance_manager drops, remains quiet; tenant/repository identifiers are not added as monitoring labels.
-- [ ] A bounded isolated failure/recovery exercise demonstrates the chosen alerts and identifies buffering/retry/loss limits; existing tenant synthetics remain unchanged.
-- [ ] Dated runtime evidence records deployed targets, rules and panels; recovery is observable without claiming that already-dropped logs were recovered.
+- [x] Deployed Loki and intended Alloy collectors expose the selected native delivery/rejection/target-health series through private scrapes, with no duplicate Alloy scrape.
+- [x] Unexpected loss/rejection, transient retriable failure and missing collectors have documented distinct behavior, and failures can alert even while process readiness remains healthy.
+- [x] Intentional filtering, including cnpg_instance_manager drops, remains quiet; tenant/repository identifiers are not added as monitoring labels.
+- [x] A bounded isolated failure/recovery exercise demonstrates the chosen alerts and identifies buffering/retry/loss limits; existing tenant synthetics remain unchanged.
+- [x] Dated runtime evidence records deployed targets, rules and panels; recovery is observable without claiming that already-dropped logs were recovered.
 
-- [ ] Standing closing tasks and required checks are complete; production-dependent claims have dated runtime evidence for the tested revision.
+- [x] Standing closing tasks and required checks are complete; production-dependent claims have dated runtime evidence for the tested revision.
 
 ## Source + Goal linkage
 
-- **Source:** User-approved `$pm-brainstorm for w7` proposal 5, materialized by `$pm all for w7` on 2026-09-28. Brainstorm source revision: `7f1e49986`; materialization checkout: `97b70fad0`. `deploy/gitops/base/loki.yaml`, `deploy/gitops/base/log-shipper.yaml`, `deploy/gitops/base/prometheus.yaml`, [w7/m157](../done/m157/README.md), [w3/m83](../../w3/done/m83/README.md), and [Loki/Alloy native monitoring](https://grafana.com/docs/loki/latest/operations/meta-monitoring/).
+- **Source:** User-approved `$pm-brainstorm for w7` proposal 5, materialized by `$pm all for w7` on 2026-09-28. Brainstorm source revision: `7f1e49986`; materialization checkout: `97b70fad0`. `deploy/gitops/base/loki.yaml`, `deploy/gitops/base/log-shipper.yaml`, `deploy/gitops/base/prometheus.yaml`, [w7/m157](../m157/README.md), [w3/m83](../../../w3/done/m83/README.md), and [Loki/Alloy native monitoring](https://grafana.com/docs/loki/latest/operations/meta-monitoring/).
 - **Evidence:** Loki's checked-in values disable bundled self-monitoring and Prometheus has no Loki/Alloy scrape at brainstorm/materialization. w7/m157 added API/operator retention. Existing periodic tenant-view/request-log probes verify some end-to-end results but do not directly identify rejected ingestion, exhausted delivery retries or absent collectors. This is a coverage gap, not evidence of a current ingestion outage.
 - **Goal linkage:** ADR008 reliable hosting and agent-readable state require trustworthy diagnostic history; ADR010 supplies the durable logging contract.
 - **Expected outcome:** Unexpected ingestion loss, delivery failures and missing collectors become distinct actionable signals even when workload readiness remains green.
@@ -56,4 +56,8 @@ This filing schedules the approved work; it does not implement or deploy it. Exi
 - The actual pinned Alloy/Loki lifecycle fixture passes: transient 503 buffering recovers; one permanent 400 and one exhausted 503 batch are dropped; subsequent delivery succeeds without recovering discarded lines. Both processes stay ready during rejection. Intentional CNPG filtering stays separate, and restart resets counters while fresh delivery resumes. Two rendered-config mutations fail behaviorally. CI runs this fixture through `python3 -m unittest scripts/test_log_delivery.py -v`.
 - `/simplify` reuse, quality and efficiency reviews completed. Shared recording rules and rendering helpers are reused; the native Zot metric shape caught and corrected a scrape regression. Missing native evidence and zero running components remain unknown instead of looking healthy. No further substantive simplification was needed.
 - `bash scripts/gitops-validate.sh` passed after final integration, including both overlay renders, all rule fixtures and alert/panel coverage. Markdown formatting and `git diff --check` passed. The only warning is the pre-existing optional FGA model check skipped because its CLI is absent; no authz files changed. The Application growth budget passes at 1,204,301 bytes (production) and 1,226,404 bytes (local), below 1,310,720 bytes.
-- Deployment verification remains open for t003. Isolated fixtures establish failure semantics; no production stream was interrupted. First-positive counters require a 15m marker baseline, and missing evidence, resets and between-scrape loss limit completeness as documented in ADR010.
+- Deployment verification is complete in t003. Isolated fixtures establish failure semantics; no production stream was interrupted. First-positive counters require a 15m marker baseline, and missing evidence, resets and between-scrape loss limit completeness as documented in ADR010.
+
+## Deployed closeout — 2026-09-29 UTC
+
+Verified 2026-09-29 06:32:23–06:34:21 UTC at 8d1cecba9: root, Prometheus and Grafana are Synced/Healthy; complete Prometheus ConfigMap and Platform availability dashboard/panels 21–28 match the committed render, with loaded rule/configuration semantics verified. Exactly one Alloy job covers all eleven current nodes and eleven Ready DaemonSet pods; expected, UP and healthy records each contain eleven nodes with empty coverage differences. One Loki target is UP with process marker and WAL counter present; completeness and inventory are one. All nine records evaluate healthily and all eight alerts are healthy/inactive. Selected native series total 84 for Alloy and five for Loki, within the declared label allowlists. Historical ingester_error drop totals were 212 and 41,469 on two tenant collectors, with no drop/retry increases observed during the rollout; these undated lifetime totals did not create false new incidents. Zot heartbeat advanced and was 6.94s old in the final snapshot, with collection healthy. The 15m marker baseline is still warming; fixtures establish first-positive behavior after that baseline. No production log stream was deliberately interrupted.
