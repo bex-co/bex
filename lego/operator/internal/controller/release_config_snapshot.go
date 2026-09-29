@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -77,22 +76,12 @@ const (
 	// explicitly named older target restores the image only, and says so (t009).
 	releaseSnapshotRetention = 20
 
-	// releaseSnapshotSuffix marks a snapshot and carries its generation:
-	// `<source>-r<gen>`. Deriving the name from the generation is what lets the
-	// pod-template projection stay a pure function of the App.
-	releaseSnapshotSuffix = "-r"
-
 	// snapshotOfLabel records which source a snapshot copies, and
 	// snapshotGenerationLabel its release generation, so garbage collection can
 	// select an App's snapshots without parsing names.
 	snapshotOfLabel         = "app.bex.co/config-snapshot-of"
 	snapshotGenerationLabel = "app.bex.co/config-snapshot-generation"
 )
-
-// releaseSnapshotName is the immutable copy of source for generation gen.
-func releaseSnapshotName(source string, gen int64) string {
-	return source + releaseSnapshotSuffix + strconv.FormatInt(gen, 10)
-}
 
 // configSnapshotActive reports whether the projection should reference snapshots
 // rather than the mutable sources. It keys on ConfigSnapshotGeneration ALONE, not
@@ -117,7 +106,7 @@ func snapshotOrSource(app *appv1alpha1.App, source string) string {
 	if source == "" || !configSnapshotActive(app) {
 		return source
 	}
-	return releaseSnapshotName(source, app.Status.ConfigSnapshotGeneration)
+	return appv1alpha1.ReleaseSnapshotName(source, app.Status.ConfigSnapshotGeneration)
 }
 
 // settleConfigSnapshotTo points the projection at an earlier release's snapshot,
@@ -130,7 +119,7 @@ func (r *AppReconciler) settleConfigSnapshotTo(ctx context.Context, app *appv1al
 		return false, nil
 	}
 	for _, source := range releaseConfigSources(app) {
-		name := releaseSnapshotName(source, gen)
+		name := appv1alpha1.ReleaseSnapshotName(source, gen)
 		err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &corev1.Secret{})
 		if apierrors.IsNotFound(err) {
 			// No snapshot for that release: it predates t001 or has been reclaimed.
@@ -153,7 +142,7 @@ func (r *AppReconciler) settleConfigSnapshotTo(ctx context.Context, app *appv1al
 func releaseConfigSources(app *appv1alpha1.App) []string {
 	var out []string
 	add := func(name string) {
-		if name == "" || isReleaseSnapshotName(name) {
+		if name == "" || appv1alpha1.IsReleaseSnapshotName(name) {
 			return
 		}
 		if slices.Contains(out, name) {
@@ -171,26 +160,6 @@ func releaseConfigSources(app *appv1alpha1.App) []string {
 	}
 	add(app.Annotations[appv1alpha1.PendingFilesSecretAnnotation])
 	return out
-}
-
-// isReleaseSnapshotName reports whether name is itself a snapshot, by requiring
-// the suffix to be followed by digits only. A tenant-named Secret ending in
-// "-r12" is therefore not mistaken for one.
-func isReleaseSnapshotName(name string) bool {
-	idx := strings.LastIndex(name, releaseSnapshotSuffix)
-	if idx <= 0 {
-		return false
-	}
-	digits := name[idx+len(releaseSnapshotSuffix):]
-	if digits == "" {
-		return false
-	}
-	for _, c := range digits {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }
 
 // ensureReleaseConfigSnapshot copies every configuration source of the release
@@ -233,7 +202,7 @@ func (r *AppReconciler) ensureReleaseConfigSnapshot(ctx context.Context, app *ap
 
 // copyConfigSecret writes `<source>-r<gen>` from source's current contents.
 func (r *AppReconciler) copyConfigSecret(ctx context.Context, app *appv1alpha1.App, source string, gen int64) error {
-	name := releaseSnapshotName(source, gen)
+	name := appv1alpha1.ReleaseSnapshotName(source, gen)
 	existing := &corev1.Secret{}
 	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, existing)
 	if err == nil {
@@ -314,17 +283,6 @@ func (r *AppReconciler) gcReleaseConfigSnapshots(ctx context.Context, app *appv1
 	return nil
 }
 
-// podTemplateSnapshotKey holds the JSON-encoded PodTemplateSpec in a recorded
-// release template.
-const podTemplateSnapshotKey = "podTemplate"
-
-// podTemplateSnapshotName is the recorded pod template of release generation gen.
-// It shares releaseSnapshotName's suffix and the snapshot labels, so it rides the
-// same 20-generation GC and the same App ownership as the configuration copies.
-func podTemplateSnapshotName(app *appv1alpha1.App, gen int64) string {
-	return releaseSnapshotName(app.Name+"-podtemplate", gen)
-}
-
 // canceledOverServed reports whether this pass is settling a cancel over a release
 // that served — the one case where the pod template must be the SERVED release's,
 // not a projection of the current spec. It is the predicate
@@ -357,14 +315,23 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 	if err != nil {
 		return err
 	}
-	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: podTemplateSnapshotName(app, gen), Namespace: app.Namespace}}
+	// The restorable spec rides the same record, so a rollback reads one object per
+	// target and the two can never describe different releases.
+	spec, err := json.Marshal(appv1alpha1.ReleaseRecordSpec{StartCommand: app.Spec.StartCommand})
+	if err != nil {
+		return err
+	}
+	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ReleaseRecordName(app.Name, gen), Namespace: app.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, rec, func() error {
 		if rec.Labels == nil {
 			rec.Labels = map[string]string{}
 		}
 		rec.Labels[snapshotOfLabel] = app.Name + "-podtemplate"
 		rec.Labels[snapshotGenerationLabel] = strconv.FormatInt(gen, 10)
-		rec.Data = map[string][]byte{podTemplateSnapshotKey: raw}
+		rec.Data = map[string][]byte{
+			appv1alpha1.ReleaseRecordPodTemplateKey: raw,
+			appv1alpha1.ReleaseRecordSpecKey:        spec,
+		}
 		return controllerutil.SetControllerReference(app, rec, r.Scheme)
 	})
 	return err
@@ -383,7 +350,7 @@ func (r *AppReconciler) servedPodTemplateForCancel(ctx context.Context, app *app
 		return nil, nil
 	}
 	rec := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: podTemplateSnapshotName(app, served)}, rec)
+	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ReleaseRecordName(app.Name, served)}, rec)
 	if apierrors.IsNotFound(err) {
 		return nil, nil
 	}
@@ -391,7 +358,7 @@ func (r *AppReconciler) servedPodTemplateForCancel(ctx context.Context, app *app
 		return nil, err
 	}
 	var tmpl corev1.PodTemplateSpec
-	if err := json.Unmarshal(rec.Data[podTemplateSnapshotKey], &tmpl); err != nil {
+	if err := json.Unmarshal(rec.Data[appv1alpha1.ReleaseRecordPodTemplateKey], &tmpl); err != nil {
 		return nil, fmt.Errorf("decode recorded pod template for generation %d: %w", served, err)
 	}
 	return &tmpl, nil

@@ -148,7 +148,7 @@ var _ = Describe("Canceling a config-change deploy (w1/m152)", func() {
 		Expect(shipped).NotTo(Equal(*served), "the next deploy must actually roll")
 		snap := &corev1.Secret{}
 		Expect(k8sClient.Get(ctx, types.NamespacedName{
-			Name:      releaseSnapshotName(name+"-env", app.Status.ReleaseGeneration),
+			Name:      appv1alpha1.ReleaseSnapshotName(name+"-env", app.Status.ReleaseGeneration),
 			Namespace: "default",
 		}, snap)).To(Succeed())
 		Expect(snap.Data).To(HaveKeyWithValue("MESSAGE", []byte("should-not-ship")),
