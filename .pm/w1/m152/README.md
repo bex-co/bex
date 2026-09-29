@@ -1,6 +1,6 @@
 # w1 · m152 — Canceling a config-change deploy still ships the change
 
-**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (unblocked 2026-09-15; see § Decisions).
+**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (t001 done 2026-09-28 `cae30d1e0`; t002 code shipped `1353244f1`, its live acceptance waits for that to deploy; t003 next)
 
 ## Triage (2026-09-15)
 
@@ -120,7 +120,7 @@ A full sweep of what a release's configuration actually consists of, so the snap
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Snapshot each release's runtime configuration so a release can be restored exactly | 75m | — |
+| t001 | Snapshot each release's runtime configuration so a release can be restored exactly — **DONE** | 75m | — |
 | t002 | Cancel settles to the last successful release's full runtime identity (image and config), never the current spec | 60m | t001 |
 | t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs | 45m | t002 |
 | t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls | 45m | t002 |
