@@ -4982,31 +4982,73 @@ dashboards:
              "id": 4,
              "type": "timeseries",
              "title": "Platform DB WAL archiver age",
-             "description": "Time since each platform CNPG primary archived a WAL segment. PlatformDatabaseBackupStale fires past 26h (red line).",
-             "gridPos": { "h": 9, "w": 8, "x": 8, "y": 9 },
-             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "description": "Time since each expected platform CNPG primary archived a WAL segment, using only a timestamp from a successfully scraped current target. PlatformDatabaseBackupStale retains its original raw-series >26h rule (red line). UNKNOWN (-1) means current evidence is unavailable; the coverage tiles explain target versus collector loss. A raw timestamp of 0 or CNPG never-archived sentinel -1 is present evidence and produces an old age, not UNKNOWN.",
+             "gridPos": {
+              "h": 9,
+              "w": 8,
+              "x": 8,
+              "y": 9
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
              "fieldConfig": {
-               "defaults": {
-                 "unit": "s",
-                 "min": 0,
-                 "custom": { "thresholdsStyle": { "mode": "line" } },
-                 "thresholds": {
-                   "mode": "absolute",
-                   "steps": [
-                      { "color": "green", "value": null },
-                      { "color": "red", "value": 93600 }
-                    ]
-                  }
-                },
-               "overrides": []
-              },
-             "targets": [
-                {
-                 "refId": "A",
-                 "expr": "time() - cnpg_pg_stat_archiver_last_archived_time{job=\"cnpg-platform-db\"}",
-                 "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}"
+              "defaults": {
+               "unit": "s",
+               "min": -1,
+               "custom": {
+                "thresholdsStyle": {
+                 "mode": "line"
                 }
-              ]
+               },
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "orange",
+                  "value": null
+                 },
+                 {
+                  "color": "green",
+                  "value": 0
+                 },
+                 {
+                  "color": "red",
+                  "value": 93600
+                 }
+                ]
+               },
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "((time() - max by (namespace, cnpg_io_cluster) (cnpg_pg_stat_archiver_last_archived_time{job=\"cnpg-platform-db\"} and on (namespace, cnpg_io_cluster, pod, instance) (up{job=\"cnpg-platform-db\"} == 1))) and on (namespace, cnpg_io_cluster) bex:platform_database_backup_expected) or on (namespace, cnpg_io_cluster) (bex:platform_database_backup_expected * -1)",
+               "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}"
+              }
+             ],
+             "links": [
+              {
+               "title": "Platform database backup telemetry runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR031-platform-data-backup.md#missing-backup-telemetry",
+               "targetBlank": true
+              }
+             ]
             },
             {
              "id": 5,
@@ -5178,6 +5220,166 @@ dashboards:
                  "range": false
                 }
               ]
+            },
+            {
+             "id": 10,
+             "type": "stat",
+             "title": "Platform DB primary scrape coverage",
+             "description": "Every expected platform database remains visible independently of discovery: UP has a successful primary scrape; DOWN has a discovered target but no successful scrape; MISSING has no target. PlatformDatabaseBackupTargetMissing warns per cluster after 10m without a successful target, allowing a shorter primary switch to recover quietly.",
+             "gridPos": {
+              "h": 6,
+              "w": 12,
+              "x": 0,
+              "y": 32
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Platform database backup telemetry runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR031-platform-data-backup.md#missing-backup-telemetry",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "MISSING",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "DOWN",
+                   "color": "red",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "UP",
+                   "color": "green",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "orange",
+                  "value": null
+                 },
+                 {
+                  "color": "green",
+                  "value": 1
+                 }
+                ]
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "(max by (namespace, cnpg_io_cluster) (up{job=\"cnpg-platform-db\"}) and on (namespace, cnpg_io_cluster) bex:platform_database_backup_expected) or on (namespace, cnpg_io_cluster) (bex:platform_database_backup_expected * -1)",
+               "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}",
+               "instant": true,
+               "range": false
+              }
+             ]
+            },
+            {
+             "id": 11,
+             "type": "stat",
+             "title": "Platform DB archiver telemetry coverage",
+             "description": "PRESENT means the current successfully scraped primary supplies an archiver timestamp; inspect its age separately. METRIC MISSING means a healthy exporter omits that timestamp; TARGET MISSING means no successful primary scrape. PlatformDatabaseBackupTelemetryMissing warns after 10m of exporter-up/metric-missing. A zero or never-archived -1 timestamp remains PRESENT, not healthy by implication. Old/down-primary samples cannot fill a replacement primary's missing metric.",
+             "gridPos": {
+              "h": 6,
+              "w": 12,
+              "x": 12,
+              "y": 32
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Platform database backup telemetry runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR031-platform-data-backup.md#missing-backup-telemetry",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "TARGET MISSING",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "METRIC MISSING",
+                   "color": "orange",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "PRESENT",
+                   "color": "green",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "orange",
+                  "value": null
+                 },
+                 {
+                  "color": "green",
+                  "value": 1
+                 }
+                ]
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "((bex:platform_database_last_archived_time * 0 + 1) and on (namespace, cnpg_io_cluster) bex:platform_database_backup_expected) or on (namespace, cnpg_io_cluster) ((bex:platform_database_backup_expected * 0) and on (namespace, cnpg_io_cluster) max by (namespace, cnpg_io_cluster) (up{job=\"cnpg-platform-db\"} == 1)) or on (namespace, cnpg_io_cluster) (bex:platform_database_backup_expected * -1)",
+               "legendFormat": "{{namespace}}/{{cnpg_io_cluster}}",
+               "instant": true,
+               "range": false
+              }
+             ]
             }
           ]
         }

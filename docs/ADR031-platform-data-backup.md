@@ -373,6 +373,35 @@ Fresh plugin backups and explicit point-in-time restores passed for both a dispo
 
 - **`BackupCronJobStale`** (prometheus.yaml `bex` group): fires if active `etcd-backup`, `openbao-backup`, or `kvbak-*` CronJobs have no success in >26h, including never-successful CronJobs older than 26h. Deliberately suspended KeyValue CronJobs are excluded. Severity: critical.
 - **`PlatformDatabaseBackupStale`** (prometheus.yaml `bex` group): one alert instance per `bex-db`, `kratos-db`, `hydra-db`, or `openfga-db` if its Barman Cloud plugin-backed WAL archiver (`cnpg_pg_stat_archiver_last_archived_time` from the primary-only `cnpg-platform-db` scrape) has not archived in >26h. The scrape stamps namespace and cluster labels from Kubernetes discovery. Debugging starts with `pg_stat_archiver`, the cluster's ObjectStore, the `barman-cloud` deployment and instance-sidecar logs; credential presence is checked without printing Secret data. Severity: critical.
+- **`PlatformDatabaseBackupTargetMissing`**: an expected platform database has no successfully scraped primary for 10m. Severity: warning.
+- **`PlatformDatabaseBackupTelemetryMissing`**: a primary scrape succeeds but its archiver timestamp is missing for 10m. Severity: warning.
+
+### Missing backup telemetry
+
+The independent expectation `bex:platform_database_backup_expected` names `bex-system/bex-db` and `auth/{kratos-db,hydra-db,openfga-db}`, including when every target disappears. The current timestamp record joins the raw metric to successful `up` on namespace, cluster, **pod and instance** before aggregation; a cached old-primary sample cannot hide missing telemetry on the new primary. Both absence alerts use stable namespace/cluster labels and a 10m persistence window. A primary switch that restores coverage within that window remains quiet; sustained loss warns and recovery clears it. Ten minutes is a chosen operational grace, not a measured failover bound, and warning delivery follows [ADR010's digest route](ADR010-observability.md#three-tiers-critical-pages-warning-is-a-daily-digest-info-never-pages).
+
+In Grafana's **Data plane** dashboard, first distinguish DOWN/MISSING target coverage from METRIC MISSING with an UP exporter. The independent coverage tiles retain all four clusters, while the age chart shows UNKNOWN when it has no current evidence. CNPG reports `last_archived_time=-1` when no segment has been archived; this is a **present value**, like an explicit zero timestamp, and the unchanged `time() - timestamp > 26h` staleness rule treats it as old evidence. The age chart's `-1` fallback is different: it is an unavailable computed age, not a raw timestamp.
+
+Start with the named database and its current primary, without changing database state:
+
+```sh
+backup_ns=auth
+backup_cluster=kratos-db # substitute the namespace/cluster named in the alert
+kubectl -n "$backup_ns" get cluster.postgresql.cnpg.io "$backup_cluster"
+kubectl -n "$backup_ns" get pods -l "cnpg.io/cluster=$backup_cluster" -L role
+backup_primary="$(kubectl -n "$backup_ns" get cluster.postgresql.cnpg.io "$backup_cluster" -o jsonpath='{.status.currentPrimary}')"
+kubectl -n "$backup_ns" logs "$backup_primary" -c postgres --since=30m
+kubectl -n "$backup_ns" exec "$backup_primary" -c postgres -- \
+  psql -U postgres -d postgres -c \
+  'SELECT archived_count, last_archived_time, failed_count, last_failed_time FROM pg_stat_archiver;'
+kubectl -n "$backup_ns" port-forward "pod/$backup_primary" 19187:9187
+# In another terminal, inspect the raw exporter response:
+curl --fail --silent http://127.0.0.1:19187/metrics | rg '^cnpg_pg_stat_archiver_'
+```
+
+For a missing target, compare the primary pod's `role=primary` and `cnpg.io/cluster` labels with Prometheus's `cnpg-platform-db` discovery and target error; check network reachability and the exporter listener. For an UP target missing the metric, compare the raw response above with the scrape keep-list and inspect the instance manager's collector errors, SQL access and configured query. A failing `pg_stat_wal` collector does **not** establish that `pg_stat_archiver` is missing: inspect the named archiver metric and query separately. The archiver collector also exists on a primary with archiving disabled, where its never-archived value remains evidence rather than absence.
+
+Only after establishing stale or failed archiving should diagnosis follow the backup path: `pg_stat_archiver` failures, the Cluster's Barman ObjectStore, plugin controller and instance-sidecar logs, and referenced Secret existence without printing its contents. Do not reset WAL statistics, force failover, upgrade CNPG or change retention to make an absence alert disappear. Missing telemetry is not proof that stored backups are absent or corrupt; fresh timestamps are not restore proof either. Deployed target/rule/revision observations, isolated absence/failover fixtures and actual recovery drills answer different questions and must be recorded separately. A whole-Prometheus outage remains outside these rules' detection ability.
 
 ## Recovery objectives (RPO/RTO)
 
@@ -388,7 +417,7 @@ What bex actually promises per store — internal engineering objectives, not cu
 | **bex-db** | ≤ ~5 min of unarchived WAL; **PITR within 7 d** | continuous WAL + 04:00 UTC base backup | ≤ 1 h to a verified recovery Cluster | minutes — PITR restore with schema/row verification (2026-07-28), scripted marker restore (2026-07-31) |
 | **auth DBs** (kratos/hydra/openfga) | ≤ ~5 min of unarchived WAL; **PITR within 7 d** | continuous WAL + 04:15/04:30/04:45 UTC base backups | ≤ 1 h to a verified recovery Cluster | 62 s to a Ready recovery Cluster (Kratos, 2026-07-31) |
 
-The nightly-snapshot RPOs hold when last night's job succeeded; the `BackupCronJobStale` / `PlatformDatabaseBackupStale` alerts (>26 h, above) bound how long a silently failing backup — and therefore a silently growing RPO — can go unnoticed. The WAL-based RPOs assume archiving is healthy, bounded by the same alert.
+The nightly-snapshot RPOs hold when last night's job succeeded; `BackupCronJobStale` and `PlatformDatabaseBackupStale` detect reported backup/WAL ages above 26h. These thresholds require a working monitoring and notification path, so they are not unconditional detection bounds. The WAL-based RPOs assume archiving is healthy; the two platform-database absence warnings separately report when that evidence is unavailable.
 
 ## Managed-Database recovery drill
 

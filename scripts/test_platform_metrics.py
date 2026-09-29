@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the Helm-rendered Argo scrape and independent inventory per environment."""
+"""Check Helm-rendered platform scrapes and independent inventories per environment."""
 
 import json
 from pathlib import Path
@@ -84,9 +84,33 @@ def main():
                     }],
                 }],
             }
+            # Database identity comes from the declared Cluster objects, not
+            # the observed scrape or the recording rules under test. Local
+            # storage/backup differences do not disable pg_stat_archiver.
+            databases = []
+            for database_app in apps:
+                if database_app["metadata"]["name"] not in {"auth-dbs", "bex-postgres"}:
+                    continue
+                clusters = subprocess.check_output(
+                    ["kubectl", "kustomize", database_app["spec"]["source"]["path"]],
+                    text=True, cwd=ROOT,
+                )
+                databases.extend(yaml_objects(clusters, 'select(.kind == "Cluster")'))
+            assert databases, "Platform Cluster inventory must not be empty"
+            (temporary / "alerting_rules.yml").write_text(config["alerting_rules.yml"])
+            fixture["rule_files"].append("alerting_rules.yml")
+            fixture["tests"][0]["promql_expr_test"].append({
+                "expr": "bex:platform_database_backup_expected",
+                "eval_time": "0m",
+                "exp_samples": [{
+                    "labels": 'bex:platform_database_backup_expected{namespace="%s",cnpg_io_cluster="%s"}'
+                    % (cluster["metadata"]["namespace"], cluster["metadata"]["name"]),
+                    "value": 1,
+                } for cluster in databases],
+            })
             (temporary / "inventory_test.yml").write_text(json.dumps(fixture))
             subprocess.run(["promtool", "test", "rules", "inventory_test.yml"], cwd=temporary, check=True)
-            print(f"PASS: {environment} private scrape and {len(expected)} required Application identities", flush=True)
+            print(f"PASS: {environment} private scrape, {len(expected)} Application identities and {len(databases)} database identities", flush=True)
 
 
 if __name__ == "__main__":

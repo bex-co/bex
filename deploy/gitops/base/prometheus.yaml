@@ -1426,6 +1426,56 @@ spec:
                       summary: "Backup {{ $labels.namespace }}/{{ $labels.cronjob }} has not succeeded in >26h"
                       description: "The nightly {{ $labels.cronjob }} has no successful backup in over 26h — silent backup rot is unrecoverable data loss. Debug: kubectl -n {{ $labels.namespace }} get cronjob {{ $labels.cronjob }}; kubectl -n {{ $labels.namespace }} get jobs -l batch.kubernetes.io/cronjob-name={{ $labels.cronjob }}. Runbooks: docs/ADR011-etcd-backup-restore.md, docs/ADR015-openbao-backup-restore.md, docs/ADR021-keyvalue-management.md, docs/ADR031-platform-data-backup.md"
 
+                  # Declared platform DBs remain expected through discovery loss.
+                  # pg_stat_archiver also emits on primaries without backups;
+                  # its -1 never-archived sentinel is present, not missing data.
+                  - record: bex:platform_database_backup_expected
+                    expr: vector(1)
+                    labels: {namespace: bex-system, cnpg_io_cluster: bex-db}
+                  - record: bex:platform_database_backup_expected
+                    expr: vector(1)
+                    labels: {namespace: auth, cnpg_io_cluster: kratos-db}
+                  - record: bex:platform_database_backup_expected
+                    expr: vector(1)
+                    labels: {namespace: auth, cnpg_io_cluster: hydra-db}
+                  - record: bex:platform_database_backup_expected
+                    expr: vector(1)
+                    labels: {namespace: auth, cnpg_io_cluster: openfga-db}
+
+                  # Join at pod/instance identity before aggregation: an old
+                  # primary's cached timestamp cannot cover a replacement's
+                  # missing collector or a failed current scrape.
+                  - record: bex:platform_database_last_archived_time
+                    expr: |
+                      max by (namespace, cnpg_io_cluster) (
+                        cnpg_pg_stat_archiver_last_archived_time{job="cnpg-platform-db"}
+                        and on (namespace, cnpg_io_cluster, pod, instance)
+                          (up{job="cnpg-platform-db"} == 1)
+                      )
+
+                  - alert: PlatformDatabaseBackupTargetMissing
+                    expr: |
+                      bex:platform_database_backup_expected unless on (namespace, cnpg_io_cluster)
+                        max by (namespace, cnpg_io_cluster) (up{job="cnpg-platform-db"} == 1)
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "{{ $labels.namespace }}/{{ $labels.cnpg_io_cluster }} backup metrics target is unavailable"
+                      description: "No healthy primary metrics target has been observed for this platform database for 10m. Backup health is unknown, not proof of data loss. Inspect the cnpg-platform-db target, primary labels and kubectl -n {{ $labels.namespace }} get cluster.postgresql.cnpg.io {{ $labels.cnpg_io_cluster }}. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+
+                  - alert: PlatformDatabaseBackupTelemetryMissing
+                    expr: |
+                      (bex:platform_database_backup_expected and on (namespace, cnpg_io_cluster)
+                        max by (namespace, cnpg_io_cluster) (up{job="cnpg-platform-db"} == 1))
+                      unless on (namespace, cnpg_io_cluster) bex:platform_database_last_archived_time
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "{{ $labels.namespace }}/{{ $labels.cnpg_io_cluster }} archiver telemetry is unavailable"
+                      description: "The primary metrics scrape succeeds but has no pg_stat_archiver timestamp for 10m. Check the collector query, instance-manager logs and Prometheus metric filtering separately from WAL archiving; missing telemetry does not establish data loss. Runbook: docs/ADR031-platform-data-backup.md#missing-backup-telemetry"
+
                   # Plugin-backed WAL archiver staleness for every platform DB —
                   # the path CronJobStale cannot see (continuous WAL uses
                   # pg_stat_archiver, not a CronJob). One alert instance is
