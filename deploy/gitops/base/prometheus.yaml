@@ -48,6 +48,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "1" # after traefik/metrics-server exist
 spec:
   project: bex-platform
+  # Each revision stores another copy of the inline rule pack. Ten histories
+  # exceeded etcd's request limit during m164; retain three local rollback
+  # entries and use Git for older configurations.
+  revisionHistoryLimit: 3
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/prometheus
     path: .
