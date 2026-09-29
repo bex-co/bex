@@ -38,6 +38,22 @@ func ReleaseSnapshotName(source string, generation int64) string {
 	return source + ReleaseSnapshotSuffix + strconv.FormatInt(generation, 10)
 }
 
+// AppReleaseSnapshotName is app's snapshot of source at generation — the name every
+// reader and writer must use. A source the App owns (`<app>-env`, `<app>-files`)
+// keeps `<source>-r<gen>`. A SHARED source is scoped by the app:
+// `<app>-<source>-r<gen>`. An env group's `<evg-id>-env` lives in the workspace
+// namespace and is read by every linked service, while release generations are
+// counted PER APP — so an unscoped `<evg-id>-env-r3` was the same object for every
+// linked service at its own generation 3. Copy-once then handed the second service
+// the first one's copy (possibly stale values), owned and garbage-collected by the
+// first (w1/m152 t004).
+func AppReleaseSnapshotName(app, source string, generation int64) string {
+	if strings.HasPrefix(source, app+"-") {
+		return ReleaseSnapshotName(source, generation)
+	}
+	return ReleaseSnapshotName(app+"-"+source, generation)
+}
+
 // IsReleaseSnapshotName reports whether name is itself a snapshot. The suffix must
 // be followed by digits only and preceded by a non-empty source, so a tenant Secret
 // ending in "-r12x", "-rollback", or a bare "-r3" is not mistaken for one.

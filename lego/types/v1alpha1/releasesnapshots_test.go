@@ -51,3 +51,21 @@ func TestIsReleaseSnapshotNameRejectsLookalikes(t *testing.T) {
 		}
 	}
 }
+
+// A shared source must not name the same snapshot for two services: generations
+// are per App, so `evg-x-env-r3` would be both services' generation 3 (t004).
+func TestAppReleaseSnapshotNameScopesSharedSources(t *testing.T) {
+	a := AppReleaseSnapshotName("srv-a", "evg-x-env", 3)
+	b := AppReleaseSnapshotName("srv-b", "evg-x-env", 3)
+	if a == b {
+		t.Fatalf("two services share the group snapshot %q", a)
+	}
+	if a != "srv-a-evg-x-env-r3" || !IsReleaseSnapshotName(a) {
+		t.Errorf("shared snapshot = %q", a)
+	}
+	// The App's own sources keep their names — the backend rollback and every
+	// snapshot already on a cluster read them.
+	if got := AppReleaseSnapshotName("srv-a", "srv-a-env", 3); got != ReleaseSnapshotName("srv-a-env", 3) {
+		t.Errorf("own snapshot = %q", got)
+	}
+}
