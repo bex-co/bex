@@ -1438,11 +1438,9 @@ type AppStatus struct {
 	// pre-w1/m152 state and every App that has not dispatched a release since).
 	//
 	// It exists so the pod-template projection stays a pure function of the App:
-	// when this equals ReleaseGeneration the projection substitutes the snapshot
-	// names for that generation, and otherwise it references today's mutable
-	// `<name>-env` / `<evg-id>-env` Secrets unchanged. That is what makes the
-	// migration lazy — nothing rolls on operator upgrade, and a release that
-	// predates snapshots keeps its current template until its next deploy.
+	// when it is set the projection substitutes that generation's snapshot names,
+	// and when it is zero it references the mutable `<name>-env` / `<evg-id>-env`
+	// Secrets. A cancel points it back at the served release's generation.
 	//
 	// It records a generation only, never Secret contents. See
 	// docs/ADR004-app-deployment.md §Per-release configuration snapshots for the
@@ -1450,6 +1448,15 @@ type AppStatus struct {
 	// why flattening would breach Kubernetes' 1 MiB Secret ceiling.
 	// +optional
 	ConfigSnapshotGeneration int64 `json:"configSnapshotGeneration,omitempty"`
+
+	// UnscopedSnapshotGeneration marks the one generation whose linked-group
+	// snapshots use the first build's unscoped names (`<evg-id>-env-r<gen>`),
+	// which collided across linked services (w1/m152 t004). While
+	// ConfigSnapshotGeneration equals it, the projection keeps referencing those
+	// names, so moving to scoped names never rolls a pod on its own; the App's
+	// next release uses scoped names.
+	// +optional
+	UnscopedSnapshotGeneration int64 `json:"unscopedSnapshotGeneration,omitempty"`
 
 	// UndeployedChanges reports that the service is running an earlier release than
 	// its saved spec because the deploy carrying the newer spec was canceled
