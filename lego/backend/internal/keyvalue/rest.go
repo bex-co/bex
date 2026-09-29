@@ -226,7 +226,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // list. Extracted for the same reason handleUpdateKeyValue below is.
 func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	out, err := s.ListKeyValues(r.Context(), q.Get("ownerId"))
+	out, err := core.ListOwners(r.Context(), core.QueryList(q, "ownerId"), s.ListKeyValues)
 	if err != nil {
 		core.WriteErr(w, err)
 		return

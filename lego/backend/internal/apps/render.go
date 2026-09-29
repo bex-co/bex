@@ -723,11 +723,11 @@ func toRenderServices(apps []AppView) []renderService {
 	return out
 }
 
-func (s *Service) restServiceList(ctx context.Context, apps []AppView) []serviceWithCursor {
+func (s *Service) restServiceList(ctx context.Context, apps []AppView, cursorOf func(AppView) string) []serviceWithCursor {
 	rendered := s.restServices(ctx, apps)
 	out := make([]serviceWithCursor, 0, len(apps))
 	for i, app := range apps {
-		out = append(out, serviceWithCursor{Service: rendered[i], Cursor: app.Name})
+		out = append(out, serviceWithCursor{Service: rendered[i], Cursor: cursorOf(app)})
 	}
 	return out
 }
