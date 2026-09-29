@@ -377,7 +377,7 @@ spec:
                     target_label: pod
                 metric_relabel_configs:
                   - source_labels: [__name__]
-                    regex: bex_websocket_(egress_bytes_total|meter_healthy|meter_process_start_time_seconds)
+                    regex: bex_websocket_(egress_bytes_total|ingress_bytes_total|meter_healthy|meter_process_start_time_seconds)
                     action: keep
               # cAdvisor: the raw series behind bex-api's cpu/memory/instance-count
               # history. Node SD, scraped THROUGH the apiserver proxy
