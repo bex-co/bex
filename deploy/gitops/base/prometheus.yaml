@@ -28,11 +28,11 @@
 # AM with a capture-webhook receiver (no real email sent).
 #
 # Exporter posture (was "server-only, no exporters"): still deliberately minimal.
-# Enabled: Alertmanager (paging) + kube-state-metrics (object-state series the
-# rule pack needs: kube_pod/deployment/node/cronjob/statefulset_*). Still OFF:
-# pushgateway and node-exporter — the rules need no host-level series (PVC usage
-# comes from the kubelet /metrics endpoint scraped below; node readiness comes
-# from kube-state-metrics). Days-scale retention on a small PV; bex-api points at
+# Enabled: Alertmanager, kube-state-metrics and the filesystem-only node exporter
+# on tenant/build nodes. The exporter observes their shared node/image root disk;
+# it does not collect a general host-metric suite. Pushgateway remains disabled.
+# PVC usage comes from kubelet metrics; node readiness from kube-state-metrics.
+# Days-scale retention on a small PV; bex-api points at
 # the server with BEX_PROM_URL=http://prometheus-server.monitoring.
 #
 # NOTE: the Traefik scrape target below matches pods labelled
@@ -57,12 +57,48 @@ spec:
       values: |
         fullnameOverride: prometheus
         prometheus-pushgateway: { enabled: false }
-        prometheus-node-exporter: { enabled: false }
+        prometheus-node-exporter:
+          enabled: true
+          hostNetwork: false
+          hostPID: false
+          hostIPC: false
+          service:
+            type: ClusterIP
+            listenOnAllInterfaces: true
+          serviceAccount:
+            automountServiceAccountToken: false
+          nodeSelector:
+            kubernetes.io/os: linux
+            bex.co/pool: tenant
+          tolerations:
+            - { key: bex.co/build-only, operator: Equal, value: "true", effect: NoSchedule }
+          containerSecurityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          hostRootFsMount:
+            enabled: true
+            mountPropagation: HostToContainer
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+          extraArgs:
+            - --collector.disable-defaults
+            - --collector.filesystem
+            - --web.disable-exporter-metrics
+            # Exclude transient/pod mounts before statfs. The locked 1.8.2
+            # exporter supports exclude filters; the scrape below keeps only
+            # bounded paths that can back nodefs or a separate imagefs.
+            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/(docker|containers|kubelet/(pods|plugins)|containerd/[^/]*snapshot[^/]*))($|/)
+            - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tmpfs|tracefs)$
         # Object-state series for the rule pack (pods/deployments/nodes/cronjobs/
-        # statefulsets). The only exporter this milestone adds. Platform pool
-        # (w1/m19), like the server.
+        # statefulsets), on the platform pool like the server. The one exported
+        # node label supplies expected coverage even when an exporter vanishes.
         kube-state-metrics:
           enabled: true
+          metricLabelsAllowlist:
+            - nodes=[bex.co/pool]
           nodeSelector:
             bex.co/pool: platform
           tolerations:
@@ -219,6 +255,34 @@ spec:
               - /etc/config/alerting_rules.yml # the alerting_rules.yml key below
               - /etc/config/platform_gitops_expected.yml
             scrape_configs:
+              - job_name: tenant-node-filesystem
+                scrape_interval: 60s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [monitoring]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_pod_container_name, __meta_kubernetes_pod_container_port_name]
+                    separator: ";"
+                    regex: prometheus-node-exporter;prometheus;node-exporter;metrics
+                    action: keep
+                  - source_labels: [__meta_kubernetes_pod_phase]
+                    regex: Running
+                    action: keep
+                  - source_labels: [__meta_kubernetes_pod_node_name]
+                    target_label: node
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: node_filesystem_((size|avail|free)_bytes|files(_free)?|readonly|device_error)|node_scrape_collector_(duration_seconds|success)
+                    action: keep
+                  - source_labels: [__name__, fstype, mountpoint]
+                    separator: ";"
+                    # CAPD uses overlay for its node root; only the local
+                    # exporter override permits it through the collector filter.
+                    regex: node_filesystem_.*;(ext4|xfs|overlay);(/|/var|/var/lib|/var/lib/containerd|/var/lib/kubelet)|node_scrape_collector_(duration_seconds|success);;
+                    action: keep
+                  - regex: __name__|job|instance|node|mountpoint|device|fstype|collector
+                    action: labelkeep
               # Native controller metrics, reachable only inside the cluster.
               - job_name: argocd-applications
                 scrape_interval: 60s
@@ -913,12 +977,135 @@ spec:
                       summary: "etcd database on {{ $labels.node }} is {{ $value | humanizePercentage }} of its quota"
                       description: "At the quota etcd raises NOSPACE and rejects writes. Compaction runs automatically; a large gap between size and in-use needs a defrag (docs/ADR011-etcd-backup-restore.md). Debug: kubectl -n kube-system logs etcd-{{ $labels.node }} --tail=200 | grep -i -E 'compact|quota'."
 
+                  # Manifest-backed shared-root expectation: current tenant
+                  # nodefs/imagefs both live on /. Declare any additional required
+                  # backing mount here BEFORE changing the node storage topology.
+                  - record: bex:tenant_node_filesystem_expected
+                    expr: max by (node) (kube_node_labels{label_bex_co_pool="tenant"})
+                    labels:
+                      mountpoint: "/"
+
+                  # Validate all necessary families at one live exporter identity
+                  # before aggregation. Read-only/error/partial scrapes are unknown.
+                  - record: bex:tenant_node_filesystem_observed
+                    expr: |
+                      count by (job, instance, node, device, mountpoint) (
+                        (node_filesystem_size_bytes{job="tenant-node-filesystem",fstype=~"ext4|xfs|overlay"} > 0)
+                        and on (job, instance, node, device, mountpoint) (node_filesystem_avail_bytes{job="tenant-node-filesystem"} >= 0)
+                        and on (job, instance, node, device, mountpoint) (node_filesystem_files{job="tenant-node-filesystem"} > 0)
+                        and on (job, instance, node, device, mountpoint) (node_filesystem_files_free{job="tenant-node-filesystem"} >= 0)
+                        and on (job, instance, node, device, mountpoint) (node_filesystem_readonly{job="tenant-node-filesystem"} == 0)
+                        and on (job, instance, node, device, mountpoint) (node_filesystem_device_error{job="tenant-node-filesystem"} == 0)
+                        and on (job, instance) (up{job="tenant-node-filesystem"} == 1)
+                        and on (node, mountpoint) bex:tenant_node_filesystem_expected
+                      )
+
+                  # One device may back several declared paths. Deduplicate it
+                  # before warning/forecasting; coverage above stays mount-aware.
+                  - record: bex:tenant_node_filesystem_available_bytes
+                    expr: |
+                      min by (node, device) (
+                        node_filesystem_avail_bytes{job="tenant-node-filesystem"}
+                        and on (job, instance, node, device, mountpoint) bex:tenant_node_filesystem_observed
+                      )
+                  - record: bex:tenant_node_filesystem_size_bytes
+                    expr: |
+                      max by (node, device) (
+                        node_filesystem_size_bytes{job="tenant-node-filesystem"}
+                        and on (job, instance, node, device, mountpoint) bex:tenant_node_filesystem_observed
+                      )
+                  - record: bex:tenant_node_filesystem_free_inodes
+                    expr: |
+                      min by (node, device) (
+                        node_filesystem_files_free{job="tenant-node-filesystem"}
+                        and on (job, instance, node, device, mountpoint) bex:tenant_node_filesystem_observed
+                      )
+                  - record: bex:tenant_node_filesystem_inodes
+                    expr: |
+                      max by (node, device) (
+                        node_filesystem_files{job="tenant-node-filesystem"}
+                        and on (job, instance, node, device, mountpoint) bex:tenant_node_filesystem_observed
+                      )
+                  - record: bex:tenant_node_filesystem_available_ratio
+                    expr: bex:tenant_node_filesystem_available_bytes / bex:tenant_node_filesystem_size_bytes
+                  - record: bex:tenant_node_filesystem_free_inodes_ratio
+                    expr: bex:tenant_node_filesystem_free_inodes / bex:tenant_node_filesystem_inodes
+
+                  # Two hours of history, >=110 one-minute evaluations, and no
+                  # capacity change. A new/replaced device is not forecast-ready.
+                  - record: bex:tenant_node_filesystem_forecast_ready
+                    expr: |
+                      (
+                        (count_over_time(bex:tenant_node_filesystem_available_bytes[2h]) >= 110)
+                        and on (node, device) present_over_time(bex:tenant_node_filesystem_available_bytes[5m] offset 2h)
+                        and on (node, device) (changes(bex:tenant_node_filesystem_size_bytes[2h]) == 0)
+                      ) * 0 + 1
+                      and on (node, device) bex:tenant_node_filesystem_size_bytes
+                      or on (node, device) (bex:tenant_node_filesystem_size_bytes * 0)
+
+                  - record: bex:tenant_node_filesystem_filling_soon
+                    expr: |
+                      (
+                        (predict_linear(bex:tenant_node_filesystem_available_bytes[2h], 4 * 3600)
+                          / bex:tenant_node_filesystem_size_bytes < 0.15)
+                        and on (node, device) (bex:tenant_node_filesystem_forecast_ready == 1)
+                        and on (node, device) (bex:tenant_node_filesystem_available_ratio < 0.35)
+                        and on (node, device) (deriv(bex:tenant_node_filesystem_available_bytes[30m]) < 0)
+                        and on (node, device) (deriv(bex:tenant_node_filesystem_available_bytes[2h]) < 0)
+                      ) * 0 + 1
+
+                  - alert: TenantNodeFilesystemSpaceLow
+                    expr: bex:tenant_node_filesystem_available_ratio < 0.20
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Tenant node {{ $labels.node }} device {{ $labels.device }} has less than 20% available space"
+                      description: "Headroom has stayed below 20% for 10m, above the observed 15% imagefs and 10% nodefs hard eviction thresholds. Inspect the declared backing mounts, image usage and pod ephemeral-storage limits before choosing a response. Sudden writes can exhaust storage before this warning. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom"
+
+                  - alert: TenantNodeFilesystemInodesLow
+                    expr: bex:tenant_node_filesystem_free_inodes_ratio < 0.10
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Tenant node {{ $labels.node }} device {{ $labels.device }} has less than 10% free inodes"
+                      description: "Free inodes have stayed below 10% for 10m, above the observed 5% hard eviction threshold. Byte headroom alone cannot rule out inode exhaustion. Diagnose file counts and workload growth without automatic deletion. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom"
+
+                  - alert: TenantNodeFilesystemTelemetryMissing
+                    expr: |
+                      bex:tenant_node_filesystem_expected
+                        unless on (node, mountpoint) bex:tenant_node_filesystem_observed
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Tenant node {{ $labels.node }} mount {{ $labels.mountpoint }} has unknown filesystem headroom"
+                      description: "An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom"
+
+                  - alert: TenantNodeFilesystemInventoryMissing
+                    expr: absent(kube_node_labels{label_bex_co_pool=~".+"})
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Node pool inventory is unavailable for tenant filesystem coverage"
+                      description: "kube-state-metrics has no node pool labels for 10m, so expected tenant-node coverage cannot be established. Check its scrape and nodes=[bex.co/pool] label allowlist; absence of tenant warnings is not healthy evidence. A valid inventory with zero tenant nodes is allowed. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom"
+
+                  - alert: TenantNodeFilesystemFillingSoon
+                    expr: bex:tenant_node_filesystem_filling_soon == 1
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Advisory: tenant node {{ $labels.node }} device {{ $labels.device }} may cross 15% available within 4h"
+                      description: "With at least 2h history and stable capacity, both recent and longer trends decline, current headroom is below 35%, and a linear forecast crosses the observed imagefs eviction margin within 4h. This is an advisory trend, not guaranteed notice before sudden writes; verify current usage before choosing a response. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom"
+
                   # Node ephemeral-storage pressure (w7/m159). DiskPressure is the
-                  # kubelet's own eviction-threshold condition, so while it holds the
-                  # node is already evicting pods — a PAGE. kube-state-metrics is the
-                  # only node-storage signal bex scrapes (no node-exporter), so there
-                  # is no earlier fill-rate warning; ADR010 records that limit. PVCs
-                  # are separate (PersistentVolumeFillingUp below).
+                  # kubelet's own eviction-threshold condition. Reclaim/eviction
+                  # can be underway — a PAGE. The tenant filesystem warnings above
+                  # provide earlier headroom evidence. PVCs are a separate budget
+                  # (PersistentVolumeFillingUp below).
                   - alert: NodeDiskPressure
                     expr: |
                       kube_node_status_condition{condition="DiskPressure",status="true"} == 1
@@ -926,8 +1113,8 @@ spec:
                     labels:
                       severity: critical
                     annotations:
-                      summary: "Node {{ $labels.node }} is under DiskPressure — the kubelet is evicting pods"
-                      description: "The kubelet on {{ $labels.node }} has reported DiskPressure for >2m, so pods are being evicted. Diagnose before deleting anything (docs/ADR010-observability.md, node disk pressure): kubectl describe node {{ $labels.node }}; kubectl get events -A --field-selector involvedObject.name={{ $labels.node }}; kubectl get pods -A --field-selector spec.nodeName={{ $labels.node }},status.phase=Failed."
+                      summary: "Node {{ $labels.node }} is under DiskPressure — a storage eviction threshold is crossed"
+                      description: "The kubelet on {{ $labels.node }} has reported DiskPressure for >2m. It may reclaim storage before evicting pods; inspect actual events. Diagnose before deleting anything (docs/ADR010-observability.md, node disk pressure): kubectl describe node {{ $labels.node }}; kubectl get events -A --field-selector involvedObject.name={{ $labels.node }}; kubectl get pods -A --field-selector spec.nodeName={{ $labels.node }},status.phase=Failed."
 
                   # A pressure episode shorter than NodeDiskPressure's `for:` (or one
                   # that recovered before anyone looked) stays visible for 6h, so a

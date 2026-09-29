@@ -1,6 +1,6 @@
 # w7 · m164 — Warn before tenant-node storage reaches DiskPressure
 
-**Worker:** worker7 **Goal:** Provide actionable node filesystem headroom warnings before tenant workloads reach kubelet eviction thresholds. **Status:** todo
+**Worker:** worker7 **Goal:** Provide actionable node filesystem headroom warnings before tenant workloads reach kubelet eviction thresholds. **Status:** in progress
 
 **Estimate:** 180m implementation; 250m (~4h10m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -8,9 +8,9 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Identify tenant-node backing filesystems and eviction thresholds](t001.md) | 45m | — |
-| t002 | [Add scoped filesystem collection and missing-node coverage](t002.md) | 60m | t001 |
-| t003 | [Add pre-eviction storage alerts and capacity panels](t003.md) | 45m | t002 |
+| t001 | [Identify tenant-node backing filesystems and eviction thresholds](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Add scoped filesystem collection and missing-node coverage](done/t002.md) — **DONE** | 60m | t001 |
+| t003 | [Add pre-eviction storage alerts and capacity panels](done/t003.md) — **DONE** | 45m | t002 |
 | t004 | [Record deployed node coverage collection cost and response limits](t004.md) | 30m | t003 |
 | t005 | [Simplify](t005.md) | 20m | t004 |
 | t006 | [Test coverage](t006.md) | 40m | t004, t005 |
@@ -49,3 +49,10 @@ This filing schedules the approved work; it does not implement or deploy it. Exi
 - Automatic image/data deletion, disk expansion, node replacement or capacity purchases.
 - Duplicating PVC alerts or mistaking per-pod limit eviction for node DiskPressure.
 - Claiming a forecast guarantees advance notice of sudden writes, or enabling a broad unrelated host-metric suite.
+
+## Implementation verification — 2026-09-29 UTC
+
+- `GITOPS_TEST_FILESYSTEM_COLLECTOR=1 bash scripts/gitops-validate.sh`: passed, including locked Helm render, all rule fixtures, coverage and eight actual-image filesystem cases for shared/split/missing mounts and local overlay behavior. CI opts into that same render rather than downloading/rendering a second time. The sole warning is the pre-existing optional FGA model drift check skipped because `fga` is absent; no authz files changed.
+- Eighteen focused alert scenarios and twenty-two panel scenarios passed. Thirteen isolated rule mutations and five collector/scrape mutations failed behaviorally. After sharing the forecast predicate, the focused suite and two relevant forecast mutations passed/failed as expected. The panel's missing-inventory fallback mutation also failed.
+- `/simplify`: reuse, quality and efficiency reviews completed. Shared the advisory predicate between alert and panel, removed redundant panel guards, and consolidated CI's collector exercise into its existing render. No broad host metrics or automatic disk action was added.
+- Authenticated read-only topology inspection covered every intended production node and cleaned up all temporary pods. Pressure/recovery/split-storage claims come from isolated fixtures; no production disk was filled. Deployed coverage and actual collector overhead remain for t004.
