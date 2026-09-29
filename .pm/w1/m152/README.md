@@ -126,7 +126,8 @@ A full sweep of what a release's configuration actually consists of, so the snap
 | t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls | 45m | t002 |
 | t009 | Rollback restores the target deploy's configuration (env vars, start command), and a dashboard rollback turns auto-deploy off | 60m | t001 |
 | t010 | Live: canceling a health-gated rollout restores the probe-free template and settles Running | 30m | t003 |
-| t005 | Render parity | 30m | t003, t004, t009, t010 |
+| t011 | Snapshot Secret I/O goes through the uncached client — every new service fails its first deploy (w4/171) | 30m | t001 |
+| t005 | Render parity | 30m | t003, t004, t009, t010, t011 |
 | t006 | Simplify | 20m | t005 |
 | t007 | Test coverage | 45m | t005 |
 | t008 | Closeout | 10m | t007 |
