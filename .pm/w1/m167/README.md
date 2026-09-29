@@ -1,15 +1,15 @@
 # w1 · m167 — Preserve configured commands when cloning image cron jobs
 
-**Worker:** worker1 **Goal:** A successful CLI clone executes the source cron command. **Status:** todo
+**Worker:** worker1 **Goal:** A successful CLI clone executes the source cron command. **Status:** in progress (t001–t004 done 2026-09-29; t005 live clone waits on the deploy, then t006)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Preserve image cron commands in the Render read projection | 45m | — |
-| t002 | Verify shared serializers and pinned clone consumers | 45m | t001 |
-| t003 | Check REST GraphQL MCP and dashboard parity | 25m | t002 |
-| t004 | Simplify the changed projection | 15m | t003 |
+| t001 | Preserve image cron commands in the Render read projection — **DONE** | 45m | — |
+| t002 | Verify shared serializers and pinned clone consumers — **DONE** | 45m | t001 |
+| t003 | Check REST GraphQL MCP and dashboard parity — **DONE** | 25m | t002 |
+| t004 | Simplify the changed projection — **DONE** | 15m | t003 |
 | t005 | Prove the clone command survives end to end | 35m | t003, t004 |
 | t006 | Close out after observable acceptance | 10m | t005 |
 
