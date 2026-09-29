@@ -3555,6 +3555,512 @@ dashboards:
                "legendFormat": "{{namespace}}/{{name}}"
               }
              ]
+            },
+            {
+             "id": 20,
+             "type": "row",
+             "title": "Durable log delivery",
+             "collapsed": false,
+             "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 111
+             },
+             "panels": []
+            },
+            {
+             "id": 21,
+             "type": "timeseries",
+             "title": "Alloy final dropped-entry activity",
+             "description": "LogDeliveryEntriesDropped warns on observed final writer drops in the last 15m, including non-retryable rejection or exhausted retries. Measured counter increases stay visible during collection loss; a first-positive-only observation requires a current scrape and can become UNKNOWN. Zero means no observed drops under the documented counter limits, not proof that every log was delivered; UNKNOWN means no activity is retained and current collector/configuration evidence is unavailable or unhealthy. First positive samples without a baseline can be missed.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 112
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "NO OBSERVED DROPS",
+                   "color": "blue",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "FINAL DROPS OBSERVED",
+                   "color": "red",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "min": -1,
+               "max": 1
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:log_delivery_writer_drop_activity or on (node) ((bex:log_delivery_collector_healthy == 1) * 0) or on (node) (bex:log_delivery_collector_expected * -1)",
+               "legendFormat": "{{node}} {{reason}}"
+              }
+             ]
+            },
+            {
+             "id": 22,
+             "type": "timeseries",
+             "title": "Loki rejected-attempt activity",
+             "description": "LogDeliveryLokiRejected warns on ingestion rejection observed in the last 15m. A rejected attempt may later succeed through Alloy retries; this is not a count of unique permanently lost lines. Reason, format and retention dimensions remain distinct. Measured counter increases survive current scrape loss; first-positive-only observations require a current scrape and can become UNKNOWN. Zero requires current collection and does not establish complete ingestion.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 112
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "NO OBSERVED REJECTIONS",
+                   "color": "blue",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "REJECTIONS OBSERVED",
+                   "color": "orange",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "min": -1,
+               "max": 1
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:log_delivery_loki_rejection_activity or on() ((bex:log_delivery_loki_up == 1) * 0) or on() vector(-1)",
+               "legendFormat": "{{reason}} {{format}} {{retention_hours}}h"
+              }
+             ]
+            },
+            {
+             "id": 23,
+             "type": "timeseries",
+             "title": "Alloy delivery retry activity",
+             "description": "The shared record reports observed retries in the last 5m; LogDeliveryRetriesPersistent requires this condition for 10m so isolated retry bursts stay quiet. Retrying is distinct from final dropped entries. Short retry recovery does not prove that another batch was delivered. UNKNOWN marks missing or unhealthy collector/configuration evidence with no retained retry activity.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 120
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "NO OBSERVED RETRIES",
+                   "color": "blue",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "RETRYING OBSERVED",
+                   "color": "orange",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "min": -1,
+               "max": 1
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:log_delivery_retry_activity or on (node) ((bex:log_delivery_collector_healthy == 1) * 0) or on (node) (bex:log_delivery_collector_expected * -1)",
+               "legendFormat": "{{node}}"
+              }
+             ]
+            },
+            {
+             "id": 24,
+             "type": "timeseries",
+             "title": "Loki WAL disk-full risk",
+             "description": "LogDeliveryLokiWALDiskFull reports a WAL write failure from disk exhaustion observed within 15m. This is durability risk, not a count of lost lines. WAL replay duplicate counters are excluded. A retained failure stays visible if the current scrape disappears; no recent activity requires a currently observed WAL counter, otherwise UNKNOWN.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 120
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "NO OBSERVED DISK-FULL FAILURE",
+                   "color": "blue",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "DURABILITY RISK OBSERVED",
+                   "color": "red",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "min": -1,
+               "max": 1
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:log_delivery_wal_disk_full_activity or on() ((bex:log_delivery_loki_up == 1) * 0) or on() vector(-1)",
+               "legendFormat": "Loki WAL disk full"
+              }
+             ]
+            },
+            {
+             "id": 25,
+             "type": "stat",
+             "title": "Expected log collector coverage",
+             "description": "One row per independently expected node, including control-plane nodes. SCRAPED establishes a successful Alloy metrics scrape; it does not establish log delivery. UNKNOWN retains absent or failed targets even while another collector is scraped. LogDeliveryCollectorMissing allows a 10m startup/recovery window.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 128
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "1": {
+                   "text": "SCRAPED",
+                   "color": "green",
+                   "index": 1
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "(bex:log_delivery_collector_up and on (node) bex:log_delivery_collector_expected) or on (node) (bex:log_delivery_collector_expected * -1)",
+               "legendFormat": "{{node}}",
+               "instant": true,
+               "range": false
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             }
+            },
+            {
+             "id": 26,
+             "type": "stat",
+             "title": "Alloy configuration and component state",
+             "description": "Current configuration/component evidence per expected node. CONFIG/COMPONENTS OK does not establish transport success: the writer can exhaust retries while its component remains healthy. CONFIG/COMPONENT FAULT means configuration or component evidence reports a failure; absent current health evidence is UNKNOWN. LogDeliveryCollectorUnhealthy warns after 5m for faults or missing health families under a successful scrape.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 128
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "CONFIG/COMPONENT FAULT",
+                   "color": "red",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "CONFIG/COMPONENTS OK",
+                   "color": "green",
+                   "index": 2
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "(bex:log_delivery_collector_healthy and on (node) bex:log_delivery_collector_expected) or on (node) (bex:log_delivery_collector_expected * -1)",
+               "legendFormat": "{{node}}",
+               "instant": true,
+               "range": false
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             }
+            },
+            {
+             "id": 27,
+             "type": "stat",
+             "title": "Log collector inventory presence",
+             "description": "The independent node inventory establishes the expected Alloy population. LogDeliveryInventoryMissing warns when that evidence is unavailable; an empty expected set does not establish full coverage. Inspect the per-node coverage tile separately.",
+             "gridPos": {
+              "h": 4,
+              "w": 12,
+              "x": 0,
+              "y": 136
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "0": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "1": {
+                   "text": "PRESENT",
+                   "color": "green",
+                   "index": 1
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:log_delivery_inventory_present or vector(0)",
+               "legendFormat": "Node inventory",
+               "instant": true,
+               "range": false
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             }
+            },
+            {
+             "id": 28,
+             "type": "stat",
+             "title": "Loki metrics collection",
+             "description": "TELEMETRY PRESENT requires a successful Loki scrape plus current process-start and WAL-counter evidence. It does not establish ingestion success or WAL durability. LogDeliveryLokiMetricsMissing reports sustained absent or incomplete telemetry; a ready process can still reject ingestion.",
+             "gridPos": {
+              "h": 4,
+              "w": 12,
+              "x": 12,
+              "y": 136
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Durable log ingestion diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#durable-log-ingestion",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "0": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "1": {
+                   "text": "TELEMETRY PRESENT",
+                   "color": "green",
+                   "index": 1
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:log_delivery_loki_up or vector(0)",
+               "legendFormat": "Loki metrics",
+               "instant": true,
+               "range": false
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             }
             }
           ]
         }

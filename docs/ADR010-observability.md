@@ -228,7 +228,7 @@ Collection stays scoped to the rules it serves: kube-state-metrics provides obje
 
 ### The rule pack
 
-Two groups, all with actionable `description`s (each carries the `kubectl` command to start debugging):
+The groups carry actionable descriptions and links to diagnosis procedures:
 
 | group | alert | fires when | severity |
 | --- | --- | --- | --- |
@@ -265,6 +265,14 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 | `bex` | `PlatformDatabaseBackupTelemetryMissing` | an expected platform database has a successful primary scrape but no current archiver timestamp for 10m | warning |
 | `bex` | `ZotGarbageCollectionFailure` | the known missing-repository-metadata GC failure was freshly observed within the last 3h | warning |
 | `bex` | `ZotGarbageCollectionTelemetryMissing` | fresh Zot log evidence from a successfully scraped Alloy instance has been unavailable for 10m | warning |
+| `log-delivery` | `LogDeliveryEntriesDropped` | final Alloy writer drops were observed within 15m | warning |
+| `log-delivery` | `LogDeliveryLokiRejected` | Loki ingestion rejection attempts were observed within 15m | warning |
+| `log-delivery` | `LogDeliveryRetriesPersistent` | retry activity appears in every rolling 5m window for 10m | warning |
+| `log-delivery` | `LogDeliveryCollectorMissing` | an expected node lacks a successful Alloy scrape for 10m | warning |
+| `log-delivery` | `LogDeliveryInventoryMissing` | the independent node inventory is absent for 10m | warning |
+| `log-delivery` | `LogDeliveryCollectorUnhealthy` | a successfully scraped expected Alloy collector has faulty or incomplete configuration/component evidence for 5m | warning |
+| `log-delivery` | `LogDeliveryLokiMetricsMissing` | complete Loki scrape/process/WAL-counter evidence is unavailable for 5m | warning |
+| `log-delivery` | `LogDeliveryLokiWALDiskFull` | a Loki WAL disk-full write failure was observed within 15m | warning |
 | `bex` | `OpenBaoSealed` | any OpenBao member reports sealed >5m (⇒ 503s the env-vars API) | critical |
 | `bex` | `BexApiDown` | `bex-api` has zero available replicas >5m | critical |
 | `bex` | `BexApiOriginHighErrorRate` | >5% of the requests bex-api itself completed on one surface are 5xx for >10m (above a 0.1 req/s floor) — the origin-side sibling of `TraefikHigh5xxRate`, read together with it to place the fault ([ADR088 §6](ADR088-platform-observability-ui.md)) | warning |
@@ -362,11 +370,42 @@ The **Data plane** dashboard retains a row for all four expected databases in se
 
 #### Registry GC recurrence and collection
 
-The existing Zot platform-log source forwards to both retained Loki logs and a separate metrics branch. The branch accepts entries no older than 5m and emits two observation-time gauges: `bex_zot_gc_failure_last_observed_timestamp_seconds` for the known missing-repository-metadata GC signature, and `bex_zot_log_last_observed_timestamp_seconds` for any fresh Zot line. Gauges expire after 5m idle; repository identity and paths stay in logs. The private `alloy` job scrapes the log-shipper's HTTP metrics port every 30s, retaining only these two families and bounded `service=zot` plus collector `job`, `instance`, `node`, `pod` attribution. This is the shared collector scrape for later delivery monitoring, not a new public endpoint.
+The existing Zot platform-log source forwards to both retained Loki logs and a separate metrics branch. The branch accepts entries no older than 5m and emits two observation-time gauges: `bex_zot_gc_failure_last_observed_timestamp_seconds` for the known missing-repository-metadata GC signature, and `bex_zot_log_last_observed_timestamp_seconds` for any fresh Zot line. Gauges expire after 5m idle; repository identity and paths stay in logs. The private `alloy` job scrapes the log-shipper's HTTP metrics port every 30s, retaining these two families with bounded `service=zot` plus collector `job`, `instance`, `node`, `pod` attribution. The same private scrape also supplies the [durable ingestion signals](#durable-log-ingestion) below.
 
 `ZotGarbageCollectionFailure` compares wall time with the latest observation timestamp retained over 3h. The first fresh match warns immediately; repeated observations extend the window, and it clears 3h after the last observation. Prometheus history survives collector reload/expiry, while an old gauge reappearing cannot reopen an incident older than the window. Historical entries older than 5m cannot refresh the metric; replay within that allowance can extend observation time by up to 5m. This signal measures recurrence, not unique log events, GC runs or reclaimed bytes, and the metrics filter does not remove original Loki history.
 
 `bex:zot_log_collection_healthy` independently requires an observation newer than 5m joined to successful `up` for the same Alloy instance. Ten minutes without that evidence warns through `ZotGarbageCollectionTelemetryMissing`. **Cluster capacity** shows recurrence, collection status and the retained failure logs next to registry capacity evidence; no failures with missing collection reads UNKNOWN, not healthy zero. The [ADR060 D4 runbook](ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence) distinguishes collection diagnosis from the bounded repository repair. These warnings neither prevent the upstream Zot defect nor automatically repair registry data, and runtime deployment evidence remains separate from fixture behavior.
+
+#### Durable log ingestion
+
+The **Platform availability** dashboard's **Durable log delivery** row separates Alloy final drops, Loki rejection attempts, sustained retries, collector coverage/configuration, Loki scrape coverage and WAL disk-full risk. It reuses the private `alloy` job and adds a private Loki scrape. Metrics contain bounded target/component/reason dimensions, not log contents, repository names or tenant identifiers. Read collection status alongside activity: a successful scrape establishes reachability, not successful or durable ingestion.
+
+**Coverage and timing.** `bex:log_delivery_collector_expected{node}` comes from `kube_node_info`, independently of Alloy discovery, and covers every node including the control plane. Missing collector or inventory evidence warns after 10m; node removal removes its expectation. Invalid configuration, nonhealthy components or missing native health families under a successful expected scrape warn after 5m. Loki requires a successful scrape plus current process-start and initialized WAL-counter evidence; incomplete evidence warns after 5m. Final drops, rejected attempts and WAL disk-full activity warn without an additional persistence delay. Retry activity uses a 5m window sustained for 10m, allowing isolated bursts to recover quietly. These are operational allowances, not notification deadlines: warnings use the existing digest's separate grouping/delivery timers.
+
+**Delivery semantics.** Alloy v1.11.2 retries connection failures, HTTP 429 and 5xx; other failed HTTP responses cause immediate final drops. Its dropped-entry counter also covers local size/stream-limit rejection. Loki rejection counters measure rejected attempts, which can include entries later accepted after Alloy retries; they are not a count of unique permanently lost lines. Intentional `loki_process_dropped_lines_total` filters, including `cnpg_instance_manager` and Zot metrics replay suppression, stay outside these loss alerts. Quiet tenants and absent lazy writer counters do not imply failure. See the [pinned Alloy client](https://github.com/grafana/alloy/blob/v1.11.2/internal/component/common/loki/client/client.go) and [Loki rejection dimensions](https://github.com/grafana/loki/blob/v3.6.7/pkg/validation/validate.go).
+
+**Buffering limits.** The checked-in writer has no Alloy WAL enabled: batches are held in memory. Its defaults are a 1s batch wait, 1MiB batch size, 10s request timeout, 500ms initial backoff, 5m maximum backoff and `max_backoff_retries=10`. Backoff and request duration determine the actual delay; these settings establish neither a guaranteed buffering duration nor a delivery deadline. A process restart or exhausted retries can lose pending lines. The writer's component health only reports invalid configuration, so a healthy process can still drop logs. See [pinned defaults](https://github.com/grafana/alloy/blob/v1.11.2/internal/component/loki/write/types.go) and [writer health/WAL behavior](https://github.com/grafana/alloy/blob/v1.11.2/docs/sources/reference/components/loki/loki.write.md).
+
+**Counter evidence.** Activity records combine 15m increases with a first-positive check for lazily created series. That fallback requires a successful scrape now and a marker already collected 15m ago: Alloy configuration success or Loki process start time. These markers were admitted with this monitoring rollout; older Alloy `up` history alone cannot turn a historical positive counter into a new incident. The first 15m of target/marker observation relies on increases, so a first positive sample without a baseline can be missed. Resets, failures entirely between scrapes, or loss of Prometheus can also hide activity. Ordinary measured increases remain visible within their lookback during scrape loss. A first-positive-only observation still requires current successful collection and can become UNKNOWN on target loss. These panels report observed evidence, not exact event counts or complete loss accounting.
+
+**Isolated failure/recovery evidence.** The pinned Alloy 1.11.2/Loki 3.6.7 exercise uses fixture-only 100ms batching and fixed 1s backoff. A transient 503 retried and later delivered the original line without a final drop; an 8-day-old line received a real Loki 400 rejection and a final Alloy drop while readiness stayed 200. Sustained 503s exhausted the configured budget after ten failed requests and dropped a second line. Recovery delivered a new line; queries found only the delivered lines, and an Alloy restart reset counters without replaying the dropped batch. The CNPG filter control incremented only its intentional process-drop metric. This establishes the exercised paths, not a production buffering or detection-time guarantee.
+
+Start with the target/node named by the alert, the loaded rule and the relevant panel, then inspect without restarting collectors:
+
+```sh
+kubectl get nodes -o wide
+kubectl -n monitoring get daemonset log-shipper
+kubectl -n monitoring get pods -l app.kubernetes.io/instance=log-shipper -o wide
+kubectl -n monitoring logs ALLOY_POD_FROM_ALERT -c alloy --since=30m
+kubectl -n monitoring get pods -l app.kubernetes.io/instance=loki -o wide
+kubectl -n monitoring logs statefulset/loki --since=30m
+kubectl -n monitoring get endpointslices -l kubernetes.io/service-name=loki
+kubectl -n monitoring get pvc
+```
+
+For missing collectors, compare expected nodes with Alloy placement and Prometheus targets, including control-plane nodes; another node's successful scrape cannot cover the missing one. For configuration/component failures, inspect Alloy's rejected configuration and component errors. For retries or final drops, correlate the endpoint HTTP status/reason with Loki logs, availability and configured limits; rejection can happen while readiness stays green. For WAL disk-full risk, inspect the Loki PVC's available space and write errors. WAL replay duplicates are separate and do not establish new ingestion loss.
+
+After repair, verify current collection, new successful pushes and a fresh read through the tenant-facing path. Existing [request-log and tenant-view synthetics](ADR088-platform-observability-ui.md#scheduled-probes-and-the-canary-fixture-w3m83) remain independent end-to-end checks. Recovery means subsequent delivery works; it does not prove already-dropped lines were recovered. Do not blindly replay logs, clear positions/WAL files, delete data or raise ingestion limits to silence an alert. Record the deployed revision and live coverage separately from isolated fault fixtures and their timing.
 
 #### Webhook admission pressure
 

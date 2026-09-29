@@ -1,0 +1,1704 @@
+# Native log delivery behavior: guarded lazy counters, independent coverage and recovery.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+group_eval_order:
+  - platform
+  - bex
+  - log-delivery
+tests:
+  - name: idle lazy writers intentional CNPG filtering and WAL replay duplicates stay quiet
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: loki_process_dropped_lines_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="cnpg_instance_manager"}
+        values: 0+100x100
+      - series: loki_ingester_wal_replay_duplicate_entries_total{job="loki",instance="loki:3100"}
+        values: 0+100x100
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryInventoryMissing
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_collector_expected
+        eval_time: 30m
+        exp_samples:
+          - labels: bex:log_delivery_collector_expected{node="a"}
+            value: 1
+          - labels: bex:log_delivery_collector_expected{node="b"}
+            value: 1
+      - expr: bex:log_delivery_collector_up
+        eval_time: 30m
+        exp_samples:
+          - labels: bex:log_delivery_collector_up{node="a"}
+            value: 1
+          - labels: bex:log_delivery_collector_up{node="b"}
+            value: 1
+      - expr: bex:log_delivery_collector_healthy
+        eval_time: 30m
+        exp_samples:
+          - labels: bex:log_delivery_collector_healthy{node="a"}
+            value: 1
+          - labels: bex:log_delivery_collector_healthy{node="b"}
+            value: 1
+      - expr: bex:log_delivery_inventory_present
+        eval_time: 30m
+        exp_samples:
+          - labels: bex:log_delivery_inventory_present
+            value: 1
+      - expr: bex:log_delivery_loki_up
+        eval_time: 30m
+        exp_samples:
+          - labels: bex:log_delivery_loki_up
+            value: 1
+      - expr: bex:log_delivery_writer_drop_activity
+        eval_time: 30m
+        exp_samples: []
+      - expr: bex:log_delivery_loki_rejection_activity
+        eval_time: 30m
+        exp_samples: []
+      - expr: bex:log_delivery_retry_activity
+        eval_time: 30m
+        exp_samples: []
+      - expr: bex:log_delivery_wal_disk_full_activity
+        eval_time: 30m
+        exp_samples: []
+  - name: old positive counters first collected after rollout do not become new failures despite old up history
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 7x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 7x100
+      - series: loki_discarded_samples_total{job="loki",instance="loki:3100",reason="rate_limited",format="loki",retention_hours="168"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 7x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+      - eval_time: 34m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 34m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 34m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+    promql_expr_test: []
+  - name: first lazy positive after established marker baseline alerts immediately and expires
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 3x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 3x100
+      - series: loki_discarded_samples_total{job="loki",instance="loki:3100",reason="rate_limited",format="loki",retention_hours="168"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 3x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+              reason: ingester_error
+            exp_annotations:
+              summary: Log writer dropped entries on a
+              description: Alloy reported final writer drops with reason ingester_error during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+              reason: rate_limited
+              format: loki
+              retention_hours: "168"
+            exp_annotations:
+              summary: Loki rejected log entries with reason rate_limited
+              description: Loki reported rejected ingestion attempts during the last 15 minutes. Retries may recover these attempts; do not add this count to final Alloy drops as independent loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki WAL disk-full failures threaten log durability
+              description: Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 34m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+              reason: ingester_error
+            exp_annotations:
+              summary: Log writer dropped entries on a
+              description: Alloy reported final writer drops with reason ingester_error during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 34m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+              reason: rate_limited
+              format: loki
+              retention_hours: "168"
+            exp_annotations:
+              summary: Loki rejected log entries with reason rate_limited
+              description: Loki reported rejected ingestion attempts during the last 15 minutes. Retries may recover these attempts; do not add this count to final Alloy drops as independent loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 34m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki WAL disk-full failures threaten log durability
+              description: Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 35m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_writer_drop_activity
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_writer_drop_activity{node="a",reason="ingester_error"}
+            value: 1
+      - expr: bex:log_delivery_loki_rejection_activity
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_loki_rejection_activity{reason="rate_limited",format="loki",retention_hours="168"}
+            value: 1
+      - expr: bex:log_delivery_wal_disk_full_activity
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_wal_disk_full_activity
+            value: 1
+  - name: ordinary increases remain visible during the initial marker warmup
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 0 1x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 0 1x100
+      - series: loki_discarded_samples_total{job="loki",instance="loki:3100",reason="rate_limited",format="loki",retention_hours="168"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 0 1x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+              reason: ingester_error
+            exp_annotations:
+              summary: Log writer dropped entries on a
+              description: Alloy reported final writer drops with reason ingester_error during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 21m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+              reason: rate_limited
+              format: loki
+              retention_hours: "168"
+            exp_annotations:
+              summary: Loki rejected log entries with reason rate_limited
+              description: Loki reported rejected ingestion attempts during the last 15 minutes. Retries may recover these attempts; do not add this count to final Alloy drops as independent loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 21m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki WAL disk-full failures threaten log durability
+              description: Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 36m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 36m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 36m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+    promql_expr_test: []
+  - name: counter reset alone is quiet and subsequent post-reset loss is detected
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: 7x20 0 1x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: 7x20 0 1x100
+      - series: loki_discarded_samples_total{job="loki",instance="loki:3100",reason="rate_limited",format="loki",retention_hours="168"}
+        values: 7x20 0 1x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+              reason: ingester_error
+            exp_annotations:
+              summary: Log writer dropped entries on a
+              description: Alloy reported final writer drops with reason ingester_error during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 22m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+              reason: rate_limited
+              format: loki
+              retention_hours: "168"
+            exp_annotations:
+              summary: Loki rejected log entries with reason rate_limited
+              description: Loki reported rejected ingestion attempts during the last 15 minutes. Retries may recover these attempts; do not add this count to final Alloy drops as independent loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 22m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki WAL disk-full failures threaten log durability
+              description: Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 37m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 37m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 37m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+    promql_expr_test: []
+  - name: observed failures remain visible while current scrapes fail
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x20 0x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x20 0x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x20 0x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: 0x19 1x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: 0x19 1x100
+      - series: loki_discarded_samples_total{job="loki",instance="loki:3100",reason="rate_limited",format="loki",retention_hours="168"}
+        values: 0x19 1x100
+      - series: loki_write_batch_retries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 0x19 1x100
+    alert_rule_test:
+      - eval_time: 22m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+              reason: ingester_error
+            exp_annotations:
+              summary: Log writer dropped entries on a
+              description: Alloy reported final writer drops with reason ingester_error during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 22m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+              reason: rate_limited
+              format: loki
+              retention_hours: "168"
+            exp_annotations:
+              summary: Loki rejected log entries with reason rate_limited
+              description: Loki reported rejected ingestion attempts during the last 15 minutes. Retries may recover these attempts; do not add this count to final Alloy drops as independent loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 22m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki WAL disk-full failures threaten log durability
+              description: Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 26m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki ingestion telemetry is missing
+              description: A successful private Loki scrape with process-start and WAL-counter evidence has been unavailable for five minutes. Ingestion and durability telemetry are unknown; this is not proof of process failure.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 31m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector telemetry is missing on a
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: b
+            exp_annotations:
+              summary: Log collector telemetry is missing on b
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+    promql_expr_test:
+      - expr: bex:log_delivery_retry_activity
+        eval_time: 22m
+        exp_samples:
+          - labels: bex:log_delivery_retry_activity{node="a"}
+            value: 1
+      - expr: bex:log_delivery_collector_healthy
+        eval_time: 22m
+        exp_samples: []
+  - name: one retry burst recovers without surviving the ten minute alert hold
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: loki_write_batch_retries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 0x19 1x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts: []
+      - eval_time: 24m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_retry_activity
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_retry_activity{node="a"}
+            value: 1
+      - expr: bex:log_delivery_retry_activity
+        eval_time: 25m
+        exp_samples: []
+  - name: sustained retry activity fires with successful scrapes then clears on recovery
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: loki_write_batch_retries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 0x19 1+1x20 21x60
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log writer retries persist on a
+              description: Alloy has reported retry activity in every five-minute window for ten minutes. Delivery is delayed or failing; retries alone do not prove final loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 43m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log writer retries persist on a
+              description: Alloy has reported retry activity in every five-minute window for ten minutes. Delivery is delayed or failing; retries alone do not prove final loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 45m
+        alertname: LogDeliveryRetriesPersistent
+        exp_alerts: []
+    promql_expr_test: []
+  - name: single unsuccessful collector target remains expected and respects grace
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x9 0x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector telemetry is missing on a
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryInventoryMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_collector_expected
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_collector_expected{node="a"}
+            value: 1
+          - labels: bex:log_delivery_collector_expected{node="b"}
+            value: 1
+      - expr: bex:log_delivery_collector_up
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_collector_up{node="b"}
+            value: 1
+  - name: all disappeared collector targets alert independently per inventoried node
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector telemetry is missing on a
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: b
+            exp_annotations:
+              summary: Log collector telemetry is missing on b
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 10m
+        alertname: LogDeliveryInventoryMissing
+        exp_alerts: []
+    promql_expr_test: []
+  - name: collector scrape recovery clears missing alert
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x9 0x14 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector telemetry is missing on a
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 25m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+    promql_expr_test: []
+  - name: new inventoried node gets ten minutes to acquire a collector
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: b
+            exp_annotations:
+              summary: Log collector telemetry is missing on b
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+    promql_expr_test: []
+  - name: removed node stops being expected despite prior missing collector
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x19 stale
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 19m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: b
+            exp_annotations:
+              summary: Log collector telemetry is missing on b
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_collector_expected
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_collector_expected{node="a"}
+            value: 1
+  - name: complete inventory loss reports unknown coverage independently of healthy scrapes
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: LogDeliveryInventoryMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: LogDeliveryInventoryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+            exp_annotations:
+              summary: Log collector node inventory is missing
+              description: Kubernetes node inventory has been absent for ten minutes. The expected collector set cannot be established, so collector coverage is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_inventory_present
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_inventory_present
+            value: 0
+  - name: failed config reload is detected while process remains scraped and clears on repair
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x19 0x9 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector configuration or component health is bad or unknown on a
+              description: A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 30m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_collector_healthy
+        eval_time: 25m
+        exp_samples:
+          - labels: bex:log_delivery_collector_healthy{node="a"}
+            value: 0
+          - labels: bex:log_delivery_collector_healthy{node="b"}
+            value: 1
+  - name: unhealthy components override successful config loading and clear on recovery
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="unhealthy"}
+        values: 0x19 2x9 0x100
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector configuration or component health is bad or unknown on a
+              description: A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 30m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+    promql_expr_test: []
+  - name: partial native health evidence remains unknown rather than healthy
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector configuration or component health is bad or unknown on a
+              description: A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: b
+            exp_annotations:
+              summary: Log collector configuration or component health is bad or unknown on b
+              description: A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_collector_healthy
+        eval_time: 20m
+        exp_samples: []
+      - expr: bex:log_delivery_collector_up
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_collector_up{node="a"}
+            value: 1
+          - labels: bex:log_delivery_collector_up{node="b"}
+            value: 1
+  - name: cached unhealthy telemetry is suppressed when that collector scrape fails
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: "0x100"
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: "0x100"
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: LogDeliveryCollectorMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector telemetry is missing on a
+              description: An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+    promql_expr_test:
+      - expr: bex:log_delivery_collector_healthy
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:log_delivery_collector_healthy{node="b"}
+            value: 1
+  - name: Loki scrape failure fires after five minutes and clears without claiming process outage
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x19 0x9 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki ingestion telemetry is missing
+              description: A successful private Loki scrape with process-start and WAL-counter evidence has been unavailable for five minutes. Ingestion and durability telemetry are unknown; this is not proof of process failure.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 30m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_loki_up
+        eval_time: 25m
+        exp_samples:
+          - labels: bex:log_delivery_loki_up
+            value: 0
+      - expr: bex:log_delivery_loki_up
+        eval_time: 30m
+        exp_samples:
+          - labels: bex:log_delivery_loki_up
+            value: 1
+  - name: Loki target disappearance cannot look like successful collection
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki ingestion telemetry is missing
+              description: A successful private Loki scrape with process-start and WAL-counter evidence has been unavailable for five minutes. Ingestion and durability telemetry are unknown; this is not proof of process failure.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+    promql_expr_test:
+      - expr: bex:log_delivery_loki_up
+        eval_time: 10m
+        exp_samples:
+          - labels: bex:log_delivery_loki_up
+            value: 0
+  - name: new pod cannot borrow historical marker from old pod at reused node and IP
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x19 stale
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x19 stale
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-new"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-new"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-new",reason="ingester_error"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 9x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+    promql_expr_test: []
+  - name: per-series first events survive reduction across replacement writers
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: 100x19 stale
+      - series: alloy_config_last_load_successful{job="alloy",instance="second:12345",node="a",pod="alloy-second"}
+        values: 1x100
+      - series: up{job="alloy",instance="second:12345",node="a",pod="alloy-second"}
+        values: 1x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="second:12345",node="a",pod="alloy-second",reason="ingester_error"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+              reason: ingester_error
+            exp_annotations:
+              summary: Log writer dropped entries on a
+              description: Alloy reported final writer drops with reason ingester_error during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 35m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+    promql_expr_test: []
+  - name: non-healthy root component state unknown is not treated as healthy
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="unknown"}
+        values: 0x19 2x9 0x100
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector configuration or component health is bad or unknown on a
+              description: A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 30m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+    promql_expr_test: []
+  - name: non-healthy root component state exited is not treated as healthy
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="exited"}
+        values: 0x19 2x9 0x100
+    alert_rule_test:
+      - eval_time: 24m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector configuration or component health is bad or unknown on a
+              description: A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 30m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+    promql_expr_test: []
+  - name: Loki scrape success without process_start_time_seconds is incomplete coverage
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki ingestion telemetry is missing
+              description: A successful private Loki scrape with process-start and WAL-counter evidence has been unavailable for five minutes. Ingestion and durability telemetry are unknown; this is not proof of process failure.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+    promql_expr_test:
+      - expr: bex:log_delivery_loki_up
+        eval_time: 5m
+        exp_samples:
+          - labels: bex:log_delivery_loki_up
+            value: 0
+  - name: Loki scrape success without loki_ingester_wal_disk_full_failures_total is incomplete coverage
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: LogDeliveryLokiMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki ingestion telemetry is missing
+              description: A successful private Loki scrape with process-start and WAL-counter evidence has been unavailable for five minutes. Ingestion and durability telemetry are unknown; this is not proof of process failure.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+    promql_expr_test:
+      - expr: bex:log_delivery_loki_up
+        eval_time: 5m
+        exp_samples:
+          - labels: bex:log_delivery_loki_up
+            value: 0
+  - name: lazy first-positive evidence becomes unknown when its validating scrape fails
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x20 0x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: 22x100
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x20 0x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x20 0x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: loki_write_dropped_entries_total{job="alloy",instance="a:12345",node="a",pod="alloy-a",reason="ingester_error"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+      - series: loki_discarded_samples_total{job="loki",instance="loki:3100",reason="rate_limited",format="loki",retention_hours="168"}
+        values: _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 1x100
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+              reason: ingester_error
+            exp_annotations:
+              summary: Log writer dropped entries on a
+              description: Alloy reported final writer drops with reason ingester_error during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+              reason: rate_limited
+              format: loki
+              retention_hours: "168"
+            exp_annotations:
+              summary: Loki rejected log entries with reason rate_limited
+              description: Loki reported rejected ingestion attempts during the last 15 minutes. Retries may recover these attempts; do not add this count to final Alloy drops as independent loss.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 20m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: loki
+            exp_annotations:
+              summary: Loki WAL disk-full failures threaten log durability
+              description: Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+      - eval_time: 21m
+        alertname: LogDeliveryEntriesDropped
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: LogDeliveryLokiRejected
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: LogDeliveryLokiWALDiskFull
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:log_delivery_loki_up
+        eval_time: 21m
+        exp_samples:
+          - labels: bex:log_delivery_loki_up
+            value: 0
+  - name: successful empty collector with zero running components has unknown health
+    interval: 1m
+    input_series:
+      - series: kube_node_info{node="a",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="a:12345",node="a",pod="alloy-a"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="a:12345",node="a",pod="alloy-a",health_type="healthy"}
+        values: "0x100"
+      - series: kube_node_info{node="b",kernel_version="fixture"}
+        values: 1x100
+      - series: up{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_config_last_load_successful{job="alloy",instance="b:12345",node="b",pod="alloy-b"}
+        values: 1x100
+      - series: alloy_component_controller_running_components{job="alloy",instance="b:12345",node="b",pod="alloy-b",health_type="healthy"}
+        values: 22x100
+      - series: up{job="loki",instance="loki:3100"}
+        values: 1x100
+      - series: process_start_time_seconds{job="loki",instance="loki:3100"}
+        values: 100x100
+      - series: loki_ingester_wal_disk_full_failures_total{job="loki",instance="loki:3100"}
+        values: "0x100"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: LogDeliveryCollectorUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: monitoring
+              service: log-shipper
+              node: a
+            exp_annotations:
+              summary: Log collector configuration or component health is bad or unknown on a
+              description: A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.
+              runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+    promql_expr_test:
+      - expr: bex:log_delivery_collector_healthy
+        eval_time: 5m
+        exp_samples:
+          - labels: bex:log_delivery_collector_healthy{node="b"}
+            value: 1
