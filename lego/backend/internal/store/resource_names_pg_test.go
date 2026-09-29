@@ -185,7 +185,8 @@ func TestSandboxUsageMetadataPG(t *testing.T) {
 	if _, err := pool.Exec(ctx,
 		`INSERT INTO agent_sessions (id, workspace_id, repo, branch, sandbox_id, phase)
 		 VALUES ('ags-1', $1, 'bex-co/bex', 'main', 'sbx-current', 'completed'),
-		        ('ags-2', $1, 'acme/site', '', 'sbx-nobranch', 'completed')`, tenant.ID); err != nil {
+		        ('ags-2', $1, 'acme/site', '', 'sbx-nobranch', 'completed'),
+		        ('ags-3', $1, '', '', 'sbx-norepo', 'completed')`, tenant.ID); err != nil {
 		t.Fatalf("seed sessions: %v", err)
 	}
 	if _, err := pool.Exec(ctx,
@@ -219,7 +220,7 @@ func TestSandboxUsageMetadataPG(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := st.SandboxUsageMetadata(ctx, tenant.ID, []string{"sbx-current", "sbx-previous", "sbx-nobranch", "sbx-unknown", "sbx-suspended", "sbx-deleted"})
+	got, err := st.SandboxUsageMetadata(ctx, tenant.ID, []string{"sbx-current", "sbx-previous", "sbx-nobranch", "sbx-norepo", "sbx-unknown", "sbx-suspended", "sbx-deleted"})
 	if err != nil {
 		t.Fatalf("SandboxUsageMetadata: %v", err)
 	}
@@ -227,9 +228,11 @@ func TestSandboxUsageMetadataPG(t *testing.T) {
 		t.Errorf("an unknown sandbox resolved to %+v, want absent", label)
 	}
 	for sandboxID, want := range map[string]SandboxUsageMetadata{
-		"sbx-current":   {Name: "bex-co/bex (main)", Phase: "running", Tier: "starter"},
-		"sbx-previous":  {Name: "bex-co/bex (main)", Phase: "terminated", Tier: "starter"},
-		"sbx-nobranch":  {Name: "acme/site"},
+		"sbx-current":  {Name: "bex-co/bex (main)", Phase: "running", Tier: "starter"},
+		"sbx-previous": {Name: "bex-co/bex (main)", Phase: "terminated", Tier: "starter"},
+		"sbx-nobranch": {Name: "acme/site"},
+		// A repo-less session names itself by id (w1/112).
+		"sbx-norepo":    {Name: "agent session ags-3"},
 		"sbx-suspended": {Phase: "suspended", Tier: "standard"},
 		"sbx-deleted":   {Phase: "terminated", Tier: "standard"},
 	} {
