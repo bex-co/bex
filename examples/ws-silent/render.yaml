@@ -1,0 +1,11 @@
+# render.yaml — the w1/m161 acceptance fixture (see README.md). A free web
+# service whose /ws endpoint receives client frames and sends nothing back.
+services:
+  - name: ws-silent
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    branch: main
+    rootDir: examples/ws-silent
+    plan: free
+    healthCheckPath: /
