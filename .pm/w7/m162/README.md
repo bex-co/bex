@@ -1,6 +1,6 @@
 # w7 · m162 — Detect missing platform backup telemetry
 
-**Worker:** worker7 **Goal:** Distinguish unknown platform backup health from healthy backups when archiver metrics or primary targets disappear. **Status:** todo
+**Worker:** worker7 **Goal:** Distinguish unknown platform backup health from healthy backups when archiver metrics or primary targets disappear. **Status:** in progress
 
 **Estimate:** 120m implementation; 190m (~3h10m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -8,8 +8,8 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Define independent platform database telemetry expectations](t001.md) | 30m | — |
-| t002 | [Add per-cluster backup telemetry-loss alerts](t002.md) | 45m | t001 |
+| t001 | [Define independent platform database telemetry expectations](done/t001.md) — **DONE** | 30m | — |
+| t002 | [Add per-cluster backup telemetry-loss alerts](done/t002.md) — **DONE** | 45m | t001 |
 | t003 | [Expose unknown backup health and record deployed coverage](t003.md) | 45m | t002 |
 | t004 | [Simplify](t004.md) | 20m | t003 |
 | t005 | [Test coverage](t005.md) | 40m | t003, t004 |
