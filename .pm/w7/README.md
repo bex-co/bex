@@ -19,7 +19,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 - [x] **m161** — [Detect stalled platform GitOps delivery](done/m161/README.md) — done 2026-09-29 UTC: private Argo scrape, 32 production/28 local expected Applications, sustained sync/health and missing-data alerts, four panels. Live on `32631b053`; all 32 production Applications covered and all four rules healthy/inactive.
 - [x] **m162** — [Detect missing platform backup telemetry](done/m162/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 2, 2026-09-28; all tasks done; deployed coverage verified at `782bcba36` on 2026-09-29.
-- [ ] **m163** — [Alert on recurring registry garbage-collection failures](m163/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 3, 2026-09-28; t001–t002 done; t003 activation and deployed coverage next.
+- [x] **m163** — [Alert on recurring registry garbage-collection failures](done/m163/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 3, 2026-09-28; all tasks done; deployed coverage verified at `c2ae35611` on 2026-09-29.
 - [ ] **m164** — [Warn before tenant-node storage reaches DiskPressure](m164/README.md) (7 tasks; ~4h10m) ← approved brainstorm item 4, 2026-09-28; first task `t001`.
 - [ ] **m165** — [Detect failures in durable log ingestion](m165/README.md) (6 tasks; ~3h40m) ← approved brainstorm item 5, 2026-09-28; first task `t001` depends on `w7/m163/t001`.
 

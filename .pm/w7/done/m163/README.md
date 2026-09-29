@@ -1,6 +1,6 @@
 # w7 · m163 — Alert on recurring registry garbage-collection failures
 
-**Worker:** worker7 **Goal:** Detect recurring Zot garbage-collection failures before stranded build artifacts consume registry headroom. **Status:** in progress
+**Worker:** worker7 **Goal:** Detect recurring Zot garbage-collection failures before stranded build artifacts consume registry headroom. **Status:** done
 
 **Estimate:** 120m implementation; 190m (~3h10m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -10,23 +10,23 @@
 | --- | --- | --- | --- |
 | t001 | [Expose bounded Zot GC failure metrics and a private Alloy scrape](done/t001.md) — **DONE** | 45m | — |
 | t002 | [Add registry GC recurrence alerts and repair navigation](done/t002.md) — **DONE** | 45m | t001 |
-| t003 | [Make GC alert state reliable across replay reload and recovery](t003.md) | 30m | t002 |
-| t004 | [Simplify](t004.md) | 20m | t003 |
-| t005 | [Test coverage](t005.md) | 40m | t003, t004 |
-| t006 | [Closeout](t006.md) | 10m | t004, t005 |
+| t003 | [Make GC alert state reliable across replay reload and recovery](done/t003.md) — **DONE** | 30m | t002 |
+| t004 | [Simplify](done/t004.md) — **DONE** | 20m | t003 |
+| t005 | [Test coverage](done/t005.md) — **DONE** | 40m | t003, t004 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | t004, t005 |
 
 ## Definition of done
 
-- [ ] The known GC error signature becomes a bounded operational metric through the existing Zot log pipeline; the Alloy metrics scrape remains private.
-- [ ] A failing fixture triggers the intended recurrence signal while healthy GC logs do not; the first event is not silently lost.
-- [ ] Collector reload, historical replay, inactivity and recovery have documented and tested semantics, with collection loss distinct from zero errors.
-- [ ] Every alert has a panel and ADR060 diagnosis/repair link; dated runtime evidence confirms the deployed scrape and rules without recreating the defect in production.
+- [x] The known GC error signature becomes a bounded operational metric through the existing Zot log pipeline; the Alloy metrics scrape remains private.
+- [x] A failing fixture triggers the intended recurrence signal while healthy GC logs do not; the first event is not silently lost.
+- [x] Collector reload, historical replay, inactivity and recovery have documented and tested semantics, with collection loss distinct from zero errors.
+- [x] Every alert has a panel and ADR060 diagnosis/repair link; dated runtime evidence confirms the deployed scrape and rules without recreating the defect in production.
 
-- [ ] Standing closing tasks and required checks are complete; production-dependent claims have dated runtime evidence for the tested revision.
+- [x] Standing closing tasks and required checks are complete; production-dependent claims have dated runtime evidence for the tested revision.
 
 ## Source + Goal linkage
 
-- **Source:** User-approved `$pm-brainstorm for w7` proposal 3, materialized by `$pm all for w7` on 2026-09-28. Brainstorm source revision: `7f1e49986`; materialization checkout: `97b70fad0`. [w7/m158](../blocked/m158/README.md), [ADR060 D4](../../../docs/ADR060-build-worker-reliability-and-performance.md), `deploy/gitops/base/log-shipper.yaml`, and [Alloy stage.metrics](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/#stage.metrics).
+- **Source:** User-approved `$pm-brainstorm for w7` proposal 3, materialized by `$pm all for w7` on 2026-09-28. Brainstorm source revision: `7f1e49986`; materialization checkout: `97b70fad0`. [w7/m158](../../blocked/m158/README.md), [ADR060 D4](../../../../docs/ADR060-build-worker-reliability-and-performance.md), `deploy/gitops/base/log-shipper.yaml`, and [Alloy stage.metrics](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/#stage.metrics).
 - **Evidence:** w7/m158 recorded 12 GC failures in 24 hours for an empty repository left across a Zot restart: removeTagsPerRetentionPolicy could not read repository metadata. The repository was repaired and later removed after successful GC. Prevention remains blocked on the upstream-versus-patched-build decision. Existing Zot alerts cover PVC capacity rather than this known failure signature; Zot platform logs already reach Loki.
 - **Goal linkage:** ADR008 deploy-from-chat and dependable push-to-deploy need a reclaimable image registry, not just a registry that is currently reachable.
 - **Expected outcome:** A recurrence of the known GC defect raises an actionable alert linked to the existing repair procedure before capacity alarms become the first signal.
@@ -55,3 +55,9 @@ This filing schedules the approved work; it does not implement or deploy it. Exi
 - Both rendered environments passed the shared scrape/inventory validator. `scripts/gitops-validate.sh` and `scripts/obs-coverage-check.sh` passed; the only warning is the existing optional FGA drift check skipped because `fga` is unavailable (no authz change).
 - `/simplify` reuse, quality and efficiency reviews completed. Removed one redundant final label-drop stage; no further changes warranted. Markdown formatting and `git diff --check` passed.
 - Read-only baseline: Zot v2.1.18 emits routine probe logs about every 10s; historical GC failures recurred roughly every 72–73m. The exact new panel LogQL matched six retained Sep28 events. This is historical fixture/source evidence, not a new production GC incident. Deployment verification remains for t003.
+
+## Deployed closeout evidence
+
+2026-09-29 05:39–05:40 UTC, deployed revision `c2ae35611`: root, Grafana, Prometheus and log-shipper are Synced/Healthy. Prometheus and Alloy rendered ConfigMaps and Grafana Cluster capacity panels 15–17 match the shipped revision. The private Alloy scrape has 11 unique targets for 11 desired/ready DaemonSet pods, all UP. The Zot collector heartbeat advanced to 1790660414 on log-shipper-576qj / bex-platform-h7t89-vhv2v; only job/instance/node/pod/service labels remain. The collection record equals 1; both GC alerts are loaded, healthy and inactive. The failure gauge is absent, consistent with no currently observed matching error.
+
+The root/Grafana source caches were refreshed; existing automatic sync and configuration reload delivered the change. The initial pre-scrape missing-collection pending state cleared before its 10m threshold. No GC defect was recreated in production and no repair or data deletion was performed. Historical failures establish the query/signature; isolated fixtures establish failure behavior.

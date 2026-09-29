@@ -244,6 +244,8 @@ Alloy keeps idle gauge series for 5m. Its separate metrics branch ignores log en
 
 `ZotGarbageCollectionTelemetryMissing` separately warns when fresh collection evidence has been unavailable for 10m. Evidence requires a Zot log observation newer than 5m from an Alloy instance whose current scrape is successful. The `bex_zot_log_last_observed_timestamp_seconds` gauge advances on any fresh Zot line, including normal probe traffic; no GC failure is required. The **Zot GC log collection** tile shows FRESH or UNKNOWN. A zero recurrence state is displayed only with fresh collection; a retained recent failure remains visible even during a collection outage. Warning email follows ADR010's digest schedule, independently of these rule windows.
 
+**Deployed coverage (2026-09-29 05:39–05:40 UTC, `c2ae35611`):** all 11 Alloy collectors were scraped successfully, the Zot observation timestamp advanced and collection was FRESH, both rules were loaded/healthy/inactive, and panels 15–17 matched the revision. No current matching failure was observed. The exact structured LogQL query matched six retained September 28 failures; real-image fixtures exercised failure, replay, reload and expiry without altering production registry data.
+
 Start in **Cluster capacity → Zot GC failure logs**, or query the retained platform stream directly:
 
 ```logql
