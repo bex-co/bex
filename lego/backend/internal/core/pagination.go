@@ -18,6 +18,7 @@ package core
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"net/url"
 	"slices"
@@ -40,6 +41,29 @@ func QueryList(q url.Values, key string) []string {
 		}
 	}
 	return out
+}
+
+// ListOwners is Render's multi-workspace list filter (`ownerId` may repeat or be
+// comma-separated; QueryList normalizes and deduplicates it): list runs once
+// per requested owner through the caller's existing single-workspace list,
+// which authorizes that workspace, and the results are concatenated in request
+// order. Each list is scoped to its own workspace, so distinct owners never
+// return the same resource. Any owner's error fails the whole request, so a
+// forbidden owner mixed into an allowed one discloses nothing. No owner keeps
+// the single-workspace default: one list call with "".
+func ListOwners[T any](ctx context.Context, owners []string, list func(context.Context, string) ([]T, error)) ([]T, error) {
+	if len(owners) == 0 {
+		return list(ctx, "")
+	}
+	var out []T
+	for _, owner := range owners {
+		items, err := list(ctx, owner)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, items...)
+	}
+	return out, nil
 }
 
 // ParseTime parses one optional RFC3339 field value and returns a named bad
