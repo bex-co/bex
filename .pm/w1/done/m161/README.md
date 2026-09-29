@@ -1,6 +1,6 @@
 # w1 · m161 — A WebSocket whose traffic is only client→server does not keep a free service awake
 
-**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** in progress (t001, t002, t005 and t006 done; fixture w1/114 done 2026-09-29 as `examples/ws-silent/`; t003 live acceptance, then t004 parity and t007 closeout remain)
+**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** done 2026-09-29 (live: a client-only WebSocket held a free service Running for 35 min after the Prometheus keep-list fix `f0b29625c`; see done/t003)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | The `websocketegress` plugin counts client→server frames as well as server→client — **DONE** | 45m | — |
 | t002 | The operator's activity read sums both directions — **DONE** | 30m | t001 |
-| t003 | Live: a client-only WebSocket holds a free service past its idle window | 45m | t002, w1/114 |
-| t004 | Render parity | 20m | t003 |
+| t003 | Live: a client-only WebSocket holds a free service past its idle window — **DONE** | 45m | t002, w1/114 |
+| t004 | Render parity — **DONE** | 20m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout | 10m | t006, t003, t004 |
+| t007 | Closeout — **DONE** | 10m | t006, t003, t004 |
 
 ## Definition of done
 
