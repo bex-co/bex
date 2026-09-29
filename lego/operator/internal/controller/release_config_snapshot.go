@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strconv"
@@ -28,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -306,4 +308,102 @@ func (r *AppReconciler) gcReleaseConfigSnapshots(ctx context.Context, app *appv1
 		}
 	}
 	return nil
+}
+
+// podTemplateSnapshotKey holds the JSON-encoded PodTemplateSpec in a recorded
+// release template.
+const podTemplateSnapshotKey = "podTemplate"
+
+// podTemplateSnapshotName is the recorded pod template of release generation gen.
+// It shares releaseSnapshotName's suffix and the snapshot labels, so it rides the
+// same 20-generation GC and the same App ownership as the configuration copies.
+func podTemplateSnapshotName(app *appv1alpha1.App, gen int64) string {
+	return releaseSnapshotName(app.Name+"-podtemplate", gen)
+}
+
+// canceledOverServed reports whether this pass is settling a cancel over a release
+// that served — the one case where the pod template must be the SERVED release's,
+// not a projection of the current spec. It is the predicate
+// prepareAppReleaseDecision uses to take the canceled branch, plus releaseHasServed.
+func canceledOverServed(app *appv1alpha1.App) bool {
+	gen, ok := canceledReleaseGeneration(app)
+	return ok && gen == requestedReleaseGeneration(app) && releaseHasServed(app)
+}
+
+// recordReleasePodTemplate stores the pod template just applied for the current
+// release generation, overwriting any earlier record for that generation so it is
+// always the LAST template that generation ran with.
+//
+// Why the whole template and not only the Secrets (w1/m152 t002): a config_change
+// alters more than configuration Secrets. The save bumps spec.restartedAt, which
+// lands on the template as the app.bex.co/restarted-at annotation, and the same
+// deploy can carry a start command, health-check path or plan. Re-projecting the
+// current spec on cancel therefore changed the template — and rolled a pod — even
+// once the Secrets were reverted. Restoring the recorded template verbatim is the
+// only way to guarantee "the last successful deploy remains live" with no rollout.
+//
+// A Secret rather than a ConfigMap because spec.env literals are rendered inline in
+// the template.
+func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1alpha1.App, tmpl corev1.PodTemplateSpec) error {
+	gen := app.Status.ReleaseGeneration
+	if gen <= 0 {
+		return nil
+	}
+	raw, err := json.Marshal(tmpl)
+	if err != nil {
+		return err
+	}
+	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: podTemplateSnapshotName(app, gen), Namespace: app.Namespace}}
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, rec, func() error {
+		if rec.Labels == nil {
+			rec.Labels = map[string]string{}
+		}
+		rec.Labels[snapshotOfLabel] = app.Name + "-podtemplate"
+		rec.Labels[snapshotGenerationLabel] = strconv.FormatInt(gen, 10)
+		rec.Data = map[string][]byte{podTemplateSnapshotKey: raw}
+		return controllerutil.SetControllerReference(app, rec, r.Scheme)
+	})
+	return err
+}
+
+// servedPodTemplateForCancel returns the recorded pod template of the last served
+// release when this pass is settling a cancel over it, and nil otherwise — including
+// when that release predates this change or GC reclaimed its record, in which case
+// the caller re-projects as before: the honest fallback, never a guess.
+func (r *AppReconciler) servedPodTemplateForCancel(ctx context.Context, app *appv1alpha1.App) (*corev1.PodTemplateSpec, error) {
+	if !canceledOverServed(app) {
+		return nil, nil
+	}
+	served := successfulReleaseGeneration(app)
+	if served <= 0 {
+		return nil, nil
+	}
+	rec := &corev1.Secret{}
+	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: podTemplateSnapshotName(app, served)}, rec)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var tmpl corev1.PodTemplateSpec
+	if err := json.Unmarshal(rec.Data[podTemplateSnapshotKey], &tmpl); err != nil {
+		return nil, fmt.Errorf("decode recorded pod template for generation %d: %w", served, err)
+	}
+	return &tmpl, nil
+}
+
+// recordServingTemplate records what this release generation now runs, for a later
+// cancel to restore. Never while settling a cancel: that pass is the served
+// release's, and writing a re-projection over its record would lose the template it
+// actually ran. A failure is logged rather than failing the release — without a
+// record a later cancel falls back to re-projecting, which is the pre-m152
+// behaviour.
+func (r *AppReconciler) recordServingTemplate(ctx context.Context, app *appv1alpha1.App, tmpl corev1.PodTemplateSpec) {
+	if canceledOverServed(app) {
+		return
+	}
+	if err := r.recordReleasePodTemplate(ctx, app, tmpl); err != nil {
+		logf.FromContext(ctx).Error(err, "recording release pod template", "app", app.Name)
+	}
 }
