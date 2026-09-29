@@ -498,6 +498,16 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 // build/start/dockerfile block to round-trip).
 func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 	if a.Runtime == "" || a.Runtime == "image" {
+		// An image cron still has a command of its own, and the pinned client
+		// clones a cron's command only from envSpecificDetails.startCommand
+		// (pkg/service/clone.go:136-145,328-334) — so omitting the block made
+		// `create --from` clone an image cron that silently ran its image
+		// entrypoint instead (w1/m167). Only the command: an image service has
+		// no build settings to report, and an empty command stays absent so the
+		// entrypoint remains the intended default.
+		if a.Runtime == "image" && svcType == appv1alpha1.TypeCronJob && a.Command != "" {
+			return map[string]any{"startCommand": a.Command}, true
+		}
 		return nil, false
 	}
 	if a.Runtime == "docker" {
