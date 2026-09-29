@@ -132,7 +132,7 @@ func newServer(st *stats, started time.Time) http.Handler {
 func runClient(args []string) error {
 	fs := flag.NewFlagSet("client", flag.ExitOnError)
 	url := fs.String("url", "", "WebSocket URL, e.g. wss://svc.onbex.co/ws")
-	every := fs.Duration("every", 30*time.Second, "send interval")
+	every := fs.Duration("every", 30*time.Second, "send interval; 0 listens only (for the server-sending control)")
 	duration := fs.Duration("duration", 30*time.Minute, "how long to keep sending")
 	_ = fs.Parse(args)
 	if *url == "" {
@@ -155,6 +155,11 @@ func runClient(args []string) error {
 		}
 	}()
 	deadline := time.Now().Add(*duration)
+	if *every <= 0 {
+		time.Sleep(time.Until(deadline))
+		log.Printf("listened for %s, sent nothing, received %d", *duration, received.Load())
+		return nil
+	}
 	for sent := 1; time.Now().Before(deadline); sent++ {
 		if err := conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("client %d", sent))); err != nil {
 			return fmt.Errorf("send %d: %w", sent, err)

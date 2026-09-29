@@ -7,7 +7,7 @@ An echo server cannot answer that. Every client frame produces a server frame, s
 | Mode | How | Traffic |
 | --- | --- | --- |
 | **silent** (the subject) | connect to `/ws` and send | client → server only; the server writes nothing, not even a control frame, unless the client pings |
-| **server-sending control** | connect to `/ws?mode=send&every=30s` | the server sends `server tick` on its own schedule |
+| **server-sending control** | connect to `/ws?mode=send&every=30s` with `-every 0` (the client listens only) | the server sends `server tick` on its own schedule |
 | **idle control** | deploy it and connect nothing | none |
 
 `GET /stats` reports counters since the process started: `connections`, `clientMessages`, `serverMessages`, `clientPings`, `serverPongs`, `lastClientMessage`. Control frames are counted apart from application frames. A pong the server sends in reply to a client ping is server→client traffic, and it shows up in `serverPongs` instead of hiding inside a "silent" result. The bundled client never pings.
