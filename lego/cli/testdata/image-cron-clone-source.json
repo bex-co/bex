@@ -1,0 +1,32 @@
+{
+  "autoDeploy": "no",
+  "autoDeployTrigger": "off",
+  "command": "echo QA_CLONE_MARKER",
+  "displayName": "",
+  "id": "qa-image-cron",
+  "idleTTLSeconds": 0,
+  "imagePath": "docker.io/library/busybox:1.37",
+  "immutableName": "qa-image-cron",
+  "name": "qa-image-cron",
+  "notificationsToSend": "default",
+  "notifyOnFail": "default",
+  "phase": "Running",
+  "pushDeliveryMethod": "none",
+  "replicas": 1,
+  "schedule": "*/2 * * * *",
+  "serviceDetails": {
+    "command": "echo QA_CLONE_MARKER",
+    "env": "image",
+    "envSpecificDetails": {
+      "startCommand": "echo QA_CLONE_MARKER"
+    },
+    "numInstances": 1,
+    "runtime": "image",
+    "schedule": "*/2 * * * *",
+    "url": "https://qa-image-cron.onbex.co"
+  },
+  "slug": "qa-image-cron",
+  "suspended": "not_suspended",
+  "suspenders": [],
+  "type": "cron_job"
+}
