@@ -102,6 +102,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     region: null,
     url: null,
     publicRoutingNotice: null,
+    undeployedChanges: null,
     internalAddress: null,
     createdAt: null,
     sshAddress: null,
@@ -538,5 +539,21 @@ describe("computeStats", () => {
   it("counts a suspended-but-Running-phase App as suspended, not running", () => {
     const list = [svc({ suspended: true, phase: "Running" })];
     expect(computeStats(list)).toEqual({ total: 1, running: 0, suspended: 1 });
+  });
+});
+
+// w1/m152 t003: the operator's undeployedChanges passes through the detail read,
+// and a list row — which never selects it — reads undefined rather than a
+// confident false.
+describe("toServiceView undeployedChanges", () => {
+  it("carries true from the detail read", () => {
+    expect(
+      toServiceView(server({ undeployedChanges: true })).undeployedChanges,
+    ).toBe(true);
+  });
+  it("reads a null wire value as false", () => {
+    expect(
+      toServiceView(server({ undeployedChanges: null })).undeployedChanges,
+    ).toBe(false);
   });
 });
