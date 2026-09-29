@@ -450,3 +450,29 @@ func TestProjectNativeBuildEnvUnlinkBumpsRevision(t *testing.T) {
 		t.Fatal("unlinking a group must invalidate the native env revision")
 	}
 }
+
+// A build runs for the release being built, before that release is snapshotted,
+// while the App still projects the served release's copies. It must read the
+// saved sources — a changed build-time value otherwise never reached the build
+// that was meant to ship it (w1/m152 t004).
+func TestProjectNativeBuildEnvReadsTheSavedSourcesNotTheServedSnapshot(t *testing.T) {
+	cl := fake.NewClientBuilder().WithScheme(nativeEnvScheme(t)).WithObjects(
+		envSecret("default", "web-env", map[string]string{"NODE_ENV": "saved"}),
+		envSecret("default", "web-env-r1", map[string]string{"NODE_ENV": "served"}),
+	).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl}
+	app := nativeEnvApp("web", nil, "web-env")
+	app.Status.ReleaseGeneration, app.Status.ConfigSnapshotGeneration = 2, 1
+
+	name, _, err := r.projectNativeBuildEnv(context.Background(), app, "bex-build", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var merged corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "bex-build", Name: name}, &merged); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(merged.Data["NODE_ENV"]); got != "saved" {
+		t.Fatalf("the build reads NODE_ENV=%q from the served release's copy, want the saved value", got)
+	}
+}

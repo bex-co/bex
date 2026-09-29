@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -81,10 +82,10 @@ func TestSettleConfigSnapshotRevertsToServedRelease(t *testing.T) {
 	app := servedAppWithGroup(ns)
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app,
 		// the served release's copies, taken when generation 3 dispatched
-		secret("evg-shared-env-r3", "group-v3"),
+		secret("api-evg-shared-env-r3", "group-v3"),
 		secret("api-env-r3", "OK"),
 		// the canceled release's copies
-		secret("evg-shared-env-r5", "group-v5"),
+		secret("api-evg-shared-env-r5", "group-v5"),
 		secret("api-env-r5", "should-not-ship"),
 	).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
@@ -98,7 +99,7 @@ func TestSettleConfigSnapshotRevertsToServedRelease(t *testing.T) {
 		t.Fatalf("settleConfigSnapshotTo = (%v, %v), want it to move onto generation 3", moved, err)
 	}
 	got := envNames(app)
-	want := []string{"evg-shared-env-r3", "api-env-r3"}
+	want := []string{"api-evg-shared-env-r3", "api-env-r3"}
 	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("after cancel the template reads %v, want %v — config must revert with the image", got, want)
 	}
@@ -119,7 +120,7 @@ func TestSettleConfigSnapshotLeavesProjectionWhenTargetHasNoCopy(t *testing.T) {
 	ns := snapshotTestNS
 	app := servedAppWithGroup(ns)
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app,
-		secret("evg-shared-env-r5", "group-v5"),
+		secret("api-evg-shared-env-r5", "group-v5"),
 		secret("api-env-r5", "should-not-ship"),
 	).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
@@ -142,7 +143,7 @@ func TestSettleConfigSnapshotIsAllOrNothing(t *testing.T) {
 	app := servedAppWithGroup(ns)
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app,
 		secret("api-env-r3", "OK"), // the group's r3 copy is gone
-		secret("evg-shared-env-r5", "group-v5"),
+		secret("api-evg-shared-env-r5", "group-v5"),
 		secret("api-env-r5", "should-not-ship"),
 	).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
@@ -246,5 +247,123 @@ func TestAfterServingDeploymentMetersCancelTemplateChanges(t *testing.T) {
 	}
 	if after := count(cancelTemplateReproject) + count(cancelTemplateRestore); after != before {
 		t.Errorf("a normal rollout was metered as a cancel template change (%v -> %v)", before, after)
+	}
+}
+
+// A group's Secret lives in the workspace namespace and is read by every linked
+// service, while generations are per App. Two services at the same generation
+// must each get their own copy of the group, taken when THEY dispatched (t004).
+func TestLinkedServicesSnapshotASharedGroupSeparately(t *testing.T) {
+	ctx := context.Background()
+	linked := func(name string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: snapshotTestNS, Generation: 3},
+			Spec:       appv1alpha1.AppSpec{Image: "nginx:1", Port: 3000, EnvFromSecrets: []string{"evg-shared-env"}},
+			Status:     appv1alpha1.AppStatus{ReleaseGeneration: 3},
+		}
+	}
+	a, b := linked("svc-a"), linked("svc-b")
+	group := secret("evg-shared-env", "v1")
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).
+		WithObjects(a, b, group).WithStatusSubresource(a, b).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+
+	if err := r.ensureReleaseConfigSnapshot(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	// The group is saved between the two services' dispatches.
+	group.Data["MESSAGE"] = []byte("v2")
+	if err := cl.Update(ctx, group); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.ensureReleaseConfigSnapshot(ctx, b); err != nil {
+		t.Fatal(err)
+	}
+
+	for app, want := range map[*appv1alpha1.App]string{a: "v1", b: "v2"} {
+		ref := envNames(app)[0]
+		var snap corev1.Secret
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: snapshotTestNS, Name: ref}, &snap); err != nil {
+			t.Fatalf("%s reads %s: %v", app.Name, ref, err)
+		}
+		if got := string(snap.Data["MESSAGE"]); got != want {
+			t.Errorf("%s reads group value %q from %s, want %q — another service's copy", app.Name, got, ref, want)
+		}
+		if !metav1.IsControlledBy(&snap, app) {
+			t.Errorf("%s's group copy %s is owned by another service, whose GC or deletion would drop it", app.Name, ref)
+		}
+	}
+}
+
+// An App already projecting the first build's unscoped group copy keeps
+// projecting it — switching names would roll the service with no deploy — and
+// co-owns the copy, so the service that created it cannot delete it from under
+// this one. Its next release moves to scoped names.
+func TestAdoptUnscopedSnapshotsKeepsTheTemplateAndCoOwns(t *testing.T) {
+	ctx := context.Background()
+	app := servedAppWithGroup(snapshotTestNS)
+	app.UID = "uid-api"
+	other := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "worker", Namespace: snapshotTestNS, UID: "uid-worker"}}
+	legacy := secret("evg-shared-env-r5", "running")
+	legacy.Labels = map[string]string{snapshotOfLabel: "evg-shared-env", snapshotGenerationLabel: "5"}
+	sch := deletionScheme(t)
+	if err := controllerutil.SetControllerReference(other, legacy, sch); err != nil {
+		t.Fatal(err)
+	}
+	cl := fake.NewClientBuilder().WithScheme(sch).WithObjects(app, other, legacy,
+		secret("evg-shared-env", "saved-since"),
+		secret("api-env-r5", "OK"),
+	).WithStatusSubresource(app).Build()
+	r := &AppReconciler{Client: cl, Scheme: sch}
+
+	before := envNames(app)
+	if before[0] != "api-evg-shared-env-r5" {
+		t.Fatalf("precondition: without the marker the projection is scoped, got %v", before)
+	}
+	if err := r.ensureReleaseConfigSnapshot(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if got := envNames(app); got[0] != "evg-shared-env-r5" || got[1] != "api-env-r5" {
+		t.Fatalf("projection = %v, want the unscoped copy the pods read today", got)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status.UnscopedSnapshotGeneration != 5 {
+		t.Fatalf("marker not persisted: %d", stored.Status.UnscopedSnapshotGeneration)
+	}
+	var copyOf corev1.Secret
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: snapshotTestNS, Name: "evg-shared-env-r5"}, &copyOf); err != nil {
+		t.Fatal(err)
+	}
+	if !metav1.IsControlledBy(&copyOf, other) || len(copyOf.OwnerReferences) != 2 {
+		t.Fatalf("owners = %+v, want worker controlling and api co-owning", copyOf.OwnerReferences)
+	}
+
+	// Expiry: the controller keeps a copy a co-owner still reads; the co-owner
+	// drops its reference; then the controller deletes it.
+	other.Status.ReleaseGeneration = 5 + releaseSnapshotRetention
+	app.Status.ReleaseGeneration = 5 + releaseSnapshotRetention
+	if err := r.gcReleaseConfigSnapshots(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: snapshotTestNS, Name: "evg-shared-env-r5"}, &copyOf); err != nil {
+		t.Fatalf("the controller deleted a copy its co-owner still holds: %v", err)
+	}
+	if err := r.gcReleaseConfigSnapshots(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: snapshotTestNS, Name: "evg-shared-env-r5"}, &copyOf); err != nil {
+		t.Fatalf("the co-owner deleted a copy it does not control: %v", err)
+	}
+	if len(copyOf.OwnerReferences) != 1 {
+		t.Fatalf("co-owner kept its reference past expiry: %+v", copyOf.OwnerReferences)
+	}
+	if err := r.gcReleaseConfigSnapshots(ctx, other); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: snapshotTestNS, Name: "evg-shared-env-r5"}, &copyOf); err == nil {
+		t.Fatal("the expired copy survived once nobody held it")
 	}
 }
