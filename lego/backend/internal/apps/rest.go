@@ -672,7 +672,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	list := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		apps, err := s.List(r.Context(), q.Get("ownerId"))
+		owners := core.QueryList(q, "ownerId")
+		apps, err := core.ListOwners(r.Context(), owners, s.List)
 		if err != nil {
 			return nil, err
 		}
@@ -716,8 +717,18 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		// Render's cursor pagination (docs/render-artifacts/owners-api.md): a
 		// service's cursor is its name; `cursor`/`limit` page the result.
 		after, limit := core.PageParams(q)
-		page := core.Page(apps, after, limit, func(a AppView) string { return a.Name })
-		return s.restServiceList(r.Context(), page), nil // [{service, cursor}, ...]
+		cursorOf := func(a AppView) string { return a.Name }
+		if len(owners) > 1 {
+			// Names are unique within a workspace, not across them, so a name
+			// cursor could resume after the wrong one of two equal names. A
+			// multi-workspace list pages by id in id order instead; Render's
+			// cursors are opaque, and single-workspace paging is unchanged.
+			cursorOf = func(a AppView) string { return a.ID }
+			apps = core.StablePage(apps, after, limit, true, cursorOf)
+		} else {
+			apps = core.Page(apps, after, limit, cursorOf)
+		}
+		return s.restServiceList(r.Context(), apps, cursorOf), nil // [{service, cursor}, ...]
 	})
 	listInstances := core.HandleByID(s.ListInstances)
 	// shellTicket mints a Browser Web Shell exec ticket (docs/ADR035-ssh.md

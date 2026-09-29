@@ -160,7 +160,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	const base = "/v1/postgres"
 	mux.HandleFunc("GET "+base, core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		out, err := s.ListPostgres(r.Context(), q.Get("ownerId"))
+		out, err := core.ListOwners(r.Context(), core.QueryList(q, "ownerId"), s.ListPostgres)
 		if err != nil {
 			return nil, err
 		}
