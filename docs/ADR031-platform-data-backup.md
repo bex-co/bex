@@ -382,6 +382,8 @@ The independent expectation `bex:platform_database_backup_expected` names `bex-s
 
 In Grafana's **Data plane** dashboard, first distinguish DOWN/MISSING target coverage from METRIC MISSING with an UP exporter. The independent coverage tiles retain all four clusters, while the age chart shows UNKNOWN when it has no current evidence. CNPG reports `last_archived_time=-1` when no segment has been archived; this is a **present value**, like an explicit zero timestamp, and the unchanged `time() - timestamp > 26h` staleness rule treats it as old evidence. The age chart's `-1` fallback is different: it is an unavailable computed age, not a raw timestamp.
 
+**Deployed coverage (2026-09-29 05:24:52 UTC, `782bcba36`):** all four independent expectations, primary targets and archiver timestamp records were present; both absence alerts and the unchanged stale rule were loaded, healthy and inactive. The loaded rule configuration and Data plane panels 4/10/11 matched that revision. No database was interrupted; failure, failover and recovery behavior was exercised in isolated promtool fixtures.
+
 Start with the named database and its current primary, without changing database state:
 
 ```sh
