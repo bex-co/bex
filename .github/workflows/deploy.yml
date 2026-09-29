@@ -131,7 +131,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: check
         run: |
-          if bash scripts/deploy-superseded.sh "$GITHUB_SHA"; then
+          # 0 = newer manifests, 3 = newer image source: either way a newer run
+          # is queued behind this one, so this not-yet-built run may be skipped.
+          set +e
+          bash scripts/deploy-superseded.sh "$GITHUB_SHA"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ]; then
             echo "superseded=true" >> "$GITHUB_OUTPUT"
           else
             echo "superseded=false" >> "$GITHUB_OUTPUT"
@@ -442,14 +448,18 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Runs are serialized above, but ordinary pushes can still advance
           # main while images are building. Never attach images built from this
-          # event to newer production source/manifests: the newer queued run
-          # must build and pin its own digests. A preceding run can legitimately
-          # finish its [skip ci] digest write-back after this event was created,
-          # so scripts/deploy-superseded.sh permits only the five generated image
-          # fields to differ; every other production-input change is a supersession.
-          # When superseded (the pre-check job could not catch a commit that landed
-          # DURING this build), conclude NEUTRAL: flag the rollout steps below to
-          # skip, pin nothing, and exit 0 (green, not red). w1/m59.
+          # event to newer production MANIFESTS (what Argo CD syncs): the newer
+          # queued run must build and pin its own digests. A preceding run can
+          # legitimately finish its [skip ci] digest write-back after this event
+          # was created, so scripts/deploy-superseded.sh permits only the five
+          # generated image fields to differ. Newer image SOURCE alone (rc 3) is
+          # not a supersession: these images onto unchanged manifests are an
+          # ordinary deploy of this commit, and the queued run pins newer ones
+          # right after. Treating it as one starved production for 14+ hours
+          # under steady pushes (w1/116). When superseded (the pre-check job could
+          # not catch a commit that landed DURING this build), conclude NEUTRAL:
+          # flag the rollout steps below to skip, pin nothing, and exit 0 (green,
+          # not red). w1/m59.
           set +e
           bash scripts/deploy-superseded.sh "$GITHUB_SHA"
           superseded_rc=$?
@@ -458,7 +468,7 @@ jobs:
             echo "SUPERSEDED=true" >> "$GITHUB_ENV"
             echo "::notice::superseded by a newer run — images built but intentionally not pinned; skipping the rollout"
             exit 0
-          elif [ "$superseded_rc" -ne 1 ]; then
+          elif [ "$superseded_rc" -ne 1 ] && [ "$superseded_rc" -ne 3 ]; then
             echo "supersession check errored (rc=$superseded_rc); refusing stale digest write-back" >&2
             exit 1
           fi
