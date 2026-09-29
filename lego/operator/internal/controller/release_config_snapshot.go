@@ -24,12 +24,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -406,4 +410,71 @@ func (r *AppReconciler) recordServingTemplate(ctx context.Context, app *appv1alp
 	if err := r.recordReleasePodTemplate(ctx, app, tmpl); err != nil {
 		logf.FromContext(ctx).Error(err, "recording release pod template", "app", app.Name)
 	}
+}
+
+const (
+	cancelTemplateRestore   = "restore"
+	cancelTemplateReproject = "reproject"
+)
+
+// cancelTemplateChangesTotal counts pod-template changes made while settling a
+// cancel over a served release (w1/m152 t003 step 1). Every such change is a
+// rollout the canceled deploy's own row accounts for, so it is not silent — but the
+// two kinds mean different things:
+//
+//   - restore: the served release's recorded template was applied back over a
+//     canceled release that had already rolled (the health-gated case). Expected.
+//   - reproject: there was no record to restore, so the current spec was
+//     re-projected. That is the pre-m152 path, and it can ship saved-but-canceled
+//     changes; it should trend to zero as pre-snapshot releases age out. Anything
+//     else is a regression.
+var cancelTemplateChangesTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "bex_cancel_template_changes_total",
+	Help: "Pod-template changes made while settling a cancel over a served release, by kind (restore = the served release's recorded template was re-applied; reproject = no record existed and the current spec was re-projected, the pre-snapshot fallback that can ship canceled changes).",
+}, []string{"kind"})
+
+func init() {
+	ctrlmetrics.Registry.MustRegister(cancelTemplateChangesTotal)
+}
+
+// afterServingDeployment is everything that follows applying the Deployment:
+// whether the service is running behind its saved spec, the rollout invariant,
+// and recording the template for a later cancel. One call from reconcileKubernetes
+// keeps that function under the cyclomatic ceiling.
+func (r *AppReconciler) afterServingDeployment(ctx context.Context, app *appv1alpha1.App, tmpl corev1.PodTemplateSpec, templateChanged, restored bool) {
+	settling := canceledOverServed(app)
+	app.Status.UndeployedChanges = settling
+	if settling && templateChanged {
+		kind := cancelTemplateRestore
+		if !restored {
+			kind = cancelTemplateReproject
+			logf.FromContext(ctx).Info("canceled release re-projected from the saved spec: no recorded template to restore",
+				"app", app.Name, "servedGeneration", successfulReleaseGeneration(app))
+		}
+		cancelTemplateChangesTotal.WithLabelValues(kind).Inc()
+	}
+	r.recordServingTemplate(ctx, app, tmpl)
+}
+
+// applyServingDeployment creates or updates the Deployment from params, applying a
+// served release's recorded template verbatim when restore is non-nil, then runs
+// afterServingDeployment with whether the pod template actually changed — which is
+// the difference between a rollout and a no-op.
+func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, params deploymentParams, restore *corev1.PodTemplateSpec) error {
+	var prior *corev1.PodTemplateSpec
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
+		if !dep.CreationTimestamp.IsZero() {
+			prior = dep.Spec.Template.DeepCopy()
+		}
+		applyDeploymentSpec(dep, app, params)
+		if restore != nil {
+			dep.Spec.Template = *restore.DeepCopy()
+		}
+		return controllerutil.SetControllerReference(app, dep, r.Scheme)
+	}); err != nil {
+		return err
+	}
+	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
+	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
+	return nil
 }
