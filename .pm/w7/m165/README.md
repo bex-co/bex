@@ -1,0 +1,50 @@
+# w7 · m165 — Detect failures in durable log ingestion
+
+**Worker:** worker7 **Goal:** Expose log delivery and ingestion failures before they silently remove tenant diagnostics and platform incident history. **Status:** todo
+
+**Estimate:** 150m implementation; 220m (~3h40m) including standing closing tasks. Runtime observation windows may exceed active effort.
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | [Collect deployed Loki and Alloy ingestion-health metrics](t001.md) | 45m | w7/m163/t001 |
+| t002 | [Alert on unexpected ingestion loss and expose diagnosis panels](t002.md) | 60m | t001 |
+| t003 | [Exercise bounded log delivery failure and recovery](t003.md) | 45m | t002 |
+| t004 | [Simplify](t004.md) | 20m | t003 |
+| t005 | [Test coverage](t005.md) | 40m | t003, t004 |
+| t006 | [Closeout](t006.md) | 10m | t004, t005 |
+
+## Definition of done
+
+- [ ] Deployed Loki and intended Alloy collectors expose the selected native delivery/rejection/target-health series through private scrapes, with no duplicate Alloy scrape.
+- [ ] Unexpected loss/rejection, transient retriable failure and missing collectors have documented distinct behavior, and failures can alert even while process readiness remains healthy.
+- [ ] Intentional filtering, including cnpg_instance_manager drops, remains quiet; tenant/repository identifiers are not added as monitoring labels.
+- [ ] A bounded isolated failure/recovery exercise demonstrates the chosen alerts and identifies buffering/retry/loss limits; existing tenant synthetics remain unchanged.
+- [ ] Dated runtime evidence records deployed targets, rules and panels; recovery is observable without claiming that already-dropped logs were recovered.
+
+- [ ] Standing closing tasks and required checks are complete; production-dependent claims have dated runtime evidence for the tested revision.
+
+## Source + Goal linkage
+
+- **Source:** User-approved `$pm-brainstorm for w7` proposal 5, materialized by `$pm all for w7` on 2026-09-28. Brainstorm source revision: `7f1e49986`; materialization checkout: `97b70fad0`. `deploy/gitops/base/loki.yaml`, `deploy/gitops/base/log-shipper.yaml`, `deploy/gitops/base/prometheus.yaml`, [w7/m157](../done/m157/README.md), [w3/m83](../../w3/done/m83/README.md), and [Loki/Alloy native monitoring](https://grafana.com/docs/loki/latest/operations/meta-monitoring/).
+- **Evidence:** Loki's checked-in values disable bundled self-monitoring and Prometheus has no Loki/Alloy scrape at brainstorm/materialization. w7/m157 added API/operator retention. Existing periodic tenant-view/request-log probes verify some end-to-end results but do not directly identify rejected ingestion, exhausted delivery retries or absent collectors. This is a coverage gap, not evidence of a current ingestion outage.
+- **Goal linkage:** ADR008 reliable hosting and agent-readable state require trustworthy diagnostic history; ADR010 supplies the durable logging contract.
+- **Expected outcome:** Unexpected ingestion loss, delivery failures and missing collectors become distinct actionable signals even when workload readiness remains green.
+- **Why now:** Incident reconstruction now depends on the expanded retained streams, and recent shipper changes make prompt failure attribution valuable. Existing periodic synthetics stay as independent end-to-end evidence.
+- **Deduplication:** Complements m157 retention and m83 tenant synthetics. Reuses m163/t001's Alloy metrics scrape instead of creating a second one; this milestone covers transport/ingestion health while m163 covers registry GC semantics.
+- **Render parity omitted:** Internal platform monitoring only; no tenant-facing REST, GraphQL, MCP or dashboard contract change. Grafana here is the internal operations surface.
+
+## Scheduling and boundaries
+
+Approved priority 5 of five: **m161 → m162 → m163 → m164 → m165**. Keep work sequential in w7 because the milestones share Prometheus, Grafana and validation configuration. Priority is scheduling, not an artificial hard dependency. The real cross-milestone dependency is `w7/m165/t001` → `w7/m163/t001`, which supplies the shared private Alloy scrape.
+
+Use worker7's isolated dev-7 environment for applicable local exercises, respecting the harness's shared-cluster boundaries. Inspect current deployed state before runtime-dependent work; historical production observations are not claims of a current outage. Establish failure behavior with bounded isolated fixtures and deployed healthy coverage with dated read-only observations.
+
+This filing schedules the approved work; it does not implement or deploy it. Existing blocked work, including m156, m158, 047 and 060, retains its own scope and completion conditions.
+
+## Out of scope
+
+- External telemetry drains or a replacement/multi-component Loki architecture.
+- Changing tenant log API shapes, retention policy or intentional CNPG chatter filtering.
+- Paging on every intentionally dropped line or treating absence of tenant traffic as loss.

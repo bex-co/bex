@@ -15,6 +15,14 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+**Approved monitoring queue (2026-09-28):** `$pm all for w7` materializes all five proposals in priority order **m161 → m162 → m163 → m164 → m165** (~17h50m including closing tasks). Work sequentially because the milestones share monitoring configuration. m165/t001 reuses the private Alloy scrape from m163/t001; the other milestones have no hard dependency on one another. Existing blocked work retains its scope.
+
+- [ ] **m161** — [Detect stalled platform GitOps delivery](m161/README.md) (6 tasks; ~3h40m) ← approved brainstorm item 1, 2026-09-28; first task `t001`.
+- [ ] **m162** — [Detect missing platform backup telemetry](m162/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 2, 2026-09-28; first task `t001`.
+- [ ] **m163** — [Alert on recurring registry garbage-collection failures](m163/README.md) (6 tasks; ~3h10m) ← approved brainstorm item 3, 2026-09-28; first task `t001`.
+- [ ] **m164** — [Warn before tenant-node storage reaches DiskPressure](m164/README.md) (7 tasks; ~4h10m) ← approved brainstorm item 4, 2026-09-28; first task `t001`.
+- [ ] **m165** — [Detect failures in durable log ingestion](m165/README.md) (6 tasks; ~3h40m) ← approved brainstorm item 5, 2026-09-28; first task `t001` depends on `w7/m163/t001`.
+
 - [ ] **m158** — **BLOCKED (user decides how to fix the Zot defect upstream — file an issue/PR with project-zot, or carry a patched build; the defect is unchanged through v2.1.21)** — [Repair recurring registry garbage-collection failures](blocked/m158/README.md) (t001, t003–t005 done: diagnosed the empty-repo/restart metaDB gap; stranded repo repaired and removed in production after three clean GC runs; repair runbook in ADR060 D4. Prevention (t002 part 2) and t006 remain).
 - [x] **m159** — [Detect tenant-node disk pressure before workload disruption](done/m159/README.md) — done 2026-09-28: NodeDiskPressure (critical) / Recovered (info, 6h) / SignalMissing (warning) on the kube-state-metrics condition; live in prod with the 03:39Z `bnzl6` episode surfaced; no node-exporter ⇒ no fill-rate early warning (ADR010).
 - [x] **m160** — [Add etcd latency and scrape-health coverage](done/m160/README.md) — done 2026-09-28: kube-rbac-proxy per CP node (InternalIP, TokenReview/SAR, private-CA TLS; 401/403 verified), all 3 members scraped, six etcd rules live and quiet (fsync p99 3–5ms).
