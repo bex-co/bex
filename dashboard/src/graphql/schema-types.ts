@@ -1894,6 +1894,7 @@ export type MutationRevokeWorkspaceInviteArgs = {
 
 export type MutationRollbackServiceArgs = {
   deployId: Scalars['String']['input'];
+  disableAutoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
   serviceId: Scalars['String']['input'];
 };
 
