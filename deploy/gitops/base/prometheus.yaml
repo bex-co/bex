@@ -230,6 +230,33 @@ spec:
                     action: keep
                   - regex: __name__|job|instance|namespace|name|sync_status|health_status
                     action: labelkeep
+              # Private per-collector scrape, shared by registry GC detection
+              # and durable-log delivery monitoring. Select only Alloy's HTTP
+              # port so the config-reloader sidecar cannot duplicate targets.
+              - job_name: alloy
+                scrape_interval: 30s
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names: [monitoring]
+                relabel_configs:
+                  - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_pod_container_name, __meta_kubernetes_pod_container_port_name]
+                    separator: ";"
+                    regex: alloy;log-shipper;alloy;http-metrics
+                    action: keep
+                  - source_labels: [__meta_kubernetes_pod_phase]
+                    regex: Running
+                    action: keep
+                  - source_labels: [__meta_kubernetes_pod_node_name]
+                    target_label: node
+                  - source_labels: [__meta_kubernetes_pod_name]
+                    target_label: pod
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_zot_(gc_failure|log)_last_observed_timestamp_seconds
+                    action: keep
+                  - regex: __name__|job|instance|node|pod|service
+                    action: labelkeep
               - job_name: traefik
                 scrape_interval: 15s # fine-grained so request-metric rates resolve quickly
                 kubernetes_sd_configs:
@@ -1128,6 +1155,42 @@ spec:
 
               - name: bex
                 rules:
+                  # The first observed event needs no preceding zero sample.
+                  # Retain observed event times through reload/expiry; comparing
+                  # the value to wall time also rejects a stale gauge exposed
+                  # once by Alloy on its first scrape after a long outage.
+                  - alert: ZotGarbageCollectionFailure
+                    expr: |
+                      time() - max(max_over_time(bex_zot_gc_failure_last_observed_timestamp_seconds{job="alloy",service="zot"}[3h])) < 10800
+                    labels:
+                      severity: warning
+                      namespace: bex-registry
+                      service: zot
+                    annotations:
+                      summary: "Zot garbage collection hit the known missing-repository-metadata failure"
+                      description: "Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence"
+
+                  # Zot's regular probe logs provide collection evidence even
+                  # when GC is quiet. A successful scrape alone cannot prove
+                  # that the source/pipeline still receives registry logs.
+                  - record: bex:zot_log_collection_healthy
+                    expr: |
+                      ((time() - max(
+                        bex_zot_log_last_observed_timestamp_seconds{job="alloy",service="zot"}
+                        and on (job, instance) (up{job="alloy"} == 1)
+                      )) < bool 300) or vector(0)
+
+                  - alert: ZotGarbageCollectionTelemetryMissing
+                    expr: bex:zot_log_collection_healthy < 1
+                    for: 10m
+                    labels:
+                      severity: warning
+                      namespace: bex-registry
+                      service: zot
+                    annotations:
+                      summary: "Zot garbage-collection log evidence is unavailable"
+                      description: "No fresh Zot log observation from a successfully scraped Alloy collector for 10m (freshness limit 5m). Zero observed GC failures is not healthy evidence while collection is unknown. Check the Zot pod/node, node-scoped platform log discovery, Alloy configuration and the private alloy scrape before diagnosing GC. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence"
+
                   # Build-plane SLIs (docs/ADR060 D5).
                   #
                   # The SLO is on INFRASTRUCTURE success, not on build success. A

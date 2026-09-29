@@ -1,0 +1,260 @@
+# w7/m163: time-valued log evidence survives reset/expiry without replaying stale alerts.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: healthy logs without failures do not require a zero-valued failure series
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: 1x240
+      - series: bex_zot_log_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: 0+60x240
+    alert_rule_test:
+      - eval_time: 200m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+      - eval_time: 200m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts: []
+    promql_expr_test: []
+  - name: first timestamp sample alerts and expires by event value even if Alloy exposes it indefinitely
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: 1x240
+      - series: bex_zot_log_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: 0+60x240
+      - series: bex_zot_gc_failure_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: _ _ 120x240
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage collection hit the known missing-repository-metadata failure
+              description: 'Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 181m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage collection hit the known missing-repository-metadata failure
+              description: 'Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 182m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+      - eval_time: 230m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+    promql_expr_test: []
+  - name: observed event survives series expiry and collector reset
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: 1x240
+      - series: bex_zot_log_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: 0+60x240
+      - series: bex_zot_gc_failure_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: _ _ 120 120 stale
+      - series: bex_zot_gc_failure_last_observed_timestamp_seconds{job="alloy",instance="alloy-b:12345",service="zot"}
+        values: "0x240"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage collection hit the known missing-repository-metadata failure
+              description: 'Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 120m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage collection hit the known missing-repository-metadata failure
+              description: 'Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 181m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage collection hit the known missing-repository-metadata failure
+              description: 'Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 182m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+    promql_expr_test: []
+  - name: recurring failure extends window while healthy capacity cannot suppress it
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: 1x300
+      - series: bex_zot_log_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: 0+60x300
+      - series: bex_zot_gc_failure_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: _ _ 120x97 6000x200
+      - series: kubelet_volume_stats_available_bytes{namespace="bex-registry"}
+        values: 100000000000x300
+    alert_rule_test:
+      - eval_time: 181m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage collection hit the known missing-repository-metadata failure
+              description: 'Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 279m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage collection hit the known missing-repository-metadata failure
+              description: 'Alloy observed the known GC failure signature within 3h. The first fresh occurrence alerts; repeated occurrences extend the window. Find the repository in retained Zot logs and follow the bounded ADR060 D4 repair; this alert neither repairs data nor prevents the upstream defect. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 280m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+    promql_expr_test: []
+  - name: all collectors absent is unknown and alerts after grace
+    interval: 1m
+    input_series: []
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage-collection log evidence is unavailable
+              description: 'No fresh Zot log observation from a successfully scraped Alloy collector for 10m (freshness limit 5m). Zero observed GC failures is not healthy evidence while collection is unknown. Check the Zot pod/node, node-scoped platform log discovery, Alloy configuration and the private alloy scrape before diagnosing GC. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 10m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+    promql_expr_test: []
+  - name: scrape alone cannot cover missing Zot log pipeline
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: 1x30
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage-collection log evidence is unavailable
+              description: 'No fresh Zot log observation from a successfully scraped Alloy collector for 10m (freshness limit 5m). Zero observed GC failures is not healthy evidence while collection is unknown. Check the Zot pod/node, node-scoped platform log discovery, Alloy configuration and the private alloy scrape before diagnosing GC. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+    promql_expr_test: []
+  - name: healthy sibling cannot cover failed Zot collector
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: "0x30"
+      - series: bex_zot_log_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: 0+60x30
+      - series: up{job="alloy",instance="alloy-b:12345"}
+        values: 1x30
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage-collection log evidence is unavailable
+              description: 'No fresh Zot log observation from a successfully scraped Alloy collector for 10m (freshness limit 5m). Zero observed GC failures is not healthy evidence while collection is unknown. Check the Zot pod/node, node-scoped platform log discovery, Alloy configuration and the private alloy scrape before diagnosing GC. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+    promql_expr_test: []
+  - name: heartbeat freshness boundary grace and recovery
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: 1x30
+      - series: bex_zot_log_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: 0x15 960+60x14
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage-collection log evidence is unavailable
+              description: 'No fresh Zot log observation from a successfully scraped Alloy collector for 10m (freshness limit 5m). Zero observed GC failures is not healthy evidence while collection is unknown. Check the Zot pod/node, node-scoped platform log discovery, Alloy configuration and the private alloy scrape before diagnosing GC. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+      - eval_time: 16m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:zot_log_collection_healthy
+        eval_time: 4m
+        exp_samples:
+          - labels: bex:zot_log_collection_healthy
+            value: 1
+      - expr: bex:zot_log_collection_healthy
+        eval_time: 5m
+        exp_samples:
+          - labels: bex:zot_log_collection_healthy
+            value: 0
+  - name: old gauges exposed after long scrape interruption cannot resurrect GC or collection health
+    interval: 1m
+    input_series:
+      - series: up{job="alloy",instance="alloy-a:12345"}
+        values: _x239 1x30
+      - series: bex_zot_log_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: _x239 0x30
+      - series: bex_zot_gc_failure_last_observed_timestamp_seconds{job="alloy",instance="alloy-a:12345",service="zot"}
+        values: _x239 0x30
+    alert_rule_test:
+      - eval_time: 240m
+        alertname: ZotGarbageCollectionFailure
+        exp_alerts: []
+      - eval_time: 250m
+        alertname: ZotGarbageCollectionTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: bex-registry
+              service: zot
+            exp_annotations:
+              summary: Zot garbage-collection log evidence is unavailable
+              description: 'No fresh Zot log observation from a successfully scraped Alloy collector for 10m (freshness limit 5m). Zero observed GC failures is not healthy evidence while collection is unknown. Check the Zot pod/node, node-scoped platform log discovery, Alloy configuration and the private alloy scrape before diagnosing GC. Runbook: docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence'
+    promql_expr_test: []
