@@ -1,6 +1,6 @@
 # w7 · m161 — Detect stalled platform GitOps delivery
 
-**Worker:** worker7 **Goal:** Surface stalled platform configuration delivery before it silently withholds hosting fixes or monitoring rules. **Status:** in progress (t001–t002 done; GitOps activation and live coverage pending)
+**Worker:** worker7 **Goal:** Surface stalled platform configuration delivery before it silently withholds hosting fixes or monitoring rules. **Status:** done
 
 **Estimate:** 150m implementation; 220m (~3h40m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -10,23 +10,23 @@
 | --- | --- | --- | --- |
 | t001 | [Add internal Argo metrics collection and expected application coverage](done/t001.md) — **DONE** | 45m | — |
 | t002 | [Add sustained sync and health alerts with actionable panels](done/t002.md) — **DONE** | 60m | t001 |
-| t003 | [Activate collection and record root and child application coverage](t003.md) | 45m | t002 |
-| t004 | [Simplify](t004.md) | 20m | t003 |
-| t005 | [Test coverage](t005.md) | 40m | t003, t004 |
-| t006 | [Closeout](t006.md) | 10m | t004, t005 |
+| t003 | [Activate collection and record root and child application coverage](done/t003.md) — **DONE** | 45m | t002 |
+| t004 | [Simplify](done/t004.md) — **DONE** | 20m | t003 |
+| t005 | [Test coverage](done/t005.md) — **DONE** | 40m | t003, t004 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | t004, t005 |
 
 ## Definition of done
 
-- [ ] Every intended platform Application, including bex-platform-prod and its children, is represented or explicitly reported missing; the scrape endpoint stays internal.
-- [ ] A persistent failed/out-of-sync or unhealthy Application triggers an alert naming the Application and diagnosis path, while a normal rollout shorter than the chosen grace interval does not.
-- [ ] Recovery clears the alert; exporter/target loss and missing required application series cannot appear healthy.
-- [ ] Dated deployed-revision evidence records root/child coverage and rule availability; isolated failure/recovery fixtures establish behavior without breaking production sync.
+- [x] Every intended platform Application, including bex-platform-prod and its children, is represented or explicitly reported missing; the scrape endpoint stays internal.
+- [x] A persistent failed/out-of-sync or unhealthy Application triggers an alert naming the Application and diagnosis path, while a normal rollout shorter than the chosen grace interval does not.
+- [x] Recovery clears the alert; exporter/target loss and missing required application series cannot appear healthy.
+- [x] Dated deployed-revision evidence records root/child coverage and rule availability; isolated failure/recovery fixtures establish behavior without breaking production sync.
 
-- [ ] Standing closing tasks and required checks are complete; production-dependent claims have dated runtime evidence for the tested revision.
+- [x] Standing closing tasks and required checks are complete; production-dependent claims have dated runtime evidence for the tested revision.
 
 ## Source + Goal linkage
 
-- **Source:** User-approved `$pm-brainstorm for w7` proposal 1, materialized by `$pm all for w7` on 2026-09-28. Brainstorm source revision: `7f1e49986`; materialization checkout: `97b70fad0`. [w7/m153](../done/m153/README.md), `deploy/gitops/base/prometheus.yaml`, and [Argo controller metrics](https://argo-cd.readthedocs.io/en/stable/operator-manual/metrics/).
+- **Source:** User-approved `$pm-brainstorm for w7` proposal 1, materialized by `$pm all for w7` on 2026-09-28. Brainstorm source revision: `7f1e49986`; materialization checkout: `97b70fad0`. [w7/m153](../m153/README.md), `deploy/gitops/base/prometheus.yaml`, and [Argo controller metrics](https://argo-cd.readthedocs.io/en/stable/operator-manual/metrics/).
 - **Evidence:** At brainstorm revision 7f1e49986, Prometheus has no Argo application scrape or sync-health alerts. w7/m153 recorded bex-platform-prod OutOfSync/Degraded after an unmanaged analytics Secret blocked an early sync wave; child monitoring changes were withheld until the ownership repair. This is a known failure mode, not a claim that the repaired root Application is currently unhealthy. Materialization rechecked the absent scrape/alerts at 97b70fad0.
 - **Goal linkage:** ADR008 reliable self-hosted hosting and deterministic convergence: code/configuration must actually reach the platform that runs tenant workloads.
 - **Expected outcome:** Persistent platform Application sync/health failure and loss of its monitoring produce distinct actionable signals; ordinary rollout transitions remain quiet.
@@ -56,3 +56,9 @@ This filing schedules the approved work; it does not implement or deploy it. Exi
 - Seven GitOps alert scenarios passed. Four isolated rule mutations failed for the intended behavioral mismatch: remove alerts, retain changing state labels, omit exporter-health gating, or accept incomplete state telemetry. No production failure was injected.
 - `/simplify`: parallel reuse, quality and efficiency reviews completed. Removed a redundant fixed-count inventory assertion and corrected the scrape-panel waiver title; no structural changes were warranted. Focused fixtures passed again after cleanup.
 - Markdown formatting and `git diff --check` passed. Live rule availability, loaded panel configuration and deployed revision remain for t003 before closeout.
+
+## Deployed closeout evidence
+
+2026-09-29 05:08–05:09 UTC, deployed revision `32631b0532b58a030ca0d869c1d1f623a0016fbf`: the private Argo scrape is UP at 60s with no error. Native, independent expected and Synced/Healthy counts are all 32; both identity set differences are empty. All four GitOps alerts are loaded, healthy and inactive, with no pending/firing instances. Loaded expressions/labels/annotations and both Prometheus rule ConfigMap entries match the shipped revision; the Prometheus Application values match byte-for-byte. Grafana's deployed `grafana-dashboards-platform/platform-availability.json` contains panels 16–19.
+
+Argo initially retained the prior Git source revision after push. A source/manifest cache hard refresh of the root and Grafana was requested; existing automated sync then completed in 42s for root, 3s for Prometheus and 4s for Grafana. Root OutOfSync and Grafana Progressing were observed before both became healthy at 05:07:19 UTC. No forced resource sync/prune or production failure injection was performed; failure/recovery coverage comes from isolated fixtures.
