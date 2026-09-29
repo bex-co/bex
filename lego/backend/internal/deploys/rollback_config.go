@@ -93,11 +93,11 @@ func (s *Service) restoreTargetConfig(ctx context.Context, a *appv1alpha1.App, t
 	if envSource == "" {
 		envSource = a.Name + "-env"
 	}
-	env, err := s.snapshotData(ctx, a.Namespace, appv1alpha1.ReleaseSnapshotName(envSource, target.Generation))
+	env, err := s.snapshotData(ctx, a.Namespace, appv1alpha1.AppReleaseSnapshotName(a.Name, envSource, target.Generation))
 	if err != nil {
 		return nil, err
 	}
-	files, err := s.snapshotData(ctx, a.Namespace, appv1alpha1.ReleaseSnapshotName(a.Name+"-files", target.Generation))
+	files, err := s.snapshotData(ctx, a.Namespace, appv1alpha1.AppReleaseSnapshotName(a.Name, a.Name+"-files", target.Generation))
 	if err != nil {
 		return nil, err
 	}
