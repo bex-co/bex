@@ -271,6 +271,28 @@ var _ = Describe("Canceling any config_change (w1/m152 t004)", func() {
 			"generation 2's migration reads %s — the served release's copy, without the saved DATABASE_URL", ownRef)
 	})
 
+	// The live DoD fixture: a service created with NO environment, so its first
+	// release reads no config source at all. The first env save on it activates
+	// spec.envFromSecret in the same patch as restartedAt (secrets/batch.go
+	// activatePendingProjectionReferences).
+	It("a first env save on a service with no environment, canceled", func() {
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: svcA, Namespace: "default"},
+			Spec:       appv1alpha1.AppSpec{Image: "nginx:1", Port: 3000, Replicas: 1},
+		})).To(Succeed())
+		pass(svcA)
+		markReady(svcA)
+		pass(svcA)
+		Expect(getApp(svcA).Status.ActiveRevision).To(Equal("rev-1"), "precondition: generation 1 served")
+		served := getDep(svcA).Spec.Template.DeepCopy()
+
+		putSecret(svcA+"-env", "MESSAGE", "should-not-ship")
+		save(svcA, func(s *appv1alpha1.AppSpec) { s.EnvFromSecret = svcA + "-env" })
+		cancel(svcA)
+		pass(svcA)
+		expectServed(svcA, served)
+	})
+
 	It("a group save canceled on every linked service changes none of them", func() {
 		putSecret(group, "SHARED", "g1")
 		servedA, servedB := serve(svcA), serve(svcB)
