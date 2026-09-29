@@ -1,6 +1,6 @@
 # w1 · m152 — Canceling a config-change deploy still ships the change
 
-**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (t001 done 2026-09-28 `cae30d1e0`; t002 code shipped `1353244f1`, its live acceptance waits for that to deploy; t003 next)
+**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (t001 done `cae30d1e0`; t002 code shipped `1353244f1` + `6383cf40e`; t003 code shipped `4e24ad075` + `90d8dedb2` + `69e60d657` — both wait on a deploy for their live acceptance; t004 and t009 next)
 
 ## Triage (2026-09-15)
 
