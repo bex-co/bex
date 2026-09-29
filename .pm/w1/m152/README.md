@@ -1,6 +1,6 @@
 # w1 · m152 — Canceling a config-change deploy still ships the change
 
-**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (t001 done `cae30d1e0`; t002 code shipped `1353244f1` + `6383cf40e`; t003 code shipped `4e24ad075` + `90d8dedb2` + `69e60d657` — both wait on a deploy for their live acceptance; t004 and t009 next)
+**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (t001 done `cae30d1e0`; t002 code shipped `1353244f1` + `6383cf40e`; t003 code shipped `4e24ad075` + `90d8dedb2` + `69e60d657` — both wait on a deploy for their live acceptance; t009 code shipped `aefa4d931` + `12e277cbe`; t004 done — its blast radius found and fixed four defects in the shipped t001/t002 code, see § t004 result; t011 code shipped with it and waits on live acceptance; t010 and live acceptance next)
 
 ## Triage (2026-09-15)
 
@@ -123,10 +123,10 @@ A full sweep of what a release's configuration actually consists of, so the snap
 | t001 | Snapshot each release's runtime configuration so a release can be restored exactly — **DONE** | 75m | — |
 | t002 | Cancel settles to the last successful release's full runtime identity (image and config), never the current spec | 60m | t001 |
 | t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs | 45m | t002 |
-| t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls | 45m | t002 |
+| t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls — **DONE** | 45m | t002 |
 | t009 | Rollback restores the target deploy's configuration (env vars, start command), and a dashboard rollback turns auto-deploy off | 60m | t001 |
 | t010 | Live: canceling a health-gated rollout restores the probe-free template and settles Running | 30m | t003 |
-| t011 | Snapshot Secret I/O goes through the uncached client — every new service fails its first deploy (w4/171) | 30m | t001 |
+| t011 | Snapshot Secret I/O goes through the uncached client — every new service fails its first deploy (w4/171) — **code shipped, live pending** | 30m | t001 |
 | t005 | Render parity | 30m | t003, t004, t009, t010, t011 |
 | t006 | Simplify | 20m | t005 |
 | t007 | Test coverage | 45m | t005 |
@@ -196,6 +196,34 @@ No screenshots were taken; the transcripts above are the evidence.
   - cancel of a first deploy with no prior release (`Canceled`, `w6/m52`);
   - cancel of an image-backed deploy with a prior release (image restored, `w6/m104`);
   - supersede semantics, where a newer deploy stamps a newer generation (`deploys/service.go:714-715`).
+
+## t004 result (2026-09-28, `/loopx w1`)
+
+Every change source was run as "serve generation 1, save, cancel before generation 2 reaches the workload" in envtest (`cancel_blast_radius_envtest_test.go`, one spec per row). Each spec requires the served pod template back byte for byte, `rev-1` still active, `undeployedChanges` set, and no Job started for the canceled release.
+
+| Change source | Cancel result | Covered by |
+| --- | --- | --- |
+| Service env var | Served template kept; the saved value ships on the next deploy | `cancel_config_change_envtest_test.go` (t002) |
+| Secret file | Served template kept | blast-radius table: `secret file` |
+| Linked env group value | Served template kept | blast-radius table: `linked env group value` |
+| Group save canceled on **every** linked service | Each keeps its own generation-1 copy (`g1`), owned by itself | blast-radius spec: `a group save canceled on every linked service` |
+| Start command | Served template kept | blast-radius table: `start command` |
+| Health check path | Served template kept | blast-radius table: `health check path` (live half is t010) |
+| Plan (`tier`) | Served template kept | blast-radius table: `plan` |
+| Pre-deploy command | Served template kept, **and the canceled command does not run** | blast-radius table: `preDeployCommand` (defect 2) |
+| Code and config together | Image and config both restored | blast-radius table: `code and config together` |
+| Cron job (env + command) | CronJob template kept, so later runs, scheduled or manual, stay on the served release | blast-radius spec: `a cron job's runs stay on the served release` (defect 3) |
+| Automatic supersede | Same canceled branch as a user Cancel | reasoned: supersede stamps the same annotation (`deploys/service.go`) |
+| Controls: `w6/m52`, `w6/m104` | Unchanged and green | existing specs, unmodified; full `make test` 175/175 → 177/177 |
+
+**Defects found and fixed.** All were in code already deployed, and every fix was confirmed by reverting it and watching its spec go red.
+
+1. **Linked services shared one snapshot of a group.** Snapshots of shared sources were named `<evg-id>-env-r<gen>`, but generations are per App. Two linked services at the same generation therefore resolved to one object. Copy-once gave the second service the first one's copy: values from a different moment, owned and garbage-collected by the other service. Group snapshots are now scoped `<app>-<evg-id>-env-r<gen>` (`AppReleaseSnapshotName`). An App already projecting an unscoped copy keeps it, marked by `status.unscopedSnapshotGeneration`, and co-owns it until its next release, so **the fix rolls nothing** (decision 2).
+2. **Canceling a deploy ran its pre-deploy command anyway.** The gate read the canceled spec's command, created `predeploy-<app>-gen-1` against the served image, and held the service in `Deploying`. A cancel over a served release now skips the gate: that release already passed its own.
+3. **Cron jobs had no snapshot or restore at all.** This matches the pass-19 live repro. The cron path now snapshots, records and restores exactly as the Deployment path does.
+4. **A new release's migration and native build read the previous release's config.** This one was found alongside the others. Both steps run before the release is snapshotted, while the projection still pointed at the served copies. So changing `DATABASE_URL` and deploying migrated with the old one. Both steps now read the saved sources, as they did before t001.
+
+**Decision 2 and t011.** The first t001 build snapshotted on every pass, so shipping it would have flipped and rolled every service. In production it failed instead: its Secret calls went through a cache that watches one namespace (t011, w4/171). New services failed their first deploy, and existing services with any config source failed their reconciles without rolling. t011 routes every snapshot Secret call through the uncached client. It also makes the migration genuinely lazy (`servingWithoutSnapshots`), so the fix does not become the fleet-wide roll decision 2 rules out. Adopting unscoped group copies (defect 1) likewise rolls nothing.
 
 ## Adjacent classes
 
