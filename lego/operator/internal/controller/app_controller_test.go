@@ -577,12 +577,12 @@ var _ = Describe("App Controller", func() {
 			Expect(fresh.Status.ConfigSnapshotGeneration).To(Equal(fresh.Status.ReleaseGeneration),
 				"a dispatched release must have snapshotted its configuration")
 			Expect(c.EnvFrom[0].SecretRef.Name).To(
-				Equal(releaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration)))
+				Equal(appv1alpha1.ReleaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration)))
 
 			By("the snapshot holds the values the release ran with")
 			snap := &corev1.Secret{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
-				Name:      releaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration),
+				Name:      appv1alpha1.ReleaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration),
 				Namespace: "default",
 			}, snap)).To(Succeed())
 			Expect(snap.Labels).To(HaveKeyWithValue(snapshotOfLabel, name+"-env"))
@@ -599,7 +599,7 @@ var _ = Describe("App Controller", func() {
 			Expect(k8sClient.Update(ctx, live)).To(Succeed())
 			reconcileN()
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
-				Name:      releaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration),
+				Name:      appv1alpha1.ReleaseSnapshotName(name+"-env", fresh.Status.ReleaseGeneration),
 				Namespace: "default",
 			}, snap)).To(Succeed())
 			Expect(snap.Data).To(HaveKeyWithValue("FROM_SECRET", []byte("v1")),

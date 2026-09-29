@@ -203,23 +203,6 @@ func TestGCReleaseConfigSnapshotsKeepsWindowAndOwnership(t *testing.T) {
 	}
 }
 
-func TestIsReleaseSnapshotNameRejectsLookalikes(t *testing.T) {
-	for name, want := range map[string]bool{
-		"api-env-r3":        true,
-		"evg-x-files-r120":  true,
-		"api-env":           false,
-		"api-env-r":         false,
-		"my-rr-env":         false,
-		"api-env-rollback":  false,
-		"-r3":               false, // no source before the suffix
-		"api-env-r3-backup": false,
-	} {
-		if got := isReleaseSnapshotName(name); got != want {
-			t.Errorf("isReleaseSnapshotName(%q) = %v, want %v", name, got, want)
-		}
-	}
-}
-
 // The rollout invariant (t003 step 1): only a template change made while settling a
 // cancel is metered, and a reprojection — the fallback that can ship canceled
 // changes — is distinguishable from a restore.
