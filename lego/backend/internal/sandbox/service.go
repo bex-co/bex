@@ -522,6 +522,7 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 		raw.Image.URI = tmpl.Image
 	}
 	s.Meter.Observe(ctx, raw)
+	s.Meter.Label(ctx, raw)
 	return sandboxFromOpenSandbox(raw, workspace), nil
 }
 

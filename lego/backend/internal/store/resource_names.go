@@ -134,6 +134,9 @@ type SandboxUsageMetadata struct {
 
 // SandboxUsageMetadata resolves labels for both current and previous session
 // sandboxes, which outlive their workloads, alongside durable meter observations.
+// A repo-less session (w3/m79) is labelled by its id, "agent session <id>":
+// unique, and findable in the session list, where the create-time
+// `plan · image` name would not say which session ran (w1/112).
 func (s *PGStore) SandboxUsageMetadata(ctx context.Context, tenantID string, sandboxIDs []string) (map[string]SandboxUsageMetadata, error) {
 	if tenantID == "" || len(sandboxIDs) == 0 {
 		return nil, nil
@@ -141,17 +144,17 @@ func (s *PGStore) SandboxUsageMetadata(ctx context.Context, tenantID string, san
 	rows, err := s.Pool.Query(ctx,
 		`WITH labels AS (SELECT DISTINCT ON (sandbox) sandbox, label FROM (
 		     SELECT s.sandbox_id AS sandbox,
-		            CASE WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label,
+		            CASE WHEN s.repo = '' THEN 'agent session ' || s.id WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label,
 		            s.updated_at
 		     FROM agent_sessions s
-		     WHERE s.workspace_id = $1 AND s.repo <> '' AND s.sandbox_id = ANY($2::text[])
+		     WHERE s.workspace_id = $1 AND s.sandbox_id = ANY($2::text[])
 		     UNION ALL
 		     SELECT d.previous_sandbox_id AS sandbox,
-		            CASE WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label,
+		            CASE WHEN s.repo = '' THEN 'agent session ' || s.id WHEN s.branch <> '' THEN s.repo || ' (' || s.branch || ')' ELSE s.repo END AS label,
 		            s.updated_at
 		     FROM agent_session_dispatches d
 		     JOIN agent_sessions s ON s.id = d.session_id
-		     WHERE s.workspace_id = $1 AND s.repo <> '' AND d.previous_sandbox_id = ANY($2::text[])
+		     WHERE s.workspace_id = $1 AND d.previous_sandbox_id = ANY($2::text[])
 		 ) AS labelled
 		 ORDER BY sandbox, updated_at DESC), meters AS (
 		 SELECT sandbox_id, phase, tier FROM sandbox_meter_states

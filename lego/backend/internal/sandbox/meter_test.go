@@ -32,6 +32,17 @@ type fakeMeterStore struct {
 	observations []store.SandboxMeterObservation
 	missingWS    string
 	missingSeen  []string
+	labels       map[string]string // "<workspace>/<sandbox>" -> display name
+}
+
+func (f *fakeMeterStore) RecordResourceDisplayNames(_ context.Context, ws string, records []store.ResourceDisplayName) error {
+	if f.labels == nil {
+		f.labels = map[string]string{}
+	}
+	for _, r := range records {
+		f.labels[ws+"/"+r.ID] = r.Name
+	}
+	return nil
 }
 
 func (f *fakeMeterStore) ListSandboxTenantKeys(context.Context) ([]store.SandboxTenantKey, error) {
@@ -106,5 +117,65 @@ func TestMeterObservationExcludesSuspendedPhaseAndLegacyUnknownShape(t *testing.
 	delete(base.Metadata, metadataComputeWeight)
 	if _, ok := meterObservation(base, time.Now()); ok {
 		t.Error("legacy sandbox with unknown shape must not be retroactively charged")
+	}
+}
+
+// w1/112: a sandbox outside any agent session had no charge label, so every
+// such row read `starter sandbox (deleted)` and could not be told apart.
+func TestSandboxChargeLabel(t *testing.T) {
+	for _, tc := range []struct{ plan, image, want string }{
+		{"starter", "docker.io/library/alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b", "starter · alpine:3"},
+		{"starter", "ghcr.io/bex-co/bex-agent-sandbox:v2", "starter · ghcr.io/bex-co/bex-agent-sandbox:v2"},
+		{"pro", "docker.io/someone/tool:1", "pro · someone/tool:1"},
+		{"", "alpine:3", "alpine:3"},
+		{"starter", "", ""},
+	} {
+		if got := sandboxChargeLabel(tc.plan, tc.image); got != tc.want {
+			t.Errorf("sandboxChargeLabel(%q, %q) = %q, want %q", tc.plan, tc.image, got, tc.want)
+		}
+	}
+	if sandboxChargeLabel("starter", "alpine:3") == sandboxChargeLabel("starter", "alpine:3.20") {
+		t.Error("two images share a label")
+	}
+}
+
+func TestMeterLabelRetainsPlanAndImageAtCreate(t *testing.T) {
+	fake := &fakeMeterStore{}
+	m := &Meter{Store: fake, Now: time.Now}
+	raw := osSandbox{ID: "os-1", Metadata: map[string]string{
+		metadataWorkspace: "tea-a", metadataPlan: "starter", metadataRegime: metadataSandboxRegime,
+		metadataComputeWeight: "553",
+	}}
+	raw.Status.State = "Running"
+	raw.Image.URI = "docker.io/library/alpine:3@sha256:28bd5fe8"
+	m.Label(context.Background(), raw)
+	if got := fake.labels["tea-a/os-1"]; got != "starter · alpine:3" {
+		t.Fatalf("retained label = %q (all: %v)", got, fake.labels)
+	}
+
+	// No image in hand: nothing is written rather than a label that misleads.
+	fake.labels = nil
+	raw.Image.URI = ""
+	m.Label(context.Background(), raw)
+	if len(fake.labels) != 0 {
+		t.Fatalf("labelled a sandbox with no image: %v", fake.labels)
+	}
+}
+
+// The create path itself retains the label, keyed by the public id the meter's
+// usage rows carry, before any agent session could name it (w1/112).
+func TestCreateRetainsTheChargeLabel(t *testing.T) {
+	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"os-1","status":{"state":"Creating"}}`))
+	})
+	fake := &fakeMeterStore{}
+	svc.Meter = &Meter{Store: fake, Now: time.Now}
+	sb, err := svc.Create(callerCtx(), CreateRequest{Template: "node", Plan: PlanStandard})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fake.labels["tea-a/"+sb.ID]; got != "standard · node:20" {
+		t.Fatalf("retained label for %s = %q (all: %v)", sb.ID, got, fake.labels)
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"log"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -47,6 +48,7 @@ type MeterStore interface {
 	ListSandboxTenantKeys(context.Context) ([]store.SandboxTenantKey, error)
 	ObserveSandboxMeter(context.Context, store.SandboxMeterObservation) error
 	TerminateMissingSandboxMeters(context.Context, string, []string, time.Time) error
+	RecordResourceDisplayNames(context.Context, string, []store.ResourceDisplayName) error
 }
 
 // Meter observes OpenSandbox's authoritative lifecycle state and advances the
@@ -170,6 +172,45 @@ func (m *Meter) Observe(ctx context.Context, raw osSandbox) {
 	if err := m.Store.ObserveSandboxMeter(ctx, obs); err != nil {
 		log.Printf("sandbox meter: observe workspace=%s sandbox=%s: %v", obs.WorkspaceID, obs.SandboxID, err)
 	}
+}
+
+// Label retains a `plan · image` display name for a sandbox at create (w1/112).
+// Charges outlive their sandboxes, and a sandbox outside any agent session had
+// no other label, so fourteen charge rows all read `starter sandbox (deleted)`
+// and a $78.61 one could not be told from $0.00 ones. The name goes into the
+// same retained-name table usage already reads, so it survives reaping. Like
+// Observe, a failure is logged and never fails the create.
+func (m *Meter) Label(ctx context.Context, raw osSandbox) {
+	if m == nil || m.Store == nil {
+		return
+	}
+	obs, ok := meterObservation(raw, m.now())
+	label := sandboxChargeLabel(obs.Tier, raw.Image.URI)
+	if !ok || label == "" {
+		return
+	}
+	record := store.ResourceDisplayName{Kind: store.ResourceKindSandbox, ID: obs.SandboxID, Name: label}
+	if err := m.Store.RecordResourceDisplayNames(ctx, obs.WorkspaceID, []store.ResourceDisplayName{record}); err != nil {
+		log.Printf("sandbox meter: label workspace=%s sandbox=%s: %v", obs.WorkspaceID, obs.SandboxID, err)
+	}
+}
+
+// sandboxChargeLabel is `plan · image` with the image shortened to what a person
+// reads: no digest, and no implicit Docker Hub prefix (`alpine:3`, not
+// `docker.io/library/alpine:3@sha256:…`). The tag stays, so two sandboxes on
+// different images never share a label.
+func sandboxChargeLabel(plan, image string) string {
+	if at := strings.Index(image, "@"); at >= 0 {
+		image = image[:at]
+	}
+	image = strings.TrimPrefix(strings.TrimPrefix(image, "docker.io/"), "library/")
+	switch {
+	case image == "":
+		return ""
+	case plan == "":
+		return image
+	}
+	return plan + " · " + image
 }
 
 // Run polls every workspace through its tenant key. A successful complete list
