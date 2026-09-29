@@ -237,9 +237,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"rollbackService": &graphql.Field{
 			Type: deployGQLType,
-			Args: deployMutationArgs,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": deployMutationArgs["serviceId"],
+				"deployId":  deployMutationArgs["deployId"],
+				// Render turns auto-deploy off for a rollback started in its dashboard and
+				// leaves it alone for one started through its API (render.com/docs/
+				// rollbacks). The dashboard passes true; every other caller gets the API
+				// behaviour by default (w1/m152 t009).
+				"disableAutoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean, DefaultValue: false},
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Rollback(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string))
+				disable, _ := p.Args["disableAutoDeploy"].(bool)
+				return s.Rollback(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string),
+					RollbackOptions{DisableAutoDeploy: disable})
 			},
 		},
 	}

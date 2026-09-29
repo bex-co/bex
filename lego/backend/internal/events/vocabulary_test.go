@@ -51,6 +51,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	// someone deletes the entry rather than the rationale.
 	excusedVerbs := map[string]string{
 		"apps.Create":                   "its first deploy already appears as deploy_started with trigger.firstBuild",
+		"secrets.RestoreEnvironment":    "only ever called inside deploys.Rollback, whose rollback deploy is the event; the env it restores also lands through PatchEnvironment's own config-change record",
 		"apps.Delete":                   "the service and its feed are gone; the row stays in the workspace audit log",
 		"apps.Deploy":                   "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",
 		"apps.DeployStack":              "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",
