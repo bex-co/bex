@@ -1,6 +1,6 @@
 # w1 · m152 — Canceling a config-change deploy still ships the change
 
-**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** todo (t001 done `cae30d1e0`; t002 code shipped `1353244f1` + `6383cf40e`; t003 code shipped `4e24ad075` + `90d8dedb2` + `69e60d657` — both wait on a deploy for their live acceptance; t009 code shipped `aefa4d931` + `12e277cbe`; t004 done — its blast radius found and fixed four defects in the shipped t001/t002 code, see § t004 result; t011 code shipped with it and waits on live acceptance; t010 and live acceptance next)
+**Worker:** worker1 **Goal:** canceling an in-progress deploy leaves the service running its last successful release. That means the image **and** the configuration (environment variables, secret files, linked group values, start/health/pre-deploy commands, plan) that release ran with. A saved change whose deploy was canceled stays saved and is shown as not deployed until a later deploy ships it. No pod ever rolls without a deploy row saying so. **Status:** done 2026-09-29 (every DoD bullet re-probed live on the deployed build)
 
 ## Triage (2026-09-15)
 
@@ -121,16 +121,16 @@ A full sweep of what a release's configuration actually consists of, so the snap
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Snapshot each release's runtime configuration so a release can be restored exactly — **DONE** | 75m | — |
-| t002 | Cancel settles to the last successful release's full runtime identity (image and config), never the current spec | 60m | t001 |
-| t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs | 45m | t002 |
+| t002 | Cancel settles to the last successful release's full runtime identity (image and config), never the current spec — **DONE** | 60m | t001 |
+| t003 | Truth surfaces: the canceled change stays saved and reads "not deployed"; the Live row is what actually runs — **DONE** | 45m | t002 |
 | t004 | Blast radius: every config source a `config_change` deploy carries, plus the m52/m104 controls — **DONE** | 45m | t002 |
-| t009 | Rollback restores the target deploy's configuration (env vars, start command), and a dashboard rollback turns auto-deploy off | 60m | t001 |
-| t010 | Live: canceling a health-gated rollout restores the probe-free template and settles Running | 30m | t003 |
-| t011 | Snapshot Secret I/O goes through the uncached client — every new service fails its first deploy (w4/171) — **code shipped, live pending** | 30m | t001 |
-| t005 | Render parity | 30m | t003, t004, t009, t010, t011 |
-| t006 | Simplify | 20m | t005 |
-| t007 | Test coverage | 45m | t005 |
-| t008 | Closeout | 10m | t007 |
+| t009 | Rollback restores the target deploy's configuration (env vars, start command), and a dashboard rollback turns auto-deploy off — **DONE** | 60m | t001 |
+| t010 | Live: canceling a health-gated rollout restores the probe-free template and settles Running — **DONE** | 30m | t003 |
+| t011 | Snapshot Secret I/O goes through the uncached client — every new service fails its first deploy (w4/171) — **code shipped, live pending** — **DONE** | 30m | t001 |
+| t005 | Render parity — **DONE** | 30m | t003, t004, t009, t010, t011 |
+| t006 | Simplify — **DONE** | 20m | t005 |
+| t007 | Test coverage — **DONE** | 45m | t005 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -196,6 +196,22 @@ No screenshots were taken; the transcripts above are the evidence.
   - cancel of a first deploy with no prior release (`Canceled`, `w6/m52`);
   - cancel of an image-backed deploy with a prior release (image restored, `w6/m104`);
   - supersede semantics, where a newer deploy stamps a newer generation (`deploys/service.go:714-715`).
+
+## Live acceptance (2026-09-29, production build `96f988b65`, pinned `6f29f3c31`)
+
+Workspace `bex` (`tea-d98210cbbpdc73dcrkvg`); every fixture was deleted by recorded id, with `GET` → `404` verified. Earlier probes the same morning ran against the previous pin `cae30d1e0`, because production had not pinned for 14 hours (w1/116), and are void.
+
+| Check | Surface | Result |
+| --- | --- | --- |
+| t011: new service **with** `MESSAGE=v1` goes live, serves `v1` | create | PASS (08:26:49Z) |
+| Bullet 1: 5 min after cancel, 0 non-`v1` responses, no instance created | REST `…/deploys/{id}/cancel` | PASS (`qa-20260929-m152b`, cancel 08:27:00Z) |
+| Bullet 1 | GraphQL `cancelDeploy` (the dashboard dialog's mutation) | PASS (`qa-20260929-m152g`, 3-min watch) |
+| Bullet 2: saved value stays saved; next deploy serves it and clears the flag | REST, GraphQL | PASS (`should-not-ship` served after the manual deploy; `undeployedChanges=false`) |
+| Bullet 3: Live row is still the first deploy | REST | PASS (`canceled · config_change` over `live · create`) |
+| t003: `undeployedChanges` after the cancel | REST and GraphQL | PASS (true, then false after the next deploy) |
+| t010 / bullet 4: health-gated cancel settles `Running` with one pod within 2 min; saved path reads not deployed | REST | PASS (12 s; `examples/hello-python`) |
+| t009: dashboard rollback restores env and turns auto-deploy off | GraphQL `rollbackService(disableAutoDeploy:true)` | PASS (`v1` served and saved; `autoDeploy` `yes`→`no`) |
+| MCP `cancel_deploy` | MCP | not probed separately; it calls the same `deploys.Service.Cancel` (`mcp.go:161`) |
 
 ## t004 result (2026-09-28, `/loopx w1`)
 
