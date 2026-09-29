@@ -1136,6 +1136,17 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	return mt.NumOut() > 0 && mt.Out(mt.NumOut()-1) == reflect.TypeFor[error]()
 }
 
+// callMethod invokes a swept verb with args built one per parameter. A variadic
+// verb's last argument is the whole (zero) slice, which reflect.Call rejects, so it
+// goes through CallSlice — the zero slice means "no options", i.e. the verb's
+// default behaviour (deploys.Rollback's ...RollbackOptions, w1/m152).
+func callMethod(m reflect.Method, args []reflect.Value) []reflect.Value {
+	if m.Func.Type().IsVariadic() {
+		return m.Func.CallSlice(args)
+	}
+	return m.Func.Call(args)
+}
+
 // callVerb invokes m on cv with ctx plus zero-valued remaining args (e.g.
 // FollowLogs' emit callback becomes a no-op func), returning its error result.
 func callVerb(cv reflect.Value, m reflect.Method, ctx context.Context) error {
@@ -1155,7 +1166,7 @@ func callVerb(cv reflect.Value, m reflect.Method, ctx context.Context) error {
 		}
 		args = append(args, reflect.Zero(at))
 	}
-	out := m.Func.Call(args)
+	out := callMethod(m, args)
 	err, _ := out[len(out)-1].Interface().(error)
 	return err
 }
@@ -1184,7 +1195,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 342 // +1: Render Postgres credential identity list (w4/168)
+const wantSweptVerbs = 343 // +1: secrets.RestoreEnvironment, a rollback's env restore (w1/m152 t009)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()

@@ -108,7 +108,7 @@ func callVerbResult(cv reflect.Value, m reflect.Method, ctx context.Context, nam
 			args = append(args, reflect.Zero(at))
 		}
 	}
-	out := m.Func.Call(args)
+	out := callMethod(m, args)
 	e, _ := out[len(out)-1].Interface().(error)
 	return e
 }

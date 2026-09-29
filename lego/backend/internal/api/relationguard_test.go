@@ -114,7 +114,7 @@ func callVerbNamed(cv reflect.Value, m reflect.Method, ctx context.Context, name
 			args = append(args, reflect.Zero(at))
 		}
 	}
-	m.Func.Call(args)
+	callMethod(m, args)
 }
 
 // TestFetchByNameUsesTheVerbsOwnRelation: for every verb that ALSO checks its

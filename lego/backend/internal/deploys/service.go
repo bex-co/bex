@@ -181,6 +181,9 @@ type Service struct {
 	// StartedNotifier is invoked asynchronously after a trigger opens its deploy
 	// row. nil keeps notifications disabled without changing trigger behavior.
 	StartedNotifier DeployStartedNotifier
+	// Environment restores a rollback target's saved env vars and secret files
+	// (w1/m152 t009). nil keeps rollback image-only.
+	Environment EnvironmentRestorer
 	// Commits resolves the triggering ref to the exact commit a
 	// build-from-git deploy runs (w9/001) — github.Service's
 	// DeployCommitSource. nil ⇒ deploy rows open with no commit metadata.
@@ -965,7 +968,17 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 // becomes App.spec.image, so this is create-like (can_create), not lifecycle —
 // the same executable-selection class as Trigger(imageUrl). It also produces a
 // deploy write, so it shares Trigger's RequireBillingMutation gate.
-func (s *Service) Rollback(ctx context.Context, service, deployID string) (DeployView, error) {
+//
+// opts carries the per-surface differences (at most one is read). It is variadic
+// so there stays exactly ONE exported rollback verb: the audit verb is derived
+// from the first exported method on the stack (core.callerVerb), so a second
+// entry point would rename every rollback's audit event and un-map it from the
+// events feed — the regression ADR018 records for apps.writeThroughStore.
+func (s *Service) Rollback(ctx context.Context, service, deployID string, opts ...RollbackOptions) (DeployView, error) {
+	var o RollbackOptions
+	if len(opts) > 0 {
+		o = opts[0]
+	}
 	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return DeployView{}, err
@@ -1017,6 +1030,16 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 	if rollbackRepublishes(a, target) {
 		return s.triggerFetched(ctx, service, a, TriggerParams{CommitID: target.Commit, rollbackOf: &target}, store.TriggerRollback)
 	}
+	// Restore the target's environment into the saved state before the release
+	// opens, so this rollback's single dispatch rolls once, with those values
+	// (w1/m152 t009). nil means image-only: no record for that release.
+	restored, err := s.restoreTargetConfig(ctx, a, target)
+	if err != nil {
+		return DeployView{}, err
+	}
+	// Only an actual flip is news: a rollback on a service whose auto-deploy was
+	// already off must not add a "disabled" row to its events feed.
+	disablesAutoDeploy := o.DisableAutoDeploy && a.Spec.AutoDeploy
 	// Row-first: the projector owns spec.image for store-managed Apps, so the
 	// row updates before the CR patch below — the same writeThroughStore
 	// discipline apps.Service's suspend/plan/scale verbs follow, applied here
@@ -1030,12 +1053,21 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string) (Deplo
 		stampReleaseGeneration(a, release)
 		a.Spec.Image = target.ResolvedImage
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
+		if restored != nil {
+			a.Spec.StartCommand = restored.startCommand
+		}
+		if o.DisableAutoDeploy {
+			a.Spec.AutoDeploy = false
+		}
 	}, func(release int64) (store.Deploy, error) {
 		return s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, release,
 			store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage}, core.SubjectFrom(ctx))
 	})
 	if err != nil {
 		return DeployView{}, err
+	}
+	if disablesAutoDeploy {
+		s.RecordAutoDeployChanged(ctx, a, false)
 	}
 	return view(d), nil
 }
