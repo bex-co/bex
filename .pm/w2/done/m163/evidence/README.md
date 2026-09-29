@@ -40,12 +40,14 @@ the FGA preshared key are omitted from the recorded evidence.
 
 ## Reproduction
 
-[`api_runner.go`](api_runner.go) is the exact temporary API entrypoint. Copy it
-under `lego/backend/cmd/` while building so Go's `internal` import rules apply:
+[`api_runner.go.txt`](api_runner.go.txt) preserves the exact temporary API
+entrypoint as text so CodeQL does not try to build this archived evidence as a
+standalone Go module. Copy it under `lego/backend/cmd/` as `main.go` while building
+so Go's `internal` import rules apply:
 
 ```sh
 mkdir -p lego/backend/cmd/.w2-m163-acceptance
-cp .pm/w2/done/m163/evidence/api_runner.go lego/backend/cmd/.w2-m163-acceptance/main.go
+cp .pm/w2/done/m163/evidence/api_runner.go.txt lego/backend/cmd/.w2-m163-acceptance/main.go
 (cd lego/backend && GOWORK=off go build -p 2 -o /tmp/bex-w2-m163-api ./cmd/.w2-m163-acceptance)
 ```
 
