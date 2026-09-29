@@ -329,8 +329,11 @@ describe("DeployActions", () => {
       await screen.findByRole("button", { name: /^Roll back to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
+    // w1/m152 t009: a rollback restores the target's image, environment variables
+    // and start command, and a dashboard rollback turns auto-deploy off. The dialog
+    // must say both — it used to promise the image alone.
     expect(dialog).toHaveTextContent(
-      "The service will redeploy from the image used in this deploy.",
+      "The service will redeploy with this deploy's image, environment variables and start command, and auto-deploy will be turned off so the next push doesn't undo the rollback.",
     );
     expect(dialog.textContent ?? "").not.toContain("built from");
   });

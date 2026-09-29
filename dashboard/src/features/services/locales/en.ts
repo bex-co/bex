@@ -4134,12 +4134,13 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Rollback confirm dialog title",
   },
   "services.eventsRollbackConfirmBody": {
-    message: "The service will redeploy from the image used in this deploy.",
+    message:
+      "The service will redeploy with this deploy's image, environment variables and start command, and auto-deploy will be turned off so the next push doesn't undo the rollback. A deploy older than the last 20 releases restores the image only.",
     description: "Rollback confirm dialog body",
   },
   "services.eventsRollbackConfirmBodyCommit": {
     message:
-      "The service will redeploy from the image used in this deploy, built from {commit}.",
+      "The service will redeploy with this deploy's image (built from {commit}), environment variables and start command, and auto-deploy will be turned off so the next push doesn't undo the rollback. A deploy older than the last 20 releases restores the image only.",
     description:
       "Rollback confirm dialog body naming the commit being restored",
   },
