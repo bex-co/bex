@@ -6113,7 +6113,7 @@ dashboards:
              "id": 12,
              "type": "timeseries",
              "title": "Node DiskPressure",
-             "description": "Per-node kubelet DiskPressure (node-local ephemeral storage, not PVCs): 1 means the kubelet is evicting pods. NodeDiskPressure pages after 2m; a shorter episode stays visible here and as the info NodeDiskPressureRecovered for 6h. No series for a node is NodeDiskPressureSignalMissing, never healthy. No node-exporter: there is no fill-rate early warning.",
+             "description": "Per-node kubelet DiskPressure (node-local ephemeral storage, not PVCs): 1 means an eviction threshold has been crossed; the kubelet attempts resource reclaim and may evict pods. NodeDiskPressure pages after 2m; a shorter episode stays visible here and as the info NodeDiskPressureRecovered for 6h. No series for a node is NodeDiskPressureSignalMissing, never healthy. Read this current condition alongside tenant filesystem headroom and advisory forecasts.",
              "gridPos": { "h": 9, "w": 24, "x": 0, "y": 49 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
@@ -6366,6 +6366,400 @@ dashboards:
               {
                "refId": "A",
                "expr": "{namespace=\"bex-registry\", service=\"zot\", type=\"platform\"} | json gc_level=\"level\", gc_module=\"module\", gc_message=\"message\", gc_error=\"error\" | gc_level=\"error\" | gc_module=\"gc\" | gc_message=\"failed to get repoMeta\" | gc_error=\"repo metadata not found for given repo name\""
+              }
+             ]
+            },
+            {
+             "id": 18,
+             "type": "timeseries",
+             "title": "Tenant filesystem available bytes ratio",
+             "description": "Per tenant backing device, deduplicated across required mounts. TenantNodeFilesystemSpaceLow warns below 20% available for 10m; current shared-root imagefs/nodefs hard thresholds are 15%/10%. Only complete usable observations appear; check collection coverage for missing nodes or mounts. This is node storage, separate from PVCs and pod ephemeral-storage limits.",
+             "gridPos": {
+              "h": 9,
+              "w": 12,
+              "x": 0,
+              "y": 85
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Tenant filesystem topology and diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#tenant-node-filesystem-headroom",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "unit": "percentunit",
+               "min": 0,
+               "noValue": "UNKNOWN",
+               "max": 1,
+               "custom": {
+                "thresholdsStyle": {
+                 "mode": "line"
+                }
+               },
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "red",
+                  "value": null
+                 },
+                 {
+                  "color": "orange",
+                  "value": 0.15
+                 },
+                 {
+                  "color": "green",
+                  "value": 0.2
+                 }
+                ]
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:tenant_node_filesystem_available_ratio",
+               "legendFormat": "{{node}} {{device}}"
+              }
+             ]
+            },
+            {
+             "id": 19,
+             "type": "timeseries",
+             "title": "Tenant filesystem free inode ratio",
+             "description": "Free/total inodes per tenant backing device. TenantNodeFilesystemInodesLow warns below 10% for 10m, before the current 5% hard eviction threshold. Byte headroom cannot establish inode headroom. Missing observations remain UNKNOWN in the collection coverage tile.",
+             "gridPos": {
+              "h": 9,
+              "w": 12,
+              "x": 12,
+              "y": 85
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Tenant filesystem topology and diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#tenant-node-filesystem-headroom",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "unit": "percentunit",
+               "min": 0,
+               "noValue": "UNKNOWN",
+               "max": 1,
+               "custom": {
+                "thresholdsStyle": {
+                 "mode": "line"
+                }
+               },
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "red",
+                  "value": null
+                 },
+                 {
+                  "color": "orange",
+                  "value": 0.05
+                 },
+                 {
+                  "color": "green",
+                  "value": 0.1
+                 }
+                ]
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:tenant_node_filesystem_free_inodes_ratio",
+               "legendFormat": "{{node}} {{device}}"
+              }
+             ]
+            },
+            {
+             "id": 20,
+             "type": "timeseries",
+             "title": "Tenant filesystem available bytes",
+             "description": "Current available bytes on complete, successfully scraped writable backing filesystems. Device aliases are deduplicated. Read alongside the ratio and required-mount coverage; a healthy sibling does not establish coverage for an absent mount.",
+             "gridPos": {
+              "h": 9,
+              "w": 12,
+              "x": 0,
+              "y": 94
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Tenant filesystem topology and diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#tenant-node-filesystem-headroom",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "unit": "bytes",
+               "min": 0,
+               "noValue": "UNKNOWN"
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:tenant_node_filesystem_available_bytes",
+               "legendFormat": "{{node}} {{device}}"
+              }
+             ]
+            },
+            {
+             "id": 21,
+             "type": "timeseries",
+             "title": "Tenant filesystem free inodes",
+             "description": "Current free inode count on the same complete backing-device observations as the byte panels. Inode exhaustion can occur while bytes remain. Inspect current node pressure and workload file growth before choosing a response.",
+             "gridPos": {
+              "h": 9,
+              "w": 12,
+              "x": 12,
+              "y": 94
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Tenant filesystem topology and diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#tenant-node-filesystem-headroom",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "unit": "short",
+               "min": 0,
+               "noValue": "UNKNOWN"
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:tenant_node_filesystem_free_inodes",
+               "legendFormat": "{{node}} {{device}}"
+              }
+             ]
+            },
+            {
+             "id": 22,
+             "type": "stat",
+             "title": "Tenant filesystem collection coverage",
+             "description": "One row per independently expected tenant node/mount. PRESENT requires complete byte/inode families, a successful target and a writable error-free filesystem; it does not mean enough headroom. Missing or unusable evidence is UNKNOWN. TenantNodeFilesystemTelemetryMissing warns after 10m, allowing shorter node/exporter startup gaps.",
+             "gridPos": {
+              "h": 6,
+              "w": 12,
+              "x": 0,
+              "y": 103
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Tenant filesystem topology and diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#tenant-node-filesystem-headroom",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "1": {
+                   "text": "PRESENT",
+                   "color": "green",
+                   "index": 1
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "(max by (node, mountpoint) (bex:tenant_node_filesystem_observed) * 0 + 1) or on (node, mountpoint) (bex:tenant_node_filesystem_expected * -1)",
+               "legendFormat": "{{node}} {{mountpoint}}",
+               "instant": true,
+               "range": false
+              }
+             ]
+            },
+            {
+             "id": 23,
+             "type": "stat",
+             "title": "Tenant filesystem inventory presence",
+             "description": "Independent kube-state-metrics node pool labels establish which tenant nodes require coverage. TenantNodeFilesystemInventoryMissing warns after 10m with no pool labels. PRESENT permits a valid inventory with zero tenant nodes; it does not establish filesystem collection or capacity.",
+             "gridPos": {
+              "h": 6,
+              "w": 12,
+              "x": 12,
+              "y": 103
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Tenant filesystem topology and diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#tenant-node-filesystem-headroom",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "0": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "1": {
+                   "text": "PRESENT",
+                   "color": "green",
+                   "index": 1
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "(count(kube_node_labels{label_bex_co_pool=~\".+\"}) > bool 0) or vector(0)",
+               "legendFormat": "Node pool inventory",
+               "instant": true,
+               "range": false
+              }
+             ]
+            },
+            {
+             "id": 24,
+             "type": "stat",
+             "title": "Tenant filesystem fill forecast (advisory)",
+             "description": "Forecast risk requires 2h history (at least 110 samples plus a sample at the window start), unchanged capacity, current available bytes below 35%, both 30m and 2h slopes falling, and a projection below 15% available within 4h. TenantNodeFilesystemFillingSoon warns after 15m. NO CURRENT RISK means these guards are not met; HISTORY NOT READY and UNKNOWN are separate. Missing mounts retain rows even when another device is present. Sudden writes and GC can invalidate this advisory; it does not guarantee warning before eviction.",
+             "gridPos": {
+              "h": 7,
+              "w": 24,
+              "x": 0,
+              "y": 109
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Tenant filesystem topology and diagnosis (ADR010)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#tenant-node-filesystem-headroom",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-2": {
+                   "text": "HISTORY NOT READY",
+                   "color": "blue",
+                   "index": 0
+                  },
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 1
+                  },
+                  "0": {
+                   "text": "NO CURRENT RISK",
+                   "color": "green",
+                   "index": 2
+                  },
+                  "1": {
+                   "text": "FORECAST RISK",
+                   "color": "orange",
+                   "index": 3
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:tenant_node_filesystem_filling_soon or on (node, device) (((bex:tenant_node_filesystem_forecast_ready == 1) * 0)) or on (node, device) (((bex:tenant_node_filesystem_forecast_ready == 0) * 0 - 2)) or ((bex:tenant_node_filesystem_expected unless on (node, mountpoint) bex:tenant_node_filesystem_observed) * 0 - 1)",
+               "legendFormat": "{{node}} {{device}}{{mountpoint}}",
+               "instant": true,
+               "range": false
               }
              ]
             }

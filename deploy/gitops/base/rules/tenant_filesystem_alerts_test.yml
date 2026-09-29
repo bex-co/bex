@@ -1,0 +1,1150 @@
+# Host filesystem behavior: independent inventory, complete current observations and guarded forecasts.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+group_eval_order:
+  - platform
+  - bex
+tests:
+  - name: healthy expected roots exclude platform nodes PVC paths and pseudo filesystems
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="tenant-a",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="tenant-b",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="platform",label_bex_co_pool="platform"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="tenant-b:9100",node="tenant-b"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="platform:9100",node="platform"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="tenant-b:9100",node="tenant-b",device="/dev/sda1",mountpoint="/",fstype="overlay"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="tenant-b:9100",node="tenant-b",device="/dev/sda1",mountpoint="/",fstype="overlay"}
+        values: 600x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="tenant-b:9100",node="tenant-b",device="/dev/sda1",mountpoint="/",fstype="overlay"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="tenant-b:9100",node="tenant-b",device="/dev/sda1",mountpoint="/",fstype="overlay"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="tenant-b:9100",node="tenant-b",device="/dev/sda1",mountpoint="/",fstype="overlay"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="tenant-b:9100",node="tenant-b",device="/dev/sda1",mountpoint="/",fstype="overlay"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="platform:9100",node="platform",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="platform:9100",node="platform",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="platform:9100",node="platform",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="platform:9100",node="platform",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="platform:9100",node="platform",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="platform:9100",node="platform",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/pvc",mountpoint="/var/lib/kubelet/pods/pvc",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/pvc",mountpoint="/var/lib/kubelet/pods/pvc",fstype="ext4"}
+        values: 1x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/pvc",mountpoint="/var/lib/kubelet/pods/pvc",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/pvc",mountpoint="/var/lib/kubelet/pods/pvc",fstype="ext4"}
+        values: 1x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/pvc",mountpoint="/var/lib/kubelet/pods/pvc",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="/dev/pvc",mountpoint="/var/lib/kubelet/pods/pvc",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="tmpfs",mountpoint="/",fstype="tmpfs"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="tmpfs",mountpoint="/",fstype="tmpfs"}
+        values: 1x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="tmpfs",mountpoint="/",fstype="tmpfs"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="tmpfs",mountpoint="/",fstype="tmpfs"}
+        values: 1x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="tmpfs",mountpoint="/",fstype="tmpfs"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="tenant-a:9100",node="tenant-a",device="tmpfs",mountpoint="/",fstype="tmpfs"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: TenantNodeFilesystemInventoryMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_available_ratio
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_available_ratio{node="tenant-a",device="/dev/sda1"}
+            value: 0.5
+          - labels: bex:tenant_node_filesystem_available_ratio{node="tenant-b",device="/dev/sda1"}
+            value: 0.6
+      - expr: bex:tenant_node_filesystem_expected
+        eval_time: 20m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_expected{node="tenant-a",mountpoint="/"}
+            value: 1
+          - labels: bex:tenant_node_filesystem_expected{node="tenant-b",mountpoint="/"}
+            value: 1
+  - name: space and inode margins warn before hard eviction persist for ten minutes then recover
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="space",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="inodes",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="space:9100",node="space"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="inodes:9100",node="inodes"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="space:9100",node="space",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="space:9100",node="space",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 200x4 190x10 300x14
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="space:9100",node="space",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="space:9100",node="space",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="space:9100",node="space",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="space:9100",node="space",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="inodes:9100",node="inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="inodes:9100",node="inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="inodes:9100",node="inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="inodes:9100",node="inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 100x4 90x10 500x14
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="inodes:9100",node="inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="inodes:9100",node="inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 14m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 14m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: space
+              device: /dev/sda1
+            exp_annotations:
+              summary: Tenant node space device /dev/sda1 has less than 20% available space
+              description: 'Headroom has stayed below 20% for 10m, above the observed 15% imagefs and 10% nodefs hard eviction thresholds. Inspect the declared backing mounts, image usage and pod ephemeral-storage limits before choosing a response. Sudden writes can exhaust storage before this warning. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 15m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: inodes
+              device: /dev/sda1
+            exp_annotations:
+              summary: Tenant node inodes device /dev/sda1 has less than 10% free inodes
+              description: 'Free inodes have stayed below 10% for 10m, above the observed 5% hard eviction threshold. Byte headroom alone cannot rule out inode exhaustion. Diagnose file counts and workload growth without automatic deletion. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 15m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+    promql_expr_test: []
+  - name: brief low headroom never survives the persistence interval
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="burst",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="burst:9100",node="burst"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="burst:9100",node="burst",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="burst:9100",node="burst",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 190x8 500x21
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="burst:9100",node="burst",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="burst:9100",node="burst",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 90x8 500x21
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="burst:9100",node="burst",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="burst:9100",node="burst",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+    promql_expr_test: []
+  - name: missing target failed target and replacement identity cannot borrow a healthy sibling
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="absent",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="failed",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="replacement",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="healthy",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="failed:9100",node="failed"}
+        values: "0x30"
+      - series: up{job="tenant-node-filesystem",instance="new:9100",node="replacement"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="healthy:9100",node="healthy"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="failed:9100",node="failed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="failed:9100",node="failed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="failed:9100",node="failed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="failed:9100",node="failed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="failed:9100",node="failed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="failed:9100",node="failed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="old:9100",node="replacement",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="old:9100",node="replacement",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="old:9100",node="replacement",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="old:9100",node="replacement",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="old:9100",node="replacement",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="old:9100",node="replacement",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="healthy:9100",node="healthy",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="healthy:9100",node="healthy",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="healthy:9100",node="healthy",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="healthy:9100",node="healthy",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="healthy:9100",node="healthy",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="healthy:9100",node="healthy",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: absent
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node absent mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: failed
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node failed mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: replacement
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node replacement mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_available_ratio
+        eval_time: 10m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_available_ratio{node="healthy",device="/dev/sda1"}
+            value: 0.5
+  - name: total exporter absence preserves every independently expected tenant node
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="tenant-a",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="tenant-b",label_bex_co_pool="tenant"}
+        values: 1x300
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: tenant-a
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node tenant-a mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: tenant-b
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node tenant-b mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemInventoryMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_expected
+        eval_time: 10m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_expected{node="tenant-a",mountpoint="/"}
+            value: 1
+          - labels: bex:tenant_node_filesystem_expected{node="tenant-b",mountpoint="/"}
+            value: 1
+  - name: each missing family and invalid filesystem observation stays unknown despite successful up
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="missing-size",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="missing-size:9100",node="missing-size"}
+        values: 1x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="missing-size:9100",node="missing-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="missing-size:9100",node="missing-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="missing-size:9100",node="missing-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="missing-size:9100",node="missing-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="missing-size:9100",node="missing-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="missing-avail",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="missing-avail:9100",node="missing-avail"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="missing-avail:9100",node="missing-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="missing-avail:9100",node="missing-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="missing-avail:9100",node="missing-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="missing-avail:9100",node="missing-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="missing-avail:9100",node="missing-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="missing-files",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="missing-files:9100",node="missing-files"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="missing-files:9100",node="missing-files",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="missing-files:9100",node="missing-files",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="missing-files:9100",node="missing-files",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="missing-files:9100",node="missing-files",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="missing-files:9100",node="missing-files",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="missing-free",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="missing-free:9100",node="missing-free"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="missing-free:9100",node="missing-free",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="missing-free:9100",node="missing-free",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="missing-free:9100",node="missing-free",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="missing-free:9100",node="missing-free",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="missing-free:9100",node="missing-free",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="missing-readonly",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="missing-readonly:9100",node="missing-readonly"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="missing-readonly:9100",node="missing-readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="missing-readonly:9100",node="missing-readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="missing-readonly:9100",node="missing-readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="missing-readonly:9100",node="missing-readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="missing-readonly:9100",node="missing-readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="missing-error",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="missing-error:9100",node="missing-error"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="missing-error:9100",node="missing-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="missing-error:9100",node="missing-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="missing-error:9100",node="missing-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="missing-error:9100",node="missing-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="missing-error:9100",node="missing-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="zero-size",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="zero-size:9100",node="zero-size"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="zero-size:9100",node="zero-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x30"
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="zero-size:9100",node="zero-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="zero-size:9100",node="zero-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="zero-size:9100",node="zero-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="zero-size:9100",node="zero-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="zero-size:9100",node="zero-size",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="zero-inodes",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="zero-inodes:9100",node="zero-inodes"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="zero-inodes:9100",node="zero-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="zero-inodes:9100",node="zero-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="zero-inodes:9100",node="zero-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x30"
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="zero-inodes:9100",node="zero-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="zero-inodes:9100",node="zero-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="zero-inodes:9100",node="zero-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="negative-avail",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="negative-avail:9100",node="negative-avail"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="negative-avail:9100",node="negative-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="negative-avail:9100",node="negative-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: -1x30
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="negative-avail:9100",node="negative-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="negative-avail:9100",node="negative-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="negative-avail:9100",node="negative-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="negative-avail:9100",node="negative-avail",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="negative-inodes",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="negative-inodes:9100",node="negative-inodes"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="negative-inodes:9100",node="negative-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="negative-inodes:9100",node="negative-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="negative-inodes:9100",node="negative-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="negative-inodes:9100",node="negative-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: -1x30
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="negative-inodes:9100",node="negative-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="negative-inodes:9100",node="negative-inodes",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="readonly",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="readonly:9100",node="readonly"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="readonly:9100",node="readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="readonly:9100",node="readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="readonly:9100",node="readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="readonly:9100",node="readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="readonly:9100",node="readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1x30
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="readonly:9100",node="readonly",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: kube_node_labels{node="device-error",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="device-error:9100",node="device-error"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="device-error:9100",node="device-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="device-error:9100",node="device-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="device-error:9100",node="device-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="device-error:9100",node="device-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="device-error:9100",node="device-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="device-error:9100",node="device-error",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1x30
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: missing-size
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node missing-size mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: missing-avail
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node missing-avail mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: missing-files
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node missing-files mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: missing-free
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node missing-free mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: missing-readonly
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node missing-readonly mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: missing-error
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node missing-error mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: zero-size
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node zero-size mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: zero-inodes
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node zero-inodes mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: negative-avail
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node negative-avail mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: negative-inodes
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node negative-inodes mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: readonly
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node readonly mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: device-error
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node device-error mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_available_ratio
+        eval_time: 10m
+        exp_samples: []
+      - expr: bex:tenant_node_filesystem_free_inodes_ratio
+        eval_time: 10m
+        exp_samples: []
+  - name: new nodes receive grace removed nodes leave inventory and recovered telemetry clears
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="removed",label_bex_co_pool="tenant"}
+        values: 1x11 stale
+      - series: kube_node_labels{node="new",label_bex_co_pool="tenant"}
+        values: _x12 1x20
+      - series: kube_node_labels{node="recover",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="recover:9100",node="recover"}
+        values: 0x11 1x20
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="recover:9100",node="recover",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="recover:9100",node="recover",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="recover:9100",node="recover",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="recover:9100",node="recover",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="recover:9100",node="recover",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="recover:9100",node="recover",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: removed
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node removed mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+          - exp_labels:
+              severity: warning
+              node: recover
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node recover mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 12m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: new
+              mountpoint: /
+            exp_annotations:
+              summary: Tenant node new mount / has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_expected
+        eval_time: 12m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_expected{node="new",mountpoint="/"}
+            value: 1
+          - labels: bex:tenant_node_filesystem_expected{node="recover",mountpoint="/"}
+            value: 1
+  - name: zero tenant nodes is valid while node pool inventory still exists
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="platform",label_bex_co_pool="platform"}
+        values: 1x300
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: TenantNodeFilesystemInventoryMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_expected
+        eval_time: 20m
+        exp_samples: []
+  - name: total node pool inventory loss has its own warning
+    interval: 1m
+    input_series: []
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: TenantNodeFilesystemInventoryMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemInventoryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Node pool inventory is unavailable for tenant filesystem coverage
+              description: 'kube-state-metrics has no node pool labels for 10m, so expected tenant-node coverage cannot be established. Check its scrape and nodes=[bex.co/pool] label allowlist; absence of tenant warnings is not healthy evidence. A valid inventory with zero tenant nodes is allowed. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+    promql_expr_test: []
+  - name: declared separate image filesystem can be low while root remains healthy
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="split",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="split:9100",node="split"}
+        values: 1x300
+      - series: bex:tenant_node_filesystem_expected{node="split",mountpoint="/var/lib/containerd"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sdb1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sdb1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 190x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sdb1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sdb1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 90x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sdb1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sdb1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: split
+              device: /dev/sdb1
+            exp_annotations:
+              summary: Tenant node split device /dev/sdb1 has less than 20% available space
+              description: 'Headroom has stayed below 20% for 10m, above the observed 15% imagefs and 10% nodefs hard eviction thresholds. Inspect the declared backing mounts, image usage and pod ephemeral-storage limits before choosing a response. Sudden writes can exhaust storage before this warning. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: split
+              device: /dev/sdb1
+            exp_annotations:
+              summary: Tenant node split device /dev/sdb1 has less than 10% free inodes
+              description: 'Free inodes have stayed below 10% for 10m, above the observed 5% hard eviction threshold. Byte headroom alone cannot rule out inode exhaustion. Diagnose file counts and workload growth without automatic deletion. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_available_ratio
+        eval_time: 10m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_available_ratio{node="split",device="/dev/sda1"}
+            value: 0.5
+          - labels: bex:tenant_node_filesystem_available_ratio{node="split",device="/dev/sdb1"}
+            value: 0.19
+  - name: healthy root cannot conceal an independently declared missing image filesystem
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="split",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="split:9100",node="split"}
+        values: 1x300
+      - series: bex:tenant_node_filesystem_expected{node="split",mountpoint="/var/lib/containerd"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="split:9100",node="split",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: split
+              mountpoint: /var/lib/containerd
+            exp_annotations:
+              summary: Tenant node split mount /var/lib/containerd has unknown filesystem headroom
+              description: 'An independently expected backing mount has no complete, successful writable-filesystem observation for 10m. Check the private tenant-node-filesystem target, exporter placement/host mounts, filesystem collector errors and required-mount inventory. New nodes have the same 10m collection grace; removed nodes leave the inventory. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+    promql_expr_test: []
+  - name: same device backing multiple declared paths yields one conservative device result
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="aliases",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="aliases:9100",node="aliases"}
+        values: 1x300
+      - series: bex:tenant_node_filesystem_expected{node="aliases",mountpoint="/var/lib/containerd"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 190x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 90x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 190x300
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: 90x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="aliases:9100",node="aliases",device="/dev/sda1",mountpoint="/var/lib/containerd",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemSpaceLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: aliases
+              device: /dev/sda1
+            exp_annotations:
+              summary: Tenant node aliases device /dev/sda1 has less than 20% available space
+              description: 'Headroom has stayed below 20% for 10m, above the observed 15% imagefs and 10% nodefs hard eviction thresholds. Inspect the declared backing mounts, image usage and pod ephemeral-storage limits before choosing a response. Sudden writes can exhaust storage before this warning. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemInodesLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: aliases
+              device: /dev/sda1
+            exp_annotations:
+              summary: Tenant node aliases device /dev/sda1 has less than 10% free inodes
+              description: 'Free inodes have stayed below 10% for 10m, above the observed 5% hard eviction threshold. Byte headroom alone cannot rule out inode exhaustion. Diagnose file counts and workload growth without automatic deletion. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+      - eval_time: 10m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_available_bytes
+        eval_time: 10m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_available_bytes{node="aliases",device="/dev/sda1"}
+            value: 190
+      - expr: bex:tenant_node_filesystem_size_bytes
+        eval_time: 10m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_size_bytes{node="aliases",device="/dev/sda1"}
+            value: 1000
+  - name: sustained decline requires full history current margin and fifteen minute persistence
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="declining",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="declining:9100",node="declining"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="declining:9100",node="declining",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="declining:9100",node="declining",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500-1x240
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="declining:9100",node="declining",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="declining:9100",node="declining",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="declining:9100",node="declining",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="declining:9100",node="declining",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 119m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+      - eval_time: 150m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+      - eval_time: 165m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+      - eval_time: 166m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              node: declining
+              device: /dev/sda1
+            exp_annotations:
+              summary: 'Advisory: tenant node declining device /dev/sda1 may cross 15% available within 4h'
+              description: 'With at least 2h history and stable capacity, both recent and longer trends decline, current headroom is below 35%, and a linear forecast crosses the observed imagefs eviction margin within 4h. This is an advisory trend, not guaranteed notice before sudden writes; verify current usage before choosing a response. Runbook: docs/ADR010-observability.md#tenant-node-filesystem-headroom'
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_forecast_ready
+        eval_time: 119m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="declining",device="/dev/sda1"}
+            value: 0
+      - expr: bex:tenant_node_filesystem_forecast_ready
+        eval_time: 120m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="declining",device="/dev/sda1"}
+            value: 1
+  - name: new and sparse observations do not qualify for an advisory forecast
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="new",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="gaps",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="new:9100",node="new"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="gaps:9100",node="gaps"}
+        values: 1x79 0x19 1x60
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="new:9100",node="new",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="new:9100",node="new",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: _x9 300-1x160
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="new:9100",node="new",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="new:9100",node="new",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="new:9100",node="new",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="new:9100",node="new",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="gaps:9100",node="gaps",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="gaps:9100",node="gaps",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 400-1x240
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="gaps:9100",node="gaps",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="gaps:9100",node="gaps",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="gaps:9100",node="gaps",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="gaps:9100",node="gaps",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 120m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_forecast_ready
+        eval_time: 120m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="new",device="/dev/sda1"}
+            value: 0
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="gaps",device="/dev/sda1"}
+            value: 0
+  - name: flat and improving headroom below the eviction margin do not imply future filling
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="flat",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: kube_node_labels{node="improving",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="flat:9100",node="flat"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="improving:9100",node="improving"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="flat:9100",node="flat",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="flat:9100",node="flat",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 100x240
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="flat:9100",node="flat",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="flat:9100",node="flat",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="flat:9100",node="flat",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="flat:9100",node="flat",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="improving:9100",node="improving",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="improving:9100",node="improving",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 100+0.1x240
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="improving:9100",node="improving",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="improving:9100",node="improving",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="improving:9100",node="improving",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="improving:9100",node="improving",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 150m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+      - eval_time: 200m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_forecast_ready
+        eval_time: 150m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="flat",device="/dev/sda1"}
+            value: 1
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="improving",device="/dev/sda1"}
+            value: 1
+  - name: recent recovery suppresses the advisory even while the longer trend remains negative
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="recovering",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="recovering:9100",node="recovering"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="recovering:9100",node="recovering",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="recovering:9100",node="recovering",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 800-5x119 210+1x120
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="recovering:9100",node="recovering",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="recovering:9100",node="recovering",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="recovering:9100",node="recovering",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="recovering:9100",node="recovering",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 150m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_forecast_ready
+        eval_time: 150m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="recovering",device="/dev/sda1"}
+            value: 1
+  - name: capacity changes invalidate the forecast history
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="resized",label_bex_co_pool="tenant"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="resized:9100",node="resized"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="resized:9100",node="resized",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x99 1200x141
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="resized:9100",node="resized",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 400-1x240
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="resized:9100",node="resized",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="resized:9100",node="resized",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="resized:9100",node="resized",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="resized:9100",node="resized",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 150m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+      - eval_time: 200m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_forecast_ready
+        eval_time: 150m
+        exp_samples:
+          - labels: bex:tenant_node_filesystem_forecast_ready{node="resized",device="/dev/sda1"}
+            value: 0
+  - name: removed node disappears from forecast readiness despite retained history
+    interval: 1m
+    input_series:
+      - series: kube_node_labels{node="removed",label_bex_co_pool="tenant"}
+        values: 1x149 stale
+      - series: kube_node_labels{node="platform",label_bex_co_pool="platform"}
+        values: 1x300
+      - series: up{job="tenant-node-filesystem",instance="removed:9100",node="removed"}
+        values: 1x300
+      - series: node_filesystem_size_bytes{job="tenant-node-filesystem",instance="removed:9100",node="removed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_avail_bytes{job="tenant-node-filesystem",instance="removed:9100",node="removed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 400-1x240
+      - series: node_filesystem_files{job="tenant-node-filesystem",instance="removed:9100",node="removed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 1000x300
+      - series: node_filesystem_files_free{job="tenant-node-filesystem",instance="removed:9100",node="removed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: 500x300
+      - series: node_filesystem_readonly{job="tenant-node-filesystem",instance="removed:9100",node="removed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+      - series: node_filesystem_device_error{job="tenant-node-filesystem",instance="removed:9100",node="removed",device="/dev/sda1",mountpoint="/",fstype="ext4"}
+        values: "0x300"
+    alert_rule_test:
+      - eval_time: 160m
+        alertname: TenantNodeFilesystemFillingSoon
+        exp_alerts: []
+      - eval_time: 160m
+        alertname: TenantNodeFilesystemTelemetryMissing
+        exp_alerts: []
+    promql_expr_test:
+      - expr: bex:tenant_node_filesystem_forecast_ready
+        eval_time: 160m
+        exp_samples: []

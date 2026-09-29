@@ -1807,8 +1807,8 @@ tests:
                 node: tenant-a,
               }
             exp_annotations:
-              summary: "Node tenant-a is under DiskPressure — the kubelet is evicting pods"
-              description: "The kubelet on tenant-a has reported DiskPressure for >2m, so pods are being evicted. Diagnose before deleting anything (docs/ADR010-observability.md, node disk pressure): kubectl describe node tenant-a; kubectl get events -A --field-selector involvedObject.name=tenant-a; kubectl get pods -A --field-selector spec.nodeName=tenant-a,status.phase=Failed."
+              summary: "Node tenant-a is under DiskPressure — a storage eviction threshold is crossed"
+              description: "The kubelet on tenant-a has reported DiskPressure for >2m. It may reclaim storage before evicting pods; inspect actual events. Diagnose before deleting anything (docs/ADR010-observability.md, node disk pressure): kubectl describe node tenant-a; kubectl get events -A --field-selector involvedObject.name=tenant-a; kubectl get pods -A --field-selector spec.nodeName=tenant-a,status.phase=Failed."
       - eval_time: 8m
         alertname: NodeDiskPressureRecovered
         exp_alerts: []

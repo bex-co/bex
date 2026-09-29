@@ -11,6 +11,7 @@ on:
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
       - "scripts/test_log_shipper.py"
+      - "scripts/test_platform_metrics.py"
       - "scripts/helm-artifact*.sh"
       - "deploy/helm-artifacts.lock"
       - "scripts/onbex-default-tls-secret.sh"
@@ -49,6 +50,7 @@ on:
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
       - "scripts/test_log_shipper.py"
+      - "scripts/test_platform_metrics.py"
       - "scripts/helm-artifact*.sh"
       - "deploy/helm-artifacts.lock"
       - "scripts/onbex-default-tls-secret.sh"
@@ -150,6 +152,8 @@ jobs:
             "$RUNNER_TEMP/bin/promtool"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: validate
+        env:
+          GITOPS_TEST_FILESYSTEM_COLLECTOR: "1"
         run: bash scripts/gitops-validate.sh
       - name: app log severity parsing in the pinned Alloy image
         run: python3 -m unittest scripts/test_log_shipper.py -v
