@@ -1,6 +1,6 @@
 # w7 · m163 — Alert on recurring registry garbage-collection failures
 
-**Worker:** worker7 **Goal:** Detect recurring Zot garbage-collection failures before stranded build artifacts consume registry headroom. **Status:** todo
+**Worker:** worker7 **Goal:** Detect recurring Zot garbage-collection failures before stranded build artifacts consume registry headroom. **Status:** in progress
 
 **Estimate:** 120m implementation; 190m (~3h10m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -8,8 +8,8 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Expose bounded Zot GC failure metrics and a private Alloy scrape](t001.md) | 45m | — |
-| t002 | [Add registry GC recurrence alerts and repair navigation](t002.md) | 45m | t001 |
+| t001 | [Expose bounded Zot GC failure metrics and a private Alloy scrape](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Add registry GC recurrence alerts and repair navigation](done/t002.md) — **DONE** | 45m | t001 |
 | t003 | [Make GC alert state reliable across replay reload and recovery](t003.md) | 30m | t002 |
 | t004 | [Simplify](t004.md) | 20m | t003 |
 | t005 | [Test coverage](t005.md) | 40m | t003, t004 |
@@ -47,3 +47,11 @@ This filing schedules the approved work; it does not implement or deploy it. Exi
 - Patching/forking Zot, filing an upstream issue/PR, or selecting the prevention strategy.
 - Automatically pushing repair artifacts or deleting registry data in response to an alert.
 - Changing build-cache enablement or retention policy; repository names as unbounded metric labels.
+
+## Implementation verification — 2026-09-29 UTC
+
+- The locked Alloy chart 1.3.1 renders v1.11.2. Full `python3 -m unittest scripts/test_log_shipper.py -v`: 4/4 passed, including existing app/platform/Postgres behavior and the real-image GC lifecycle/fanout fixture. Original Loki lines/labels remain intact. First event, exact JSON controls, historical replay, reload reset/recreation, bounded labels and idle expiry were exercised. The fixture shortens only idle duration from the asserted production 5m to 5s.
+- Four isolated rendered-config mutations failed: removing replay filtering, matching unrelated structured logs, leaking inherited labels, and incrementing instead of setting timestamps. Nine promtool scenarios and nine panel expression scenarios pass; four isolated PromQL mutations detect lost first events, stale-event resurrection, lost scrape-health matching and missing-collection grace.
+- Both rendered environments passed the shared scrape/inventory validator. `scripts/gitops-validate.sh` and `scripts/obs-coverage-check.sh` passed; the only warning is the existing optional FGA drift check skipped because `fga` is unavailable (no authz change).
+- `/simplify` reuse, quality and efficiency reviews completed. Removed one redundant final label-drop stage; no further changes warranted. Markdown formatting and `git diff --check` passed.
+- Read-only baseline: Zot v2.1.18 emits routine probe logs about every 10s; historical GC failures recurred roughly every 72–73m. The exact new panel LogQL matched six retained Sep28 events. This is historical fixture/source evidence, not a new production GC incident. Deployment verification remains for t003.

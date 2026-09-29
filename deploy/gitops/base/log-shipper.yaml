@@ -338,7 +338,63 @@ spec:
 
               loki.source.kubernetes "platform_pods" {
                 targets    = discovery.relabel.platform_pods.output
-                forward_to = [loki.process.platform_logs.receiver]
+                forward_to = [loki.process.platform_logs.receiver, loki.process.zot_gc_metrics.receiver]
+              }
+
+              // A separate branch leaves retained Loki entries and labels intact.
+              // Kubernetes supplies the original entry timestamp, so a replay
+              // cannot turn old GC failures into current operational evidence.
+              loki.process "zot_gc_metrics" {
+                stage.match {
+                  selector = "{service!=\"zot\"}"
+                  action   = "drop"
+                }
+                stage.drop {
+                  older_than          = "5m"
+                  drop_counter_reason = "zot_metrics_replay"
+                }
+                stage.label_keep {
+                  values = ["service"]
+                }
+                stage.template {
+                  source   = "observed_at"
+                  template = "{{ "{{" }} now | unixEpoch {{ "}}" }}"
+                }
+                stage.metrics {
+                  metric.gauge {
+                    name              = "zot_log_last_observed_timestamp_seconds"
+                    prefix            = "bex_"
+                    description       = "Last fresh Zot log observed by this collector."
+                    source            = "observed_at"
+                    action            = "set"
+                    max_idle_duration = "5m"
+                  }
+                }
+                stage.json {
+                  expressions = {
+                    gc_failure = "level == 'error' && module == 'gc' && message == 'failed to get repoMeta' && error == 'repo metadata not found for given repo name'",
+                  }
+                }
+                stage.labels {
+                  values = {gc_failure = "gc_failure"}
+                }
+                stage.match {
+                  selector = "{service=\"zot\",gc_failure=\"true\"}"
+                  stage.label_keep {
+                    values = ["service"]
+                  }
+                  stage.metrics {
+                    metric.gauge {
+                      name              = "zot_gc_failure_last_observed_timestamp_seconds"
+                      prefix            = "bex_"
+                      description       = "Last fresh known Zot GC metadata failure observed by this collector."
+                      source            = "observed_at"
+                      action            = "set"
+                      max_idle_duration = "5m"
+                    }
+                  }
+                }
+                forward_to = []
               }
 
               loki.process "platform_logs" {
@@ -826,7 +882,7 @@ spec:
           resources:
             requests: { cpu: 25m, memory: 128Mi }
             limits: { cpu: 200m, memory: 256Mi }
-        # No bundled ServiceMonitor / self-metrics scrape — keep the shipper thin.
+        # Prometheus discovers private Alloy pod metrics directly.
         serviceMonitor: { enabled: false }
   destination:
     server: https://kubernetes.default.svc

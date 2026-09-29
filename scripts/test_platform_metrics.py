@@ -67,6 +67,21 @@ def main():
                 {"source_labels": ["__name__"], "regex": "argocd_app_info", "action": "keep"},
                 {"regex": "__name__|job|instance|namespace|name|sync_status|health_status", "action": "labelkeep"},
             ], "Keep application state without repository/revision labels"
+            alloy_jobs = [job for job in prometheus["scrape_configs"] if job["job_name"] == "alloy"]
+            assert len(alloy_jobs) == 1, "Alloy needs one private per-pod scrape"
+            alloy = alloy_jobs[0]
+            assert alloy["kubernetes_sd_configs"] == [{
+                "role": "pod", "namespaces": {"names": ["monitoring"]},
+            }], "Alloy discovery must remain scoped to monitoring pods"
+            assert alloy["scrape_interval"] == "30s", "Observe short-lived log evidence promptly"
+            # The chart's config-reloader is a second container; keeping the
+            # named Alloy port avoids duplicate samples from per-port discovery.
+            assert any(rule.get("action") == "keep" and rule.get("regex") == "alloy;log-shipper;alloy;http-metrics"
+                       for rule in alloy["relabel_configs"]), "Only scrape the intended collector and port"
+            kept_labels = next(rule["regex"] for rule in alloy["metric_relabel_configs"]
+                               if rule["action"] == "labelkeep").split("|")
+            assert set(kept_labels) == {"__name__", "job", "instance", "node", "pod", "service"}, \
+                "No repository, path, tenant or credential labels in Alloy metrics"
             (temporary / "platform_gitops_expected.yml").write_text(config["platform_gitops_expected.yml"])
             fixture = {
                 "rule_files": ["platform_gitops_expected.yml"],

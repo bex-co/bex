@@ -236,6 +236,30 @@ What is still a human decision is only the start: setting the gate and the deadl
 - **`bex_build_push_seconds`, `bex_build_push_errors_total` and `bex_build_retries_total{reason}` are deferred to the D5 milestone (w7/m83), not dropped.** `retries_total` joins them for the same reason: attributing a retry to `disruption` versus `transient` requires knowing which pod failed and why, which is pod-level state, and a `reason` label that cannot be populated correctly is worse than an absent series. True push duration and push-phase attribution need per-container states from the build pod, which is the same pod read `bex_build_queue_seconds` requires. Implementing them in w7/m82 would have meant either a second pod-read path or — worse — registering an always-zero `push_errors_total`, which reads as "no push errors have ever occurred" rather than "nothing measures this". One pod read now serves both series.
 - Single-replica Zot remains an **accepted** single point of failure at current scale; the D5 push-latency/error metrics are the tripwire that reopens HA (or a pull-through cache tier) as its own decision. Growing the PVC before it fills again is an operational duty, now alarmable.
 
+#### Registry GC recurrence
+
+`ZotGarbageCollectionFailure` warns on the **first fresh observation** of the known GC signature: JSON `level=error`, `module=gc`, `message="failed to get repoMeta"`, and `error="repo metadata not found for given repo name"`. The metric is an observation-time gauge, `bex_zot_gc_failure_last_observed_timestamp_seconds`, not an event counter or GC-run count. Each accepted match refreshes its value. Prometheus retains the latest observed value over 3h and compares that timestamp with the current time: the condition clears 3h after the last observation even if Alloy later exposes the old gauge again. This preserves evidence across collector reloads without resurrecting an expired incident.
+
+Alloy keeps idle gauge series for 5m. Its separate metrics branch ignores log entries whose original timestamps are older than 5m; the original Loki path still retains those lines. Replaying a matching entry within that freshness allowance can refresh the observation window by up to 5m, so the signal deliberately means **recently observed recurrence**, not distinct failures. The 3h observation window spans more than two observed 72–73m GC cycles; it is an operational window, not a notification guarantee.
+
+`ZotGarbageCollectionTelemetryMissing` separately warns when fresh collection evidence has been unavailable for 10m. Evidence requires a Zot log observation newer than 5m from an Alloy instance whose current scrape is successful. The `bex_zot_log_last_observed_timestamp_seconds` gauge advances on any fresh Zot line, including normal probe traffic; no GC failure is required. The **Zot GC log collection** tile shows FRESH or UNKNOWN. A zero recurrence state is displayed only with fresh collection; a retained recent failure remains visible even during a collection outage. Warning email follows ADR010's digest schedule, independently of these rule windows.
+
+Start in **Cluster capacity → Zot GC failure logs**, or query the retained platform stream directly:
+
+```logql
+{namespace="bex-registry", service="zot", type="platform"}
+  | json gc_level="level", gc_module="module", gc_message="message", gc_error="error"
+  | gc_level="error" | gc_module="gc"
+  | gc_message="failed to get repoMeta"
+  | gc_error="repo metadata not found for given repo name"
+```
+
+The line carries the repository identity and `removeTagsPerRetentionPolicy` caller; repository names remain in logs, never metric labels. Compare failure times with later successful GC messages for the same repository and with the adjacent PVC fill/headroom panels. Healthy storage headroom does not disprove this failure: the alert is meant to expose stranded artifacts before capacity becomes critical.
+
+For UNKNOWN collection, inspect `kubectl -n bex-registry get pods -o wide`, then the Alloy pod on Zot's node (`kubectl -n monitoring get pods -l app.kubernetes.io/instance=log-shipper -o wide`). Check that pod's Alloy logs/configuration, the node-scoped `platform_pods` discovery, and its `alloy` target in Prometheus. Compare the raw observation timestamp with `up` for the **same instance**; another node's healthy collector cannot stand in for Zot's collector. A successful scrape without fresh Zot lines does not prove the log pipeline is working. The whole-Prometheus outage remains outside these rules' detection ability.
+
+Confirm the missing-repository-metadata mechanism and inspect the repository's current manifests and owning App before following D4's bounded artifact push/delete repair above. Verify recovery with successful collection and eventual repository removal in the retained logs; alert clearance alone proves neither repair nor reclaimed bytes. This detection does not implement the lasting Zot fix owned by w7/m158, and it never automatically pushes repair artifacts, deletes registry content or changes retention.
+
 ### D5 — Build-plane SLIs, emitted by the operator
 
 The "required operational signals" ADR034 listed become real Prometheus series on the manager's existing metrics endpoint:

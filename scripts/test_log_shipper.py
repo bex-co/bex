@@ -5,6 +5,7 @@ Requires Docker, Helm, and yq v4; no cluster or credentials.
 """
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import re
 import subprocess
@@ -21,6 +22,19 @@ def run(*args, **kwargs):
     return subprocess.check_output(args, cwd=ROOT, text=True, **kwargs).strip()
 
 
+def render_alloy(tmp):
+    chart = run("bash", "scripts/helm-artifact.sh", "pull", "alloy", str(tmp))
+    values = tmp / "values.yaml"
+    values.write_text(run("yq", "-r", ".spec.source.helm.values",
+                          "deploy/gitops/base/log-shipper.yaml"))
+    rendered = tmp / "rendered.yaml"
+    rendered.write_text(run("helm", "template", "log-shipper", chart,
+                            "-n", "monitoring", "-f", str(values)))
+    config = run("yq", "-r", 'select(.kind == "ConfigMap") | .data["config.alloy"]', str(rendered))
+    image = run("yq", "-r", 'select(.kind == "DaemonSet") | .spec.template.spec.containers[] | select(.name == "alloy") | .image', str(rendered))
+    return config, image
+
+
 def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "dpg-test"', relabel=None, expect=None):
     """Render the chart, keep one production loki.process block, feed it lines
     in the chart's own Alloy image, and return {entry: labels} per echoed line.
@@ -29,15 +43,7 @@ def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "
     synthetic pod target through that production discovery.relabel block."""
     with tempfile.TemporaryDirectory(prefix="bex-log-shipper-") as tmp:
         tmp = Path(tmp)
-        chart = run("bash", "scripts/helm-artifact.sh", "pull", "alloy", str(tmp))
-        values = tmp / "values.yaml"
-        values.write_text(run("yq", "-r", ".spec.source.helm.values",
-                              "deploy/gitops/base/log-shipper.yaml"))
-        rendered = tmp / "rendered.yaml"
-        rendered.write_text(run("helm", "template", "log-shipper", chart,
-                                "-n", "monitoring", "-f", str(values)))
-        config = run("yq", "-r", 'select(.kind == "ConfigMap") | .data["config.alloy"]', str(rendered))
-        image = run("yq", "-r", 'select(.kind == "DaemonSet") | .spec.template.spec.containers[] | select(.name == "alloy") | .image', str(rendered))
+        config, image = render_alloy(tmp)
         pipeline = re.search(r'^loki\.process "%s" \{\n.*?^\}' % pipeline_name, config, re.M | re.S)
         test.assertIsNotNone(pipeline, f"rendered chart is missing the {pipeline_name} pipeline")
         # Keep every production stage; replace only the input and sink.
@@ -238,6 +244,161 @@ class PlatformLogsTest(unittest.TestCase):
                        if '"component_id":"loki.process.platform_logs"' in line
                        and re.search(r'"level":"(error|warn)"', line)]
         self.assertEqual(diagnostics, [], "platform_logs emitted parse diagnostics")
+
+
+class ZotGCMetricsTest(unittest.TestCase):
+    def test_fresh_failure_replay_reload_and_idle_expiry(self):
+        heartbeat = "bex_zot_log_last_observed_timestamp_seconds"
+        failure = "bex_zot_gc_failure_last_observed_timestamp_seconds"
+        signature = {"level": "error", "module": "gc", "message": "failed to get repoMeta",
+                     "error": "repo metadata not found for given repo name",
+                     "repository": "fixture/repository"}
+        with tempfile.TemporaryDirectory(prefix="bex-zot-metrics-") as directory:
+            tmp = Path(directory)
+            config, image = render_alloy(tmp)
+            platform = re.search(r'^loki\.process "platform_logs" \{\n.*?^\}', config, re.M | re.S).group()
+            metrics = re.search(r'^loki\.process "zot_gc_metrics" \{\n.*?^\}', config, re.M | re.S).group()
+            native_source = re.search(r'^loki\.source\.kubernetes "platform_pods" \{\n.*?^\}', config, re.M | re.S).group()
+            fanout = re.search(r'forward_to\s*=\s*\[.*?\]', native_source).group()
+            self.assertEqual(metrics.count('max_idle_duration = "5m"'), 2)
+            # Shorten only idle expiry in the isolated fixture. The same locked
+            # binary's expiry/reload behavior runs without a five-minute CI wait.
+            metrics = metrics.replace('max_idle_duration = "5m"', 'max_idle_duration = "5s"')
+            # Echo sinks expose completion of each branch, so negative assertions
+            # don't race queued entries; production metrics forward to no sink.
+            metrics = metrics.replace('forward_to = []', 'forward_to = [loki.echo.metrics_done.receiver]')
+            platform = platform.replace('loki.write.default.receiver', 'loki.echo.test.receiver')
+            fixture = '''logging { format = "json" }
+loki.echo "test" {}
+loki.echo "metrics_done" {}
+loki.source.file "test" {
+  targets = [
+    {__path__ = "/tmp/zot.log", service = "zot", namespace = "bex-registry", pod = "zot-0", container = "zot", repository = "fixture/repository"},
+    {__path__ = "/tmp/other.log", service = "bex-api", namespace = "bex-system", pod = "api-0", container = "api"},
+  ]
+  forward_to = [loki.process.fixture_clock.receiver]
+}
+loki.process "fixture_clock" {
+  stage.json { expressions = { fixture_time = "fixture_time" } }
+  stage.timestamp {
+    source = "fixture_time"
+    format = "RFC3339Nano"
+  }
+  %s
+}
+''' % fanout
+            fixture += platform + "\n" + metrics + "\n"
+            (tmp / "config.alloy").write_text(fixture)
+            (tmp / "zot.log").write_text("")
+            (tmp / "other.log").write_text("")
+            name = "bex-zot-metrics-" + uuid.uuid4().hex[:12]
+            run("docker", "create", "--name", name, "--network", "none", image,
+                "run", "--storage.path=/tmp/alloy", "/tmp/config.alloy")
+            try:
+                for filename in ["config.alloy", "zot.log", "other.log"]:
+                    run("docker", "cp", str(tmp / filename), f"{name}:/tmp/{filename}")
+                run("docker", "start", name)
+
+                def scrape():
+                    # Read inside the container: works with a remote Docker
+                    # daemon, needs no public port and no second helper image.
+                    response = run("docker", "exec", name, "bash", "-c",
+                                   "exec 3<>/dev/tcp/127.0.0.1/12345; "
+                                   "printf 'GET /metrics HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3; cat <&3")
+                    self.assertIn("200 OK", response.splitlines()[0])
+                    samples = {}
+                    for metric_name, labels, value in re.findall(r'^(bex_zot_\w+)\{([^}]+)\} ([^\s]+)$', response, re.M):
+                        label_set = dict(re.findall(r'(\w+)="([^"\\]*)"', labels))
+                        self.assertLessEqual(set(label_set), {"service", "component_id", "component_path"})
+                        self.assertEqual(label_set.get("service"), "zot")
+                        self.assertNotIn(metric_name, samples, "unbounded labels split a metric")
+                        samples[metric_name] = float(value)
+                    return samples
+
+                def emit(fields, age=0, other=False):
+                    stamp = datetime.fromtimestamp(time.time() - age, timezone.utc).isoformat()
+                    entry = json.dumps(dict(fields, fixture_time=stamp, fixture_id=uuid.uuid4().hex))
+                    filename = "other.log" if other else "zot.log"
+                    run("docker", "exec", "-i", name, "sh", "-c", f"cat >> /tmp/{filename}", input=entry + "\n")
+                    wanted = {"loki.echo.test"}
+                    if not other and age < 300:
+                        wanted.add("loki.echo.metrics_done")
+                    deadline = time.monotonic() + 20
+                    while time.monotonic() < deadline:
+                        output = run("docker", "logs", name, stderr=subprocess.STDOUT)
+                        for line in output.splitlines():
+                            try:
+                                record = json.loads(line)
+                            except json.JSONDecodeError:
+                                continue
+                            receiver = record.get("receiver") or record.get("component_id")
+                            if receiver in wanted and record.get("entry") == entry:
+                                if receiver == "loki.echo.test":
+                                    labels = dict(re.findall(r'(\w+)="([^"\\]*)"', record["labels"]))
+                                    self.assertEqual(labels["type"], "platform")
+                                    self.assertEqual(labels["service"], "bex-api" if other else "zot")
+                                    self.assertEqual(labels["pod"], "api-0" if other else "zot-0")
+                                    self.assertEqual(labels["namespace"], "bex-system" if other else "bex-registry")
+                                    self.assertEqual(labels["container"], "api" if other else "zot")
+                                    self.assertEqual(labels["level"], fields.get("level", "unknown"))
+                                wanted.discard(receiver)
+                        if not wanted:
+                            return
+                        self.assertEqual(run("docker", "inspect", "-f", "{{.State.Running}}", name), "true", output)
+                        time.sleep(0.1)
+                    self.fail(f"Alloy did not finish branches {wanted}:\n{output}")
+
+                healthy = {"level": "info", "module": "gc", "message": "garbage collected blobs", "count": 0}
+                emit(signature, age=3600)  # Retained by Loki, excluded from metrics.
+                emit(signature, other=True)
+                emit(healthy)  # Queue barrier also proves the heartbeat pipeline works.
+                self.assertEqual(set(scrape()), {heartbeat})
+                # Quoted error text, another module, another level, and a
+                # different failure are all outside this one known GC defect.
+                for control in [dict(healthy, request=json.dumps(signature)),
+                                dict(signature, level="info"), dict(signature, module="http"),
+                                dict(signature, message="some other failure"),
+                                dict(signature, error="permission denied")]:
+                    emit(control)
+                    self.assertNotIn(failure, scrape())
+
+                before = int(time.time())
+                emit(signature)
+                observed = scrape()
+                self.assertEqual(set(observed), {heartbeat, failure})
+                self.assertGreaterEqual(observed[failure], before)
+                self.assertLessEqual(observed[failure], time.time())
+                emit(signature, age=3600)
+                emit(healthy)
+                self.assertEqual(scrape()[failure], observed[failure], "old replay refreshed the failure")
+                emit(signature, age=120)
+                self.assertGreaterEqual(scrape()[failure], observed[failure])
+
+                # A real component update resets custom gauges. Fresh entries
+                # recreate the first sample; no synthetic initial zero exists.
+                changed = fixture.replace('Last fresh Zot log observed by this collector.',
+                                          'Last fresh Zot log observed by this collector after reload.')
+                (tmp / "config.alloy").write_text(changed)
+                run("docker", "cp", str(tmp / "config.alloy"), f"{name}:/tmp/config.alloy")
+                run("docker", "kill", "--signal=HUP", name)
+                deadline = time.monotonic() + 10
+                while time.monotonic() < deadline and scrape():
+                    time.sleep(0.1)
+                self.assertEqual(scrape(), {}, "component reload retained its custom metrics")
+                emit(healthy)
+                self.assertEqual(set(scrape()), {heartbeat})
+                emit(signature)
+                last = scrape()[failure]
+
+                # The pinned collector exports once before pruning idle metrics.
+                # A resumed scrape therefore sees the OLD timestamp, never now.
+                expiry = time.monotonic() + 7
+                while time.monotonic() < expiry:
+                    time.sleep(min(0.2, expiry - time.monotonic()))
+                self.assertEqual(scrape()[failure], last)
+                self.assertEqual(scrape(), {})
+            finally:
+                run("docker", "rm", "-f", name)
 
 
 if __name__ == "__main__":

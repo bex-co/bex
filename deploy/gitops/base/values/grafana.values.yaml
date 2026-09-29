@@ -6197,6 +6197,177 @@ dashboards:
                  "legendFormat": "db/quota {{node}}"
                 }
               ]
+            },
+            {
+             "id": 15,
+             "type": "timeseries",
+             "title": "Zot GC failure recurrence",
+             "description": "ZotGarbageCollectionFailure reports the first fresh known repo-metadata GC error and stays active until 3h after the last observed match. This is a recurrence state, not an event or GC-run count. 0 requires fresh collection; UNKNOWN (-1) means no recent failure is retained and collection is unavailable. Prometheus history survives Alloy reload/expiry; retained old timestamps cannot restart the window.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 67
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Registry GC diagnosis and bounded repair (ADR060 D4)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence",
+               "targetBlank": true
+              }
+             ],
+             "fieldConfig": {
+              "defaults": {
+               "min": -1,
+               "max": 1,
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "NO RECENT FAILURE",
+                   "color": "green",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "RECURRENCE",
+                   "color": "red",
+                   "index": 2
+                  }
+                 }
+                }
+               ]
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "((time() - max(max_over_time(bex_zot_gc_failure_last_observed_timestamp_seconds{job=\"alloy\",service=\"zot\"}[3h])) < bool 10800) == 1) or on() ((bex:zot_log_collection_healthy == 1) * 0) or on() vector(-1)",
+               "legendFormat": "known GC failure observed within 3h"
+              }
+             ]
+            },
+            {
+             "id": 16,
+             "type": "stat",
+             "title": "Zot GC log collection",
+             "description": "Freshness is independent of failure absence: a successful Alloy scrape must carry a Zot log observation newer than 5m. ZotGarbageCollectionTelemetryMissing warns after this condition is missing for 10m. A quiet failure panel cannot report healthy zero while this tile is UNKNOWN. This monitors the log-derived signal, not registry reachability.",
+             "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 67
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "Registry GC diagnosis and bounded repair (ADR060 D4)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "0": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "1": {
+                   "text": "FRESH",
+                   "color": "green",
+                   "index": 1
+                  }
+                 }
+                }
+               ],
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "orange",
+                  "value": null
+                 },
+                 {
+                  "color": "green",
+                  "value": 1
+                 }
+                ]
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "bex:zot_log_collection_healthy or on() vector(0)",
+               "legendFormat": "Zot log collection",
+               "instant": true,
+               "range": false
+              }
+             ]
+            },
+            {
+             "id": 17,
+             "type": "logs",
+             "title": "Zot GC failure logs",
+             "description": "Retained Zot platform logs for the known missing-repository-metadata GC signature. Repository and caller stay in the line, not metric labels. The metrics-only 5m historical-replay filter does not remove these original Loki records. Compare subsequent GC success for the same repository and follow ADR060 D4; alert resolution alone is not proof that blobs were reclaimed.",
+             "gridPos": {
+              "h": 10,
+              "w": 24,
+              "x": 0,
+              "y": 75
+             },
+             "datasource": {
+              "type": "loki",
+              "uid": "loki"
+             },
+             "links": [
+              {
+               "title": "Registry GC diagnosis and bounded repair (ADR060 D4)",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR060-build-worker-reliability-and-performance.md#registry-gc-recurrence",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "showTime": true,
+              "sortOrder": "Descending",
+              "wrapLogMessage": false,
+              "enableLogDetails": true,
+              "dedupStrategy": "none"
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "{namespace=\"bex-registry\", service=\"zot\", type=\"platform\"} | json gc_level=\"level\", gc_module=\"module\", gc_message=\"message\", gc_error=\"error\" | gc_level=\"error\" | gc_module=\"gc\" | gc_message=\"failed to get repoMeta\" | gc_error=\"repo metadata not found for given repo name\""
+              }
+             ]
             }
           ]
         }
