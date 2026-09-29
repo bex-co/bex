@@ -89,25 +89,55 @@ func releaseSnapshotName(source string, gen int64) string {
 }
 
 // configSnapshotActive reports whether the projection should reference snapshots
-// rather than the mutable sources. It is true only once the snapshot for the
-// CURRENT release generation has been written, which is what keeps the migration
-// lazy: an App that has not dispatched a release since this shipped has
-// ConfigSnapshotGeneration 0 and keeps its existing template, and nothing rolls on
-// operator upgrade.
+// rather than the mutable sources. It keys on ConfigSnapshotGeneration ALONE, not
+// on that field matching ReleaseGeneration, which is what lets a cancel settle
+// back onto an EARLIER release's configuration (w1/m152 t002): the canceled branch
+// points this at the last served generation, and the template reverts image and
+// config together.
+//
+// Zero keeps the migration lazy — an App that has not dispatched a release since
+// this shipped references its mutable Secrets and keeps its current pod template,
+// so nothing rolls on operator upgrade.
 func configSnapshotActive(app *appv1alpha1.App) bool {
-	gen := app.Status.ReleaseGeneration
-	return gen > 0 && app.Status.ConfigSnapshotGeneration == gen
+	return app.Status.ConfigSnapshotGeneration > 0
 }
 
-// snapshotOrSource maps a mutable source name to this release's snapshot when one
-// is active, and returns it unchanged otherwise. Every projection site goes
-// through here so a single App can never mix snapshot and mutable references —
-// which would make precedence depend on which source happened to be copied.
+// snapshotOrSource maps a mutable source name to the snapshot of whichever
+// generation the App is currently projecting, and returns it unchanged otherwise.
+// Every projection site goes through here so a single App can never mix snapshot
+// and mutable references — which would make precedence depend on which source
+// happened to be copied.
 func snapshotOrSource(app *appv1alpha1.App, source string) string {
 	if source == "" || !configSnapshotActive(app) {
 		return source
 	}
-	return releaseSnapshotName(source, app.Status.ReleaseGeneration)
+	return releaseSnapshotName(source, app.Status.ConfigSnapshotGeneration)
+}
+
+// settleConfigSnapshotTo points the projection at an earlier release's snapshot,
+// for the canceled path. It refuses to point at a generation whose snapshot is no
+// longer on the cluster — GC keeps only the retained window, and referencing a
+// reclaimed copy would leave pods with an unresolvable optional Secret, silently
+// dropping the release's environment. Reports whether the projection moved.
+func (r *AppReconciler) settleConfigSnapshotTo(ctx context.Context, app *appv1alpha1.App, gen int64) (bool, error) {
+	if gen <= 0 || app.Status.ConfigSnapshotGeneration == gen {
+		return false, nil
+	}
+	for _, source := range releaseConfigSources(app) {
+		name := releaseSnapshotName(source, gen)
+		err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &corev1.Secret{})
+		if apierrors.IsNotFound(err) {
+			// No snapshot for that release: it predates t001 or has been reclaimed.
+			// Leave the projection alone — restoring the image only is the honest
+			// outcome, and it is what happened before this milestone.
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+	app.Status.ConfigSnapshotGeneration = gen
+	return true, nil
 }
 
 // releaseConfigSources lists every Secret whose contents a pod of this App reads,
