@@ -68,6 +68,11 @@ advance() { # commit $2 at path $1 on top of origin/main and push
   git push -q origin main
 }
 
+advance_with_source() {
+  advance lego/backend/cmd/api/main.go "package main // newer source"
+  advance "$@"
+}
+
 advance_with_cli() {
   advance lego/cli/internal/launch/launch.go "package launch // CLI update"
   advance "$@"
@@ -94,12 +99,18 @@ run_case "current (no drift)" 1 true
 run_case "CLI-only root file (excluded)" 1 advance lego/cli/go.mod "module cli"
 run_case "CLI-only nested file (excluded)" 1 advance lego/cli/internal/launch/launch.go "package launch"
 run_case "CLI-only deletion (excluded)" 1 remove_cli
-run_case "platform file renamed into CLI" 0 rename_input lego/app/main.go lego/cli/internal/moved/main.go
-run_case "CLI file renamed into platform" 0 rename_input lego/cli/main.go lego/backend/cmd/moved/main.go
-run_case "CLI plus backend change" 0 advance_with_cli lego/backend/cmd/api/main.go "package main"
-run_case "CLI plus dashboard change" 0 advance_with_cli dashboard/src/routes/index.tsx "export default function Home() {}"
-# superseded by a lego/ change → exit 0
-run_case "superseded: lego change" 0 advance lego/app/main.go "package app // v2"
+run_case "platform file renamed into CLI" 3 rename_input lego/app/main.go lego/cli/internal/moved/main.go
+run_case "CLI file renamed into platform" 3 rename_input lego/cli/main.go lego/backend/cmd/moved/main.go
+run_case "CLI plus backend change" 3 advance_with_cli lego/backend/cmd/api/main.go "package main"
+run_case "CLI plus dashboard change" 3 advance_with_cli dashboard/src/routes/index.tsx "export default function Home() {}"
+# newer image source only → exit 3: a newer run is queued, and these images
+# are safe to pin onto the unchanged manifests (w1/116)
+run_case "newer source: lego change" 3 advance lego/app/main.go "package app // v2"
+run_case "newer source: dashboard change" 3 advance dashboard/src/app.tsx "export {}"
+# anything Argo CD syncs from main is a manifest: never pin older images onto it
+run_case "superseded: operator config (CRD) change" 0 advance lego/operator/config/crd/bases/apps.yaml "kind: CustomResourceDefinition"
+run_case "superseded: gitops manifest change" 0 advance deploy/gitops/base/other.yaml "kind: ConfigMap"
+run_case "superseded: manifest plus source change" 0 advance_with_source deploy/opensandbox/extra.yaml "kind: ConfigMap"
 # superseded by a deploy.yml change → exit 0
 run_case "superseded: deploy.yml change" 0 advance .github/workflows/deploy.yml "name: deploy v2"
 # a preceding run's generated digest write-back (bex.yaml digest only) → exit 1
