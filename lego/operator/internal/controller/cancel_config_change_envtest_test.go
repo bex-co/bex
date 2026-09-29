@@ -128,9 +128,31 @@ var _ = Describe("Canceling a config-change deploy (w1/m152)", func() {
 		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
 		Expect(app.Status.ReleaseGeneration).To(Equal(int64(1)))
 
-		By("the saved change stays saved for the next deploy")
+		By("the saved change stays saved for the next deploy, and the service says so")
 		Expect(app.Spec.RestartedAt).NotTo(BeEmpty())
 		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name + "-env", Namespace: "default"}, env)).To(Succeed())
 		Expect(env.Data).To(HaveKeyWithValue("MESSAGE", []byte("should-not-ship")))
+		Expect(app.Status.UndeployedChanges).To(BeTrue(),
+			"the service is running an earlier release than its saved spec, and every surface reads this (t003)")
+
+		By("the next deploy ships the saved change and clears the flag")
+		app.Spec.RestartedAt = time.Now().Add(time.Second).UTC().Format(time.RFC3339Nano)
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		for range 3 {
+			pass()
+		}
+		app = getApp()
+		Expect(app.Status.UndeployedChanges).To(BeFalse())
+		Expect(app.Status.ReleaseGeneration).To(BeNumerically(">", 1))
+		shipped := getDep().Spec.Template
+		Expect(shipped).NotTo(Equal(*served), "the next deploy must actually roll")
+		snap := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name:      releaseSnapshotName(name+"-env", app.Status.ReleaseGeneration),
+			Namespace: "default",
+		}, snap)).To(Succeed())
+		Expect(snap.Data).To(HaveKeyWithValue("MESSAGE", []byte("should-not-ship")),
+			"the new release snapshots and serves the value that was saved before the cancel")
+		Expect(shipped.Spec.Containers[0].EnvFrom[0].SecretRef.Name).To(Equal(snap.Name))
 	})
 })

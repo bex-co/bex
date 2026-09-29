@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -216,5 +217,51 @@ func TestIsReleaseSnapshotNameRejectsLookalikes(t *testing.T) {
 		if got := isReleaseSnapshotName(name); got != want {
 			t.Errorf("isReleaseSnapshotName(%q) = %v, want %v", name, got, want)
 		}
+	}
+}
+
+// The rollout invariant (t003 step 1): only a template change made while settling a
+// cancel is metered, and a reprojection — the fallback that can ship canceled
+// changes — is distinguishable from a restore.
+func TestAfterServingDeploymentMetersCancelTemplateChanges(t *testing.T) {
+	ctx := context.Background()
+	settling := func() *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "api", Namespace: snapshotTestNS, Generation: 2,
+				Annotations: map[string]string{appv1alpha1.AnnotationCanceledReleaseGeneration: "2"},
+			},
+			Status: appv1alpha1.AppStatus{Image: "img@sha256:v1", ActiveRevision: "rev-1", ReleaseGeneration: 1},
+		}
+	}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(settling()).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	count := func(kind string) float64 { return testutil.ToFloat64(cancelTemplateChangesTotal.WithLabelValues(kind)) }
+
+	restore0, reproject0 := count(cancelTemplateRestore), count(cancelTemplateReproject)
+	app := settling()
+	r.afterServingDeployment(ctx, app, corev1.PodTemplateSpec{}, true, true)
+	r.afterServingDeployment(ctx, app, corev1.PodTemplateSpec{}, true, false)
+	r.afterServingDeployment(ctx, app, corev1.PodTemplateSpec{}, false, false) // unchanged: not a rollout
+	if got := count(cancelTemplateRestore) - restore0; got != 1 {
+		t.Errorf("restore increments = %v, want 1", got)
+	}
+	if got := count(cancelTemplateReproject) - reproject0; got != 1 {
+		t.Errorf("reproject increments = %v, want 1", got)
+	}
+	if !app.Status.UndeployedChanges {
+		t.Error("settling a cancel over a served release must report undeployed changes")
+	}
+
+	normal := settling()
+	normal.Annotations = nil
+	before := count(cancelTemplateReproject) + count(cancelTemplateRestore)
+	normal.Status.UndeployedChanges = true
+	r.afterServingDeployment(ctx, normal, corev1.PodTemplateSpec{}, true, false)
+	if normal.Status.UndeployedChanges {
+		t.Error("a normal dispatch must clear undeployed changes")
+	}
+	if after := count(cancelTemplateReproject) + count(cancelTemplateRestore); after != before {
+		t.Errorf("a normal rollout was metered as a cancel template change (%v -> %v)", before, after)
 	}
 }
