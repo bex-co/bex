@@ -1,0 +1,4 @@
+interface:
+  display_name: "Routine: Useless-Test Pruner"
+  short_description: "Prune weak tests with behavioral evidence"
+  default_prompt: "Use $rt-prune-useless-tests to audit hollow, duplicated, and implementation-coupled tests, then delete or strengthen them while preserving independent contracts."
