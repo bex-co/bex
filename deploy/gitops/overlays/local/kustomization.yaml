@@ -201,6 +201,45 @@ patches:
         path: /spec/source/helm/parameters
         value:
           - { name: alertmanager.enabled, value: "false" }
+      - op: add
+        path: /spec/source/helm/valuesObject
+        value:
+          serverFiles:
+            platform_gitops_expected.yml:
+              groups:
+                - name: platform-gitops-inventory
+                  rules:
+                    - record: bex:platform_gitops_expected
+                      labels: {namespace: argocd}
+                      expr: |
+                        label_replace(vector(1), "name", "auth-dbs", "", "")
+                        or label_replace(vector(1), "name", "barman-cloud-plugin", "", "")
+                        or label_replace(vector(1), "name", "bex-dashboard", "", "")
+                        or label_replace(vector(1), "name", "bex-operator", "", "")
+                        or label_replace(vector(1), "name", "bex-platform-local", "", "")
+                        or label_replace(vector(1), "name", "bex-postgres", "", "")
+                        or label_replace(vector(1), "name", "cert-manager", "", "")
+                        or label_replace(vector(1), "name", "cert-manager-issuers", "", "")
+                        or label_replace(vector(1), "name", "cluster-autoscaler", "", "")
+                        or label_replace(vector(1), "name", "cnpg-operator", "", "")
+                        or label_replace(vector(1), "name", "etcd-metrics", "", "")
+                        or label_replace(vector(1), "name", "grafana", "", "")
+                        or label_replace(vector(1), "name", "hydra", "", "")
+                        or label_replace(vector(1), "name", "kpack", "", "")
+                        or label_replace(vector(1), "name", "kratos", "", "")
+                        or label_replace(vector(1), "name", "kubelet-csr-approver", "", "")
+                        or label_replace(vector(1), "name", "log-shipper", "", "")
+                        or label_replace(vector(1), "name", "loki", "", "")
+                        or label_replace(vector(1), "name", "mailpit", "", "")
+                        or label_replace(vector(1), "name", "metrics-server", "", "")
+                        or label_replace(vector(1), "name", "openbao", "", "")
+                        or label_replace(vector(1), "name", "openfga", "", "")
+                        or label_replace(vector(1), "name", "opensandbox-controller", "", "")
+                        or label_replace(vector(1), "name", "prometheus", "", "")
+                        or label_replace(vector(1), "name", "sealed-secrets", "", "")
+                        or label_replace(vector(1), "name", "traefik", "", "")
+                        or label_replace(vector(1), "name", "traefik-plugins", "", "")
+                        or label_replace(vector(1), "name", "zot", "", "")
   # Grafana (docs/ADR088-platform-observability-ui.md §5) needs no local layer:
   # the obs.bex.co ingress + OIDC live ONLY in the prod overlay values, so the
   # base already IS the local admin-only shape — cluster-internal Service,

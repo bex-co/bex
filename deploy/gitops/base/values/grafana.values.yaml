@@ -3221,6 +3221,340 @@ dashboards:
                  "range": false
                 }
               ]
+            },
+            {
+             "id": 16,
+             "type": "stat",
+             "title": "GitOps metrics scrape health",
+             "description": "PlatformGitOpsMetricsMissing fires after 5m without a successful argocd-applications scrape. UP means at least one controller metrics target is reachable; application completeness is checked separately below. A vanished target reads MISSING, never stale UP.",
+             "gridPos": {
+              "h": 4,
+              "w": 24,
+              "x": 0,
+              "y": 68
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "GitOps delivery runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#platform-gitops-delivery",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "reduceOptions": {
+               "calcs": [
+                "lastNotNull"
+               ]
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "MISSING",
+                   "color": "red",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "DOWN",
+                   "color": "red",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "UP",
+                   "color": "green",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                 {
+                  "color": "red",
+                  "value": null
+                 },
+                 {
+                  "color": "green",
+                  "value": 1
+                 }
+                ]
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "max(up{job=\"argocd-applications\"}) or on() vector(-1)",
+               "legendFormat": "argocd-applications",
+               "instant": true,
+               "range": false
+              }
+             ]
+            },
+            {
+             "id": 17,
+             "type": "table",
+             "title": "GitOps expected application coverage",
+             "description": "Every independently expected root/child Application appears here, including a missing Application. PRESENT means complete native sync and health labels exist under a successful scrape; UNKNOWN (-1) means missing/incomplete telemetry or source outage. Native states name the diagnosis; PRESENT alone does not mean healthy. PlatformGitOpsApplicationMissing warns after 10m of missing application telemetry while the scrape is up.",
+             "gridPos": {
+              "h": 15,
+              "w": 24,
+              "x": 0,
+              "y": 72
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "GitOps delivery runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#platform-gitops-delivery",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "showHeader": true,
+              "sortBy": [
+               {
+                "displayName": "Application",
+                "desc": false
+               }
+              ]
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN"
+              },
+              "overrides": [
+               {
+                "matcher": {
+                 "id": "byName",
+                 "options": "Signal"
+                },
+                "properties": [
+                 {
+                  "id": "mappings",
+                  "value": [
+                   {
+                    "type": "value",
+                    "options": {
+                     "-1": {
+                      "text": "UNKNOWN",
+                      "color": "red",
+                      "index": 0
+                     },
+                     "1": {
+                      "text": "PRESENT",
+                      "color": "green",
+                      "index": 1
+                     }
+                    }
+                   }
+                  ]
+                 },
+                 {
+                  "id": "custom.cellOptions",
+                  "value": {
+                   "type": "color-text"
+                  }
+                 }
+                ]
+               }
+              ]
+             },
+             "transformations": [
+              {
+               "id": "organize",
+               "options": {
+                "excludeByName": {
+                 "Time": true
+                },
+                "indexByName": {
+                 "namespace": 0,
+                 "name": 1,
+                 "sync_status": 2,
+                 "health_status": 3,
+                 "Value": 4
+                },
+                "renameByName": {
+                 "namespace": "Namespace",
+                 "name": "Application",
+                 "sync_status": "Sync",
+                 "health_status": "Health",
+                 "Value": "Signal"
+                }
+               }
+              }
+             ],
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "(max by (namespace, name, sync_status, health_status) (argocd_app_info{job=\"argocd-applications\",namespace=\"argocd\",sync_status!=\"\",health_status!=\"\"} == 1) and on (namespace, name) bex:platform_gitops_expected{namespace=\"argocd\"} and on() (max(up{job=\"argocd-applications\"}) == 1)) or on (namespace, name) label_replace(label_replace(bex:platform_gitops_expected{namespace=\"argocd\"} * -1, \"sync_status\", \"UNKNOWN\", \"name\", \".*\"), \"health_status\", \"UNKNOWN\", \"name\", \".*\")",
+               "format": "table",
+               "instant": true,
+               "range": false
+              }
+             ]
+            },
+            {
+             "id": 18,
+             "type": "state-timeline",
+             "title": "GitOps application sync history",
+             "description": "PlatformGitOpsOutOfSync warns after 15m outside Synced. Each expected Application has one stable row: green = Synced, red = a reported non-Synced state, UNKNOWN (-1) = missing/incomplete native data or no successful scrape. The current-state table names the native state. The 15m interval is a chosen maintenance allowance, not a measured rollout guarantee.",
+             "gridPos": {
+              "h": 24,
+              "w": 12,
+              "x": 0,
+              "y": 87
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "GitOps delivery runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#platform-gitops-delivery",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "mergeValues": true,
+              "showValue": "auto",
+              "rowHeight": 0.8,
+              "legend": {
+               "showLegend": false
+              },
+              "tooltip": {
+               "mode": "single"
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "Synced",
+                   "color": "green",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "Not Synced",
+                   "color": "red",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "custom": {
+                "lineWidth": 0,
+                "fillOpacity": 100,
+                "spanNulls": false
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "((max by (namespace, name) (argocd_app_info{job=\"argocd-applications\",namespace=\"argocd\",sync_status!=\"\",health_status!=\"\",sync_status!=\"Synced\"} == 1) or on (namespace, name) (max by (namespace, name) (argocd_app_info{job=\"argocd-applications\",namespace=\"argocd\",sync_status!=\"\",health_status!=\"\"} == 1) * 0)) and on (namespace, name) bex:platform_gitops_expected{namespace=\"argocd\"} and on() (max(up{job=\"argocd-applications\"}) == 1)) or on (namespace, name) (bex:platform_gitops_expected{namespace=\"argocd\"} * -1)",
+               "legendFormat": "{{namespace}}/{{name}}"
+              }
+             ]
+            },
+            {
+             "id": 19,
+             "type": "state-timeline",
+             "title": "GitOps application health history",
+             "description": "PlatformGitOpsUnhealthy warns after 15m outside Healthy. Each expected Application has one stable row: green = Healthy, red = a reported non-Healthy state, UNKNOWN (-1) = missing/incomplete native data or no successful scrape. The current-state table names the native state. The 15m interval is a chosen maintenance allowance, not a measured rollout guarantee.",
+             "gridPos": {
+              "h": 24,
+              "w": 12,
+              "x": 12,
+              "y": 87
+             },
+             "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+             },
+             "links": [
+              {
+               "title": "GitOps delivery runbook",
+               "url": "https://github.com/bex-co/bex/blob/main/docs/ADR010-observability.md#platform-gitops-delivery",
+               "targetBlank": true
+              }
+             ],
+             "options": {
+              "mergeValues": true,
+              "showValue": "auto",
+              "rowHeight": 0.8,
+              "legend": {
+               "showLegend": false
+              },
+              "tooltip": {
+               "mode": "single"
+              }
+             },
+             "fieldConfig": {
+              "defaults": {
+               "noValue": "UNKNOWN",
+               "mappings": [
+                {
+                 "type": "value",
+                 "options": {
+                  "-1": {
+                   "text": "UNKNOWN",
+                   "color": "orange",
+                   "index": 0
+                  },
+                  "0": {
+                   "text": "Healthy",
+                   "color": "green",
+                   "index": 1
+                  },
+                  "1": {
+                   "text": "Not Healthy",
+                   "color": "red",
+                   "index": 2
+                  }
+                 }
+                }
+               ],
+               "custom": {
+                "lineWidth": 0,
+                "fillOpacity": 100,
+                "spanNulls": false
+               }
+              },
+              "overrides": []
+             },
+             "targets": [
+              {
+               "refId": "A",
+               "expr": "((max by (namespace, name) (argocd_app_info{job=\"argocd-applications\",namespace=\"argocd\",sync_status!=\"\",health_status!=\"\",health_status!=\"Healthy\"} == 1) or on (namespace, name) (max by (namespace, name) (argocd_app_info{job=\"argocd-applications\",namespace=\"argocd\",sync_status!=\"\",health_status!=\"\"} == 1) * 0)) and on (namespace, name) bex:platform_gitops_expected{namespace=\"argocd\"} and on() (max(up{job=\"argocd-applications\"}) == 1)) or on (namespace, name) (bex:platform_gitops_expected{namespace=\"argocd\"} * -1)",
+               "legendFormat": "{{namespace}}/{{name}}"
+              }
+             ]
             }
           ]
         }
