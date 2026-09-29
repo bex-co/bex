@@ -1,6 +1,6 @@
 # w1 · m161 — A WebSocket whose traffic is only client→server does not keep a free service awake
 
-**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** blocked (t001, t002, t005 and t006 done; t003 awaits approved fixture w1/114, then live acceptance and t004 parity remain)
+**Worker:** worker1 **Goal:** a free web service stays awake while any WebSocket on it is carrying traffic, in either direction, the way Render counts WebSocket messages as inbound activity. **Status:** in progress (t001, t002, t005 and t006 done; fixture w1/114 done 2026-09-29 as `examples/ws-silent/`; t003 live acceptance, then t004 parity and t007 closeout remain)
 
 ## Tasks (in order)
 
@@ -125,4 +125,4 @@ t004 (parity) depends on t003, so it is held behind the same fixture.
 
 ## Approved fixture extraction — 2026-09-28
 
-User-approved `/pm all for w1` assigns reusable fixture preparation to [w1/114](../../114.md). This supersedes the historical request for a fixture-choice approval below/above. The missing fixture remains a dependency, not a permission gate. t003 retains all live controls and cleanup, t004 retains Render parity, and t007 cannot close before those pass.
+User-approved `/pm all for w1` assigns reusable fixture preparation to [w1/114](../done/114.md). This supersedes the historical request for a fixture-choice approval below/above. The missing fixture remains a dependency, not a permission gate. t003 retains all live controls and cleanup, t004 retains Render parity, and t007 cannot close before those pass.
