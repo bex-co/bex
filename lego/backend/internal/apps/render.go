@@ -112,11 +112,15 @@ type renderService struct {
 	// PublicRoutingNotice explains why an exposed service has no public address
 	// (w7/m79). Render has no equivalent — it always has a platform host to give
 	// — so this is a bex extension rather than a parity gap.
-	PublicRoutingNotice string   `json:"publicRoutingNotice,omitempty"`
-	Phase               string   `json:"phase,omitempty"`
-	Replicas            int32    `json:"replicas"`
-	Revision            string   `json:"revision,omitempty"`
-	URLs                []string `json:"urls,omitempty"`
+	PublicRoutingNotice string `json:"publicRoutingNotice,omitempty"`
+	Phase               string `json:"phase,omitempty"`
+	// UndeployedChanges is a bex extension: Render has no field for a canceled
+	// deploy whose saved changes are still pending. Omitted when false, so a
+	// Render client sees nothing new on an ordinary service (w1/m152 t003).
+	UndeployedChanges bool     `json:"undeployedChanges,omitempty"`
+	Replicas          int32    `json:"replicas"`
+	Revision          string   `json:"revision,omitempty"`
+	URLs              []string `json:"urls,omitempty"`
 	// Schedule/Command/Runs describe a cron_job (Render nests schedule/command
 	// under cronJobDetails and exposes runs at /cron-jobs/{id}/runs); empty
 	// otherwise.
@@ -354,6 +358,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		EnvironmentID:        a.EnvironmentID,
 		BlueprintID:          a.BlueprintID,
 		Phase:                a.Phase,
+		UndeployedChanges:    a.UndeployedChanges,
 		PublicRoutingNotice:  a.PublicRoutingNotice,
 		Replicas:             a.Replicas,
 		Revision:             a.Revision,

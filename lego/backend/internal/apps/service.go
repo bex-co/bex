@@ -377,10 +377,15 @@ type AppView struct {
 	DisplayName string `json:"displayName"`
 	// Type is the Render serviceType (web_service | private_service |
 	// background_worker | cron_job); empty spec.type projects as web_service.
-	Type  string   `json:"type"`
-	Phase string   `json:"phase"`
-	URL   string   `json:"url"`
-	URLs  []string `json:"urls"`
+	Type  string `json:"type"`
+	Phase string `json:"phase"`
+	// UndeployedChanges: the service runs an earlier release than its saved spec
+	// because the deploy carrying the newer spec was canceled; the changes stay
+	// saved and ship with the next deploy (w1/m152 t003). Read from the
+	// operator-owned status field, never re-derived here.
+	UndeployedChanges bool     `json:"undeployedChanges"`
+	URL               string   `json:"url"`
+	URLs              []string `json:"urls"`
 	// PublicRoutingNotice explains why a service that asked to be publicly
 	// reachable has no public address (bex extra, w7/m79). Empty when the
 	// service is routed, or is not the kind that carries a public URL.
@@ -1016,6 +1021,7 @@ func view(a *appv1alpha1.App) AppView {
 		DisplayName:         a.Spec.DisplayName,
 		Type:                svcType,
 		Phase:               phase,
+		UndeployedChanges:   a.Status.UndeployedChanges,
 		URL:                 url,
 		PublicRoutingNotice: publicRoutingNotice(a),
 		// The contract-level derivation (types/v1alpha1) the operator's slug
