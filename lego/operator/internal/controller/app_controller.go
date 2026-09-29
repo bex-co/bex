@@ -2138,6 +2138,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
 
+	// A cancel over a served release restores that release's recorded template
+	// verbatim instead of projecting the current spec, so nothing the canceled save
+	// changed — restartedAt, commands, probes, plan — reaches the template, and an
+	// unchanged Deployment is not rolled (w1/m152 t002). nil means project as usual.
+	restore, err := r.servedPodTemplateForCancel(ctx, app)
+	if err != nil {
+		return r.fail(ctx, app, "DeployFailed", err)
+	}
+
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
 		applyDeploymentSpec(dep, app, deploymentParams{
@@ -2151,10 +2160,14 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 			// registry-hosted, so a prebuilt public image is left untouched.
 			pullSecrets: r.imagePullSecrets(app, image),
 		})
+		if restore != nil {
+			dep.Spec.Template = *restore.DeepCopy()
+		}
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
+	r.recordServingTemplate(ctx, app, dep.Spec.Template)
 	// Stamp Deploying only while the Deployment is still progressing. After
 	// ProgressDeadlineExceeded, reportRolloutProgress settles a terminal phase
 	// (Failed / prior-release Running|Hibernated); re-stamping Deploying here
