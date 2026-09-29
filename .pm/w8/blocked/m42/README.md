@@ -18,7 +18,7 @@
 
 - Three consecutive `deploy.yml` runs on `main` complete with `conclusion: success` (build + deploy jobs ran, not skipped), and `gh run list --workflow deploy.yml` shows no gate failure caused by t001–t003's tests in the same window.
 - Against production, the sandbox copy route that `9a5e77529` added answers instead of Go's default `404 page not found`: `bex ea sandboxes copy ./f.txt <sbx-id>:f.txt -o json` on a disposable sandbox exits 0 and a follow-up `bex ea sandboxes exec <sbx-id> -- cat f.txt` prints the file.
-- Each flake has a named root cause written in its task and a fix that removes the cause. **No retries, sleeps, `test.retry`, raised `testTimeout`, or skips** (the `/routine-flaky-tests` rule). A raised timeout is acceptable only when the task proves the operation is slow by design rather than starved or waiting on a race.
+- Each flake has a named root cause written in its task and a fix that removes the cause. **No retries, sleeps, `test.retry`, raised `testTimeout`, or skips**. A raised timeout is acceptable only when the task proves the operation is slow by design rather than starved or waiting on a race.
 - `scripts/ci-red-streak.sh` reports a deploy.yml failure streak even when the streak is interleaved with supersession cancellations and other workflows' runs (t004's fixture). Today's global 100-run window hid a 5-failure streak: the open issue #73 listed only `test (mobile)`.
 
 ## Evidence (2026-09-23, `/qa-find-bugs-cli` sweep 5)
