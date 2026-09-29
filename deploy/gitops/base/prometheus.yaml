@@ -320,10 +320,30 @@ spec:
                   - source_labels: [__meta_kubernetes_pod_name]
                     target_label: pod
                 metric_relabel_configs:
-                  - source_labels: [__name__]
-                    regex: bex_zot_(gc_failure|log)_last_observed_timestamp_seconds
+                  # Restrict component/endpoint/tenant identities BEFORE dropping
+                  # them, so unrelated native series cannot collide after relabel.
+                  # Root health/config markers also establish a baseline for
+                  # detecting counters that appear at their first positive value.
+                  - source_labels: [__name__, component_id, component_path, host, tenant, controller_id, controller_path]
+                    regex: 'bex_zot_(gc_failure|log)_last_observed_timestamp_seconds;loki\.process\.zot_gc_metrics;/;;;;|alloy_config_last_load_successful;;;;;;|alloy_component_controller_running_components;;;;;;/|loki_write_(sent_entries_total|batch_retries_total|dropped_entries_total|request_duration_seconds_count);loki\.write\.default;/;loki\.monitoring\.svc:3100;;;'
                     action: keep
-                  - regex: __name__|job|instance|node|pod|service
+                  - regex: __name__|job|instance|node|pod|service|reason|status_code|health_type
+                    action: labelkeep
+              # Single-binary Loki has one private service target. Tenant and
+              # policy are fixed by the deployed auth-disabled configuration;
+              # preserve native rejection dimensions that can differ per sample.
+              - job_name: loki
+                scrape_interval: 30s
+                static_configs:
+                  - targets: [loki.monitoring.svc:3100]
+                metric_relabel_configs:
+                  - source_labels: [__name__, tenant, policy]
+                    regex: '(loki_discarded_samples_total|loki_distributor_lines_received_total);fake;|(process_start_time_seconds|loki_ingester_wal_disk_full_failures_total|loki_request_duration_seconds_count);;'
+                    action: keep
+                  - source_labels: [__name__, route, method]
+                    regex: '(loki_discarded_samples_total|loki_distributor_lines_received_total|process_start_time_seconds|loki_ingester_wal_disk_full_failures_total);;|loki_request_duration_seconds_count;loki_api_v1_push;POST'
+                    action: keep
+                  - regex: __name__|job|instance|reason|retention_hours|format|is_internal_stream|status_code
                     action: labelkeep
               - job_name: traefik
                 scrape_interval: 15s # fine-grained so request-metric rates resolve quickly
@@ -2155,6 +2175,173 @@ spec:
                     annotations:
                       summary: "Traefik is serving >5% 5xx responses"
                       description: "Over 5% of edge requests have been 5xx for >10m (with meaningful traffic). Debug: kubectl -n traefik logs deploy/traefik; check upstream service health and recent deploys."
+              - name: log-delivery
+                rules:
+                  # Independent node inventory: a disappeared collector must remain expected.
+                  - record: bex:log_delivery_collector_expected
+                    expr: max by (node) (kube_node_info)
+                  - record: bex:log_delivery_collector_up
+                    expr: max by (node) (up{job="alloy"} == 1)
+                  - record: bex:log_delivery_inventory_present
+                    expr: (count(kube_node_info) > bool 0) or vector(0)
+                  - record: bex:log_delivery_loki_up
+                    expr: |
+                      max(
+                        (up{job="loki"} == 1)
+                        and on (job, instance) (process_start_time_seconds{job="loki"} > 0)
+                        and on (job, instance) (loki_ingester_wal_disk_full_failures_total{job="loki"} >= 0)
+                      ) or vector(0)
+                  - record: bex:log_delivery_collector_healthy
+                    expr: |
+                      min by (node) (
+                        (
+                          (alloy_config_last_load_successful{job="alloy"} == bool 1)
+                          or
+                          (alloy_component_controller_running_components{job="alloy",health_type!="healthy"} > 0) * 0
+                        )
+                        and on (job, instance, node, pod) (up{job="alloy"} == 1)
+                        and on (job, instance, node, pod) alloy_config_last_load_successful{job="alloy"}
+                        and on (job, instance, node, pod) (alloy_component_controller_running_components{job="alloy"} > 0)
+                      )
+                  # These counters are lazy. A first positive sample is evidence only after
+                  # the newly retained marker has established a 15m baseline for this target.
+                  # During initial rollout, ordinary increases still work; first samples have
+                  # an explicit 15m blind spot. Existing up history cannot establish baseline.
+                  # Ordinary increases survive scrape loss within the lookback. First-positive
+                  # evidence requires current success and becomes unknown if that scrape fails.
+                  - record: bex:log_delivery_writer_drop_activity
+                    expr: |
+                      sum by (node, reason) (
+                        (increase(loki_write_dropped_entries_total{job="alloy"}[15m]) > 0)
+                        or
+                        (
+                          (loki_write_dropped_entries_total{job="alloy"} > 0
+                            unless loki_write_dropped_entries_total{job="alloy"} offset 15m)
+                          and on (job, instance, node, pod)
+                            (alloy_config_last_load_successful{job="alloy"} offset 15m == 1)
+                          and on (job, instance, node, pod) (up{job="alloy"} == 1)
+                        )
+                      ) > bool 0
+                  - record: bex:log_delivery_loki_rejection_activity
+                    expr: |
+                      sum by (reason, format, retention_hours) (
+                        (increase(loki_discarded_samples_total{job="loki"}[15m]) > 0)
+                        or
+                        (
+                          (loki_discarded_samples_total{job="loki"} > 0
+                            unless loki_discarded_samples_total{job="loki"} offset 15m)
+                          and on (job, instance) (process_start_time_seconds{job="loki"} offset 15m > 0)
+                          and on (job, instance) (up{job="loki"} == 1)
+                        )
+                      ) > bool 0
+                  - record: bex:log_delivery_retry_activity
+                    expr: |
+                      sum by (node) (
+                        increase(loki_write_batch_retries_total{job="alloy"}[5m]) > 0
+                      ) > bool 0
+                  - record: bex:log_delivery_wal_disk_full_activity
+                    expr: |
+                      sum (
+                        (increase(loki_ingester_wal_disk_full_failures_total{job="loki"}[15m]) > 0)
+                        or
+                        (
+                          (loki_ingester_wal_disk_full_failures_total{job="loki"} > 0
+                            unless loki_ingester_wal_disk_full_failures_total{job="loki"} offset 15m)
+                          and on (job, instance) (process_start_time_seconds{job="loki"} offset 15m > 0)
+                          and on (job, instance) (up{job="loki"} == 1)
+                        )
+                      ) > bool 0
+                  - alert: LogDeliveryEntriesDropped
+                    expr: bex:log_delivery_writer_drop_activity > 0
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: log-shipper
+                    annotations:
+                      summary: 'Log writer dropped entries on {{ $labels.node }}'
+                      description: 'Alloy reported final writer drops with reason {{ $labels.reason }} during the last 15 minutes. These entries were not delivered; intentional pipeline filtering is excluded.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+                  - alert: LogDeliveryLokiRejected
+                    expr: bex:log_delivery_loki_rejection_activity > 0
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: loki
+                    annotations:
+                      summary: 'Loki rejected log entries with reason {{ $labels.reason }}'
+                      description: 'Loki reported rejected ingestion attempts during the last 15 minutes. Retries may recover these attempts; do not add this count to final Alloy drops as independent loss.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+                  - alert: LogDeliveryRetriesPersistent
+                    expr: bex:log_delivery_retry_activity > 0
+                    for: 10m
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: log-shipper
+                    annotations:
+                      summary: 'Log writer retries persist on {{ $labels.node }}'
+                      description: 'Alloy has reported retry activity in every five-minute window for ten minutes. Delivery is delayed or failing; retries alone do not prove final loss.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+                  - alert: LogDeliveryCollectorMissing
+                    expr: bex:log_delivery_collector_expected unless on (node) bex:log_delivery_collector_up
+                    for: 10m
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: log-shipper
+                    annotations:
+                      summary: 'Log collector telemetry is missing on {{ $labels.node }}'
+                      description: 'An independently inventoried Kubernetes node has no successful Alloy scrape for ten minutes. Inspect the collector and scrape path; log delivery on this node is unknown.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+                  - alert: LogDeliveryInventoryMissing
+                    expr: bex:log_delivery_inventory_present < 1
+                    for: 10m
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: log-shipper
+                    annotations:
+                      summary: Log collector node inventory is missing
+                      description: 'Kubernetes node inventory has been absent for ten minutes. The expected collector set cannot be established, so collector coverage is unknown.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+                  - alert: LogDeliveryCollectorUnhealthy
+                    expr: |
+                      (bex:log_delivery_collector_healthy < 1)
+                      or
+                      (
+                        (bex:log_delivery_collector_expected and on (node) bex:log_delivery_collector_up)
+                        unless on (node) bex:log_delivery_collector_healthy
+                      )
+                    for: 5m
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: log-shipper
+                    annotations:
+                      summary: 'Log collector configuration or component health is bad or unknown on {{ $labels.node }}'
+                      description: 'A successfully scraped Alloy collector has had a failed configuration load, non-healthy root-controller components, or missing native health evidence for five minutes. Configuration health alone does not establish successful delivery.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+                  - alert: LogDeliveryLokiMetricsMissing
+                    expr: bex:log_delivery_loki_up < 1
+                    for: 5m
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: loki
+                    annotations:
+                      summary: Loki ingestion telemetry is missing
+                      description: 'A successful private Loki scrape with process-start and WAL-counter evidence has been unavailable for five minutes. Ingestion and durability telemetry are unknown; this is not proof of process failure.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
+                  - alert: LogDeliveryLokiWALDiskFull
+                    expr: bex:log_delivery_wal_disk_full_activity > 0
+                    labels:
+                      severity: warning
+                      namespace: monitoring
+                      service: loki
+                    annotations:
+                      summary: Loki WAL disk-full failures threaten log durability
+                      description: 'Loki reported WAL disk-full failures during the last 15 minutes. Accepted logs may lack WAL durability even while readiness succeeds; later recovery does not retroactively establish durability.'
+                      runbook_url: docs/ADR010-observability.md#durable-log-ingestion
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

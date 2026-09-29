@@ -11,6 +11,7 @@ on:
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
       - "scripts/test_log_shipper.py"
+      - "scripts/test_log_delivery.py"
       - "scripts/test_platform_metrics.py"
       - "scripts/helm-artifact*.sh"
       - "deploy/helm-artifacts.lock"
@@ -50,6 +51,7 @@ on:
       - "lego/operator/config/**"
       - "scripts/gitops-validate.sh"
       - "scripts/test_log_shipper.py"
+      - "scripts/test_log_delivery.py"
       - "scripts/test_platform_metrics.py"
       - "scripts/helm-artifact*.sh"
       - "deploy/helm-artifacts.lock"
@@ -157,5 +159,7 @@ jobs:
         run: bash scripts/gitops-validate.sh
       - name: app log severity parsing in the pinned Alloy image
         run: python3 -m unittest scripts/test_log_shipper.py -v
+      - name: log delivery failure and recovery in pinned Alloy and Loki
+        run: python3 -m unittest scripts/test_log_delivery.py -v
       - name: platform-pod hardening guard self-test # w7/m58: proves the guard bites
         run: bash scripts/gitops-hardening-guard-test.sh

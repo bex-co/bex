@@ -22,6 +22,55 @@ def yaml_objects(source, selector="."):
     return [json.loads(line) for line in result.splitlines() if line.strip()]
 
 
+def render_application(app, chart, temporary):
+    helm = app["spec"]["source"]["helm"]
+    values_file = temporary / "values.yaml"
+    values_file.write_text(helm["values"])
+    override_file = temporary / "override.json"
+    override_file.write_text(json.dumps(helm.get("valuesObject", {})))
+    command = ["helm", "template", helm["releaseName"], chart, "-n", "monitoring",
+               "-f", str(values_file), "-f", str(override_file)]
+    for parameter in helm.get("parameters", []):
+        command.extend(["--set-string" if parameter.get("forceString") else "--set",
+                        f'{parameter["name"]}={parameter["value"]}'])
+    return subprocess.check_output(command, text=True, cwd=ROOT)
+
+
+def verify_log_workloads(apps, charts, temporary):
+    alloy = next(app for app in apps if app["metadata"]["name"] == "log-shipper")
+    objects = yaml_objects(render_application(alloy, charts["alloy"], temporary))
+    daemonset = next(obj for obj in objects if obj["kind"] == "DaemonSet")
+    pod = daemonset["spec"]["template"]["spec"]
+    assert not pod.get("nodeSelector") and not pod.get("affinity"), \
+        "Expected log collectors cover every node; update inventory if placement changes"
+    assert {"operator": "Exists"} in pod["tolerations"]
+    container = next(c for c in pod["containers"] if c["name"] == "alloy")
+    assert any(port["name"] == "http-metrics" and port["containerPort"] == 12345
+               for port in container["ports"])
+    assert daemonset["spec"]["template"]["metadata"]["labels"]["app.kubernetes.io/name"] == "alloy"
+    assert daemonset["spec"]["template"]["metadata"]["labels"]["app.kubernetes.io/instance"] == "log-shipper"
+
+    loki = next(app for app in apps if app["metadata"]["name"] == "loki")
+    objects = yaml_objects(render_application(loki, charts["loki"], temporary))
+    statefulset = next(obj for obj in objects if obj["kind"] == "StatefulSet" and obj["metadata"]["name"] == "loki")
+    assert statefulset["spec"]["replicas"] == 1, "A service scrape cannot account for multiple Loki replicas"
+    service = next(obj for obj in objects if obj["kind"] == "Service" and obj["metadata"]["name"] == "loki")
+    assert service["spec"]["type"] == "ClusterIP"
+    assert any(port["port"] == 3100 for port in service["spec"]["ports"])
+    config = next(obj["data"]["config.yaml"] for obj in objects
+                  if obj["kind"] == "ConfigMap" and "config.yaml" in obj.get("data", {}))
+    config = yaml_objects(config)[0]
+    assert config["auth_enabled"] is False, "Scrape's fake tenant assumes single-tenant Loki"
+    assert not config.get("limits_config", {}).get("policy_stream_mapping"), \
+        "Loki scrape selects the default policy; update it when introducing named policies"
+    runtime = next(obj["data"]["runtime-config.yaml"] for obj in objects
+                   if obj["kind"] == "ConfigMap" and "runtime-config.yaml" in obj.get("data", {}))
+    runtime = yaml_objects(runtime)[0] or {}
+    assert all(not limits.get("policy_stream_mapping")
+               for limits in runtime.get("overrides", {}).values()), \
+        "Named runtime policies require updating Loki's scrape scope"
+
+
 def verify_application_size(app, environment):
     # Argo retains inline source values in history plus comparedTo, operation
     # and syncResult. Last-applied is JSON inside a string, so include escaping.
@@ -42,6 +91,74 @@ def verify_application_size(app, environment):
         "reduce retained history or move inline values out of the Application"
     )
     print(f"PASS: {environment} Prometheus Application size budget ({modeled_bytes:,}/{budget:,} bytes)", flush=True)
+
+
+def verify_log_metric_filtering(alloy, loki):
+    """Exercise rendered keep/drop behavior with native and adversarial labels.
+
+    Only keep and labelkeep are used here. These regexes share Python/RE2
+    syntax; unknown relabel actions fail rather than being silently simulated.
+    """
+    def retained(job, labels):
+        labels = dict(labels)
+        for rule in job["metric_relabel_configs"]:
+            if rule["action"] == "keep":
+                value = rule.get("separator", ";").join(labels.get(k, "") for k in rule["source_labels"])
+                if re.fullmatch(rule["regex"], value) is None:
+                    return None
+            elif rule["action"] == "labelkeep":
+                labels = {k: v for k, v in labels.items() if re.fullmatch(rule["regex"], k)}
+            else:
+                raise AssertionError(f"Unexercised metric relabel action: {rule['action']}")
+        return labels
+
+    identity = {"job": "alloy", "instance": "pod:12345", "node": "node-a", "pod": "alloy-a"}
+    writer = dict(identity, component_id="loki.write.default", component_path="/",
+                  host="loki.monitoring.svc:3100", tenant="")
+    for name in ("loki_write_sent_entries_total", "loki_write_batch_retries_total",
+                 "loki_write_dropped_entries_total", "loki_write_request_duration_seconds_count"):
+        labels = dict(writer, __name__=name, reason="ingester_error", status_code="400")
+        assert retained(alloy, labels) == dict(identity, __name__=name, reason="ingester_error", status_code="400")
+        for key, wrong in (("component_id", "loki.write.other"), ("component_path", "/nested"),
+                           ("host", "other:3100"), ("tenant", "customer")):
+            assert retained(alloy, dict(labels, **{key: wrong})) is None, (name, key)
+    for health in ("healthy", "unhealthy", "unknown"):
+        labels = dict(identity, __name__="alloy_component_controller_running_components",
+                      controller_id="", controller_path="/", health_type=health)
+        assert retained(alloy, labels) == dict(identity, __name__=labels["__name__"], health_type=health)
+        assert retained(alloy, dict(labels, controller_id="nested")) is None
+        assert retained(alloy, dict(labels, controller_path="/nested")) is None
+    marker = dict(identity, __name__="alloy_config_last_load_successful")
+    assert retained(alloy, marker) == marker
+    for name in ("bex_zot_gc_failure_last_observed_timestamp_seconds", "bex_zot_log_last_observed_timestamp_seconds"):
+        # Native stage.metrics identity, verified against the pinned image and
+        # deployed endpoint; omitting these labels would miss a scrape regression.
+        labels = dict(identity, __name__=name, component_id="loki.process.zot_gc_metrics",
+                      component_path="/", service="zot", repository="unbounded")
+        assert retained(alloy, labels) == dict(identity, __name__=name, service="zot")
+    assert retained(alloy, dict(writer, __name__="loki_process_dropped_lines_total", reason="cnpg_instance_manager")) is None
+
+    identity = {"job": "loki", "instance": "loki.monitoring.svc:3100"}
+    rejection = dict(identity, __name__="loki_discarded_samples_total", tenant="fake", policy="",
+                     reason="greater_than_max_sample_age", retention_hours="504", format="loki")
+    assert retained(loki, rejection) == {k: v for k, v in rejection.items() if k not in {"tenant", "policy"}}
+    assert retained(loki, dict(rejection, tenant="customer")) is None
+    assert retained(loki, dict(rejection, policy="new-policy")) is None
+    # Distinct native dimensions must not collapse to duplicate sample identities.
+    assert retained(loki, dict(rejection, retention_hours="24")) != retained(loki, rejection)
+    assert retained(loki, dict(rejection, format="otlp")) != retained(loki, rejection)
+    for name in ("process_start_time_seconds", "loki_ingester_wal_disk_full_failures_total"):
+        labels = dict(identity, __name__=name)
+        assert retained(loki, labels) == labels
+    for internal in ("true", "false"):
+        labels = dict(identity, __name__="loki_distributor_lines_received_total", tenant="fake",
+                      policy="", format="loki", is_internal_stream=internal)
+        assert retained(loki, labels) == {k: v for k, v in labels.items() if k not in {"tenant", "policy"}}
+    request = dict(identity, __name__="loki_request_duration_seconds_count", route="loki_api_v1_push",
+                   method="POST", status_code="500", ws="false")
+    assert retained(loki, request) == dict(identity, __name__=request["__name__"], status_code="500")
+    assert retained(loki, dict(request, route="loki_api_v1_query_range")) is None
+    assert retained(loki, dict(identity, __name__="loki_ingester_wal_discarded_samples_total", reason="duplicate")) is None
 
 
 def verify_filesystem_collector(resources, prometheus, environment):
@@ -204,11 +321,9 @@ def exercise_filesystem_binary(container, environment, temporary):
 def main():
     with tempfile.TemporaryDirectory(prefix="bex-gitops-metrics-") as directory:
         temporary = Path(directory)
-        chart = subprocess.check_output(
-            ["bash", "scripts/helm-artifact.sh", "pull", "prometheus", directory],
-            text=True,
-            cwd=ROOT,
-        ).strip()
+        charts = {name: subprocess.check_output(
+            ["bash", "scripts/helm-artifact.sh", "pull", name, directory], text=True, cwd=ROOT,
+        ).strip() for name in ("prometheus", "alloy", "loki")}
         for environment in ("prod", "local"):
             rendered = subprocess.check_output(
                 ["kubectl", "kustomize", f"deploy/gitops/overlays/{environment}"],
@@ -226,21 +341,8 @@ def main():
             )
             app = next(app for app in apps if app["metadata"]["name"] == "prometheus")
             verify_application_size(app, environment)
-            helm = app["spec"]["source"]["helm"]
-            values_file = temporary / "values.yaml"
-            values_file.write_text(helm["values"])
-            override_file = temporary / "override.json"
-            override_file.write_text(json.dumps(helm.get("valuesObject", {})))
-            command = [
-                "helm", "template", "prometheus", chart, "-n", "monitoring",
-                "-f", str(values_file), "-f", str(override_file),
-            ]
-            for parameter in helm.get("parameters", []):
-                command.extend([
-                    "--set-string" if parameter.get("forceString") else "--set",
-                    f'{parameter["name"]}={parameter["value"]}',
-                ])
-            resources = subprocess.check_output(command, text=True, cwd=ROOT)
+            resources = render_application(app, charts["prometheus"], temporary)
+            verify_log_workloads(apps, charts, temporary)
             configmaps = yaml_objects(resources, 'select(.kind == "ConfigMap")')
             config = next(cm["data"] for cm in configmaps if cm["metadata"]["name"] == "prometheus-server")
             prometheus = yaml_objects(config["prometheus.yml"])[0]
@@ -270,8 +372,19 @@ def main():
                        for rule in alloy["relabel_configs"]), "Only scrape the intended collector and port"
             kept_labels = next(rule["regex"] for rule in alloy["metric_relabel_configs"]
                                if rule["action"] == "labelkeep").split("|")
-            assert set(kept_labels) == {"__name__", "job", "instance", "node", "pod", "service"}, \
-                "No repository, path, tenant or credential labels in Alloy metrics"
+            assert set(kept_labels) == {
+                "__name__", "job", "instance", "node", "pod", "service", "reason", "status_code", "health_type",
+            }, "No repository, path, tenant or credential labels in Alloy metrics"
+            loki_jobs = [job for job in prometheus["scrape_configs"] if job["job_name"] == "loki"]
+            assert len(loki_jobs) == 1
+            loki = loki_jobs[0]
+            assert loki["static_configs"] == [{"targets": ["loki.monitoring.svc:3100"]}]
+            assert loki["scrape_interval"] == "30s"
+            assert set(next(rule["regex"] for rule in loki["metric_relabel_configs"]
+                            if rule["action"] == "labelkeep").split("|")) == {
+                "__name__", "job", "instance", "reason", "retention_hours", "format", "is_internal_stream", "status_code",
+            }
+            verify_log_metric_filtering(alloy, loki)
             (temporary / "platform_gitops_expected.yml").write_text(config["platform_gitops_expected.yml"])
             fixture = {
                 "rule_files": ["platform_gitops_expected.yml"],
