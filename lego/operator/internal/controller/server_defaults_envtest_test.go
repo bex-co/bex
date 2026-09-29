@@ -259,8 +259,20 @@ var _ = Describe("Server pod-template defaults (w7/m84)", func() {
 		rec.reset()
 		_, err := run()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(rec.sorted()).To(Equal([]string{"update Deployment/" + name}),
-			"a real image change must produce one Deployment write and nothing else")
+		// The one write besides the Deployment is recording the pod template this new
+		// release generation runs, so a later cancel can restore it verbatim instead of
+		// re-projecting the saved spec (w1/m152 t002). It is one Secret per release —
+		// never per reconcile, which the steady-state check below pins.
+		Expect(rec.sorted()).To(Equal([]string{
+			"create Secret/" + name + "-podtemplate-r2",
+			"update Deployment/" + name,
+		}), "a real image change must produce one Deployment write, plus that release's template record, and nothing else")
+
+		rec.reset()
+		_, err = run()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rec.sorted()).To(BeEmpty(),
+			"an unchanged App must not write at all — the template record is written once per release, not every pass")
 
 		dep := &appsv1.Deployment{}
 		Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
