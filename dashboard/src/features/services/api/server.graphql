@@ -28,6 +28,10 @@ query Server($id: String!) {
     # domain is attached. Empty when the service is routed or is not the kind
     # that carries a public URL, so the header can render it unconditionally.
     publicRoutingNotice
+    # undeployedChanges is true when a deploy carrying saved changes was canceled,
+    # so the service runs an earlier release than its saved settings (w1/m152
+    # t003). Operator-owned; false is the ordinary state.
+    undeployedChanges
     # internalAddress is the private-network "<slug>:<port>" sibling services
     # connect to (web/private only, empty otherwise) — Render's Connect →
     # Internal string; a private service's header shows it as its Service

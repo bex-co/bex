@@ -6,6 +6,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { ServiceEnvironmentEditor } from "@/features/services/components/service-environment-editor";
 import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel";
 import { ServiceEnvironmentSkeleton } from "@/common/components/route-skeletons";
+import { useServer } from "@/features/services/hooks/use-server";
 
 export const Route = createFileRoute("/services/$serviceId/env")({
   component: RouteComponent,
@@ -24,6 +25,8 @@ function RouteComponent() {
 export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  // Reads the detail layout's cached document; the layout owns polling.
+  const { service } = useServer(serviceId, { poll: false });
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
@@ -44,6 +47,14 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
           <Plus /> {t("services.envGroupCreate")}
         </Button>
       </div>
+      {service?.undeployedChanges ? (
+        // The values below are the SAVED ones. After a canceled deploy they are
+        // not what the service runs, and this page used to show them without
+        // saying so (w1/m152 t003).
+        <p className="text-muted-foreground text-sm" role="status">
+          {t("services.undeployedChangesHint")}
+        </p>
+      ) : null}
       <ServiceEnvironmentEditor serviceId={serviceId} />
       <EnvGroupsPanel
         serviceId={serviceId}

@@ -260,6 +260,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
   },
+  "services.undeployedChangesHint": {
+    message:
+      "已保存的更改尚未生效 —— 携带这些更改的部署已被取消，它们将在下次部署时发布。",
+    description:
+      "Notice on the service header and Environment page when a canceled deploy left saved changes undeployed (w1/m152)",
+  },
   "services.statusSleepingHint": {
     message: "为节省资源已休眠 —— 下次请求时自动唤醒。",
     description:
@@ -4021,7 +4027,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Cancel deploy confirm dialog title",
   },
   "services.eventsCancelConfirmBody": {
-    message: "正在进行的部署将被停止，最近成功的部署仍保持运行。",
+    message:
+      "正在进行的部署将被停止，最近成功的部署仍保持运行；已保存的更改会继续保留，并在下次部署时发布。",
     description:
       "Cancel deploy confirm dialog body — a previous deploy is still serving",
   },
@@ -4436,8 +4443,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Line-numbered dotenv parse error",
   },
   "services.envImportKeyError": {
-    message: "第 {line} 行：变量名只能包含字母、数字和下划线，且不能以数字开头。",
-    description: "Dotenv import error: the variable name on a line is invalid (w4/159)",
+    message:
+      "第 {line} 行：变量名只能包含字母、数字和下划线，且不能以数字开头。",
+    description:
+      "Dotenv import error: the variable name on a line is invalid (w4/159)",
   },
   "services.envImportQuoteError": {
     message: "第 {line} 行开始的引号没有闭合。",
@@ -4445,7 +4454,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.envImportTrailingError": {
     message: "第 {line} 行的闭合引号后还有多余文本。",
-    description: "Dotenv import error: text after a quoted value's closing quote (w4/159)",
+    description:
+      "Dotenv import error: text after a quoted value's closing quote (w4/159)",
   },
   "services.envImportFileError": {
     message: "请选择不超过 1 MiB 的可读文本文件。",
