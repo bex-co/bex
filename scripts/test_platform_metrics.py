@@ -22,6 +22,28 @@ def yaml_objects(source, selector="."):
     return [json.loads(line) for line in result.splitlines() if line.strip()]
 
 
+def verify_application_size(app, environment):
+    # Argo retains inline source values in history plus comparedTo, operation
+    # and syncResult. Last-applied is JSON inside a string, so include escaping.
+    # Reserve 64KiB for other status/metadata and leave another 256KiB below
+    # etcd's default 1.5MiB request limit; this is a growth budget, not wire size.
+    history_limit = app["spec"].get("revisionHistoryLimit", 10)
+    assert isinstance(history_limit, int) and history_limit >= 0
+    application_json = json.dumps(app, separators=(",", ":"))
+    source_bytes = len(json.dumps(app["spec"]["source"], separators=(",", ":")).encode())
+    modeled_bytes = (
+        len(application_json.encode()) + len(json.dumps(application_json).encode())
+        + (history_limit + 3) * source_bytes + 64 * 1024
+    )
+    budget = 1280 * 1024
+    assert modeled_bytes <= budget, (
+        f"{environment}: Prometheus Application projects {modeled_bytes:,} bytes with "
+        f"{history_limit} history entries, exceeding the {budget:,}-byte budget; "
+        "reduce retained history or move inline values out of the Application"
+    )
+    print(f"PASS: {environment} Prometheus Application size budget ({modeled_bytes:,}/{budget:,} bytes)", flush=True)
+
+
 def verify_filesystem_collector(resources, prometheus, environment):
     objects = yaml_objects(resources)
     daemonset = next(obj for obj in objects if obj["kind"] == "DaemonSet"
@@ -203,6 +225,7 @@ def main():
                 for app in apps + bootstrap
             )
             app = next(app for app in apps if app["metadata"]["name"] == "prometheus")
+            verify_application_size(app, environment)
             helm = app["spec"]["source"]["helm"]
             values_file = temporary / "values.yaml"
             values_file.write_text(helm["values"])
