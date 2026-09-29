@@ -16,7 +16,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [ ] **m167** — [Preserve configured commands when cloning image cron jobs](m167/README.md) (6 tasks; ~2h55m) — transferred intact from w9/m167 by user approval 2026-09-28; source QA evidence retained.
-- [ ] **m168** — [Honor multiple workspace IDs in REST resource lists](m168/README.md) (8 tasks; ~4h15m) — approved brainstorm item 2, 2026-09-28; Render parity is the default.
+- [x] **m168** — [Honor multiple workspace IDs in REST resource lists](done/m168/README.md) (8 tasks; ~4h15m) — approved brainstorm item 2, 2026-09-28; Render parity is the default. **Done 2026-09-29:** services, Postgres and Key Value lists honor `ownerId` arrays (`core.ListOwners`), fail closed on any forbidden workspace, and page a multi-workspace services union by id.
 - [ ] **114** — [Restore a reusable silent WebSocket acceptance fixture](114.md) (~45m) — extracts fixture preparation from m161; live acceptance stays there.
 - [ ] **115** — [Make usage-coverage diagnostics expose missing evidence](115.md) (~45m) — extracts diagnostic preparation from w4/m139/t002; production attribution stays there.
 

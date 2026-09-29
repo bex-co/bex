@@ -1,19 +1,19 @@
 # w1 · m168 — Honor multiple workspace IDs in REST resource lists
 
-**Worker:** worker1 **Goal:** Render-compatible automation can list matching resources across explicitly selected authorized workspaces. **Status:** todo
+**Worker:** worker1 **Goal:** Render-compatible automation can list matching resources across explicitly selected authorized workspaces. **Status:** done 2026-09-29
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Apply owner arrays and authorize each workspace | 40m | — |
-| t002 | Combine service inventories before filtering and pagination | 45m | t001 |
-| t003 | Apply multi-owner listing to Postgres and Key Value | 50m | t001 |
-| t004 | Stabilize combined ordering deduplication and cursors | 35m | t002, t003 |
-| t005 | Render parity | 25m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 35m | t005, t006 |
-| t008 | Closeout | 10m | t007 |
+| t001 | Apply owner arrays and authorize each workspace — **DONE** | 40m | — |
+| t002 | Combine service inventories before filtering and pagination — **DONE** | 45m | t001 |
+| t003 | Apply multi-owner listing to Postgres and Key Value — **DONE** | 50m | t001 |
+| t004 | Stabilize combined ordering deduplication and cursors — **DONE** | 35m | t002, t003 |
+| t005 | Render parity — **DONE** | 25m | t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 35m | t005, t006 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
