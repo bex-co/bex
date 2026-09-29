@@ -19,6 +19,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 - [x] **m168** — [Honor multiple workspace IDs in REST resource lists](done/m168/README.md) (8 tasks; ~4h15m) — approved brainstorm item 2, 2026-09-28; Render parity is the default. **Done 2026-09-29:** services, Postgres and Key Value lists honor `ownerId` arrays (`core.ListOwners`), fail closed on any forbidden workspace, and page a multi-workspace services union by id.
 - [x] **114** — [Restore a reusable silent WebSocket acceptance fixture](done/114.md) (~45m) — **done 2026-09-29:** `examples/ws-silent/` (silent, server-sending and idle modes, with frame counters); live acceptance stays in m161.
 - [ ] **115** — [Make usage-coverage diagnostics expose missing evidence](115.md) (~45m) — extracts diagnostic preparation from w4/m139/t002; production attribution stays there.
+- [x] **116** — [Production deploys starve under steady pushes: nothing pinned for 14+ hours](done/116.md) — **filed and done 2026-09-29:** only manifest drift now blocks a write-back; newer image source pins and lets the queued run follow.
 
 **Approved additional batch order (2026-09-28):** m167 → m168 → 114 → 115. Priorities are not artificial dependencies; m161/t003 depends on 114. Existing commitments remain.
 
