@@ -1,6 +1,6 @@
 # w7 · m165 — Detect failures in durable log ingestion
 
-**Worker:** worker7 **Goal:** Expose log delivery and ingestion failures before they silently remove tenant diagnostics and platform incident history. **Status:** todo
+**Worker:** worker7 **Goal:** Expose log delivery and ingestion failures before they silently remove tenant diagnostics and platform incident history. **Status:** in progress
 
 **Estimate:** 150m implementation; 220m (~3h40m) including standing closing tasks. Runtime observation windows may exceed active effort.
 
@@ -48,3 +48,12 @@ This filing schedules the approved work; it does not implement or deploy it. Exi
 - External telemetry drains or a replacement/multi-component Loki architecture.
 - Changing tenant log API shapes, retention policy or intentional CNPG chatter filtering.
 - Paging on every intentionally dropped line or treating absence of tenant traffic as loss.
+
+## Implementation verification — 2026-09-29 UTC
+
+- Reused the private Alloy job and added one private single-binary Loki target. Locked chart renders verify all-node collector placement, Loki single-tenant/single-replica assumptions and collision-safe metric filtering in both overlays. Seven filtering mutations were rejected, including the actual Zot component identity regression found during review.
+- Twenty-eight alert/record scenarios and twenty panel scenarios pass. Thirteen syntax-valid rule mutations and one missing-panel-coverage mutation were rejected. The new eight alerts are covered by Platform availability panels 21–28; the full coverage guard reports 84 covered and three existing context-only waivers.
+- The actual pinned Alloy/Loki lifecycle fixture passes: transient 503 buffering recovers; one permanent 400 and one exhausted 503 batch are dropped; subsequent delivery succeeds without recovering discarded lines. Both processes stay ready during rejection. Intentional CNPG filtering stays separate, and restart resets counters while fresh delivery resumes. Two rendered-config mutations fail behaviorally. CI runs this fixture through `python3 -m unittest scripts/test_log_delivery.py -v`.
+- `/simplify` reuse, quality and efficiency reviews completed. Shared recording rules and rendering helpers are reused; the native Zot metric shape caught and corrected a scrape regression. Missing native evidence and zero running components remain unknown instead of looking healthy. No further substantive simplification was needed.
+- `bash scripts/gitops-validate.sh` passed after final integration, including both overlay renders, all rule fixtures and alert/panel coverage. Markdown formatting and `git diff --check` passed. The only warning is the pre-existing optional FGA model check skipped because its CLI is absent; no authz files changed. The Application growth budget passes at 1,204,301 bytes (production) and 1,226,404 bytes (local), below 1,310,720 bytes.
+- Deployment verification remains open for t003. Isolated fixtures establish failure semantics; no production stream was interrupted. First-positive counters require a 15m marker baseline, and missing evidence, resets and between-scrape loss limit completeness as documented in ADR010.
