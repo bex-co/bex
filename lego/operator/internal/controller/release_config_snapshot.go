@@ -25,10 +25,12 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -90,9 +92,11 @@ const (
 // points this at the last served generation, and the template reverts image and
 // config together.
 //
-// Zero keeps the migration lazy — an App that has not dispatched a release since
-// this shipped references its mutable Secrets and keeps its current pod template,
-// so nothing rolls on operator upgrade.
+// Zero means the App has not rolled out a release since snapshots shipped. Flipping
+// it is not free: it copies the current sources as the serving release's snapshot
+// and changes the projection — one template change, so one rollout with
+// identical values — which is why servingWithoutSnapshots holds such an App on its
+// mutable names until its next release.
 func configSnapshotActive(app *appv1alpha1.App) bool {
 	return app.Status.ConfigSnapshotGeneration > 0
 }
@@ -106,7 +110,28 @@ func snapshotOrSource(app *appv1alpha1.App, source string) string {
 	if source == "" || !configSnapshotActive(app) {
 		return source
 	}
-	return appv1alpha1.ReleaseSnapshotName(source, app.Status.ConfigSnapshotGeneration)
+	return snapshotName(app, source, app.Status.ConfigSnapshotGeneration)
+}
+
+// snapshotName is app's snapshot of source at gen: the scoped name, except for the
+// one generation still projecting the first build's unscoped group copies.
+func snapshotName(app *appv1alpha1.App, source string, gen int64) string {
+	if gen == app.Status.UnscopedSnapshotGeneration {
+		return appv1alpha1.ReleaseSnapshotName(source, gen)
+	}
+	return appv1alpha1.AppReleaseSnapshotName(app.Name, source, gen)
+}
+
+// inFlightRelease is the App as its in-flight release's own steps — the native
+// build and the pre-deploy command — must see it: reading the saved configuration
+// sources directly. Those steps run before the release is snapshotted, while the
+// projection still points at the SERVED generation's copies, so projecting the App
+// itself handed release N+1's migration release N's DATABASE_URL (w1/m152 t004).
+// Reading the mutable sources is exactly what these steps did before snapshots.
+func inFlightRelease(app *appv1alpha1.App) *appv1alpha1.App {
+	release := app.DeepCopy()
+	release.Status.ConfigSnapshotGeneration = 0
+	return release
 }
 
 // settleConfigSnapshotTo points the projection at an earlier release's snapshot,
@@ -119,8 +144,8 @@ func (r *AppReconciler) settleConfigSnapshotTo(ctx context.Context, app *appv1al
 		return false, nil
 	}
 	for _, source := range releaseConfigSources(app) {
-		name := appv1alpha1.ReleaseSnapshotName(source, gen)
-		err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &corev1.Secret{})
+		name := snapshotName(app, source, gen)
+		err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &corev1.Secret{})
 		if apierrors.IsNotFound(err) {
 			// No snapshot for that release: it predates t001 or has been reclaimed.
 			// Leave the projection alone — restoring the image only is the honest
@@ -181,8 +206,11 @@ func releaseConfigSources(app *appv1alpha1.App) []string {
 // references it, and a write failure leaves both the status and the template on
 // the pre-snapshot names, which is a correct state rather than a mixed one.
 func (r *AppReconciler) ensureReleaseConfigSnapshot(ctx context.Context, app *appv1alpha1.App) error {
+	if err := r.adoptUnscopedSnapshots(ctx, app); err != nil {
+		return err
+	}
 	gen := app.Status.ReleaseGeneration
-	if gen <= 0 || app.Status.ConfigSnapshotGeneration == gen {
+	if gen <= 0 || app.Status.ConfigSnapshotGeneration == gen || servingWithoutSnapshots(app) {
 		return nil
 	}
 	for _, source := range releaseConfigSources(app) {
@@ -200,11 +228,80 @@ func (r *AppReconciler) ensureReleaseConfigSnapshot(ctx context.Context, app *ap
 	return nil
 }
 
-// copyConfigSecret writes `<source>-r<gen>` from source's current contents.
+// adoptUnscopedSnapshots handles an App left projecting the first build's
+// unscoped group copies (`<evg-id>-env-r<gen>`; see AppReleaseSnapshotName). Its
+// pods read those names today. Switching them to scoped names would roll every
+// group-linked service with no deploy — which the milestone's "no fleet-wide
+// roll" decision rules out. So the App keeps projecting them: the generation is
+// marked unscoped on status, and the App becomes a co-owner of each copy it reads,
+// so the service that created the copy cannot garbage-collect or cascade-delete it
+// out from under this one. The App's next release is snapshotted under scoped
+// names and leaves this path.
+func (r *AppReconciler) adoptUnscopedSnapshots(ctx context.Context, app *appv1alpha1.App) error {
+	gen := app.Status.ConfigSnapshotGeneration
+	if gen <= 0 || gen == app.Status.UnscopedSnapshotGeneration {
+		return nil
+	}
+	unscoped := false
+	for _, source := range releaseConfigSources(app) {
+		legacy := appv1alpha1.ReleaseSnapshotName(source, gen)
+		if legacy == appv1alpha1.AppReleaseSnapshotName(app.Name, source, gen) {
+			continue // the App's own source: never unscoped
+		}
+		scoped := &corev1.Secret{}
+		err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.AppReleaseSnapshotName(app.Name, source, gen)}, scoped)
+		if err == nil {
+			continue
+		}
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		copyOf := &corev1.Secret{}
+		err = r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: legacy}, copyOf)
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		unscoped = true
+		if metav1.IsControlledBy(copyOf, app) {
+			continue
+		}
+		if err := controllerutil.SetOwnerReference(app, copyOf, r.Scheme); err != nil {
+			return err
+		}
+		if err := r.uncachedSecretClient().Update(ctx, copyOf); err != nil {
+			return fmt.Errorf("co-own unscoped snapshot %s: %w", legacy, err)
+		}
+	}
+	if !unscoped {
+		return nil
+	}
+	app.Status.UnscopedSnapshotGeneration = gen
+	return updateStatusIfChanged(ctx, r.Client, app)
+}
+
+// servingWithoutSnapshots reports an App that is serving a release from before
+// snapshots and has no NEW release to roll out. It keeps projecting its mutable
+// Secrets: flipping it now would change its pod template and roll it with no
+// deploy, and doing that to every such App at once is the fleet-wide roll the
+// milestone ruled out (decision 2). Its next release snapshots and flips as part
+// of a rollout that happens anyway. A cancel over its served release has nothing
+// to restore to either, so it stays put too.
+func servingWithoutSnapshots(app *appv1alpha1.App) bool {
+	if app.Status.ConfigSnapshotGeneration != 0 || !releaseHasServed(app) {
+		return false
+	}
+	return app.Status.ReleaseGeneration <= successfulReleaseGeneration(app) || canceledOverServed(app)
+}
+
+// copyConfigSecret writes app's snapshot of source at gen from source's current
+// contents.
 func (r *AppReconciler) copyConfigSecret(ctx context.Context, app *appv1alpha1.App, source string, gen int64) error {
-	name := appv1alpha1.ReleaseSnapshotName(source, gen)
+	name := snapshotName(app, source, gen)
 	existing := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, existing)
+	err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, existing)
 	if err == nil {
 		// Copy-once: the snapshot already holds what this release ran with.
 		return nil
@@ -213,8 +310,8 @@ func (r *AppReconciler) copyConfigSecret(ctx context.Context, app *appv1alpha1.A
 		return err
 	}
 
-	from := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: source}, from); err != nil {
+	src := &corev1.Secret{}
+	if err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: source}, src); err != nil {
 		if apierrors.IsNotFound(err) {
 			// The source is gone (an unlinked or deleted group). The release runs
 			// without it; wedging the deploy would be worse than a missing copy,
@@ -225,15 +322,15 @@ func (r *AppReconciler) copyConfigSecret(ctx context.Context, app *appv1alpha1.A
 	}
 
 	snapshot := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, snapshot, func() error {
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.uncachedSecretClient(), snapshot, func() error {
 		if snapshot.Labels == nil {
 			snapshot.Labels = map[string]string{}
 		}
 		snapshot.Labels[snapshotOfLabel] = source
 		snapshot.Labels[snapshotGenerationLabel] = strconv.FormatInt(gen, 10)
-		snapshot.Type = from.Type
-		snapshot.Data = make(map[string][]byte, len(from.Data))
-		for k, v := range from.Data {
+		snapshot.Type = src.Type
+		snapshot.Data = make(map[string][]byte, len(src.Data))
+		for k, v := range src.Data {
 			snapshot.Data[k] = append([]byte(nil), v...)
 		}
 		// Owned by the App so deleting the service reclaims every snapshot, and so
@@ -263,22 +360,45 @@ func (r *AppReconciler) gcReleaseConfigSnapshots(ctx context.Context, app *appv1
 		return nil
 	}
 	var owned corev1.SecretList
-	if err := r.List(ctx, &owned, client.InNamespace(app.Namespace),
+	if err := r.uncachedSecretClient().List(ctx, &owned, client.InNamespace(app.Namespace),
 		client.HasLabels{snapshotGenerationLabel}); err != nil {
 		return err
 	}
 	for i := range owned.Items {
 		s := &owned.Items[i]
-		if !metav1.IsControlledBy(s, app) {
-			continue
-		}
 		at, err := strconv.ParseInt(s.Labels[snapshotGenerationLabel], 10, 64)
 		if err != nil || at > cutoff {
 			continue
 		}
-		if err := r.Delete(ctx, s); err != nil && !apierrors.IsNotFound(err) {
+		if err := r.releaseSnapshot(ctx, app, s); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// releaseSnapshot gives up app's hold on an expired snapshot. An unscoped group
+// copy can be co-owned (adoptUnscopedSnapshots): a co-owner only drops its
+// reference, and the controller deletes it once nobody else still holds it.
+// Retention by generation number stays sound for co-owned copies — they collided
+// precisely because both services were at that same generation.
+func (r *AppReconciler) releaseSnapshot(ctx context.Context, app *appv1alpha1.App, s *corev1.Secret) error {
+	controlled := metav1.IsControlledBy(s, app)
+	refs := slices.DeleteFunc(slices.Clone(s.OwnerReferences), func(o metav1.OwnerReference) bool { return o.UID == app.UID })
+	switch {
+	case len(refs) == len(s.OwnerReferences):
+		return nil // not ours
+	case controlled && len(refs) == 0:
+		if err := r.uncachedSecretClient().Delete(ctx, s); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	case controlled:
+		return nil // still read by a co-owner; it drops its reference when it expires
+	}
+	s.OwnerReferences = refs
+	if err := r.uncachedSecretClient().Update(ctx, s); err != nil && !apierrors.IsNotFound(err) {
+		return err
 	}
 	return nil
 }
@@ -322,7 +442,7 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 		return err
 	}
 	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ReleaseRecordName(app.Name, gen), Namespace: app.Namespace}}
-	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, rec, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, r.uncachedSecretClient(), rec, func() error {
 		if rec.Labels == nil {
 			rec.Labels = map[string]string{}
 		}
@@ -350,7 +470,7 @@ func (r *AppReconciler) servedPodTemplateForCancel(ctx context.Context, app *app
 		return nil, nil
 	}
 	rec := &corev1.Secret{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ReleaseRecordName(app.Name, served)}, rec)
+	err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ReleaseRecordName(app.Name, served)}, rec)
 	if apierrors.IsNotFound(err) {
 		return nil, nil
 	}
@@ -444,4 +564,36 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 	changed := prior != nil && !equality.Semantic.DeepEqual(*prior, dep.Spec.Template)
 	r.afterServingDeployment(ctx, app, dep.Spec.Template, changed, restore != nil)
 	return nil
+}
+
+// applyServingCronJob is applyServingDeployment for a cron job: it converges the
+// CronJob onto tmpl and hands afterServingDeployment whether the job template
+// actually changed, so the cancel meter and the release record work the same way
+// for both runtimes.
+func (r *AppReconciler) applyServingCronJob(ctx context.Context, app *appv1alpha1.App, tmpl corev1.PodTemplateSpec, restored bool) (ctrl.Result, error) {
+	before, err := r.cronJobTemplate(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
+	}
+	res, err := r.convergeCronRuntime(ctx, app, tmpl)
+	if err != nil {
+		return res, err
+	}
+	after, err := r.cronJobTemplate(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
+	}
+	r.afterServingDeployment(ctx, app, after, !equality.Semantic.DeepEqual(before, after), restored)
+	return res, nil
+}
+
+// cronJobTemplate is the CronJob's current job pod template, or the zero value
+// before the first converge.
+func (r *AppReconciler) cronJobTemplate(ctx context.Context, app *appv1alpha1.App) (corev1.PodTemplateSpec, error) {
+	cj := &batchv1.CronJob{}
+	err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.CronJobName(app.Name)}, cj)
+	if apierrors.IsNotFound(err) {
+		return corev1.PodTemplateSpec{}, nil
+	}
+	return cj.Spec.JobTemplate.Spec.Template, err
 }

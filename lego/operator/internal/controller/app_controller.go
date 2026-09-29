@@ -1383,7 +1383,7 @@ const (
 func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar) (string, string, error) {
 	// envFromSources owns the source list, order, and optionality — iterating
 	// its output keeps build-time and runtime environments single-sourced.
-	sources := envFromSources(app)
+	sources := envFromSources(inFlightRelease(app))
 	literals = nativeBuildLiterals(literals)
 	if len(sources) == 0 && len(literals) == 0 {
 		return "", build.NativeEnvNoneRevision, nil
@@ -3597,7 +3597,23 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if r.TenantSignKeySecret != "" {
 		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
-	res, err := r.convergeCronRuntime(ctx, app, r.cronPodSpec(app, image, port, labels))
+	// The same release discipline as the Deployment path (w1/m152 t004): runs read
+	// this release's configuration snapshots, and a cancel over a served release
+	// restores that release's recorded template. Without both, a canceled change —
+	// an env var, a group value, the command — reached every later run, scheduled
+	// or manual, while the deploy row said canceled (live, pass 19).
+	if err := r.ensureReleaseConfigSnapshot(ctx, app); err != nil {
+		return r.fail(ctx, app, "DeployFailed", err)
+	}
+	restore, err := r.servedPodTemplateForCancel(ctx, app)
+	if err != nil {
+		return r.fail(ctx, app, "DeployFailed", err)
+	}
+	tmpl := r.cronPodSpec(app, image, port, labels)
+	if restore != nil {
+		tmpl = *restore
+	}
+	res, err := r.applyServingCronJob(ctx, app, tmpl, restore != nil)
 	if err != nil {
 		return r.failStep(ctx, app, err)
 	}
@@ -4864,7 +4880,7 @@ func (r *AppReconciler) settlePriorRelease(ctx context.Context, app *appv1alpha1
 // already passed or failed for the same revision. That terminal bookkeeping also
 // guards against re-creating the Job after its TTL reap.
 func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
-	if app.Spec.PreDeployCommand == "" {
+	if app.Spec.PreDeployCommand == "" || canceledOverServed(app) {
 		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 			return ctrl.Result{}, true, err
 		}
@@ -4936,9 +4952,10 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// security context, tier resources, and secret-file volume. Co-located with
 	// the App, the Job resolves every one of those references in-namespace — no
 	// secret mirroring, no build-namespace pull credential.
+	release := inFlightRelease(app)
 	var vols []corev1.Volume
 	var mounts []corev1.VolumeMount
-	if vol, mount := secretFileMounts(app); vol != nil {
+	if vol, mount := secretFileMounts(release); vol != nil {
 		vols = []corev1.Volume{*vol}
 		mounts = []corev1.VolumeMount{*mount}
 	}
@@ -4958,7 +4975,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		Revision:         rev,
 		Generation:       gen,
 		Env:              appEnv(app, port),
-		EnvFrom:          envFromSources(app),
+		EnvFrom:          envFromSources(release),
 		ImagePullSecrets: pullSecrets,
 		SecurityContext:  tenantSecCtx(),
 		Resources:        resourcesForTier(app.Spec.Tier),
@@ -5042,8 +5059,14 @@ func preDeployNotStarted(err error) string {
 
 // hasPreDeployStep reports whether spec.preDeployCommand gates this App's
 // rollouts. Cron jobs and static sites run no pre-deploy step.
+//
+// Neither does a cancel settling back onto a served release (w1/m152 t004): that
+// release already passed its gate when it rolled out, and the command in the spec
+// is the CANCELED release's. Gating on it ran the canceled deploy's migration
+// against the served image — as a Job for the served generation, since the gen-2
+// verdict never matches it — and held the service in Deploying until it finished.
 func hasPreDeployStep(app *appv1alpha1.App) bool {
-	return strings.TrimSpace(app.Spec.PreDeployCommand) != "" && scalableRuntime(app)
+	return strings.TrimSpace(app.Spec.PreDeployCommand) != "" && scalableRuntime(app) && !canceledOverServed(app)
 }
 
 // preDeployPassed reports whether the current release may reach the pod
