@@ -1133,7 +1133,13 @@ if [ "$platform_cnpg_scrape" != "$expected_platform_cnpg_scrape" ]; then
 fi
 
 if command -v promtool >/dev/null 2>&1; then
-  python3 scripts/test_platform_metrics.py || fail=1
+  # CI exercises the pinned filesystem exporter while reusing the same render;
+  # ordinary local validation remains Docker-free unless explicitly requested.
+  platform_metrics_args=()
+  if [ "${GITOPS_TEST_FILESYSTEM_COLLECTOR:-0}" = "1" ]; then
+    platform_metrics_args+=(--collector)
+  fi
+  python3 scripts/test_platform_metrics.py "${platform_metrics_args[@]}" || fail=1
   echo "==> promtool check + test rules (extracted from prometheus.yaml)"
   # helm `values:` is a block-scalar string — from_yaml re-parses it in-process so
   # we can pull the rule groups out in a single yq (no second pipe stage).
