@@ -2148,26 +2148,19 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
-		applyDeploymentSpec(dep, app, deploymentParams{
-			image:       image,
-			port:        port,
-			replicas:    replicas,
-			worker:      worker,
-			verifyImage: r.TenantSignKeySecret != "",
-			// Authenticate kubelet pulls against the auth-enabled registry
-			// (w7/m8). nil when no pull secret is configured or the image isn't
-			// registry-hosted, so a prebuilt public image is left untouched.
-			pullSecrets: r.imagePullSecrets(app, image),
-		})
-		if restore != nil {
-			dep.Spec.Template = *restore.DeepCopy()
-		}
-		return controllerutil.SetControllerReference(app, dep, r.Scheme)
-	}); err != nil {
+	if err := r.applyServingDeployment(ctx, app, dep, deploymentParams{
+		image:       image,
+		port:        port,
+		replicas:    replicas,
+		worker:      worker,
+		verifyImage: r.TenantSignKeySecret != "",
+		// Authenticate kubelet pulls against the auth-enabled registry
+		// (w7/m8). nil when no pull secret is configured or the image isn't
+		// registry-hosted, so a prebuilt public image is left untouched.
+		pullSecrets: r.imagePullSecrets(app, image),
+	}, restore); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
-	r.recordServingTemplate(ctx, app, dep.Spec.Template)
 	// Stamp Deploying only while the Deployment is still progressing. After
 	// ProgressDeadlineExceeded, reportRolloutProgress settles a terminal phase
 	// (Failed / prior-release Running|Hibernated); re-stamping Deploying here

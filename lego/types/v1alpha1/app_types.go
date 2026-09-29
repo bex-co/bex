@@ -1451,6 +1451,17 @@ type AppStatus struct {
 	// +optional
 	ConfigSnapshotGeneration int64 `json:"configSnapshotGeneration,omitempty"`
 
+	// UndeployedChanges reports that the service is running an earlier release than
+	// its saved spec because the deploy carrying the newer spec was canceled
+	// (w1/m152 t003). The saved changes stay saved and ship with the next deploy;
+	// this field is how every surface says so instead of implying they are live.
+	//
+	// The operator sets it while it is settling a cancel over a release that served
+	// and clears it once a release dispatches normally. Cron jobs and static sites
+	// have no Deployment to settle and never set it.
+	// +optional
+	UndeployedChanges bool `json:"undeployedChanges,omitempty"`
+
 	// PendingReleaseGeneration is the newest requested release generation coalesced
 	// while a build is in flight (0 = none). It is observability + SLI bookkeeping:
 	// the pending spec itself remains the source of truth and is picked up once the
