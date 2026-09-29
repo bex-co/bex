@@ -328,6 +328,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"sshAddress": gqlutil.StrField(func(a AppView) any { return a.SSHAddress }),
 		// bex-native extras.
 		"phase": gqlutil.StrField(func(a AppView) any { return a.Phase }),
+		// A canceled deploy left saved changes undeployed; they ship with the next
+		// deploy (w1/m152 t003). false is the ordinary state.
+		"undeployedChanges": gqlutil.BoolField(func(a AppView) any { return a.UndeployedChanges }),
 		// Why an exposed service has no public address (w7/m79). Empty when it
 		// is routed or is not the kind that carries a public URL.
 		"publicRoutingNotice": gqlutil.StrField(func(a AppView) any { return a.PublicRoutingNotice }),
@@ -560,7 +563,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// history, so reads say null — "we are not telling you" — and a caller
 		// that wants the answer asks deploys(serviceId:), one field away.
 		"latestDeployId": &graphql.Field{
-			Type: graphql.String,
+			Type:    graphql.String,
 			Resolve: gqlutil.Field(latestDeployIDOf),
 		},
 		// outboundIps is Render's retrieve-service-outbound-ips read nested under
