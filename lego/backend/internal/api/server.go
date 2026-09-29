@@ -825,6 +825,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		BuildNamespace:    d.DeployBuildNamespace,
 		DeployHookBaseURL: d.DeployHookBaseURL,
 		DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),
+		// A rollback restores its target's saved env vars and secret files (w1/m152).
+		Environment: secretsSvc,
 	}
 	envGroupsSvc.RebuildService = func(ctx context.Context, serviceID string) error {
 		_, err := deploysSvc.Trigger(ctx, serviceID, deploys.TriggerParams{})
