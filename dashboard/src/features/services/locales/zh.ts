@@ -4047,11 +4047,13 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Rollback confirm dialog title",
   },
   "services.eventsRollbackConfirmBody": {
-    message: "服务将从此次部署使用的镜像重新部署。",
+    message:
+      "服务将使用此部署的镜像、环境变量和启动命令重新部署，并关闭自动部署，以免下次推送撤销此次回滚。早于最近 20 次发布的部署只会恢复镜像。",
     description: "Rollback confirm dialog body",
   },
   "services.eventsRollbackConfirmBodyCommit": {
-    message: "服务将从此次部署使用的镜像重新部署，该镜像构建自 {commit}。",
+    message:
+      "服务将使用此部署的镜像（基于 {commit} 构建）、环境变量和启动命令重新部署，并关闭自动部署，以免下次推送撤销此次回滚。早于最近 20 次发布的部署只会恢复镜像。",
     description:
       "Rollback confirm dialog body naming the commit being restored",
   },

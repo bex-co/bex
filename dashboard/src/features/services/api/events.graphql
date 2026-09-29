@@ -115,8 +115,15 @@ mutation CancelDeploy($serviceId: String!, $deployId: String!) {
   }
 }
 
+# disableAutoDeploy: Render turns auto-deploy off for a rollback started in its
+# dashboard, so the next push does not silently undo it, and leaves it alone for an
+# API rollback. This is the dashboard, so it always asks (w1/m152 t009).
 mutation RollbackService($serviceId: String!, $deployId: String!) {
-  rollbackService(serviceId: $serviceId, deployId: $deployId) {
+  rollbackService(
+    serviceId: $serviceId
+    deployId: $deployId
+    disableAutoDeploy: true
+  ) {
     id
     status
     createdAt
