@@ -85,29 +85,20 @@ const (
 	snapshotGenerationLabel = "app.bex.co/config-snapshot-generation"
 )
 
-// configSnapshotActive reports whether the projection should reference snapshots
-// rather than the mutable sources. It keys on ConfigSnapshotGeneration ALONE, not
-// on that field matching ReleaseGeneration, which is what lets a cancel settle
-// back onto an EARLIER release's configuration (w1/m152 t002): the canceled branch
-// points this at the last served generation, and the template reverts image and
-// config together.
-//
-// Zero means the App has not rolled out a release since snapshots shipped. Flipping
-// it is not free: it copies the current sources as the serving release's snapshot
-// and changes the projection — one template change, so one rollout with
-// identical values — which is why servingWithoutSnapshots holds such an App on its
-// mutable names until its next release.
-func configSnapshotActive(app *appv1alpha1.App) bool {
-	return app.Status.ConfigSnapshotGeneration > 0
-}
-
 // snapshotOrSource maps a mutable source name to the snapshot of whichever
 // generation the App is currently projecting, and returns it unchanged otherwise.
 // Every projection site goes through here so a single App can never mix snapshot
 // and mutable references — which would make precedence depend on which source
 // happened to be copied.
+//
+// It keys on ConfigSnapshotGeneration ALONE, not on that field matching
+// ReleaseGeneration, which is what lets a cancel settle back onto an EARLIER
+// release's configuration (w1/m152 t002): the canceled branch points it at the
+// last served generation, and the template reverts image and config together.
+// Zero means the App has not rolled out a release since snapshots shipped; see
+// servingWithoutSnapshots for why such an App keeps its mutable names.
 func snapshotOrSource(app *appv1alpha1.App, source string) string {
-	if source == "" || !configSnapshotActive(app) {
+	if source == "" || app.Status.ConfigSnapshotGeneration <= 0 {
 		return source
 	}
 	return snapshotName(app, source, app.Status.ConfigSnapshotGeneration)
