@@ -35,6 +35,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -1469,6 +1470,9 @@ func (s *Server) serveGraphQL(w http.ResponseWriter, r *http.Request) (operation
 // executeGraphQL runs one document against the compiled schema.
 func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody) (operation, opType, outcome string, result *graphql.Result) {
 	operation, opType = gqlOperationOther, gqlTypeQuery
+	if strings.TrimSpace(body.Query) == "" {
+		return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(errors.New("query is required"))
+	}
 	// One parse feeds telemetry dims, the cost gate, and the scope check;
 	// graphql.Do still re-parses for execution (its own AST).
 	if fragments, ops, ok := parseGraphQLDocument(body.Query); ok {
@@ -1509,7 +1513,7 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 	return operation, opType, graphqlResultOutcome(result.Errors), result
 }
 
-// graphqlErrorResult is the pre-execution error envelope (cost gate / scope)
+// graphqlErrorResult is the pre-execution error envelope (input / cost gate / scope)
 // for both single-document and batch execute paths.
 func graphqlErrorResult(err error) *graphql.Result {
 	fe := gqlerrors.FormattedError{Message: err.Error()}
