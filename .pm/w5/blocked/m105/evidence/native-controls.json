@@ -1,0 +1,148 @@
+[
+  {
+    "generation": 2,
+    "observedAt": null,
+    "phase": "Building",
+    "releaseGeneration": 2,
+    "releaseArtifactFingerprint": "artifact-v1:fcfc0c6ee7538766586f3410bafbf0b097c4b6dc154ed66f93944ed50ccede64",
+    "releaseFingerprint": "release-v1:aa31643e9a68bea46df668e746e6f9711a2087889b6f5a4f4272693ad8a8d5f9",
+    "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-1",
+    "specCommands": {
+      "startCommand": "echo W5_START_EDIT && npm start",
+      "buildCommand": "npm install && echo W5_BUILD_INITIAL"
+    },
+    "runtime": []
+  },
+  {
+    "generation": 3,
+    "observedAt": "2026-10-01T07:12:33.279509+00:00",
+    "phase": "Running",
+    "releaseGeneration": 3,
+    "releaseArtifactFingerprint": "artifact-v1:320b48988e524996608ed0a8b02aff00726f12f14b960111999a8056be0694ff",
+    "releaseFingerprint": "release-v1:507cf5072d6171d28ecf94173cce2836f1394eaf3a5b75a64ca74b536dd5b0b3",
+    "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-3",
+    "specCommands": {
+      "startCommand": "echo W5_START_EDIT && npm start",
+      "buildCommand": "npm install && echo W5_BUILD_EDIT",
+      "image": null,
+      "buildCommit": null
+    },
+    "runtime": [
+      {
+        "pod": "tea-dav0901jg4r3nn5e13og-w5-m105-native-76d899c698-7w88h",
+        "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-3",
+        "imageID": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native@sha256:83b53598029d4c0ee23713d445a822d001d64ac7e0c94b851d38ed00ec900901"
+      }
+    ]
+  },
+  {
+    "generation": 4,
+    "observedAt": "2026-10-01T07:13:47.767320+00:00",
+    "phase": "Running",
+    "releaseGeneration": 4,
+    "releaseArtifactFingerprint": "artifact-v1:89d680ea498ff031d4c289369f50f648d558877de25db1e7de7924c02ed9608c",
+    "releaseFingerprint": "release-v1:ce64e44e8273a117ee68690fc7a5b17abce60b90cc5c4d3815ccd5a5aceb6b6a",
+    "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-4",
+    "specCommands": {
+      "startCommand": "echo W5_START_EDIT && npm start",
+      "buildCommand": "npm install && echo W5_BUILD_EDIT",
+      "image": null,
+      "buildCommit": "039c34770852fb07cef7f9f0f8534c5de408b207"
+    },
+    "runtime": [
+      {
+        "pod": "tea-dav0901jg4r3nn5e13og-w5-m105-native-fd7cf4cb7-krvg6",
+        "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-4",
+        "imageID": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native@sha256:021ef754a90deed31095c8922dd2ac1f1caa832b03c250e865cce8cd336af5ed"
+      }
+    ]
+  },
+  {
+    "generation": 5,
+    "observedAt": "2026-10-01T07:15:27.873269+00:00",
+    "phase": "Running",
+    "releaseGeneration": 5,
+    "releaseArtifactFingerprint": "artifact-v1:f30a9f0e35d180e949fd1bfb98c1b6e74c6e204df2221b2c2be29dfd31b42cd0",
+    "releaseFingerprint": "release-v1:51602f2b8ff349e130b45b62fcf64dcfc9e8a29777d9d225c068777ca143f9d7",
+    "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-5",
+    "specCommands": {
+      "startCommand": "echo W5_START_EDIT && npm start",
+      "buildCommand": "npm install && echo W5_BUILD_EDIT",
+      "image": null,
+      "buildCommit": "039c34770852fb07cef7f9f0f8534c5de408b207"
+    },
+    "runtime": [
+      {
+        "pod": "tea-dav0901jg4r3nn5e13og-w5-m105-native-5fc946885d-nnwjn",
+        "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-5",
+        "imageID": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native@sha256:fd50f7df020bdfe9c28d86483a2ad1b61a9c6f8b8b79d789cc9aa0bf31d70d30"
+      }
+    ]
+  },
+  {
+    "generation": 6,
+    "observedAt": "2026-10-01T07:17:24.412031+00:00",
+    "phase": "Running",
+    "releaseGeneration": 6,
+    "releaseArtifactFingerprint": "artifact-v1:d6d0a4316342064bcc7fbf7fcb6047193d1febe89813a7b27e8f233520da60d5",
+    "releaseFingerprint": "release-v1:82ae3dc37420dfa2d9208cedd0dd01a07896d4cca4c66fbc66712f77f8ab72e3",
+    "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-5",
+    "specCommands": {
+      "startCommand": "echo W5_START_EDIT && npm start",
+      "buildCommand": "echo W5_BUILD_FAIL && exit 23",
+      "image": null,
+      "buildCommit": "039c34770852fb07cef7f9f0f8534c5de408b207"
+    },
+    "runtime": [
+      {
+        "pod": "tea-dav0901jg4r3nn5e13og-w5-m105-native-5fc946885d-nnwjn",
+        "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-5",
+        "imageID": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native@sha256:fd50f7df020bdfe9c28d86483a2ad1b61a9c6f8b8b79d789cc9aa0bf31d70d30"
+      }
+    ]
+  },
+  {
+    "generation": 7,
+    "observedAt": "2026-10-01T07:18:14.742612+00:00",
+    "phase": "Running",
+    "releaseGeneration": 7,
+    "releaseArtifactFingerprint": "artifact-v1:f30a9f0e35d180e949fd1bfb98c1b6e74c6e204df2221b2c2be29dfd31b42cd0",
+    "releaseFingerprint": "release-v1:51602f2b8ff349e130b45b62fcf64dcfc9e8a29777d9d225c068777ca143f9d7",
+    "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-5",
+    "specCommands": {
+      "startCommand": "echo W5_START_EDIT && npm start",
+      "buildCommand": "npm install && echo W5_BUILD_EDIT",
+      "image": null,
+      "buildCommit": "039c34770852fb07cef7f9f0f8534c5de408b207"
+    },
+    "runtime": [
+      {
+        "pod": "tea-dav0901jg4r3nn5e13og-w5-m105-native-6fb6488cd8-gszk5",
+        "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-5",
+        "imageID": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native@sha256:fd50f7df020bdfe9c28d86483a2ad1b61a9c6f8b8b79d789cc9aa0bf31d70d30"
+      }
+    ]
+  },
+  {
+    "generation": 8,
+    "observedAt": "2026-10-01T07:21:44.896924+00:00",
+    "phase": "Running",
+    "releaseGeneration": 8,
+    "releaseArtifactFingerprint": "artifact-v1:83599abf31ea64142fe442ca75f959d48601122a1b7f18e027fc7bcedd091285",
+    "releaseFingerprint": "release-v1:7fcf061ec32e4e28a1c180d5df3d7fd0e206c0e71e9bcda5a01190c46881ae1a",
+    "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-8",
+    "specCommands": {
+      "startCommand": "echo W5_START_EDIT && npm start",
+      "buildCommand": "npm install && echo W5_BUILD_EDIT",
+      "image": null,
+      "buildCommit": "039c34770852fb07cef7f9f0f8534c5de408b207"
+    },
+    "runtime": [
+      {
+        "pod": "tea-dav0901jg4r3nn5e13og-w5-m105-native-669b9b99f5-8kr2z",
+        "image": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native:gen-8",
+        "imageID": "zot.bex-registry.svc:5000/tea-dav0901jg4r3nn5e13og/tea-dav0901jg4r3nn5e13og-w5-m105-native@sha256:1109e6a0acfe082dc34c1199a809f96f7ba82910699bf03dc553d95189b53e8e"
+      }
+    ]
+  }
+]
