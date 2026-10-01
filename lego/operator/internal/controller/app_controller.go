@@ -598,6 +598,12 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if halted {
 		return res, err
 	}
+	if app.Spec.UsesImagePorts() {
+		image, port, err = r.resolveImageNetwork(ctx, &app, image)
+		if err != nil {
+			return r.fail(ctx, &app, "ImageMetadataUnavailable", err)
+		}
+	}
 	return r.dispatchRuntime(ctx, &app, image, port)
 }
 
@@ -662,7 +668,20 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 		if _, err := r.settleConfigSnapshotTo(ctx, app, successfulReleaseGeneration(app)); err != nil {
 			return r.fail(ctx, app, "DeployFailed", err)
 		}
-		return r.dispatchRuntime(ctx, app, app.Status.Image, port)
+		image := app.Status.Image
+		if app.Spec.UsesImagePorts() {
+			// status.image can already describe the failed rollout. The serving
+			// network binds the last ready image and ports to its active revision.
+			// Restore the projection metadata too, including when its recorded
+			// pod template is unavailable. Keep ArtifactImage for a later deploy.
+			serving := app.Status.ServingNetwork
+			if serving == nil || serving.Revision != app.Status.ActiveRevision || serving.Image == "" {
+				return r.fail(ctx, app, "ImageMetadataUnavailable", fmt.Errorf("served release has no matching image network metadata"))
+			}
+			app.Status.ImageNetwork = serving.DeepCopy()
+			image, port = serving.Image, int(serving.PrimaryPort)
+		}
+		return r.dispatchRuntime(ctx, app, image, port)
 	}
 	// Canceled, not Failed: the Condition below has always said "BuildCanceled",
 	// but the coarse phase reused PhaseFailed, so the service reported an error
@@ -2581,6 +2600,10 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 			"waiting for the current Deployment revision and pods to become ready")
 		return res, true, err
 	}
+	if err := r.promoteImageNetwork(ctx, app, image, port); err != nil {
+		res, err := r.fail(ctx, app, "ServiceFailed", err)
+		return res, true, err
+	}
 
 	app.Status.Image = image
 	if len(hosts) > 0 {
@@ -2689,11 +2712,14 @@ func (r *AppReconciler) deleteStaleChildren(ctx context.Context, objs ...client.
 // The port carries the server's own defaults so the mutate matches the stored
 // object and steady-state reconciles stay read-only (no perpetual no-op PUT).
 func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alpha1.App, name string, port int) error {
+	selector, ports, err := privateServiceProjection(app, port)
+	if err != nil {
+		return err
+	}
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
-		svc.Spec.Selector = map[string]string{labelApp: app.Name}
-		svc.Spec.Ports = []corev1.ServicePort{{Port: int32(port), TargetPort: intstr.FromInt(port)}}
-		applyServicePortServerDefaults(svc.Spec.Ports)
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
+		svc.Spec.Selector = selector
+		svc.Spec.Ports = ports
 		return controllerutil.SetControllerReference(app, svc, r.Scheme)
 	})
 	return err
@@ -2750,9 +2776,9 @@ func (r *AppReconciler) reconcileSlugService(ctx context.Context, app *appv1alph
 // when the slug Service actually exists.
 func internalURL(app *appv1alpha1.App) string {
 	if slug := app.Spec.PlatformSubdomain(app.Name); slug != app.Name {
-		return "http://" + app.Spec.InternalAddress(app.Name)
+		return "http://" + app.InternalAddress()
 	}
-	return fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, app.Spec.EffectivePort())
+	return fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, app.ServicePort())
 }
 
 // setStatusURLs projects a serving App's public hosts onto status: the first
@@ -3976,7 +4002,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 		Env:             appEnv(app, port),
 		EnvFrom:         envFromSources(app),
 		Resources:       resourcesForTier(app.Spec.Tier),
-		SecurityContext: tenantSecCtx(),
+		SecurityContext: appSecCtx(app.Spec),
 	}
 	command := app.Spec.Command
 	if b := effectiveBuilder(app.Spec); command == "" && b != build.BuilderNative && b != build.BuilderBuildpack {
@@ -4977,7 +5003,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		Env:              appEnv(app, port),
 		EnvFrom:          envFromSources(release),
 		ImagePullSecrets: pullSecrets,
-		SecurityContext:  tenantSecCtx(),
+		SecurityContext:  appSecCtx(app.Spec),
 		Resources:        resourcesForTier(app.Spec.Tier),
 		Volumes:          vols,
 		VolumeMounts:     mounts,

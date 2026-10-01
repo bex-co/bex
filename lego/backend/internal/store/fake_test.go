@@ -257,6 +257,12 @@ func (m *memStore) CreateApp(ctx context.Context, a App) (App, error) {
 	}
 	a.CreatedAt = time.Now()
 	m.apps[a.ID] = a
+	if disk := a.InitialDisk; disk != nil {
+		d := Disk{ID: ids.New(ids.Disk), TenantID: a.TenantID, AppID: a.ID,
+			Name: disk.Name, MountPath: disk.MountPath, SizeGB: disk.SizeGB,
+			CreatedAt: a.CreatedAt, UpdatedAt: a.CreatedAt}
+		m.disks[d.ID] = d
+	}
 	now := time.Now()
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: a.ID, Trigger: TriggerCreate, Image: a.Image, Generation: 1, TriggeredBy: core.SubjectFrom(ctx), Status: DeployCreated, CreatedAt: now, UpdatedAt: now}
 	m.deploys[d.ID] = d

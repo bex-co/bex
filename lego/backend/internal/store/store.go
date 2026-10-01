@@ -132,6 +132,8 @@ type App struct {
 	RegistryCredentialID *string   `json:"registryCredentialId,omitempty"`
 	Branch               string    `json:"branch"`
 	Port                 int32     `json:"port"`
+	ContainerPolicy      string    `json:"containerPolicy,omitempty"`
+	PortMode             string    `json:"portMode,omitempty"`
 	Replicas             int32     `json:"replicas"`
 	Tier                 string    `json:"tier"`
 	IdleTTLSeconds       int32     `json:"idleTTLSeconds"`
@@ -139,6 +141,9 @@ type App struct {
 	ProjectID            string    `json:"projectId,omitempty"`
 	EnvironmentID        string    `json:"environmentId,omitempty"`
 	CreatedAt            time.Time `json:"createdAt"`
+	// InitialDisk is CreateApp input only. Save the disk and its first metering
+	// period in the service transaction, before a projector can observe the row.
+	InitialDisk *appv1alpha1.DiskSpec `json:"-"`
 	// FirstDeployCommit is CreateApp INPUT only (w9/001): the resolved commit
 	// stamped onto the first deploy row (trigger "create") CreateApp opens in
 	// the same transaction. Not an apps column — never persisted on, or read
@@ -934,12 +939,17 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 				return err
 			}
 			if err := tx.QueryRow(ctx,
-				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id)
-				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''))
+				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode)
+				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18)
 				 RETURNING created_at`,
-				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID,
+				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID, a.ContainerPolicy, a.PortMode,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
+			}
+			if disk := a.InitialDisk; disk != nil {
+				if _, err := createDiskTx(ctx, tx, a.TenantID, a.ID, disk.Name, disk.MountPath, disk.SizeGB); err != nil {
+					return err
+				}
 			}
 			if _, err := tx.Exec(ctx,
 				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status, triggered_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -970,13 +980,13 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 
 const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
-	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at`
+	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode`
 
 func scanApp(row pgx.Row) (App, error) {
 	var a App
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
 		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
-		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt)
+		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode)
 	return a, err
 }
 
@@ -1442,7 +1452,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		var envRules []byte
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
-			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.TenantName, &envRules)
+			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.TenantName, &envRules)
 		if err != nil {
 			return nil, err
 		}
@@ -1537,6 +1547,18 @@ func (s *PGStore) CreateDisk(ctx context.Context, tenantID, appID, name, mountPa
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	disk, err := createDiskTx(ctx, tx, tenantID, appID, name, mountPath, sizeGB)
+	if err != nil {
+		return Disk{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Disk{}, err
+	}
+	return disk, nil
+}
+
+// createDiskTx is shared by explicit attachment and atomic service creation.
+func createDiskTx(ctx context.Context, tx pgx.Tx, tenantID, appID, name, mountPath string, sizeGB int32) (Disk, error) {
 	diskID := ids.New(ids.Disk)
 	row := tx.QueryRow(ctx,
 		`INSERT INTO service_disks (id, tenant_id, app_id, name, mount_path, size_gb)
@@ -1554,9 +1576,6 @@ func (s *PGStore) CreateDisk(ctx context.Context, tenantID, appID, name, mountPa
 		// from_ts is the row's own created_at (also the DB clock), so the first
 		// period starts exactly when the disk starts existing.
 		return Disk{}, classify("disk", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return Disk{}, err
 	}
 	return disk, nil
 }
@@ -1744,6 +1763,20 @@ func (s *PGStore) SetAppTier(ctx context.Context, id string, tier string) error 
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE apps SET tier = $2, updated_at = now() WHERE id = $1`,
 		id, tier)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app: %w", ErrNotFound)
+	}
+	return nil
+}
+
+// SetAppPort saves both the port and whether it overrides image discovery.
+// A projector resync must not undo a successful service-port update.
+func (s *PGStore) SetAppPort(ctx context.Context, id string, port int32, mode string) error {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE apps SET port = $2, port_mode = $3, updated_at = now() WHERE id = $1`, id, port, mode)
 	if err != nil {
 		return classify("app", err)
 	}

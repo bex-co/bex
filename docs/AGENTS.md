@@ -25,6 +25,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR018-render-parity.md](ADR018-render-parity.md) — parity ledger (capability × surface)
 - [cli-compatibility-checklist.md](cli-compatibility-checklist.md) — Render CLI compat matrix
 - [ADR049-render-yaml-parity.md](ADR049-render-yaml-parity.md) — `render.yaml` canonical Blueprint contract
+- [ADR089-render-container-compatibility.md](ADR089-render-container-compatibility.md) — proposed unchanged Render Docker example deployment: legacy aliases, bounded initialization capabilities, and multiple private TCP ports
 - [ADR020-identifiers.md](ADR020-identifiers.md) — typed ids `<prefix>-<xid>` (`tea-/srv-/cdm-`)
 - [ADR032-environments.md](ADR032-environments.md) — named env subsets of a Project
 

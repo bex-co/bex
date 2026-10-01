@@ -103,6 +103,14 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 2
+      # ADR089 D5 hosted gate: only the owner-approved `bex` workspace gets the
+      # image-v1 creation defaults. Customer workspaces stay strict until the
+      # ADR's reference, persistence and isolation gates pass.
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: BEX_IMAGE_COMPATIBILITY_WORKSPACES
+          value: tea-d98210cbbpdc73dcrkvg
       # w2/029: preferred, not required. With 2 replicas + required anti-affinity
       # on 3 platform nodes, every rollout's surge pod (plus the 15s-drain
       # terminating pod it replaces) momentarily needs a 4th node and sat

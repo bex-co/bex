@@ -95,7 +95,7 @@ func TestPortIsMeaninglessForTheTypesWithoutAListener(t *testing.T) {
 			if spec.InternallyAddressable() {
 				t.Fatalf("%s must not be internally addressable — the port verb gates on this", serviceType)
 			}
-			if addr := spec.InternalAddress("svc"); addr != "" {
+			if addr := (&appv1alpha1.App{Spec: spec}).InternalAddress(); addr != "" {
 				t.Errorf("%s reported an internal address %q; it has no listening port to publish", serviceType, addr)
 			}
 		})

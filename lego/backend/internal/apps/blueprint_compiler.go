@@ -59,6 +59,8 @@ type BlueprintSourceProblem struct {
 type BlueprintSource struct {
 	Value     any
 	Locations map[string]BlueprintSourceLocation
+	// authoredPaths maps normalized alias paths back to the customer's YAML.
+	authoredPaths map[string]string
 }
 
 var renderBlueprintSchemaOnce = sync.OnceValues(compileRenderBlueprintSchema)
@@ -81,6 +83,9 @@ func CompileBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourc
 			Message: "the reviewed Render Blueprint capability registry could not be loaded",
 		}}
 	}
+	if problems := normalizeBlueprintAliases(source, registry); len(problems) > 0 {
+		return source, sortBlueprintSourceProblems(problems)
+	}
 	schema, err := renderBlueprintSchemaOnce()
 	if err != nil {
 		return source, []BlueprintSourceProblem{{
@@ -93,6 +98,13 @@ func CompileBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourc
 		problems = append(problems, blueprintSchemaProblems(err, source.Locations, source.Value)...)
 	}
 	problems = append(problems, blueprintCapabilityProblems(source.Value, nil, source.Locations, registry)...)
+	for i := range problems {
+		if authored := source.authoredPath(problems[i].Path); authored != problems[i].Path {
+			problems[i].Path = authored
+			location := lookupBlueprintLocation(authored, source.Locations)
+			problems[i].Line, problems[i].Column = location.Line, location.Column
+		}
+	}
 	return source, sortBlueprintSourceProblems(problems)
 }
 

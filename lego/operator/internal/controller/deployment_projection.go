@@ -201,6 +201,12 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 	var ports []corev1.ContainerPort
 	if !p.worker {
 		ports = []corev1.ContainerPort{{ContainerPort: int32(p.port)}}
+		if app.Spec.UsesImagePorts() && app.Status.ImageNetwork != nil {
+			ports = make([]corev1.ContainerPort, 0, len(app.Status.ImageNetwork.Ports))
+			for _, port := range app.Status.ImageNetwork.Ports {
+				ports = append(ports, corev1.ContainerPort{ContainerPort: port, Protocol: corev1.ProtocolTCP})
+			}
+		}
 	}
 	container := corev1.Container{
 		Name:            "app",
@@ -210,7 +216,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 		EnvFrom:         envFromSources(app),
 		Ports:           ports,
 		Resources:       resourcesForTier(app.Spec.Tier),
-		SecurityContext: tenantSecCtx(),
+		SecurityContext: appSecCtx(app.Spec),
 	}
 	// StartCommand overrides the running container's entrypoint whenever the
 	// image comes from an opaque Dockerfile (or a prebuilt image) — bex has no

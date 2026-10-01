@@ -137,6 +137,9 @@ func checkPort(a *appv1alpha1.App, port int32) error {
 		return fmt.Errorf("%w: port only applies to a web_service or private_service; %q has no listening port",
 			core.ErrBadRequest, effectiveType(a.Spec.Type))
 	}
+	if a.Spec.UsesImagePorts() && appv1alpha1.IsReservedImagePort(port) {
+		return fmt.Errorf("%w: private image port %d is reserved", core.ErrBadRequest, port)
+	}
 	return validateServicePort(port)
 }
 
