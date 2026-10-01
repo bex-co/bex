@@ -1,19 +1,25 @@
 # w7 · m149 — Correct cold deep-link initialization
 
-**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** blocked (2026-09-21: dev-7 live measurement needs shared VM memory recovery; no tasks complete)
+**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** blocked — transferred to w5/m104; retained acceptance/history only
+
+## Transfer — 2026-09-30
+
+Implementation/verification ownership transferred to [w5/m104](../../../w5/m104/README.md) by user approval 2026-09-30. Source history is retained; do not execute a duplicate queue here. Original production acceptance is not claimed complete. Current execution scope and parity corrections live in the destination.
+
+The blocker narratives below are historical; local harness work is now pre-approved within root isolation rules. Capacity still requires checking.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Reproduce and measure cold-link initialization | 50m | w7/m148/t007 |
-| t002 | Repair the measured workspace and capability startup failure | 50m | w7/m149/t001 |
-| t003 | Wait for workspace resolution before agents route eligibility | 35m | w7/m149/t001 |
-| t004 | Preserve and verify cold-link destinations end to end | 45m | w7/m149/t002, w7/m149/t003 |
-| t005 | Render parity | 30m | w7/m149/t001, w7/m149/t002, w7/m149/t003, w7/m149/t004 |
-| t006 | Simplify | 25m | w7/m149/t005 |
-| t007 | Test coverage | 45m | w7/m149/t005 |
-| t008 | Closeout | 15m | w7/m149/t006, w7/m149/t007 |
+| t001 | Reproduce and measure cold-link initialization — **BLOCKED: transferred** | 50m | w5/m104/t009 |
+| t002 | Repair the measured workspace and capability startup failure — **BLOCKED: transferred** | 50m | w5/m104/t009 |
+| t003 | Wait for workspace resolution before agents route eligibility — **BLOCKED: transferred** | 35m | w5/m104/t009 |
+| t004 | Preserve and verify cold-link destinations end to end — **BLOCKED: transferred** | 45m | w5/m104/t009 |
+| t005 | Render parity — **BLOCKED: transferred** | 30m | w5/m104/t009 |
+| t006 | Simplify — **BLOCKED: transferred** | 25m | w5/m104/t009 |
+| t007 | Test coverage — **BLOCKED: transferred** | 45m | w5/m104/t009 |
+| t008 | Closeout — **BLOCKED: transferred** | 15m | w5/m104/t009 |
 
 ## Definition of done
 

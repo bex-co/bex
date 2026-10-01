@@ -1,12 +1,18 @@
 # w4 · m110 — Settings config changes roll the stale image; instance counts, rollback dialog, and build narration mislead
 
-**Worker:** worker4 **Goal:** a build/start command edit in Settings rebuilds instead of re-rolling the old image; Total Instances counts live pods, not terminated ones; the rollback dialog names the commit it restores; the deploy log stops narrating builds that never ran. **Status:** BLOCKED — t002/t003/t004 done 2026-09-18; t001 needs a live reproduction (see below)
+**Worker:** worker4 **Goal:** a build/start command edit in Settings rebuilds instead of re-rolling the old image; Total Instances counts live pods, not terminated ones; the rollback dialog names the commit it restores; the deploy log stops narrating builds that never ran. **Status:** blocked — transferred to w5/m105; retained acceptance/history only
+
+## Transfer — 2026-09-30
+
+Implementation/verification ownership transferred to [w5/m105](../../../w5/m105/README.md) by user approval 2026-09-30. Source history is retained; do not execute a duplicate queue here. Original production acceptance is not claimed complete. Current execution scope and parity corrections live in the destination.
+
+The blocker narratives below are historical; local harness work is now pre-approved within root isolation rules. Capacity still requires checking.
 
 ## Tasks (in order)
 
 | id   | title                                                                                                    | est   | depends_on |
 | ---- | -------------------------------------------------------------------------------------------------------- | ----- | ---------- |
-| t001 | Settings build/start command edits must rebuild — config-change deploys roll the stale image              | 3h    | —          | — **BLOCKED** (needs a live reproduction) |
+| t001 | Settings build/start command edits must rebuild — config-change deploys roll the stale image — **BLOCKED: transferred** | 3h | w5/m105/t009 |
 | t002 | INSTANCES counts terminated pods — Total Instances over-reports for minutes after every rollout           | 1h30m | —          | — **DONE** |
 | t003 | The rollback confirmation dialog names the commit being restored (m108/t004 acceptance gap)                | 45m   | —          | — **DONE** |
 | t004 | The deploy log stops narrating phantom builds for deploys that perform no build                           | 1h    | —          | — **DONE** |

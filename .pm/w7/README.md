@@ -37,7 +37,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 - [x] **m152** — [Validate grouping mutations before changing members](done/m152/README.md) — done 2026-09-21: complete-set datastore validation, child ACL preflight, 75 composed adapter cases, 89 dashboard tests; local acceptance only, no live claim.
 
 - [x] **m148** — [Reliable local cluster bring-up](done/m148/README.md) (7 tasks) ← approved five-item brainstorm. Local CAPD cluster reprovisioned 2026-09-17; the rebuild also fixed a pre-existing helm `--set` comma bug that had been aborting every bring-up at metrics-server.
-- [ ] **m149** — **BLOCKED (user/operator must restore shared VM memory capacity, with a scheduled OrbStack restart if increasing its limit)** — [Correct cold deep-link initialization](blocked/m149/README.md) (8 tasks; none complete). Offline regressions preserved; authenticated dev-7 measurement remains gated.
+- [ ] **m149** — **TRANSFERRED to w5/m104** (2026-09-30); [original evidence and acceptance](blocked/m149/README.md) retained. Execution belongs to w5; no duplicate implementation queue.
 - [ ] **m150** — **BLOCKED (user/operator must restore shared VM capacity for live sandbox verification)** — [Sandbox file copy through the pinned CLI](blocked/m150/README.md) (t001, t002, t004, t006–t008 done; t003/t005 live gates and t009 remain). Bounded transfer implementation and local pinned-launcher roundtrips verified.
 
 - [x] **m89** — [Finish production build-cache enablement](done/m89/README.md) (8 tasks; ~4–6h) ← promoted from `043`; `/pm-brainstorm for w7 for top 3 customer-impactfully work` 2026-09-09 #1. **DONE 2026-09-15 on the hold branch of its own DoD:** the live image contains both correctness fixes (m87 + m88), and capacity passes the trial's admission budget — Zot 41.49% used, retained peak 44.62%, 20.03 GiB reserve above peak to the 65% ceiling against an expected 6–9 GiB of cache growth (analytic; `BEX_BUILD_CACHE` is manager-wide, so no per-App switch exists to measure one production shape with). The 48–72h trial is **explicitly held with `BEX_BUILD_CACHE` unset in production**: its one remaining start condition is human — a named observer plus an independently verified armed rollback — so t004/t005 are deferred rather than marked done and carried as [`047`](blocked/047.md). ADR060 D3 and the drill closeout both carry the dated hold.
@@ -127,7 +127,7 @@ Develop against `.pm/w7/dev-7/`, this worker's own isolated stack on the shared 
 Approved by `$pm all for w7` following the five-item brainstorm. All items belong to worker7. Estimates below include milestone closing tasks.
 
 1. [m148 — Reliable local cluster bring-up](m148/README.md) — 7 tasks, ~4h25m; first actionable task t001.
-2. [m149 — Correct cold deep-link initialization](blocked/m149/README.md) — blocked on shared VM memory recovery; no tasks complete.
+2. m149 execution transferred to [w5/m104](../w5/m104/README.md); original capacity evidence retained.
 3. [m150 — Sandbox file copy through the pinned CLI](blocked/m150/README.md) — 9 tasks, ~5h55m; first actionable task t001, scope decision approved.
 4. [055 — Honest liveness detection wording](055.md) — 45m; no dependency, decision approved.
 5. [057 — Consistent destructive confirmations](057.md) — 45–60m; no dependency, decision approved.

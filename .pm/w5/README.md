@@ -13,6 +13,24 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-09-30
+
+User approved all five brainstorm proposals, with Render behavior research first. Execution order:
+
+1. [067 — Structured REST routing errors](067.md) (~55m; transferred w4/169).
+2. [068 — Empty GraphQL operations are client errors](068.md) (~55m; transferred w4/170).
+3. [m104 — Correct cold-link initialization](m104/README.md) (9 tasks; transferred w7/m149 execution, evidence retained there).
+4. [m105 — Settings command edits take effect in the deployed artifact](m105/README.md) (9 tasks; transfers only w4/m110/t001).
+5. [069 — Verify cron concurrency after the shipped retry correction](069.md) (~60m; narrowed w4/m114 residual, credits w8/028).
+
+Each milestone starts with research into render.com's behavior before diagnosis or implementation, then ends with Render parity, Simplify, Test coverage and Closeout. Each inbox note also starts with a Render research step. Exact REST fallback parity and Render retry policy remain unverified; GraphQL input handling and agent/capability initialization are bex correctness work where no equivalent is established. A changed image digest is diagnostic evidence, not a Render requirement. Research is actionable now; live tasks require healthy isolated dev-5 and retain real capacity/evidence gates.
+
+- [ ] **m104** — [Correct cold-link initialization](m104/README.md) (9 tasks; 5h20m total) — todo; first: Render cold-link/workspace behavior research.
+- [ ] **m105** — [Settings command edits take effect in the deployed artifact](m105/README.md) (9 tasks; 5h20m total) — todo; first: Render command-edit deploy behavior research.
+- [ ] **067** — [Structured REST routing errors](067.md) (~55m).
+- [ ] **068** — [Empty GraphQL operations are client errors](068.md) (~55m).
+- [ ] **069** — [Verify cron concurrency after the shipped retry correction](069.md) (~60m).
+
 ## Milestones
 
 - [x] **m101** — [Membership self-destruction refusals: the owner and self guards](done/m101/README.md) (10 tasks) ← from the user request 2026-09-16 ("we should not allow the workspace owner to remove itself") and the code walk it triggered: `members.Remove`/`ChangeRole` have no owner or self guard, and because onboarding resolves the personal workspace by `tenants.owner_identity_id` and re-grants the admin tuple on every session request (`api/tenancy.go:156,344`), removing an owner is silently undone — while honoring it would brick the account (no personal workspace is ever re-minted). Refuse both directions, plus self-removal and self-demotion. — **DONE 2026-09-17**: four coded 409 refusals (`OWNER_CANNOT_BE_REMOVED`, `OWNER_ROLE_CANNOT_CHANGE`, `CANNOT_REMOVE_SELF`, `CANNOT_CHANGE_OWN_ROLE`) on REST/GraphQL/MCP, guarded at the service and inside the advisory-lock store transaction; `isOwner`/`isSelf` on the member view with rendered-but-disabled Team controls; ADR024 membership-invariant matrix. Live-verified on dev-5 with OpenFGA enforced (all four refusals × three surfaces, rows and tuples intact) plus a real-OpenFGA e2e; the resurrection defect was reproduced before the fix.
