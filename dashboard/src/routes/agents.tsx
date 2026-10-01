@@ -38,7 +38,7 @@ export const Route = createFileRoute("/agents")({
   pendingComponent: AgentSessionsPendingPage,
   beforeLoad: ({ context, location }) => {
     requireAuth()({ context, location });
-    requireAgentsFeature()({ context });
+    return requireAgentsFeature()({ context });
   },
   // Prefetch the requested working set on hover-intent so `/agents` mounts warm
   // (same pattern as `/` and `/blueprints`). Variables match the list hook's
