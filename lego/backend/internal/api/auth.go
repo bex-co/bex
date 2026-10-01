@@ -696,7 +696,7 @@ type corsRoutes struct {
 
 // routes reports whether the same muxes that will serve r accept method. This
 // request-specific lookup is deliberately more precise than a global verb
-// union: a preflight advertises only the requested routed method plus OPTIONS,
+// union: a preflight advertises only the requested method plus OPTIONS,
 // and a future method starts working as soon as its route is registered. GET's
 // implicit HEAD support comes from ServeMux.Handler itself.
 func (c corsRoutes) routesMethod(r *http.Request, method string) bool {
@@ -721,10 +721,22 @@ func (c corsRoutes) allowMethods(r *http.Request) string {
 	if method == "" {
 		method = r.Method
 	}
-	if method == http.MethodOptions || !c.routesMethod(r, method) {
+	if method == http.MethodOptions || (!c.routesMethod(r, method) && !standardRESTMethod(method)) {
 		return http.MethodOptions
 	}
 	return method + ", " + http.MethodOptions
+}
+
+// Standard REST methods may reach a routing error, which an allowed origin
+// must be able to read. This does not register a route or authorize a request;
+// unknown extension methods still require an actual route.
+func standardRESTMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
 }
 
 // withCORS adds CORS for a comma-separated allowlist of origins and answers
@@ -745,7 +757,7 @@ func withCORS(origins string, routes corsRoutes) http.Handler {
 			// dropping the cache-safety header that keeps a shared cache from
 			// handing a gzip body to an identity-only client (w9/m61, w9/044).
 			w.Header().Add("Vary", "Origin")
-			// allowMethods is route- and requested-method-specific. Keep a shared
+			// allowMethods is requested-method-specific. Keep a shared
 			// cache from reusing (for example) a DELETE preflight for PATCH.
 			if r.Method == http.MethodOptions {
 				w.Header().Add("Vary", "Access-Control-Request-Method")
@@ -764,6 +776,6 @@ func withCORS(origins string, routes corsRoutes) http.Handler {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		routes.root.ServeHTTP(w, r)
+		serveMuxJSON(routes.root, w, r)
 	})
 }

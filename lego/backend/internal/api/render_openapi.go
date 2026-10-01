@@ -452,7 +452,7 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// this contract and pass through byte-for-byte.
 	_, pattern := v.next.Handler(r)
 	if pattern == "" {
-		v.next.ServeHTTP(w, r)
+		serveMuxJSON(v.next, w, r)
 		return
 	}
 
