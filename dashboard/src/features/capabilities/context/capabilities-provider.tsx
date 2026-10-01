@@ -172,7 +172,12 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
           variables: { ownerId: workspaceId, fresh: wantFresh },
           fetchPolicy: "no-cache",
           errorPolicy: "none",
-          context: { fetchOptions: { signal: ac.signal } },
+          context: {
+            fetchOptions: { signal: ac.signal },
+            // A generation refresh can repeat the same query while its old
+            // lease is still aborting. It needs its own transport request.
+            queryDeduplication: false,
+          },
         });
         if (!current()) return;
         const payload = result.data?.viewerCapabilities;

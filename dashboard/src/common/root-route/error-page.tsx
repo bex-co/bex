@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { Home, ArrowLeft, AlertTriangle } from "lucide-react";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -15,6 +15,7 @@ import { reportRouteError } from "@/common/lib/report-route-error";
  */
 export default function ErrorPage({ error, reset }: ErrorComponentProps) {
   const { t } = useTranslations();
+  const router = useRouter();
 
   // w4/m88: SSR document failures must reach the pod stream (k9s/Loki). The
   // isomorphic helper no-ops in the browser so client navigations stay quiet.
@@ -73,7 +74,7 @@ export default function ErrorPage({ error, reset }: ErrorComponentProps) {
             <Button
               variant="outline"
               size="lg"
-              onClick={reset}
+              onClick={() => void router.invalidate().then(reset)}
               className="min-w-[140px]"
             >
               {t("common.tryAgain")}

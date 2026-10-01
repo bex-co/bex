@@ -22,6 +22,8 @@ export function shouldRetry(
   error: ErrorLike,
   operation: ApolloLink.Operation,
 ): boolean {
+  // Retrying with the same canceled signal cannot reach the server.
+  if (operation.getContext().fetchOptions?.signal?.aborted) return false;
   const definition = getMainDefinition(operation.query);
   const isQuery =
     definition.kind === "OperationDefinition" &&

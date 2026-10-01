@@ -62,7 +62,7 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
   pendingMs: 0,
   beforeLoad: ({ context, location }) => {
     requireAuth()({ context, location });
-    requireAgentsFeature()({ context });
+    return requireAgentsFeature()({ context });
   },
   validateSearch: (
     search: Record<string, unknown>,
