@@ -64,6 +64,19 @@ function serverError(status: number): ServerError {
 }
 
 describe("createRetryLink (w1/m52 t003)", () => {
+  it("does not retry a canceled query", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const failure = new DOMException("Canceled", "AbortError");
+    const flaky = flakyLink(failure, 99);
+    const { error } = await run(flaky.link, {
+      query: QUERY,
+      context: { fetchOptions: { signal: controller.signal } },
+    });
+    expect(error).toBe(failure);
+    expect(flaky.attempts()).toBe(1);
+  });
+
   it("retries a query past transport failures", async () => {
     const flaky = flakyLink(new TypeError("fetch failed"), 2);
     const { result, error } = await run(flaky.link, { query: QUERY });

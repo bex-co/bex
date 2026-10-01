@@ -1,4 +1,9 @@
-import { ApolloClient, ApolloLink, InMemoryCache } from "@apollo/client";
+import {
+  ApolloClient,
+  ApolloLink,
+  HttpLink,
+  InMemoryCache,
+} from "@apollo/client";
 import { BatchHttpLink } from "@apollo/client/link/batch-http";
 import { config } from "@/config/config";
 import { apolloCacheConfig } from "./cache";
@@ -18,15 +23,24 @@ let clientInstance: ReturnType<typeof createApolloCsrClientImpl> | null = null;
  * would couple every chart into one document so a single shed fails them all.
  */
 function createTerminatingLink() {
-  return new BatchHttpLink({
+  const options: HttpLink.Options = {
     uri: config.apiUrl,
     fetch,
     credentials: "include",
-    // Metrics + chrome on one route fire ~20 ops; keep under the server's
-    // batch cap of 32 so a page load is still one HTTP round trip.
-    batchMax: 32,
-    batchInterval: 10,
-  });
+  };
+  return ApolloLink.split(
+    // A batch uses its first operation's signal for every member. Independent
+    // cancellation leases must never share that request (or its retry).
+    (operation) => !!operation.getContext().fetchOptions?.signal,
+    new HttpLink(options),
+    new BatchHttpLink({
+      ...options,
+      // Metrics + chrome on one route fire ~20 ops; keep under the server's
+      // batch cap of 32 so a page load is still one HTTP round trip.
+      batchMax: 32,
+      batchInterval: 10,
+    }),
+  );
 }
 
 /** Create an Apollo client for client-side rendering. */
