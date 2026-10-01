@@ -20,13 +20,13 @@ User approved all five brainstorm proposals, with Render behavior research first
 1. [067 — Structured REST routing errors](067.md) (~55m; transferred w4/169).
 2. [068 — Empty GraphQL operations are client errors](068.md) (~55m; transferred w4/170).
 3. [m104 — Correct cold-link initialization](done/m104/README.md) (9 tasks; transferred w7/m149 execution, evidence retained there).
-4. [m105 — Settings command edits take effect in the deployed artifact](m105/README.md) (9 tasks; transfers only w4/m110/t001).
+4. [m105 — Settings command edits take effect in the deployed artifact](blocked/m105/README.md) (9 tasks; transfers only w4/m110/t001).
 5. [069 — Verify cron concurrency after the shipped retry correction](069.md) (~60m; narrowed w4/m114 residual, credits w8/028).
 
 Each milestone starts with research into render.com's behavior before diagnosis or implementation, then ends with Render parity, Simplify, Test coverage and Closeout. Each inbox note also starts with a Render research step. Exact REST fallback parity and Render retry policy remain unverified; GraphQL input handling and agent/capability initialization are bex correctness work where no equivalent is established. A changed image digest is diagnostic evidence, not a Render requirement. Research is actionable now; live tasks require healthy isolated dev-5 and retain real capacity/evidence gates.
 
 - [x] **m104** — [Correct cold-link initialization](done/m104/README.md) (9 tasks; 5h20m total) — **DONE 2026-09-30**; cold navigation, independent cancellation and loader retry verified; 3785 tests + lint green.
-- [ ] **m105** — [Settings command edits take effect in the deployed artifact](m105/README.md) (9 tasks; 5h20m total) — todo; first: Render command-edit deploy behavior research.
+- [ ] **m105** — [Settings command edits take effect in the deployed artifact](blocked/m105/README.md) (9 tasks; 5h20m total) — **BLOCKED (user authorization for disposable production reproduction, or equivalent operator evidence)**; t001/t002/t005/t007 done. Native edits pass locally; original production cause unproven; separate rollback-settings drift recorded.
 - [ ] **067** — [Structured REST routing errors](067.md) (~55m).
 - [ ] **068** — [Empty GraphQL operations are client errors](068.md) (~55m).
 - [ ] **069** — [Verify cron concurrency after the shipped retry correction](069.md) (~60m).
