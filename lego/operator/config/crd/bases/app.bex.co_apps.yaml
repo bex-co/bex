@@ -211,6 +211,16 @@ spec:
                   run (Render's cron "Command" field, e.g. "npm run report"); empty runs the
                   image's own command unmodified. Ignored for every other type.
                 type: string
+              containerPolicy:
+                description: |-
+                  ContainerPolicy is the persisted application-container execution policy.
+                  Omission retains the historical drop-all-capabilities policy. Only new
+                  services opt into image-v1; changing platform defaults cannot migrate an
+                  existing service during reconciliation or Blueprint synchronization.
+                enum:
+                - strict-v1
+                - image-v1
+                type: string
               disk:
                 description: |-
                   Disk attaches one persistent volume to this service, mounted at
@@ -648,6 +658,15 @@ spec:
                 description: Port the application listens on (PORT is injected).
                 format: int32
                 type: integer
+              portMode:
+                description: |-
+                  PortMode preserves whether a new private Docker service selected image
+                  metadata discovery. Omission keeps the historical configured port contract.
+                enum:
+                - configured-v1
+                - image-v1
+                - image-configured-v1
+                type: string
               preDeployCommand:
                 description: |-
                   PreDeployCommand is a command run to completion against the new revision's
@@ -1071,6 +1090,32 @@ spec:
               image:
                 description: Image is the OCI image of the active revision.
                 type: string
+              imageNetwork:
+                description: ImageNetwork is the verified private port set for the
+                  candidate image.
+                properties:
+                  image:
+                    type: string
+                  ports:
+                    items:
+                      format: int32
+                      type: integer
+                    maxItems: 75
+                    minItems: 1
+                    type: array
+                  primaryPort:
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                  revision:
+                    type: string
+                required:
+                - image
+                - ports
+                - primaryPort
+                - revision
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the .metadata.generation the controller
                   last reconciled.
@@ -1193,6 +1238,32 @@ spec:
                 description: SandboxID is the runtime handle of the active revision
                   (OpenSandbox sandbox id).
                 type: string
+              servingNetwork:
+                description: ServingNetwork retains the active release's ports while
+                  a candidate starts.
+                properties:
+                  image:
+                    type: string
+                  ports:
+                    items:
+                      format: int32
+                      type: integer
+                    maxItems: 75
+                    minItems: 1
+                    type: array
+                  primaryPort:
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                  revision:
+                    type: string
+                required:
+                - image
+                - ports
+                - primaryPort
+                - revision
+                type: object
               staticPrefix:
                 description: |-
                   StaticPrefix is the object-store key prefix the currently published static

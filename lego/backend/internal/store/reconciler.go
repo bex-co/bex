@@ -1748,6 +1748,8 @@ func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.
 func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 	s := appv1alpha1.AppSpec{
 		Type:                 d.Type,
+		ContainerPolicy:      d.ContainerPolicy,
+		PortMode:             d.PortMode,
 		Repo:                 d.Repo,
 		Image:                d.Image,
 		RegistryCredentialID: copyStringPtr(d.RegistryCredentialID),
@@ -1806,6 +1808,8 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 			changed = true
 		}
 	}
+	set(&dst.ContainerPolicy, want.ContainerPolicy)
+	set(&dst.PortMode, want.PortMode)
 	set(&dst.Repo, want.Repo)
 	set(&dst.Image, want.Image)
 	if !equalStringPtrs(dst.RegistryCredentialID, want.RegistryCredentialID) {

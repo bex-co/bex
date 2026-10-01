@@ -673,7 +673,12 @@ func TestCreateConflictsOnExistingUnmanagedApp(t *testing.T) {
 // --- Single writer of intent (store-managed vs hand-applied) ---
 
 type recordingStore struct {
-	disks map[string]store.Disk
+	disks     map[string]store.Disk
+	portCalls []struct {
+		id   string
+		port int32
+		mode string
+	}
 	calls []struct {
 		id        string
 		suspended bool
@@ -757,6 +762,11 @@ func (r *recordingStore) CreateApp(_ context.Context, a store.App) (store.App, e
 	}
 	a.ID = "srv-test"
 	a.FirstDeployID = "dep-test"
+	if disk := a.InitialDisk; disk != nil {
+		if _, err := r.CreateDisk(context.Background(), a.TenantID, a.ID, disk.Name, disk.MountPath, disk.SizeGB); err != nil {
+			return store.App{}, err
+		}
+	}
 	r.appCreates = append(r.appCreates, a)
 	return a, nil
 }
@@ -807,6 +817,18 @@ func (r *recordingStore) SetAppTier(_ context.Context, id string, tier string) e
 		id   string
 		tier string
 	}{id, tier})
+	return nil
+}
+
+func (r *recordingStore) SetAppPort(_ context.Context, id string, port int32, mode string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.portCalls = append(r.portCalls, struct {
+		id   string
+		port int32
+		mode string
+	}{id, port, mode})
 	return nil
 }
 

@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -97,6 +99,95 @@ func TestPortIsReadableOnTheServiceView(t *testing.T) {
 	}
 	if view.Port != appv1alpha1.DefaultPort {
 		t.Errorf("unset port reads %d, want the platform default %d", view.Port, appv1alpha1.DefaultPort)
+	}
+}
+
+func TestImagePortViewFollowsServingRelease(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		candidate, serving *appv1alpha1.ImageNetworkStatus
+		want               int32
+	}{
+		{name: "unresolved"},
+		{name: "first discovery", candidate: &appv1alpha1.ImageNetworkStatus{PrimaryPort: 8123}, want: 8123},
+		{name: "pending replacement", candidate: &appv1alpha1.ImageNetworkStatus{PrimaryPort: 9000}, serving: &appv1alpha1.ImageNetworkStatus{PrimaryPort: 8123}, want: 8123},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := portApp("clickhouse", appv1alpha1.TypePrivateService, 3000)
+			app.Spec.PortMode = appv1alpha1.PortModeImageV1
+			app.Status.ImageNetwork, app.Status.ServingNetwork = tc.candidate, tc.serving
+			svc, _ := newService(nil, app)
+			view, err := svc.Get(t.Context(), "clickhouse")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if view.Port != tc.want {
+				t.Fatalf("port = %d, want %d", view.Port, tc.want)
+			}
+			if tc.want == 0 && view.InternalAddress != "" || tc.want != 0 && !strings.HasSuffix(view.InternalAddress, fmt.Sprintf(":%d", tc.want)) {
+				t.Fatalf("address %q disagrees with port %d", view.InternalAddress, tc.want)
+			}
+		})
+	}
+}
+
+func TestSetImagePrimaryPortPersistsExplicitIntent(t *testing.T) {
+	app := portApp("clickhouse", appv1alpha1.TypePrivateService, 3000)
+	app.Spec.PortMode = appv1alpha1.PortModeImageV1
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{PrimaryPort: 8123, Ports: []int32{8123, 9000, 9009}}
+	app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-clickhouse"}
+	st := &recordingStore{}
+	svc, cl := newService(st, app)
+	view, err := svc.SetPort(t.Context(), "clickhouse", 3000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := getApp(t, cl, "clickhouse")
+	if got.Spec.PortMode != appv1alpha1.PortModeImageConfiguredV1 || got.Spec.Port != 3000 {
+		t.Fatalf("explicit 3000 lost: mode=%s port=%d", got.Spec.PortMode, got.Spec.Port)
+	}
+	if len(st.portCalls) != 1 || st.portCalls[0].id != "srv-clickhouse" || st.portCalls[0].port != 3000 || st.portCalls[0].mode != appv1alpha1.PortModeImageConfiguredV1 {
+		t.Fatalf("missing durable port update: %+v", st.portCalls)
+	}
+	if view.Port != 8123 || !strings.HasSuffix(view.InternalAddress, ":8123") {
+		t.Fatal("port update replaced the serving address before readiness")
+	}
+}
+
+func TestImagePrimaryPortRejectsReservedUpdateWithoutWrites(t *testing.T) {
+	for _, port := range []int32{18012, 18013, 19099} {
+		for _, patch := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%d/patch=%t", port, patch), func(t *testing.T) {
+				app := portApp("clickhouse", appv1alpha1.TypePrivateService, 3000)
+				app.Spec.PortMode = appv1alpha1.PortModeImageV1
+				app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-clickhouse"}
+				st := &recordingStore{}
+				svc, cl := newService(st, app)
+				before := getApp(t, cl, "clickhouse")
+				var err error
+				if patch {
+					autoDeploy := !before.Spec.AutoDeploy
+					_, err = svc.ApplyServicePatch(t.Context(), "clickhouse", ServicePatch{AutoDeploy: &autoDeploy, Port: &port})
+				} else {
+					_, err = svc.SetPort(t.Context(), "clickhouse", port)
+				}
+				if !errors.Is(err, core.ErrBadRequest) {
+					t.Fatalf("reserved port %d: got %v, want bad request", port, err)
+				}
+				after := getApp(t, cl, "clickhouse")
+				if !reflect.DeepEqual(before.Spec, after.Spec) || before.ResourceVersion != after.ResourceVersion || len(st.portCalls) != 0 {
+					t.Fatal("rejected image port changed the service or durable port")
+				}
+			})
+		}
+	}
+}
+
+func TestLegacyPrivatePortKeepsConfiguredContract(t *testing.T) {
+	svc, _ := newService(nil, portApp("legacy", appv1alpha1.TypePrivateService, 3000))
+	svc.ImageCompatibilityWorkspaces = map[string]bool{"*": true}
+	if _, err := svc.SetPort(t.Context(), "legacy", 18012); err != nil {
+		t.Fatalf("creation gate changed an existing configured-port service: %v", err)
 	}
 }
 

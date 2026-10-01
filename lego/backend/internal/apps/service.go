@@ -60,6 +60,11 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
+	// ImageCompatibilityWorkspaces gates ADR089 creation defaults per creating
+	// workspace ("*" admits every workspace) until the runtime and private-port
+	// integration checks have passed. Persisted policies survive removal from
+	// the set; it never changes an existing service's privileges.
+	ImageCompatibilityWorkspaces map[string]bool
 	// DomainOwnership verifies an app-bound DNS TXT challenge before any custom
 	// host enters App.spec and becomes routable. nil uses the system resolver;
 	// tests inject a deterministic verifier.
@@ -287,6 +292,7 @@ type IntentStore interface {
 	DeleteDisk(ctx context.Context, id string) error
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	SetAppTier(ctx context.Context, id string, tier string) error
+	SetAppPort(ctx context.Context, id string, port int32, mode string) error
 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
 	// SetAppIdleTTL updates the row's idle-TTL — the single write path for the
 	// idle-timeout verb on store-managed Apps, same row-first rationale as
@@ -1027,8 +1033,8 @@ func view(a *appv1alpha1.App) AppView {
 		// The contract-level derivation (types/v1alpha1) the operator's slug
 		// Service answers — surfaced string and resolvable hostname cannot
 		// drift (ADR041 D2/D4).
-		InternalAddress:      a.Spec.InternalAddress(a.Name),
-		Port:                 addressablePort(a.Spec),
+		InternalAddress:      a.InternalAddress(),
+		Port:                 addressablePort(a),
 		URLs:                 urls,
 		Image:                a.Status.Image,
 		SourceImage:          a.Spec.Image,
@@ -1883,6 +1889,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err != nil {
 		return AppView{}, err
 	}
+	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
+		return AppView{}, err
+	}
 	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
 		return AppView{}, err
 	}
@@ -2085,6 +2094,9 @@ func (s *Service) nameTaken(ctx context.Context, tenantID, name string) (bool, e
 // private repo, and creates the CR. Shared so the stack path creates services
 // identically to the interactive create (w1/m24).
 func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
+	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
+		return AppView{}, err
+	}
 	a := &appv1alpha1.App{}
 	a.Name = req.Name
 	a.Namespace = s.Namespace
@@ -2166,6 +2178,9 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 			// (w6/m46 t001). Recorded once here — spec.type is immutable, so
 			// no later write path revisits it.
 			Type:                 a.Spec.Type,
+			ContainerPolicy:      a.Spec.ContainerPolicy,
+			PortMode:             a.Spec.PortMode,
+			InitialDisk:          a.Spec.Disk.DeepCopy(),
 			Repo:                 req.Repo,
 			Image:                req.Image,
 			RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
@@ -2204,6 +2219,33 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		a.Labels[core.LabelAppID] = ids.New(ids.Service)
 	}
 	return createdRowID, firstDeployID, nil
+}
+
+// Resolve creation defaults before dry-run or any durable write. Existing
+// services never pass through this helper during Blueprint synchronization.
+func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv1alpha1.AppSpec, explicitPort bool) error {
+	if s.imageCompatibilityAdmits(ctx) && spec.Type != appv1alpha1.TypeStaticSite &&
+		(spec.Image != "" || spec.Runtime == "docker" || spec.Builder == "dockerfile") {
+		spec.ContainerPolicy = appv1alpha1.ContainerPolicyImageV1
+		if spec.Type == appv1alpha1.TypePrivateService && spec.Repo != "" {
+			spec.PortMode = appv1alpha1.PortModeImageV1
+			if explicitPort {
+				spec.PortMode = appv1alpha1.PortModeImageConfiguredV1
+				if appv1alpha1.IsReservedImagePort(spec.Port) {
+					return fmt.Errorf("%w: private image port %d is reserved", core.ErrBadRequest, spec.Port)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Service) imageCompatibilityAdmits(ctx context.Context) bool {
+	if s.ImageCompatibilityWorkspaces["*"] {
+		return true
+	}
+	tenantID, ok := s.Tenant(ctx)
+	return ok && s.ImageCompatibilityWorkspaces[tenantID]
 }
 
 func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment, seed createSeed) (AppView, error) {
@@ -3953,10 +3995,21 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 	if err := checkPort(a, port); err != nil {
 		return AppView{}, err
 	}
-	return s.recordedPatch(ctx, core.AuditVerbSetPort, a, func(a *appv1alpha1.App) {
-		a.Spec.Port = port
+	mode := a.Spec.PortMode
+	if a.Spec.UsesImagePorts() {
+		mode = appv1alpha1.PortModeImageConfiguredV1
+	}
+	result, err := s.writeThroughStoreFetched(ctx, a, func(ctx context.Context, id string) error {
+		return s.Store.SetAppPort(ctx, id, port, mode)
+	}, func(a *appv1alpha1.App) {
+		a.Spec.Port, a.Spec.PortMode = port, mode
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetPort)
+	return result, nil
 }
 
 // addressablePort reports the port a read surface publishes: the effective
@@ -3964,11 +4017,11 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 // Kept beside InternalAddress's derivation so the published number and the
 // `<slug>:<port>` string can never disagree — they are the same field, read
 // twice, and a reader who compares them is entitled to find them equal.
-func addressablePort(spec appv1alpha1.AppSpec) int32 {
-	if !spec.InternallyAddressable() {
+func addressablePort(app *appv1alpha1.App) int32 {
+	if !app.Spec.InternallyAddressable() {
 		return 0
 	}
-	return spec.EffectivePort()
+	return app.ServicePort()
 }
 
 // validateServicePort is the one port bounds check every surface shares, so a

@@ -47,6 +47,7 @@ const (
 // semantics decision here, and when a field's real fingerprint behavior stops
 // matching its declared class.
 var AppSpecIdentityClasses = map[string]SpecIdentityClass{
+	"ContainerPolicy":            IdentityRelease,
 	"DisplayName":                IdentityOperational,
 	"Type":                       IdentityRelease,
 	"Schedule":                   IdentityOperational,
@@ -73,6 +74,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"Builder":                    IdentityArtifact | IdentityRelease,
 	"Replicas":                   IdentityOperational,
 	"Port":                       IdentityRelease,
+	"PortMode":                   IdentityRelease,
 	"Env":                        IdentityArtifact | IdentityRelease,
 	"EnvFromSecret":              IdentityArtifact | IdentityRelease,
 	"EnvFromSecrets":             IdentityArtifact | IdentityRelease,

@@ -71,6 +71,7 @@ type artifactIdentityInput struct {
 }
 
 type releaseIdentityInput struct {
+	ContainerPolicy            string               `json:"containerPolicy,omitempty"`
 	Artifact                   string               `json:"artifact"`
 	Type                       string               `json:"type"`
 	Command                    string               `json:"command,omitempty"`
@@ -79,6 +80,7 @@ type releaseIdentityInput struct {
 	RegistryCredentialID       *string              `json:"registryCredentialId,omitempty"`
 	StartCommand               string               `json:"startCommand,omitempty"`
 	Port                       int32                `json:"port"`
+	PortMode                   string               `json:"portMode,omitempty"`
 	Env                        []appv1alpha1.EnvVar `json:"env,omitempty"`
 	EnvFromSecret              string               `json:"envFromSecret,omitempty"`
 	EnvFromSecrets             []string             `json:"envFromSecrets,omitempty"`
@@ -148,6 +150,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		healthCheckPath = "/"
 	}
 	release := identityFingerprint("release-v1", releaseIdentityInput{
+		ContainerPolicy:            spec.ContainerPolicy,
 		Artifact:                   artifact,
 		Type:                       serviceType,
 		Command:                    spec.Command,
@@ -156,6 +159,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		RegistryCredentialID:       spec.RegistryCredentialID,
 		StartCommand:               spec.StartCommand,
 		Port:                       port,
+		PortMode:                   spec.PortMode,
 		Env:                        spec.Env,
 		EnvFromSecret:              spec.EnvFromSecret,
 		EnvFromSecrets:             spec.EnvFromSecrets,
