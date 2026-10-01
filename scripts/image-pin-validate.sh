@@ -126,6 +126,7 @@ lego/operator/config/egress-meter/daemonset.yaml	controller:latest	same manager 
 dashboard/deploy/deployment.yaml	dashboard:latest	kustomize `images:` placeholder — deploy/gitops/base/dashboard.yaml rewrites it to the dashboard digest deploy.yml pushed
 deploy/opensandbox/server-in-cluster.yaml	opensandbox-server:0.2.2	kustomize `images:` placeholder — deploy/opensandbox/kustomization.yaml carries the digest
 lego/operator/config/samples/app_v1alpha1_app.yaml	traefik/whoami	sample App CR: a TENANT's image choice in documentation, not an image bex resolves
+lego/backend/internal/apps/testdata/render-clickhouse/Dockerfile	yandex/clickhouse-server:21	verbatim render-examples/clickhouse@355817b fixture (ADR089): a TENANT's unchanged upstream Dockerfile whose byte-identity TestRenderClickHouseBlueprintUnchanged asserts — pinning it would defeat the fixture; bex never builds it
 deploy/gitops/charts/opensandbox-controller/values.yaml	sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller	upstream chart default; deploy/gitops/base/values/opensandbox-controller.values.yaml overrides it with a digest
 deploy/gitops/charts/opensandbox-controller/values.yaml	image-committer:dev	upstream chart default for a snapshot path production leaves disabled; the same base values file overrides it with a digest
 lego/operator/config/deploy/kustomization.yaml	bex-operator:dev	disposable local overlay: `make docker-build` copies this beside config/default, points it at the just-built local IMG, and deletes the copy — it never reaches a cluster

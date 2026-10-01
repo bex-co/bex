@@ -48,7 +48,9 @@ func TestShippedExampleBlueprintsValidate(t *testing.T) {
 		}
 		if d.IsDir() {
 			base := d.Name()
-			if base == ".git" || base == "node_modules" || base == ".output" || base == "vendor" {
+			// testdata holds verbatim upstream fixtures (ADR089) that rely on
+			// Git-context inheritance; their own tests validate them in context.
+			if base == ".git" || base == "node_modules" || base == ".output" || base == "vendor" || base == "testdata" {
 				return fs.SkipDir
 			}
 			return nil
