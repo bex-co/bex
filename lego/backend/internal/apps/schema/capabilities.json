@@ -1595,5 +1595,31 @@
       ],
       "reason": "bex-only capability namespace; never a Render parity claim"
     }
+  },
+  "aliases": {
+    "#/definitions/serverService/properties/env": {
+      "state": "deprecated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_aliases_test.go:TestBlueprintLegacyRuntimeAlias",
+      "reason": "Render documents env as the deprecated spelling of runtime; normalize before canonical validation (ADR049, ADR089).",
+      "target": "#/definitions/serverService/properties/runtime",
+      "documentation": "https://render.com/docs/blueprint-spec#runtime"
+    },
+    "#/definitions/cronService/properties/env": {
+      "state": "deprecated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_aliases_test.go:TestBlueprintLegacyRuntimeAlias",
+      "reason": "Render documents env as the deprecated spelling of runtime; normalize before canonical validation (ADR049, ADR089).",
+      "target": "#/definitions/cronService/properties/runtime",
+      "documentation": "https://render.com/docs/blueprint-spec#runtime"
+    },
+    "#/definitions/staticService/properties/env": {
+      "state": "deprecated",
+      "handler": "CompileBlueprintSource",
+      "fixture": "internal/apps/blueprint_aliases_test.go:TestBlueprintLegacyRuntimeAlias",
+      "reason": "Render documents env as the deprecated spelling of runtime; normalize before canonical validation (ADR049, ADR089).",
+      "target": "#/definitions/staticService/properties/runtime",
+      "documentation": "https://render.com/docs/blueprint-spec#runtime"
+    }
   }
 }

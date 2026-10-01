@@ -87,6 +87,7 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"AgentMaxLiveSandboxesPerWorkspace", cfg.AgentMaxLiveSandboxesPerWorkspace, 5},
 		{"AgentMaxPinnedSandboxesPerWorkspace", cfg.AgentMaxPinnedSandboxesPerWorkspace, 10},
 		{"MaxBlueprintGroupings", cfg.MaxBlueprintGroupings, 1000},
+		{"ImageCompatibilityWorkspaces (off)", len(cfg.ImageCompatibilityWorkspaces), 0},
 		{"MaxEnvGroupsPerWorkspace", cfg.MaxEnvGroupsPerWorkspace, 100},
 		{"MaxGitConnectionsPerWorkspace", cfg.MaxGitConnectionsPerWorkspace, 10},
 		{"MaxRegistryCredentialsPerWorkspace", cfg.MaxRegistryCredentialsPerWorkspace, 50},
@@ -387,6 +388,30 @@ func TestLoadConfigOpsWorkspacePin(t *testing.T) {
 	}
 	if cfg.CPAddr != "" {
 		t.Fatalf("stdio mode parsed the internal listener addr: %q", cfg.CPAddr)
+	}
+}
+
+func TestLoadConfigImageCompatibilityWorkspaces(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{
+		"BEX_IMAGE_COMPATIBILITY_WORKSPACES": " tea-d98210cbbpdc73dcrkvg , ,tea-daif693dqjvc73e7as3g",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.ImageCompatibilityWorkspaces) != 2 || !cfg.ImageCompatibilityWorkspaces["tea-d98210cbbpdc73dcrkvg"] ||
+		!cfg.ImageCompatibilityWorkspaces["tea-daif693dqjvc73e7as3g"] {
+		t.Fatalf("workspaces = %v", cfg.ImageCompatibilityWorkspaces)
+	}
+	if cfg, _, err = loadFor(t, map[string]string{"BEX_IMAGE_COMPATIBILITY_WORKSPACES": "*"}); err != nil || !cfg.ImageCompatibilityWorkspaces["*"] {
+		t.Fatalf("wildcard: %v %v", cfg.ImageCompatibilityWorkspaces, err)
+	}
+	// The retired boolean spelling and non-workspace ids must refuse startup
+	// rather than silently admitting no workspace (or the wrong one).
+	for _, bad := range []string{"1", "srv-d98210cbbpdc73dcrkvg", "tea-ops"} {
+		if _, _, err := loadFor(t, map[string]string{"BEX_IMAGE_COMPATIBILITY_WORKSPACES": bad}); err == nil ||
+			!strings.Contains(err.Error(), "BEX_IMAGE_COMPATIBILITY_WORKSPACES") {
+			t.Errorf("%q: err = %v, want a startup refusal", bad, err)
+		}
 	}
 }
 

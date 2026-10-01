@@ -102,6 +102,14 @@ type blueprintExtension struct {
 	Reason    string                   `json:"reason"`
 }
 
+// BlueprintAlias records a documented historical field outside the pinned
+// schema. Target is a canonical schema pointer in the same object definition.
+type BlueprintAlias struct {
+	BlueprintCapability
+	Target        string `json:"target"`
+	Documentation string `json:"documentation"`
+}
+
 // BlueprintCapabilityRegistry is the machine-readable reviewed contract. The
 // map keys are JSON Pointers into the pinned schema. EnumValues is indexed by
 // the pointer to an enum array and canonical JSON encoding of each value, so
@@ -112,6 +120,7 @@ type BlueprintCapabilityRegistry struct {
 	Fields     map[string]BlueprintCapability            `json:"fields"`
 	EnumValues map[string]map[string]BlueprintCapability `json:"enumValues"`
 	Extensions map[string]blueprintExtension             `json:"extensions"`
+	Aliases    map[string]BlueprintAlias                 `json:"aliases"`
 }
 
 var renderBlueprintRegistryOnce = sync.OnceValues(loadRenderBlueprintCapabilityRegistry)
@@ -168,6 +177,9 @@ func validateRenderBlueprintCapabilityRegistry(schemaData []byte, registry *Blue
 		return err
 	}
 	if err := validateEnumCapabilityMap(enumValues, registry.EnumValues); err != nil {
+		return err
+	}
+	if err := validateBlueprintAliases(registry); err != nil {
 		return err
 	}
 

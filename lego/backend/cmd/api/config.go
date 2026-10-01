@@ -31,6 +31,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
@@ -210,6 +211,7 @@ type Config struct {
 
 	AgentMaxLiveSandboxesPerWorkspace  int
 	MaxBlueprintGroupings              int
+	ImageCompatibilityWorkspaces       map[string]bool
 	MaxEnvGroupsPerWorkspace           int
 	MaxGitConnectionsPerWorkspace      int
 	MaxWorkspacesPerGitInstallation    int
@@ -523,6 +525,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.AgentTurnTimeout = p.zeroableDuration("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
 	cfg.AgentMaxLiveSandboxesPerWorkspace = p.zeroableInt("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 	cfg.MaxBlueprintGroupings = p.zeroableInt("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
+	cfg.ImageCompatibilityWorkspaces = p.imageCompatibilityWorkspaces("BEX_IMAGE_COMPATIBILITY_WORKSPACES")
 	// Round-11 #3, ADR075 §2, codex-security geyRc8 F1 + round 18 quotas.
 	cfg.MaxEnvGroupsPerWorkspace = p.zeroableInt("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
 	cfg.MaxGitConnectionsPerWorkspace = p.zeroableInt("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
@@ -634,6 +637,28 @@ func (p *parser) err(e error) {
 
 func (p *parser) warnf(format string, args ...any) {
 	p.warnings = append(p.warnings, fmt.Sprintf(format, args...))
+}
+
+// imageCompatibilityWorkspaces — policy "fail": a comma-separated set of
+// workspace ids, or "*" for every workspace. Unset ⇒ nil (ADR089 creation
+// defaults off); a malformed entry refuses startup rather than silently
+// granting image-v1 capabilities to the wrong set of workspaces.
+func (p *parser) imageCompatibilityWorkspaces(name string) map[string]bool {
+	var set map[string]bool
+	for _, v := range strings.Split(p.getenv(name), ",") {
+		if v = strings.TrimSpace(v); v == "" {
+			continue
+		}
+		if kind, ok := ids.KindOf(v); v != "*" && (!ok || kind != ids.Workspace) {
+			p.errorf("%s: %q is not a workspace id or *", name, v)
+			continue
+		}
+		if set == nil {
+			set = map[string]bool{}
+		}
+		set[v] = true
+	}
+	return set
 }
 
 // str: unset ⇒ def (no failure mode).

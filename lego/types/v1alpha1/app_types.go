@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -296,6 +294,14 @@ const (
 // +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(oldSelf.disk) || self.disk.sizeGB >= oldSelf.disk.sizeGB",message="spec.disk.sizeGB can only grow; a disk is never shrunk"
 // +kubebuilder:validation:XValidation:rule="!has(self.image) || (has(self.type) ? self.type : 'web_service') != 'static_site'",message="a static_site builds from spec.repo; spec.image is not supported"
 type AppSpec struct {
+	// ContainerPolicy is the persisted application-container execution policy.
+	// Omission retains the historical drop-all-capabilities policy. Only new
+	// services opt into image-v1; changing platform defaults cannot migrate an
+	// existing service during reconciliation or Blueprint synchronization.
+	// +optional
+	// +kubebuilder:validation:Enum=strict-v1;image-v1
+	ContainerPolicy string `json:"containerPolicy,omitempty"`
+
 	// DisplayName is the free-form, human-facing label for this App. It is
 	// intentionally distinct from the App object's immutable, DNS-safe Name:
 	// changing this field relabels the service without changing its Kubernetes
@@ -520,6 +526,12 @@ type AppSpec struct {
 	// +optional
 	// +kubebuilder:default=3000
 	Port int32 `json:"port,omitempty"`
+
+	// PortMode preserves whether a new private Docker service selected image
+	// metadata discovery. Omission keeps the historical configured port contract.
+	// +optional
+	// +kubebuilder:validation:Enum=configured-v1;image-v1;image-configured-v1
+	PortMode string `json:"portMode,omitempty"`
 
 	// Env are environment variables set on the App's container, in the order
 	// given. Each entry is either a plain literal (Value) or a single-key
@@ -818,21 +830,6 @@ func (s AppSpec) EffectivePort() int32 {
 // not addressable (Render's own rule — docs/ADR041-service-addresses.md).
 func (s AppSpec) InternallyAddressable() bool {
 	return s.Type == "" || s.Type == TypeWebService || s.Type == TypePrivateService
-}
-
-// InternalAddress returns the Render-shaped private-network address sibling
-// services connect to — "<slug>:<port>", scheme-less — or "" when the type is
-// not addressable. This is the D2 resolvability contract in one place
-// (docs/ADR041-service-addresses.md): the operator's slug-named Service (or
-// the CR-named Service when the slug coincides with the CR name) answers
-// exactly this hostname, and bex-api surfaces exactly this string — both
-// modules call here so the promise cannot drift. name is the App CR's Name
-// (the PlatformSubdomain fallback).
-func (s AppSpec) InternalAddress(name string) string {
-	if !s.InternallyAddressable() {
-		return ""
-	}
-	return fmt.Sprintf("%s:%d", s.PlatformSubdomain(name), s.EffectivePort())
 }
 
 // PlatformSubdomain returns the slug the platform hostname is built from:
@@ -1333,6 +1330,12 @@ type DiskStatus struct {
 
 // AppStatus is the observed state of a App.
 type AppStatus struct {
+	// ImageNetwork is the verified private port set for the candidate image.
+	// +optional
+	ImageNetwork *ImageNetworkStatus `json:"imageNetwork,omitempty"`
+	// ServingNetwork retains the active release's ports while a candidate starts.
+	// +optional
+	ServingNetwork *ImageNetworkStatus `json:"servingNetwork,omitempty"`
 	// Phase is the high-level lifecycle state.
 	// +optional
 	Phase AppPhase `json:"phase,omitempty"`

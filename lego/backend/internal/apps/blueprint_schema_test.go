@@ -65,6 +65,9 @@ func TestRenderBlueprintCapabilityRegistryFixturesExist(t *testing.T) {
 	}
 	backendRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
 	fixtures := map[string]struct{}{}
+	for _, alias := range registry.Aliases {
+		fixtures[alias.Fixture] = struct{}{}
+	}
 	for _, capability := range registry.Fields {
 		if capability.State != BlueprintCapabilityUnsupported {
 			fixtures[capability.Fixture] = struct{}{}
