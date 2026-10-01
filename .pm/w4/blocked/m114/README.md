@@ -1,17 +1,23 @@
 # w4 · m114 — Cron runs can't be trusted: resurrected cancels, twin pendings, 11-minute terminal delay
 
-**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** BLOCKED — t001/t003/t004/t005 done 2026-09-18; t002 needs a live reproduction (see below)
+**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** blocked — transferred to w5/069; retained acceptance/history only
+
+## Transfer — 2026-09-30
+
+Implementation/verification ownership transferred to [w5/069](../../../w5/069.md) by user approval 2026-09-30. Source history is retained; do not execute a duplicate queue here. Original production acceptance is not claimed complete. Current execution scope and parity corrections live in the destination.
+
+The blocker narratives below are historical; local harness work is now pre-approved within root isolation rules. Capacity still requires checking.
 
 ## Tasks (in order)
 
 | id   | title                                                                             | est | depends_on |
 | ---- | --------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Canceled manual run resurrects when CancelRun is overwritten                      | 1h  | —          | — **DONE** |
-| t002 | Twin pending: scheduled successor created while predecessor still active          | 1h  | —          | — **BLOCKED** (needs a live reproduction) |
+| t002 | Twin pending: scheduled successor created while predecessor still active — **BLOCKED: transferred** | 1h | w5/069 |
 | t003 | Trigger Run disabled in UI while the server preempts by design                    | 30m | —          | — **DONE** |
 | t004 | Render parity + docs (cron-runs.md single-execution guarantee)                    | 20m | t001–t003  | — **DONE** (scoped to t001/t003) |
 | t005 | Test coverage (controller-level resurrection + projection tests)                   | 45m | t004       | — **DONE** (scoped to t001/t003) |
-| t006 | Closeout (live re-probe with a failing cron)                                      | 15m | t005       | — **BLOCKED** (rides t002) |
+| t006 | Closeout (live re-probe with a failing cron) — **BLOCKED: transferred** | 15m | w5/069 |
 ## Blocked on
 
 **t002 needs a live reproduction that only the user can authorize** — and so
