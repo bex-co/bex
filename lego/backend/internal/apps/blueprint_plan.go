@@ -396,6 +396,7 @@ func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.Datab
 	}
 	if present("ipAllowList") {
 		dst.IPAllowList = canonicalSlice(want.IPAllowList)
+		dst.Public = len(want.IPAllowList) > 0
 	}
 	if present("readReplicas") {
 		dst.ReadReplicas = canonicalSlice(want.ReadReplicas)
@@ -466,6 +467,7 @@ func ApplyBlueprintKeyValueSpec(dst *appv1alpha1.KeyValueSpec, want appv1alpha1.
 	}
 	if present("ipAllowList") {
 		dst.IPAllowList = canonicalSlice(want.IPAllowList)
+		dst.Public = len(want.IPAllowList) > 0
 	}
 	if present("maxmemoryPolicy") {
 		dst.MaxmemoryPolicy = want.MaxmemoryPolicy

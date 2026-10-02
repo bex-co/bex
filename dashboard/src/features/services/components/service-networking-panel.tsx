@@ -70,7 +70,7 @@ export function ServiceNetworkingPanel({
           }}
           labels={{
             hint: t("services.networkingHint"),
-            open: t("services.networkingOpen"),
+            empty: t("services.networkingOpen"),
             descriptionPlaceholder: t("services.networkingEntryDescription"),
             cidr: t("services.networkingCIDR"),
             cidrRule: (number) => t("services.networkingCIDRRule", { number }),

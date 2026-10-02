@@ -1795,25 +1795,11 @@ func TestAllowListWritePublishesAPrivateStore(t *testing.T) {
 		}
 	})
 
-	t.Run("MCP update_key_value", func(t *testing.T) {
-		svc, cl := newService()
-		seedPrivateKeyValue(t, cl, "pub-mcp")
-		list := entries
-		if _, err := svc.UpdateKeyValue(context.Background(), "pub-mcp", KeyValuePatch{IPAllowList: &list}); err != nil {
-			t.Fatalf("MCP-shaped patch => %v", err)
-		}
-		if spec := kvSpec(t, cl, "pub-mcp"); !spec.Public {
-			t.Fatalf("MCP allowlist did not publish: %+v", spec)
-		}
-	})
 }
 
-// TestPublishIsOneWayUntilExplicitlyWithdrawn pins the deliberate asymmetry.
-// Clearing the allowlist is how a tenant opens the endpoint to ALL source IPs
-// (`keyvalues update --clear-ip-allow-list`) — Render's empty list means "open",
-// not "off" — so it must not tear down a live external endpoint that running
-// clients are using. Withdrawing is therefore always explicit.
-func TestPublishIsOneWayUntilExplicitlyWithdrawn(t *testing.T) {
+// TestAllowListClearWithdrawsExternalAccess pins Render's explicit clear intent.
+// An explicit Bex public override remains available for legacy open endpoints.
+func TestAllowListClearWithdrawsExternalAccess(t *testing.T) {
 	svc, cl := newService()
 	seedPrivateKeyValue(t, cl, "sticky")
 	ctx := context.Background()
@@ -1822,18 +1808,17 @@ func TestPublishIsOneWayUntilExplicitlyWithdrawn(t *testing.T) {
 		t.Fatalf("publish => %v", err)
 	}
 
-	// Clearing keeps it published — and open.
+	// Clearing blocks new external connections by withdrawing the route.
 	empty := []core.IPAllowListEntry{}
 	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{IPAllowList: &empty}); err != nil {
 		t.Fatalf("clear => %v", err)
 	}
-	if spec := kvSpec(t, cl, "sticky"); !spec.Public || len(spec.IPAllowList) != 0 {
-		t.Fatalf("clearing the allowlist must not unpublish: %+v", spec)
+	if spec := kvSpec(t, cl, "sticky"); spec.Public || len(spec.IPAllowList) != 0 {
+		t.Fatalf("clearing the allowlist must withdraw external access: %+v", spec)
 	}
 
-	// Withdrawing is explicit, and keeps whatever allowlist is on file.
-	again := []core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}
-	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{IPAllowList: &again}); err != nil {
+	// Explicit public:false retains saved rules.
+	if _, err := svc.UpdateKeyValue(ctx, "sticky", KeyValuePatch{IPAllowList: &entries}); err != nil {
 		t.Fatalf("re-publish => %v", err)
 	}
 	off := false

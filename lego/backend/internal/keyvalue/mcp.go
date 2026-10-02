@@ -58,8 +58,8 @@ type createKeyValueArgs struct {
 	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
 	Version       string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
 	StorageGB     int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
-	Public        bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
-	IPAllowList   []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
+	Public        bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint; defaults to false on this create tool, independently of the allowlist"`
+	IPAllowList   []string `json:"ipAllowList,omitempty" jsonschema:"CIDR restriction for the external endpoint when public:true; empty or omitted adds no resource-level IP restriction, and the create default remains private"`
 	// IPAllowListEntries is the description-carrying form (w4/m24); when
 	// present it wins over ipAllowList.
 	IPAllowListEntries []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
@@ -84,12 +84,12 @@ type updateKeyValueArgs struct {
 	Plan             *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, starter, standard). The operator reconciles the new resource requests on the next sync, and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	MaxmemoryPolicy  *string                  `json:"maxmemoryPolicy,omitempty" jsonschema:"the eviction policy at the memory budget, e.g. noeviction (job queue) or allkeys-lru (cache); underscore or hyphen forms both accepted"`
 	PersistenceMode  *string                  `json:"persistenceMode,omitempty" jsonschema:"the durability setting: journal-snapshot (AOF + RDB, durable), snapshot (RDB only), or off (in-memory cache, lost on restart); underscore or hyphen forms both accepted"`
-	IPAllowList      *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to clear it (open to all source IPs)"`
+	IPAllowList      *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the external-endpoint CIDR allowlist with these {cidrBlock, description} entries; [] disables external connections, a nonempty list enables matching sources, omission preserves intent; an explicit public value wins"`
 	IPAllowListCidrs *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	// Confirm is the protected-environment phrase a durability, eviction or
 	// rename change needs on a member of a protected environment (w4/m127).
 	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks a durability, eviction or rename change"`
-	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint. Adding a nonempty ipAllowList already publishes the store; clearing the list does NOT withdraw it, so pass public:false to take the endpoint down explicitly"`
+	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint; overrides publication inferred from ipAllowList in the same call. public:true with [] deliberately enables external access without resource-level IP restrictions; environment rules still apply"`
 	DryRun  bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview without any writes"`
 }
 
@@ -168,7 +168,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_key_value",
-		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy), the durability setting (persistenceMode: journal-snapshot | snapshot | off), and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list (pass [] to clear it, opening the endpoint to all source IPs). A nonempty ipAllowList also PUBLISHES a private store — that is Render's enabling event — while clearing the list deliberately leaves it published; pass public:false to withdraw the external endpoint. A persistenceMode change re-derives the AOF/RDB flags and rolls the pod on the next sync. Pass dryRun:true to validate and preview without writes. Also carries the name and the plan — a plan change is billable. This tool replaces the retired set_key_value_maxmemory_policy / set_key_value_ip_allow_list (w1/m71) and rename_key_value / update_key_value_plan (w1/m74); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
+		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy), the durability setting (persistenceMode: journal-snapshot | snapshot | off), and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list. Pass [] to disable external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. A persistenceMode change re-derives the AOF/RDB flags and rolls the pod on the next sync. Pass dryRun:true to validate and preview without writes. Also carries the name and the plan — a plan change is billable. This tool replaces the retired set_key_value_maxmemory_policy / set_key_value_ip_allow_list (w1/m71) and rename_key_value / update_key_value_plan (w1/m74); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 		if err != nil {

@@ -514,19 +514,15 @@ func generateDatabaseEntry(d *appv1alpha1.Database) map[string]any {
 	if d.Spec.DatabaseUser != "" {
 		entry["user"] = d.Spec.DatabaseUser
 	}
-	if len(d.Spec.IPAllowList) > 0 {
-		entry["ipAllowList"] = allowListEntries(d.Spec.IPAllowList)
-	}
+	entry["ipAllowList"] = datastoreAllowListEntries(d.Spec.Public, d.Spec.IPAllowList)
 	return entry
 }
 
 func generateKeyValueEntry(kv *appv1alpha1.KeyValue) map[string]any {
 	entry := map[string]any{
-		"name": kv.Spec.Name,
-		"type": "keyvalue",
-		// ipAllowList is required by the schema for key value instances; an
-		// empty list is the explicit internal-only shape.
-		"ipAllowList": allowListEntries(kv.Spec.IPAllowList),
+		"name":        kv.Spec.Name,
+		"type":        "keyvalue",
+		"ipAllowList": datastoreAllowListEntries(kv.Spec.Public, kv.Spec.IPAllowList),
 	}
 	if kv.Spec.Plan != "" && kv.Spec.Plan != tiers.Valkey.Default().ID {
 		entry["plan"] = kv.Spec.Plan
@@ -540,7 +536,15 @@ func generateKeyValueEntry(kv *appv1alpha1.KeyValue) map[string]any {
 	return entry
 }
 
-func allowListEntries(entries []appv1alpha1.IPAllowEntry) []map[string]any {
+// Render has no separate public toggle, so export effective access. Inactive
+// rules on private datastores cannot be retained, and legacy public datastores
+// with no rules need explicit unrestricted rules for both address families.
+func datastoreAllowListEntries(public bool, entries []appv1alpha1.IPAllowEntry) []map[string]any {
+	if !public {
+		entries = nil
+	} else if len(entries) == 0 {
+		entries = []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "::/0"}}
+	}
 	out := make([]map[string]any, 0, len(entries))
 	for _, e := range entries {
 		entry := map[string]any{"source": e.CIDR}

@@ -13,17 +13,10 @@ import { useKeyValueNetworking } from "@/features/keyvalue/hooks/use-key-value-n
 /**
  * The Key Value detail's Networking section: the external-endpoint IP
  * allowlist (editable CIDR list) — Render's Networking control, mirroring the
- * allowlist section of databases' AccessControlPanel. The allowlist only gates
- * the public SNI endpoint, so an internal-only store shows a note instead of
- * pretending the list has any effect.
+ * allowlist section of databases' AccessControlPanel. Saving rules enables
+ * external access; saving an empty list disables it. Internal access is unchanged.
  */
-export function KeyValueNetworkingPanel({
-  id,
-  isPublic,
-}: {
-  id: string;
-  isPublic: boolean;
-}) {
+export function KeyValueNetworkingPanel({ id }: { id: string }) {
   const { t } = useTranslations();
   const networking = useKeyValueNetworking(id);
 
@@ -34,11 +27,11 @@ export function KeyValueNetworkingPanel({
         <CardDescription>{t("keyvalue.networkingDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {isPublic ? null : (
+        {networking.isPublic === false ? (
           <p className="text-xs text-muted-foreground">
             {t("keyvalue.networkingInternalOnly")}
           </p>
-        )}
+        ) : null}
         {/* key remounts the editable draft from the server list whenever it
             changes (e.g. after a save), avoiding an effect-based state sync. */}
         <IPAllowListEditor
@@ -46,9 +39,17 @@ export function KeyValueNetworkingPanel({
           entries={networking.allowList}
           saving={networking.savingAllowList}
           onSave={networking.saveAllowList}
+          allowUnchangedSave={
+            networking.isPublic != null &&
+            networking.isPublic !== Boolean(networking.allowList.length)
+          }
           labels={{
             hint: t("keyvalue.networkingHint"),
-            open: t("keyvalue.networkingOpen"),
+            empty: t(
+              networking.isPublic && networking.allowList.length === 0
+                ? "keyvalue.networkingPublicEmpty"
+                : "keyvalue.networkingEmpty",
+            ),
             descriptionPlaceholder: t("keyvalue.networkingEntryDescription"),
             cidr: t("keyvalue.networkingCIDR"),
             cidrRule: (number) => t("keyvalue.networkingCIDRRule", { number }),

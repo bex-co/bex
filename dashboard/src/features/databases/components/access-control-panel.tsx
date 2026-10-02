@@ -65,13 +65,26 @@ function AllowListSection({ access }: { access: Access }) {
   return (
     <section className="space-y-2">
       <h4 className="text-sm font-medium">{t("databases.accessAllowList")}</h4>
+      {access.isPublic === false ? (
+        <p className="text-xs text-muted-foreground">
+          {t("databases.accessAllowListInternalOnly")}
+        </p>
+      ) : null}
       <IPAllowListEditor
         entries={access.allowList}
         saving={access.savingAllowList}
         onSave={access.saveAllowList}
+        allowUnchangedSave={
+          access.isPublic != null &&
+          access.isPublic !== Boolean(access.allowList.length)
+        }
         labels={{
           hint: t("databases.accessAllowListHint"),
-          open: t("databases.accessAllowListOpen"),
+          empty: t(
+            access.isPublic && access.allowList.length === 0
+              ? "databases.accessAllowListPublicEmpty"
+              : "databases.accessAllowListEmpty",
+          ),
           descriptionPlaceholder: t("databases.accessAllowListDescription"),
           cidr: t("databases.accessAllowListCIDR"),
           cidrRule: (number) =>

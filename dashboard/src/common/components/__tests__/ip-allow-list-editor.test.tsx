@@ -6,7 +6,7 @@ import type { IPAllowListEntryDraft } from "@/common/lib/ip-allow-list";
 
 const labels = {
   hint: "Only these CIDRs may reach the endpoint.",
-  open: "Open to all source IPs.",
+  empty: "Open to all source IPs.",
   descriptionPlaceholder: "Description (optional)",
   cidr: "New CIDR block",
   cidrRule: (number: number) => `CIDR block for rule ${number}`,

@@ -19,12 +19,21 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
+	"io"
+	"math/big"
 	"net"
 	"net/netip"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/operator/internal/sniproxy"
@@ -170,6 +179,44 @@ func TestRouterResolve(t *testing.T) {
 	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("203.0.113.20")); ok {
 		t.Error("source outside the environment allowlist resolved")
 	}
+	db.Spec.IPAllowList = append(db.Spec.IPAllowList, appv1alpha1.IPAllowEntry{CIDR: "2001:db8::/32"})
+	db.Spec.EnvironmentIPAllowList = append(db.Spec.EnvironmentIPAllowList, "2001:db8:1::/48")
+	if err := r.set(db); err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range tests {
+		if !tt.wantOk {
+			continue
+		}
+		for _, source := range []struct {
+			ip   string
+			want bool
+		}{
+			{"2001:db8:1::9", true},
+			{"2001:db8:2::9", false},
+			{"2001:db9::9", false},
+		} {
+			if _, ok := r.resolve(tt.sni, netip.MustParseAddr(source.ip)); ok != source.want {
+				t.Errorf("resolve(%s, %s) = %v, want %v", tt.sni, source.ip, ok, source.want)
+			}
+		}
+	}
+	// Explicit clears disable publication. Preserve the empty-layer meaning
+	// for legacy public CRs, including their inherited environment restriction.
+	db.Spec.IPAllowList = nil
+	if err := r.set(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("203.0.113.20")); ok {
+		t.Error("empty resource layer bypassed the environment allowlist")
+	}
+	db.Spec.EnvironmentIPAllowList = nil
+	if err := r.set(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("198.51.100.9")); !ok {
+		t.Error("legacy public/empty resource lost its unrestricted route")
+	}
 	db.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "broken"}}
 	if err := r.set(db); err == nil {
 		t.Error("invalid allowlist must fail source health")
@@ -188,6 +235,173 @@ func TestRouterResolve(t *testing.T) {
 	if !r.healthy() {
 		t.Error("deleting the invalid Database did not restore source health")
 	}
+}
+
+// Exercise the actual TCP/TLS forwarding boundary for every PostgreSQL name.
+// The controlled TLS peer echoes a probe; datastore authentication and SQL are
+// separately covered by live acceptance. A rejected route must close before
+// TLS completes, while the same backend and certificate remain usable.
+func TestPublicAccessWithdrawalClosesDatabaseTLSRoutes(t *testing.T) {
+	hosts := []string{"mydb.db.bex.co", "mydb-pool.db.bex.co", "mydb-ro-east.db.bex.co"}
+	certificate, roots := databaseTestCertificate(t, hosts)
+	backend, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{
+		Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS12,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	backendDone := make(chan struct{})
+	go func() {
+		defer close(backendDone)
+		for {
+			conn, err := backend.Accept()
+			if err != nil {
+				return
+			}
+			_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
+			request := make([]byte, len("probe\n"))
+			if _, err := io.ReadFull(conn, request); err == nil && string(request) == "probe\n" {
+				_, _ = conn.Write([]byte("42\n"))
+			}
+			_ = conn.Close()
+		}
+	}()
+	t.Cleanup(func() {
+		_ = backend.Close()
+		select {
+		case <-backendDone:
+		case <-time.After(5 * time.Second):
+			t.Error("TLS backend did not stop")
+		}
+	})
+	proxy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = proxy.Close() }()
+	router := newRouter("db.bex.co")
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "default"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Public: true, Pooler: true,
+			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "east"}},
+			IPAllowList:  []appv1alpha1.IPAllowEntry{{CIDR: "127.0.0.1/32"}},
+		},
+	}
+	apply := func() {
+		t.Helper()
+		if err := router.set(db); err != nil {
+			t.Fatal(err)
+		}
+		// Substitute the hermetic backend for cluster DNS without changing
+		// route membership or allowlist admission built by router.set.
+		router.mu.Lock()
+		for _, routes := range router.hosts {
+			for i := range routes {
+				routes[i].backend = backend.Addr().String()
+			}
+		}
+		router.mu.Unlock()
+	}
+	meter := sniproxy.NewByteMeter(prometheus.NewRegistry(), "pg_proxy", "postgres")
+	probe := func(host string, throughProxy, wantAllowed bool) {
+		t.Helper()
+		address := backend.Addr().String()
+		var handled chan struct{}
+		if throughProxy {
+			address = proxy.Addr().String()
+			handled = make(chan struct{})
+			go func() {
+				defer close(handled)
+				conn, err := proxy.Accept()
+				if err == nil {
+					handleConn(conn, router, meter, nil, sniproxy.NewLimiter(0, 0), 0, 0, testLogger{})
+				}
+			}()
+		}
+		raw, err := net.DialTimeout("tcp", address, time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			_ = raw.Close()
+			if handled != nil {
+				select {
+				case <-handled:
+				case <-time.After(5 * time.Second):
+					t.Error("proxy connection did not stop")
+				}
+			}
+		}()
+		_ = raw.SetDeadline(time.Now().Add(3 * time.Second))
+		client := tls.Client(raw, &tls.Config{RootCAs: roots, ServerName: host, MinVersion: tls.VersionTLS12})
+		err = client.Handshake()
+		if !wantAllowed {
+			if err == nil {
+				t.Fatalf("%s completed TLS after external access was cleared", host)
+			}
+			if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
+				t.Fatalf("%s timed out instead of closing the withdrawn route: %v", host, err)
+			}
+			return
+		}
+		if err != nil {
+			t.Fatalf("%s TLS handshake: %v", host, err)
+		}
+		if _, err := client.Write([]byte("probe\n")); err != nil {
+			t.Fatal(err)
+		}
+		response := make([]byte, len("42\n"))
+		if _, err := io.ReadFull(client, response); err != nil || string(response) != "42\n" {
+			t.Fatalf("%s transport response = %q, error %v", host, response, err)
+		}
+	}
+	apply()
+	for _, host := range hosts {
+		probe(host, true, true)
+	}
+	db.Spec.Public = false
+	db.Spec.IPAllowList = nil
+	apply()
+	for _, host := range hosts {
+		probe(host, true, false)
+		probe(host, false, true)
+	}
+	db.Spec.Public = true
+	db.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "127.0.0.1/32"}}
+	apply()
+	for _, host := range hosts {
+		probe(host, true, true)
+	}
+}
+
+type testLogger struct{}
+
+func (testLogger) Info(string, ...any)         {}
+func (testLogger) Error(error, string, ...any) {}
+
+func databaseTestCertificate(t *testing.T, hosts []string) (tls.Certificate, *x509.CertPool) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1), DNSNames: hosts,
+		NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	certificate, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(certificate)
+	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}, roots
 }
 
 // TestRouterHostnameIndexIsExact pins codex-security round 12, finding 9: the

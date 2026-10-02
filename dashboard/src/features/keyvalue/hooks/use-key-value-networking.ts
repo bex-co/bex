@@ -59,6 +59,7 @@ export function useKeyValueNetworking(id: string) {
 
   return {
     allowList,
+    isPublic: allowListQuery.data?.keyValue?.public,
     loading: allowListQuery.loading,
     savingAllowList,
     saveAllowList,

@@ -10,7 +10,7 @@ import {
 
 interface IPAllowListEditorLabels {
   hint: string;
-  open: string;
+  empty: string;
   descriptionPlaceholder: string;
   /** Accessible name for the "add" CIDR input (placeholder stays the example). */
   cidr: string;
@@ -49,11 +49,14 @@ export function IPAllowListEditor({
   labels,
   saving,
   onSave,
+  allowUnchangedSave = false,
 }: {
   entries: IPAllowListEntryDraft[];
   labels: IPAllowListEditorLabels;
   saving: boolean;
   onSave: (entries: IPAllowListEntryDraft[]) => Promise<boolean>;
+  /** Datastore writes can change external access even when entries match. */
+  allowUnchangedSave?: boolean;
 }) {
   // Keep keys independent of editable values and positions so typing, moving
   // and removing rows preserve the surviving inputs' focus and caret.
@@ -120,7 +123,7 @@ export function IPAllowListEditor({
     <section className="space-y-2">
       <p className="text-xs text-muted-foreground">{labels.hint}</p>
       {draft.length === 0 ? (
-        <span className="text-sm text-muted-foreground">{labels.open}</span>
+        <span className="text-sm text-muted-foreground">{labels.empty}</span>
       ) : (
         <div className="space-y-2">
           {draft.map(({ id, entry }, index) => (
@@ -222,7 +225,7 @@ export function IPAllowListEditor({
           type="button"
           size="sm"
           onClick={() => void onSave(draftEntries)}
-          disabled={!dirty || saving || draftInvalid}
+          disabled={(!dirty && !allowUnchangedSave) || saving || draftInvalid}
         >
           {saving ? <Loader2 className="animate-spin" /> : null}
           {labels.save}
