@@ -30,7 +30,10 @@
       "committed": "paketobuildpacks/run-jammy-base@sha256:33c1e0d7158b09c70d3200fdbe9957075cd39dd4e703a3e6ed384475b9793e2b",
       "resolved_at": "2026-09-30T18:08:55Z",
       "source": "Docker Hub paketobuildpacks/run-jammy-base:latest multi-arch index",
-      "files": ["deploy/gitops/charts/kpack/platform.yaml"]
+      "files": [
+        "deploy/gitops/charts/kpack/platform.yaml",
+        "deploy/cnb-run/Dockerfile"
+      ]
     },
     {
       "id": "helper-aws-cli",

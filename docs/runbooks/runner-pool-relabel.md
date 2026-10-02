@@ -16,7 +16,7 @@ The 2026-09-05 repair adds each service's matching pool label and separates its 
 
 Classified by what each job can touch — secrets, `environment:` gates, and write-capable tokens — not by name. `scripts/github-actions-validate.sh` re-derives the credential side mechanically on every run.
 
-**`bex-production` (13 jobs)** — repository/environment secrets, write tokens, cluster access:
+**`bex-production` (14 jobs)** — repository/environment secrets, write tokens, cluster access:
 
 | workflow | job(s) | evidence |
 | --- | --- | --- |
@@ -30,6 +30,7 @@ Classified by what each job can touch — secrets, `environment:` gates, and wri
 | `cli-release.yml` | both jobs | `environment: production-release`; tap push key; release write token |
 | `cli-release-staleness.yml` | `staleness` | `issues: write` token |
 | `build-toolchain-freshness.yml` | `freshness` | `issues: write` token |
+| `cnb-run-image.yml` | `build` | registry-push `GITHUB_TOKEN` (`packages: write`) + cosign OIDC only, main-only (w1/m169) |
 
 **`bex-ci` (21 jobs)** — PR-capable and credential-free: the four reusable test workflows (`backend-test`, `dashboard-test`, `operator-test`, `opensandbox-controller-test`), `cli-test`, `go-lint`, `govulncheck`, `docs`, `scripts`, `gitops`, `clusterapi-validate`, `mobile-test`, `render-schema-drift` (2), `egress-meter-live` (kind-isolated, read-only), `infra.yml`'s credential-less `validate`, `deploy.yml`'s `check-supersession` + `secret-scan` (read-only over repo content), and the three `lego/operator` workflows (`test`, `test-e2e`, `lint`).
 

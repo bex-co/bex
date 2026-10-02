@@ -30,16 +30,19 @@ CANONICAL_PIN_SITES = (
     "lego/operator/internal/publish/publish.go",
     "deploy/gitops/charts/kpack/platform.yaml",
     "deploy/gitops/base/build-image-prewarm.yaml",
+    "deploy/cnb-run/Dockerfile",
 )
 
 REGISTRY_API = {
     "docker.io": "registry-1.docker.io",
     "gcr.io": "gcr.io",
+    "ghcr.io": "ghcr.io",
     "quay.io": "quay.io",
 }
 REGISTRY_AUTH = {
     "docker.io": ("https://auth.docker.io/token", "registry.docker.io"),
     "gcr.io": ("https://gcr.io/v2/token", "gcr.io"),
+    "ghcr.io": ("https://ghcr.io/token", "ghcr.io"),
     "quay.io": ("https://quay.io/v2/auth", "quay.io"),
 }
 MANIFEST_ACCEPT = (
