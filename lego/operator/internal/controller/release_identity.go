@@ -71,26 +71,27 @@ type artifactIdentityInput struct {
 }
 
 type releaseIdentityInput struct {
-	ContainerPolicy            string               `json:"containerPolicy,omitempty"`
-	Artifact                   string               `json:"artifact"`
-	Type                       string               `json:"type"`
-	Command                    string               `json:"command,omitempty"`
-	PublishPath                string               `json:"publishPath,omitempty"`
-	ExternalRegistryPullSecret string               `json:"externalRegistryPullSecret,omitempty"`
-	RegistryCredentialID       *string              `json:"registryCredentialId,omitempty"`
-	StartCommand               string               `json:"startCommand,omitempty"`
-	Port                       int32                `json:"port"`
-	PortMode                   string               `json:"portMode,omitempty"`
-	Env                        []appv1alpha1.EnvVar `json:"env,omitempty"`
-	EnvFromSecret              string               `json:"envFromSecret,omitempty"`
-	EnvFromSecrets             []string             `json:"envFromSecrets,omitempty"`
-	FilesFromSecrets           []string             `json:"filesFromSecrets,omitempty"`
-	HealthCheckPath            string               `json:"healthCheckPath,omitempty"`
-	MaxShutdownDelaySeconds    *int32               `json:"maxShutdownDelaySeconds,omitempty"`
-	PreDeployCommand           string               `json:"preDeployCommand,omitempty"`
-	RestartedAt                string               `json:"restartedAt,omitempty"`
-	Tier                       string               `json:"tier,omitempty"`
-	Disk                       *releaseDiskIdentity `json:"disk,omitempty"`
+	ReleaseConfig              *appv1alpha1.ReleaseConfigReference `json:"releaseConfig,omitempty"`
+	ContainerPolicy            string                              `json:"containerPolicy,omitempty"`
+	Artifact                   string                              `json:"artifact"`
+	Type                       string                              `json:"type"`
+	Command                    string                              `json:"command,omitempty"`
+	PublishPath                string                              `json:"publishPath,omitempty"`
+	ExternalRegistryPullSecret string                              `json:"externalRegistryPullSecret,omitempty"`
+	RegistryCredentialID       *string                             `json:"registryCredentialId,omitempty"`
+	StartCommand               string                              `json:"startCommand,omitempty"`
+	Port                       int32                               `json:"port"`
+	PortMode                   string                              `json:"portMode,omitempty"`
+	Env                        []appv1alpha1.EnvVar                `json:"env,omitempty"`
+	EnvFromSecret              string                              `json:"envFromSecret,omitempty"`
+	EnvFromSecrets             []string                            `json:"envFromSecrets,omitempty"`
+	FilesFromSecrets           []string                            `json:"filesFromSecrets,omitempty"`
+	HealthCheckPath            string                              `json:"healthCheckPath,omitempty"`
+	MaxShutdownDelaySeconds    *int32                              `json:"maxShutdownDelaySeconds,omitempty"`
+	PreDeployCommand           string                              `json:"preDeployCommand,omitempty"`
+	RestartedAt                string                              `json:"restartedAt,omitempty"`
+	Tier                       string                              `json:"tier,omitempty"`
+	Disk                       *releaseDiskIdentity                `json:"disk,omitempty"`
 }
 
 // releaseDiskIdentity is the part of a persistent disk that shapes the pod:
@@ -150,6 +151,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		healthCheckPath = "/"
 	}
 	release := identityFingerprint("release-v1", releaseIdentityInput{
+		ReleaseConfig:              spec.ReleaseConfig,
 		ContainerPolicy:            spec.ContainerPolicy,
 		Artifact:                   artifact,
 		Type:                       serviceType,
@@ -205,6 +207,9 @@ type appReleaseDecision struct {
 // pending slot. Prebuilt-image, suspended, and direct-static-publish Apps have no
 // build Job to protect and never pin.
 func buildRunning(app *appv1alpha1.App) bool {
+	if app.ActiveReleaseConfig() != nil {
+		return false
+	}
 	if app.Spec.Repo == "" || app.Spec.Image != "" || app.Spec.Suspended {
 		return false
 	}
@@ -327,6 +332,9 @@ func successfulReleaseGeneration(app *appv1alpha1.App) int64 {
 // several pre-deploy reconciles while Status.Image intentionally remains the
 // previous healthy release.
 func reusableArtifactImage(app *appv1alpha1.App, decision appReleaseDecision) (string, bool) {
+	if ref := app.ActiveReleaseConfig(); ref != nil {
+		return ref.Image, true
+	}
 	if decision.sourcePending && app.Status.Image != "" {
 		return app.Status.Image, true
 	}

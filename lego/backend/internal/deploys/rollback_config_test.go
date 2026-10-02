@@ -32,24 +32,12 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// rollback_config_test.go pins w1/m152 t009. Live on 2026-09-14 a rollback to D1
-// (no MESSAGE) kept serving D2's MESSAGE=v2 and left autoDeploy on; Render restores
-// the target's env vars and start command, and turns auto-deploy off for a
-// dashboard rollback only.
-
-type recordingRestorer struct {
-	calls []struct{ env, files map[string]string }
-	err   error
-}
-
-func (r *recordingRestorer) RestoreEnvironment(_ context.Context, _ string, env, files map[string]string) (bool, error) {
-	r.calls = append(r.calls, struct{ env, files map[string]string }{env, files})
-	return true, r.err
-}
+// Rollback selects historical runtime inputs while saved settings remain ready
+// for the next standard deploy (w5/m107).
 
 // rollbackFixture: D1 (generation 1) live and served, D2 (generation 2) the current
 // release. The operator recorded D1's release as the snapshots and record below.
-func rollbackFixture(t *testing.T, withRecord bool) (*Service, client.Client, *recordingRestorer, store.Deploy) {
+func rollbackFixture(t *testing.T, withRecord bool) (*Service, client.Client, store.Deploy) {
 	t.Helper()
 	ctx := context.Background()
 	ds := newFakeStore()
@@ -63,12 +51,15 @@ func rollbackFixture(t *testing.T, withRecord bool) (*Service, client.Client, *r
 	}
 
 	app := sampleApp("web", "srv-1")
+	app.Generation = 2
 	app.Spec.Image = "web:v2"
 	app.Spec.EnvFromSecret = "web-env"
 	app.Spec.StartCommand = "./server --v2"
 	app.Spec.AutoDeploy = true
 	app.Spec.Tier = "standard" // plan must NOT roll back
 	objs := []client.Object{app,
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "web-env", Namespace: "default"}, Data: map[string][]byte{"KEEP": []byte("saved-new"), "ADDED": []byte("B")}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "web-files", Namespace: "default"}, Data: map[string][]byte{"config.txt": []byte("file-B")}},
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ReleaseSnapshotName("web-env", 1), Namespace: "default"},
 			Data:       map[string][]byte{"KEEP": []byte("old")},
@@ -82,44 +73,86 @@ func rollbackFixture(t *testing.T, withRecord bool) (*Service, client.Client, *r
 		})
 	}
 	svc, cl := newService(ds, objs...)
-	restorer := &recordingRestorer{}
-	svc.Environment = restorer
-	return svc, cl, restorer, d1
+	return svc, cl, d1
 }
 
-func TestRollbackRestoresTheTargetsEnvironmentAndStartCommand(t *testing.T) {
-	svc, cl, restorer, d1 := rollbackFixture(t, true)
+func TestRollbackPreservesSavedSettingsAndSelectsTargetRuntime(t *testing.T) {
+	svc, cl, d1 := rollbackFixture(t, true)
 	if _, err := svc.Rollback(context.Background(), "web", d1.ID); err != nil {
-		t.Fatalf("Rollback: %v", err)
+		t.Fatal(err)
 	}
-	if len(restorer.calls) != 1 {
-		t.Fatalf("RestoreEnvironment calls = %d, want 1", len(restorer.calls))
-	}
-	call := restorer.calls[0]
-	if len(call.env) != 1 || call.env["KEEP"] != "old" {
-		t.Errorf("restored env = %v, want exactly D1's {KEEP: old}", call.env)
-	}
-	if len(call.files) != 0 {
-		t.Errorf("restored files = %v, want none — D1 had no files snapshot", call.files)
-	}
+	assertSavedRollbackSettings(t, cl)
 	got := getApp(t, cl, "web")
-	if got.Spec.StartCommand != "./server --v1" {
-		t.Errorf("start command = %q, want D1's ./server --v1", got.Spec.StartCommand)
+	selected := got.Spec.ReleaseConfig
+	if selected == nil || selected.Generation != 3 || selected.SourceGeneration != 1 || selected.Image != "web:v1" || selected.PreserveGroupValues {
+		t.Fatalf("runtime selection = %+v, want rollback of generation1 in release3", selected)
 	}
-	if got.Spec.Image != "web:v1" {
-		t.Errorf("image = %q, want web:v1", got.Spec.Image)
+	if len(svc.Store.(*fakeStore).setImage) != 0 {
+		t.Fatal("rollback changed the saved row image")
 	}
-	if got.Spec.Tier != "standard" {
-		t.Errorf("plan changed to %q — Render keeps the current plan on rollback", got.Spec.Tier)
-	}
-	// An API rollback (REST, MCP, GraphQL without the flag) leaves auto-deploy alone.
 	if !got.Spec.AutoDeploy {
-		t.Error("an API rollback turned auto-deploy off; Render does that for dashboard rollbacks only")
+		t.Fatal("API rollback disabled auto deploy")
 	}
+}
+
+func assertSavedRollbackSettings(t *testing.T, cl client.Client) {
+	t.Helper()
+	got := getApp(t, cl, "web")
+	if got.Spec.StartCommand != "./server --v2" || got.Spec.Image != "web:v2" || got.Spec.Tier != "standard" {
+		t.Fatalf("saved configuration was changed: command %q image %q tier %q", got.Spec.StartCommand, got.Spec.Image, got.Spec.Tier)
+	}
+	for _, tc := range []struct{ name, key, value string }{{"web-env", "KEEP", "saved-new"}, {"web-env", "ADDED", "B"}, {"web-files", "config.txt", "file-B"}} {
+		secret := &corev1.Secret{}
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: tc.name}, secret); err != nil {
+			t.Fatal(err)
+		}
+		if string(secret.Data[tc.key]) != tc.value {
+			t.Fatalf("saved %s/%s changed", tc.name, tc.key)
+		}
+	}
+}
+
+func TestRollbackRestartAndNextDeployKeepSeparateConfigurations(t *testing.T) {
+	ctx := context.Background()
+	svc, cl, d1 := rollbackFixture(t, true)
+	rolled, err := svc.Rollback(ctx, "web", d1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ds := svc.Store.(*fakeStore)
+	if _, err := ds.CloseDeploy(ctx, rolled.ID, store.DeployLive, "web:v1"); err != nil {
+		t.Fatal(err)
+	}
+	app := getApp(t, cl, "web")
+	app.Generation = 3
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(appv1alpha1.ReleaseRecordSpec{StartCommand: "./server --v1"})
+	if err := cl.Create(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: appv1alpha1.ReleaseRecordName("web", 3)}, Data: map[string][]byte{appv1alpha1.ReleaseRecordSpecKey: raw}}); err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := svc.Restart(ctx, "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := getApp(t, cl, "web").Spec.ReleaseConfig
+	if selected == nil || selected.SourceGeneration != 3 || selected.Generation != 4 || selected.Image != "web:v1" || !selected.PreserveGroupValues || restarted.Image != "web:v1" {
+		t.Fatalf("restart did not keep rollback runtime: %+v, %+v", selected, restarted)
+	}
+	assertSavedRollbackSettings(t, cl)
+	next, err := svc.Trigger(ctx, "web", TriggerParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if getApp(t, cl, "web").Spec.ReleaseConfig != nil || next.Image != "web:v2" {
+		t.Fatalf("normal deploy did not return to saved B: %+v", next)
+	}
+	assertSavedRollbackSettings(t, cl)
 }
 
 func TestDashboardRollbackTurnsAutoDeployOff(t *testing.T) {
-	svc, cl, _, d1 := rollbackFixture(t, true)
+	svc, cl, d1 := rollbackFixture(t, true)
 	if _, err := svc.Rollback(context.Background(), "web", d1.ID, RollbackOptions{DisableAutoDeploy: true}); err != nil {
 		t.Fatalf("Rollback: %v", err)
 	}
@@ -130,33 +163,38 @@ func TestDashboardRollbackTurnsAutoDeployOff(t *testing.T) {
 
 // No record: the target predates snapshots or was reclaimed. The rollback still
 // restores the image — it must not fail — but it must not invent a configuration.
-func TestRollbackWithoutARecordRestoresTheImageOnly(t *testing.T) {
-	svc, cl, restorer, d1 := rollbackFixture(t, false)
+func TestRollbackWithoutARecordSelectsOnlyTheImage(t *testing.T) {
+	svc, cl, d1 := rollbackFixture(t, false)
 	if _, err := svc.Rollback(context.Background(), "web", d1.ID); err != nil {
-		t.Fatalf("Rollback: %v", err)
+		t.Fatal(err)
 	}
-	if len(restorer.calls) != 0 {
-		t.Errorf("RestoreEnvironment called %d times with no record to restore from", len(restorer.calls))
-	}
-	got := getApp(t, cl, "web")
-	if got.Spec.Image != "web:v1" {
-		t.Errorf("image = %q, want web:v1", got.Spec.Image)
-	}
-	if got.Spec.StartCommand != "./server --v2" {
-		t.Errorf("start command = %q, want the current one left alone", got.Spec.StartCommand)
+	assertSavedRollbackSettings(t, cl)
+	selected := getApp(t, cl, "web").Spec.ReleaseConfig
+	if selected == nil || selected.SourceGeneration != 0 || selected.Image != "web:v1" {
+		t.Fatalf("legacy selection = %+v", selected)
 	}
 }
 
-// A failed restore fails the rollback before any release opens, rather than
-// rolling the old image against a half-restored environment.
-func TestRollbackFailsCleanlyWhenTheRestoreFails(t *testing.T) {
-	svc, cl, restorer, d1 := rollbackFixture(t, true)
-	restorer.err = core.ErrConflict
-	if _, err := svc.Rollback(context.Background(), "web", d1.ID); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("Rollback error = %v, want the restore's error", err)
+func TestRollbackRejectsCorruptRecordWithoutChangingSavedState(t *testing.T) {
+	ctx := context.Background()
+	svc, cl, d1 := rollbackFixture(t, true)
+	rec := &corev1.Secret{}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: appv1alpha1.ReleaseRecordName("web", 1)}, rec); err != nil {
+		t.Fatal(err)
 	}
-	if got := getApp(t, cl, "web"); got.Spec.Image != "web:v2" {
-		t.Errorf("image = %q after a failed restore; no release should have opened", got.Spec.Image)
+	rec.Data[appv1alpha1.ReleaseRecordSpecKey] = []byte("invalid json")
+	if err := cl.Update(ctx, rec); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Rollback(ctx, "web", d1.ID); err == nil {
+		t.Fatal("corrupt configuration record was accepted")
+	}
+	assertSavedRollbackSettings(t, cl)
+	if got := getApp(t, cl, "web"); got.Spec.ReleaseConfig != nil || got.Spec.RestartedAt != "" {
+		t.Fatal("failed rollback opened a release")
+	}
+	if len(svc.Store.(*fakeStore).byApp["srv-1"]) != 2 {
+		t.Fatal("failed rollback opened a deploy row")
 	}
 }
 
@@ -173,7 +211,7 @@ func TestGraphQLRollbackDisablesAutoDeployOnlyWhenAsked(t *testing.T) {
 		{"dashboard turns it off", ", disableAutoDeploy: true", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			svc, cl, _, d1 := rollbackFixture(t, true)
+			svc, cl, d1 := rollbackFixture(t, true)
 			schema, err := graphql.NewSchema(graphql.SchemaConfig{
 				Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 				Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
@@ -194,5 +232,51 @@ func TestGraphQLRollbackDisablesAutoDeployOnlyWhenAsked(t *testing.T) {
 				t.Errorf("autoDeploy = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// A failed configuration-only release can share the previous live image.
+// Recovery remains actionable, while repeating the selected live release does not.
+func TestRollbackCapabilitiesFollowSelectedReleaseAndConfigGeneration(t *testing.T) {
+	ctx := context.Background()
+	svc, cl, d1 := rollbackFixture(t, true)
+	app := getApp(t, cl, "web")
+	app.Spec.Image = "web:v1"
+	app.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "2"}
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	ds := svc.Store.(*fakeStore)
+	rows := ds.byApp["srv-1"]
+	for i := range rows {
+		if rows[i].ID == d1.ID {
+			rows[i].Status = store.DeployLive
+		} else {
+			rows[i].Status = store.DeployUpdateFailed
+		}
+	}
+	ds.byApp["srv-1"] = rows
+	live, _ := ds.GetDeploy(ctx, "srv-1", d1.ID)
+	if !RollbackActionable(app, live) {
+		t.Fatal("same-image configuration recovery was refused")
+	}
+	rolled, err := svc.Rollback(ctx, "web", d1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ds.CloseDeploy(ctx, rolled.ID, store.DeployLive, "web:v1"); err != nil {
+		t.Fatal(err)
+	}
+	app = getApp(t, cl, "web")
+	app.Spec.Image = "web:v2"
+	if err := cl.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	current, _ := ds.GetDeploy(ctx, "srv-1", rolled.ID)
+	if RollbackActionable(app, current) {
+		t.Fatal("already-selected live rollback was offered")
+	}
+	if _, err := svc.Rollback(ctx, "web", rolled.ID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("no-op rollback = %v, want conflict", err)
 	}
 }

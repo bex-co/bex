@@ -70,6 +70,17 @@ func TestGenerationOrDeletionPredicate(t *testing.T) {
 			t.Fatal("unrelated annotation update was admitted")
 		}
 	})
+
+	t.Run("admits explicit scale to an already-saved count", func(t *testing.T) {
+		updated := old.DeepCopy()
+		updated.Annotations = map[string]string{appv1alpha1.AnnotationReleaseConfigScaled: "1"}
+		if !p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: updated}) {
+			t.Fatal("historical runtime scale was filtered")
+		}
+		if p.Update(event.UpdateEvent{ObjectOld: updated, ObjectNew: updated.DeepCopy()}) {
+			t.Fatal("unchanged scale marker queued another reconcile")
+		}
+	})
 }
 
 func TestGenerationDeletionOrFinalizerPredicate(t *testing.T) {

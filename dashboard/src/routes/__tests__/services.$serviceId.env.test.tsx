@@ -15,14 +15,14 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 import { ServiceEnvPage } from "@/routes/services.$serviceId.env";
 
 const NOTICE =
-  "Saved changes aren't live yet — the deploy that carried them was canceled. They ship with the next deploy.";
+  "Saved changes aren't live yet. Use a standard deploy to apply them.";
 
-// w1/m152 t003: this page lists the SAVED values. After a canceled deploy those are
-// not what the service runs, and the page used to show them without saying so.
+// This page lists saved values. Cancellation, rollback and a restart of that
+// release can leave those values different from the running configuration.
 describe("ServiceEnvPage undeployed-changes notice", () => {
   beforeEach(() => useServer.mockReset());
 
-  it("says the saved values are not live after a canceled deploy", () => {
+  it("explains how to apply saved values that are not running", () => {
     useServer.mockReturnValue({ service: { undeployedChanges: true } });
     render(<ServiceEnvPage serviceId="srv-1" />);
     expect(screen.getByText(NOTICE)).toBeInTheDocument();

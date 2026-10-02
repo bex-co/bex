@@ -167,7 +167,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "rollback_deploy",
-		Description: "bex extension: roll a service back to a previously-live deploy's exact image — creates a fresh deploy restoring it, never rewrites history. Only a deploy that itself reached live is a valid target.",
+		Description: "bex extension: roll back to a previously-live deploy's artifact and retained configuration without overwriting saved settings. Creates a new deploy; missing historical configuration falls back to image only. Leaves auto-deploy unchanged.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
 		d, err := s.Rollback(ctx, in.ServiceID, in.DeployID)
 		if err != nil {

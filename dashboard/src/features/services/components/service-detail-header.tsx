@@ -299,9 +299,9 @@ export function ServiceDetailHeader({
       <HeaderFacts service={service} />
 
       {service.undeployedChanges ? (
-        // A canceled deploy left saved changes undeployed (w1/m152 t003). Before
-        // this the header said nothing, while the Environment tab showed the saved
-        // values as if they were running.
+        // Saved settings can differ from the runtime after a cancel or rollback;
+        // restarting preserves that runtime. Display the operator's distinction
+        // instead of inferring it from the most recent deploy's status.
         <p className="text-muted-foreground text-sm" role="status">
           {t("services.undeployedChangesHint")}
         </p>

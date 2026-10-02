@@ -110,3 +110,19 @@ func TestStaticSiteRollbackCapabilityMatchesTheVerb(t *testing.T) {
 		t.Error("a web service without an image stays ineligible: only static sites re-publish")
 	}
 }
+
+func TestStaticRollbackHonorsDashboardAutoDeployOption(t *testing.T) {
+	for _, dashboard := range []bool{false, true} {
+		ds := newFakeStore()
+		older, _ := liveStaticDeploys(t, ds)
+		app := staticSite()
+		app.Spec.AutoDeploy = true
+		svc, cl := newService(ds, app)
+		if _, err := svc.Rollback(context.Background(), "site", older.ID, RollbackOptions{DisableAutoDeploy: dashboard}); err != nil {
+			t.Fatal(err)
+		}
+		if got := getApp(t, cl, "site").Spec.AutoDeploy; got == dashboard {
+			t.Fatalf("dashboard=%v: autoDeploy=%v", dashboard, got)
+		}
+	}
+}

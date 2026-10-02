@@ -1,0 +1,5 @@
+--- FAIL: TestRollbackPreservesSavedSettingsAndSelectsTargetRuntime (0.04s)
+    rollback_config_test.go:84: saved configuration was changed: command "./server --v2" image "web:v1" tier "standard"
+FAIL
+FAIL	github.com/bex-co/bex/lego/backend/internal/deploys	0.661s
+FAIL

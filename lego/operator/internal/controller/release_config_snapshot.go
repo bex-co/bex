@@ -197,6 +197,29 @@ func releaseConfigSources(app *appv1alpha1.App) []string {
 // references it, and a write failure leaves both the status and the template on
 // the pre-snapshot names, which is a correct state rather than a mixed one.
 func (r *AppReconciler) ensureReleaseConfigSnapshot(ctx context.Context, app *appv1alpha1.App) error {
+	if ref := app.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 && !canceledOverServed(app) {
+		return r.ensureSelectedReleaseConfig(ctx, app, ref)
+	}
+	return r.ensureSavedReleaseConfigSnapshot(ctx, app)
+}
+
+// ensureSelectedConfigBeforePlanning validates/materializes a Deployment's
+// historical inputs before the target instance count is used. It runs each
+// reconcile, so a lost selected Secret is never hidden by persisted status.
+func (r *AppReconciler) ensureSelectedConfigBeforePlanning(ctx context.Context, app *appv1alpha1.App) error {
+	if ref := app.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 && !canceledOverServed(app) {
+		return r.ensureSelectedReleaseConfig(ctx, app, ref)
+	}
+	return nil
+}
+
+// ensureSavedReleaseConfigSnapshot runs after the pre-deploy gate. Historical
+// inputs were checked before planning and must not be copied or checked twice
+// in this pass. Cron jobs use ensureReleaseConfigSnapshot once instead.
+func (r *AppReconciler) ensureSavedReleaseConfigSnapshot(ctx context.Context, app *appv1alpha1.App) error {
+	if ref := app.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 && !canceledOverServed(app) {
+		return nil
+	}
 	if err := r.adoptUnscopedSnapshots(ctx, app); err != nil {
 		return err
 	}
@@ -422,30 +445,13 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 	if gen <= 0 {
 		return nil
 	}
-	raw, err := json.Marshal(tmpl)
+	runtime, err := r.selectedRuntimeApp(ctx, app)
 	if err != nil {
 		return err
 	}
-	// The restorable spec rides the same record, so a rollback reads one object per
-	// target and the two can never describe different releases.
-	spec, err := json.Marshal(appv1alpha1.ReleaseRecordSpec{StartCommand: app.Spec.StartCommand})
-	if err != nil {
-		return err
-	}
-	rec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.ReleaseRecordName(app.Name, gen), Namespace: app.Namespace}}
-	_, err = controllerutil.CreateOrUpdate(ctx, r.uncachedSecretClient(), rec, func() error {
-		if rec.Labels == nil {
-			rec.Labels = map[string]string{}
-		}
-		rec.Labels[snapshotOfLabel] = app.Name + "-podtemplate"
-		rec.Labels[snapshotGenerationLabel] = strconv.FormatInt(gen, 10)
-		rec.Data = map[string][]byte{
-			appv1alpha1.ReleaseRecordPodTemplateKey: raw,
-			appv1alpha1.ReleaseRecordSpecKey:        spec,
-		}
-		return controllerutil.SetControllerReference(app, rec, r.Scheme)
-	})
-	return err
+	spec := releaseRecordSpec(runtime)
+	spec.SavedReplicas = new(app.Spec.Replicas)
+	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: spec, template: tmpl})
 }
 
 // servedPodTemplateForCancel returns the recorded pod template of the last served
@@ -521,7 +527,8 @@ func init() {
 // keeps that function under the cyclomatic ceiling.
 func (r *AppReconciler) afterServingDeployment(ctx context.Context, app *appv1alpha1.App, tmpl corev1.PodTemplateSpec, templateChanged, restored bool) {
 	settling := canceledOverServed(app)
-	app.Status.UndeployedChanges = settling
+	ref := app.ActiveReleaseConfig()
+	app.Status.UndeployedChanges = settling || (ref != nil && (ref.SourceGeneration == 0 || app.Status.UndeployedChanges))
 	if settling && templateChanged {
 		kind := cancelTemplateRestore
 		if !restored {
@@ -539,12 +546,16 @@ func (r *AppReconciler) afterServingDeployment(ctx context.Context, app *appv1al
 // afterServingDeployment with whether the pod template actually changed — which is
 // the difference between a rollout and a no-op.
 func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, params deploymentParams, restore *corev1.PodTemplateSpec) error {
+	runtime, err := r.selectedRuntimeApp(ctx, app)
+	if err != nil {
+		return err
+	}
 	var prior *corev1.PodTemplateSpec
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, dep, func() error {
 		if !dep.CreationTimestamp.IsZero() {
 			prior = dep.Spec.Template.DeepCopy()
 		}
-		applyDeploymentSpec(dep, app, params)
+		applyDeploymentSpec(dep, runtime, params)
 		if restore != nil {
 			dep.Spec.Template = *restore.DeepCopy()
 		}
