@@ -10,6 +10,20 @@ resources:
   - grafana-cli-analytics.sealedsecret.yaml
   - grafana-product-analytics.sealedsecret.yaml
 patches:
+  # The retained production WAL outgrew the shared 512Mi cap (w4/m144).
+  # Reserve a larger working set and bound the recovery attempt; local keeps
+  # the base budget. Existing-data replay/query peaks remain a rollout gate.
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: prometheus
+    patch: |-
+      - op: add
+        path: /spec/source/helm/parameters
+        value:
+          - { name: server.resources.requests.memory, value: 1Gi }
+          - { name: server.resources.limits.memory, value: 2Gi }
   # The shared controller values retain the local snapshot registry so the CAPD
   # mock remains usable. Production clears it because the secure namespace's
   # baseline PSS blocks the upstream commit Job (ADR042 D5); controller/committer

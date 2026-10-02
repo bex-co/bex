@@ -25,11 +25,11 @@ def yaml_objects(source, selector="."):
 def render_application(app, chart, temporary):
     helm = app["spec"]["source"]["helm"]
     values_file = temporary / "values.yaml"
-    values_file.write_text(helm["values"])
-    override_file = temporary / "override.json"
-    override_file.write_text(json.dumps(helm.get("valuesObject", {})))
+    # Argo chooses one inline representation; valuesObject replaces values.
+    values_file.write_text(json.dumps(helm["valuesObject"]) if helm.get("valuesObject") is not None
+                           else helm.get("values", ""))
     command = ["helm", "template", helm["releaseName"], chart, "-n", "monitoring",
-               "-f", str(values_file), "-f", str(override_file)]
+               "-f", str(values_file)]
     for parameter in helm.get("parameters", []):
         command.extend(["--set-string" if parameter.get("forceString") else "--set",
                         f'{parameter["name"]}={parameter["value"]}'])

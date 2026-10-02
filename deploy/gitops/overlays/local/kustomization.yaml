@@ -201,54 +201,64 @@ patches:
         path: /spec/source/helm/parameters
         value:
           - { name: alertmanager.enabled, value: "false" }
-      - op: add
-        path: /spec/source/helm/valuesObject
-        value:
-          # CAPD nodes are containers: their node root is overlay. Production
-          # keeps overlay excluded so pod image mounts cannot enter disk alerts.
-          prometheus-node-exporter:
-            extraArgs:
-              - --collector.disable-defaults
-              - --collector.filesystem
-              - --web.disable-exporter-metrics
-              - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/(docker|containers|kubelet/(pods|plugins)|containerd/[^/]*snapshot[^/]*))($|/)
-              - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tmpfs|tracefs)$
-          serverFiles:
-            platform_gitops_expected.yml:
-              groups:
-                - name: platform-gitops-inventory
-                  rules:
-                    - record: bex:platform_gitops_expected
-                      labels: {namespace: argocd}
-                      expr: |
-                        label_replace(vector(1), "name", "auth-dbs", "", "")
-                        or label_replace(vector(1), "name", "barman-cloud-plugin", "", "")
-                        or label_replace(vector(1), "name", "bex-dashboard", "", "")
-                        or label_replace(vector(1), "name", "bex-operator", "", "")
-                        or label_replace(vector(1), "name", "bex-platform-local", "", "")
-                        or label_replace(vector(1), "name", "bex-postgres", "", "")
-                        or label_replace(vector(1), "name", "cert-manager", "", "")
-                        or label_replace(vector(1), "name", "cert-manager-issuers", "", "")
-                        or label_replace(vector(1), "name", "cluster-autoscaler", "", "")
-                        or label_replace(vector(1), "name", "cnpg-operator", "", "")
-                        or label_replace(vector(1), "name", "etcd-metrics", "", "")
-                        or label_replace(vector(1), "name", "grafana", "", "")
-                        or label_replace(vector(1), "name", "hydra", "", "")
-                        or label_replace(vector(1), "name", "kpack", "", "")
-                        or label_replace(vector(1), "name", "kratos", "", "")
-                        or label_replace(vector(1), "name", "kubelet-csr-approver", "", "")
-                        or label_replace(vector(1), "name", "log-shipper", "", "")
-                        or label_replace(vector(1), "name", "loki", "", "")
-                        or label_replace(vector(1), "name", "mailpit", "", "")
-                        or label_replace(vector(1), "name", "metrics-server", "", "")
-                        or label_replace(vector(1), "name", "openbao", "", "")
-                        or label_replace(vector(1), "name", "openfga", "", "")
-                        or label_replace(vector(1), "name", "opensandbox-controller", "", "")
-                        or label_replace(vector(1), "name", "prometheus", "", "")
-                        or label_replace(vector(1), "name", "sealed-secrets", "", "")
-                        or label_replace(vector(1), "name", "traefik", "", "")
-                        or label_replace(vector(1), "name", "traefik-plugins", "", "")
-                        or label_replace(vector(1), "name", "zot", "", "")
+          # Parameters preserve base values; valuesObject would replace them.
+          # CAPD node roots use overlay, so only the local filesystem filter differs.
+          - name: prometheus-node-exporter.extraArgs[0]
+            value: "--collector.disable-defaults"
+            forceString: true
+          - name: prometheus-node-exporter.extraArgs[1]
+            value: "--collector.filesystem"
+            forceString: true
+          - name: prometheus-node-exporter.extraArgs[2]
+            value: "--web.disable-exporter-metrics"
+            forceString: true
+          - name: prometheus-node-exporter.extraArgs[3]
+            value: "--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/(docker|containers|kubelet/(pods|plugins)|containerd/[^/]*snapshot[^/]*))($|/)"
+            forceString: true
+          - name: prometheus-node-exporter.extraArgs[4]
+            value: "--collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tmpfs|tracefs)$"
+            forceString: true
+          - name: serverFiles.platform_gitops_expected\.yml.groups[0].name
+            value: "platform-gitops-inventory"
+            forceString: true
+          - name: serverFiles.platform_gitops_expected\.yml.groups[0].rules[0].record
+            value: "bex:platform_gitops_expected"
+            forceString: true
+          - name: serverFiles.platform_gitops_expected\.yml.groups[0].rules[0].labels.namespace
+            value: "argocd"
+            forceString: true
+          # Helm parses commas in parameter strings; escape the PromQL separators.
+          - name: serverFiles.platform_gitops_expected\.yml.groups[0].rules[0].expr
+            forceString: true
+            value: |
+              label_replace(vector(1)\, "name"\, "auth-dbs"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "barman-cloud-plugin"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "bex-dashboard"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "bex-operator"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "bex-platform-local"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "bex-postgres"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "cert-manager"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "cert-manager-issuers"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "cluster-autoscaler"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "cnpg-operator"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "etcd-metrics"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "grafana"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "hydra"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "kpack"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "kratos"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "kubelet-csr-approver"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "log-shipper"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "loki"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "mailpit"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "metrics-server"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "openbao"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "openfga"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "opensandbox-controller"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "prometheus"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "sealed-secrets"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "traefik"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "traefik-plugins"\, ""\, "")
+              or label_replace(vector(1)\, "name"\, "zot"\, ""\, "")
   # Grafana (docs/ADR088-platform-observability-ui.md §5) needs no local layer:
   # the obs.bex.co ingress + OIDC live ONLY in the prod overlay values, so the
   # base already IS the local admin-only shape — cluster-internal Service,

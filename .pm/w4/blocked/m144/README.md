@@ -1,6 +1,6 @@
 # w4 · m144 — Recover service metrics from Prometheus's OOM during WAL replay
 
-**Worker:** worker4 **Goal:** production service CPU, memory and instance charts read real samples again, with a Prometheus startup budget that can replay its retained data. **Status:** todo
+**Worker:** worker4 **Goal:** production service CPU, memory and instance charts read real samples again, with a Prometheus startup budget that can replay its retained data. **Status:** blocked — recovery configuration and automated checks complete; applied release, measured retained-data replay and operational acceptance pending.
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Size and recover the production Prometheus replay budget | 60m | — |
 | t002 | Verify shared metrics consumers and local overlay boundaries | 40m | t001 |
 | t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 10m | t003 |
+| t004 | Simplify — **DONE** | 10m | t003 |
 | t005 | Test coverage | 25m | t003, t004 |
 | t006 | Closeout | 10m | t005 |
 
@@ -24,7 +24,11 @@ The live probes above were exercised in failing form. Other consumers and restar
 ## Source + Goal linkage
 
 - **Source:** continuous `$qa-find-bugs`, 2026-10-02, `muse.env` account, r1 Scaling failure followed by read-only r2 investigation. [Complete request/response and runtime evidence](finding.md); verified local screenshot `.playwright-mcp/qa-metrics-r2-1.png` and JSON `.playwright-mcp/qa-metrics-r2-1.json`.
-- **Goal linkage:** ADR008 dependable hosting and [ADR010 observability](../../../docs/ADR010-observability.md). Configuration-only limits remain visible while the measurements needed to operate a service fail.
+- **Goal linkage:** ADR008 dependable hosting and [ADR010 observability](../../../../docs/ADR010-observability.md). Configuration-only limits remain visible while the measurements needed to operate a service fail.
 - **Expected outcome:** real ranged metrics become available again and Prometheus can restart with its existing retained data and required scrape/rule set.
 - **Why now:** production had 572 restarts and its most recent termination was OOMKilled during WAL replay. The deployed memory limit matches the committed 512 MiB budget; this is an active platform dependency failure, not a chart formatting bug.
 - **Render parity:** included as a consumer verification task because the outage affects REST/GraphQL/MCP and the dashboard. No API shape or authorization change is proposed.
+
+## Outcome — 2026-10-02
+
+[Verification](verification.md) records the continuing OOM, node capacity, bounded production memory change, corrected local Helm precedence, shared consumer matrix and automated render evidence. t004 is done; implementation/render work in t001/t002/t005 is complete, but their operational criteria remain open. **BLOCKED:** the production GitOps release operator must apply the budget to the existing PVC; QA/platform must measure successful replay/runtime/query peaks and cardinality, verify a retained-data restart with 15 minutes of stability, and complete the fresh API/UI plus shared-consumer matrix. No outage recovery or historical/billing repair is claimed. t003 live parity and t006 closeout remain open.

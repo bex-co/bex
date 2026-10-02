@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m144** — [Recover service metrics from Prometheus's OOM during WAL replay](m144/README.md) (6 tasks, ~2h45m) ← live `$qa-find-bugs` 2026-10-02, muse r2; Scaling errors reproduced on new and existing services, REST/GraphQL/MCP fail, pod last exit OOMKilled with a 512 MiB limit. CPU_LIMIT control passes.
+- [ ] **m144** — **BLOCKED (production GitOps release operator must apply the budget; QA/platform must measure retained-data replay and query peaks, verify a restart stable for 15 minutes, and replay metrics across APIs/UI and shared consumers)** — [Recover Prometheus metrics](blocked/m144/README.md). t004 done 2026-10-02; production memory configuration, local Helm precedence correction, caller audit and render checks complete; t001/t002/t003/t005/t006 retain operational criteria.
 
 - [ ] **m143** — **BLOCKED (production-deploy pipeline must release the dashboard; QA must then complete first-open, reopen and list-page UI probes)** — [Initialize service-page environment-group scope on the first controlled opening](blocked/m143/README.md). t002–t005 done 2026-10-02; original-code regression proof, full dashboard checks and 12 live REST/GraphQL/MCP expectations passed. t001 live criterion and t006 closeout remain open.
 - [ ] **m142** — **BLOCKED (production-deploy pipeline must release both the admission policy and operator image; QA must then pass Docker/native create, retry, environment-update, adapter and cleanup probes)** — [Admit bounded image-v1 workloads](blocked/m142/README.md). t002, t004, t005 done 2026-10-02; t001 implementation verified, live criteria in t001/t003/t006 remain open.
