@@ -61,8 +61,8 @@ type getDeployArgs struct {
 // triggerDeployArgs is trigger_deploy's input (w2/m44).
 type triggerDeployArgs struct {
 	ServiceID  string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	ImageURL   string `json:"imageUrl,omitempty" jsonschema:"image-backed services only: deploy this specific image tag instead of the current spec; rejected for repo-backed services"`
-	CommitID   string `json:"commitId,omitempty" jsonschema:"repo-backed services only: build from this git ref instead of Branch HEAD; rejected for cron_job services"`
+	ImageURL   string `json:"imageUrl,omitempty" jsonschema:"image-backed services only: deploy this specific image tag or digest instead of the saved image; rejected for repo-backed services"`
+	CommitID   string `json:"commitId,omitempty" jsonschema:"repo-backed services only: build from this git ref instead of Branch HEAD; rejected for image-backed and cron_job services"`
 	DeployMode string `json:"deployMode,omitempty" jsonschema:"build_and_deploy (default) or deploy_only (image-backed only — skips rebuild, re-pulls current image)"`
 	ClearCache string `json:"clearCache,omitempty" jsonschema:"Render's clear|do_not_clear enum. With BEX_BUILD_CACHE=registry, clear rebuilds without importing prior layers and still exports a fresh cache; with the gate off both values are no-ops."`
 }
@@ -178,11 +178,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	// trigger_deploy fires a new deploy — Render's POST .../deploys as an MCP
 	// tool (w2/m44). imageUrl allows image-backed services to deploy a specific
-	// tag without re-applying the whole service spec. commitId/deployMode carry
+	// tag or digest without re-applying the whole service spec. commitId/deployMode carry
 	// the same semantics as the REST body.
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_deploy",
-		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys a specific image tag. For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache is Render's clear|do_not_clear enum: with registry build caching enabled, clear rebuilds without importing prior layers (and still exports a fresh cache); with caching off both values are no-ops. Returns the new deploy; poll with get_deploy until status is live.",
+		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys a specific image tag or digest. For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache is Render's clear|do_not_clear enum: with registry build caching enabled, clear rebuilds without importing prior layers (and still exports a fresh cache); with caching off both values are no-ops. Returns the new deploy; poll with get_deploy until status is live.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
 		d, err := s.Trigger(ctx, in.ServiceID, TriggerParams{
 			ImageURL:   in.ImageURL,

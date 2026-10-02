@@ -207,6 +207,45 @@ func TestValidationAndErrorCodes(t *testing.T) {
 	}
 }
 
+func TestCreateImageValidationBeforePersistence(t *testing.T) {
+	for _, tc := range []struct{ name, image, reason string }{
+		{"malformed", "https://ghcr.io/org/repo:tag", "malformed"},
+		{"uppercase repository", "ghcr.io/Org/repo:tag", "must be lowercase"},
+		{"short digest", "nginx@sha256:deadbeef", "digest length"},
+		{"private registry", "127.0.0.1:5000/app:tag", "private or reserved"},
+		{"untrusted registry", "registry.attacker.example/app:tag", "not trusted"},
+		{"short valid reference", "nginx:1.27", ""},
+		{"tag and digest", "ghcr.io/org/repo:Release@sha256:" + strings.Repeat("a", 64), ""},
+		{"sha512", "ghcr.io/org/repo@sha512:" + strings.Repeat("b", 128), ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			api, mem, kicks := newTestAPI(t)
+			ten, err := mem.CreateTenant(t.Context(), "acme", PlanHobby)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := do(t, api.Handler(), http.MethodPost, "/v1/apps", fmt.Sprintf(`{"tenantId":%q,"name":"image","image":%q}`, ten.ID, tc.image))
+			if tc.reason != "" {
+				if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), tc.reason) {
+					t.Fatalf("response = %d %s, want bad request naming %q", rr.Code, rr.Body, tc.reason)
+				}
+				if len(mem.apps) != 0 || len(mem.deploys) != 0 || *kicks != 0 {
+					t.Fatal("invalid image persisted intent or kicked reconciliation")
+				}
+				return
+			}
+			if rr.Code != http.StatusCreated || len(mem.apps) != 1 {
+				t.Fatalf("valid create = %d %s", rr.Code, rr.Body)
+			}
+			for _, app := range mem.apps {
+				if app.Image != tc.image {
+					t.Fatalf("stored image = %q, want original %q", app.Image, tc.image)
+				}
+			}
+		})
+	}
+}
+
 func TestBearerToken(t *testing.T) {
 	api, _, _ := newTestAPI(t)
 	api.Token = "sekret"

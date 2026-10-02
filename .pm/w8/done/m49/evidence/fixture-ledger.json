@@ -1,0 +1,38 @@
+{
+  "closed_at": "2026-10-02T20:05:00.756311+00:00",
+  "workspace": "tea-db00n229086g4sgsslf0",
+  "identity": "f679c2c7-d524-4f92-8024-8d6523b99450",
+  "hydra_client": "712fa242-73a7-4aad-8470-bdad8a35c2c3",
+  "services": [
+    {
+      "id": "srv-db00n2a9086g4sgsslgg",
+      "name": "m49-f8d06662-app",
+      "configured_image": "docker.io/library/busybox:1.36.1"
+    },
+    {
+      "id": "srv-db00r129086kece8jdeg",
+      "name": "m49-f8d06662-digest",
+      "configured_image": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+    }
+  ],
+  "both_services_api_404": true,
+  "account_delete_accepted_202": true,
+  "kratos_identity_404": true,
+  "hydra_client_404": true,
+  "tenant_namespace_absent": true,
+  "owned_persistent_volumes_remaining": 0,
+  "temporary_service_port_forwards_remaining": 0,
+  "remaining_infrastructure": {
+    "kept_for_next_parent_item": true,
+    "base_stack": "dev-8; dev-8-auth; API/forwards and live OpenFGA retained",
+    "live_fga": "bex-w8-m48-dev-openfga",
+    "test_containers": [
+      "bex-w8-m48-test-postgres",
+      "bex-w8-m48-test-openfga",
+      "bex-w8-m48-test-openbao"
+    ],
+    "test_env_private": "/tmp/bex-w8-m48-test.env",
+    "test_container_cleanup_when_parent_finished": "docker rm -f -v bex-w8-m48-test-postgres bex-w8-m48-test-openfga bex-w8-m48-test-openbao"
+  },
+  "production_render_account_other_dev_namespaces_mutated": false
+}

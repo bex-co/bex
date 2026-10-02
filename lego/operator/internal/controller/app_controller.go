@@ -2931,8 +2931,8 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	if deploymentProgressDeadlineExceeded(dep) {
 		return r.settleFailedRollout(ctx, app, dep, port)
 	}
-	if msg := r.permanentRolloutPullFailure(ctx, dep, time.Now()); msg != "" {
-		return r.settleFailedRolloutMessage(ctx, app, "ImagePullBackOff", msg)
+	if reason, msg := r.permanentRolloutPullFailure(ctx, dep, time.Now()); msg != "" {
+		return r.settleFailedRolloutMessage(ctx, app, reason, msg)
 	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := "RolloutProgressing"
@@ -3022,25 +3022,28 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 
 // permanentRolloutPullFailure only considers live pods of the desired revision.
 // Old ReplicaSets and deleting pods cannot condemn a replacement rollout.
-func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *appsv1.Deployment, now time.Time) string {
+func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *appsv1.Deployment, now time.Time) (string, string) {
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 || dep.Spec.Template.Labels[labelRevision] == "" {
-		return ""
+		return "", ""
 	}
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
-		return ""
+		return "", ""
 	}
 	for _, pod := range pods.Items {
 		if pod.DeletionTimestamp != nil || pod.Labels[labelRevision] != dep.Spec.Template.Labels[labelRevision] {
 			continue
 		}
 		for _, cs := range pod.Status.ContainerStatuses {
-			if cs.Name == "app" && predeploy.PermanentPullFailure(cs.State.Waiting, pod.CreationTimestamp.Time, now) {
-				return fmt.Sprintf("image pull is failing: %s: %s", cs.Image, cs.State.Waiting.Message)
+			if cs.Name == appContainerName && predeploy.PermanentPullFailure(cs.State.Waiting, pod.CreationTimestamp.Time, now) {
+				if cs.State.Waiting.Reason == "InvalidImageName" {
+					return "InvalidImageName", fmt.Sprintf("image reference is invalid: %s: %s", cs.Image, cs.State.Waiting.Message)
+				}
+				return "ImagePullBackOff", fmt.Sprintf("image pull is failing: %s: %s", cs.Image, cs.State.Waiting.Message)
 			}
 		}
 	}
-	return ""
+	return "", ""
 }
 
 // deploymentRolloutReady follows the Deployment controller's rollout-complete
@@ -4168,7 +4171,7 @@ func toCronRun(job *batchv1.Job) appv1alpha1.CronRun {
 // shell (Render's cron "Command" field); empty leaves the image's own command.
 func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int, labels map[string]string) corev1.PodTemplateSpec {
 	container := corev1.Container{
-		Name:            "app",
+		Name:            appContainerName,
 		Image:           image,
 		ImagePullPolicy: pullPolicyFor(image),
 		Env:             appEnv(app, port),
@@ -4583,6 +4586,12 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 				return "CrashLoopBackOff", msg
 			case "ImagePullBackOff", "ErrImagePull":
 				return "ImagePullBackOff", "image pull is failing: " + w.Message
+			case "InvalidImageName":
+				if cs.Name != appContainerName || p.DeletionTimestamp != nil || dep.Spec.Template.Labels[labelRevision] == "" ||
+					p.Labels[labelRevision] != dep.Spec.Template.Labels[labelRevision] {
+					continue
+				}
+				return "InvalidImageName", "image reference is invalid: " + w.Message
 			case createContainerConfigError:
 				// The pod's configuration cannot be resolved — almost always an
 				// env var or file whose Secret/ConfigMap is absent from the
@@ -5206,11 +5215,10 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	case predeploy.StateFailed:
 		return r.failPreDeploy(ctx, app, failedPD(job.Name, predeploy.FailureMessage(ctx, r.Client, job)))
 	default: // Pending/Running — keep the old revision serving and requeue
-		// An image that cannot be pulled fails the step once the kubelet has
-		// retried past the grace window, not at the 10-minute Job deadline
-		// (w8/m44). The Job is deleted first so a pull that succeeds later can
-		// never run the migration after the deploy was declared failed; a
-		// failed delete retries rather than recording a verdict it can't back.
+		// A malformed reference fails immediately; permanent pull errors wait
+		// through the retry grace window. Delete the Job before recording failure
+		// so a late pull cannot run the migration after that verdict. A failed
+		// delete retries rather than recording a verdict it can't back.
 		if msg := predeploy.PullFailure(ctx, r.Client, job, time.Now()); msg != "" {
 			if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
 				return ctrl.Result{}, true, err

@@ -1,0 +1,66 @@
+{
+  "checked_at": "2026-10-02",
+  "render_live_mutations": false,
+  "exact_render_commit_on_image_status": "unverified",
+  "sources": [
+    {
+      "url": "https://render.com/docs/cli",
+      "finding": "The documented --commit flag is Git-backed only; --image selects an image-backed tag or digest."
+    },
+    {
+      "url": "https://api-docs.render.com/reference/create-deploy",
+      "finding": "commitId is a Git SHA. imageUrl is for image-backed services. Image host/repository/name must match the configured image. Generic400 is documented but is not proof of the exact image+commit error."
+    },
+    {
+      "url": "https://render.com/docs/deploying-an-image",
+      "finding": "Image input accepts tags or digests and defaults omitted Docker Hub host/library/latest components. Public registries must be reachable; private registry support is listed. Local private/trusted-registry restrictions are Bex installation policy, not universal OCI grammar."
+    },
+    {
+      "url": "https://pkg.go.dev/github.com/distribution/reference",
+      "finding": "Reference grammar separates lowercase repository paths from tags; uppercase tag characters are legal."
+    },
+    {
+      "url": "https://github.com/opencontainers/go-digest/blob/v1.0.0/algorithm.go",
+      "finding": "Known digest validation checks encoded hexadecimal syntax and algorithm-specific encoded length."
+    },
+    {
+      "url": "https://github.com/distribution/reference/blob/v0.6.0/regexp.go",
+      "finding": "Pinned v0.6.0 separates lowercase path components and uppercase-capable tags; go-digest enforces SHA25664/SHA512128 lowercase hex lengths."
+    }
+  ],
+  "local_contracts": [
+    {
+      "path": "dashboard/src/features/services/components/manual-deploy-button.tsx:65",
+      "finding": "Specific-commit action already gated to repo-backed non-cron; image service uses latest-image action and restart."
+    },
+    {
+      "path": "dashboard/src/features/services/hooks/use-trigger-deploy.ts:90",
+      "finding": "GraphQL hook forwards commitId/deployMode/clearCache and renders server mutation error. No imageUrl option is exposed in this hook."
+    },
+    {
+      "path": "dashboard/src/features/services/api/events.graphql:76",
+      "finding": "Current dashboard TriggerDeploy mutation leaves imageUrl out. Backend schema still exposes it to direct clients."
+    },
+    {
+      "path": "lego/backend/internal/apps/deploy.go:2167",
+      "finding": "Blueprint services[].image.url maps into CreateRequest.Image, reaching shared image validation."
+    },
+    {
+      "path": "lego/backend/internal/deploys/graphql.go:195",
+      "finding": "GraphQL triggerDeploy forwards commitId/imageUrl to common Trigger."
+    },
+    {
+      "path": "lego/backend/internal/deploys/rest.go:243",
+      "finding": "REST CreateDeploy JSON forwards commitId/imageUrl to common Trigger."
+    },
+    {
+      "path": "lego/backend/internal/deploys/mcp.go:185",
+      "finding": "MCP trigger_deploy also forwards commitId/imageUrl."
+    }
+  ],
+  "pinned_cli": {
+    "module": "github.com/render-oss/cli@v1.1.3-0.20260909214233-a764810a7682",
+    "contract": "Noninteractive --commit and --image become JSON commitId/imageUrl without source-type validation. Interactive setupForm uses ImagePath to show image input or commit input. Both exact-pin binaries can therefore test server rejection.",
+    "implementation": "cmd/deploycreate.go; pkg/tui/views/deploycreate.go; pkg/deploy/repo.go; pkg/client/types_gen.go:5191"
+  }
+}

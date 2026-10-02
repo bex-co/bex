@@ -1,0 +1,25 @@
+{
+  "at": "2026-10-02T19:53:35.746295+00:00",
+  "bootstrap_api_sha256": "bc5e6c8a0f975cf177725d576f9064ecc8d31031706fa9e0595882ccd3167319",
+  "fixture_created_at": "2026-10-02T19:52:50.203968+00:00",
+  "owned_fixtures": {
+    "workspace": "tea-db00n229086g4sgsslf0",
+    "service": "srv-db00n2a9086g4sgsslgg",
+    "app": "m49-f8d06662-app"
+  },
+  "scope": "owned local dev-8 only; production and Render account unchanged",
+  "recovery": [
+    "Supported orb start after host freed space; initial VM log explicitly reported StorageFull on block write",
+    "Restarted retained explicitly owned FGA/Bao/PostgreSQL containers; reseeded missing in-memory FGA model",
+    "Refreshed only dev-8 kubeconfig from existing harness; no new certificate, HAProxy, kube-proxy, or shared monitoring mutation",
+    "Restarted only dev-8-auth Hydra/Kratos Deployments after crash backoff from prior DB outage",
+    "Self-healing auth forwards recovered on next probe; dev-8 DB forward exhausted retries and was restarted; existing API restarted without compilation"
+  ],
+  "auth_health_status": 200,
+  "dedicated_test_db": {
+    "container": "bex-w8-m48-test-postgres",
+    "new_empty_database": "bex_w8_m49_test",
+    "private_env": "/tmp/bex-w8-m48-test.env",
+    "retained_for_parent": true
+  }
+}

@@ -2609,8 +2609,10 @@ func validateCreateSource(req CreateRequest) error {
 	if req.Branch != "" && !store.ValidGitRef(req.Branch) {
 		return fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", core.ErrBadRequest)
 	}
-	if req.Image != "" && !store.ValidImage(req.Image) {
-		return fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
+	if req.Image != "" {
+		if err := store.ValidateImage(req.Image); err != nil {
+			return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+		}
 	}
 	if req.RootDir != "" && !store.ValidRootDir(req.RootDir) {
 		return fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
@@ -3843,8 +3845,8 @@ func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, er
 		if next.image == "" {
 			return sourceFields{}, fmt.Errorf("%w: image path is required", core.ErrBadRequest)
 		}
-		if !store.ValidImage(next.image) {
-			return sourceFields{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
+		if err := store.ValidateImage(next.image); err != nil {
+			return sourceFields{}, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 		next.repo = ""
 	}

@@ -1,0 +1,81 @@
+{
+  "verified_at": "2026-10-02T19:38:22.018492+00:00",
+  "tag": "docker.io/library/busybox:1.36.1",
+  "digest_ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+  "manifest_sha256_verified": true,
+  "platforms": [
+    {
+      "architecture": "amd64",
+      "os": "linux"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    },
+    {
+      "architecture": "arm",
+      "os": "linux",
+      "variant": "v5"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    },
+    {
+      "architecture": "arm",
+      "os": "linux",
+      "variant": "v6"
+    },
+    {
+      "architecture": "arm",
+      "os": "linux",
+      "variant": "v7"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    },
+    {
+      "architecture": "arm64",
+      "os": "linux",
+      "variant": "v8"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    },
+    {
+      "architecture": "386",
+      "os": "linux"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    },
+    {
+      "architecture": "ppc64le",
+      "os": "linux"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    },
+    {
+      "architecture": "riscv64",
+      "os": "linux"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    },
+    {
+      "architecture": "s390x",
+      "os": "linux"
+    },
+    {
+      "architecture": "unknown",
+      "os": "unknown"
+    }
+  ],
+  "source": "Docker Hub registry manifest GET with anonymous pull token (token not retained)"
+}

@@ -1,0 +1,8 @@
+{"at": "2026-10-02T20:03:38.927963+00:00", "check": "only-owned-workspace-in-preview", "passed": true, "status": 200}
+{"at": "2026-10-02T20:03:39.248853+00:00", "check": "delete-service", "passed": true, "status": 204, "service": "srv-db00n2a9086g4sgsslgg"}
+{"at": "2026-10-02T20:03:39.288576+00:00", "check": "service-api-absent", "passed": true, "status": 404, "service": "srv-db00n2a9086g4sgsslgg"}
+{"at": "2026-10-02T20:03:39.641526+00:00", "check": "delete-service", "passed": true, "status": 204, "service": "srv-db00r129086kece8jdeg"}
+{"at": "2026-10-02T20:03:39.646215+00:00", "check": "service-api-absent", "passed": true, "status": 404, "service": "srv-db00r129086kece8jdeg"}
+{"at": "2026-10-02T20:03:39.906568+00:00", "check": "delete-account", "passed": true, "status": 202}
+{"at": "2026-10-02T20:05:00.453325+00:00", "check": "account-client-namespace-absent", "passed": true, "kratos_identity_status": 404, "hydra_client_status": 404, "namespace_absent": true, "namespace": "tea-db00n229086g4sgsslf0"}
+{"at": "2026-10-02T20:05:00.756311+00:00", "check": "no-owned-persistent-volumes", "passed": true, "remaining": 0}

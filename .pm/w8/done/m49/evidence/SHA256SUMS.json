@@ -1,0 +1,18 @@
+{
+  "acceptance-attempts.jsonl": "9ca5836db7478d5994b197c8b8f8406956cf6b40fbc90af088691b683efad6d7",
+  "attempts-and-limitations.json": "3088904a41e393ca7ebc4e9aa25ffe04ed738fbc7b6aee9900b201891a6770d4",
+  "binary-provenance.json": "7f8ae5f86d585ed74f24522b5a7f9e27b52a8cab18361d6ad42d5b175c2b5586",
+  "cleanup-evidence.jsonl": "1aa621def2938c5388ab3c02d259eb51112f08eab54f265a6fef6d1ddae50ca8",
+  "configured-digest-bex-current.json": "87e276bb4bb103cb4f0d809e861eb0e247f3c850a7d43b3fa357a6a38c2a420f",
+  "configured-digest-initial-history.json": "8e838dde1bf7751f762588ca348710cc157ce46ca3ede8af67fff0cbed43acb6",
+  "configured-digest-render-current-pin.json": "89bc3bf921ab594f792297004304dc0fd394eff513d78562b69eb09a608f27b7",
+  "efficiency-review.json": "1811ab2085e0618b70b1037dc417430422ba2c99216b4eb1166ed9ab4da50483",
+  "final-checks.jsonl": "772da3071c5b3978481b8eb2e53ed5635b4547b168523110726e466ec01d33ed",
+  "fixture-ledger.json": "c4f58a25111d066656a902b6337aa9048e85a09c047fed6c58a70e3b0b9f5579",
+  "image-control.json": "0915b10844a65bef52d7efef2b59701af35ce47e13453b2663189c967acf10f5",
+  "initial-engine-gate.json": "2e96b2d3fcb9af53e69b1644bc514264ab0fdc0f52b3fa17ab3276233804399c",
+  "parity-research.json": "736c9dfe64f449c118296e5af8acf6e3a8e857a1a5898b51101372ca16b38952",
+  "setup-evidence.json": "99800b9dbfeab5ddc5aed581dadd830aab0b4ff9c35214b25333fbe4ecfce271",
+  "summary.json": "10e591f24c99a4c8def9a9c4c71dbd0ffab6424250f182462c2b274b168813c8",
+  "test-postgres-reset.json": "43c138354483ae8f53a02b53f6c052fc3211373dfde8e194a0c1e17b383cbc31"
+}

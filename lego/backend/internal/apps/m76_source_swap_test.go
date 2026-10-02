@@ -108,19 +108,29 @@ func TestGraphQLSetRepoSwitchesImageToRepo(t *testing.T) {
 	}
 }
 
-// TestGraphQLSetImageRejectsInvalidRef: a shell-metacharacter image is refused
-// and the source is left unchanged (ValidImage, mirroring setBranch's guard).
+// Invalid image references must retain their actionable reason through GraphQL
+// and leave the current source unchanged.
 func TestGraphQLSetImageRejectsInvalidRef(t *testing.T) {
-	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
-	schema := sourceSwapSchema(t, svc)
-
-	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
-		RequestString: `mutation { setImage(id: "web", image: "nginx; rm -rf /") { imagePath } }`})
-	if len(res.Errors) == 0 {
-		t.Fatal("setImage with an invalid ref succeeded; want an error")
-	}
-	if spec := getApp(t, cl, "web").Spec; spec.Image != "" || spec.Repo != "https://github.com/x/mono" {
-		t.Errorf("rejected setImage still mutated the source: image=%q repo=%q", spec.Image, spec.Repo)
+	for _, tc := range []struct{ image, reason string }{
+		{"nginx; rm -rf /", "malformed"},
+		{"ghcr.io/Org/repo:tag", "must be lowercase"},
+		{"nginx@sha256:deadbeef", "digest length"},
+		{"registry.attacker.example/app:tag", "not trusted"},
+	} {
+		t.Run(tc.image, func(t *testing.T) {
+			svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
+			schema := sourceSwapSchema(t, svc)
+			res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+				RequestString:  `mutation($image: String!) { setImage(id: "web", image: $image) { imagePath } }`,
+				VariableValues: map[string]any{"image": tc.image},
+			})
+			if len(res.Errors) != 1 || !strings.Contains(res.Errors[0].Message, tc.reason) {
+				t.Fatalf("setImage errors = %v, want %q", res.Errors, tc.reason)
+			}
+			if spec := getApp(t, cl, "web").Spec; spec.Image != "" || spec.Repo != "https://github.com/x/mono" {
+				t.Errorf("rejected setImage still mutated the source: image=%q repo=%q", spec.Image, spec.Repo)
+			}
+		})
 	}
 }
 

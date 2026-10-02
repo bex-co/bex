@@ -1,0 +1,53 @@
+{
+  "at": "2026-10-02T19:55:49.989869+00:00",
+  "binaries": {
+    "bex-current": {
+      "path": "/Users/tianpan/projects/bex/.pm/w8/dev-8/bin/bex-current",
+      "sha256": "543a3ec325a8a06714517e5fb1e160d0bb38512e7c3cef7c7034fab518a760e6",
+      "go_build_metadata": [
+        "dep\tgithub.com/render-oss/cli\tv1.1.3-0.20260909214233-a764810a7682\th1:DAlz9Xu4EKRTV/I0LyHxBt8muqsNfo361snKirVVPqE=",
+        "build\t-ldflags=\"-X github.com/render-oss/cli/pkg/cfg.Version=2.27.0 -X main.bexVersion=dev-w8-m48\"",
+        "build\tvcs.revision=faaaba0cebff04c43a304d5cdca09e6efe7d6e9b",
+        "build\tvcs.time=2026-10-02T18:43:25Z",
+        "build\tvcs.modified=true"
+      ],
+      "version": "bex vdev-w8-m48\ncompatible with Render CLI v2.27.0"
+    },
+    "render-current-pin": {
+      "path": "/Users/tianpan/projects/bex/.pm/w8/dev-8/bin/render-upstream",
+      "sha256": "225c5bfb5ea72ef223341ba4a71f8e5e680989d6712cb4f5beeb414ad58cd9d5",
+      "go_build_metadata": [
+        "path\tgithub.com/render-oss/cli",
+        "mod\tgithub.com/render-oss/cli\t(devel)",
+        "build\t-ldflags=\"-X github.com/render-oss/cli/pkg/cfg.Version=2.27.0\""
+      ],
+      "version": "render v2.27.0",
+      "source_module": "github.com/render-oss/cli@v1.1.3-0.20260909214233-a764810a7682",
+      "build_provenance": "Reused byte-identical m48 control, built from unmodified pinned Go module cache with GOWORK=off and cfg.Version=2.27.0; no m49 CLI source edits."
+    },
+    "api": {
+      "path": "/Users/tianpan/projects/bex/.pm/w8/dev-8/bin/bex-api",
+      "sha256": "b5b9c99faf94d0dc06392763b95e8323bcc4a7f11a148c73367bdca79b22b9a8",
+      "go_build_metadata": [
+        "build\tvcs.revision=8733e8d57a8f817cf20cf18a1e5fc7a929415b4f",
+        "build\tvcs.time=2026-10-02T19:33:11Z",
+        "build\tvcs.modified=true"
+      ]
+    }
+  },
+  "api_source_files": {
+    "lego/backend/internal/store/image.go": "4e01644bcc0fb1331cbce430b5ad803819837ad8ab3e7abd5fad5a8c9f200280",
+    "lego/backend/internal/deploys/service.go": "9ff17801a059c1aa55babe4fdd22eb318568f97225934103142a494119d42713",
+    "lego/backend/internal/apps/service.go": "8369ce73cbc9ad72f6f0e968dc85597f0493bbfa013ec94a1a5f8fa5b414e09e"
+  },
+  "live_db_endpoint": {
+    "host": "localhost",
+    "port": 55080,
+    "database": "bex"
+  },
+  "test_db_endpoint": {
+    "host": "127.0.0.1",
+    "port": 55280,
+    "database": "bex_w8_m49_test"
+  }
+}
