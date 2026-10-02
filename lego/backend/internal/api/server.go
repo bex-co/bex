@@ -1248,7 +1248,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// wrappers outside it clone the request, so reading r.Pattern after the
 	// fact would only ever see the outer `/v1/` mount, not the specific route
 	// the telemetry needs (w3/m84).
-	mux.Handle(restMountPattern, auth(rl(s.restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, rest)))))))
+	mux.Handle(restMountPattern, auth(rl(restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, rest)))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies).
@@ -1642,21 +1642,16 @@ func (s *Server) RunStdio(ctx context.Context) error {
 	return s.MCPServer().Run(ctx, &mcp.StdioTransport{})
 }
 
-// restBodyLimit is the REST router's body cap: the global limit everywhere
-// except Blueprint validation, whose render.yaml Render accepts up to 10 MiB.
-// The global 2 MiB default used to refuse those files with 413 before the
-// handler's own cap could apply (w8/026). A disabled global limit stays
-// disabled; the handler still bounds its own route.
-func (s *Server) restBodyLimit(global func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+// Blueprint validation owns a manifest limit and a JSON/multipart envelope
+// allowance. Enforce its named refusal before OpenAPI reads the body, even
+// when the configurable global limit is lower, higher, or disabled.
+func restBodyLimit(global func(http.Handler) http.Handler) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		narrow := global(next)
-		wide := narrow
-		if s.MaxBodyBytes > 0 {
-			wide = withBodyLimit(max(s.MaxBodyBytes, apps.MaxBlueprintValidationBodyBytes))(next)
-		}
+		blueprint := withBodyLimitMessage(apps.MaxBlueprintValidationBodyBytes, apps.ErrBlueprintTooLarge.Error())(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == apps.BlueprintValidationPath {
-				wide.ServeHTTP(w, r)
+				blueprint.ServeHTTP(w, r)
 				return
 			}
 			narrow.ServeHTTP(w, r)

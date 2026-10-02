@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m48** — [Close the log filtering and Blueprint validation gaps](done/m48/README.md) (6 tasks) ← from `032`; completed 2026-10-02 with full backend/lint checks, five pinned Alloy cases, and 50 live local acceptance checks.
+
 - [ ] **m47** — [A renamed service keeps answering to its old name: rename skips the uniqueness rule, and name lookup ignores the name you see](blocked/m47/README.md) (7 tasks) **BLOCKED (2026-10-02: live rename collision checks pass, but renamed lookup outside account default returned 404; local fix awaits ship and live recheck)**
 - [x] **m46** — [Concurrent deploy ordering and image attribution](done/m46/README.md) (8 tasks) — **DONE 2026-10-02**: 30 qualifying live rounds passed (10 image/image, 10 hook/hook, 10 image/restart); every latest request live, earlier canceled, correct per-row images.
 - [ ] **m45** — [A service name resolves in the caller's default workspace, not the selected one, so name-based verbs can act on another workspace's service](blocked/m45/README.md) (8 tasks) **BLOCKED (2026-10-02: workspace header approved and implemented locally; API ship, CLI release and two-workspace live verification remain)**
@@ -69,7 +71,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `032` — Live re-verification gaps: `030`'s Postgres-log shipper change is not taking effect in production (76/77 lines still CNPG JSON); `026`'s validate limit is really 512 KiB (compiler pre-decode cap), not the 10 MiB stated; `025`'s kubelet placeholder still floods app logs via the shipper's `loki.source.kubernetes` (~70m) ← `/qa-find-bugs-cli` sweep 51, 2026-09-27
+- [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.
 - `033` — `deploys create --commit` on an image-backed service is accepted and re-rolls the last image (no refusal like `--image` on repo services); invalid OCI refs (uppercase repo, short digest) are accepted; every registry refusal says "whitespace or shell metacharacters" (~50m) ← `/qa-find-bugs-cli` sweep 54, 2026-09-27
 - `034` — A service rename accepts control characters (a newline splits the `services -o text` table), unbounded length, and another service's `srv-` id as the display name (~30m; coordinate with m47) ← `/qa-find-bugs-cli` sweep 56, 2026-09-27
 - `036` — **duplicate of `w4/171`, fixed and live-verified 2026-09-30 on `de9ac4d1c`** (blast-radius evidence only). Was BLOCKER: since `cae30d1e0`, every deploy of a web service with env vars fails ("snapshot …-env … unknown namespace for the cache"): the new release-config snapshot reads tenant Secrets through the namespace-scoped cached client. Roll back or use the uncached client (~10m rollback / ~1h fix) ← `/qa-find-bugs-cli` post-deploy smoke, 2026-09-28

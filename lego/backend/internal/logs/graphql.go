@@ -56,8 +56,8 @@ var logListGQLType = graphql.NewObject(graphql.ObjectConfig{
 
 // logFilterArgs are the filter arguments logs() and logLabelValues() share — the
 // same vocabulary as REST/MCP. `resource` may name an App, managed Postgres, or Key Value;
-// the datastore path accepts its documented range/text/instance subset and
-// refuses service-only filters. `type` and `text` stay single-valued strings
+// datastore logs support range/text/instance and Postgres also supports level;
+// both refuse service-only filters. `type` and `text` stay single-valued strings
 // (the shape the dashboard's query already sends); request filters are lists.
 func logFilterArgs() graphql.FieldConfigArgument {
 	list := gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String)))

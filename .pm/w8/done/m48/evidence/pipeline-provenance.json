@@ -1,0 +1,72 @@
+{
+  "captured_at": "2026-10-02T19:23:00.367579+00:00",
+  "blocks": [
+    {
+      "type": "discovery.relabel",
+      "label": "app_pods",
+      "matches_production": true,
+      "sha256": "200ff6105ff93d5eb7ec6296aa0ec40defe967cc18b2b8fc376e67508cfeecb3"
+    },
+    {
+      "type": "loki.source.kubernetes",
+      "label": "app_pods",
+      "matches_production": true,
+      "sha256": "24608c0ad4b3f4cd47df6e4edac3546e37f44dfe66faff2a0d6755bb54e5d736"
+    },
+    {
+      "type": "loki.process",
+      "label": "app_logs",
+      "matches_production": true,
+      "sha256": "354edec8f4521a5edf62e676c3c391a0cf1cc640165cb9ff0badfe66e6ab80cf"
+    },
+    {
+      "type": "discovery.relabel",
+      "label": "database_pods",
+      "matches_production": true,
+      "sha256": "bb9bb84aff3063bc3475849e706701a2ea22e5643bb68f271fa2dbc3703467ba"
+    },
+    {
+      "type": "loki.source.kubernetes",
+      "label": "database_pods",
+      "matches_production": true,
+      "sha256": "7c3ddd9930e93624192f368490f24e0efcc7ea161789fbfa6ea7f70c9196dbcc"
+    },
+    {
+      "type": "loki.process",
+      "label": "database_logs",
+      "matches_production": true,
+      "sha256": "f1ac33430235d7afbf3583f2bd182cde11800108167bd57121d9e70f114c78fc"
+    }
+  ],
+  "fixture_namespace": "tea-davvr429086qtm2o8ha0",
+  "discovery_scope": "only fixture namespace; role permits pods and pods/log get/list/watch only",
+  "sink": "owned ephemeral w8-m48-loki in dev-8-auth",
+  "source": "real Kubernetes API pod log streams",
+  "shipped_postgres_levels": [
+    "error",
+    "info",
+    "unset"
+  ],
+  "no_temporary_cnpg_labels": true,
+  "postgres_attribution_labels": {
+    "type": "postgres",
+    "resource": "dpg-davvrai9086qtm2o8hb0",
+    "instance": "dpg-davvrai9086qtm2o8hb0-ljid1a9psn9l0qsltr6f",
+    "container": "postgres",
+    "level": "info"
+  },
+  "images": [
+    {
+      "app": "w8-m48-alloy",
+      "image": "docker.io/grafana/alloy:v1.11.2",
+      "image_id": "docker.io/grafana/alloy@sha256:6ab34b8201f0e8b0c4346be4934c9965723af3f7f21dd9a65fd73f270f69b451",
+      "ready": true
+    },
+    {
+      "app": "w8-m48-loki",
+      "image": "docker.io/grafana/loki:3.6.7",
+      "image_id": "docker.io/grafana/loki@sha256:3c8fd3570dd9219951a60d3f919c7f31923d10baee578b77bc26c4a0b32d092d",
+      "ready": true
+    }
+  ]
+}

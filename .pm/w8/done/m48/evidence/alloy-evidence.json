@@ -1,0 +1,8 @@
+{
+  "image": "docker.io/grafana/alloy:v1.11.2",
+  "projection_sha256": "90e730aca0959219ae6812c4a581ffb5c28eed258032218adee1c873a1f200c6",
+  "production_sha256": "12f6fa8243dbcd177db4b558e5478a61db7b5b480dafe02e0d4f27e467c7a2d6",
+  "placeholder_drop_metrics": [
+    "loki_process_dropped_lines_total{component_id=\"loki.process.app_logs\",component_path=\"/\",reason=\"kubelet_container_logs_gone\"} 102"
+  ]
+}

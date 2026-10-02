@@ -1,0 +1,21 @@
+[
+  {
+    "check": "postgres-level-discovery",
+    "filter": "",
+    "status": 200,
+    "values": [
+      "error",
+      "info"
+    ],
+    "passed": true
+  },
+  {
+    "check": "postgres-level-discovery",
+    "filter": "level=error",
+    "status": 200,
+    "values": [
+      "error"
+    ],
+    "passed": true
+  }
+]

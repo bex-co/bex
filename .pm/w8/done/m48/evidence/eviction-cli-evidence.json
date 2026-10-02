@@ -1,0 +1,41 @@
+[
+  {
+    "binary": "bex-current",
+    "check": "evicted-pod-own-lines",
+    "exit": 0,
+    "records": 2,
+    "messages": [
+      "eviction started m48-dc9d2a4e",
+      "eviction wrote exactly 4 MiB m48-dc9d2a4e"
+    ],
+    "placeholder_records": 0,
+    "platform_unavailable_records": 0,
+    "passed": true
+  },
+  {
+    "binary": "render-current-pin",
+    "check": "evicted-pod-own-lines",
+    "exit": 0,
+    "records": 2,
+    "messages": [
+      "eviction started m48-dc9d2a4e",
+      "eviction wrote exactly 4 MiB m48-dc9d2a4e"
+    ],
+    "placeholder_records": 0,
+    "platform_unavailable_records": 0,
+    "passed": true
+  },
+  {
+    "binary": "bex-installed",
+    "check": "evicted-pod-own-lines",
+    "exit": 0,
+    "records": 2,
+    "messages": [
+      "eviction started m48-dc9d2a4e",
+      "eviction wrote exactly 4 MiB m48-dc9d2a4e"
+    ],
+    "placeholder_records": 0,
+    "platform_unavailable_records": 0,
+    "passed": true
+  }
+]

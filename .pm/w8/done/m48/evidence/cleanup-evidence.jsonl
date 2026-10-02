@@ -1,0 +1,20 @@
+{"at": "2026-10-02T19:25:06.812024+00:00", "check": "owned-account-deletion-preview", "passed": true, "status": 200, "workspace_count": 1}
+{"at": "2026-10-02T19:25:06.904911+00:00", "check": "delete-services", "passed": true, "resource": "srv-davvrg29086qtm2o8hcg", "status": 204}
+{"at": "2026-10-02T19:25:06.911803+00:00", "check": "api-absent-services", "passed": true, "resource": "srv-davvrg29086qtm2o8hcg", "status": 404}
+{"at": "2026-10-02T19:25:06.935443+00:00", "check": "delete-postgres", "passed": true, "resource": "dpg-davvrai9086qtm2o8hb0", "status": 204}
+{"at": "2026-10-02T19:25:06.939224+00:00", "check": "api-absent-postgres", "passed": true, "resource": "dpg-davvrai9086qtm2o8hb0", "status": 404}
+{"at": "2026-10-02T19:25:38.707201+00:00", "check": "absent-replay_pod", "passed": true, "pod": "m48-dc9d2a4e-replay"}
+{"at": "2026-10-02T19:25:38.786630+00:00", "check": "absent-eviction_pod", "passed": true, "pod": "m48-dc9d2a4e-evict"}
+{"at": "2026-10-02T19:25:38.841400+00:00", "check": "delete-owned-account", "passed": true, "status": 202}
+{"at": "2026-10-02T19:25:47.117382+00:00", "check": "owned-account-and-workspace-absent", "passed": true, "kratos_identity_status": 404, "hydra_client_status": 404, "namespace_absent": true, "namespace": "tea-davvr429086qtm2o8ha0"}
+{"at": "2026-10-02T19:25:47.212504+00:00", "check": "absent-isolated-serviceaccount", "passed": true, "name": "w8-m48-alloy", "namespace": "dev-8-auth"}
+{"at": "2026-10-02T19:25:47.252747+00:00", "check": "absent-isolated-configmap", "passed": true, "name": "w8-m48-alloy", "namespace": "dev-8-auth"}
+{"at": "2026-10-02T19:25:47.302243+00:00", "check": "absent-isolated-role", "passed": true, "name": "w8-m48-alloy", "namespace": "tea-davvr429086qtm2o8ha0"}
+{"at": "2026-10-02T19:25:47.342008+00:00", "check": "absent-isolated-rolebinding", "passed": true, "name": "w8-m48-alloy", "namespace": "tea-davvr429086qtm2o8ha0"}
+{"at": "2026-10-02T19:25:47.379395+00:00", "check": "absent-isolated-deployment", "passed": true, "name": "w8-m48-alloy", "namespace": "dev-8-auth"}
+{"at": "2026-10-02T19:25:47.486080+00:00", "check": "absent-isolated-configmap", "passed": true, "name": "w8-m48-loki", "namespace": "dev-8-auth"}
+{"at": "2026-10-02T19:25:47.520594+00:00", "check": "absent-isolated-service", "passed": true, "name": "w8-m48-loki", "namespace": "dev-8-auth"}
+{"at": "2026-10-02T19:25:47.558523+00:00", "check": "absent-isolated-deployment", "passed": true, "name": "w8-m48-loki", "namespace": "dev-8-auth"}
+{"at": "2026-10-02T19:25:47.622058+00:00", "check": "isolated-log-stack-empty", "passed": false, "remaining": 2}
+{"at": "2026-10-02T19:26:01.125909+00:00", "check": "isolated-log-stack-empty-final", "passed": true, "remaining": 0, "note": "Initial observation caught asynchronous pod garbage collection; waited for actual absence."}
+{"at": "2026-10-02T19:26:01.170832+00:00", "check": "tenant-persistent-volumes-absent", "passed": true, "remaining": 0}

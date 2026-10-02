@@ -1,0 +1,173 @@
+{
+  "completed_at": "2026-10-02T19:27:37.304474+00:00",
+  "result": "All final live acceptance checks passed; owned tenant and isolated log fixtures verified absent.",
+  "scope": {
+    "environment": "local dev-8",
+    "api": "http://localhost:54080",
+    "source_base": "faaaba0cebff04c43a304d5cdca09e6efe7d6e9b",
+    "production_changed": false,
+    "shared_monitoring_changed": false,
+    "source_and_board_edits_by_acceptance_agent": false
+  },
+  "checks": {
+    "blueprint_rest_and_cli": {
+      "passed": 26,
+      "total": 26
+    },
+    "graphql_and_mcp_600kib": {
+      "passed": 2,
+      "total": 2
+    },
+    "log_cli_matrix_and_raw_control": {
+      "passed": 16,
+      "total": 16
+    },
+    "durable_postgres_level_discovery": {
+      "passed": 2,
+      "total": 2
+    },
+    "evicted_pod_history_cli": {
+      "passed": 3,
+      "total": 3
+    },
+    "bounded_real_eviction": {
+      "passed": 1,
+      "total": 1
+    },
+    "total_passed": 50,
+    "total": 50
+  },
+  "api_binaries": {
+    "blueprint_and_eviction_history_sha256": "01efa6687602c4da6f38676ae4f92a64a3e22ba7defe0e50ea12e96eea273b79",
+    "final_log_and_discovery_sha256": "bc5e6c8a0f975cf177725d576f9064ecc8d31031706fa9e0595882ccd3167319",
+    "difference": "Final binary adds the live-discovered Postgres level-filter fix; Blueprint cleanup and log-shipper stages unchanged."
+  },
+  "blueprint": {
+    "decoded_cap_bytes": 524288,
+    "named_limit": "Blueprint manifests are limited to 512 KiB",
+    "rest_formats": [
+      "JSON bexYaml",
+      "multipart file"
+    ],
+    "status_at_cap": 200,
+    "status_above_cap": 413,
+    "rejected_decoded_sizes": [
+      524289,
+      614400,
+      3145728
+    ],
+    "escaped_json_boundary_verified": true,
+    "transport_envelope_boundary_bytes": 4194304,
+    "multipart_epilogue_counted": true,
+    "live_graphql_and_mcp_bytes": 614400,
+    "live_graphql_and_mcp_result": "HTTP200; valid=false; BLUEPRINT_YAML_TOO_LARGE; same named512KiB diagnostic",
+    "limit": "No live3MiB GraphQL/MCP claim: generic global transport caps still apply."
+  },
+  "postgres": {
+    "new_real_free_postgres": true,
+    "bad_password_psql": true,
+    "all_three_clis": {
+      "unfiltered_records": 36,
+      "error_filtered_records": 13,
+      "fatal_auth_failure_records": 4,
+      "cnpg_noise_records": 0
+    },
+    "raw_current_container": {
+      "check": "raw-postgres-control",
+      "raw_lines": 102,
+      "postgres_records": 25,
+      "non_record_postgres": 4,
+      "named_chatter": 65,
+      "loggerless_probes": 8,
+      "raw_fatal_records": 10,
+      "passed": true
+    },
+    "raw_vs_shipped_window_note": "Raw container and retained Loki records span restarts/history; counts are not a one-to-one comparison window.",
+    "level_discovery_unfiltered": [
+      "error",
+      "info"
+    ],
+    "level_discovery_error": [
+      "error"
+    ]
+  },
+  "app": {
+    "all_three_clis": {
+      "unfiltered_records": 30,
+      "error_records": 3,
+      "replay_instance_records": 12,
+      "replay_controls_preserved": 12,
+      "exact_placeholder_records": 0
+    },
+    "placeholder_replay_bodies": 100,
+    "alloy_drop_counter": 102,
+    "counter_note": "Includes100 replay fixture lines plus initial/replayed app startup exact bodies.",
+    "actual_eviction": {
+      "check": "owned-ephemeral-storage-eviction",
+      "pod": "m48-dc9d2a4e-evict",
+      "write_bytes": 4194304,
+      "pod_ephemeral_limit_bytes": 2097152,
+      "evicted": true,
+      "genuine_placeholder_observed": false,
+      "placeholder_bodies": 0,
+      "reason": "Pod ephemeral local storage usage exceeds the total limit of containers 2Mi. ",
+      "phase": "Failed"
+    },
+    "evicted_history_records_per_cli": 2,
+    "evicted_history_platform_unavailable_records": 0,
+    "precise_limit": "Actual bounded eviction returned a terminated-container HTTP error, not the exact missing-log body. Exact-body suppression was separately replayed via owned Pod stdout through real kubelet logs, pinned source.kubernetes, the unmodified production stages, isolated Loki, and authenticated API/CLI.",
+    "identical_tenant_text_limit": "The pinned source strips Kubernetes timestamps before processing; byte-identical tenant placeholder text is indistinguishable and is also dropped."
+  },
+  "pipeline": {
+    "alloy_image": "docker.io/grafana/alloy:v1.11.2",
+    "exact_production_blocks": 6,
+    "discovery": "fixture namespace only",
+    "auth": "fixture namespace pod/log reader Role",
+    "sink": "ephemeral isolated Loki3.6.7",
+    "public_config": "projection.alloy"
+  },
+  "cleanup": {
+    "complete": true,
+    "api_resources": "DELETE204 then GET404",
+    "account": "Kratos identity404; Hydra client404",
+    "tenant": "namespace absent; replay and evicted pods absent; no tenant PVs",
+    "isolated_logs": "Alloy/Loki resources and pods/ReplicaSets absent; port-forward stopped",
+    "async_note": "Initial stack-empty poll saw two terminating pods. Final independent poll verified zero. Both observations retained in ledger.",
+    "credential_note": "Disposable account credentials are invalid after deletion; private state/env/configs were not copied into this artifact."
+  },
+  "retained_infrastructure": [
+    {
+      "container": "bex-w8-m48-test-postgres",
+      "localhost_port": 55280,
+      "running": true,
+      "role": "dedicated backend tests",
+      "cleanup_owner": "root"
+    },
+    {
+      "container": "bex-w8-m48-test-openfga",
+      "localhost_port": 63280,
+      "running": true,
+      "role": "dedicated backend tests",
+      "cleanup_owner": "root"
+    },
+    {
+      "container": "bex-w8-m48-test-openbao",
+      "localhost_port": 64280,
+      "running": true,
+      "role": "dedicated backend tests",
+      "cleanup_owner": "root"
+    },
+    {
+      "container": "bex-w8-m48-dev-openfga",
+      "localhost_port": 63080,
+      "running": true,
+      "role": "retained dev-8 API dependency",
+      "cleanup_owner": "root"
+    }
+  ],
+  "private_test_env": "/tmp/bex-w8-m48-test.env (0600; never copy values)",
+  "test_cleanup_command_when_root_ready": "docker rm -f bex-w8-m48-test-postgres bex-w8-m48-test-openfga bex-w8-m48-test-openbao",
+  "live_dev_dependency_cleanup_when_dev8_no_longer_needed": "docker rm -f bex-w8-m48-dev-openfga",
+  "dev8_note": "Base dev-8 auth/database, API and forwards retained. Acceptance Loki removed, so59080 is intentionally free; ordinary harness up can restore its usual log forward when needed.",
+  "local_recovery_record": "local-recovery.json: supported OrbStack restart; preserved CA; API leaf cert/SAN repair; stable local DNS endpoint repairs for HAProxy/kubelets/kube-proxy; no data reset or production/shared-monitoring mutation."
+}

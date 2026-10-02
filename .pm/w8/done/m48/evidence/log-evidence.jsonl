@@ -1,0 +1,16 @@
+{"binary": "bex-current", "check": "postgres-all", "exit": 0, "passed": true, "records": 36, "fatal_records": 4, "noise_records": 0}
+{"binary": "bex-current", "check": "postgres-error", "exit": 0, "passed": true, "records": 13, "fatal_records": 4, "noise_records": 0}
+{"binary": "bex-current", "check": "app-all", "exit": 0, "passed": true, "records": 30, "exact_placeholder_records": 0, "controls_preserved": 12}
+{"binary": "bex-current", "check": "app-error", "exit": 0, "passed": true, "records": 3, "exact_placeholder_records": 0, "controls_preserved": 1}
+{"binary": "bex-current", "check": "app-replay-instance", "exit": 0, "passed": true, "records": 12, "exact_placeholder_records": 0, "controls_preserved": 12}
+{"binary": "render-current-pin", "check": "postgres-all", "exit": 0, "passed": true, "records": 36, "fatal_records": 4, "noise_records": 0}
+{"binary": "render-current-pin", "check": "postgres-error", "exit": 0, "passed": true, "records": 13, "fatal_records": 4, "noise_records": 0}
+{"binary": "render-current-pin", "check": "app-all", "exit": 0, "passed": true, "records": 30, "exact_placeholder_records": 0, "controls_preserved": 12}
+{"binary": "render-current-pin", "check": "app-error", "exit": 0, "passed": true, "records": 3, "exact_placeholder_records": 0, "controls_preserved": 1}
+{"binary": "render-current-pin", "check": "app-replay-instance", "exit": 0, "passed": true, "records": 12, "exact_placeholder_records": 0, "controls_preserved": 12}
+{"binary": "bex-installed", "check": "postgres-all", "exit": 0, "passed": true, "records": 36, "fatal_records": 4, "noise_records": 0}
+{"binary": "bex-installed", "check": "postgres-error", "exit": 0, "passed": true, "records": 13, "fatal_records": 4, "noise_records": 0}
+{"binary": "bex-installed", "check": "app-all", "exit": 0, "passed": true, "records": 30, "exact_placeholder_records": 0, "controls_preserved": 12}
+{"binary": "bex-installed", "check": "app-error", "exit": 0, "passed": true, "records": 3, "exact_placeholder_records": 0, "controls_preserved": 1}
+{"binary": "bex-installed", "check": "app-replay-instance", "exit": 0, "passed": true, "records": 12, "exact_placeholder_records": 0, "controls_preserved": 12}
+{"check": "raw-postgres-control", "raw_lines": 102, "postgres_records": 25, "non_record_postgres": 4, "named_chatter": 65, "loggerless_probes": 8, "raw_fatal_records": 10, "passed": true}
