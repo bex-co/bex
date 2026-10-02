@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m146** — [Keep empty Blueprint environments idempotent](m146/README.md) (6 tasks, ~2h 10m) ← live `qa-find-bugs` 2026-10-02 sweep 6; identical `envVars: []` applies republish an unchanged static site twice; omitted-env control stays unchanged.
+
 - [ ] **m145** — [Report ordinary Save-only configuration as pending](m145/README.md) (6 tasks, ~3h 10m) ← live `qa-find-bugs` 2026-10-02 sweep 5; two existing-file saves retain old runtime values but report no pending change. Cancel, rollback, Restart and standard/deploy-hook controls pass.
 
 - [ ] **m144** — **BLOCKED (production GitOps release operator must apply the budget; QA/platform must measure retained-data replay and query peaks, verify a restart stable for 15 minutes, and replay metrics across APIs/UI and shared consumers)** — [Recover Prometheus metrics](blocked/m144/README.md). t004 done 2026-10-02; production memory configuration, local Helm precedence correction, caller audit and render checks complete; t001/t002/t003/t005/t006 retain operational criteria.
