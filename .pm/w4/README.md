@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m144** — [Recover service metrics from Prometheus's OOM during WAL replay](m144/README.md) (6 tasks, ~2h45m) ← live `$qa-find-bugs` 2026-10-02, muse r2; Scaling errors reproduced on new and existing services, REST/GraphQL/MCP fail, pod last exit OOMKilled with a 512 MiB limit. CPU_LIMIT control passes.
+
 - [ ] **m143** — [Initialize service-page environment-group scope on the first controlled opening](m143/README.md) (6 tasks, ~2h25m) ← live `$qa-find-bugs` 2026-10-02, muse r1; missed cold-load acceptance from w4/m111. A first create submits null scope with a hidden service ID; cancel/reopen succeeds.
 - [ ] **m142** — [Admit the bounded image-v1 workloads selected by the Docker canary](m142/README.md) (6 tasks, ~3h05m) ← live `$qa-find-bugs` 2026-10-02, muse r1; schedules w1/m163's Docker admission residual with an independently reproduced web failure and native Go control.
 
