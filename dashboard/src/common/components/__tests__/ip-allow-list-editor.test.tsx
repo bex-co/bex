@@ -80,7 +80,7 @@ describe("IPAllowListEditor row identity", () => {
     const user = userEvent.setup();
     renderEditor([{ cidrBlock: "203.0.113.0/24", description: "office" }]);
 
-    const input = screen.getByRole("textbox", {
+    const input = screen.getByRole<HTMLInputElement>("textbox", {
       name: "CIDR block for rule 1",
     });
     await user.click(input);
@@ -91,17 +91,22 @@ describe("IPAllowListEditor row identity", () => {
     expect(input).toHaveValue("203.0.113.0/2");
     expect(input).toHaveFocus();
     expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe("203.0.113.0/2".length);
 
     await user.keyboard("4");
     expect(input).toHaveValue("203.0.113.0/24");
     expect(input).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: labels.cidrRule(1) })).toBe(
+      input,
+    );
+    expect(input.selectionStart).toBe("203.0.113.0/24".length);
   });
 
   it("keeps focus through a whole retyped CIDR, one keystroke at a time", async () => {
     const user = userEvent.setup();
     renderEditor([{ cidrBlock: "10.0.0.0/8", description: "corp" }]);
 
-    const input = screen.getByRole("textbox", {
+    const input = screen.getByRole<HTMLInputElement>("textbox", {
       name: "CIDR block for rule 1",
     });
     await user.clear(input);
@@ -125,13 +130,17 @@ describe("IPAllowListEditor row identity", () => {
     );
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    const input = screen.getByRole("textbox", {
+    const input = screen.getByRole<HTMLInputElement>("textbox", {
       name: "CIDR block for rule 1",
     });
     await user.click(input);
     await user.keyboard("{End}{Backspace}4");
     expect(input).toHaveValue("203.0.113.0/24");
     expect(input).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: labels.cidrRule(1) })).toBe(
+      input,
+    );
+    expect(input.selectionStart).toBe("203.0.113.0/24".length);
   });
 
   it("stays editable and focused while an invalid or duplicate CIDR blocks Save", async () => {
@@ -168,8 +177,23 @@ describe("IPAllowListEditor row identity", () => {
       { cidrBlock: "192.168.0.0/16", description: "third" },
     ]);
 
+    const firstInput = screen.getByRole("textbox", {
+      name: labels.cidrRule(1),
+    });
+    const secondInput = screen.getByRole("textbox", {
+      name: labels.cidrRule(2),
+    });
+    const firstDescription = screen.getByRole("textbox", {
+      name: labels.descriptionRule(1),
+    });
     await user.click(
       screen.getByRole("button", { name: "Move down 10.0.0.0/8" }),
+    );
+    expect(screen.getByRole("textbox", { name: labels.cidrRule(1) })).toBe(
+      secondInput,
+    );
+    expect(screen.getByRole("textbox", { name: labels.cidrRule(2) })).toBe(
+      firstInput,
     );
     await user.click(
       screen.getByRole("button", { name: "Remove 192.168.0.0/16" }),
@@ -179,6 +203,10 @@ describe("IPAllowListEditor row identity", () => {
     const moved = screen.getByRole("textbox", {
       name: "CIDR block for rule 2",
     });
+    expect(moved).toBe(firstInput);
+    expect(
+      screen.getByRole("textbox", { name: labels.descriptionRule(2) }),
+    ).toBe(firstDescription);
     await user.clear(moved);
     await user.type(moved, "10.1.0.0/16");
     expect(moved).toHaveFocus();
@@ -216,7 +244,7 @@ describe("IPAllowListEditor row identity", () => {
     const save = screen.getByRole("button", { name: "Save allowlist" });
     expect(save).toBeDisabled();
 
-    const input = screen.getByRole("textbox", {
+    const input = screen.getByRole<HTMLInputElement>("textbox", {
       name: "CIDR block for rule 1",
     });
     await user.click(input);
@@ -236,22 +264,65 @@ describe("IPAllowListEditor row identity", () => {
     expect(save).toBeDisabled();
   });
 
-  it("keeps the draft after a failed Save", async () => {
+  it("retains failed-save drafts across unchanged polls and saving, then resets with the caller's authoritative key", async () => {
+    const original = { cidrBlock: "203.0.113.0/24", description: "office" };
+    const ruleInput = (number: number) =>
+      screen.getByRole<HTMLInputElement>("textbox", {
+        name: labels.cidrRule(number),
+      });
+    const saveButton = () => screen.getByRole("button", { name: labels.save });
     const user = userEvent.setup();
-    const onSave = vi.fn(async (_entries: IPAllowListEntryDraft[]) => false);
-    renderEditor([{ cidrBlock: "10.0.0.0/8", description: "corp" }], onSave);
-
-    const input = screen.getByRole("textbox", {
-      name: "CIDR block for rule 1",
-    });
-    await user.clear(input);
-    await user.type(input, "10.1.0.0/16");
-    await user.click(screen.getByRole("button", { name: "Save allowlist" }));
-
-    expect(onSave).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole("textbox", { name: "CIDR block for rule 1" }),
-    ).toHaveValue("10.1.0.0/16");
+    const onSave = vi.fn(async () => false);
+    const { rerender } = render(
+      <IPAllowListEditor
+        key="initial"
+        entries={[original]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    const input = ruleInput(1);
+    await user.click(input);
+    await user.keyboard("{End}{Backspace}3");
+    const edited = { ...original, cidrBlock: "203.0.113.0/23" };
+    await user.click(saveButton());
+    expect(onSave).toHaveBeenCalledWith([edited]);
+    expect(ruleInput(1)).toBe(input);
+    expect(input).toHaveValue(edited.cidrBlock);
+    rerender(
+      <IPAllowListEditor
+        key="initial"
+        entries={[{ ...original }]}
+        labels={labels}
+        saving={true}
+        onSave={onSave}
+      />,
+    );
+    expect(ruleInput(1)).toBe(input);
+    expect(input).toHaveValue(edited.cidrBlock);
+    expect(saveButton()).toBeDisabled();
+    rerender(
+      <IPAllowListEditor
+        key="initial"
+        entries={[original]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    expect(saveButton()).toBeEnabled();
+    rerender(
+      <IPAllowListEditor
+        key="accepted"
+        entries={[edited]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+      />,
+    );
+    expect(ruleInput(1)).toHaveValue(edited.cidrBlock);
+    expect(saveButton()).toBeDisabled();
   });
 
   it("does not call onSave before the Save button is pressed", async () => {
@@ -271,12 +342,16 @@ describe("IPAllowListEditor row identity", () => {
     const user = userEvent.setup();
     renderEditor([{ cidrBlock: "10.0.0.0/8", description: "corp" }]);
 
-    const description = screen.getByRole("textbox", {
+    const description = screen.getByRole<HTMLInputElement>("textbox", {
       name: "Description for rule 1",
     });
     await user.click(description);
     await user.keyboard(" abc");
     expect(description).toHaveValue("corp abc");
     expect(description).toHaveFocus();
+    expect(
+      screen.getByRole("textbox", { name: labels.descriptionRule(1) }),
+    ).toBe(description);
+    expect(description.selectionStart).toBe("corp abc".length);
   });
 });
