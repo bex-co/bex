@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -264,8 +265,8 @@ type LogQuery struct {
 
 	// Structured filters. Each is a value set (OR within a filter, AND across
 	// filters — Render's semantics); a `*` wildcard is supported per value.
-	// Level applies to app logs; Host/StatusCode/Method/Path to request logs;
-	// Instance to app logs (a request line's origin is the edge, not a replica).
+	// Level applies to app and Postgres logs; Host/StatusCode/Method/Path to request logs;
+	// Instance to app and datastore logs (request logs originate at the edge).
 	Level      []string
 	Instance   []string
 	Host       []string
@@ -273,7 +274,8 @@ type LogQuery struct {
 	Method     []string
 	Path       []string
 
-	searchLower string // Search lowercased once by normalized(); read by keep()
+	searchLower string         // Search lowercased once by normalized(); read by keep()
+	levelFilter *regexp.Regexp // Postgres pod severity matcher, compiled once per query
 }
 
 // validate rejects a filter value outside the accepted vocabulary — an unknown
@@ -321,10 +323,10 @@ func (q LogQuery) normalized() LogQuery {
 	return q
 }
 
-// hasFilters reports whether any line-level filter (search/time) is set — the
+// hasFilters reports whether any line-level filter (search/time/level) is set — the
 // ones the pod-log path applies in Go.
 func (q LogQuery) hasFilters() bool {
-	return q.Search != "" || !q.Since.IsZero() || !q.End.IsZero()
+	return q.Search != "" || !q.Since.IsZero() || !q.End.IsZero() || q.levelFilter != nil
 }
 
 // wants reports whether the query asks for a log type. An empty Types means "all
@@ -381,8 +383,7 @@ func (q LogQuery) liveSubscribable() error {
 	return nil
 }
 
-// keepPod reports whether a pod satisfies the `instance` filter — the one
-// structured filter the pod-log fallback CAN honor (a pod name is a pod name).
+// keepPod reports whether a pod satisfies the `instance` filter.
 func (q LogQuery) keepPod(pod string) bool {
 	if len(q.Instance) == 0 {
 		return true
@@ -443,9 +444,12 @@ func NormalizeTypes(types []string) ([]string, error) {
 	return slices.Compact(slices.Sorted(slices.Values(out))), nil
 }
 
-// keep reports whether an entry satisfies the search/time filters. Assumes
+// keep reports whether an entry satisfies the search/time/level filters. Assumes
 // normalized() has run (searchLower populated).
 func (q LogQuery) keep(e LogEntry) bool {
+	if q.levelFilter != nil && !q.levelFilter.MatchString(e.Labels[LabelLevel]) {
+		return false
+	}
 	if q.Search != "" && !strings.Contains(strings.ToLower(e.Message), q.searchLower) {
 		return false
 	}
@@ -587,6 +591,12 @@ func (s *Service) queryPostgresLogs(ctx context.Context, q LogQuery) ([]LogEntry
 	if err := q.validatePostgres(); err != nil {
 		return nil, err
 	}
+	if len(q.Level) > 0 {
+		q.levelFilter, err = regexp.Compile(labelValuePattern(storedLevels(q.Level)))
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid Postgres level filter: %v", core.ErrBadRequest, err)
+		}
+	}
 	if s.History == nil && s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
@@ -629,14 +639,14 @@ func isPostgresResource(resource string) bool {
 }
 
 // validatePostgres pins the supported managed-Postgres contract: time range,
-// direction, text search, limit, and instance. HTTP request/build filters are
+// direction, text search, level, limit, and instance. HTTP request/build filters are
 // service concepts; refusing them is safer than silently dropping them.
 func (q LogQuery) validatePostgres() error {
 	if err := q.validate(); err != nil {
 		return err
 	}
-	if len(q.Types) > 0 || len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
-		return fmt.Errorf("%w: managed Postgres logs support text, time range, direction, limit, and instance filters", core.ErrBadRequest)
+	if len(q.Types) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
+		return fmt.Errorf("%w: managed Postgres logs support text, time range, direction, level, limit, and instance filters", core.ErrBadRequest)
 	}
 	return nil
 }
@@ -697,7 +707,7 @@ func (q LogQuery) validateKeyValue() error {
 	return nil
 }
 
-// filterAndCap applies the line-level search/time filters (in place — skipping
+// filterAndCap applies the line-level search/time/level filters (in place — skipping
 // the pass entirely on the common no-filter query) and clamps to q.Limit. The
 // pod-log path's shared tail, used by both the app and pre-deploy reads.
 func (q LogQuery) filterAndCap(entries []LogEntry) []LogEntry {
@@ -774,15 +784,21 @@ func (s *Service) postgresLogLabelValues(ctx context.Context, label string, q Lo
 	if err := q.validatePostgres(); err != nil {
 		return nil, err
 	}
-	if label != LabelInstance {
-		return nil, fmt.Errorf("%w: managed Postgres log label %q is unsupported (want %s)", core.ErrBadRequest, label, LabelInstance)
+	if label != LabelInstance && label != LabelLevel {
+		return nil, fmt.Errorf("%w: managed Postgres log label %q is unsupported (want %s|%s)", core.ErrBadRequest, label, LabelInstance, LabelLevel)
 	}
 	if s.LabelValues != nil {
 		values, err := s.LabelValues(ctx, database.Namespace, label, q.normalized())
 		if err != nil {
 			return nil, err
 		}
-		return projectLogLabelValues(requested, values), nil
+		if label == LabelInstance {
+			return projectLogLabelValues(requested, values), nil
+		}
+		return slices.Compact(slices.Sorted(slices.Values(values))), nil
+	}
+	if label == LabelLevel {
+		return nil, core.ErrLogStoreUnavailable
 	}
 	pods, err := s.DatabasePods(ctx, database.Namespace, database.Name)
 	if err != nil {

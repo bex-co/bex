@@ -346,8 +346,20 @@ func TestCNPGLine(t *testing.T) {
 		"cluster resource dropped": {
 			in: `{"level":"info","logger":"cluster-resource","msg":"Defaulting for Cluster"}`,
 		},
+		"logger-less probe dropped": {
+			in: `{"level":"info","msg":"startup probe failing","logging_pod":"dpg-test-1"}`,
+		},
+		"empty logger probe dropped": {
+			in: `{"level":"info","logger":"","logging_pod":"dpg-test-1","msg":"readiness probe failing"}`,
+		},
+		"non-record postgres dropped": {
+			in: `{"logger":"postgres","msg":"Starting log pipe"}`,
+		},
+		"record fields without record message dropped": {
+			in: `{"logger":"postgres","record":{"log_time":"t","process_id":"9","error_severity":"LOG","message":"not a record without msg=record"}}`,
+		},
 		"record unwrapped": {
-			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"2026-09-27 01:00:02.123 UTC","process_id":"42","error_severity":"LOG","message":"database system is ready to accept connections"}}`,
+			in:   `{"logger":"postgres","msg":"record","logging_pod":"dpg-test-1","record":{"log_time":"2026-09-27 01:00:02.123 UTC","process_id":"42","error_severity":"LOG","message":"database system is ready to accept connections"}}`,
 			want: "2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections", level: "info", keep: true,
 		},
 		"failed login is an error with its detail": {
@@ -358,8 +370,10 @@ func TestCNPGLine(t *testing.T) {
 			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"1","error_severity":"WARNING","message":"checkpoints are occurring too frequently","hint":"Consider increasing max_wal_size."}}`,
 			want: "t [1] WARNING:  checkpoints are occurring too frequently HINT:  Consider increasing max_wal_size.", level: "warning", keep: true,
 		},
-		"plain line verbatim": {in: "plain line", want: "plain line", keep: true},
-		"other JSON verbatim": {in: `{"msg":"no logger"}`, want: `{"msg":"no logger"}`, keep: true},
+		"plain line verbatim":        {in: "plain line", want: "plain line", keep: true},
+		"other JSON verbatim":        {in: `{"msg":"logging_pod is only mentioned in this message"}`, want: `{"msg":"logging_pod is only mentioned in this message"}`, keep: true},
+		"empty logging pod verbatim": {in: `{"msg":"no logger","logging_pod":""}`, want: `{"msg":"no logger","logging_pod":""}`, keep: true},
+		"null logging pod verbatim":  {in: `{"msg":"no logger","logging_pod":null}`, want: `{"msg":"no logger","logging_pod":null}`, keep: true},
 	} {
 		got, level, keep := CNPGLine(tc.in)
 		if keep != tc.keep || got != tc.want || level != tc.level {
@@ -372,7 +386,9 @@ func TestCNPGLine(t *testing.T) {
 // lines are its own and pass through.
 func TestCollectUnwrapsPostgresOnly(t *testing.T) {
 	stream := "2026-09-27T01:00:00Z {\"logger\":\"instance-manager\",\"msg\":\"Starting EventSource\"}\n" +
-		"2026-09-27T01:00:01Z {\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":\"9\",\"error_severity\":\"LOG\",\"message\":\"ready\"}}\n"
+		"2026-09-27T01:00:01Z {\"msg\":\"startup probe failing\",\"logging_pod\":\"dpg-x-1\"}\n" +
+		"2026-09-27T01:00:02Z {\"logger\":\"postgres\",\"msg\":\"Starting log pipe\"}\n" +
+		"2026-09-27T01:00:03Z {\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":\"9\",\"error_severity\":\"LOG\",\"message\":\"ready\"}}\n"
 	source := func(context.Context, string, string, string, int64) (io.ReadCloser, error) {
 		return io.NopCloser(strings.NewReader(stream)), nil
 	}
@@ -380,8 +396,11 @@ func TestCollectUnwrapsPostgresOnly(t *testing.T) {
 	if err != nil || len(pg) != 1 || pg[0].Message != "t [9] LOG:  ready" || pg[0].Labels["level"] != "info" {
 		t.Errorf("postgres entries = %+v, %v; want only the unwrapped record", pg, err)
 	}
+	if len(pg) == 1 && (pg[0].Timestamp != "2026-09-27T01:00:03Z" || pg[0].Labels["service"] != "dpg-x" || pg[0].Labels["instance"] != "dpg-x-1" || pg[0].Labels["type"] != KindPostgres) {
+		t.Errorf("postgres attribution changed: %+v", pg[0])
+	}
 	kv, err := Collect(context.Background(), Instance{Name: "red-x", Kind: KindKeyValue, Pods: []string{"red-x-0"}, PodLogs: source}, Query{Limit: 10})
-	if err != nil || len(kv) != 2 {
-		t.Errorf("key value entries = %+v, %v; want both lines untouched", kv, err)
+	if err != nil || len(kv) != 4 {
+		t.Errorf("key value entries = %+v, %v; want all lines untouched", kv, err)
 	}
 }

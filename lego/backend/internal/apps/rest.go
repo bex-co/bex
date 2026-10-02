@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -1307,7 +1308,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST "+BlueprintValidationPath, func(w http.ResponseWriter, r *http.Request) {
 		ownerID, bexYAML, blueprintID, err := decodeBlueprintValidationRequest(w, r)
-		if errors.Is(err, errBlueprintTooLarge) {
+		if errors.Is(err, ErrBlueprintTooLarge) {
 			core.WriteErrStatus(w, http.StatusRequestEntityTooLarge, err.Error())
 			return
 		}
@@ -1516,37 +1517,33 @@ func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
 	}))
 }
 
-// Render permits a Blueprint file of up to 10 MiB. The multipart envelope gets
-// a small separate allowance; the file itself is checked after decoding so a
-// valid 10 MiB upload is not rejected merely for its MIME headers.
-const (
-	maxBlueprintValidationFileBytes = 10 << 20
-	// MaxBlueprintValidationBodyBytes is the validate route's body cap. The
-	// composition root mounts it in place of the global API body limit on
-	// that one route, which would otherwise refuse anything past 2 MiB before
-	// this handler runs (w8/026).
-	MaxBlueprintValidationBodyBytes = maxBlueprintValidationFileBytes + (1 << 20)
-)
+// MaxBlueprintValidationBodyBytes accommodates the compiler's manifest byte
+// limit even when each byte is JSON-escaped as \uXXXX, plus bounded metadata
+// and multipart headers. The decoded manifest retains its own stricter cap.
+// The composition root applies this bound before OpenAPI decodes the body.
+const MaxBlueprintValidationBodyBytes = 6*blueprintMaxManifestBytes + (1 << 20)
 
 // BlueprintValidationPath is the route MaxBlueprintValidationBodyBytes covers.
 const BlueprintValidationPath = "/v1/blueprints/validate"
 
-// errBlueprintTooLarge is the validate route's own size refusal (413).
-var errBlueprintTooLarge = errors.New("Blueprint file exceeds the 10 MiB validation limit")
-
 // decodeBlueprintValidationRequest accepts Render's multipart contract used by
 // the official CLI (ownerId field + file part), while retaining bex's original
-// JSON contract for the dashboard and direct API callers.
+// JSON contract for direct API callers.
 func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (ownerID, bexYAML, blueprintID string, err error) {
 	// Keep a local bound because feature-level tests and embedders can mount this
-	// router without the composition root's middleware. It is intentionally the
-	// Blueprint-specific file/envelope cap, not the stricter global API default.
-	r.Body = http.MaxBytesReader(w, r.Body, MaxBlueprintValidationBodyBytes)
-	defer func() {
+	// router without the composition root's middleware. Read the full envelope
+	// before DecodeJSON, which otherwise can stop at the first value or mask a
+	// MaxBytesError during strict decoding.
+	body := http.MaxBytesReader(w, r.Body, MaxBlueprintValidationBodyBytes)
+	bodyBytes, err := io.ReadAll(body)
+	_ = body.Close()
+	if err != nil {
 		if tooLarge := new(http.MaxBytesError); errors.As(err, &tooLarge) {
-			err = errBlueprintTooLarge
+			return "", "", "", ErrBlueprintTooLarge
 		}
-	}()
+		return "", "", "", err
+	}
+	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	contentType := r.Header.Get("Content-Type")
 	mediaType := "application/json"
 	if contentType != "" {
@@ -1570,8 +1567,8 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 		if body.BexYAML == "" {
 			return "", "", "", core.ErrBadRequest
 		}
-		if len(body.BexYAML) > maxBlueprintValidationFileBytes {
-			return "", "", "", errBlueprintTooLarge
+		if len(body.BexYAML) > blueprintMaxManifestBytes {
+			return "", "", "", ErrBlueprintTooLarge
 		}
 		return body.OwnerID, body.BexYAML, body.BlueprintID, nil
 	}
@@ -1591,12 +1588,12 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 		return "", "", "", err
 	}
 	defer file.Close() //nolint:errcheck // read-only multipart file
-	content, err := io.ReadAll(file)
+	content, err := io.ReadAll(io.LimitReader(file, int64(blueprintMaxManifestBytes)+1))
 	if err != nil || len(content) == 0 {
 		return "", "", "", core.ErrBadRequest
 	}
-	if len(content) > maxBlueprintValidationFileBytes {
-		return "", "", "", errBlueprintTooLarge
+	if len(content) > blueprintMaxManifestBytes {
+		return "", "", "", ErrBlueprintTooLarge
 	}
 	return ownerID, string(content), strings.TrimSpace(r.FormValue("blueprintId")), nil
 }

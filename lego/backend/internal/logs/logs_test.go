@@ -436,13 +436,16 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	pod := postgresID + "-1"
 	otherPod := "dpg-d185th5c2rvvnhbfiltg-1"
 	svc := newService(map[string][]string{
-		pod:      {"2026-07-05T00:00:01Z checkpoint complete"},
+		pod: {
+			`2026-07-05T00:00:01Z {"logger":"postgres","msg":"record","record":{"log_time":"2026-07-05 00:00:01 UTC","process_id":7,"error_severity":"FATAL","message":"checkpoint failed"}}`,
+			`2026-07-05T00:00:02Z {"logger":"postgres","msg":"record","record":{"log_time":"2026-07-05 00:00:02 UTC","process_id":7,"error_severity":"LOG","message":"checkpoint complete"}}`,
+		},
 		otherPod: {"2026-07-05T00:00:02Z must not leak"},
 	}, sampleDatabase(postgresID), databasePod(postgresID, pod), databasePod("dpg-d185th5c2rvvnhbfiltg", otherPod))
 
 	// REST keeps Render's generic resource filter and returns the immutable dpg-
 	// id, the Postgres type, and the CNPG instance without a database-only route.
-	rec := serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID+"&text=checkpoint&instance="+pod)
+	rec := serveREST(svc, http.MethodGet, "/v1/logs?resource="+postgresID+"&text=checkpoint&level=warning&level=error&instance="+pod)
 	var env renderLogList
 	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 1 {
 		t.Fatalf("REST Postgres logs => %d %s", rec.Code, rec.Body.String())
@@ -451,7 +454,7 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	for _, label := range env.Logs[0].Labels {
 		labels[label.Name] = label.Value
 	}
-	if labels["resource"] != postgresID || labels[LabelType] != "postgres" || labels[LabelInstance] != ids.ServiceInstanceID(postgresID, pod) {
+	if labels["resource"] != postgresID || labels[LabelType] != "postgres" || labels[LabelLevel] != "error" || labels[LabelInstance] != ids.ServiceInstanceID(postgresID, pod) {
 		t.Fatalf("REST Postgres labels = %+v", labels)
 	}
 	if strings.Contains(rec.Body.String(), "must not leak") {
@@ -462,9 +465,9 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schema: %v", err)
 	}
-	data := runQuery(t, schema, `{ logs(resource:"`+postgresID+`", text:"checkpoint", instance:["`+pod+`"]) { logs { message type instance } } }`)
+	data := runQuery(t, schema, `{ logs(resource:"`+postgresID+`", text:"checkpoint", level:["warning","error"], instance:["`+pod+`"]) { logs { message type instance level } } }`)
 	rows := data["logs"].(map[string]any)["logs"].([]any)
-	if len(rows) != 1 || rows[0].(map[string]any)["type"] != "postgres" {
+	if len(rows) != 1 || rows[0].(map[string]any)["type"] != "postgres" || rows[0].(map[string]any)["level"] != "error" {
 		t.Fatalf("GraphQL Postgres logs = %+v", rows)
 	}
 
@@ -481,9 +484,9 @@ func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = cs.Close() })
 	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_logs", Arguments: map[string]any{
-		"resource": []string{postgresID}, "text": []string{"checkpoint"}, "instance": []string{pod},
+		"resource": []string{postgresID}, "text": []string{"checkpoint"}, "level": []string{"warning", "error"}, "instance": []string{pod},
 	}})
-	if err != nil || result.IsError || !strings.Contains(result.Content[0].(*mcp.TextContent).Text, "checkpoint complete") {
+	if err != nil || result.IsError || !strings.Contains(result.Content[0].(*mcp.TextContent).Text, "checkpoint failed") || strings.Contains(result.Content[0].(*mcp.TextContent).Text, "checkpoint complete") {
 		t.Fatalf("MCP Postgres logs = %+v, err=%v", result, err)
 	}
 }
@@ -2150,6 +2153,8 @@ func TestManagedPostgresPodLogsUnwrapCNPG(t *testing.T) {
 	svc := newService(map[string][]string{
 		pod: {
 			`2026-07-05T00:00:01Z {"level":"info","logger":"instance-manager","msg":"Starting EventSource"}`,
+			`2026-07-05T00:00:01Z {"level":"info","msg":"startup probe failing","logging_pod":"dpg-test-1"}`,
+			`2026-07-05T00:00:01Z {"logger":"postgres","msg":"Starting log pipe"}`,
 			`2026-07-05T00:00:02Z {"logger":"postgres","msg":"record","record":{"log_time":"2026-07-05 00:00:02.000 UTC","process_id":"7","error_severity":"FATAL","message":"password authentication failed for user \"app\""}}`,
 		},
 	}, sampleDatabase(postgresID), databasePod(postgresID, pod))

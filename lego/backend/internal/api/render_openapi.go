@@ -326,6 +326,20 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			if operation.RequestBody == nil || operation.RequestBody.Value == nil {
 				continue
 			}
+			if operation.OperationID == "validate-blueprint" {
+				// The existing bex JSON adapter complements Render's multipart
+				// upload; keep both behind schema validation and the body cap.
+				schema := openapi3.NewObjectSchema()
+				schema.Required = []string{"bexYaml"}
+				schema.Properties = openapi3.Schemas{
+					"bexYaml":     {Value: openapi3.NewStringSchema()},
+					"ownerId":     {Value: openapi3.NewStringSchema()},
+					"blueprintId": {Value: openapi3.NewStringSchema()},
+				}
+				allowUnknown := false
+				schema.AdditionalProperties.Has = &allowUnknown
+				operation.RequestBody.Value.Content["application/json"] = &openapi3.MediaType{Schema: &openapi3.SchemaRef{Value: schema}}
+			}
 			media := operation.RequestBody.Value.Content.Get("application/json")
 			if media == nil || media.Schema == nil || media.Schema.Value == nil {
 				continue

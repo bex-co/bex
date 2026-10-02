@@ -162,6 +162,10 @@ func writeTooManyRequests(w http.ResponseWriter, r *http.Request) {
 // withBodyLimit returns a middleware that rejects non-GET requests whose body
 // exceeds max bytes with 413. Zero or negative max disables the check.
 func withBodyLimit(max int64) func(http.Handler) http.Handler {
+	return withBodyLimitMessage(max, fmt.Sprintf("request body exceeds %d bytes", max))
+}
+
+func withBodyLimitMessage(max int64, tooLargeMessage string) func(http.Handler) http.Handler {
 	if max <= 0 {
 		return func(h http.Handler) http.Handler { return h }
 	}
@@ -176,7 +180,7 @@ func withBodyLimit(max int64) func(http.Handler) http.Handler {
 					return
 				}
 				if int64(len(buf)) > max {
-					core.WriteErrStatus(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("request body exceeds %d bytes", max))
+					core.WriteErrStatus(w, http.StatusRequestEntityTooLarge, tooLargeMessage)
 					return
 				}
 				r.Body = io.NopCloser(bytes.NewReader(buf))
