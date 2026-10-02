@@ -1315,9 +1315,11 @@ spec:
               undeployedChanges:
                 description: |-
                   UndeployedChanges reports saved configuration that differs from the serving
-                  release after cancellation or historical configuration selection. Saved
-                  settings remain available for the next standard deploy. An identical-config
-                  Restart does not set this flag merely because it selects a release record.
+                  pod release, including service-local Save-only writes, cancellation and
+                  historical selection. Missing historical evidence after a save is treated
+                  conservatively as pending. Static build inputs do not use this comparison.
+                  Saved settings remain available for the next standard deploy; merely
+                  selecting an identical configuration for Restart does not set the flag.
                 type: boolean
               unscopedSnapshotGeneration:
                 description: |-

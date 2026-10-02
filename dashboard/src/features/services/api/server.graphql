@@ -29,8 +29,8 @@ query Server($id: String!) {
     # that carries a public URL, so the header can render it unconditionally.
     publicRoutingNotice
     # undeployedChanges reports saved settings not applied to the running release,
-    # including after cancellation, rollback or restart. The operator owns this
-    # distinction; a standard deploy applies the saved settings.
+    # including ordinary Save only, cancellation, rollback or restart. The
+    # operator owns this distinction; a standard deploy applies saved settings.
     undeployedChanges
     # internalAddress is the private-network "<slug>:<port>" sibling services
     # connect to (web/private only, empty otherwise) — Render's Connect →
