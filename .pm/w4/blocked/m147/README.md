@@ -1,16 +1,16 @@
 # w4 · m147 — Refresh service activity while the page stays open
 
-**Worker:** worker4 **Goal:** newly recorded service events appear on the open Activity page and completed deploys lose their in-progress state and Cancel action. **Status:** todo
+**Worker:** worker4 **Goal:** newly recorded service events appear on the open Activity page and completed deploys lose their in-progress state and Cancel action. **Status:** blocked — t001–t005 done; t006 awaits dashboard deployment and hosted acceptance
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Refresh the activity head with a bounded moving window | 40m | — |
-| t002 | Preserve paging and shared Events/Metrics callers | 35m | t001 |
-| t003 | Render parity | 15m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Test coverage | 30m | t003 |
+| t001 | Refresh the activity head with a bounded moving window — **DONE** | 40m | — |
+| t002 | Preserve paging and shared Events/Metrics callers — **DONE** | 35m | t001 |
+| t003 | Render parity — **DONE** | 15m | t002 |
+| t004 | Simplify — **DONE** | 10m | t003 |
+| t005 | Test coverage — **DONE** | 30m | t003 |
 | t006 | Closeout | 15m | t004, t005 |
 
 ## Definition of done
@@ -37,3 +37,7 @@ Older-page accumulation, hidden-tab behavior, absolute Metrics ranges and siblin
 ## Dedupe and limits
 
 No open milestone covers this after scanning 36 open/blocked milestone READMEs, inbox notes and completed history. w4/073 fixed the Deploys list; this route does not use that hook. w3/m19 supplied historical windows/cursors, w6/m122 fixed catalog filtering, and w7/m66 supplied lifecycle facts. Their producer/history guarantees are preserved; this is an uncovered live freshness gap, not evidence those source fixes regressed. The finding walks their relevant complete DoDs. Product code is unchanged by this filing.
+
+## Blocked closeout — 2026-10-02
+
+The release pipeline must deploy the dashboard; QA must then replay the live deploy/sleep/wake, API identity/range and Metrics controls, delete its fixture and revoke its session. All implementation tasks and local checks passed; see [verification](verification.md).
