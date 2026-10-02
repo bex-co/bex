@@ -18,7 +18,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 User approved the three Render-aligned follow-ups and requested `/pm` filing followed by `/loopx w5`. Each milestone starts with Render behavior research and ends with Render parity, Simplify, Test coverage and Closeout. Execute m107 → m108 → m109; these are distinct from the older blocked production acceptance in m105.
 
 - [x] **m107** — [Preserve saved settings during rollback](done/m107/README.md) (8 tasks) — **DONE 2026-10-01**; saved B survives rollback/Restart A, ordinary deploy uses B; module checks and isolated runtime proof passed, fixtures removed.
-- [ ] **m108** — [Prevent canceled cron runs returning after history eviction](m108/README.md) (7 tasks; 3h35m total).
+- [x] **m108** — [Prevent canceled cron runs returning after history eviction](done/m108/README.md) (7 tasks) — **DONE 2026-10-01**; durable manual acknowledgement survives history eviction, later cancellation and lifecycle changes; new-trigger race covered, full checks/live proof passed, fixtures removed.
 - [ ] **m109** — [Enforce the twelve-hour cron runtime limit](m109/README.md) (7 tasks; 2h40m total).
 
 **Resumed — 2026-10-01:** Git write/network access is restored. `git pull --rebase --autostash origin main` succeeded and dev-5 passed its health inventory. The earlier read-only `.git/FETCH_HEAD` failure is resolved; resume execution at m107/t001.

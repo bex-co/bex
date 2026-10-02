@@ -3683,6 +3683,10 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 // template, including for manual runs, so new release configuration cannot leak
 // into the still-active release.
 func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) (ctrl.Result, error) {
+	// Adopt existing evidence before deletion or history truncation can erase it.
+	if err := r.adoptManualRun(ctx, app); err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronRunFailed", err: err}
+	}
 	suspended := app.Spec.Suspended
 
 	// Read cancellation state without deleting anything: the recurring schedule
@@ -3777,6 +3781,11 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 	if app.Spec.CancelRun == nil || app.Spec.CancelRun.Name == "" {
 		return false, nil
 	}
+	if app.Spec.RunAt != "" && app.Spec.CancelRun.Name == manualRunJobName(app.Name, app.Spec.RunAt) {
+		if err := r.acknowledgeManualRun(ctx, app); err != nil {
+			return false, err
+		}
+	}
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: app.Spec.CancelRun.Name, Namespace: app.Namespace}}
 	if err := r.buildPlaneClient().Get(ctx, client.ObjectKeyFromObject(job), job); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -3796,22 +3805,11 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 // manualCronRunActive reports whether spec.runAt names a one-off run that is
 // still executing, or is about to be created later in this same reconcile.
 //
-// It is the gate that pauses the recurring schedule for a manual run's duration
-// (w6/039). A NotFound Job reads as active rather than finished because
-// ensureManualRun creates it further down this pass — treating it as finished
-// would leave the schedule live across exactly the window the run occupies. Once
-// the Job reports Complete or Failed the run is over and the schedule resumes;
-// nothing garbage-collects a manual run Job before then (no
-// ttlSecondsAfterFinished), so the NotFound branch cannot mean "finished and
-// swept". The caller separately pauses scheduling while cancellation is in
-// flight, including when the canceled run has no manual replacement.
-//
-// The NotFound="about to be created" reading is only safe because
-// manualRunSettled short-circuits first: a canceled run's Job IS deleted, and
-// before w4/m114 t001 that combination (settled in history, Job gone, cancel
-// slot since overwritten) read as "active", pausing the schedule for a run
-// that would never come — the same stale-intent bug that let the run itself
-// be recreated.
+// A missing, unacknowledged Job is about to be created, so scheduling pauses
+// before its creation. A missing acknowledged Job must not be recreated or keep
+// the schedule paused. An existing nonterminal Job remains active even after
+// acknowledgement; handling an intent says nothing about its execution outcome.
+// The caller separately pauses scheduling while cancellation is in flight.
 func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha1.App) (bool, error) {
 	if app.Spec.RunAt == "" || app.Spec.Suspended || manualRunSettled(app) {
 		return false, nil
@@ -3820,7 +3818,7 @@ func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha
 	key := client.ObjectKey{Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace}
 	if err := r.buildPlaneClient().Get(ctx, key, job); err != nil {
 		if apierrors.IsNotFound(err) {
-			return true, nil
+			return !manualRunHandled(app), nil
 		}
 		return false, err
 	}
@@ -3844,8 +3842,7 @@ func (r *AppReconciler) preemptOtherCronRuns(ctx context.Context, app *appv1alph
 		if jobSettled(job) {
 			continue
 		}
-		owner := metav1.GetControllerOf(job)
-		if owner == nil || owner.Kind != "CronJob" || owner.UID != cron.UID || owner.Name != cron.Name {
+		if !otherOwnedCronRun(app, cron, job) {
 			continue
 		}
 		pending = true
@@ -3872,7 +3869,7 @@ func (r *AppReconciler) preemptOtherCronRuns(ctx context.Context, app *appv1alph
 		// Persist the extra cancellation before deleting its only backing object.
 		// A crash or later reconcile error must not erase this run's outcome.
 		if changed {
-			if err := cl.Status().Patch(ctx, app, client.MergeFrom(before)); err != nil {
+			if err := r.Status().Patch(ctx, app, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
 				return false, err
 			}
 		}
@@ -3883,6 +3880,27 @@ func (r *AppReconciler) preemptOtherCronRuns(ctx context.Context, app *appv1alph
 		}
 	}
 	return pending, nil
+}
+
+// Scheduled Jobs belong to the CronJob; manual Jobs belong directly to the App.
+// A superseding trigger may arrive before the previous manual Job reached run
+// history, so both owner kinds must participate in foreground preemption.
+func otherOwnedCronRun(app *appv1alpha1.App, cron *batchv1.CronJob, job *batchv1.Job) bool {
+	owner := metav1.GetControllerOf(job)
+	if owner == nil {
+		return false
+	}
+	switch owner.Kind {
+	case "CronJob":
+		return owner.Name == cron.Name && owner.UID == cron.UID
+	case "App":
+		runAt := job.Annotations[annotationManualRunAt]
+		return owner.Name == app.Name && owner.UID == app.UID &&
+			runAt != "" && job.Name == manualRunJobName(app.Name, runAt) &&
+			job.Name != manualRunJobName(app.Name, app.Spec.RunAt)
+	default:
+		return false
+	}
 }
 
 // jobSettled reports whether a Job has reached a terminal condition.
@@ -3914,17 +3932,10 @@ func jobSettled(job *batchv1.Job) bool {
 // (Suspend/resume only delayed the effect; the minimal repro needs no suspend
 // at all — trigger, cancel the manual run, cancel any other run.)
 //
-// The durable answer is terminal HISTORY rather than a mutable intent slot:
-// cronRuns deliberately retains terminal entries in status.runs across Job GC
-// and across the deletion a cancel performs, precisely so run ids stay stable.
-// A run recorded Succeeded/Failed/Canceled there is over, whatever the cancel
-// slot has since been reused for.
-//
-// Residual: status.runs is capped at maxCronRuns, so a manual run could in
-// principle age out of history while its runAt still stands. The cancel-slot
-// check is kept as the second term for exactly that window, and the operator
-// must not clear spec.runAt itself — spec is backend-owned, and writing it
-// here would bump the generation and open a spurious deploy row.
+// Terminal history and the cancellation intent establish that a run is over.
+// The separate ManualRunHandledAt acknowledgement prevents replay after these
+// bounded records disappear; it is not consulted here because a materialized
+// Job can still be running. The operator never clears backend-owned spec.runAt.
 func manualRunSettled(app *appv1alpha1.App) bool {
 	if app.Spec.RunAt == "" {
 		return false
@@ -3954,17 +3965,21 @@ func manualRunSettled(app *appv1alpha1.App) bool {
 const cronRunBackoffLimit = 0
 
 func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) error {
+	if manualRunHandled(app) {
+		return nil
+	}
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 		Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
 	}}
 	err := r.buildPlaneClient().Get(ctx, client.ObjectKeyFromObject(job), job)
 	if err == nil {
-		return nil // already materialized this run
+		return r.acknowledgeManualRun(ctx, app)
 	}
 	if !apierrors.IsNotFound(err) {
 		return err
 	}
 	job.Labels = template.Labels
+	job.Annotations = map[string]string{annotationManualRunAt: app.Spec.RunAt}
 	job.Spec.Template = template
 	job.Spec.BackoffLimit = new(int32(cronRunBackoffLimit)) // one execution, like a scheduled run (w8/028)
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
@@ -3973,7 +3988,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	if err := r.buildPlaneClient().Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
-	return nil
+	return r.acknowledgeManualRun(ctx, app)
 }
 
 // cronRuns lists the Jobs backing an App's cron (by labelApp — both the CronJob's
@@ -4917,6 +4932,11 @@ func (f *stepFailure) Unwrap() error { return f.err }
 // failStep records a stepFailure through r.fail and returns any other error as
 // it is.
 func (r *AppReconciler) failStep(ctx context.Context, app *appv1alpha1.App, err error) (ctrl.Result, error) {
+	// Reconcile again from current state. Recording a failure with a stale status
+	// retry could overwrite another pass's durable acknowledgement.
+	if apierrors.IsConflict(err) {
+		return ctrl.Result{}, err
+	}
 	if step, ok := errors.AsType[*stepFailure](err); ok {
 		return r.fail(ctx, app, step.reason, step.err)
 	}

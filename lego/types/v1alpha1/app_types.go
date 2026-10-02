@@ -1387,6 +1387,13 @@ type AppStatus struct {
 	// +optional
 	Runs []CronRun `json:"runs,omitempty"`
 
+	// ManualRunHandledAt is the exact spec.runAt token whose Job has been
+	// materialized or whose cancellation has been accepted. It survives bounded
+	// run-history eviction and Job deletion, preventing the same intent from
+	// executing again. This acknowledges handling, not a terminal run outcome.
+	// +optional
+	ManualRunHandledAt string `json:"manualRunHandledAt,omitempty"`
+
 	// URL is the canonical serving URL (first effective host).
 	// +optional
 	URL string `json:"url,omitempty"`

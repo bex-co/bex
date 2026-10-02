@@ -1,0 +1,7 @@
+=== RUN   TestCanceledManualIntentStaysHandledAfterHistoryEviction
+    cron_manual_intent_test.go:96: canceled manual Job absent; history now contains 10 newer runs and RunAt remains 2026-09-17T19:12:14Z
+    cron_manual_intent_test.go:109: canceled manual intent was recreated after history eviction: job=tea-x-qa-20260917-p12-cron-run-56810088 get=<nil>
+--- FAIL: TestCanceledManualIntentStaysHandledAfterHistoryEviction (0.07s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/controller	0.927s
+FAIL

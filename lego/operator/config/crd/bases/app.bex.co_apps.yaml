@@ -1149,6 +1149,13 @@ spec:
                 - primaryPort
                 - revision
                 type: object
+              manualRunHandledAt:
+                description: |-
+                  ManualRunHandledAt is the exact spec.runAt token whose Job has been
+                  materialized or whose cancellation has been accepted. It survives bounded
+                  run-history eviction and Job deletion, preventing the same intent from
+                  executing again. This acknowledges handling, not a terminal run outcome.
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the .metadata.generation the controller
                   last reconciled.
