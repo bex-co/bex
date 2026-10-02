@@ -530,6 +530,16 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		core.WriteErrStatus(w, http.StatusBadRequest, "request contains an unsupported query parameter")
 		return
 	}
+	// Datastore region filters accept repeated keys as well as comma lists.
+	// kin's explode=false decoder validates only the first repeated value, so
+	// combine them on the clone to check every region against the pinned enum.
+	if route.Operation.OperationID == "list-postgres" || route.Operation.OperationID == "list-key-value" {
+		query := validationRequest.URL.Query()
+		if regions := query["region"]; len(regions) > 1 {
+			query.Set("region", strings.Join(regions, ","))
+			validationRequest.URL.RawQuery = query.Encode()
+		}
+	}
 
 	// Clone copied the original Body interface. kin consumes and restores the
 	// clone, so transfer its restored reader back before the real handler runs.

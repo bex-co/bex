@@ -241,6 +241,7 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 	for i := range envIDs {
 		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
 	}
+	regions := core.QueryList(q, "region")
 	suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
 	if err != nil {
 		core.WriteErr(w, err)
@@ -259,6 +260,7 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 	out = core.Filter(out, func(kv KeyValueView) bool {
 		return (len(names) == 0 || slices.Contains(names, kv.Name) || slices.Contains(names, kv.ID)) &&
 			(len(envIDs) == 0 || slices.Contains(envIDs, kv.EnvironmentID)) &&
+			(len(regions) == 0 || slices.Contains(regions, kv.Region)) &&
 			(suspended == "" || kv.Suspended == suspended) &&
 			created.Contains(kv.CreatedAt) && updated.Contains(kv.UpdatedAt)
 	})

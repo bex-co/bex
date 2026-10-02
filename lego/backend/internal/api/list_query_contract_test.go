@@ -31,9 +31,8 @@ import (
 // operation's handler or a reachable REST helper. Behavioral tests complement
 // this source guard: reading a query alone does not prove correct filtering.
 var listQueryOmissions = map[string]map[string]string{
-	"list-services":  {"includePreviews": "bex has no preview services"},
-	"list-postgres":  {"region": "single-region datastore listing has no placement filter", "includeReplicas": "read replicas are not exposed as separate list records"},
-	"list-key-value": {"region": "single-region datastore listing has no placement filter"},
+	"list-services": {"includePreviews": "bex has no preview services"},
+	"list-postgres": {"includeReplicas": "read replicas are not exposed as separate list records"},
 }
 
 func TestListOperationsConsumeAdmittedQueries(t *testing.T) {
