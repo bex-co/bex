@@ -223,3 +223,20 @@ The environment allow-list (`spec.environmentIPAllowList` → the `<app>-env-ip-
 | the caller's own public `/32` | `200` | **`403` ×6**: the owner is locked out |
 
 State of the rollout as seen from outside: t001's `proxyProtocol.trustedIPs: [10.10.0.7/32]` is on `main` (`deploy/gitops/overlays/prod/values/traefik.values.yaml:53-55,66-68`), and `infra/terraform/main.tf:208,226` still have `proxyprotocol = false`. That matches the upstream seeing `10.10.0.7`: t002's listener flip is the remaining step, and the environment layer needs no code beyond it. t007's live re-verify should repeat the four rows above on an environment as well as on a service.
+
+## t001 confirmed live, and t002 applied (2026-10-01, user-authorized)
+
+**User decision 2026-10-01:** "continue to prod" — apply t002 now.
+
+**t001 is live**, proved from outside the cluster against the edge `49.12.20.236:80` with an unrouted Host:
+
+```text
+plain request                         → HTTP/1.1 404 (routed)
+PROXY TCP4 203.0.113.9 … + request    → HTTP/1.1 404 (routed — header parsed, not a 400)
+```
+
+A Traefik that did not expect PROXY protocol answers the second with `400 Bad Request`. It routed it, so `web` trusts PROXY headers from `10.10.0.7`.
+
+**That also exposed a live spoofing hole in the half-rolled state.** The load balancer is a byte-transparent TCP proxy, so a header the _client_ writes arrives from the trusted peer `10.10.0.7` and is believed: until t002, any Internet client could assert any source address, i.e. pass a tenant IP allow-list by prefixing one line. t002 closes it — once the load balancer sends its own header, a client-supplied `PROXY` line is the first line of the HTTP stream and is rejected. t006's regression should pin this (a client-sent PROXY line after the flip → `400`).
+
+**Pre-flip baseline:** `https://hello-go.onbex.co/` → `200` (caller `162.224.81.143`).

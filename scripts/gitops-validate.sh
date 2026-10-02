@@ -196,7 +196,7 @@ for edge in ssh:22:32207 http:80:31218 https:443:31976 postgres:5432:31056 valke
   fi
   expected_proxyprotocol=false
   case "$name" in
-    postgres | valkey) expected_proxyprotocol=true ;;
+    http | https | postgres | valkey) expected_proxyprotocol=true ;;
   esac
   if ! grep -Eq "^[[:space:]]*proxyprotocol[[:space:]]*=[[:space:]]*${expected_proxyprotocol}[[:space:]]*$" <<<"$block"; then
     echo "FAIL: Terraform edge listener $name must set proxyprotocol=$expected_proxyprotocol" >&2
