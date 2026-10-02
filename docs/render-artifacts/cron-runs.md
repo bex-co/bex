@@ -82,3 +82,19 @@ Cross-surface: the UI's semantics equal the REST/MCP verbs — `runCronJob` = MC
 ## Deferred m60 walkthrough closeout (2026-09-06)
 
 The remaining notification/registry checks from `w5/029` passed on production with disposable fixtures, now deleted; see `w5/done/029.md` for exact outcomes and artifacts. The dated 2026-08-08 cron Trigger Run and run-detail proof is retained there. No fresh terminal cron-run capture is claimed by this follow-up.
+
+## Scheduling and retry evidence correction — 2026-10-01 (w5/069)
+
+[Render's current cron documentation](https://render.com/docs/cronjobs#single-run-guarantee) distinguishes three guarantees: at most one active run, cancel the active run before a manual replacement, and delay the next scheduled run until the current one finishes. It also documents a twelve-hour runtime limit. It does not establish a no-retry policy; sequential attempts within one run do not alone violate single-run concurrency. No authenticated Render execution capture was available in this verification.
+
+The shipped w8/028 correction sets `backoffLimit: 0` on scheduled and manual Jobs, guarded by `TestCronRunsExecuteOnce`. That is bex's current execution policy, not proven Render retry parity. The historical inference in w8/028 that Render necessarily executes a failing command once is unverified; its measured seven attempts remain valid historical evidence of bex's former retry policy.
+
+Likewise, `ForbidConcurrent` alone does not establish the entire Render scheduling contract. [Kubernetes documents](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) that missed ticks can be scheduled after the prior run completes and that unsuspending without a starting deadline permits catch-up. Thus earlier descriptions of ticks being permanently skipped, including operator comments, must not be read as proof that no delayed execution occurs. Actual Job ownership, scheduled timestamps and Pod execution intervals are required to distinguish concurrency, delayed scheduling and status-projection lag.
+
+## Manual preemption handoff — 2026-10-02 UTC (w5/m106)
+
+The local baseline reproduced concurrent container execution during foreground cancellation: the schedule reopened before the manual replacement could start, allowing a missed tick to catch up. The operator now pauses the CronJob before deleting the previous Job, waits for foreground deletion, and checks current CronJob-owned Jobs absent from API history. Extra cancellations are recorded before deleting their backing Jobs; canceled outcomes survive subsequent history refreshes.
+
+REST and GraphQL live reads matched the dashboard run table. REST and MCP use the same `TriggerCronRun` / `CancelCronRun` core as GraphQL; the dashboard calls those GraphQL operations. Focused adapter tests cover all three API surfaces. No API schema or UI implementation change is required.
+
+Evidence and exact local replay boundaries are retained with [w5/m106](../../.pm/w5/done/m106/README.md). This is a single-App, direct-reconcile check on dev-5, bypassing the production manager's watch/cache delivery. A successful local handoff does not establish global race freedom: Kubernetes exposes no suspension acknowledgement excluding a scheduler create already in flight. The original production incident acceptance stays with w4/m114; Render retry behavior remains unverified.

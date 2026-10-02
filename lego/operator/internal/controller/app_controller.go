@@ -3676,30 +3676,28 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha1.App, template corev1.PodTemplateSpec) (ctrl.Result, error) {
 	suspended := app.Spec.Suspended
 
-	cancelPending, err := r.cancelRequestedCronRun(ctx, app)
-	if err != nil {
-		return ctrl.Result{}, &stepFailure{reason: "CronRunCancelFailed", err: err}
+	// Read cancellation state without deleting anything: the recurring schedule
+	// must be paused before foreground deletion releases its active execution.
+	cancelPending := false
+	if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name != "" {
+		job := &batchv1.Job{}
+		err := r.buildPlaneClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Spec.CancelRun.Name}, job)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return ctrl.Result{}, &stepFailure{reason: "CronRunCancelFailed", err: err}
+		}
+		cancelPending = err == nil
 	}
-	// A manual run is a one-off Job this controller creates directly, owned by
-	// the App rather than by the CronJob — so ConcurrencyPolicy, which only ever
-	// inspects the Jobs a CronJob's own controller made, cannot see it. Without
-	// this, a schedule tick landing during an active Trigger Run starts a second,
-	// genuinely concurrent execution, breaking the single-concurrent-execution
-	// guarantee docs/render-artifacts/cron-runs.md states (w6/039). Pausing the
-	// schedule for the duration is the same mechanism the user-facing Suspend
-	// already uses, and it skips the tick rather than queueing it, matching what
-	// ForbidConcurrent does for a scheduled-vs-scheduled overlap.
-	manualRunActive, err := r.manualCronRunActive(ctx, app, cancelPending)
+	manualRunActive, err := r.manualCronRunActive(ctx, app)
 	if err != nil {
 		return ctrl.Result{}, &stepFailure{reason: "CronRunFailed", err: err}
 	}
-	scheduleSuspended := suspended || manualRunActive
+	scheduleSuspended := suspended || manualRunActive || cancelPending
 
 	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.CronJobName(app.Name), Namespace: app.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cj, func() error {
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), cj, func() error {
 		cj.Spec.Schedule = app.Spec.Schedule
 		// Render runs at most one cron execution at a time. Scheduled overlap is
-		// skipped; a manual trigger explicitly cancels the active Job before its
+		// delayed; a manual trigger explicitly cancels the active Job before its
 		// replacement is created below.
 		cj.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
 		// Suspend pauses scheduling without losing history — resume just clears
@@ -3715,6 +3713,18 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 		return controllerutil.SetControllerReference(app, cj, r.Scheme)
 	}); err != nil {
 		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
+	}
+
+	cancelPending, err = r.cancelRequestedCronRun(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, &stepFailure{reason: "CronRunCancelFailed", err: err}
+	}
+	if manualRunActive {
+		pending, err := r.preemptOtherCronRuns(ctx, app, cj)
+		if err != nil {
+			return ctrl.Result{}, &stepFailure{reason: "CronRunCancelFailed", err: err}
+		}
+		cancelPending = cancelPending || pending
 	}
 
 	// One-off run trigger (spec.runAt, from the API's cron run verb): materialize a
@@ -3759,7 +3769,7 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 		return false, nil
 	}
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: app.Spec.CancelRun.Name, Namespace: app.Namespace}}
-	if err := r.Get(ctx, client.ObjectKeyFromObject(job), job); err != nil {
+	if err := r.buildPlaneClient().Get(ctx, client.ObjectKeyFromObject(job), job); err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
@@ -3768,7 +3778,7 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 	if !job.DeletionTimestamp.IsZero() {
 		return true, nil
 	}
-	if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.buildPlaneClient().Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
 		return false, err
 	}
 	return true, nil
@@ -3784,8 +3794,8 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 // the Job reports Complete or Failed the run is over and the schedule resumes;
 // nothing garbage-collects a manual run Job before then (no
 // ttlSecondsAfterFinished), so the NotFound branch cannot mean "finished and
-// swept". A suspended App has no schedule to pause, and a cancellation in flight
-// means no manual run will be running once it lands.
+// swept". The caller separately pauses scheduling while cancellation is in
+// flight, including when the canceled run has no manual replacement.
 //
 // The NotFound="about to be created" reading is only safe because
 // manualRunSettled short-circuits first: a canceled run's Job IS deleted, and
@@ -3793,19 +3803,77 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 // slot since overwritten) read as "active", pausing the schedule for a run
 // that would never come — the same stale-intent bug that let the run itself
 // be recreated.
-func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha1.App, cancelPending bool) (bool, error) {
-	if app.Spec.RunAt == "" || app.Spec.Suspended || cancelPending || manualRunSettled(app) {
+func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	if app.Spec.RunAt == "" || app.Spec.Suspended || manualRunSettled(app) {
 		return false, nil
 	}
 	job := &batchv1.Job{}
 	key := client.ObjectKey{Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace}
-	if err := r.Get(ctx, key, job); err != nil {
+	if err := r.buildPlaneClient().Get(ctx, key, job); err != nil {
 		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
 	}
 	return !jobSettled(job), nil
+}
+
+// preemptOtherCronRuns catches runs missing from the backend's last history
+// snapshot. Reads bypass the informer cache, and foreground deletion keeps the
+// replacement gated until dependent Pods are gone. Suspension plus a fresh list
+// closes the observed handoff race; Kubernetes does not expose a suspension
+// acknowledgement that could exclude an already-in-flight scheduler Create.
+func (r *AppReconciler) preemptOtherCronRuns(ctx context.Context, app *appv1alpha1.App, cron *batchv1.CronJob) (bool, error) {
+	cl := r.buildPlaneClient()
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
+		return false, err
+	}
+	pending := false
+	for i := range jobs.Items {
+		job := &jobs.Items[i]
+		if jobSettled(job) {
+			continue
+		}
+		owner := metav1.GetControllerOf(job)
+		if owner == nil || owner.Kind != "CronJob" || owner.UID != cron.UID || owner.Name != cron.Name {
+			continue
+		}
+		pending = true
+		before := app.DeepCopy()
+		changed := false
+		run := toCronRun(job)
+		run.Status = appv1alpha1.CronRunCanceled
+		run.FinishedAt = time.Now().UTC().Format(time.RFC3339)
+		found := false
+		for j := range app.Status.Runs {
+			if app.Status.Runs[j].Name == job.Name {
+				if app.Status.Runs[j].Status != appv1alpha1.CronRunCanceled {
+					app.Status.Runs[j] = run
+					changed = true
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			app.Status.Runs = append(app.Status.Runs, run)
+			changed = true
+		}
+		// Persist the extra cancellation before deleting its only backing object.
+		// A crash or later reconcile error must not erase this run's outcome.
+		if changed {
+			if err := cl.Status().Patch(ctx, app, client.MergeFrom(before)); err != nil {
+				return false, err
+			}
+		}
+		if job.DeletionTimestamp.IsZero() {
+			if err := cl.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
+				return false, err
+			}
+		}
+	}
+	return pending, nil
 }
 
 // jobSettled reports whether a Job has reached a terminal condition.
@@ -3880,7 +3948,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
 		Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
 	}}
-	err := r.Get(ctx, client.ObjectKeyFromObject(job), job)
+	err := r.buildPlaneClient().Get(ctx, client.ObjectKeyFromObject(job), job)
 	if err == nil {
 		return nil // already materialized this run
 	}
@@ -3893,7 +3961,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
 		return err
 	}
-	if err := r.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := r.buildPlaneClient().Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
 	return nil
@@ -3903,7 +3971,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 // scheduled Jobs and one-off RunAt Jobs), newest first, capped at maxCronRuns.
 func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App) ([]appv1alpha1.CronRun, error) {
 	var jobs batchv1.JobList
-	if err := r.List(ctx, &jobs, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
+	if err := r.buildPlaneClient().List(ctx, &jobs, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
 		return nil, err
 	}
 	items := jobs.Items
@@ -3916,8 +3984,13 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App) ([]a
 	current := make(map[string]appv1alpha1.CronRun, len(items))
 	for i := range items {
 		run := toCronRun(&items[i])
-		if old, ok := prior[run.Name]; ok && run.StartedAt == "" {
-			run.StartedAt = old.StartedAt
+		if old, ok := prior[run.Name]; ok {
+			if run.StartedAt == "" {
+				run.StartedAt = old.StartedAt
+			}
+			if old.Status == appv1alpha1.CronRunCanceled {
+				run.Status, run.FinishedAt = old.Status, old.FinishedAt
+			}
 		}
 		if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name == run.Name {
 			run.Status = appv1alpha1.CronRunCanceled

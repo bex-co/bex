@@ -160,7 +160,7 @@ func TestSettledManualRunDoesNotPauseTheSchedule(t *testing.T) {
 	// the (deleted, NotFound) Job — the NotFound branch would otherwise report
 	// "about to be created" and pause the schedule indefinitely.
 	r := &AppReconciler{}
-	active, err := r.manualCronRunActive(t.Context(), app, false)
+	active, err := r.manualCronRunActive(t.Context(), app)
 	if err != nil {
 		t.Fatalf("manualCronRunActive: %v", err)
 	}
