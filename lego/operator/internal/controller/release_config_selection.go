@@ -64,7 +64,7 @@ func (rec *runtimeConfigRecord) adoptLegacySpec(app *appv1alpha1.App, generation
 		rec.spec.Command = new("")
 	}
 	for _, c := range rec.template.Spec.Containers {
-		if c.Name != "app" {
+		if c.Name != appContainerName {
 			continue
 		}
 		for _, env := range c.Env {

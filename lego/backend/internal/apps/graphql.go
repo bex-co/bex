@@ -1550,7 +1550,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// setImage switches a service to a prebuilt container image (Render's
 		// Update-Source repo→image half, w5/m76). The same shared source verb as
 		// setRepo/setBranch and REST PATCH `image`, so mutual exclusion (setting
-		// the image clears repo/branch source) and validation (ValidImage) cannot
+		// the image clears repo/branch source) and validation (ValidateImage) cannot
 		// drift; optional registryCredentialId is validated against the image host
 		// before either reaches the App. Neither this nor setRepo triggers a
 		// deploy — the next deploy uses the new source (Render's semantics).
