@@ -1,0 +1,20 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-w2-039-regression-ln_lrpap/original-overlay.json",
+    "./internal/logs",
+    "-run",
+    "TestDiagnosticPreDeployInstanceSelector$",
+    "-count=1",
+    "-v"
+  ],
+  "env": {
+    "GOWORK": "off",
+    "GOMAXPROCS": "2"
+  },
+  "exitCode": 1,
+  "expected": "failure: nonexistent selector returns two pre-deploy log rows",
+  "elapsedSeconds": 3.68
+}

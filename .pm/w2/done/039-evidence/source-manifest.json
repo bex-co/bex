@@ -1,0 +1,7 @@
+{
+  "head": "c95a70d4d4e04634682687f74b57425cf302c615",
+  "current_service_sha256": "a2394434ef6753704133dccedd43baf8d609b23a900ac16dcb8c320f90e75334",
+  "original_service_sha256": "fcc6e5476f7b36fae36293c378f862b1c4b7084386637e0555c1cf1d4f89d790",
+  "original_diagnostic_sha256": "e6fe4757acb727733b60c474f40a063a8a44fd7ae229aa3aee88130f40ecf251",
+  "scope": "Private Go overlay; fake controller-runtime client and instrumented PodLogs, no live API/CLI/Kubernetes/Loki/network evidence"
+}
