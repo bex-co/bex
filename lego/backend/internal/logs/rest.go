@@ -502,7 +502,7 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	}
 
 	q := LogQuery{
-		Search:     v.Get("text"),
+		Search:     v["text"],
 		Level:      v["level"],
 		Instance:   v["instance"],
 		Host:       v["host"],

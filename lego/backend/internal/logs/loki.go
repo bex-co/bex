@@ -54,6 +54,7 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
+		q.Search = normalizeLogText(q.Search)
 		start, end := lokiRange(q, time.Now())
 		query := lokiQueryFor(namespace, q)
 		fetch := func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
@@ -111,7 +112,7 @@ func (e *ScanIncompleteError) Error() string {
 // lokiScansLines reports whether q carries a line filter, which Loki can only
 // answer by reading every line in the window.
 func lokiScansLines(q LogQuery) bool {
-	return q.Search != "" || len(q.Path) > 0 || len(q.Host) > 0
+	return len(q.Search) > 0 || len(q.Path) > 0 || len(q.Host) > 0
 }
 
 // scanLokiWindow walks [start, end] until q's limit is filled, the window is
@@ -397,13 +398,16 @@ func lokiTypeMatcher(q LogQuery) string {
 // An app log line has no RequestPath/RequestHost (and typically isn't JSON at all),
 // so either filter also narrows the read to request logs, which is exactly Render's
 // "filter request logs by their path/host".
+// Search must be normalized by the source boundary.
 func lokiQueryFor(namespace string, q LogQuery) string {
 	query := lokiSelectorFor(namespace, q)
-	if q.Search != "" {
-		// (?i) + a quoted-meta literal == the same case-insensitive substring
-		// match keep() applies to the pod-log path, so the two backends filter
-		// text identically; QuoteMeta neutralizes any regex metacharacters.
-		query += fmt.Sprintf(" |~ %q", "(?i)"+regexp.QuoteMeta(q.Search))
+	if len(q.Search) > 0 {
+		terms := make([]string, len(q.Search))
+		for i, term := range q.Search {
+			terms[i] = regexp.QuoteMeta(term)
+		}
+		// Escape each literal before alternation; caller text never becomes regex.
+		query += fmt.Sprintf(" |~ %q", "(?i)"+strings.Join(terms, "|"))
 	}
 	if len(q.Path) == 0 && len(q.Host) == 0 {
 		return query

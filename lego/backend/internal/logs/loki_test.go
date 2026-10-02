@@ -64,8 +64,8 @@ func TestLokiQueryFor(t *testing.T) {
 		{
 			name: "text search adds a case-insensitive line filter",
 			ns:   "default",
-			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: "ERROR boot"},
-			want: `{namespace="default", app="web", container="app"} |~ "(?i)ERROR boot"`,
+			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: []string{"ERROR boot"}},
+			want: `{namespace="default", app="web", container="app"} |~ "(?i)error boot"`,
 		},
 		{
 			// Bounded fields are label matchers — the cheap, indexed half.
@@ -153,13 +153,13 @@ func TestLokiQueryFor(t *testing.T) {
 			// matches the literal text, not "anything".
 			name: "search regex metachars are quoted to literals",
 			ns:   "default",
-			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: ".*"},
+			q:    LogQuery{App: "web", Types: []string{LogTypeApp}, Search: []string{".*"}},
 			want: `{namespace="default", app="web", container="app"} |~ "(?i)\\.\\*"`,
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := lokiQueryFor(c.ns, c.q); got != c.want {
+			if got := lokiQueryFor(c.ns, c.q.normalized()); got != c.want {
 				t.Errorf("lokiQueryFor:\n got %s\nwant %s", got, c.want)
 			}
 		})
@@ -442,7 +442,7 @@ func TestLokiSourceRequestAndDecode(t *testing.T) {
 	src := NewLokiSource(f.srv.URL, f.srv.Client())
 	since := time.Date(2026, 7, 9, 10, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 7, 9, 11, 0, 0, 0, time.UTC)
-	entries, err := src(context.Background(), "default", LogQuery{App: "web", Search: "hel", Since: since, End: end, Limit: 50})
+	entries, err := src(context.Background(), "default", LogQuery{App: "web", Search: []string{"hel"}, Since: since, End: end, Limit: 50})
 	if err != nil {
 		t.Fatalf("source: %v", err)
 	}
@@ -522,7 +522,7 @@ func TestManagedPostgresHistoryIsDatabaseScoped(t *testing.T) {
 
 	svc := newService(nil, sampleDatabase(postgresID))
 	svc.History = NewLokiSource(f.srv.URL, f.srv.Client())
-	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: postgresID, Search: "select"})
+	entries, err := svc.QueryLogs(context.Background(), LogQuery{App: postgresID, Search: []string{"select"}})
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("Postgres history = %+v, err=%v", entries, err)
 	}

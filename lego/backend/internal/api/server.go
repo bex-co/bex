@@ -597,7 +597,7 @@ func datastoreLogsAdapter(logSvc *logs.Service) func(context.Context, string, da
 	return func(ctx context.Context, name string, q datastorelogs.Query) ([]datastorelogs.Entry, error) {
 		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{
 			App:       name,
-			Search:    q.Search,
+			Search:    []string{q.Search},
 			Since:     q.Since,
 			End:       q.End,
 			Limit:     q.Limit,

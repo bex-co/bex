@@ -51,7 +51,7 @@ type logFilters struct {
 	StatusCode []string `json:"statusCode,omitempty" jsonschema:"filter request logs by status code (e.g. 404 or the class 4xx); * wildcards supported"`
 	Method     []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards supported"`
 	Path       []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards supported"`
-	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive substring to filter the log message by"`
+	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings; match any nonempty value"`
 	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive)"`
 	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper time bound (inclusive)"`
 	Direction  string   `json:"direction,omitempty" jsonschema:"which end of the time range to take lines from: backward (default, most recent) | forward (oldest)"`
@@ -103,7 +103,7 @@ func (f logFilters) query() (LogQuery, error) {
 	// surfaces.
 	q := LogQuery{
 		Types:      types,
-		Search:     firstNonEmpty(f.Text),
+		Search:     f.Text,
 		Level:      f.Level,
 		Instance:   f.Instance,
 		Host:       f.Host,
@@ -195,15 +195,4 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		slices.Sort(all)
 		return nil, listLogLabelValuesResult{Values: slices.Compact(all)}, nil
 	})
-}
-
-// firstNonEmpty returns the first non-empty string (Render's `text` filter is an
-// array; Core applies a single substring, so the tool honors the first).
-func firstNonEmpty(ss []string) string {
-	for _, s := range ss {
-		if s != "" {
-			return s
-		}
-	}
-	return ""
 }

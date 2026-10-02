@@ -40,7 +40,7 @@ func lineAt(t time.Time, msg string) LogEntry {
 
 func TestScanLokiWindowStopsAtTheFirstSliceThatFillsThePage(t *testing.T) {
 	var calls []sliceCall
-	q := LogQuery{Search: "GET", Limit: 2}.normalized()
+	q := LogQuery{Search: []string{"GET"}, Limit: 2}.normalized()
 	got, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, time.Minute,
 		func(_ context.Context, from, to time.Time) ([]LogEntry, error) {
 			calls = append(calls, sliceCall{from, to})
@@ -56,7 +56,7 @@ func TestScanLokiWindowStopsAtTheFirstSliceThatFillsThePage(t *testing.T) {
 
 func TestScanLokiWindowCoversANoMatchWeekInDoublingSlicesNewestFirst(t *testing.T) {
 	var calls []sliceCall
-	q := LogQuery{Search: "zzqqxx-no-such-token", Limit: 100}.normalized()
+	q := LogQuery{Search: []string{"zzqqxx-no-such-token"}, Limit: 100}.normalized()
 	got, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, time.Minute,
 		func(_ context.Context, from, to time.Time) ([]LogEntry, error) {
 			calls = append(calls, sliceCall{from, to})
@@ -82,7 +82,7 @@ func TestScanLokiWindowCoversANoMatchWeekInDoublingSlicesNewestFirst(t *testing.
 }
 
 func TestScanLokiWindowReturnsTheCoveredPartWhenTheBudgetRunsOut(t *testing.T) {
-	q := LogQuery{Search: "rare", Limit: 100}.normalized()
+	q := LogQuery{Search: []string{"rare"}, Limit: 100}.normalized()
 	calls := 0
 	_, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, 200*time.Millisecond,
 		func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
@@ -109,7 +109,7 @@ func TestScanLokiWindowReturnsTheCoveredPartWhenTheBudgetRunsOut(t *testing.T) {
 }
 
 func TestScanLokiWindowNamesATimeoutWhenNothingIsCovered(t *testing.T) {
-	q := LogQuery{Search: "rare", Limit: 100}.normalized()
+	q := LogQuery{Search: []string{"rare"}, Limit: 100}.normalized()
 	_, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, 50*time.Millisecond,
 		func(ctx context.Context, _, _ time.Time) ([]LogEntry, error) {
 			<-ctx.Done()
@@ -123,7 +123,7 @@ func TestScanLokiWindowNamesATimeoutWhenNothingIsCovered(t *testing.T) {
 
 func TestScanLokiWindowPassesThroughACallerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	q := LogQuery{Search: "rare", Limit: 100}.normalized()
+	q := LogQuery{Search: []string{"rare"}, Limit: 100}.normalized()
 	calls := 0
 	_, err := scanLokiWindow(ctx, q, scanStart, scanEnd, true, time.Minute,
 		func(ctx context.Context, _, _ time.Time) ([]LogEntry, error) {
@@ -142,7 +142,7 @@ func TestScanLokiWindowPassesThroughACallerCancellation(t *testing.T) {
 
 func TestScanLokiWindowSlicesForwardFromTheStart(t *testing.T) {
 	var calls []sliceCall
-	q := LogQuery{Search: "x", Limit: 100, Direction: DirectionForward}.normalized()
+	q := LogQuery{Search: []string{"x"}, Limit: 100, Direction: DirectionForward}.normalized()
 	_, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, time.Minute,
 		func(_ context.Context, from, to time.Time) ([]LogEntry, error) {
 			calls = append(calls, sliceCall{from, to})
@@ -177,7 +177,7 @@ func TestScanLokiWindowKeepsALabelOnlyReadToOneRequest(t *testing.T) {
 
 func TestScanLokiWindowCountsABoundaryLineOnce(t *testing.T) {
 	boundary := scanEnd.Add(-lokiFirstSlice)
-	q := LogQuery{Search: "edge", Limit: 100}.normalized()
+	q := LogQuery{Search: []string{"edge"}, Limit: 100}.normalized()
 	got, err := scanLokiWindow(context.Background(), q, scanStart, scanEnd, true, time.Minute,
 		func(_ context.Context, from, to time.Time) ([]LogEntry, error) {
 			if from.Equal(boundary) || to.Equal(boundary) {
@@ -209,7 +209,7 @@ func TestQueryLogPageTurnsAnIncompleteScanIntoAnHonestPage(t *testing.T) {
 			return nil, &ScanIncompleteError{Entries: []LogEntry{lineAt(scanEnd.Add(-10*time.Minute), "api")}, ScannedTo: apiEdge}
 		}
 	}
-	q := LogQuery{Search: "x", Since: scanStart, End: scanEnd}
+	q := LogQuery{Search: []string{"x"}, Since: scanStart, End: scanEnd}
 
 	page, err := svc.queryLogPage(context.Background(), []string{"web"}, q)
 	if err != nil {

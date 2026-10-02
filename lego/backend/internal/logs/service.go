@@ -255,7 +255,7 @@ type LogQuery struct {
 	// in App on input); callers cannot set this selector directly.
 	KeyValue string
 	Types    []string  // empty == all types; values: app | request | build
-	Search   string    // case-insensitive substring on the message (Render's `text`)
+	Search   []string  // case-insensitive literal substrings, OR within Render's `text`
 	Since    time.Time // zero == no lower bound
 	End      time.Time // zero == no upper bound
 	Limit    int64     // max lines
@@ -274,7 +274,6 @@ type LogQuery struct {
 	Method     []string
 	Path       []string
 
-	searchLower string         // Search lowercased once by normalized(); read by keep()
 	levelFilter *regexp.Regexp // Postgres pod severity matcher, compiled once per query
 }
 
@@ -308,7 +307,7 @@ func (q LogQuery) validate() error {
 }
 
 // normalized clamps Limit to Render's paging range, defaults the direction, and
-// precomputes searchLower.
+// normalizes the text terms without mutating caller-owned slices.
 func (q LogQuery) normalized() LogQuery {
 	if q.Limit <= 0 {
 		q.Limit = defaultLogLimit
@@ -319,14 +318,25 @@ func (q LogQuery) normalized() LogQuery {
 	if q.Direction != DirectionForward {
 		q.Direction = DirectionBackward
 	}
-	q.searchLower = strings.ToLower(q.Search)
+	q.Search = normalizeLogText(q.Search)
 	return q
+}
+
+func normalizeLogText(values []string) []string {
+	terms := make([]string, 0, len(values))
+	for _, term := range values {
+		if term != "" {
+			terms = append(terms, strings.ToLower(term))
+		}
+	}
+	slices.Sort(terms)
+	return slices.Compact(terms)
 }
 
 // hasFilters reports whether any line-level filter (search/time/level) is set — the
 // ones the pod-log path applies in Go.
 func (q LogQuery) hasFilters() bool {
-	return q.Search != "" || !q.Since.IsZero() || !q.End.IsZero() || q.levelFilter != nil
+	return len(q.Search) > 0 || !q.Since.IsZero() || !q.End.IsZero() || q.levelFilter != nil
 }
 
 // wants reports whether the query asks for a log type. An empty Types means "all
@@ -445,13 +455,16 @@ func NormalizeTypes(types []string) ([]string, error) {
 }
 
 // keep reports whether an entry satisfies the search/time/level filters. Assumes
-// normalized() has run (searchLower populated).
+// normalized() has run.
 func (q LogQuery) keep(e LogEntry) bool {
 	if q.levelFilter != nil && !q.levelFilter.MatchString(e.Labels[LabelLevel]) {
 		return false
 	}
-	if q.Search != "" && !strings.Contains(strings.ToLower(e.Message), q.searchLower) {
-		return false
+	if len(q.Search) > 0 {
+		message := strings.ToLower(e.Message)
+		if !slices.ContainsFunc(q.Search, func(term string) bool { return strings.Contains(message, term) }) {
+			return false
+		}
 	}
 	if !q.Since.IsZero() || !q.End.IsZero() {
 		if t, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil {

@@ -59,7 +59,7 @@ func TestManagedPostgresPodLevels(t *testing.T) {
 		{"wildcards", LogQuery{Level: []string{"warn*", "err*"}}, []string{"WARNING", "FATAL", "ERROR", "PANIC"}},
 		{"regex metacharacters stay literal", LogQuery{Level: []string{"err.r", "info|error"}}, nil},
 		{"unknown level", LogQuery{Level: []string{"unknown"}}, nil},
-		{"text AND level", LogQuery{Level: []string{"error"}, Search: "fatal"}, []string{"FATAL"}},
+		{"text AND level", LogQuery{Level: []string{"error"}, Search: []string{"fatal"}}, []string{"FATAL"}},
 		{"time AND level", LogQuery{Level: []string{"error"}, Since: time.Date(2026, 7, 5, 0, 0, 7, 0, time.UTC)}, []string{"ERROR", "PANIC"}},
 		{"bounded raw pod buffer", LogQuery{Level: []string{"error"}, Limit: 2}, []string{"PANIC"}},
 	} {
