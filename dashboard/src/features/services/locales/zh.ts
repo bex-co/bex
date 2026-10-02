@@ -329,7 +329,13 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.confirmSuspendBodyNoUrl": {
     message: "服务将缩容至零并停止运行，你可以随时恢复。",
     description:
-      "Suspend confirmation dialog body, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
+      "Suspend confirmation dialog body, for private services and background workers — neither has a public URL or certificates to keep",
+  },
+  "services.suspendCronDescription": {
+    message:
+      "暂停此定时任务会暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“最近运行”中选择“取消”。",
+    description:
+      "Cron suspension explanation in Settings and suspend confirmations; suspension does not cancel an active run",
   },
   "services.confirmRestartTitle": {
     message: "重启 {name}？",
@@ -2700,7 +2706,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.suspendCardDescriptionNoUrl": {
     message: "暂停服务将关闭它并停止运行，您可以随时恢复。",
     description:
-      "Settings tab suspend section description, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
+      "Settings tab suspend section description, for private services and background workers — neither has a public URL or certificates to keep",
   },
   "services.resumeCardTitle": {
     message: "恢复服务",
@@ -2710,6 +2716,10 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.resumeCardDescription": {
     message: "恢复服务将使其重新上线并开始处理流量。",
     description: "Settings tab resume section description",
+  },
+  "services.resumeCardDescriptionCron": {
+    message: "恢复此定时任务会恢复计划运行。",
+    description: "Settings tab resume section description for a cron job",
   },
   "services.dangerZoneTitle": {
     message: "危险区域",

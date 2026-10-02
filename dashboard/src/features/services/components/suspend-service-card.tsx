@@ -9,7 +9,7 @@ import {
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { publiclyRoutable } from "@/features/services/lib/service-type";
+import { isCron, publiclyRoutable } from "@/features/services/lib/service-type";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
@@ -62,6 +62,7 @@ export function SuspendServiceCard({
   } | null>(null);
   const busy = pending !== null;
   const isSuspended = service.suspended;
+  const isCronJob = isCron(service);
   const hasUrl = publiclyRoutable(service.type);
   const actionId: ResourceActionId = isSuspended ? "resume" : "suspend";
 
@@ -118,10 +119,14 @@ export function SuspendServiceCard({
         <CardDescription>
           {t(
             isSuspended
-              ? "services.resumeCardDescription"
-              : hasUrl
-                ? "services.suspendCardDescription"
-                : "services.suspendCardDescriptionNoUrl",
+              ? isCronJob
+                ? "services.resumeCardDescriptionCron"
+                : "services.resumeCardDescription"
+              : isCronJob
+                ? "services.suspendCronDescription"
+                : hasUrl
+                  ? "services.suspendCardDescription"
+                  : "services.suspendCardDescriptionNoUrl",
           )}
         </CardDescription>
       </CardHeader>
@@ -162,9 +167,11 @@ export function SuspendServiceCard({
         onOpenChange={(open) => !open && clearConfirm()}
         title={t("services.confirmSuspendTitle", { name: service.name })}
         description={t(
-          hasUrl
-            ? "services.confirmSuspendBody"
-            : "services.confirmSuspendBodyNoUrl",
+          isCronJob
+            ? "services.suspendCronDescription"
+            : hasUrl
+              ? "services.confirmSuspendBody"
+              : "services.confirmSuspendBodyNoUrl",
           { name: service.name },
         )}
         cancelLabel={t("services.confirmCancel")}

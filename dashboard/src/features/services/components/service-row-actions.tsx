@@ -13,7 +13,7 @@ import type { en } from "@/i18n";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
-import { publiclyRoutable } from "@/features/services/lib/service-type";
+import { isCron, publiclyRoutable } from "@/features/services/lib/service-type";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
 import {
   useDeployActions,
@@ -58,6 +58,9 @@ function confirmBodyKey(
   service: ServiceView,
 ): keyof typeof en {
   const body = CONFIRM[action]!.body;
+  if (action === "suspend" && isCron(service)) {
+    return "services.suspendCronDescription";
+  }
   if (
     body === "services.confirmRestartBody" &&
     service.type === "static_site"
