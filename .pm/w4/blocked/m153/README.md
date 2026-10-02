@@ -1,6 +1,6 @@
 # w4 · m153 — Preserve Key Value data when re-enabling journaling
 
-**Worker:** worker4 **Goal:** switching a managed Key Value from Snapshot only to Journal + Snapshot preserves the current keyspace instead of replaying an older journal. **Status:** todo
+**Worker:** worker4 **Goal:** switching a managed Key Value from Snapshot only to Journal + Snapshot preserves the current keyspace instead of replaying an older journal. **Status:** blocked (prepared implementation is unshipped; full Valkey 8 verification requires a healthy Docker host)
 
 ## Tasks (in order)
 
@@ -29,9 +29,17 @@ Repeat [finding.md](finding.md)'s Free/public fixture, using its actual external
 ## Source + Goal linkage
 
 - **Source:** continuous `$qa-find-bugs`, production sweep 15 on 2026-10-02, with `muse.env` and w4 selected by the user. [Finding](finding.md) contains two fresh-page data-loss reproductions, an explicitly saved/ordinary-restart control, complete API and data-plane probes, and the prior-work gap analysis.
-- **Goal linkage:** ADR008 dependable managed hosting; [ADR021](../../../docs/ADR021-keyvalue-management.md) managed Valkey persistence; [ADR018](../../../docs/ADR018-render-parity.md) post-create persistence settings; [ADR031](../../../docs/ADR031-platform-data-backup.md) data protection and the existing restore precedent.
+- **Goal linkage:** ADR008 dependable managed hosting; [ADR021](../../../../docs/ADR021-keyvalue-management.md) managed Valkey persistence; [ADR018](../../../../docs/ADR018-render-parity.md) post-create persistence settings; [ADR031](../../../../docs/ADR031-platform-data-backup.md) data protection and the existing restore precedent.
 - **Expected outcome:** strengthening persistence does not roll a working database back to the last period when journaling was enabled.
 - **Why now:** the default store can enter this path through ordinary settings. Two saves completed with Available while a new key disappeared and a counter reverted (2→1, then 23→1).
 - **Render parity included:** the data behavior and settings copy are tenant-facing across REST/GraphQL/MCP/UI. Free persistence is an intentional bex divergence; transitions involving Off must be distinguished from transitions between durable modes.
 - **Dedupe:** uncovered runtime transition gap in w6/done/m127 and w4/done/066. w7/done/m69 already handles AOF conversion for throwaway restores, but the managed-resource reconciler does not call that script. w1/blocked/m166 addresses endpoint/readiness flapping; a successful authenticated PING still passes on the wrong keyspace.
 - **Limits:** reproduced on Valkey 8.1.9, Free/public, through dashboard GraphQL writes. REST/MCP reads agree; their write paths, Blueprint/direct CR changes, Valkey 7, other modes and failure races are source-traced or unverified, assigned to t003/t006. All hunt resources were removed and its session revoked; the known TLS Secret residue was cleaned by exact identity under w4/m149's existing finding.
+
+## Blocked implementation — 2026-10-02
+
+The complete 19-file implementation is preserved in [implementation.patch](implementation.patch), with its transition table, checks and limitations in [verification.md](verification.md). **No product source changes from m153 were shipped.** The patch was reverse-checked and removed from the working source so other w4 items can ship without carrying an unverified persistence change. All task frontmatter remains open until the patch is applied, fully verified and landed.
+
+**Gate — local environment owner / worker4:** provide a healthy isolated Docker engine, apply the patch and pass the complete 42-case pinned Valkey 7/8 matrix. The shared daemon repeatedly stalled `start`, `exec` and helper operations beyond both 45-second and 120-second budgets. The latest run completed all 21 Valkey 7 cases, but Valkey 8 hit a Docker start timeout; this is not a passing full suite. The two configured responsive Docker contexts resolve to the same socket, and no alternate active engine was available. Restarting the shared daemon would affect other workstreams and was not performed.
+
+**Following gate — release/QA owner:** after the verified patch ships and its operator/CRD/dashboard release is active, replay the exact Free/public TLS/UI data-survival sequences, three-surface state, rename controls and complete fixture/session cleanup. The original live acceptance remains required.
