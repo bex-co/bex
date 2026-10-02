@@ -1,17 +1,17 @@
 # w1 · m166 — Truthful Key Value readiness
 
-**Worker:** worker1 **Goal:** Available means the Key Value client path is serving, not merely that a plaintext socket accepts connections. **Status:** todo (t001 done — the gap is measured at ~25s and is a *flap*, not a gap)
+**Worker:** worker1 **Goal:** Available means the Key Value client path is serving, not merely that a plaintext socket accepts connections. **Status:** blocked on deploy — t001–t006 done (root cause measured on production 2026-10-02: headless Service + CoreDNS `cache 30`; fix = ClusterIP Service + authenticated readiness); t007 closeout needs the fixed operator image live and the timeline re-run
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Measure the Key Value readiness gap — **DONE** | 35m | — |
-| t002 | Probe authenticated serving readiness | 45m | t001 |
-| t003 | Publish Ready only for the serving generation and route | 40m | t002 |
-| t004 | Render parity | 25m | t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test coverage | 35m | t004, t005 |
+| t002 | Probe authenticated serving readiness — **DONE** | 45m | t001 |
+| t003 | Publish Ready only for the serving generation and route — **DONE** | 40m | t002 |
+| t004 | Render parity — **DONE** | 25m | t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test coverage — **DONE** | 35m | t004, t005 |
 | t007 | Closeout | 10m | t005, t006 |
 
 ## Definition of done
@@ -124,6 +124,123 @@ kv-sni-proxy's backend set sampled across a maxmemory change, which means:
 supply a production kubeconfig for read-only endpoint observation, or decide that
 option (1) is acceptable and this milestone may mask the flap — in which case say so and
 t002/t003 proceed immediately, since nothing else gates them.
+
+## Root cause (2026-10-02, **production**, read-only cluster + QA API)
+
+**User decision (2026-10-02): root-cause the flap on production** — this clears the t002
+gate above (option 2, fix the flap). Fixture `qa-20261002-m166`
+(`red-davkbd38dvus73e89p30`, starter, public), deleted afterwards (`204`, `GET` → `404`).
+Full five-sampler timeline: [t003-prod-rootcause-timeline.md](t003-prod-rootcause-timeline.md).
+
+**Mechanism: the KeyValue's `<id>` Service was headless, and CoreDNS caches its answers
+for 30s on each of two replicas.** kv-sni-proxy dials
+`<id>.<ns>.svc.cluster.local:6380` per connection. For a headless Service that name's A
+record *is* the pod IP, so a restart moves it pod IP → NXDOMAIN (no ready endpoint) → new
+pod IP. The Corefile has `kubernetes … { ttl 30 }` + `cache 30` and there are two CoreDNS
+replicas with independent caches, so for up to 30s after the new pod turned Ready each
+lookup was a coin toss between a fresh answer and a stale one (old IP or NXDOMAIN). The
+public client's connection lands on one of three proxies, each of which resolves through
+either CoreDNS replica — hence the flap rather than a clean gap.
+
+Key evidence lines (UTC, production):
+
+```text
+resume
+05:51:42.943Z [endpts] ready=[10.244.34.140]                       <- new pod is the sole ready endpoint
+05:51:43.576Z [api   ] status=available                            <- truthful about the pod (+0.6s)
+05:51:43.193Z [proxy ] xtz4w dial backend: lookup <id>.<ns>.svc.cluster.local on 10.96.0.10:53: no such host
+05:51:47.373Z [client] SERVING
+05:51:49.182Z [client] DOWN(tls:EOF)    + proxy gpcn2 "no such host" at the same instant
+   ... SERVING / DOWN(tls:EOF) alternate 6 more times, each DOWN matched 1:1 by a proxy NXDOMAIN ...
+05:52:10.357Z [proxy ] w5xmh dial backend: ... no such host        <- last cached NXDOMAIN, 27.4s after Ready
+05:52:11.405Z [client] SERVING                                      <- stable: 27.8s after available
+maxmemory -> allkeys_lfu
+05:49:46.815Z [endpts] ready=[]                                     <- old pod 10.244.34.249 removed at once
+05:49:57Z..05:50:19Z [proxy] all 3 pods: dial tcp 10.244.34.249:6380: i/o timeout   <- cached OLD pod IP
+05:50:09.951Z [pods  ] new pod 10.244.34.120 Ready ; 05:50:10.519Z [api] available
+suspended (no pod at all)
+05:50:51.138Z [proxy ] xtz4w ... no such host
+05:50:51.956Z [proxy ] w5xmh dial tcp 10.244.34.120:6380: i/o timeout   <- the two caches disagree, 0.8s apart
+```
+
+- The client's `DOWN(tls:EOF)` is t001's `SSLEOFError`: the proxy accepts, reads the
+  ClientHello, fails the backend lookup instantly and closes. `DOWN(timeout)` is the
+  cached old IP (a 10s `dialTimeout` outlasts the 3s client timeout).
+- The resume window (27.8s) matches t001's 26.5s. In this run's maxmemory case the new pod
+  took 23s to get an IP and become Ready, so most of the 30s cache had already expired
+  — the old-IP dials ended 05:50:19 and the client was stable at +3s. Same mechanism;
+  how much of it is visible after `available` depends on how fast the pod restarts.
+
+**Hypotheses ruled out, with evidence:**
+
+| hypothesis | verdict |
+| --- | --- |
+| terminating pod still in the endpoint set (`publishNotReadyAddresses` / terminating endpoints) | **No.** Service has no `publishNotReadyAddresses`; the old IP left `ready=[]` at 05:49:46.8, the same second the pod got its `deletionTimestamp`. The proxies kept dialing it for 23s from *DNS*, not endpoints. |
+| Deployment rollout with surge (old and new both serving) | **No.** It is a one-replica StatefulSet, `RollingUpdate`/`OrderedReady`: the old pod is gone before the new one is created (pods sampler never shows two). |
+| kube-proxy/IPVS connection reuse | **No.** Headless Service — no VIP, no kube-proxy/Cilium service translation is involved at all; the proxy dials the pod IP DNS gave it. |
+| Valkey TLS readiness semantics (6380 lagging 6379) | **No** for the flap: zero `connection refused` on 6380 to the *new* IP; every failure is a lookup or a dial to the *old* IP. (The TCP probe was still too weak — see t002 below.) |
+| operator marks available before the route converges | **Partly, and the route was the DNS layer.** `available` follows the Endpoints update by <1s; the operator's pod/generation gates are correct. What lagged was CoreDNS, which no operator condition observed. |
+
+**Postgres control explained:** CNPG's `-rw` Service (what pg-sni-proxy dials) is a
+ClusterIP — its A record never changes — which is why t001-era Postgres restarts had no
+flap.
+
+## Decisions
+
+- **2026-10-02 — Fix the flap at its cause: the `<id>` Service becomes ClusterIP**
+  (`keyvalue_controller.go` `reconcileKeyValueService`). The A record is then the
+  Service VIP for the Service's whole life, so neither CoreDNS's positive nor negative
+  cache can be stale; the dataplane re-points the VIP within ~1s of the endpoint turning
+  Ready (the same path Postgres already uses). This also fixes **in-cluster tenant Apps**,
+  which resolve the same headless name and were exposed to the same 30s stale window.
+  Rejected: (a) a sustained-success settle window (masks the flap, and DoD forbids guessing
+  from elapsed time); (b) teaching kv-sni-proxy to watch EndpointSlices (new cluster-wide
+  RBAC, and fixes only the public path); (c) lowering CoreDNS `cache`/`ttl` (cluster-wide
+  blast radius, still a window).
+- **Migration:** `spec.clusterIP` is immutable, so an existing headless Service the
+  KeyValue controls is deleted (UID precondition) and recreated as ClusterIP on the next
+  reconcile. **Deploy impact:** one brief internal-DNS blip per existing store when the
+  new operator first reconciles it (the name is NXDOMAIN between delete and create, and
+  that NXDOMAIN may be cached up to 30s); and the pod-template change (probe) rolls every
+  KeyValue StatefulSet once. Both are one-time; schedule the rollout accordingly.
+- **2026-10-02 — Readiness is an authenticated PING (t002).** The `valkey` container's
+  readiness probe is `sh -c '[ "$(REDISCLI_AUTH="$VALKEY_PASSWORD" valkey-cli -p 6379 PING)" = PONG ]'`
+  every 5s (timeout 2s): `-LOADING`, `NOAUTH`/`WRONGPASS` and refused all fail it. The
+  password reaches valkey-cli through `REDISCLI_AUTH` (the backup snapshot step's
+  mechanism), never argv. No separate TLS-port check: Valkey binds 6379 and 6380 together
+  before loading, and production showed no 6380-specific failure.
+- **No extra Ready gate (t003).** With a ClusterIP backend the route converges within one
+  sampling interval of the pod's Ready, which the existing current-revision pod gate
+  already observes; adding a route probe in the operator would be a fixed-sleep in
+  disguise. Generation, `creating` vs `config_restart`, and suspension precedence are
+  unchanged (backend `kvStatus` untouched).
+- **Evidence labelling:** everything in § Root cause is **production** (2026-10-02, old
+  build). The fix's verification so far is **unit + envtest only**; no production or local
+  timeline on the fixed build has been run — that is t007.
+
+## t004 Render parity (2026-10-02)
+
+- **Observed (production, old build):** REST `status` moved `available → config_restart →
+  available` on maxmemory and `suspended → config_restart → available` on resume — the
+  Render `databaseStatus` vocabulary Key Value reuses. Nothing in this fix changes the
+  vocabulary or the mapping.
+- **Inferred from code:** GraphQL, MCP and the dashboard read the same `KeyValueView`
+  built by `kvStatus` (`lego/backend/internal/keyvalue/service.go`), so they agree with
+  REST by construction. Render documents no internal-host/DNS behavior that a ClusterIP
+  Service would diverge from; the connection strings are byte-identical. ADR018's Key
+  Value row records the change.
+
+## t005 / t006 (2026-10-02)
+
+- Simplify: the change is two small functions plus one probe constructor; no readiness
+  abstraction or duplicate policy was added (`currentRevisionPodsReady` still the one gate).
+- Regressions (failing before, passing after): `TestValkeyReadinessProbeIsAuthenticatedPing`
+  and `TestValkeyReadinessProbeScript` (runs the projected probe command against a stand-in
+  `valkey-cli`: PONG passes; LOADING / WRONGPASS / NOAUTH / refused fail) — verified to fail
+  against the old TCP probe; envtest `reconciles a tier-sized StatefulSet + ClusterIP
+  Service…` and `replaces a pre-w1/m166 headless Service with a ClusterIP one` (also pins
+  that a headless Service the KeyValue does not control is left alone) — verified to fail
+  against the old headless Service.
 
 ## Source + Goal linkage
 
