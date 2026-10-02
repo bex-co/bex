@@ -15,6 +15,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m165** — [Environment IDs must round-trip through the pinned Render CLI](m165/README.md) (6 tasks) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major server compatibility finding, researched and scheduled.
+
 - [x] **m163** — [Credential offboarding: a removed member's machine credentials](done/m163/README.md) (8 tasks) — **DONE 2026-09-21**. Admin removal, self-leave, and account deletion revoke cached and fresh API-key tokens across replicas. Strict live acceptance passed with real PostgreSQL, Hydra, Kratos, and enforced OpenFGA; remaining-member and other-workspace controls passed. Full backend suite and all-module lint green.
 - [x] **m164** — [The disposition contract, enforced: every tenant- and subject-scoped table declares how it dies](done/m164/README.md) (8 tasks) — **DONE 2026-09-22**. Identity census covers 32 columns; workspace census covers 48 tables (43 cascades, five explicit retentions). Added four workspace cascades and account anonymization for creation attempts, billing contacts, deploy triggers, and webhook requesters. Seeded negative proofs, real PostgreSQL/OpenFGA/OpenBao verification, full backend suite, and all-module lint passed.
 
