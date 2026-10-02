@@ -235,8 +235,8 @@ func Observe(j *batchv1.Job) State {
 // (w1/m149): the window it ran past, an out-of-memory kill, or the command's
 // exit code read from the pod's terminated container. Never the Job
 // controller's condition text — "BackoffLimitExceeded" only says a zero-retry
-// Job failed once. Every message ends with the pointer to the step's logs; it
-// is what the App status and the deploy record carry.
+// Job failed once. Image failures name the cause instead of pointing to logs
+// for a command that never started.
 func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
 	const logs = "; check the pre-deploy logs"
 	// A pod that never got its image never ran the command: no log to point
@@ -266,9 +266,9 @@ func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) strin
 // delayed the same verdict behind a message about a command that never ran.
 const imagePullGrace = 90 * time.Second
 
-// PullFailure explains a pending pre-deploy Job whose pod has a permanent
-// image-pull error beyond imagePullGrace, measured from pod creation. Transient
-// errors retain the Job deadline, just as they retain the rollout deadline.
+// PullFailure explains a pending pre-deploy Job whose image cannot start.
+// Malformed references fail immediately; permanent pull errors wait through
+// imagePullGrace. Transient errors retain the Job and rollout deadlines.
 func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time.Time) string {
 	w, created := pullFailure(ctx, cl, j)
 	if !PermanentPullFailure(w, created, now) {
@@ -277,11 +277,18 @@ func PullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job, now time
 	return pullFailureMessage(w)
 }
 
-// PermanentPullFailure is shared by pre-deploy Jobs and rollout pods. Only
-// explicit missing-image or denied-authentication answers can shorten their
-// deadlines; network errors, registry overload, and a plain backoff cannot.
+// PermanentPullFailure is shared by pre-deploy Jobs and rollout pods. Malformed
+// references cannot recover through retries. Missing-image and denied-auth
+// answers wait through imagePullGrace; network errors and plain backoff cannot
+// shorten the deadline.
 func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Time) bool {
-	if w == nil || (w.Reason != "ErrImagePull" && w.Reason != "ImagePullBackOff") ||
+	if w == nil {
+		return false
+	}
+	if w.Reason == "InvalidImageName" {
+		return true
+	}
+	if (w.Reason != "ErrImagePull" && w.Reason != "ImagePullBackOff") ||
 		created.IsZero() || now.Sub(created) < imagePullGrace {
 		return false
 	}
@@ -294,9 +301,11 @@ func PermanentPullFailure(w *corev1.ContainerStateWaiting, created, now time.Tim
 	return false
 }
 
-// pullFailureMessage is the image-pull wording the rollout path's stuck-pod
-// diagnosis also uses ("image pull is failing: <kubelet message>").
+// Image failures cannot be diagnosed from command logs: the command never ran.
 func pullFailureMessage(w *corev1.ContainerStateWaiting) string {
+	if w.Reason == "InvalidImageName" {
+		return "image reference is invalid: " + w.Message + "; the pre-deploy command never ran"
+	}
 	return "image pull is failing: " + w.Message + "; the pre-deploy command never ran"
 }
 
@@ -306,7 +315,7 @@ func pullFailure(ctx context.Context, cl client.Reader, j *batchv1.Job) (*corev1
 	for _, p := range jobPods(ctx, cl, j) {
 		for _, cs := range p.Status.ContainerStatuses {
 			if w := cs.State.Waiting; cs.Name == containerName && w != nil &&
-				(w.Reason == "ErrImagePull" || w.Reason == "ImagePullBackOff") {
+				(w.Reason == "ErrImagePull" || w.Reason == "ImagePullBackOff" || w.Reason == "InvalidImageName") {
 				return w, p.CreationTimestamp.Time
 			}
 		}

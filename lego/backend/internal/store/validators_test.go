@@ -72,52 +72,90 @@ func TestValidRepo(t *testing.T) {
 	}
 }
 
-func TestValidImage(t *testing.T) {
+func TestValidateImage(t *testing.T) {
+	sha256 := "sha256:" + strings.Repeat("a", 64)
+	sha512 := "sha512:" + strings.Repeat("b", 128)
+	maxLength := "ghcr.io/" + strings.Repeat("r", 239) + ":" + strings.Repeat("T", 128) + "@" + sha512
 	cases := []struct {
-		name  string
-		image string
-		want  bool
+		name    string
+		image   string
+		wantErr string
 	}{
-		{"registry-tag", "zot.bex-registry.svc:5000/myapp:rev-abc", true},
-		{"public-tag", "docker.io/library/nginx:1.25", true},
-		{"digest", "ghcr.io/org/repo@sha256:deadbeefcafebabe", true},
-		{"short", "nginx", true},
-		{"empty-rejected", "", false},
+		{"registry-tag", "zot.bex-registry.svc:5000/myapp:rev-abc", ""},
+		{"public-tag", "docker.io/library/nginx:1.25", ""},
+		{"sha256", "ghcr.io/org/repo@" + sha256, ""},
+		{"sha512", "ghcr.io/org/repo@" + sha512, ""},
+		{"tag-and-digest", "ghcr.io/org/repo:Release_1.2@" + sha256, ""},
+		{"short", "nginx", ""},
+		{"short-tag", "nginx:1.25", ""},
+		{"short-digest", "nginx@" + sha256, ""},
+		{"docker-hub-namespace", "library/nginx:1.25", ""},
+		{"repository-separators", "ghcr.io/org/my--app__v2.test:latest", ""},
+		{"uppercase-host-and-tag", "GHCR.IO/org/repo:Release_1.2", ""},
+		{"exact-size-limit", maxLength, ""},
+		{"over-size-limit", maxLength + "b", "at most 512 bytes"},
+		{"empty-rejected", "", "required"},
+		{"scheme-rejected", "https://ghcr.io/org/repo:tag", "malformed"},
+		{"empty-path-component", "ghcr.io/org//repo:tag", "malformed"},
+		{"empty-tag", "nginx:", "malformed"},
+		{"trailing-slash", "ghcr.io/org/repo/", "malformed"},
+		{"invalid-tag-start", "nginx:-tag", "malformed"},
+		{"repeated-colon", "nginx::latest", "malformed"},
+		{"uppercase-repository", "ghcr.io/Org/repo:tag", "must be lowercase"},
+		{"uppercase-short", "Nginx:tag", "must be lowercase"},
+		{"bad-repository-separator", "ghcr.io/org/my..app:tag", "malformed"},
+		{"repository-too-long", "ghcr.io/" + strings.Repeat("r", 256), "255"},
+		{"tag-too-long", "nginx:" + strings.Repeat("t", 129), "malformed"},
+		{"digest-too-short", "ghcr.io/org/repo@sha256:deadbeefcafebabe", "digest length"},
+		{"digest-wrong-length", "nginx@sha256:" + strings.Repeat("a", 63), "digest length"},
+		{"sha512-wrong-length", "nginx@sha512:" + strings.Repeat("b", 127), "digest length"},
+		{"digest-not-hex", "nginx@sha256:" + strings.Repeat("g", 64), "digest format"},
+		{"digest-uppercase-hex", "nginx@sha256:" + strings.Repeat("A", 64), "digest format"},
+		{"digest-missing", "nginx@", "image digest is invalid"},
+		{"digest-unsupported", "nginx@md5:" + strings.Repeat("a", 32), "unsupported digest algorithm"},
 		// w1/m53: the SSRF-adjacent shapes — whitespace/control/shell-meta chars —
 		// must be refused so the operator never gets a weaponizable image string.
-		{"space-rejected", "nginx latest", false},
-		{"newline-rejected", "nginx\nevil", false},
-		{"control-char-rejected", "nginx\x00", false},
-		{"backtick-rejected", "nginx`whoami`", false},
-		{"substitution-rejected", "nginx$(whoami)", false},
-		{"leading-slash-rejected", "/etc/passwd", false},
-		{"leading-dash-rejected", "-flag", false},
-		{"too-long-rejected", strings.Repeat("a", 513), false},
+		{"space-rejected", "nginx latest", "malformed"},
+		{"newline-rejected", "nginx\nevil", "malformed"},
+		{"control-char-rejected", "nginx\x00", "malformed"},
+		{"backtick-rejected", "nginx`whoami`", "malformed"},
+		{"substitution-rejected", "nginx$(whoami)", "malformed"},
+		{"leading-slash-rejected", "/etc/passwd", "malformed"},
+		{"leading-dash-rejected", "-flag", "malformed"},
+		{"too-long-rejected", strings.Repeat("a", 513), "at most 512 bytes"},
 		// codex round-7 F6: the kubelet pulls tenant images from node network
 		// context, outside every pod egress policy — a private/loopback/link-local/
 		// CGNAT/metadata IP-literal host or localhost turns spec.Image into a
 		// node-origin probe with tenant-visible pull errors. No public registry
 		// is affected.
-		{"loopback-host-rejected", "127.0.0.1/myapp:latest", false},
-		{"loopback-host-port-rejected", "127.0.0.1:5000/myapp", false},
-		{"localhost-rejected", "localhost/myapp", false},
-		{"localhost-port-rejected", "localhost:5000/myapp", false},
-		{"uppercase-localhost-rejected", "LOCALHOST/myapp", false},
-		{"private-host-rejected", "10.0.0.5:5000/myapp", false},
-		{"private-host-noport-rejected", "192.168.1.4/myapp", false},
-		{"metadata-host-rejected", "169.254.169.254/latest/meta-data", false},
-		{"cgnat-host-rejected", "100.64.0.9:5000/myapp", false},
-		{"linklocal-v6-rejected", "[fe80::1]:5000/myapp", false}, // bracket forms are regex-refused anyway
-		{"public-ip-literal-rejected", "1.2.3.4:5000/myapp", false},
-		{"arbitrary-dns-rejected", "registry.attacker.example/myapp", false},
-		{"metadata-dns-rejected", "metadata.google.internal/myapp", false},
-		{"platform-registry-allowed", "zot.bex-registry.svc:5000/myapp", true},
-		{"artifact-registry-allowed", "us-central1-docker.pkg.dev/org/repo/image:tag", true},
+		{"loopback-host-rejected", "127.0.0.1/myapp:latest", "private or reserved"},
+		{"loopback-host-port-rejected", "127.0.0.1:5000/myapp", "private or reserved"},
+		{"localhost-rejected", "localhost/myapp", "private or reserved"},
+		{"localhost-port-rejected", "localhost:5000/myapp", "private or reserved"},
+		{"uppercase-localhost-rejected", "LOCALHOST/myapp", "private or reserved"},
+		{"private-host-rejected", "10.0.0.5:5000/myapp", "private or reserved"},
+		{"private-host-noport-rejected", "192.168.1.4/myapp", "private or reserved"},
+		{"metadata-host-rejected", "169.254.169.254/latest/meta-data", "private or reserved"},
+		{"cgnat-host-rejected", "100.64.0.9:5000/myapp", "private or reserved"},
+		{"linklocal-v6-rejected", "[fe80::1]:5000/myapp", "private or reserved"},
+		{"loopback-v6-rejected", "[::1]/myapp", "private or reserved"},
+		{"public-ip-literal-rejected", "1.2.3.4:5000/myapp", "not trusted"},
+		{"arbitrary-dns-rejected", "registry.attacker.example/myapp", "not trusted"},
+		{"metadata-dns-rejected", "metadata.google.internal/myapp", "not trusted"},
+		{"normalization-does-not-widen-trust", "index.docker.io/library/nginx:latest", "not trusted"},
+		{"trusted-host-lookalike", "ghcr.io.attacker.example/myapp", "not trusted"},
+		{"platform-registry-allowed", "zot.bex-registry.svc:5000/myapp", ""},
+		{"artifact-registry-allowed", "us-central1-docker.pkg.dev/org/repo/image:tag", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ValidImage(tc.image); got != tc.want {
-				t.Errorf("ValidImage(%q) = %v, want %v", tc.image, got, tc.want)
+			err := ValidateImage(tc.image)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("ValidateImage(%q): %v", tc.image, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("ValidateImage(%q) = %v, want %q", tc.image, err, tc.wantErr)
 			}
 		})
 	}

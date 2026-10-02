@@ -713,6 +713,7 @@ type recordingStore struct {
 	// config_change rows inherit the running release's provenance (w4/m100).
 	priorCommit store.CommitInfo
 	imageCalls  []struct{ id, image string }
+	sourceCalls int
 	// notFoundOnDelete makes DeleteApp report the row is already gone, so a test
 	// can assert the verb still deletes the CR (idempotent end state).
 	notFoundOnDelete bool
@@ -871,6 +872,7 @@ func (r *recordingStore) SetAppDisplayName(_ context.Context, id string, display
 }
 
 func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
+	r.sourceCalls++
 	return r.err
 }
 

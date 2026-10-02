@@ -196,6 +196,8 @@ func appPodLabels(app *appv1alpha1.App, verifyImage bool) map[string]string {
 	return appPolicyLabels(app, labels)
 }
 
+const appContainerName = "app"
+
 // appContainer projects the App onto its single "app" container.
 func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 	var ports []corev1.ContainerPort
@@ -209,7 +211,7 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 		}
 	}
 	container := corev1.Container{
-		Name:            "app",
+		Name:            appContainerName,
 		Image:           p.image,
 		ImagePullPolicy: pullPolicyFor(p.image),
 		Env:             appEnv(app, p.port),

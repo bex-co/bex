@@ -1,0 +1,454 @@
+{
+  "at": "2026-10-02T20:02:51.415821+00:00",
+  "binary": "bex-current",
+  "arguments": [
+    "deploys",
+    "create",
+    "srv-db00r129086kece8jdeg",
+    "--image",
+    "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+    "--wait",
+    "-o",
+    "json",
+    "--confirm"
+  ],
+  "exit": 0,
+  "stdout": "{\n  \"createdAt\": \"2026-10-02T20:02:09.059712Z\",\n  \"finishedAt\": \"2026-10-02T20:02:47.335045Z\",\n  \"id\": \"dep-db00rga9086kece8jdg0\",\n  \"image\": {\n    \"ref\": \"docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662\"\n  },\n  \"startedAt\": \"2026-10-02T20:02:15.766781Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-02T20:02:47.335046Z\"\n}",
+  "stderr": "Waiting for deploy dep-db00rga9086kece8jdg0 to complete...\n\n",
+  "response_history": [
+    {
+      "at": "2026-10-02T20:02:08.926221+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:10.935223+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "created",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:12.944526+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "created",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:14.955191+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "created",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:16.971834+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:18.987653+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:21.002986+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:23.016021+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:25.030203+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:27.044309+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:29.050287+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:31.057575+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:33.064722+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:35.085190+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:37.106085+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:39.120344+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:41.302013+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:44.930906+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "update_in_progress",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "at": "2026-10-02T20:02:49.218703+00:00",
+      "deploys": [
+        {
+          "id": "dep-db00rga9086kece8jdg0",
+          "status": "live",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        },
+        {
+          "id": "dep-db00r129086kece8jdf0",
+          "status": "deactivated",
+          "image": {
+            "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+          },
+          "failureReason": null
+        }
+      ]
+    }
+  ],
+  "final_deploys": [
+    {
+      "id": "dep-db00rga9086kece8jdg0",
+      "status": "live",
+      "image": {
+        "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+      },
+      "failureReason": null
+    },
+    {
+      "id": "dep-db00r129086kece8jdf0",
+      "status": "deactivated",
+      "image": {
+        "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+      },
+      "failureReason": null
+    }
+  ],
+  "workload": {
+    "app_phase": "Running",
+    "active_revision": "rev-2",
+    "app_image": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+    "release_config": {
+      "generation": 2,
+      "image": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+      "sourceGeneration": 0
+    },
+    "deployment_images": [
+      "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+    ],
+    "pods": [
+      {
+        "name": "tea-db00n229086g4sgsslf0-m49-f8d06662-digest-7b8c96bb9d-8z6rk",
+        "images": [
+          "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+        ],
+        "ready": true,
+        "image_ids": [
+          "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+        ]
+      }
+    ]
+  }
+}

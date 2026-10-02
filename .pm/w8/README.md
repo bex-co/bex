@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m49** — [Reject invalid image deploy inputs with actionable errors](done/m49/README.md) (7 tasks) ← promoted from `033` on 2026-10-02. Completed 2026-10-02; full suites/lint and 57 live checks passed.
+
 - [x] **m48** — [Close the log filtering and Blueprint validation gaps](done/m48/README.md) (6 tasks) ← from `032`; completed 2026-10-02 with full backend/lint checks, five pinned Alloy cases, and 50 live local acceptance checks.
 
 - [ ] **m47** — [A renamed service keeps answering to its old name: rename skips the uniqueness rule, and name lookup ignores the name you see](blocked/m47/README.md) (7 tasks) **BLOCKED (2026-10-02: live rename collision checks pass, but renamed lookup outside account default returned 404; local fix awaits ship and live recheck)**
@@ -72,7 +74,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.
-- `033` — `deploys create --commit` on an image-backed service is accepted and re-rolls the last image (no refusal like `--image` on repo services); invalid OCI refs (uppercase repo, short digest) are accepted; every registry refusal says "whitespace or shell metacharacters" (~50m) ← `/qa-find-bugs-cli` sweep 54, 2026-09-27
+- [x] **033** — [Promoted to m49](done/033.md) (2026-10-02); original production findings retained.
 - `034` — A service rename accepts control characters (a newline splits the `services -o text` table), unbounded length, and another service's `srv-` id as the display name (~30m; coordinate with m47) ← `/qa-find-bugs-cli` sweep 56, 2026-09-27
 - `036` — **duplicate of `w4/171`, fixed and live-verified 2026-09-30 on `de9ac4d1c`** (blast-radius evidence only). Was BLOCKER: since `cae30d1e0`, every deploy of a web service with env vars fails ("snapshot …-env … unknown namespace for the cache"): the new release-config snapshot reads tenant Secrets through the namespace-scoped cached client. Roll back or use the uncached client (~10m rollback / ~1h fix) ← `/qa-find-bugs-cli` post-deploy smoke, 2026-09-28
 - `035` — Free Postgres escapes its tier through sibling flags: `--read-replica`, any `--disk-size-gb`, `--disk-autoscaling` (to 16 TB) and `--connection-pool pgbouncer` are accepted on `plan: free`; only HA is gated (m43) (~70m) ← `/qa-find-bugs-cli` sweep 58, 2026-09-27

@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -32,7 +31,6 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/types/netutil"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -409,8 +407,10 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 	if req.Branch != "" && !ValidGitRef(req.Branch) {
 		return App{}, fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", ErrInvalid)
 	}
-	if req.Image != "" && !ValidImage(req.Image) {
-		return App{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", ErrInvalid)
+	if req.Image != "" {
+		if err := ValidateImage(req.Image); err != nil {
+			return App{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+		}
 	}
 	tier, err := normalizeTier("tier", req.Tier)
 	if err != nil {
@@ -609,16 +609,6 @@ var (
 	// UUIDs and Hydra client ids fit; anything exotic is refused rather than
 	// silently minting a malformed or ambiguous membership tuple.
 	subjectRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,253}$`)
-	// imageRE: a prebuilt OCI image reference — host[:port]/repo[:tag][@digest] —
-	// restricted to the characters a real reference uses, starting with an
-	// alphanumeric, no whitespace/control/shell-meta characters (w1/m53). This is
-	// input hygiene bounding what a tenant can store as spec.Image; the
-	// registry-masquerade class (an image host impersonating BEX_REGISTRY for the
-	// admission verifier) is closed at the operator's admission prefix boundary,
-	// and the node-origin fetch class gets a second guard in ValidImage itself
-	// (private/loopback IP-literal hosts refused — codex round-7 F6). Length is
-	// bounded by ValidImage.
-	imageRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/:@-]{0,511}$`)
 )
 
 func validateName(field, v string) error {
@@ -700,55 +690,6 @@ func RedactRepoURL(v string) string {
 // build-from-git App (no shell metacharacters, no leading dash). Single-source
 // for both create paths (w6/m6 t003).
 func ValidGitRef(v string) bool { return refRE.MatchString(v) }
-
-// ValidImage reports whether v is an acceptable prebuilt OCI image reference
-// (host[:port]/repo[:tag][@digest], no whitespace/control/shell-meta characters,
-// ≤512 bytes). Exported so bex-api and the internal create API enforce one rule
-// (w1/m53). Empty is handled by the caller (repo-or-image required).
-//
-// A reference whose registry HOST component (the first path segment, when it
-// looks like a host: contains "."/":" or is "localhost") is a non-public IP
-// literal is refused (codex round-7 F6): the kubelet pulls tenant images from
-// the node's network context — outside every pod egress policy — so a private,
-// loopback, link-local, CGNAT, or metadata literal turns spec.Image into a
-// node-origin probe with tenant-visible pull-error detail. Explicit registry
-// hosts are additionally restricted to the platform's exact trusted set. A
-// one-time DNS lookup is insufficient because kubelet resolves later from the
-// node network and an attacker could rebind between the two lookups.
-func ValidImage(v string) bool {
-	if len(v) > 512 || !imageRE.MatchString(v) {
-		return false
-	}
-	first, _, hasSlash := strings.Cut(v, "/")
-	if !hasSlash {
-		return true // a short name such as nginx:1 uses the implicit docker.io registry
-	}
-	if !strings.ContainsAny(first, ".:") && !strings.EqualFold(first, "localhost") {
-		return true // no host component — the implicit docker.io registry
-	}
-	host := first
-	if idx := strings.LastIndex(first, ":"); idx >= 0 {
-		host = first[:idx]
-	}
-	if strings.EqualFold(host, "localhost") {
-		return false
-	}
-	if ip := net.ParseIP(host); ip != nil && netutil.UnsafeOriginIP(ip) {
-		return false
-	}
-	return trustedImageRegistry(host)
-}
-
-func trustedImageRegistry(host string) bool {
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	switch host {
-	case "docker.io", "registry-1.docker.io", "ghcr.io", "quay.io", "gcr.io",
-		"registry.k8s.io", "public.ecr.aws", "mcr.microsoft.com",
-		"zot.bex-registry.svc", "zot.bex-registry.svc.cluster.local":
-		return true
-	}
-	return strings.HasSuffix(host, ".pkg.dev")
-}
 
 // ValidRootDir reports whether v is a safe build root directory: a relative path
 // with no traversal ("..") or absolute components and no control characters, ≤512

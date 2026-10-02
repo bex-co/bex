@@ -489,7 +489,7 @@ func TestTriggerRequiresStoreManagedApp(t *testing.T) {
 
 func TestTriggerSetsCommitIDInSpec(t *testing.T) {
 	ds := newFakeStore()
-	svc, cl := newService(ds, sampleApp("web", "srv-1"))
+	svc, cl := newService(ds, repoApp("web", "srv-1", "main"))
 
 	_, err := svc.Trigger(context.Background(), "web", TriggerParams{CommitID: "abc123"})
 	if err != nil {
@@ -541,12 +541,12 @@ func TestTriggerAfterRepoRollbackClearsImageOverride(t *testing.T) {
 
 func TestTriggerRejectsCommitIDForCronJob(t *testing.T) {
 	ds := newFakeStore()
-	app := sampleApp("cron", "srv-2")
+	app := repoApp("cron", "srv-2", "main")
 	app.Spec.Type = appv1alpha1.TypeCronJob
 	svc, _ := newService(ds, app)
 
 	_, err := svc.Trigger(context.Background(), "cron", TriggerParams{CommitID: "abc123"})
-	if !errors.Is(err, core.ErrBadRequest) {
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "commitId is not supported for cron_job") {
 		t.Errorf("commitId for cron_job: want core.ErrBadRequest, got %v", err)
 	}
 }
@@ -568,16 +568,16 @@ func TestTriggerValidatesCommitIDAsGitRef(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			ds := newFakeStore()
-			svc, _ := newService(ds, sampleApp("svc", "srv-ref"))
+			svc, _ := newService(ds, repoApp("svc", "srv-ref", "main"))
 			_, err := svc.Trigger(context.Background(), "svc", TriggerParams{CommitID: commitID})
-			if !errors.Is(err, core.ErrBadRequest) {
+			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "commitId must be a git ref") {
 				t.Fatalf("commitId %q: want core.ErrBadRequest, got %v", commitID, err)
 			}
 		})
 	}
 	// A well-formed ref (SHA or branch) still passes.
 	ds := newFakeStore()
-	svc, _ := newService(ds, sampleApp("svc", "srv-ref-ok"))
+	svc, _ := newService(ds, repoApp("svc", "srv-ref-ok", "main"))
 	if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{CommitID: "abcdef1234567890abcdef1234567890abcdef12"}); err != nil {
 		t.Fatalf("valid SHA commitId rejected: %v", err)
 	}
@@ -839,7 +839,7 @@ func TestRESTListGetTrigger(t *testing.T) {
 
 func TestRESTTriggerWithCommitID(t *testing.T) {
 	ds := newFakeStore()
-	svc, cl := newService(ds, sampleApp("web", "srv-1"))
+	svc, cl := newService(ds, repoApp("web", "srv-1", "main"))
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 

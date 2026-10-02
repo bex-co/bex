@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-02T20:02:39.408804+00:00",
+  "initial_tag_service": "srv-db00n2a9086g4sgsslgg",
+  "http_status": 200,
+  "deploy_history": [
+    {
+      "id": "dep-db00p6a9086kece8jd40",
+      "status": "live",
+      "image": {
+        "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+      },
+      "finishedAt": "2026-10-02T19:58:45.815959Z"
+    },
+    {
+      "id": "dep-db00omq9086kece8jd30",
+      "status": "deactivated",
+      "image": {
+        "ref": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
+      },
+      "finishedAt": "2026-10-02T19:56:52.413228Z"
+    },
+    {
+      "id": "dep-db00n2a9086g4sgsslh0",
+      "status": "deactivated",
+      "image": {
+        "ref": "docker.io/library/busybox:1.36.1"
+      },
+      "finishedAt": "2026-10-02T19:53:17.481728Z"
+    }
+  ],
+  "saved_image": "docker.io/library/busybox:1.36.1",
+  "release_config": {
+    "generation": 3,
+    "image": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+    "sourceGeneration": 0
+  },
+  "active_revision": "rev-3",
+  "initial_upstream_wait": {
+    "exit": 1,
+    "observed_deploy_status": "update_in_progress",
+    "stdout_stderr": "Not retained by first harness version; no exact failure cause asserted."
+  },
+  "operator_scope": {
+    "shared_image": "docker.io/library/bex-operator:w1-108-pins",
+    "changed": false,
+    "isolated_manager_supported": false,
+    "reason": "dev-env reuses shared operator; BEX_APPS_NAMESPACE narrows Secret cache but App controllers and startup scan remain cluster-wide. A second manager would race shared operator."
+  },
+  "limits": [
+    "Initial tag-based override produced live API rows and matching imageID but pod template remained the base tag; this does not prove per-deploy different-image selection and is excluded from the conclusive digest control.",
+    "Operator InvalidImageName changes were covered in parent operator envtest; the shared local operator was not updated.",
+    "Conclusive digest fixture is configured with the digest directly; checks literal Deployment and pod image, readiness, ServiceHTTP200, and same-digest CLI deploys.",
+    "No real Render-account mutation; exact upstream Render commit-on-image HTTP status/message remains unverified."
+  ],
+  "harness_correction": {
+    "check": "blueprint-uppercase-repository",
+    "cause": "Validation-only YAML fixture used unsupported services[].port. Removed that field, then all11 Blueprint image cases passed.",
+    "original_attempt_preserved": true
+  }
+}

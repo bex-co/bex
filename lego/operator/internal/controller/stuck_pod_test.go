@@ -24,11 +24,15 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // TestStuckPodMessage pins the w9/011 stuck-rollout diagnosis: a crash-looping
@@ -408,5 +412,70 @@ func TestStuckPodMessageStaysQuietOnAHealthyRollout(t *testing.T) {
 		if reason, msg := r.stuckPodMessage(context.Background(), dep, 3000); msg != "" {
 			t.Errorf("a progressing rollout reported %q/%q", reason, msg)
 		}
+	}
+}
+
+func TestInvalidImageNameRolloutScope(t *testing.T) {
+	const message = `Failed to apply default image tag "docker.io/team/APP:latest": invalid reference format: repository name must be lowercase`
+	for _, tc := range []struct {
+		name     string
+		change   func(*appsv1.Deployment, *corev1.Pod)
+		wantFail bool
+	}{
+		{name: "current revision", wantFail: true},
+		{name: "stale revision", change: func(_ *appsv1.Deployment, pod *corev1.Pod) { pod.Labels[labelRevision] = "old" }},
+		{name: "other app", change: func(_ *appsv1.Deployment, pod *corev1.Pod) { pod.Labels["app"] = "other" }},
+		{name: "other namespace", change: func(_ *appsv1.Deployment, pod *corev1.Pod) { pod.Namespace = "other" }},
+		{name: "other container", change: func(_ *appsv1.Deployment, pod *corev1.Pod) { pod.Status.ContainerStatuses[0].Name = "sidecar" }},
+		{name: "unknown revision", change: func(dep *appsv1.Deployment, _ *corev1.Pod) { delete(dep.Spec.Template.Labels, labelRevision) }},
+		{name: "deleting pod", change: func(_ *appsv1.Deployment, pod *corev1.Pod) {
+			pod.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+			pod.Finalizers = []string{"test.bex.co/hold"}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 1}}
+			dep := progressDeadlineDep(app.Name)
+			dep.Status.Conditions = nil
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{Name: "web-new", Namespace: "default", Labels: map[string]string{"app": "web", labelRevision: "rev-1"}},
+				Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "app", Image: "docker.io/team/APP:latest",
+					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "InvalidImageName", Message: message}},
+				}}},
+			}
+			if tc.change != nil {
+				tc.change(dep, pod)
+			}
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).
+				WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+			reason, msg := r.stuckPodMessage(ctx, dep, 3000)
+			if tc.wantFail {
+				if reason != "InvalidImageName" || msg != "image reference is invalid: "+message {
+					t.Fatalf("diagnosis = %q/%q", reason, msg)
+				}
+			} else if reason != "" || msg != "" {
+				t.Fatalf("unrelated pod diagnosed the rollout: %q/%q", reason, msg)
+			}
+			result, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantFail {
+				ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
+				if stored.Status.Phase != appv1alpha1.PhaseFailed || result.RequeueAfter != 0 || ready == nil ||
+					ready.Reason != "InvalidImageName" || !strings.Contains(ready.Message, message) {
+					t.Fatalf("first-release failure = %+v, result=%+v", stored.Status, result)
+				}
+			} else if stored.Status.Phase != appv1alpha1.PhaseDeploying || result.RequeueAfter == 0 {
+				t.Fatalf("unrelated pod settled the rollout: %+v, result=%+v", stored.Status, result)
+			}
+		})
 	}
 }

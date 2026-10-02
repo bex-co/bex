@@ -8,12 +8,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/creack/pty v1.1.24
+	github.com/distribution/reference v0.6.0
 	github.com/getkin/kin-openapi v0.144.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/graphql-go/graphql v0.8.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/modelcontextprotocol/go-sdk v1.6.1
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/stripe/stripe-go/v86 v86.1.1

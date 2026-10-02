@@ -449,8 +449,8 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 // Zero value = default behavior (Branch HEAD, full build-and-deploy).
 type TriggerParams struct {
 	// CommitID pins the build to a specific Git ref instead of Branch HEAD.
-	// Rejected for cron_job services (they run on a schedule, not per-commit).
-	// Only meaningful for repo-backed services; silently ignored for image-backed.
+	// Rejected for image-backed and cron_job services. Internal restarts retain
+	// the live release's commit without accepting a caller-chosen ref.
 	CommitID string
 	// DeployMode selects the deploy strategy. "deploy_only" skips the build
 	// step — valid for image-backed services (nothing to build anyway), but
@@ -616,11 +616,16 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 		return fmt.Errorf("%w: imageUrl is not supported for repo-backed services — "+
 			"bex rebuilds from source on every trigger; use commitId to pin a ref instead", core.ErrBadRequest)
 	}
-	// Validate the supplied image ref at the boundary (w1/m53): reject whitespace/
-	// control/shell-meta characters so a malformed reference can't reach the App
-	// CR spec (where the CRD schema would reject it with a less legible error).
-	if p.ImageURL != "" && !store.ValidImage(p.ImageURL) {
-		return fmt.Errorf("%w: imageUrl must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
+	if p.CommitID != "" && !p.restart && a.Spec.Repo == "" && a.Spec.Image != "" {
+		return fmt.Errorf("%w: commitId is not supported for image-backed services — "+
+			"deploy an image tag or digest with imageUrl", core.ErrBadRequest)
+	}
+	// Validate grammar and registry policy before creating a deploy or changing
+	// the App, retaining the specific reason so the caller can correct the input.
+	if p.ImageURL != "" {
+		if err := store.ValidateImage(p.ImageURL); err != nil {
+			return fmt.Errorf("%w: imageUrl: %v", core.ErrBadRequest, err)
+		}
 	}
 	// commitId is the second caller field that becomes a git ref: when commit
 	// resolution fails (guaranteed for an option-shaped value — GitHub cannot

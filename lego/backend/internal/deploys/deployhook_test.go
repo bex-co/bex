@@ -179,7 +179,7 @@ func TestDeployHookTokenDigestIsKubernetesLabelSafe(t *testing.T) {
 
 func TestDeployHookHandlerTriggersGETAndPOSTWithoutAuth(t *testing.T) {
 	ds := newFakeStore()
-	svc, cl := newService(ds, sampleApp("web", "srv-1"))
+	svc, cl := newService(ds, repoApp("web", "srv-1", "main"))
 	svc.DeployHookLimiter = NewDeployHookRateLimiter(6000, 10)
 	hook, err := svc.GetDeployHook(context.Background(), "web")
 	if err != nil {

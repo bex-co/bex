@@ -305,12 +305,14 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 		{"missing tag", "ErrImagePull", "rpc error: code = NotFound desc = manifest missing", "rev-1", 91 * time.Second, true},
 		{"manifest unknown", "ImagePullBackOff", "manifest unknown", "rev-1", 91 * time.Second, true},
 		{"unauthorized", "ErrImagePull", "unauthorized: authentication required", "rev-1", 91 * time.Second, true},
+		{"invalid image name", "InvalidImageName", "invalid reference format: repository name must be lowercase", "rev-1", 0, true},
 		{"grace", "ErrImagePull", "rpc error: code = NotFound", "rev-1", 89 * time.Second, false},
 		{"timeout", "ErrImagePull", "dial tcp: i/o timeout", "rev-1", 10 * time.Minute, false},
 		{"registry unavailable", "ErrImagePull", "503 Service Unavailable", "rev-1", 10 * time.Minute, false},
 		{"rate limit", "ImagePullBackOff", "429 Too Many Requests", "rev-1", 10 * time.Minute, false},
 		{"slow pull", "ContainerCreating", "", "rev-1", 10 * time.Minute, false},
 		{"old revision", "ErrImagePull", "rpc error: code = NotFound", "old", 10 * time.Minute, false},
+		{"old invalid image", "InvalidImageName", "invalid reference format", "old", 10 * time.Minute, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -318,9 +320,13 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 				Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "old", ReleaseGeneration: 3}}
 			dep := progressDeadlineDep("web")
 			dep.Status.Conditions = nil
+			image := "example.org/web:missing"
+			if tc.reason == "InvalidImageName" {
+				image = "example.org/Web:latest"
+			}
 			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-new", Namespace: "default",
 				Labels: map[string]string{"app": "web", labelRevision: tc.revision}, CreationTimestamp: metav1.NewTime(time.Now().Add(-tc.age))},
-				Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "app", Image: "example.org/web:missing",
+				Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "app", Image: image,
 					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: tc.reason, Message: tc.message}}}}}}
 			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
 			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
@@ -340,9 +346,16 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 				if result.RequeueAfter == 0 || stored.Status.Phase != appv1alpha1.PhaseDeploying {
 					t.Fatalf("did not preserve rollout budget: %+v %+v", result, stored.Status)
 				}
+				if ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady); ready != nil && ready.Reason == "InvalidImageName" {
+					t.Fatalf("stale malformed image diagnosed the current revision: %+v", ready)
+				}
 				return
 			}
-			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.ObservedGeneration != 3 || !strings.Contains(rollout.Message, "example.org/web:missing") {
+			wantReason := "ImagePullBackOff"
+			if tc.reason == "InvalidImageName" {
+				wantReason = tc.reason
+			}
+			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.Reason != wantReason || rollout.ObservedGeneration != 3 || !strings.Contains(rollout.Message, image) {
 				t.Fatalf("missing image failure: %+v", rollout)
 			}
 			if stored.Status.Phase != appv1alpha1.PhaseRunning || stored.Status.ActiveRevision != "old" {

@@ -191,3 +191,45 @@ func TestPermanentPullFailureClassification(t *testing.T) {
 		})
 	}
 }
+
+func TestInvalidImageNameFailsOnlyTheOwningPreDeployJob(t *testing.T) {
+	job := failedJob(batchv1.JobReasonDeadlineExceeded)
+	const message = `Failed to apply default image tag "docker.io/team/APP:latest": invalid reference format: repository name must be lowercase`
+	waiting := corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "InvalidImageName", Message: message}}
+	now := time.Now()
+	for _, tc := range []struct {
+		name      string
+		uid       types.UID
+		namespace string
+		container string
+		created   time.Time
+		fail      bool
+	}{
+		{"new pod", jobUID, job.Namespace, containerName, now, true},
+		{"no age needed", jobUID, job.Namespace, containerName, time.Time{}, true},
+		{"earlier Job", "9f1e-earlier-run", job.Namespace, containerName, now, false},
+		{"other namespace", jobUID, "other-workspace", containerName, now, false},
+		{"other container", jobUID, job.Namespace, "sidecar", now, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pod := jobPod(tc.uid, tc.namespace, waiting)
+			pod.CreationTimestamp = metav1.NewTime(tc.created)
+			pod.Status.ContainerStatuses[0].Name = tc.container
+			cl := fakeClient(job, pod)
+			got := PullFailure(context.Background(), cl, job, now)
+			if !tc.fail {
+				if got != "" {
+					t.Fatalf("unrelated pod failed the Job: %q", got)
+				}
+				return
+			}
+			want := "image reference is invalid: " + message + "; the pre-deploy command never ran"
+			if got != want {
+				t.Fatalf("pending Job message = %q, want %q", got, want)
+			}
+			if got := FailureMessage(context.Background(), cl, job); got != want {
+				t.Fatalf("failed Job message = %q, want %q", got, want)
+			}
+		})
+	}
+}
