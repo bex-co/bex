@@ -97,6 +97,9 @@ func (r *kvRouter) set(kv *appv1alpha1.KeyValue) error {
 	if workspace == "" {
 		workspace = kv.Namespace
 	}
+	// Backend is the KeyValue's ClusterIP Service: its A record is the stable
+	// VIP, so CoreDNS caching cannot hand a dial a restarted pod's old IP or a
+	// cached NXDOMAIN (w1/m166 — it did while the Service was headless).
 	route := kvRoute{
 		ResourceID: kv.Name,
 		Workspace:  workspace,

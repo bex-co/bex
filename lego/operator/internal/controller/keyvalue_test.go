@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -491,7 +492,7 @@ var _ = Describe("KeyValue Controller", func() {
 		}
 	})
 
-	It("reconciles a tier-sized StatefulSet + headless Service + credentials Secret, owner-referenced", func() {
+	It("reconciles a tier-sized StatefulSet + ClusterIP Service + credentials Secret, owner-referenced", func() {
 		By("creating a standard KeyValue")
 		kv := &appv1alpha1.KeyValue{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
@@ -514,10 +515,13 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("cluster-autoscaler.kubernetes.io/safe-to-evict", "false"),
 			"singleton stateful pod must not be bin-packed away by the autoscaler")
 
-		By("creating a headless Service giving the internal DNS name")
+		By("creating a ClusterIP Service giving the internal DNS name")
 		svc := &corev1.Service{}
 		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
-		Expect(svc.Spec.ClusterIP).To(Equal(corev1.ClusterIPNone), "headless for StatefulSet identity")
+		// w1/m166: a headless Service's A record changes on every restart and
+		// CoreDNS caches the stale answer (~28s measured), so it must be a VIP.
+		Expect(svc.Spec.ClusterIP).NotTo(BeEmpty())
+		Expect(svc.Spec.ClusterIP).NotTo(Equal(corev1.ClusterIPNone), "a stable VIP, not per-restart pod A records")
 		Expect(svc.Spec.Ports[0].Port).To(Equal(int32(kvPort)))
 
 		By("creating a credentials Secret with a stable password + connection URI")
@@ -563,6 +567,51 @@ var _ = Describe("KeyValue Controller", func() {
 		for _, obj := range []metav1.Object{sts, svc, sec, auth} {
 			Expect(metav1.IsControlledBy(obj, kv)).To(BeTrue())
 		}
+	})
+
+	It("replaces a pre-w1/m166 headless Service with a ClusterIP one", func() {
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+			Spec:       appv1alpha1.KeyValueSpec{Name: name, Plan: "starter"},
+		}
+		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+
+		By("seeding the legacy headless Service the old operator authored")
+		legacy := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+			Spec: corev1.ServiceSpec{
+				ClusterIP: corev1.ClusterIPNone,
+				Selector:  map[string]string{labelKeyValue: name},
+				Ports:     []corev1.ServicePort{{Port: kvPort, Name: "valkey"}},
+			},
+		}
+		Expect(controllerutil.SetControllerReference(kv, legacy, k8sClient.Scheme())).To(Succeed())
+		Expect(k8sClient.Create(ctx, legacy)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, legacy)).To(Succeed())
+
+		reconcileN()
+
+		svc := &corev1.Service{}
+		Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
+		Expect(svc.UID).NotTo(Equal(legacy.UID), "clusterIP is immutable: the Service must be recreated")
+		Expect(svc.Spec.ClusterIP).NotTo(Equal(corev1.ClusterIPNone))
+		Expect(svc.Spec.Selector).To(Equal(map[string]string{labelKeyValue: name}))
+		Expect(metav1.IsControlledBy(svc, kv)).To(BeTrue())
+
+		By("leaving a headless Service it does not control alone")
+		foreign := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: name + "-foreign", Namespace: "default"},
+			Spec:       corev1.ServiceSpec{ClusterIP: corev1.ClusterIPNone, Ports: []corev1.ServicePort{{Port: kvPort}}},
+		}
+		Expect(k8sClient.Create(ctx, foreign)).To(Succeed())
+		retired, err := r.retireHeadlessKeyValueService(ctx, &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: foreign.Name, Namespace: "default", UID: kv.UID},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(retired).To(BeFalse())
+		Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(foreign), &corev1.Service{})).To(Succeed())
+		Expect(k8sClient.Delete(ctx, foreign)).To(Succeed())
 	})
 
 	It("scales to zero when suspended and back on resume, preserving the Secret", func() {
