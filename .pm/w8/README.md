@@ -78,7 +78,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.
 - [x] **033** — [Promoted to m49](done/033.md) (2026-10-02); original production findings retained.
 - [x] **034** — [Validate service display names](done/034.md) — **DONE 2026-10-02**: shared named refusals, Unicode/identity controls, full backend/lint checks, 135 live checks and fixture cleanup passed.
-- `036` — **duplicate of `w4/171`, fixed and live-verified 2026-09-30 on `de9ac4d1c`** (blast-radius evidence only). Was BLOCKER: since `cae30d1e0`, every deploy of a web service with env vars fails ("snapshot …-env … unknown namespace for the cache"): the new release-config snapshot reads tenant Secrets through the namespace-scoped cached client. Roll back or use the uncached client (~10m rollback / ~1h fix) ← `/qa-find-bugs-cli` post-deploy smoke, 2026-09-28
+- [x] **036** — [Closed as already fixed](done/036.md) (2026-10-02): `280377a6b` routes release-snapshot Secret I/O through the uncached client; current code and passing namespace regression verified. Original blast-radius findings and the 2026-09-30 production re-check are retained; survivor `w4/171`.
 - [x] **035** — [Completed through m50](done/035.md) (2026-10-02); original production findings retained.
 
 
