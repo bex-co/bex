@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m151** — [Preserve loaded log history across relative-range refreshes](m151/README.md) (6 tasks, ~2h 45m) ← live `qa-find-bugs` 2026-10-02 sweep 12; Last hour drops 40 loaded older rows and resets the reader every 30 seconds with Live off, while the fixed Custom control stays stable.
+
 - [ ] **m150** — [Apply saved static header wildcard patterns](m150/README.md) (6 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweep 11; root-extension and nested wildcard rules persist across API/UI reads but never emit headers, while exact/global/subtree controls work.
 
 - [ ] **m149** — [Remove Key Value TLS artifacts on deletion](m149/README.md) (7 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweeps 9–10; two public Free deletes leave ownerless TLS Secrets while the private control cleans up, and the existing audit falsely passes.
