@@ -25,7 +25,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m150** — [Apply saved static header wildcard patterns](m150/README.md) (6 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweep 11; root-extension and nested wildcard rules persist across API/UI reads but never emit headers, while exact/global/subtree controls work.
 
-- [ ] **m149** — [Remove Key Value TLS artifacts on deletion](m149/README.md) (7 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweeps 9–10; two public Free deletes leave ownerless TLS Secrets while the private control cleans up, and the existing audit falsely passes.
+- [ ] **m149** — [Remove Key Value TLS artifacts on deletion](blocked/m149/README.md) — **BLOCKED (release pipeline deploys operator, then QA proves public/private TLS inventory reaches zero, API/UI reads and audit agree, and cleans up fixtures/session)**; t001/t002/t003/t005/t006 done, t004/t007 remain. Independent TLS finalization, conservative ownership, ordered retries and audit regressions verified locally.
 
 - [ ] **m148** — [Track the complete first Blueprint deployment with environment groups](blocked/m148/README.md) — **BLOCKED (release pipeline deploys backend + migration 0137, then QA runs grouped/literal first-create build/HTTP/API/UI probes and cleanup)**; t001/t002/t004/t005 done, t003/t006 remain. Initial composition, durable dispatch barrier, authorization and compensated failure paths verified locally.
 
