@@ -1,0 +1,7 @@
+=== RUN   TestCronRunsHaveTwelveHourDeadline
+    cron_run_deadline_test.go:41: scheduled deadline = <nil>, want 43200 seconds (12 hours)
+    cron_run_deadline_test.go:41: manual deadline = <nil>, want 43200 seconds (12 hours)
+--- FAIL: TestCronRunsHaveTwelveHourDeadline (0.05s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/controller	0.917s
+FAIL
