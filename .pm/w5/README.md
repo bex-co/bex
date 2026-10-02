@@ -13,6 +13,16 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-10-01
+
+User approved the three Render-aligned follow-ups and requested `/pm` filing followed by `/loopx w5`. Each milestone starts with Render behavior research and ends with Render parity, Simplify, Test coverage and Closeout. Execute m107 → m108 → m109; these are distinct from the older blocked production acceptance in m105.
+
+- [ ] **m107** — [Preserve saved settings during rollback](m107/README.md) (8 tasks; 4h10m total).
+- [ ] **m108** — [Prevent canceled cron runs returning after history eviction](m108/README.md) (7 tasks; 3h35m total).
+- [ ] **m109** — [Enforce the twelve-hour cron runtime limit](m109/README.md) (7 tasks; 2h40m total).
+
+**Resumed — 2026-10-01:** Git write/network access is restored. `git pull --rebase --autostash origin main` succeeded and dev-5 passed its health inventory. The earlier read-only `.git/FETCH_HEAD` failure is resolved; resume execution at m107/t001.
+
 ## Approved queue — 2026-09-30
 
 User approved all five brainstorm proposals, with Render behavior research first. Execution order:
