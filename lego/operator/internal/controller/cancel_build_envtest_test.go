@@ -53,6 +53,8 @@ var _ = Describe("Canceling a config_change mid-build (w1/m152)", func() {
 		for range n {
 			_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 			Expect(err).NotTo(HaveOccurred())
+			_, err = r.reconcileSavedConfigurationStatus(ctx, reconcile.Request{NamespacedName: nn})
+			Expect(err).NotTo(HaveOccurred())
 		}
 	}
 	getApp := func() *appv1alpha1.App {

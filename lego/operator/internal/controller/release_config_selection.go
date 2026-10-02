@@ -16,9 +16,11 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -30,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -144,9 +147,10 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 	// changed saved/group values cannot rewrite an already selected release.
 	app.Status.ConfigSnapshotGeneration = ref.Generation
 	effectiveApp := rec.projectRuntimeApp(app, ref)
-	app.Status.UndeployedChanges, err = r.selectedConfigurationDiffers(ctx, app, effectiveApp)
-	if err != nil {
-		return err
+	for _, source := range releaseConfigSources(effectiveApp) {
+		if _, err := r.readMaterializedConfiguration(ctx, effectiveApp, source); err != nil {
+			return err
+		}
 	}
 	return updateStatusIfChanged(ctx, r.Client, app)
 }
@@ -154,26 +158,31 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 // Compare values as well as source names: saved Secret contents can change
 // without changing any App spec field. Every selected copy must still exist;
 // an optional envFrom must not turn a missing snapshot into a silent empty env.
-func (r *AppReconciler) selectedConfigurationDiffers(ctx context.Context, saved, runtime *appv1alpha1.App) (bool, error) {
+func (r *AppReconciler) savedConfigurationDiffers(ctx context.Context, saved, runtime *appv1alpha1.App) (bool, error) {
 	different := !equality.Semantic.DeepEqual(releaseRecordSpec(saved), releaseRecordSpec(runtime))
-	if ref := saved.ActiveReleaseConfig(); saved.Spec.Repo == "" && ref != nil && saved.Spec.Image != ref.Image {
-		different = true
-	}
 	for _, source := range releaseConfigSources(runtime) {
-		snapshot := &corev1.Secret{}
-		if err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: saved.Namespace, Name: snapshotOrSource(runtime, source)}, snapshot); err != nil {
-			return false, fmt.Errorf("read materialized configuration %s: %w", source, err)
+		snapshot, err := r.readMaterializedConfiguration(ctx, runtime, source)
+		if err != nil {
+			return false, err
 		}
 		current := &corev1.Secret{}
-		err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: saved.Namespace, Name: source}, current)
+		err = r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: saved.Namespace, Name: source}, current)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return false, err
 		}
-		if !equality.Semantic.DeepEqual(snapshot.Data, current.Data) {
+		if !maps.EqualFunc(snapshot.Data, current.Data, bytes.Equal) {
 			different = true
 		}
 	}
 	return different, nil
+}
+
+func (r *AppReconciler) readMaterializedConfiguration(ctx context.Context, app *appv1alpha1.App, source string) (*corev1.Secret, error) {
+	snapshot := &corev1.Secret{}
+	if err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: snapshotOrSource(app, source)}, snapshot); err != nil {
+		return nil, fmt.Errorf("read materialized configuration %s: %w", source, err)
+	}
+	return snapshot, nil
 }
 
 func (r *AppReconciler) copySelectedSources(ctx context.Context, app *appv1alpha1.App, ref *appv1alpha1.ReleaseConfigReference, rec *runtimeConfigRecord) error {
@@ -226,7 +235,7 @@ func (r *AppReconciler) copySelectedSource(ctx context.Context, app *appv1alpha1
 		return false, fmt.Errorf("read selected configuration %s: %w", name, err)
 	}
 	snapshot := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: destination, Namespace: app.Namespace,
-		Labels: map[string]string{snapshotOfLabel: source, snapshotGenerationLabel: strconv.FormatInt(ref.Generation, 10)}}, Type: selected.Type, Data: selected.DeepCopy().Data}
+		Labels: map[string]string{snapshotOfLabel: k8sname.Fit(source), snapshotGenerationLabel: strconv.FormatInt(ref.Generation, 10)}}, Type: selected.Type, Data: selected.DeepCopy().Data}
 	if err := controllerutil.SetControllerReference(app, snapshot, r.Scheme); err != nil {
 		return false, err
 	}
@@ -264,7 +273,7 @@ func selectedSourceName(app *appv1alpha1.App, ref *appv1alpha1.ReleaseConfigRefe
 func (r *AppReconciler) selectedRuntimeApp(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, error) {
 	ref := app.ActiveReleaseConfig()
 	if ref == nil || ref.SourceGeneration == 0 || canceledOverServed(app) {
-		return app, nil
+		return r.retainReleaseSources(ctx, app)
 	}
 	rec, err := r.readRuntimeConfigRecord(ctx, app, ref.Generation)
 	if err != nil {
@@ -287,12 +296,16 @@ func (rec *runtimeConfigRecord) projectRuntimeApp(app *appv1alpha1.App, ref *app
 		effectiveApp.Spec.Replicas = *rec.spec.Replicas
 	}
 	effectiveApp.Spec.Env = rec.spec.Env
-	effectiveApp.Spec.EnvFromSecret = rec.spec.EnvFromSecret
-	effectiveApp.Spec.EnvFromSecrets = rec.spec.EnvFromSecrets
-	effectiveApp.Spec.FilesFromSecrets = rec.spec.FilesFromSecrets
-	delete(effectiveApp.Annotations, appv1alpha1.PendingEnvSecretAnnotation)
-	delete(effectiveApp.Annotations, appv1alpha1.PendingFilesSecretAnnotation)
+	rec.applySources(effectiveApp)
 	return effectiveApp
+}
+
+func (rec *runtimeConfigRecord) applySources(app *appv1alpha1.App) {
+	app.Spec.EnvFromSecret = rec.spec.EnvFromSecret
+	app.Spec.EnvFromSecrets = rec.spec.EnvFromSecrets
+	app.Spec.FilesFromSecrets = rec.spec.FilesFromSecrets
+	delete(app.Annotations, appv1alpha1.PendingEnvSecretAnnotation)
+	delete(app.Annotations, appv1alpha1.PendingFilesSecretAnnotation)
 }
 
 func releaseRecordSpec(app *appv1alpha1.App) appv1alpha1.ReleaseRecordSpec {
@@ -319,7 +332,7 @@ func (r *AppReconciler) writeRuntimeConfigRecord(ctx context.Context, app *appv1
 		if rec.Labels == nil {
 			rec.Labels = map[string]string{}
 		}
-		rec.Labels[snapshotOfLabel] = app.Name + "-podtemplate"
+		rec.Labels[snapshotOfLabel] = k8sname.Fit(app.Name + "-podtemplate")
 		rec.Labels[snapshotGenerationLabel] = strconv.FormatInt(generation, 10)
 		rec.Data = map[string][]byte{appv1alpha1.ReleaseRecordPodTemplateKey: raw, appv1alpha1.ReleaseRecordSpecKey: spec}
 		return controllerutil.SetControllerReference(app, rec, r.Scheme)

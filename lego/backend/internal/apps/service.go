@@ -391,10 +391,10 @@ type AppView struct {
 	// background_worker | cron_job); empty spec.type projects as web_service.
 	Type  string `json:"type"`
 	Phase string `json:"phase"`
-	// UndeployedChanges: the service runs an earlier release than its saved spec
-	// because the deploy carrying the newer spec was canceled; the changes stay
-	// saved and ship with the next deploy (w1/m152 t003). Read from the
-	// operator-owned status field, never re-derived here.
+	// UndeployedChanges reports saved configuration that differs from the
+	// serving release, including Save only, canceled deploys and historical
+	// release selection. Read from the operator-owned status, never re-derived
+	// here or inferred from a save notification alone.
 	UndeployedChanges bool     `json:"undeployedChanges"`
 	URL               string   `json:"url"`
 	URLs              []string `json:"urls"`

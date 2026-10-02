@@ -269,7 +269,7 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Saved changes aren't live yet. Use a standard deploy to apply them.",
     description:
-      "Notice when saved settings differ from the running release after cancellation, rollback or restart",
+      "Notice when saved settings differ from the running release, including Save only, cancellation, rollback or restart",
   },
   "services.statusSleepingHint": {
     message: "Sleeping to save resources — wakes on the next request.",
@@ -4447,12 +4447,20 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Persist then start one source build and deploy",
   },
   "services.environmentSaveOnlySuccess": {
-    message: "Environment saved without a deploy",
-    description: "Toast after save-only succeeds",
+    message:
+      "Environment saved without a deploy. Use a standard deploy to apply any pending changes.",
+    description:
+      "Save-only success feedback while the operator checks saved/runtime differences; does not assert that a no-op or revert has pending changes",
   },
   "services.environmentSaveDeploySuccess": {
     message: "Environment saved and deployment started",
     description: "Toast after save-and-deploy succeeds",
+  },
+  "services.environmentSavedRefreshFailed": {
+    message:
+      "Environment saved, but this page couldn't refresh. Reload to check the latest values and deployment status.",
+    description:
+      "A committed environment patch must not be retried because a follow-up read failed",
   },
   "services.environmentSaveError": {
     message: "Couldn't save the environment. Your draft is still here.",

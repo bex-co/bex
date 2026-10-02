@@ -401,7 +401,7 @@ Fix shared service-local reporting, with any supported-type boundary explicitly 
 
 ## Contract and dedupe
 
-[ADR004](../../../docs/ADR004-app-deployment.md) §Saved settings and selected runtime configuration describes the saved/runtime difference; `api/server.graphql:31–34` lists cancellation, rollback and Restart as examples. [Render environment docs](https://render.com/docs/configure-environment-variables) describe deferred application on Save only. This particular bool/banner is Bex correctness, not a documented Render wire-field requirement. [Render rollback docs](https://render.com/docs/rollbacks) preserve saved settings, as the passing controls do.
+[ADR004](../../../../docs/ADR004-app-deployment.md) §Saved settings and selected runtime configuration describes the saved/runtime difference; `api/server.graphql:31–34` lists cancellation, rollback and Restart as examples. [Render environment docs](https://render.com/docs/configure-environment-variables) describe deferred application on Save only. This particular bool/banner is Bex correctness, not a documented Render wire-field requirement. [Render rollback docs](https://render.com/docs/rollbacks) preserve saved settings, as the passing controls do.
 
 Searched open/blocked/done notes for undeployed, Save-only and saved/pending/banner terms, scanned open milestone READMEs across workstreams, and read DO_NOT_DO. No open item covers this ordinary Save-only gap. Current-main path history and `git log -S UndeployedChanges` / `-S stagePendingProjectionReferences` show no pending fix for this path.
 

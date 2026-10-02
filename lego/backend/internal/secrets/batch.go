@@ -18,6 +18,7 @@ package secrets
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"maps"
@@ -296,10 +297,18 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		s.bumpRestart(a)
 	} else {
 		stagePendingProjectionReferences(a, txn.originalApp, env, files, txn.envChanged, txn.filesChanged)
+		if a.Annotations == nil {
+			a.Annotations = map[string]string{}
+		}
+		// Existing references leave spec unchanged, but the saved Secret bytes
+		// still need comparison with the serving release. A fresh, value-free
+		// notification wakes only the operator's status reconciliation. Do not
+		// use a timestamp: consecutive saves can share a clock tick.
+		a.Annotations[appv1alpha1.AnnotationSavedConfigRevision] = rand.Text()
 	}
 	if apiequality.Semantic.DeepEqual(txn.originalApp, a) {
-		// Nothing about the App changed — the maps were already what the patch
-		// asked for. No write, and so no event (w4/m122).
+		// No runtime identity changed. Effective Save-only writes always carry
+		// a fresh notification above; source no-ops return before finalization.
 		return result, nil
 	}
 	tracked := before.Stamp(a)
@@ -481,8 +490,8 @@ func equalSecretData(data map[string][]byte, env map[string]string) bool {
 
 // stagePendingProjectionReferences keeps a save-only write metadata-only when
 // the App has never consumed its conventional service-local Secret. The
-// operator's generation-only predicate ignores this patch, then reads the
-// pending name on the next deliberate App reconcile. Existing references stay
+// status controller observes its notification, while the runtime controller
+// consumes the pending name only on the next release. Existing references stay
 // untouched, so updating a projected Secret never changes the pod template.
 func stagePendingProjectionReferences(a, original *appv1alpha1.App, env, files map[string]string, envChanged, filesChanged bool) {
 	a.Spec.EnvFromSecret = original.Spec.EnvFromSecret
@@ -546,17 +555,18 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 		compensation = append(compensation, fmt.Errorf("restore secret store: %w", err))
 	}
 	if txn.envChanged {
-		if originalApp.Spec.EnvFromSecret == envSecretName(originalApp.Name) {
-			if err := s.upsertSecret(ctx, originalApp, envSecretName(originalApp.Name), txn.oldEnv); err != nil {
+		name := envSecretName(originalApp.Name)
+		if originalApp.Spec.EnvFromSecret == name || originalApp.Annotations[appv1alpha1.PendingEnvSecretAnnotation] == name {
+			if err := s.upsertSecret(ctx, originalApp, name, txn.oldEnv); err != nil {
 				compensation = append(compensation, fmt.Errorf("restore environment projection: %w", err))
 			}
-		} else if err := s.deleteSecret(ctx, originalApp.Namespace, envSecretName(originalApp.Name)); err != nil {
+		} else if err := s.deleteSecret(ctx, originalApp.Namespace, name); err != nil {
 			compensation = append(compensation, fmt.Errorf("remove environment projection: %w", err))
 		}
 	}
 	if txn.filesChanged {
 		name := filesSecretName(originalApp.Name)
-		if slices.Contains(originalApp.Spec.FilesFromSecrets, name) {
+		if slices.Contains(originalApp.Spec.FilesFromSecrets, name) || originalApp.Annotations[appv1alpha1.PendingFilesSecretAnnotation] == name {
 			if err := s.upsertSecret(ctx, originalApp, name, txn.oldFiles); err != nil {
 				compensation = append(compensation, fmt.Errorf("restore secret-file projection: %w", err))
 			}

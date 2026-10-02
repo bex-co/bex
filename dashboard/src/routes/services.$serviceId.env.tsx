@@ -49,7 +49,7 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
       </div>
       {service?.undeployedChanges ? (
         // These are saved values. The operator reports when they differ from
-        // the running configuration, including after cancellation or rollback.
+        // the running configuration, including Save only, cancellation or rollback.
         <p className="text-muted-foreground text-sm" role="status">
           {t("services.undeployedChangesHint")}
         </p>

@@ -4464,9 +4464,9 @@ func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount
 }
 
 // runtimeEnvSecret prefers the active spec reference and falls back to the
-// metadata-only projection staged by a save-only Environment patch. Metadata
-// updates do not enqueue this generation-filtered controller; a later restart
-// or deploy does, and consumes the pending Secret without an intermediate roll.
+// metadata-only projection staged by a save-only Environment patch. The runtime
+// projection retains an existing release's membership before calling this helper;
+// a new standard deploy consumes the pending source.
 func runtimeEnvSecret(app *appv1alpha1.App) string {
 	if app.Spec.EnvFromSecret != "" {
 		return app.Spec.EnvFromSecret
@@ -4887,9 +4887,9 @@ func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p ap
 // gate in buildFromSource keys on (2026-08-20: 8 consecutive lost retries after
 // market-size's first r.fail). On conflict, re-read the live object, re-apply
 // the local status, and update again; other errors are logged at ERROR so a
-// lost marker is at least visible. Status here is operator-owned: the
-// projector never writes status, so re-applying the local copy over the fresh
-// resourceVersion cannot clobber a concurrent projector spec change.
+// lost marker is at least visible. The projector never writes status; the
+// independent saved-configuration controller owns UndeployedChanges, which a
+// retry retains from the fresh object.
 func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alpha1.App, site string) {
 	for range statusWriteAttempts {
 		if err := updateStatusIfChanged(ctx, r.Client, app); err == nil {
@@ -4907,6 +4907,7 @@ func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alph
 				"app", app.Name, "site", site)
 			return
 		}
+		app.Status.UndeployedChanges = fresh.Status.UndeployedChanges
 		fresh.Status = app.Status
 		*app = *fresh
 	}
@@ -4940,7 +4941,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 			return
 		}
 		// Lost the race: re-read for a fresh resourceVersion, re-apply this
-		// pass's status, and retry. All three callers own status exclusively.
+		// pass's status, and retry. App's independent configuration flag is kept.
 		fresh := obj.DeepCopyObject().(client.Object)
 		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), fresh); err != nil {
 			logf.FromContext(ctx).Error(err, "re-read for status retry failed",
@@ -4951,6 +4952,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 		case *appv1alpha1.App:
 			local := *typed // keep the local status…
 			*typed = *fresh.(*appv1alpha1.App)
+			local.Status.UndeployedChanges = typed.Status.UndeployedChanges
 			typed.Status = local.Status // …over the fresh resourceVersion
 		case *appv1alpha1.Database:
 			local := *typed
@@ -5650,6 +5652,9 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := r.setupSavedConfigurationStatus(mgr); err != nil {
+		return err
+	}
 	// Publish the cache gate from setup rather than from the first dispatch, so
 	// an idle fleet still reports it: an absent series and a disabled cache are
 	// different things, and a dashboard cannot tell them apart after the fact.

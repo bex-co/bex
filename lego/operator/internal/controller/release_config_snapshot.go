@@ -36,6 +36,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
+	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -184,9 +185,8 @@ func releaseConfigSources(app *appv1alpha1.App) []string {
 //
 // It is idempotent and copy-once: an existing snapshot for a generation is never
 // rewritten, because its whole purpose is to hold the values that release ran
-// with. A source that has since been deleted is skipped rather than failing the
-// release — the release already ran without it, and failing here would wedge a
-// deploy on a group the user removed.
+// with. Missing optional sources get an empty snapshot: the release runs without
+// their values, and its record can distinguish that absence from a lost snapshot.
 //
 // The generation is PERSISTED here rather than left to ride a later status write
 // in the same pass. That ordering is load-bearing: the projection flips on this
@@ -326,13 +326,15 @@ func (r *AppReconciler) copyConfigSecret(ctx context.Context, app *appv1alpha1.A
 
 	src := &corev1.Secret{}
 	if err := r.uncachedSecretClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: source}, src); err != nil {
-		if apierrors.IsNotFound(err) {
-			// The source is gone (an unlinked or deleted group). The release runs
-			// without it; wedging the deploy would be worse than a missing copy,
-			// and the projection marks it optional exactly as before.
-			return nil
+		if !apierrors.IsNotFound(err) {
+			return err
 		}
-		return err
+		if source == runtimeEnvSecret(app) {
+			return nil // a required source keeps its existing unresolved behavior
+		}
+		// Files and group envFrom are optional. An empty copy records their
+		// deliberately absent values without confusing them with snapshot loss.
+		src.Type = corev1.SecretTypeOpaque
 	}
 
 	snapshot := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
@@ -340,7 +342,7 @@ func (r *AppReconciler) copyConfigSecret(ctx context.Context, app *appv1alpha1.A
 		if snapshot.Labels == nil {
 			snapshot.Labels = map[string]string{}
 		}
-		snapshot.Labels[snapshotOfLabel] = source
+		snapshot.Labels[snapshotOfLabel] = k8sname.Fit(source)
 		snapshot.Labels[snapshotGenerationLabel] = strconv.FormatInt(gen, 10)
 		snapshot.Type = src.Type
 		snapshot.Data = make(map[string][]byte, len(src.Data))
@@ -521,14 +523,10 @@ func init() {
 	ctrlmetrics.Registry.MustRegister(cancelTemplateChangesTotal)
 }
 
-// afterServingDeployment is everything that follows applying the Deployment:
-// whether the service is running behind its saved spec, the rollout invariant,
-// and recording the template for a later cancel. One call from reconcileKubernetes
-// keeps that function under the cyclomatic ceiling.
+// afterServingDeployment records the rollout invariant and template for a later
+// cancel. Saved/runtime status is compared independently once a release serves.
 func (r *AppReconciler) afterServingDeployment(ctx context.Context, app *appv1alpha1.App, tmpl corev1.PodTemplateSpec, templateChanged, restored bool) {
 	settling := canceledOverServed(app)
-	ref := app.ActiveReleaseConfig()
-	app.Status.UndeployedChanges = settling || (ref != nil && (ref.SourceGeneration == 0 || app.Status.UndeployedChanges))
 	if settling && templateChanged {
 		kind := cancelTemplateRestore
 		if !restored {
@@ -577,6 +575,14 @@ func (r *AppReconciler) applyServingCronJob(ctx context.Context, app *appv1alpha
 	if err != nil {
 		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
 	}
+	// Unlike Deployment templates, cron templates have no release label. Commit
+	// membership first so a lost record write cannot let a later Save-only source
+	// enter an already-applied release on retry.
+	if !canceledOverServed(app) {
+		if err := r.recordReleasePodTemplate(ctx, app, tmpl); err != nil {
+			return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
+		}
+	}
 	res, err := r.convergeCronRuntime(ctx, app, tmpl)
 	if err != nil {
 		return res, err
@@ -585,7 +591,11 @@ func (r *AppReconciler) applyServingCronJob(ctx context.Context, app *appv1alpha
 	if err != nil {
 		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
 	}
-	r.afterServingDeployment(ctx, app, after, !equality.Semantic.DeepEqual(before, after), restored)
+	// The successful pre-write already recorded an unchanged template. Only
+	// API defaulting needs a corrected record; cancellation still needs its meter.
+	if canceledOverServed(app) || !equality.Semantic.DeepEqual(tmpl, after) {
+		r.afterServingDeployment(ctx, app, after, !equality.Semantic.DeepEqual(before, after), restored)
+	}
 	return res, nil
 }
 

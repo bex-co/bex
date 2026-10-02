@@ -233,17 +233,13 @@ func TestAfterServingDeploymentMetersCancelTemplateChanges(t *testing.T) {
 	if got := count(cancelTemplateReproject) - reproject0; got != 1 {
 		t.Errorf("reproject increments = %v, want 1", got)
 	}
-	if !app.Status.UndeployedChanges {
-		t.Error("settling a cancel over a served release must report undeployed changes")
-	}
-
 	normal := settling()
 	normal.Annotations = nil
 	before := count(cancelTemplateReproject) + count(cancelTemplateRestore)
 	normal.Status.UndeployedChanges = true
 	r.afterServingDeployment(ctx, normal, corev1.PodTemplateSpec{}, true, false)
-	if normal.Status.UndeployedChanges {
-		t.Error("a normal dispatch must clear undeployed changes")
+	if !normal.Status.UndeployedChanges {
+		t.Error("dispatch before readiness must not clear saved/runtime status")
 	}
 	if after := count(cancelTemplateReproject) + count(cancelTemplateRestore); after != before {
 		t.Errorf("a normal rollout was metered as a cancel template change (%v -> %v)", before, after)

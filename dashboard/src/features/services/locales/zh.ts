@@ -263,7 +263,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.undeployedChangesHint": {
     message: "已保存的更改尚未生效。请通过常规部署应用这些更改。",
     description:
-      "Notice when saved settings differ from the running release after cancellation, rollback or restart",
+      "Notice when saved settings differ from the running release, including Save only, cancellation, rollback or restart",
   },
   "services.statusSleepingHint": {
     message: "为节省资源已休眠 —— 下次请求时自动唤醒。",
@@ -4344,12 +4344,18 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Persist then start one source build and deploy",
   },
   "services.environmentSaveOnlySuccess": {
-    message: "环境已保存，未部署",
-    description: "Toast after save-only succeeds",
+    message: "环境已保存，未部署。如有待生效的更改，请通过常规部署应用。",
+    description:
+      "Save-only success feedback while the operator checks saved/runtime differences; does not assert that a no-op or revert has pending changes",
   },
   "services.environmentSaveDeploySuccess": {
     message: "环境已保存，部署已开始",
     description: "Toast after save-and-deploy succeeds",
+  },
+  "services.environmentSavedRefreshFailed": {
+    message: "环境已保存，但页面刷新失败。请重新加载以查看最新值和部署状态。",
+    description:
+      "A committed environment patch must not be retried because a follow-up read failed",
   },
   "services.environmentSaveError": {
     message: "无法保存环境。草稿仍保留。",

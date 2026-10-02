@@ -141,7 +141,7 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
       revealFile={revealFile}
       saving={saving || deploying}
       save={async (patch, choice) => {
-        await save(
+        const { refreshFailed } = await save(
           serviceId,
           patch,
           choice === "deploy" ? "deploy" : "save_only",
@@ -149,11 +149,13 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
         if (choice !== "rebuild") {
           return {
             affectedServiceIds: choice === "deploy" ? [serviceId] : [],
+            refreshFailed,
           };
         }
         return {
           affectedServiceIds: [serviceId],
           rolloutFailed: (await trigger(serviceId)) == null,
+          refreshFailed,
         };
       }}
       retryRollout={async () => (await trigger(serviceId)) != null}
@@ -194,6 +196,7 @@ export interface EnvironmentEditorProps {
     affectedServiceIds?: readonly string[];
     failedServiceIds?: readonly string[];
     rolloutFailed?: boolean;
+    refreshFailed?: boolean;
   }>;
   retryRollout: (choice: Exclude<SaveChoice, "only">) => Promise<boolean>;
   saving: boolean;
@@ -553,11 +556,7 @@ export function EnvironmentEditor({
   async function commit(choice: SaveChoice) {
     if (createDenied || !draft || !dirty || !isDraftValid(validation)) return;
     setSaveError(false);
-    let result: {
-      affectedServiceIds?: readonly string[];
-      failedServiceIds?: readonly string[];
-      rolloutFailed?: boolean;
-    };
+    let result: Awaited<ReturnType<EnvironmentEditorProps["save"]>>;
     try {
       result = await save(patch, choice);
     } catch (err) {
@@ -568,18 +567,20 @@ export function EnvironmentEditor({
       return;
     }
 
-    // The configuration save is committed at this point. End the draft before
-    // any refresh/deploy follow-up so a later failure can never cause a retry to
-    // reapply an already-successful secret patch.
+    // The save committed even if a follow-up read or deploy failed. Retrying
+    // that follow-up must not reapply the accepted secret patch.
     setDraft(null);
     reveals.clear();
+    if (result.refreshFailed) {
+      toast.warning(t("services.environmentSavedRefreshFailed"));
+    }
     const rolloutFailed =
       result.rolloutFailed || Boolean(result.failedServiceIds?.length);
     if (choice !== "only" && rolloutFailed) {
       setPendingChoice(choice);
       return;
     }
-    if (choice !== "rebuild") {
+    if (choice !== "rebuild" && !result.refreshFailed) {
       const deployed =
         choice === "deploy" && Boolean(result.affectedServiceIds?.length);
       toast.success(
