@@ -1,6 +1,6 @@
 # w1 · m159 — Dashboard truth: a datastore's own Status row, the landing after "Move to project", and seven count strings
 
-**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001–t006 done; t007 closeout is open. The 2026-09-30 live walk passed bullets 1 and 3, but bullet 2 fails when the project page is loaded fresh: a load-order race lands it on the first empty environment. See § Live closeout 2026-09-30)
+**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** done (t001–t007 done. All four DoD bullets verified: bullets 1 and 3 live on 2026-09-30, bullet 2 live on 2026-10-02 after the cold-load race fix `363ef405a`, bullet 4 by `locale-parity.test.ts`. See § Live re-walk 2026-10-02)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE** | 20m | t001, t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout | 10m | t006, t004 |
+| t007 | Closeout — **DONE** | 10m | t006, t004 |
 
 ## Definition of done
 
@@ -249,3 +249,41 @@ The live walk's bullet-2 failure is fixed in code. `EnvironmentsPanel` canonical
 - Regression: `environments-panel.test.tsx` — "does not pin the first Environment into the URL before resources load (w1/m159)" renders the cold-load order (Environments first, rows later) and asserts the only URL write is `unassigned`. It **fails without the guard** (called with `env-1`) and passes with it. `vitest src/features/environments` 66/66, `yarn typecheck` clean.
 
 **Remaining for t007:** once this ships and a pin lands, re-walk bullet 2 only (fresh load of `/project/<id>` after a row-level move lands on Unassigned with the resource on screen). Bullets 1 and 3 passed live today.
+
+## Live re-walk 2026-10-02
+
+**Result: bullet 2 passes live. A fresh load of `/project/<id>` after a row-level "Move to project" lands on Unassigned with the store on screen, 6 of 6 times in en and zh. With bullets 1 and 3 passed on 2026-09-30, every DoD bullet is met and m159 is closed.**
+
+**Build under test.** `deploy/gitops/base/dashboard.yaml` on `origin/main` pins `ghcr.io/bex-co/bex-dashboard@sha256:ab909cdb…`, written by `2790aaffe` "pin platform images to `e97ca42273a9`" (2026-10-02 06:27:47Z, deploy run 36969401352). `git merge-base --is-ancestor 363ef405a e97ca4227` succeeds, so the cold-load fix is in the build. The page itself confirms the fix is live: the first `BatchHttpLink` batch still carries `Environments` alone and the resource lists still arrive in a later batch, yet the URL is canonicalized only to `?env=unassigned`.
+
+**How the walk ran.** Same method as 2026-09-30: headless Chromium driven by Node scripts in the session scratchpad (`m159b/`, a copy of `m159/lib.mjs` pointed at a fresh state file). The QA session came from `scripts/qa-login.sh <scratch file>`, so no credential, cookie or token entered a tool argument or any output. The session was revoked at the end (`--logout` → `ok logged-out`) and the state file was deleted. Workspace: `tea-d98210cbbpdc73dcrkvg`. Create and delete went through GraphQL from inside the signed-in page; the move went through the UI.
+
+**Fixtures** (created 2026-10-02 06:34:40–06:35Z, deleted by 06:37:40Z):
+
+| Fixture                          | id                         | Deleted → `GET` |
+| -------------------------------- | -------------------------- | --------------- |
+| Key Value `qa-20261002-m159kv`   | `red-davl10oaijhc73cn2pog` | 404             |
+| Project `qa-20261002-m159p`      | `prj-davl11gaijhc73cn2pq0` | 404             |
+| Environment `qa-e1` (in project) | `env-davl13eo5s1c7398lh60` | 404             |
+
+- **Control reads.** `GET /v1/projects` and `GET /v1/key-value` for the workspace returned 200 with items, so the 404s mean deleted, not an unknown route. No `qa-20261002-m159…` name remains in the workspace.
+- **Setup check.** Before the move, `environments(projectId:)` returned exactly one Environment, `qa-e1`, holding nothing.
+
+**The move.** On the Overview's Ungrouped Resources row for `qa-20261002-m159kv`, Actions → "Move to project" → `qa-20261002-m159p`. The toast read `"qa-20261002-m159kv" moved to "qa-20261002-m159p".` (06:35:14Z).
+
+**Fresh loads of the bare project URL.** Each attempt is a new browser context that opens `/project/prj-davl11gaijhc73cn2pq0` with no `env` parameter:
+
+```text
+en cold #1..#3: final=/project/prj-davl11gaijhc73cn2pq0?env=unassigned selected=Unassigned kvVisible=true
+zh cold #1..#3: final=/project/prj-davl11gaijhc73cn2pq0?env=unassigned selected=未分配     kvVisible=true
+  batch 1: Workspaces+Environments
+  batch 2: Projects+BillingReadiness+Services+Databases+KeyValues+EnvGroups
+```
+
+- **The race window is still there, and it is now handled.** The batch order is the same one that failed on 2026-09-30. The Environments query resolves first, yet the page waits for the resource lists before it writes `?env=`.
+- **Screenshots** (session scratchpad `m159b/`): `project-cold-load-{en,zh}.png`. Each shows the selector reading Unassigned / 未分配 and a table listing `qa-20261002-m159kv · Key Value` under All (1) / Key Values (1).
+
+**Control: opening the project by clicking its card on the Overview** still lands correctly. It opens `?env=unassigned`, the selector reads Unassigned (zh: 未分配), and the store is visible. Screenshots: `project-landing-{en,zh}.png`.
+
+**Side observation from 2026-09-30, no longer seen.** Every fresh load in this walk sent `ViewerCapabilities` on its own, with no synthetic `focus` event. The headless-only "Permissions could not be refreshed" state recorded on 2026-09-30 did not recur, so there is still nothing to file.
+
