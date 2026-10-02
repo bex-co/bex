@@ -31,7 +31,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m147** — [Refresh service activity while the page stays open](m147/README.md) (6 tasks, ~2h 25m) ← live `qa-find-bugs` 2026-10-02 sweep 7; a fixed query window leaves a live deploy In Progress with Cancel and misses later service events. APIs and the Metrics timeline contain the facts.
 
-- [ ] **m146** — [Keep empty Blueprint environments idempotent](m146/README.md) (6 tasks, ~2h 10m) ← live `qa-find-bugs` 2026-10-02 sweep 6; identical `envVars: []` applies republish an unchanged static site twice; omitted-env control stays unchanged.
+- [ ] **m146** — **BLOCKED (release pipeline: deploy backend; QA: replay static/group-only live no-op controls, then fixture/session cleanup)** — [Keep empty Blueprint environments idempotent](blocked/m146/README.md). t001/t002/t004/t005 done; full backend tests and lint passed. t003 hosted parity and t006 closeout remain open.
 
 - [ ] **m145** — [Report ordinary Save-only configuration as pending](blocked/m145/README.md) — **BLOCKED (platform release owner: deploy backend/operator/dashboard; QA owner: complete production Save-only and cancel/deploy/rollback/Restart/hook replay plus fixture/session cleanup).** t001–t005 done with local API/UI, runtime immutability and failure-mode regressions; t006 remains open.
 

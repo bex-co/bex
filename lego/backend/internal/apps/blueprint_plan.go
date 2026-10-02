@@ -322,6 +322,11 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 // retaining undeclared mutable values. It has stable ordering: surviving
 // values retain their order and newly declared names append in manifest order.
 func mergeBlueprintEnv(current, declared []appv1alpha1.EnvVar) []appv1alpha1.EnvVar {
+	// Match canonicalSlice's zero-value convention without cloning the
+	// nonempty merge a second time. JSON omits empty env lists on storage.
+	if len(current)+len(declared) == 0 {
+		return nil
+	}
 	byName := make(map[string]appv1alpha1.EnvVar, len(declared))
 	for _, variable := range declared {
 		byName[variable.Name] = variable

@@ -1,16 +1,16 @@
 # w4 · m146 — Keep empty Blueprint environments idempotent
 
-**Worker:** worker4 **Goal:** an unchanged Blueprint with an empty service environment produces no service change and no deployment. **Status:** todo
+**Worker:** worker4 **Goal:** an unchanged Blueprint with an empty service environment produces no service change and no deployment. **Status:** blocked — t001/t002/t004/t005 done; t003 hosted parity and t006 closeout await backend deployment and QA
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Canonicalize empty merged Blueprint environments | 25m | — |
-| t002 | Verify shared callers and preserve environment ownership | 35m | t001 |
+| t001 | Canonicalize empty merged Blueprint environments — **DONE** | 25m | — |
+| t002 | Verify shared callers and preserve environment ownership — **DONE** | 35m | t001 |
 | t003 | Render parity across validation, apply and dashboard plans | 20m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Test coverage | 30m | t003 |
+| t004 | Simplify — **DONE** | 10m | t003 |
+| t005 | Test coverage — **DONE** | 30m | t003 |
 | t006 | Closeout | 10m | t004, t005 |
 
 ## Definition of done
@@ -37,3 +37,7 @@ Live sibling/resource-reference cases not exercised in the filing remain explici
 ## Dedupe and limits
 
 Read the finding's complete w1/m24, w6/m125, w4/m124 and w4/m138 disposition before implementing. This is an uncovered empty-env branch of the idempotence guarantee; there is no evidence the old domain/IP-allowlist fixes regressed. Keep env-group conservative plans, omission preservation and real changes intact. Git-based create/sync, other service types and reference forms are reasoned shared callers and require verification. The filing ships no product code.
+
+## Blocked closeout — 2026-10-02
+
+Implementation, full backend tests, backend lint and simplify review passed. The release pipeline must deploy the backend fix; QA must execute all live README controls and fixture/session cleanup. See [verification](verification.md) for exact local evidence and unverified surfaces.
