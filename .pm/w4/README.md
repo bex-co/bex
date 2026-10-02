@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m153** — [Preserve Key Value data when re-enabling journaling](m153/README.md) (7 tasks, ~3h 50m) ← live `qa-find-bugs` 2026-10-02 sweep 15; two fresh settings changes replay stale AOF data, losing snapshot-written keys and rolling counters back, including after explicit SAVE and a passing ordinary restart.
+
 - [ ] **m152** — [Keep relative hosting times current on open pages](m152/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 14; two fresh cron pages freeze Last run/Next run/Created while exact API times and the deploy-row timer remain correct.
 
 - [ ] **m151** — [Preserve loaded log history across relative-range refreshes](m151/README.md) (6 tasks, ~2h 45m) ← live `qa-find-bugs` 2026-10-02 sweep 12; Last hour drops 40 loaded older rows and resets the reader every 30 seconds with Live off, while the fixed Custom control stays stable.
