@@ -15,11 +15,13 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m147** — [Refresh service activity while the page stays open](m147/README.md) (6 tasks, ~2h 25m) ← live `qa-find-bugs` 2026-10-02 sweep 7; a fixed query window leaves a live deploy In Progress with Cancel and misses later service events. APIs and the Metrics timeline contain the facts.
+
 - [ ] **m146** — [Keep empty Blueprint environments idempotent](m146/README.md) (6 tasks, ~2h 10m) ← live `qa-find-bugs` 2026-10-02 sweep 6; identical `envVars: []` applies republish an unchanged static site twice; omitted-env control stays unchanged.
 
 - [ ] **m145** — [Report ordinary Save-only configuration as pending](m145/README.md) (6 tasks, ~3h 10m) ← live `qa-find-bugs` 2026-10-02 sweep 5; two existing-file saves retain old runtime values but report no pending change. Cancel, rollback, Restart and standard/deploy-hook controls pass.
 
-- [ ] **m144** — **BLOCKED (production GitOps release operator must apply the budget; QA/platform must measure retained-data replay and query peaks, verify a restart stable for 15 minutes, and replay metrics across APIs/UI and shared consumers)** — [Recover Prometheus metrics](blocked/m144/README.md). t004 done 2026-10-02; production memory configuration, local Helm precedence correction, caller audit and render checks complete; t001/t002/t003/t005/t006 retain operational criteria.
+- [ ] **m144** — **BLOCKED (QA/platform must measure retained-data replay and query peaks, verify a restart stable for 15 minutes, and finish the API/UI and shared-consumer matrix)** — [Recover Prometheus metrics](blocked/m144/README.md). Budget applied: [sweep 7 recheck](blocked/m144/qa-r7-recheck.md) found Ready/zero restarts, successful own-web CPU/memory/instance queries and sleep/wake. t004 done; t001/t002/t003/t005/t006 retain operational criteria.
 
 - [ ] **m143** — **BLOCKED (production-deploy pipeline must release the dashboard; QA must then complete first-open, reopen and list-page UI probes)** — [Initialize service-page environment-group scope on the first controlled opening](blocked/m143/README.md). t002–t005 done 2026-10-02; original-code regression proof, full dashboard checks and 12 live REST/GraphQL/MCP expectations passed. t001 live criterion and t006 closeout remain open.
 - [ ] **m142** — **BLOCKED (production-deploy pipeline must release both the admission policy and operator image; QA must then pass Docker/native create, retry, environment-update, adapter and cleanup probes)** — [Admit bounded image-v1 workloads](blocked/m142/README.md). t002, t004, t005 done 2026-10-02; t001 implementation verified, live criteria in t001/t003/t006 remain open.
