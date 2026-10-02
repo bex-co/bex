@@ -425,7 +425,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if !d.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}
-	// ipAllowList is required in Render's schema — an unrestricted database
+	// ipAllowList is required in Render's schema — an empty stored list
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return PostgresView{
 		ID:                      d.Name,

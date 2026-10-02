@@ -62,7 +62,7 @@ func requireEmptyArray(t *testing.T, step, key string, body map[string]any) {
 func TestPostgresRequiredArraysPresentWhenEmpty(t *testing.T) {
 	svc, _ := newService()
 
-	w := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"req-empty-pg","plan":"free"}`)
+	w := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"req-empty-pg","plan":"free","ipAllowList":[]}`)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create => %d: %s", w.Code, w.Body.String())
 	}

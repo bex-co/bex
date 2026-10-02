@@ -135,7 +135,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `--task-id <ids>` — accepted as a filter
   - [x] `--task-run-id <ids>` — accepted as a filter
 - [x] **`postgres`** (alias `pg`) — manage Render Postgres databases
-  - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists); Render-route omission creates public intent while explicit `public:false` and shared Core callers remain private
+  - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists). With no allowlist flag, the pinned builder omits `ipAllowList`; REST defaults to public with explicit `0.0.0.0/0` and `::/0` rules, so readback no longer reports a blocked empty list (w2/038). Explicit REST `[]` creates private intent unless Bex `public:true` overrides it; native GraphQL/MCP create defaults stay private. [Create matrix and CLI limits](ADR009-postgresql-management.md#postgres-create-access-intent-w2038) Default creation now reads back explicit IPv4/IPv6 rules instead of an empty blocked list (w2/038); an explicit REST empty list creates a private database.
     - [x] payment-required failures use the same CLI-decodable 402 envelope as Service and Key Value creates
     - [x] `--name`
     - [~] `--plan <free|basic_*|pro_*|accelerated_*>` — bex's own tier names round-trip; v2.25.0's help/picker also advertises Render's spec-based compute plans (`0.1c-256mb` … `128c-1024g`), which map onto bex rungs when unambiguous (w8/011); larger names still 400
