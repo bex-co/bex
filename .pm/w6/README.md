@@ -35,6 +35,8 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
+- [ ] **m145** — [Render list_events and multi-type event filtering](m145/README.md) (7 tasks; ~4h15 total) ← approved Render-only proposal 2026-09-30; absorbs `w1/m165/t003`, retains the legacy tool alias.
+
 - [x] **m143** — [Make dashboard service and deploy actions permission-aware](done/m143/README.md) (8 tasks; ~5h) ← approved brainstorm proposal 1, 2026-09-10
 - [x] **m144** — [Refresh dashboard permissions after workspace access changes](done/m144/README.md) (8 tasks; ~5h) ← approved brainstorm proposal 2, 2026-09-10; final integration depends on m143 closeout
 
@@ -178,6 +180,8 @@ The shared deploy precondition is satisfied: `71fe9660` pins production to `0ca1
 These five are correctly filed and correctly blocked — they are not stale and should not be deleted, but none of them can advance from a keyboard alone.
 
 ## Inbox
+
+- [ ] **075** — [Honor Render region filters on Postgres and Key Value lists](075.md) (~1h) ← approved Render-only proposal 2026-09-30.
 
 - [ ] **074** — [Live-verify m143/m144 permission UI on dev-6](074.md) (~1h) ← m143/m144 closeout residual (DoD walkthrough needs a running `dev-6` stack), filed 2026-09-10; not in the approved queue
 - [x] **073** — [Refresh request-validator OpenAPI pin to include outbound-ips](done/073.md) — done 2026-09-11 (pin refreshed to the live 208-op document; `retrieve-service-outbound-ips` enforced through the composed validator; m96 Blueprint-ID guards green).
