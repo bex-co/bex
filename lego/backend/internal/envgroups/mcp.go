@@ -45,7 +45,7 @@ type listEnvGroupsArgs struct {
 
 type createEnvGroupArgs struct {
 	Name          string              `json:"name" jsonschema:"the env group name"`
-	EnvironmentID string              `json:"environmentId,omitempty" jsonschema:"optional environment id (env-...) in the same workspace to assign this group to"`
+	EnvironmentID string              `json:"environmentId,omitempty" jsonschema:"optional environment id (evm-...; legacy env-... accepted) in the same workspace to assign this group to"`
 	EnvVars       []CreateEnvVarInput `json:"envVars,omitempty" jsonschema:"optional initial {key,value|generateValue} variables"`
 	SecretFiles   []SecretFileView    `json:"secretFiles,omitempty" jsonschema:"optional initial {name,content} secret files"`
 	ServiceIDs    []string            `json:"serviceIds,omitempty" jsonschema:"optional service ids to link atomically during creation"`

@@ -24,6 +24,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -68,14 +69,14 @@ func TestSetMembers_JoinAndLeaveApplyTheSameSideEffectsPerKind(t *testing.T) {
 		t.Fatalf("SetKeyValues: %v", err)
 	}
 	// Joining stamps all three: environment, project, inbound-IP layer.
-	if got := dbs.dbs["dpg-a"]; got.EnvironmentID != e.ID || got.ProjectID != "prj-1" {
-		t.Errorf("joined Database = %+v, want environment %q and project prj-1", got, e.ID)
+	if got := dbs.dbs["dpg-a"]; got.EnvironmentID != id.EnvironmentStorageID(e.ID) || got.ProjectID != "prj-1" {
+		t.Errorf("joined Database = %+v, want environment %q and project prj-1", got, id.EnvironmentStorageID(e.ID))
 	}
 	if got := dbs.envLayers["dpg-a"]; !slices.Equal(got, []string{"10.0.0.0/24"}) {
 		t.Errorf("joined Database should inherit the environment layer, got %v", got)
 	}
-	if got := kvs.kvs["red-a"]; got.EnvironmentID != e.ID || got.ProjectID != "prj-1" {
-		t.Errorf("joined KeyValue = %+v, want environment %q and project prj-1", got, e.ID)
+	if got := kvs.kvs["red-a"]; got.EnvironmentID != id.EnvironmentStorageID(e.ID) || got.ProjectID != "prj-1" {
+		t.Errorf("joined KeyValue = %+v, want environment %q and project prj-1", got, id.EnvironmentStorageID(e.ID))
 	}
 	if got := kvs.envLayers["red-a"]; !slices.Equal(got, []string{"10.0.0.0/24"}) {
 		t.Errorf("joined KeyValue should inherit the environment layer, got %v", got)
@@ -193,7 +194,7 @@ func TestSetEnvGroups_UnknownIDIsRefusedBeforeAnyWrite(t *testing.T) {
 	if idx.groups[0].EnvironmentID != "" {
 		t.Errorf("refused call assigned %q anyway", idx.groups[0].ID)
 	}
-	if idx.groups[1].EnvironmentID != e.ID {
+	if idx.groups[1].EnvironmentID != id.EnvironmentStorageID(e.ID) {
 		t.Errorf("refused call disturbed the existing membership of %q", idx.groups[1].ID)
 	}
 }
@@ -396,7 +397,7 @@ func TestPatchApps_SkipsAppsAlreadyInTheWantedState(t *testing.T) {
 	if joined.ResourceVersion == before {
 		t.Fatalf("joining should have patched web (version stayed %q)", before)
 	}
-	if joined.Labels[core.LabelNetworkIsolation] != e.ID || len(joined.Spec.EnvironmentIPAllowList) != 1 {
+	if joined.Labels[core.LabelNetworkIsolation] != id.EnvironmentStorageID(e.ID) || len(joined.Spec.EnvironmentIPAllowList) != 1 {
 		t.Fatalf("precondition: web should carry the full environment layer, got %+v", joined)
 	}
 
@@ -438,7 +439,7 @@ func TestPatchApps_SkipsMemberNamesWithNoAppCR(t *testing.T) {
 	}
 	// The real member still got both projected fields — the dangling name did
 	// not abort the fan-out before reaching it.
-	if a := getApp(t, cl, "web"); a.Labels[core.LabelNetworkIsolation] != e.ID || len(a.Spec.EnvironmentIPAllowList) != 1 {
+	if a := getApp(t, cl, "web"); a.Labels[core.LabelNetworkIsolation] != id.EnvironmentStorageID(e.ID) || len(a.Spec.EnvironmentIPAllowList) != 1 {
 		t.Errorf("web should still carry the environment layer, got labels=%v spec=%v", a.Labels, a.Spec.EnvironmentIPAllowList)
 	}
 }
@@ -478,7 +479,7 @@ func TestProjectMemberClearer_IsTheSeamProjectsCalls(t *testing.T) {
 	if a := getApp(t, cl, "web"); a.Labels[core.LabelNetworkIsolation] != "" || a.Spec.EnvironmentIPAllowList != nil {
 		t.Errorf("web should have lost the environment layer, got labels=%v spec=%v", a.Labels, a.Spec.EnvironmentIPAllowList)
 	}
-	if a := getApp(t, cl, "worker"); a.Labels[core.LabelNetworkIsolation] != e.ID {
+	if a := getApp(t, cl, "worker"); a.Labels[core.LabelNetworkIsolation] != id.EnvironmentStorageID(e.ID) {
 		t.Errorf("worker was not named and must keep its layer, got labels=%v", a.Labels)
 	}
 

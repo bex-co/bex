@@ -31,6 +31,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -73,7 +74,7 @@ func envGroupFixture(t *testing.T) (*Service, *fakeEnvGroupIndex, EnvironmentVie
 	if err != nil {
 		t.Fatalf("Create environment: %v", err)
 	}
-	idx.groups[1].EnvironmentID = e.ID
+	idx.groups[1].EnvironmentID = id.EnvironmentStorageID(e.ID)
 	return svc, idx, e
 }
 
@@ -91,14 +92,14 @@ func TestSetEnvGroups_ReplacesMembershipAndReadsBack(t *testing.T) {
 	if !slices.Equal(got.EnvGroupIDs, []string{"evg-alpha"}) {
 		t.Fatalf("membership after replace = %+v, want [evg-alpha]", got.EnvGroupIDs)
 	}
-	if idx.groups[0].EnvironmentID != e.ID || idx.groups[1].EnvironmentID != "" {
+	if idx.groups[0].EnvironmentID != id.EnvironmentStorageID(e.ID) || idx.groups[1].EnvironmentID != "" {
 		t.Fatalf("stored membership after replace: %+v", idx.groups)
 	}
 
 	if _, err := svc.SetEnvGroups(ctxAs("user-a"), e.ID, []string{"evg-bravo"}); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("cross-workspace group: want ErrForbidden, got %v", err)
 	}
-	if idx.groups[0].EnvironmentID != e.ID || idx.groups[2].EnvironmentID != "" {
+	if idx.groups[0].EnvironmentID != id.EnvironmentStorageID(e.ID) || idx.groups[2].EnvironmentID != "" {
 		t.Fatalf("refused link mutated membership: %+v", idx.groups)
 	}
 

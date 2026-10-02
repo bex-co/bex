@@ -21,6 +21,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // graphql.go is the environments GraphQL fragment, mirroring
@@ -64,6 +65,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
+				if cursor, ok := p.Args["cursor"].(string); ok {
+					p.Args["cursor"] = ids.EnvironmentPublicID(cursor)
+				}
 				return gqlutil.Page(p, out, func(e EnvironmentView) string { return e.ID }), nil
 			},
 		},
@@ -76,6 +80,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				out, err := s.ListWorkspace(p.Context, p.Args["ownerId"].(string))
 				if err != nil {
 					return nil, err
+				}
+				if cursor, ok := p.Args["cursor"].(string); ok {
+					p.Args["cursor"] = ids.EnvironmentPublicID(cursor)
 				}
 				return gqlutil.Page(p, out, func(e EnvironmentView) string { return e.ID }), nil
 			},
@@ -164,7 +171,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if err := s.Delete(p.Context, id); err != nil {
 					return nil, err
 				}
-				return id, nil
+				return ids.EnvironmentPublicID(id), nil
 			},
 		},
 		"setEnvironmentServices": &graphql.Field{

@@ -544,6 +544,32 @@ func TestListHandAppliedAppHasEmptyFeed(t *testing.T) {
 	}
 }
 
+func TestLegacyEnvironmentMovesExposeCanonicalReferencesWithoutRewritingAudit(t *testing.T) {
+	from := "env-c185th5c2rvvnhbfiltg"
+	to := "env-c185th5c2rvvnhbfilt0"
+	st := &fakeStore{rows: []store.ServiceEventRow{
+		{Key: "aud-move:", Source: store.EventSourceAudit, Verb: core.AuditVerbEnvironmentServiceMoved, At: now, EnvironmentFrom: &from, EnvironmentTo: &to},
+		{Key: "aud-unassign:", Source: store.EventSourceAudit, Verb: core.AuditVerbEnvironmentServiceMoved, At: now, EnvironmentFrom: &to},
+	}}
+	svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
+	got, err := svc.List(t.Context(), "web", Filter{})
+	if err != nil || len(got) != 2 {
+		t.Fatalf("service events: %+v, err=%v", got, err)
+	}
+	move := got[0].Details
+	if move.EnvironmentFrom == nil || *move.EnvironmentFrom != "evm-c185th5c2rvvnhbfiltg" ||
+		move.EnvironmentTo == nil || *move.EnvironmentTo != "evm-c185th5c2rvvnhbfilt0" {
+		t.Fatalf("move references were not canonical: %+v", move)
+	}
+	if got[1].Details.EnvironmentTo != nil || got[1].Details.EnvironmentFrom == nil ||
+		*got[1].Details.EnvironmentFrom != "evm-c185th5c2rvvnhbfilt0" {
+		t.Fatalf("unassignment lost its absent target: %+v", got[1].Details)
+	}
+	if from != "env-c185th5c2rvvnhbfiltg" || to != "env-c185th5c2rvvnhbfilt0" {
+		t.Fatalf("public projection mutated audit identity: from=%q to=%q", from, to)
+	}
+}
+
 func TestListAppliesRenderDefaultWindow(t *testing.T) {
 	st := &fakeStore{}
 	svc := newService(st, sampleApp("web", "srv-1", "tea-a"))

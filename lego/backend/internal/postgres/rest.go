@@ -24,6 +24,7 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 )
 
@@ -92,6 +93,9 @@ func postgresListFilter(q url.Values) (func(PostgresView) bool, error) {
 	// narrow to exactly one match).
 	names := core.QueryList(q, "name")
 	envIDs := core.QueryList(q, "environmentId")
+	for i := range envIDs {
+		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
+	}
 	// suspended= filters by Render's string enum (w2/m53), and Render declares it
 	// an ARRAY — `components.parameters` for GET /postgres gives
 	// `type: array, items: {enum: [suspended, not_suspended]}` — so repeated and

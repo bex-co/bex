@@ -1,0 +1,41 @@
+{
+  "date_utc": "2026-10-02T08:23:26.638452+00:00",
+  "endpoint": "http://localhost:54020",
+  "api_sha256": "b5e1dab0317d7097b435928554b401bf35baabc59b2dc6f421ac82e1a2fbcc87",
+  "binaries": {
+    "current-bex": {
+      "path": "/Users/tianpan/projects/bex/.pm/w2/dev-2/bin/bex-current",
+      "sha256": "310de0a689615dc25c8652cf8af2471d70173224046311f5aad84f30fe0cf3f4"
+    },
+    "render-v2.27.0": {
+      "path": "/Users/tianpan/projects/bex/.pm/w2/dev-2/bin/render-upstream",
+      "sha256": "35950c3439f70fbe05323fbd04ddb7cad0448dd43215ac9b4125e986e08a2e90"
+    },
+    "installed-bex": {
+      "path": "/Users/tianpan/.local/bin/bex",
+      "sha256": "185f6c0ad5ceffa8e8634ac680d851c1e4f12f187349a7f50f9ca2de38886818"
+    },
+    "render-installed-pin": {
+      "path": "/Users/tianpan/projects/bex/.pm/w2/dev-2/bin/render-installed-pin",
+      "sha256": "ba40c546c033a1a997806e273fdf31ae7d93a4f69856dcca82e8d1141cc9fa52"
+    }
+  },
+  "cli_success_count": 113,
+  "expected_rejections": 10,
+  "deleted_datastores": 20,
+  "deleted_environments": 5,
+  "deleted_projects": 5,
+  "legacy_storage": "SQL and Kubernetes labels retain env-*; all public reads emit evm-*",
+  "production_changed": false,
+  "data_plane_readiness_tested": false,
+  "accounts_deleted": 2,
+  "tenant_namespaces_absent": true,
+  "generated_oauth_client_deleted": true,
+  "canonical_id_wrong_project_cli_live_tested": false,
+  "limitations": [
+    "Local dev-2 API only; production not changed.",
+    "Selector/resource metadata acceptance; database/Valkey data-plane readiness not claimed.",
+    "Wrong-project name selectors and API ID filters tested live; canonical-ID + wrong-project CLI path not separately invoked.",
+    "All 14 shared mutation command variants rely on source/unit/integration coverage; live matrix covers create/get/list, pg/kv aliases, and raw services filters."
+  ]
+}

@@ -127,3 +127,83 @@ func TestCreateEnvGroupRejectsEnvironmentMismatchedInitialServiceWithoutOrphan(t
 		t.Fatalf("orphan group paths: %v", ids)
 	}
 }
+
+func TestEnvironmentAliasesPreserveGroupMetadataLinksAndWorkspace(t *testing.T) {
+	const stored = "env-c185th5c2rvvnhbfiltg"
+	const public = "evm-c185th5c2rvvnhbfiltg"
+	const otherStored = "env-c185th5c2rvvnhbfilt0"
+	const otherPublic = "evm-c185th5c2rvvnhbfilt0"
+	const foreignPublic = "evm-c185th5c2rvvnhbfilt1"
+
+	for _, input := range []string{stored, public} {
+		t.Run(input, func(t *testing.T) {
+			web := sampleApp("web")
+			web.Labels = map[string]string{core.LabelEnvironment: stored}
+			svc := newService(newFakeStore(), web)
+			svc.EnvironmentWorkspace = func(_ context.Context, environmentID string) (string, error) {
+				switch environmentID {
+				case stored, otherStored:
+					return "", nil
+				case "env-c185th5c2rvvnhbfilt1":
+					return "tea-foreign", nil
+				default:
+					return "", core.ErrNotFound
+				}
+			}
+			group, err := svc.CreateEnvGroup(t.Context(), CreateEnvGroupRequest{
+				Name: "shared", EnvironmentID: input, ServiceIDs: []string{"web"},
+			})
+			if err != nil || group.EnvironmentID != public || len(group.ServiceLinks) != 1 {
+				t.Fatalf("create with %s: %+v, %v", input, group, err)
+			}
+			storedGroup, err := svc.requireGroup(t.Context(), group.ID)
+			if err != nil || storedGroup.environment != stored {
+				t.Fatalf("stored group environment=%q, err=%v", storedGroup.environment, err)
+			}
+			memberships, err := svc.ListEnvironmentMemberships(t.Context(), "")
+			if err != nil || len(memberships) != 1 || memberships[0].EnvironmentID != stored {
+				t.Fatalf("internal membership = %+v, err=%v", memberships, err)
+			}
+			for _, selector := range []string{stored, public} {
+				filter := EnvGroupListFilter{EnvironmentIDs: []string{selector}}
+				groups, err := svc.ListEnvGroupsFiltered(t.Context(), filter)
+				if filter.EnvironmentIDs[0] != selector {
+					t.Fatal("list mutated the caller's environment selector")
+				}
+				if err != nil || len(groups) != 1 || groups[0].ID != group.ID || groups[0].EnvironmentID != public {
+					t.Fatalf("filter with %s: %+v, %v", selector, groups, err)
+				}
+			}
+			if moved, err := svc.MoveEnvGroup(t.Context(), group.ID, public); err != nil || moved.EnvironmentID != public {
+				t.Fatalf("move to same environment via alias: %+v, %v", moved, err)
+			}
+			if _, err := svc.MoveEnvGroup(t.Context(), group.ID, otherPublic); !errors.Is(err, core.ErrConflict) {
+				t.Fatalf("alias bypassed linked-service placement: %v", err)
+			} else {
+				var coded *core.CodedError
+				if !errors.As(err, &coded) || coded.Params["targetEnvironmentId"] != otherPublic {
+					t.Fatalf("move conflict did not expose canonical target: %v", err)
+				}
+			}
+			if _, err := svc.MoveEnvGroup(t.Context(), group.ID, foreignPublic); !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("alias bypassed workspace binding: %v", err)
+			}
+			storedGroup, err = svc.requireGroup(t.Context(), group.ID)
+			if err != nil || storedGroup.environment != stored || getApp(t, svc.Client, "web").Labels[core.LabelEnvironment] != stored {
+				t.Fatalf("alias or refused move changed durable placement: group=%q, err=%v", storedGroup.environment, err)
+			}
+			clone, err := svc.CloneEnvGroup(t.Context(), group.ID, CloneEnvGroupRequest{Name: "copy", EnvironmentID: public})
+			if err != nil || clone.EnvironmentID != public || len(clone.ServiceLinks) != 0 {
+				t.Fatalf("clone into canonical environment: %+v, %v", clone, err)
+			}
+			moved, err := svc.MoveEnvGroup(t.Context(), clone.ID, otherPublic)
+			if err != nil || moved.EnvironmentID != otherPublic {
+				t.Fatalf("move unlinked clone: %+v, %v", moved, err)
+			}
+			storedClone, err := svc.requireGroup(t.Context(), clone.ID)
+			if err != nil || storedClone.environment != otherStored {
+				t.Fatalf("move persisted public alias: environment=%q, err=%v", storedClone.environment, err)
+			}
+		})
+	}
+}

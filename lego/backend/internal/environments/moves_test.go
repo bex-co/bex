@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -73,8 +74,8 @@ func TestSetServices_RecordsOneMoveEventPerChangedService(t *testing.T) {
 	}
 	if mv.ProjectFrom != nil || mv.EnvironmentFrom != nil ||
 		mv.ProjectTo == nil || *mv.ProjectTo != "prj-1" ||
-		mv.EnvironmentTo == nil || *mv.EnvironmentTo != e.ID {
-		t.Errorf("assign placement = %+v, want nil→(prj-1,%s)", mv, e.ID)
+		mv.EnvironmentTo == nil || *mv.EnvironmentTo != id.EnvironmentStorageID(e.ID) {
+		t.Errorf("assign placement = %+v, want nil→(prj-1,%s)", mv, id.EnvironmentStorageID(e.ID))
 	}
 
 	// Replaying the same membership is a no-op: no false move event.
@@ -96,8 +97,8 @@ func TestSetServices_RecordsOneMoveEventPerChangedService(t *testing.T) {
 		t.Fatalf("unassign recorded %d move rows, want exactly 1: %+v", len(moves), moves)
 	}
 	mv = moves[0]
-	if mv.EnvironmentFrom == nil || *mv.EnvironmentFrom != e.ID || mv.EnvironmentTo != nil {
-		t.Errorf("unassign placement = %+v, want environment %s→nil", mv, e.ID)
+	if mv.EnvironmentFrom == nil || *mv.EnvironmentFrom != id.EnvironmentStorageID(e.ID) || mv.EnvironmentTo != nil {
+		t.Errorf("unassign placement = %+v, want environment %s→nil", mv, id.EnvironmentStorageID(e.ID))
 	}
 }
 

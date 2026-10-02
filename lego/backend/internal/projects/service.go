@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -156,11 +157,11 @@ func (s *Service) environmentIDs(ctx context.Context, projectID string) ([]strin
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(environments))
+	out := make([]string, len(environments))
 	for i := range environments {
-		ids[i] = environments[i].ID
+		out[i] = ids.EnvironmentPublicID(environments[i].ID)
 	}
-	return ids, nil
+	return out, nil
 }
 
 // ProjectView is the API shape for a project — all three surfaces return this.

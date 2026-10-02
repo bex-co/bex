@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
@@ -36,7 +37,7 @@ type listEnvironmentsArgs struct {
 }
 
 type environmentIDArgs struct {
-	ID string `json:"id" jsonschema:"the environment id (env-…)"`
+	ID string `json:"id" jsonschema:"the environment id (evm-…)"`
 }
 
 type createEnvironmentArgs struct {
@@ -57,7 +58,7 @@ type createEnvironmentArgs struct {
 // and the setter's full-replace contract ("pass the current value of any field
 // you don't mean to change") was the trap a patch tool removes.
 type updateEnvironmentArgs struct {
-	ID                      string                   `json:"id" jsonschema:"the environment id (env-…)"`
+	ID                      string                   `json:"id" jsonschema:"the environment id (evm-…)"`
 	Name                    *string                  `json:"name,omitempty" jsonschema:"new environment name; omit to leave unchanged"`
 	ProtectedStatus         *string                  `json:"protectedStatus,omitempty" jsonschema:"'protected' or 'unprotected' — protected blocks unguarded delete/suspend/direct-deploy-override on member services; omit to leave unchanged"`
 	NetworkIsolationEnabled *bool                    `json:"networkIsolationEnabled,omitempty" jsonschema:"when true, member services' NetworkPolicy is scoped to only other services in this environment; omit to leave unchanged"`
@@ -84,7 +85,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, environmentsResult{}, err
 		}
 		limit := core.PageLimitOrDefault(in.Limit)
-		paged := core.StablePage(es, in.Cursor, limit, in.Cursor != "" || in.Limit != 0, func(e EnvironmentView) string { return e.ID })
+		paged := core.StablePage(es, ids.EnvironmentPublicID(in.Cursor), limit, in.Cursor != "" || in.Limit != 0, func(e EnvironmentView) string { return e.ID })
 		return nil, environmentsResult{Environments: paged}, nil
 	})
 
@@ -122,7 +123,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		err := s.Delete(ctx, in.ID)
 		return nil, struct {
 			ID string `json:"id"`
-		}{ID: in.ID}, err
+		}{ID: ids.EnvironmentPublicID(in.ID)}, err
 	})
 
 }

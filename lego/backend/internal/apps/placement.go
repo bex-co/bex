@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -74,7 +75,7 @@ func (s *Service) readViews(ctx context.Context, objects []appv1alpha1.App) ([]A
 		v := s.view(a)
 		if fromStore {
 			// Empty committed IDs clear old labels after removal/deletion.
-			v.ProjectID, v.EnvironmentID = placement.ProjectID, placement.EnvironmentID
+			v.ProjectID, v.EnvironmentID = placement.ProjectID, ids.EnvironmentPublicID(placement.EnvironmentID)
 		}
 		views = append(views, v)
 	}

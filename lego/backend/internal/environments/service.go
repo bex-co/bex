@@ -37,6 +37,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -148,7 +149,7 @@ func (s *Service) resolveForCreate(ctx context.Context, environmentID, workspace
 	if s.Store == nil {
 		return core.EnvironmentAssignment{}, core.ErrWorkspacesUnavailable
 	}
-	e, err := s.Store.GetEnvironment(ctx, environmentID)
+	e, err := s.Store.GetEnvironment(ctx, ids.EnvironmentStorageID(environmentID))
 	if err != nil {
 		return core.EnvironmentAssignment{}, store.MapError(err)
 	}
@@ -294,7 +295,7 @@ func (d databaseResources) list(ctx context.Context, workspaceID string) ([]envi
 	}
 	out := make([]environmentResource, len(dbs))
 	for i, db := range dbs {
-		out[i] = environmentResource{id: db.ID, environmentID: db.EnvironmentID}
+		out[i] = environmentResource{id: db.ID, environmentID: ids.EnvironmentStorageID(db.EnvironmentID)}
 	}
 	return out, nil
 }
@@ -335,7 +336,7 @@ func (k keyValueResources) list(ctx context.Context, workspaceID string) ([]envi
 	}
 	out := make([]environmentResource, len(kvs))
 	for i, kv := range kvs {
-		out[i] = environmentResource{id: kv.ID, environmentID: kv.EnvironmentID}
+		out[i] = environmentResource{id: kv.ID, environmentID: ids.EnvironmentStorageID(kv.EnvironmentID)}
 	}
 	return out, nil
 }
@@ -648,7 +649,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.Store.RenameEnvironment(ctx, id, name); err != nil {
+	if err := s.Store.RenameEnvironment(ctx, e.ID, name); err != nil {
 		// A rename onto a taken name answers like a create does (w4/155).
 		return EnvironmentView{}, conflictOrMapError(err, name)
 	}
@@ -685,7 +686,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 		return EnvironmentView{}, err
 	}
 	if patch.Name != nil {
-		if err := s.Store.RenameEnvironment(ctx, id, name); err != nil {
+		if err := s.Store.RenameEnvironment(ctx, e.ID, name); err != nil {
 			return EnvironmentView{}, conflictOrMapError(err, name)
 		}
 		e.Name = name
@@ -1122,7 +1123,7 @@ func (s *Service) requireEnvironment(ctx context.Context, relation, id string) (
 	if s.Store == nil {
 		return store.Environment{}, ErrEnvironmentsUnavailable
 	}
-	e, err := s.Store.GetEnvironment(ctx, id)
+	e, err := s.Store.GetEnvironment(ctx, ids.EnvironmentStorageID(id))
 	if err != nil {
 		return store.Environment{}, store.MapError(err)
 	}
@@ -1241,7 +1242,7 @@ func toView(e store.Environment, serviceIDs, databaseIDs, keyValueIDs, envGroupI
 		ipAllowList = []core.IPAllowListEntry{}
 	}
 	return EnvironmentView{
-		ID:                      e.ID,
+		ID:                      ids.EnvironmentPublicID(e.ID),
 		ProjectID:               e.ProjectID,
 		Name:                    e.Name,
 		OwnerID:                 e.TenantID,

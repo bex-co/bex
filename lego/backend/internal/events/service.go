@@ -51,7 +51,7 @@ limitations under the License.
 //	service_moved               projects.MoveService / environments.MoveService (w6/m134: one row per
 //	                            service whose project/environment placement changed in a successful
 //	                            bulk SetServices replacement; details carry the before/after public
-//	                            prj-/env- ids — NOT the env-var fact service_environment_changed is)
+//	                            prj-/evm- ids — NOT the env-var fact service_environment_changed is)
 //	env_group_linked/unlinked   envgroups.Link/UnlinkService
 //	auto_deploy_enabled         apps.SetAutoDeploy(enabled=true)  — new rows only
 //	auto_deploy_disabled        apps.SetAutoDeploy(enabled=false) — new rows only
@@ -621,7 +621,7 @@ type Details struct {
 	AutoscalingMaxFrom *int32
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
-	// service_moved (w6/m134): the before/after public prj-/env- ids; nil = no
+	// service_moved (w6/m134): the before/after public prj-/evm- ids; nil = no
 	// placement on that side, so assign, move, and unassign share one shape.
 	ProjectFrom     *string
 	ProjectTo       *string
@@ -940,8 +940,14 @@ func view(r store.ServiceEventRow, service string) Event {
 		case TypeServiceMoved:
 			ev.Details.ProjectFrom = r.ProjectFrom
 			ev.Details.ProjectTo = r.ProjectTo
-			ev.Details.EnvironmentFrom = r.EnvironmentFrom
-			ev.Details.EnvironmentTo = r.EnvironmentTo
+			if r.EnvironmentFrom != nil {
+				environmentID := ids.EnvironmentPublicID(*r.EnvironmentFrom)
+				ev.Details.EnvironmentFrom = &environmentID
+			}
+			if r.EnvironmentTo != nil {
+				environmentID := ids.EnvironmentPublicID(*r.EnvironmentTo)
+				ev.Details.EnvironmentTo = &environmentID
+			}
 		case TypePostgresHAStatusChanged:
 			ev.Details.HighAvailabilityEnabled = r.HighAvailabilityEnabled
 		case TypePostgresConnectionPoolEnabledChanged:

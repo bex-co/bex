@@ -1,3 +1,5 @@
+import { canonicalEnvironmentLinkId } from "@/features/environments/lib/link-id";
+
 /** The five bex service types (Render's `web_service`/`private_service`/
  *  `background_worker`/`cron_job`/`static_site`). Single source of truth for the
  *  create wizard, the `?type=` deep-link, and the per-type "New" menu items. */
@@ -108,7 +110,7 @@ export function parseNewServiceSearch(
       ? { projectId: search.projectId }
       : {}),
     ...(typeof search.environmentId === "string" && search.environmentId
-      ? { environmentId: search.environmentId }
+      ? { environmentId: canonicalEnvironmentLinkId(search.environmentId) }
       : {}),
   };
 }

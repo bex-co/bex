@@ -23,6 +23,7 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]EnvironmentView, error) {
@@ -41,11 +42,14 @@ func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]Envi
 	}
 	names := core.QueryList(q, "name")
 	owners := core.QueryList(q, "ownerId")
-	ids := core.QueryList(q, "environmentId")
+	environmentIDs := core.QueryList(q, "environmentId")
+	for i := range environmentIDs {
+		environmentIDs[i] = ids.EnvironmentPublicID(environmentIDs[i])
+	}
 	return core.Filter(environments, func(e EnvironmentView) bool {
 		return (len(names) == 0 || slices.Contains(names, e.Name)) &&
 			(len(owners) == 0 || slices.Contains(owners, e.OwnerID)) &&
-			(len(ids) == 0 || slices.Contains(ids, e.ID)) &&
+			(len(environmentIDs) == 0 || slices.Contains(environmentIDs, e.ID)) &&
 			(createdBefore.IsZero() || e.CreatedAt.Before(createdBefore)) &&
 			(createdAfter.IsZero() || e.CreatedAt.After(createdAfter))
 	}), nil
@@ -157,6 +161,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// The official CLI unwraps the environment member and otherwise decodes
 		// every flat object as an all-zero Environment.
 		after, limit := core.PageParams(q)
+		after = ids.EnvironmentPublicID(after)
 		out = core.Page(out, after, limit, func(e environmentWithCursor) string { return e.Cursor })
 		if out == nil {
 			out = []environmentWithCursor{}

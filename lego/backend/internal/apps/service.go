@@ -1068,7 +1068,7 @@ func view(a *appv1alpha1.App) AppView {
 		IdleTTLSeconds:       a.Spec.IdleTTLSeconds,
 		OwnerID:              a.Labels[core.LabelTenant],
 		ProjectID:            a.Labels[core.LabelProject],
-		EnvironmentID:        a.Labels[core.LabelEnvironment],
+		EnvironmentID:        ids.EnvironmentPublicID(a.Labels[core.LabelEnvironment]),
 		BlueprintID:          a.Labels[core.LabelBlueprint],
 		RootDir:              a.Spec.RootDir,
 		DockerfilePath:       a.Spec.DockerfilePath,

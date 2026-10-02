@@ -13,17 +13,28 @@ srv-c185th5c2rvvnhbfiltg
 
 Registered prefixes (the `id.Kind` registry — Render's public-API spellings, so bex ids are drop-in for Render-shaped clients):
 
-| Prefix | Resource                    | Render |
-| ------ | --------------------------- | ------ |
-| `tea-` | workspace (tenant)          | teams  |
-| `srv-` | service (app)               | srv    |
-| `dpg-` | managed Postgres database   | dpg    |
-| `red-` | managed key-value store     | red    |
-| `cdm-` | custom domain               | cdm    |
-| `evt-` | service event (**derived**) | evt    |
-| `crr-` | cron-job run (**derived**)  | —      |
+| Prefix | Resource                           | Render |
+| ------ | ---------------------------------- | ------ |
+| `tea-` | workspace (tenant)                 | teams  |
+| `srv-` | service (app)                      | srv    |
+| `dpg-` | managed Postgres database          | dpg    |
+| `red-` | managed key-value store            | red    |
+| `cdm-` | custom domain                      | cdm    |
+| `evm-` | project environment (public alias) | evm    |
+| `evt-` | service event (**derived**)        | evt    |
+| `crr-` | cron-job run (**derived**)         | —      |
 
 Service **instances** are not a top-level Kind. They are compound ids `<service-id>-<opaque>` from `id.ServiceInstanceID` / `id.DeriveServiceInstance` (see [ADR035](ADR035-ssh.md)): the opaque suffix is a name-derived hash so live listing, metrics, and logs agree without exposing Kubernetes pod names. Pre-m87 live SSH selectors hashed the Pod UID; `id.MatchServiceInstance` still accepts those for the same Ready pod.
+
+## Environment public aliases (2026-10-02, w2/m165)
+
+Environment discovery and every exposed environment reference use `evm-<xid>`, matching the [pinned Render CLI discriminator](https://github.com/render-oss/cli/blob/a764810a768202704e7206eb7b87a47211fcd98e/pkg/validate/id.go). The original `env-<xid>` remains the durable identity in SQL primary/foreign keys, App/Database/KeyValue labels, environment-group metadata, Blueprint grouping, network policy selectors, and audit storage. No row, resource, or membership is moved or recreated.
+
+`id.New(id.Environment)` mints the public spelling; the shared grouping insert uses `id.EnvironmentStorageID` before persistence. The same helper normalizes inputs before ordinary authorization, workspace/project binding, and protection checks. Environment-group create/clone/move normalize before writing metadata. `id.EnvironmentPublicID` projects IDs in domain views, project membership, resource references, and event placement details; all three transports consume those views. The dashboard also upgrades legacy environment IDs at its two URL search parsers, so saved project and create links retain their selection.
+
+This is a bijection over exact `env-`/`evm-` plus 20 lowercase base32-hex characters (`0-9a-v`), not a name lookup or existence-dependent fallback. Malformed aliases, other resource kinds, and ordinary names are unchanged. ID filters and environment cursors accept either spelling; name filters retain exact name semantics. The SQL `environments_storage_id_namespace` constraint reserves the entire `evm-` prefix against insertion. An imported row in that namespace fails the validating migration rather than silently shadowing another identity.
+
+Legacy API links still resolve. An unchanged Render CLI continues to interpret a literal old `env-*` selector as a name; callers must rediscover the canonical `evm-*` ID. The [environment detail API](https://api-docs.render.com/reference/retrieve-environment) remains the lookup endpoint; neither the launcher nor upstream CLI is patched.
 
 ## Why this shape
 

@@ -53,7 +53,7 @@ type suspendKeyValueArgs struct {
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
-	EnvironmentID string   `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	EnvironmentID string   `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...; legacy env-... accepted) in the target workspace; assignment also joins its project"`
 	Name          string   `json:"name" jsonschema:"the key-value store name"`
 	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
 	Version       string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`

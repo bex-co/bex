@@ -30,6 +30,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -224,7 +225,7 @@ func TestCreateAcceptsRenderEnvironmentsInputUnderStrictDecode(t *testing.T) {
 	}
 	byName := map[string]store.Environment{}
 	for _, e := range envs {
-		if !slices.Contains(got.EnvironmentIDs, e.ID) {
+		if !slices.Contains(got.EnvironmentIDs, ids.EnvironmentPublicID(e.ID)) {
 			t.Fatalf("response omitted environment %s", e.ID)
 		}
 		byName[e.Name] = e

@@ -526,7 +526,7 @@ func TestUpdatePreMigrationEmptyProtectedStatusDefaultsAcrossSurfaces(t *testing
 		// fakeStore.CreateEnvironment seeds ProtectedStatus: unprotected (the
 		// post-migration default) — a real pre-ACL-migration row is inserted
 		// directly, ProtectedStatus intentionally left "" (empty column).
-		row := store.Environment{ID: id.New(id.Environment), ProjectID: "prj-1", TenantID: "tea-a", Name: "staging"}
+		row := store.Environment{ID: id.EnvironmentStorageID(id.New(id.Environment)), ProjectID: "prj-1", TenantID: "tea-a", Name: "staging"}
 		st.envs[row.ID] = row
 		mux := http.NewServeMux()
 		svc.RegisterREST(mux)

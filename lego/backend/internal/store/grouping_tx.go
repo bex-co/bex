@@ -122,7 +122,7 @@ func createEnvironment(ctx context.Context, q groupingQuerier, projectID, tenant
 	return scanEnvironment(q.QueryRow(ctx,
 		`INSERT INTO environments (id, project_id, tenant_id, name, ip_allow_list) VALUES ($1, $2, $3, $4, $5)
 		 RETURNING `+environmentColumns,
-		ids.New(ids.Environment), projectID, tenantID, name, seed,
+		ids.EnvironmentStorageID(ids.New(ids.Environment)), projectID, tenantID, name, seed,
 	))
 }
 

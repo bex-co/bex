@@ -23,6 +23,7 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 )
 
@@ -237,6 +238,9 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 	// requires it to narrow to exactly one match).
 	names := core.QueryList(q, "name")
 	envIDs := core.QueryList(q, "environmentId")
+	for i := range envIDs {
+		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
+	}
 	suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
 	if err != nil {
 		core.WriteErr(w, err)

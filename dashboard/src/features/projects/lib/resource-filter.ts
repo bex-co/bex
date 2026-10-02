@@ -1,4 +1,5 @@
 import type { ResourceRow } from "@/features/projects/types";
+import { canonicalEnvironmentLinkId } from "@/features/environments/lib/link-id";
 
 export const PROJECT_RESOURCE_KINDS = [
   "all",
@@ -45,7 +46,7 @@ export function parseProjectResourceSearch(
   const kind = parseProjectResourceKind(search.kind);
   return {
     ...(typeof search.env === "string" && search.env
-      ? { env: search.env }
+      ? { env: canonicalEnvironmentLinkId(search.env) }
       : {}),
     ...(typeof search.q === "string" && search.q ? { q: search.q } : {}),
     ...(kind !== "all" ? { kind } : {}),
