@@ -1,6 +1,6 @@
 # w1 · m165 — The Render drift watchdog has never once passed, and upstream `list_events` is unacknowledged
 
-**Worker:** worker1 **Goal:** the weekly `Render schema drift` workflow reports real parity drift and nothing else — its REST half can actually compare (today it aborts on its own fixture), its MCP half is clean because `list_events` has been decided and recorded, and a future red run names the tool or fixture at fault and the action it needs. **Status:** in progress — t001–t007 done 2026-09-30; **t008 (Closeout) is blocked on shipping this work and a `workflow_dispatch` run**, which needs `/ship` (not authorized in this run)
+**Worker:** worker1 **Goal:** the weekly `Render schema drift` workflow reports real parity drift and nothing else — its REST half can actually compare (today it aborts on its own fixture), its MCP half is clean because `list_events` has been decided and recorded, and a future red run names the tool or fixture at fault and the action it needs. **Status:** done 2026-10-02 — t001–t008 complete; first passing `render-mcp` run [36970184053](https://github.com/bex-co/bex/actions/runs/36970184053); `render-schema` fails only on the genuine Blueprint drift split out as w1/117
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE**                                                                                               | 20m | t003, t004 |
 | t006 | Simplify — **DONE**                                                                                                    | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                                               | 35m | t005       |
-| t008 | Closeout                                                                                                    | 10m | t007       |
+| t008 | Closeout — **DONE**                                                                                                    | 10m | t007       |
 
 ## Definition of done
 
@@ -319,3 +319,12 @@ issue #74 to that legible drift (→ `w1/117`); 4. move t008 to `done/`, this mi
 - Implementing any other upstream MCP tool the refreshed pin may reveal — t003 refreshes the pin and t004 makes a red run legible; new tools beyond `list_events` are filed, not built here.
 - The external log/metric drain surfaces ADR018 marks `—`, and every other DO_NOT_DO `—` row. Refreshing the pin must not be read as reopening them.
 - Forking, vendoring, or patching `render-oss/render-mcp-server` — the pin is captured from upstream, never edited (`.pm/DO_NOT_DO.md`, CLI decision 2026-07-14).
+
+## Closeout (t008, 2026-10-02)
+
+Shipped in `1d07a8b2e`. `gh workflow run render-schema-drift.yml` → run [36970184053](https://github.com/bex-co/bex/actions/runs/36970184053) at `fce2159cd`:
+
+- `render-mcp`: **success**, the first green run this job has ever had.
+- `render-schema`: failure, solely `render.yaml.json no longer matches the pin … needs a decision — accept-and-ignore, implement, or reject with a named error`. The webhook half reports `matches pinned 67-value fixture`. That is the narrowed DoD: it fails only on genuine drift and names it (w1/117).
+
+Issue #74 is narrowed with a comment; its remaining red is w1/117's decision.
