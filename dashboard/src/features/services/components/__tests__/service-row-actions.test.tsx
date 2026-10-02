@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
+import { SuspendServiceCard } from "@/features/services/components/suspend-service-card";
 import type { ServiceView } from "@/features/services/types";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
+import i18n from "@/i18n/init";
 
 vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
   useMoveToProject: () => ({
@@ -205,5 +207,103 @@ describe("ServiceRowActions", () => {
     expect(restart).toHaveAttribute("aria-disabled", "true");
     await user.click(restart);
     expect(onRun).not.toHaveBeenCalled();
+  });
+});
+
+describe.each([
+  {
+    language: "en",
+    menu: "Open actions menu",
+    suspend: "Suspend",
+    resume: "Resume",
+    cron: /pauses future scheduled runs\. An active run continues\. To stop it, select Cancel in Recent Runs\./,
+    cronResume: "Resuming this cron job resumes scheduled runs.",
+    publicConfirm: /stops serving traffic\. Its URL and certificates are kept/,
+    privateConfirm: /scales to zero and stops running/,
+    publicCard: /shut it down and stop it from serving traffic/,
+    privateCard: /shut it down and stop it from running/,
+  },
+  {
+    language: "zh",
+    menu: "打开操作菜单",
+    suspend: "暂停",
+    resume: "恢复",
+    cron: /暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“最近运行”中选择“取消”/,
+    cronResume: "恢复此定时任务会恢复计划运行。",
+    publicConfirm: /停止处理流量。其 URL 与证书会保留/,
+    privateConfirm: /缩容至零并停止运行/,
+    publicCard: /关闭它并停止流量服务/,
+    privateCard: /关闭它并停止运行/,
+  },
+])("suspension descriptions ($language)", (copy) => {
+  beforeEach(async () => {
+    await i18n.changeLanguage(copy.language);
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  describe.each(["settings", "resource list"] as const)("%s", (surface) => {
+    async function openSuspend(target: ServiceView) {
+      const onRun = vi.fn().mockResolvedValue({ status: "success" });
+      const user = userEvent.setup();
+      render(
+        surface === "settings" ? (
+          <SuspendServiceCard service={target} pending={null} onRun={onRun} />
+        ) : (
+          <ServiceRowActions service={target} pending={null} onRun={onRun} />
+        ),
+      );
+      if (surface === "settings") {
+        await user.click(screen.getByRole("button", { name: copy.suspend }));
+      } else {
+        await user.click(screen.getByRole("button", { name: copy.menu }));
+        await user.click(screen.getByRole("menuitem", { name: copy.suspend }));
+      }
+      return { user, onRun, dialog: await screen.findByRole("alertdialog") };
+    }
+
+    it("explains schedule-only suspension and how to stop an active cron run", async () => {
+      const cron = { ...service, type: "cron_job" };
+      const { user, onRun, dialog } = await openSuspend(cron);
+
+      expect(within(dialog).getByText(copy.cron)).toBeInTheDocument();
+      if (surface === "settings") {
+        expect(screen.getAllByText(copy.cron)).toHaveLength(2);
+      }
+      await user.click(within(dialog).getByRole("button", { name: copy.suspend }));
+      await waitFor(() => expect(onRun).toHaveBeenCalledWith("suspend", cron));
+      expect(onRun).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["web_service", true],
+      ["static_site", true],
+      ["private_service", false],
+      ["background_worker", false],
+    ] as const)("keeps %s suspension semantics", async (type, publicUrl) => {
+      const { dialog } = await openSuspend({ ...service, type });
+      expect(
+        within(dialog).getByText(publicUrl ? copy.publicConfirm : copy.privateConfirm),
+      ).toBeInTheDocument();
+      if (surface === "settings") {
+        expect(
+          screen.getByText(publicUrl ? copy.publicCard : copy.privateCard),
+        ).toBeInTheDocument();
+      }
+      expect(screen.queryByText(copy.cron)).not.toBeInTheDocument();
+    });
+  });
+
+  it("describes resuming the cron schedule and dispatches resume", async () => {
+    const cron = { ...service, type: "cron_job", suspended: true };
+    const onRun = vi.fn().mockResolvedValue({ status: "success" });
+    const user = userEvent.setup();
+    render(<SuspendServiceCard service={cron} pending={null} onRun={onRun} />);
+
+    expect(screen.getByText(copy.cronResume)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: copy.resume }));
+    expect(onRun).toHaveBeenCalledWith("resume", cron);
   });
 });
