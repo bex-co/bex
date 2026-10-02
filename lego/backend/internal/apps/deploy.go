@@ -2486,6 +2486,10 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	if len(k.SecretFiles) > 0 {
 		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q uses secretFiles, which Render's Blueprint schema does not support", core.ErrBadRequest, k.Name)
 	}
+	// Render's Key Value size IDs (256mb, 1g) name bex's starter/standard
+	// rungs exactly; the direct API already accepts them (w8/011), and the
+	// re-pinned Blueprint schema now spells new-instance plans this way.
+	k.Plan = tiers.Valkey.CanonicalID(k.Plan)
 	if k.Plan != "" {
 		if _, ok := tiers.Valkey.ByID(k.Plan); !ok {
 			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.IDs(), "|"))

@@ -61,3 +61,35 @@ func TestValkeyCanonicalIDAcceptsRenderAliases(t *testing.T) {
 		t.Fatal("5g must not resolve to a catalog tier")
 	}
 }
+
+// TestComputeByRenderPlanAcceptsExactSizeAliases (w1/m170): every Render
+// compute plan ID bex aliases must land on a rung whose CPU/RAM equal what the
+// ID spells, and an ID with no same-size rung must stay unknown rather than
+// round to a neighbour.
+func TestComputeByRenderPlanAcceptsExactSizeAliases(t *testing.T) {
+	want := map[string]struct{ id, cpu, memory string }{
+		"0.5c-512mb": {"starter", "500m", "512Mi"},
+		"1c-2g":      {"standard", "1", "2Gi"},
+		"2c-4g":      {"pro", "2", "4Gi"},
+		"4c-8g":      {"pro-plus", "4", "8Gi"},
+		"4c-16g":     {"pro-max", "4", "16Gi"},
+		"8c-32g":     {"pro-ultra", "8", "32Gi"},
+	}
+	if len(computeInputAliases) != len(want) {
+		t.Fatalf("computeInputAliases has %d entries, want %d", len(computeInputAliases), len(want))
+	}
+	for plan, w := range want {
+		tier, ok := Compute.ByRenderPlan(plan)
+		if !ok || tier.ID != w.id || tier.CPU != w.cpu || tier.Memory != w.memory {
+			t.Errorf("Compute.ByRenderPlan(%q) = %+v, %v; want %s (%s CPU, %s)", plan, tier, ok, w.id, w.cpu, w.memory)
+		}
+	}
+	for _, plan := range []string{"2c-8g", "2c-16g", "4c-32g", "8c-16g", "8c-64g", "12c-24g", "12c-48g", "12c-96g", "pro plus"} {
+		if tier, ok := Compute.ByRenderPlan(plan); ok {
+			t.Errorf("Compute.ByRenderPlan(%q) = %+v, want no tier", plan, tier)
+		}
+	}
+	if tier, ok := Compute.ByRenderPlan("pro_plus"); !ok || tier.ID != "pro-plus" {
+		t.Errorf("legacy pro_plus must still resolve, got %+v %v", tier, ok)
+	}
+}

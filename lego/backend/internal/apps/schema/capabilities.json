@@ -2,8 +2,8 @@
   "version": 1,
   "schema": {
     "source": "https://render.com/schema/render.yaml.json",
-    "retrievedAt": "2026-08-16",
-    "sha256": "665539cb0c191856ba38d292b985a963880bb69b030d666e5fe7788e78e7e696"
+    "retrievedAt": "2026-10-02",
+    "sha256": "a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163"
   },
   "fields": {
     "#/allOf/1/properties/previews": {
@@ -935,6 +935,178 @@
     "#/definitions/staticServicePreviews/properties/generation": {
       "state": "unsupported",
       "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
+    },
+    "#/allOf/1/properties/buildSources": {
+      "state": "unsupported",
+      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+    },
+    "#/allOf/1/properties/ungrouped/properties/buildSources": {
+      "state": "unsupported",
+      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+    },
+    "#/definitions/buildSource/properties/git": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSource/properties/image": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSource/properties/name": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/allOf/0/then/properties/runtime": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/baseDir": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/branch": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/buildCommand": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/buildFilter": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/dockerfilePath": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/envVars": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/region": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/registryCredential": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/repo": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/rootDir": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/buildSourceGit/properties/runtime": {
+      "state": "unsupported",
+      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+    },
+    "#/definitions/project/properties/buildSources": {
+      "state": "unsupported",
+      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/branch": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/buildCommand": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/buildFilter": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/dockerContext": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/dockerfilePath": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/image": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/previewPlan": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/previews": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/pullRequestPreviewsEnabled": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/registryCredential": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/repo": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/runtime": {
+      "state": "unsupported",
+      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+    },
+    "#/definitions/serverService/properties/buildSource": {
+      "state": "unsupported",
+      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/autoDeployTrigger": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/branch": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/buildCommand": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/buildFilter": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/envVars": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/name": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/region": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/repo": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/rootDir": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/runtime": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/startCommand": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+    },
+    "#/definitions/workflowService/properties/type": {
+      "state": "unsupported",
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     }
   },
   "enumValues": {
@@ -1092,7 +1264,89 @@
         "reason": "maps to the Environment protection policy"
       }
     },
-    "#/definitions/plan/enum": {
+    "#/definitions/cronPlan/enum": {
+      "\"starter\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"standard\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro plus\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"0.5c-512mb\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'starter' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"1c-2g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'standard' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"2c-4g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"2c-8g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"2c-16g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"4c-8g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-plus' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"4c-16g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-max' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"4c-32g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"8c-16g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"8c-32g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-ultra' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"8c-64g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      }
+    },
+    "#/definitions/keyValuePlan/enum": {
       "\"free\"": {
         "state": "translated",
         "handler": "parseCompiledStack",
@@ -1130,6 +1384,74 @@
         "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
       "\"pro ultra\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"256mb\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'starter' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"1g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'standard' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"3g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"5g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"10g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"20g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"40g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"50g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      }
+    },
+    "#/definitions/postgresPlan/enum": {
+      "\"free\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"starter\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"standard\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro plus\"": {
         "state": "translated",
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
@@ -1266,6 +1588,214 @@
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
         "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"0.1c-256mb\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'basic-256mb' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"0.5c-1g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'basic-1gb' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"1c-2g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"1c-4g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"2c-4g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"2c-8g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"2c-16g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"4c-16g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"4c-32g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"8c-32g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"8c-64g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"16c-64g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"16c-128g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"32c-128g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"32c-256g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"48c-192g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"48c-384g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"64c-256g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"64c-512g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"96c-384g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"96c-768g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"128c-512g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"128c-1024g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      }
+    },
+    "#/definitions/serverPlan/enum": {
+      "\"free\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"starter\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"standard\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro plus\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro max\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"pro ultra\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      },
+      "\"0.5c-512mb\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'starter' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"1c-2g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'standard' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"2c-4g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"2c-8g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"2c-16g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"4c-8g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-plus' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"4c-16g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-max' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"4c-32g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"8c-16g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"8c-32g\"": {
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-ultra' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+      },
+      "\"8c-64g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"12c-24g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"12c-48g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+      },
+      "\"12c-96g\"": {
+        "state": "unsupported",
+        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
       }
     },
     "#/definitions/previewsGeneration/enum": {
@@ -1511,6 +2041,10 @@
         "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
         "reason": "the typed Blueprint adapter maps or rejects the value before any write"
       },
+      "\"slug\"": {
+        "state": "unsupported",
+        "reason": "fromService property 'slug' is defined for workflow services only (blueprint-spec), and Render Workflows are a recorded non-goal (DO_NOT_DO.md; w1/m170)"
+      },
       "\"connectionString\"": {
         "state": "translated",
         "handler": "parseCompiledStack",
@@ -1542,6 +2076,10 @@
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/stack_test.go:TestDeployStackFromServiceHostResolvesToTheSlug",
         "reason": "the reference adapter resolves the declared service kind before applying"
+      },
+      "\"workflow\"": {
+        "state": "unsupported",
+        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
       },
       "\"static\"": {
         "state": "translated",
@@ -1582,6 +2120,46 @@
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
         "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+      }
+    },
+    "#/definitions/buildSourceRuntime/enum": {
+      "\"docker\"": {
+        "state": "unsupported",
+        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      },
+      "\"elixir\"": {
+        "state": "unsupported",
+        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      },
+      "\"go\"": {
+        "state": "unsupported",
+        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      },
+      "\"node\"": {
+        "state": "unsupported",
+        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      },
+      "\"python\"": {
+        "state": "unsupported",
+        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      },
+      "\"ruby\"": {
+        "state": "unsupported",
+        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      },
+      "\"rust\"": {
+        "state": "unsupported",
+        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      }
+    },
+    "#/definitions/workflowService/properties/runtime/enum": {
+      "\"node\"": {
+        "state": "unsupported",
+        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      },
+      "\"python\"": {
+        "state": "unsupported",
+        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
       }
     }
   },

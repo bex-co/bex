@@ -145,10 +145,18 @@ func (c ComputeCatalog) ByID(id string) (ComputeTier, bool) {
 	return t, ok
 }
 
-// ByRenderPlan looks up a tier by Render's public-API `plan` spelling.
+// ByRenderPlan looks up a tier by Render's public-API `plan` spelling: the
+// legacy instance-type name (starter, pro_plus, ...) or an exact-size compute
+// plan ID alias (0.5c-512mb, ...; see computeInputAliases).
 func (c ComputeCatalog) ByRenderPlan(plan string) (ComputeTier, bool) {
-	t, ok := c.byRender[plan]
-	return t, ok
+	if t, ok := c.byRender[plan]; ok {
+		return t, true
+	}
+	if id, ok := computeInputAliases[plan]; ok {
+		t, ok := c.byID[id]
+		return t, ok
+	}
+	return ComputeTier{}, false
 }
 
 // IDs returns every valid spec.tier id, in catalog order — for error messages

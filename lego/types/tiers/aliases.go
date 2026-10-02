@@ -36,6 +36,20 @@ var valkeyInputAliases = map[string]string{
 	"1g":    "standard",
 }
 
+// computeInputAliases: Render's spec-based compute plan IDs (render.com/docs/
+// blueprint-spec `plan`, the default for a new service since 2026-10 is
+// 0.5c-512mb) whose CPU/RAM equal a bex compute rung exactly (tiers.yaml). The
+// larger and odd-shaped sizes (2c-8g, 12c-96g, ...) have no bex rung and stay
+// unknown (w1/m170).
+var computeInputAliases = map[string]string{
+	"0.5c-512mb": "starter",
+	"1c-2g":      "standard",
+	"2c-4g":      "pro",
+	"4c-8g":      "pro-plus",
+	"4c-16g":     "pro-max",
+	"8c-32g":     "pro-ultra",
+}
+
 // CanonicalID maps a Postgres plan input (bex id or accepted Render alias) to
 // the Database CRD's spec.plan spelling. Unknown inputs are returned unchanged
 // so ByID can still reject them.

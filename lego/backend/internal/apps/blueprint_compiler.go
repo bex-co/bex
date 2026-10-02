@@ -153,6 +153,7 @@ const (
 	blueprintCapabilityServer             blueprintCapabilityKind = "serverService"
 	blueprintCapabilityCron               blueprintCapabilityKind = "cronService"
 	blueprintCapabilityStatic             blueprintCapabilityKind = "staticService"
+	blueprintCapabilityWorkflow           blueprintCapabilityKind = "workflowService"
 	blueprintCapabilityDatabase           blueprintCapabilityKind = "database"
 	blueprintCapabilityKeyValue           blueprintCapabilityKind = "redisServer"
 	blueprintCapabilityEnvGroup           blueprintCapabilityKind = "envVarGroup"
@@ -191,7 +192,11 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 	if !ok {
 		return nil
 	}
+	if problem, refused := blueprintWholeEntryProblem(path, locations, context); refused {
+		return []BlueprintSourceProblem{problem}
+	}
 	var problems []BlueprintSourceProblem
+	problems = append(problems, blueprintProjectEnvironmentsProblems(object, path, locations, context)...)
 	problems = append(problems, blueprintPrebuiltImageProblems(object, path, locations, context)...)
 	problems = append(problems, blueprintServiceRuntimeProblems(object, path, locations, context)...)
 	for field, child := range object {
@@ -221,6 +226,49 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 		problems = append(problems, blueprintCapabilityProblemsAt(child, fieldPath, locations, registry, childContext)...)
 	}
 	return problems
+}
+
+// blueprintWholeEntryProblem refuses a services[] entry whose kind bex does
+// not offer at all with ONE diagnostic on its type, instead of one per field:
+// every workflowService field is classified unsupported, but five "X is not
+// available" lines for a single declaration read as five independent edits.
+func blueprintWholeEntryProblem(path []string, locations map[string]BlueprintSourceLocation, context blueprintCapabilityContext) (BlueprintSourceProblem, bool) {
+	if context.kind != blueprintCapabilityWorkflow {
+		return BlueprintSourceProblem{}, false
+	}
+	pointer := renderSchemaPointer(append(append([]string(nil), path...), "type"))
+	location := lookupBlueprintLocation(pointer, locations)
+	return BlueprintSourceProblem{
+		Code:    "BLUEPRINT_CAPABILITY_UNSUPPORTED",
+		Path:    pointer,
+		Message: "Render Workflows (type: workflow) are not available on bex",
+		Line:    location.Line,
+		Column:  location.Column,
+	}, true
+}
+
+// blueprintProjectEnvironmentsProblems keeps a project declaring at least one
+// environment. Render's 2026-10 schema stopped requiring projects[].environments
+// so a project can carry only buildSources, but the Blueprint spec still says a
+// project "defines one or more environments", and bex materializes a project
+// from its environments: an environment-less project would apply as a silent
+// no-op, the false success ADR049 exists to prevent.
+func blueprintProjectEnvironmentsProblems(object map[string]any, path []string, locations map[string]BlueprintSourceLocation, context blueprintCapabilityContext) []BlueprintSourceProblem {
+	if context.kind != blueprintCapabilityProject {
+		return nil
+	}
+	if _, declared := object["environments"]; declared {
+		return nil
+	}
+	pointer := renderSchemaPointer(path)
+	location := lookupBlueprintLocation(pointer, locations)
+	return []BlueprintSourceProblem{{
+		Code:    "BLUEPRINT_PROJECT_ENVIRONMENTS_REQUIRED",
+		Path:    pointer,
+		Message: "a project must define at least one environment",
+		Line:    location.Line,
+		Column:  location.Column,
+	}}
 }
 
 // blueprintServiceRuntimeProblems covers fields whose meaning depends on a
@@ -377,10 +425,15 @@ func blueprintFieldCapabilityPointer(context blueprintCapabilityContext, field s
 		switch field {
 		case "services", "databases", "envVarGroups":
 			return "#/definitions/resources/properties/" + field
-		case "previews", "previewsEnabled", "previewsExpireAfterDays", "projects", "ungrouped", "version":
+		case "buildSources", "previews", "previewsEnabled", "previewsExpireAfterDays", "projects", "ungrouped", "version":
 			return "#/allOf/1/properties/" + field
 		}
 	case blueprintCapabilityResources:
+		// The resources kind is the ungrouped block, whose own buildSources
+		// property sits beside the shared resource collections.
+		if field == "buildSources" {
+			return "#/allOf/1/properties/ungrouped/properties/" + field
+		}
 		return "#/definitions/resources/properties/" + field
 	case blueprintCapabilityEnvironment:
 		switch field {
@@ -487,6 +540,9 @@ func blueprintServiceCapabilityContext(value any) blueprintCapabilityContext {
 	if serviceType == "cron" {
 		return blueprintCapabilityContext{kind: blueprintCapabilityCron}
 	}
+	if serviceType == "workflow" {
+		return blueprintCapabilityContext{kind: blueprintCapabilityWorkflow}
+	}
 	if runtime, _ := service["runtime"].(string); runtime == "static" {
 		return blueprintCapabilityContext{kind: blueprintCapabilityStatic}
 	}
@@ -509,11 +565,11 @@ func blueprintEnvVarCapabilityContext(value any) blueprintCapabilityContext {
 
 // blueprintCommonServiceEnumPointers covers the enum fields the server and
 // cron service kinds share; static deliberately has no plan/runtime enum
-// pointer.
+// pointer. plan is per kind: Render split its one shared plan enum into
+// serverPlan/cronPlan/keyValuePlan/postgresPlan (schema pin 2026-10-02).
 var blueprintCommonServiceEnumPointers = map[string]string{
 	"runtime":           "#/definitions/runtime/enum",
 	"autoDeployTrigger": "#/definitions/autoDeployTrigger/enum",
-	"plan":              "#/definitions/plan/enum",
 }
 
 var blueprintPreviewsEnumPointers = map[string]string{
@@ -544,14 +600,17 @@ var blueprintKindEnumPointers = map[blueprintCapabilityKind]map[string]string{
 	blueprintCapabilityServer: mergedBlueprintMaps(blueprintCommonServiceEnumPointers, map[string]string{
 		"type":                  "#/definitions/serverService/properties/type/enum",
 		"renderSubdomainPolicy": "#/definitions/serverService/properties/renderSubdomainPolicy/enum",
+		"plan":                  "#/definitions/serverPlan/enum",
 	}),
-	blueprintCapabilityCron: blueprintCommonServiceEnumPointers,
+	blueprintCapabilityCron: mergedBlueprintMaps(blueprintCommonServiceEnumPointers, map[string]string{
+		"plan": "#/definitions/cronPlan/enum",
+	}),
 	blueprintCapabilityStatic: {
 		"renderSubdomainPolicy": "#/definitions/staticService/properties/renderSubdomainPolicy/enum",
 		"autoDeployTrigger":     "#/definitions/autoDeployTrigger/enum",
 	},
 	blueprintCapabilityDatabase: {
-		"plan":                 "#/definitions/plan/enum",
+		"plan":                 "#/definitions/postgresPlan/enum",
 		"postgresMajorVersion": "#/definitions/database/properties/postgresMajorVersion/enum",
 		"connectionPool":       "#/definitions/connectionPool/enum",
 		"region":               "#/definitions/region/enum",
@@ -560,7 +619,7 @@ var blueprintKindEnumPointers = map[blueprintCapabilityKind]map[string]string{
 		"type":            "#/definitions/redisServer/properties/type/enum",
 		"maxmemoryPolicy": "#/definitions/redisServer/properties/maxmemoryPolicy/enum",
 		"persistenceMode": "#/definitions/redisServer/properties/persistenceMode/enum",
-		"plan":            "#/definitions/plan/enum",
+		"plan":            "#/definitions/keyValuePlan/enum",
 		"region":          "#/definitions/region/enum",
 	},
 	blueprintCapabilityRoute: {
@@ -596,14 +655,23 @@ func blueprintUnsupportedCapabilityMessage(field, pointer string) string {
 		return "previewValue is not available on bex because preview environments are not available"
 	case "#/definitions/serverService/properties/region", "#/definitions/cronService/properties/region", "#/definitions/database/properties/region", "#/definitions/redisServer/properties/region":
 		return "per-resource region placement is not available on bex"
+	case "#/allOf/1/properties/buildSources", "#/allOf/1/properties/ungrouped/properties/buildSources", "#/definitions/project/properties/buildSources", "#/definitions/serverService/properties/buildSource":
+		return field + ": Render Build Sources (shared build reuse) are not available on bex; declare the repo or image and build settings on each service instead"
 	default:
 		return fmt.Sprintf("%s is not available on bex", field)
 	}
 }
 
 func blueprintUnsupportedEnumMessage(field, pointer string) string {
-	if pointer == "#/definitions/autoDeployTrigger/enum" {
+	switch pointer {
+	case "#/definitions/autoDeployTrigger/enum":
 		return "autoDeployTrigger: checksPass requires CI-check gating, which is not available on bex"
+	case "#/definitions/serverPlan/enum", "#/definitions/cronPlan/enum", "#/definitions/keyValuePlan/enum", "#/definitions/postgresPlan/enum":
+		return "plan names a Render compute plan size that bex does not offer"
+	case "#/definitions/serviceType/enum":
+		return "fromService type workflow refers to Render Workflows, which are not available on bex"
+	case "#/definitions/serviceEnvVarProperty/enum":
+		return "fromService property slug is defined only for Render Workflows, which are not available on bex"
 	}
 	return fmt.Sprintf("%s uses an unsupported Render Blueprint value", field)
 }
@@ -941,6 +1009,9 @@ func renderBlueprintValidationSchema() ([]byte, error) {
 	if err := normalizeRenderResourceContainers(document); err != nil {
 		return nil, err
 	}
+	if err := admitBexFreeCronPlan(document); err != nil {
+		return nil, err
+	}
 	if err := addBlueprintExtension(document, extension); err != nil {
 		return nil, err
 	}
@@ -1013,10 +1084,37 @@ func normalizeRenderResourceContainers(document map[string]any) error {
 	if !ok {
 		return fmt.Errorf("embedded Render Blueprint schema has no ungrouped definition")
 	}
-	ungrouped["properties"] = mergedBlueprintMaps(resourceProperties, nil)
+	ungroupedProperties, _ := ungrouped["properties"].(map[string]any)
+	ungrouped["properties"] = mergedBlueprintMaps(resourceProperties, ungroupedProperties)
 	ungrouped["additionalProperties"] = false
 	delete(ungrouped, "allOf")
 	delete(ungrouped, "unevaluatedProperties")
+	return nil
+}
+
+// admitBexFreeCronPlan is a documented bex divergence (ADR049 "Schema re-pin
+// 2026-10-02"): Render's cronPlan has no free rung, but bex keeps a free cron
+// tier (also the omitted-plan default), and tenant Blueprints already declare
+// `plan: free` on cron jobs. Rejecting it would break their next sync for no
+// gain, so the compiled schema — never the pinned upstream bytes — admits it.
+// The capability registry stays exhaustive over the pinned bytes only; this
+// value resolves through normalizeTierForType like any other plan.
+func admitBexFreeCronPlan(document map[string]any) error {
+	definitions, _ := document["definitions"].(map[string]any)
+	cronPlan, ok := definitions["cronPlan"].(map[string]any)
+	if !ok {
+		return fmt.Errorf("embedded Render Blueprint schema has no cronPlan definition")
+	}
+	values, ok := cronPlan["enum"].([]any)
+	if !ok {
+		return fmt.Errorf("embedded Render Blueprint schema cronPlan has no enum")
+	}
+	for _, value := range values {
+		if value == "free" {
+			return nil // upstream re-admitted it; nothing to overlay
+		}
+	}
+	cronPlan["enum"] = append([]any{"free"}, values...)
 	return nil
 }
 
@@ -1035,6 +1133,12 @@ func mergedBlueprintMaps[V any](groups ...map[string]V) map[string]V {
 // never allowed to disappear before an adapter sees it. Closing only schema
 // nodes that already declare named properties preserves all documented fields
 // while making the compiler's unknown-field contract uniform.
+//
+// Conditional subschemas (if/then/else) are left exactly as published: they
+// constrain a few named fields of an object whose own definition is already
+// closed, so closing them too would reject every OTHER field of that object
+// whenever the condition held (serverService's buildSource branch lists only
+// the fields it forbids).
 func closeBlueprintSchemaObjects(value any) {
 	object, ok := value.(map[string]any)
 	if !ok {
@@ -1051,7 +1155,10 @@ func closeBlueprintSchemaObjects(value any) {
 			object["additionalProperties"] = false
 		}
 	}
-	for _, child := range object {
+	for key, child := range object {
+		if key == "if" || key == "then" || key == "else" {
+			continue
+		}
 		closeBlueprintSchemaObjects(child)
 	}
 }
@@ -1163,7 +1270,7 @@ func blueprintSchemaGotValue(errorKind jsonschema.ErrorKind) (string, bool) {
 
 func blueprintKnownServiceType(value string) bool {
 	switch value {
-	case "web", "worker", "pserv", "cron", "keyvalue", "redis":
+	case "web", "worker", "pserv", "cron", "keyvalue", "redis", "workflow":
 		return true
 	default:
 		return false
@@ -1210,6 +1317,8 @@ func blueprintAnyOfDiscriminatorScore(cause *jsonschema.ValidationError, object 
 		return blueprintEnumMatch(blueprintObjectString(object, "type"), "keyvalue", "redis")
 	case "cronService":
 		return blueprintConstMatch(blueprintObjectString(object, "type"), "cron")
+	case "workflowService":
+		return blueprintConstMatch(blueprintObjectString(object, "type"), "workflow")
 	case "staticService":
 		typeScore := blueprintConstMatch(blueprintObjectString(object, "type"), "web")
 		runtimeScore := blueprintConstMatch(blueprintObjectString(object, "runtime"), "static")

@@ -55,16 +55,17 @@ check "matching upstream passes" 0 "Render Blueprint schema matches pinned" \
   run_with "$pinned" "$sandbox/openapi.json"
 
 # Blueprint drift: a new top-level field and a new definition, the shape of the
-# real buildSources drift the repaired job found on its first run.
-jq '.allOf[1].properties.buildSources = {"type": "array"} | .definitions.buildSource = {"type": "object"}' \
+# real buildSources drift the repaired job found on its first run (re-pinned by
+# w1/m170, so the synthetic names below must never exist upstream).
+jq '.allOf[1].properties.bexDriftProbe = {"type": "array"} | .definitions.bexDriftProbeDefinition = {"type": "object"}' \
   "$pinned" >"$sandbox/schema-added.json"
 check "Blueprint drift fails" 1 "::error title=Render Blueprint schema drift::" \
   run_with "$sandbox/schema-added.json" "$sandbox/openapi.json"
-check "Blueprint drift names the added property" 1 "property allOf.1.properties.buildSources" \
+check "Blueprint drift names the added property" 1 "property allOf.1.properties.bexDriftProbe" \
   run_with "$sandbox/schema-added.json" "$sandbox/openapi.json"
-check "Blueprint drift names the added definition" 1 "definition buildSource" \
+check "Blueprint drift names the added definition" 1 "definition bexDriftProbeDefinition" \
   run_with "$sandbox/schema-added.json" "$sandbox/openapi.json"
-check "Blueprint drift names the ADR049 decision" 1 "accept-and-ignore, implement, or reject with a named error" \
+check "Blueprint drift names the ADR049 decision" 1 "reject it with a named error (unsupported)" \
   run_with "$sandbox/schema-added.json" "$sandbox/openapi.json"
 check "Blueprint drift names every digest to move" 1 "RenderBlueprintSchemaSHA256" \
   run_with "$sandbox/schema-added.json" "$sandbox/openapi.json"
