@@ -54,12 +54,12 @@ const (
 // resolution time lives in toolchain-freshness.json and must move with the
 // digest (docs/ADR060 D7).
 var nativeRuntimeImages = map[string]string{
-	"elixir":          "elixir:1.18@sha256:52e8ea10d10e95d74dde312606637e12bc1b1fdf9cfa37d864eacd85fcc16b3c",
+	"elixir":          "elixir:1.18@sha256:45cd5b9be69e9bf62920762c732a0b8a09c4efb91ec5c499e9c6e8a3b1de1475",
 	"go":              "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
-	nativeNodeRuntime: "node:24-bookworm@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584",
-	"python":          "python:3.13-bookworm@sha256:62eafe52c91cad83c2c74e630bfde917da8c253673e695665d454def84fc9a13",
-	"ruby":            "ruby:3.4-bookworm@sha256:56e0c9fdbf64d090e45072d32f0d3be7f2e392e733444f7d176a50881e6c325a",
-	"rust":            "rust:1-bookworm@sha256:0e2bcaef56d041a486784e54104a81aebe0da44bd03019bd70bc0401e42e4a97",
+	nativeNodeRuntime: "node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4",
+	"python":          "python:3.13-bookworm@sha256:227b6570d6ee07061ae6ca2eb04dedfb6d2b34045835f343065b9869e4d427ea",
+	"ruby":            "ruby:3.4-bookworm@sha256:246b2dc3f6e40bba3af18503c22997a34dbb27c9f97e198dde6dd727895115c5",
+	"rust":            "rust:1-bookworm@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e",
 }
 
 // nativeRuntime resolves the toolchain a native build runs in. A static
