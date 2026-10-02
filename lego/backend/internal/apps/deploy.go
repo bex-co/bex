@@ -145,6 +145,9 @@ type DeployRequest struct {
 // envVarGroups: by name and link them to services via fromGroup. Kept to the
 // narrow read/apply methods Blueprint flows need so apps never imports envgroups.
 type EnvGroupApplier interface {
+	// WithInitialEnvGroups prepares ordered refs and membership around first
+	// creation. complete publishes durable creation only after links commit.
+	WithInitialEnvGroups(ctx context.Context, names []string, service string, a *appv1alpha1.App, create, complete func() error) error
 	// GroupNames returns every existing env group's name, for pre-flighting an
 	// unknown fromGroup reference before any write (all-or-nothing).
 	GroupNames(ctx context.Context) ([]string, error)
@@ -952,6 +955,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assign
 		} else if svc.ungrouped {
 			svc.req.EnvironmentSpecified = true
 		}
+		svc.req.initialEnvGroups = svc.groupLinks
 		v, err := s.applyBlueprintCreate(ctx, svc.req, svc.fields)
 		if err != nil {
 			return nil, err
