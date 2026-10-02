@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m148** — [Track the complete first Blueprint deployment with environment groups](m148/README.md) (6 tasks, ~2h 55m) ← live `qa-find-bugs` 2026-10-02 sweep 8; two first `fromGroup` creations serve at rev-2 while their only deploy is Canceled; the literal-value control has one Live deploy.
+
 - [ ] **m147** — [Refresh service activity while the page stays open](m147/README.md) (6 tasks, ~2h 25m) ← live `qa-find-bugs` 2026-10-02 sweep 7; a fixed query window leaves a live deploy In Progress with Cancel and misses later service events. APIs and the Metrics timeline contain the facts.
 
 - [ ] **m146** — [Keep empty Blueprint environments idempotent](m146/README.md) (6 tasks, ~2h 10m) ← live `qa-find-bugs` 2026-10-02 sweep 6; identical `envVars: []` applies republish an unchanged static site twice; omitted-env control stays unchanged.
