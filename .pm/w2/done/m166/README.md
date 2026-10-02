@@ -1,17 +1,17 @@
 # w2 · m166 — Clearing a datastore allowlist must block external access
 
-**Worker:** worker2 **Goal:** the Render-compatible `--clear-ip-allow-list` operation disables external access to Key Value and Postgres instead of removing the network restriction, while internal access and unrelated network layers keep their contracts. **Status:** todo
+**Worker:** worker2 **Goal:** the Render-compatible `--clear-ip-allow-list` operation disables external access to Key Value and Postgres instead of removing the network restriction, while internal access and unrelated network layers keep their contracts. **Status:** done (2026-10-02; local process acceptance, with substrate limits recorded in evidence/acceptance.md)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Repair explicit-empty datastore access intent | 50m | — |
-| t002 | Verify every writer, proxy route, and legacy-state boundary | 45m | t001 |
-| t003 | Render parity and accurate networking copy | 25m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Behavioral coverage and live CLI acceptance | 50m | t003, t004 |
-| t006 | Closeout | 10m | t005 |
+| t001 | Repair explicit-empty datastore access intent — **DONE** | 50m | — |
+| t002 | Verify every writer, proxy route, and legacy-state boundary — **DONE** | 45m | t001 |
+| t003 | Render parity and accurate networking copy — **DONE** | 25m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Behavioral coverage and live CLI acceptance — **DONE** | 50m | t003, t004 |
+| t006 | Closeout — **DONE** | 10m | t005 |
 
 ## Definition of done
 

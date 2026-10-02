@@ -712,12 +712,23 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.accessAllowListHint": {
     message:
-      "Only these CIDR ranges can reach the external endpoint. Empty means open to all source IPs. The internal endpoint is never affected.",
+      "Saving CIDR rules enables external access for matching source IPs. Saving an empty list blocks external connections. Internal access is unchanged.",
     description: "Access panel IP allowlist helper text",
   },
-  "databases.accessAllowListOpen": {
-    message: "Open to all source IPs.",
-    description: "Access panel shown when the allowlist is empty",
+  "databases.accessAllowListInternalOnly": {
+    message:
+      "External connections are disabled. Save one or more IP rules to enable access.",
+    description: "External access is disabled; saving rules enables it",
+  },
+  "databases.accessAllowListEmpty": {
+    message: "No IP rules. Save an empty list to block external connections.",
+    description: "Empty datastore allowlist draft and the effect of saving it",
+  },
+  "databases.accessAllowListPublicEmpty": {
+    message:
+      "No IP rules. External access remains enabled; save this empty list to disable it.",
+    description:
+      "Existing public datastore with no rules; saving the empty list disables external access",
   },
   "databases.accessAllowListAdd": {
     message: "Add",

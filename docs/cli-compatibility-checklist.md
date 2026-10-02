@@ -105,12 +105,12 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--environment <id|name>` — discovered canonical ID and name+project controls passed on dev-2 (w2/m165); legacy API links remain valid
   - [x] `keyvalues list`
   - [x] `keyvalues get <id|name>` — after suspend, `status` is `suspended` (Render `databaseStatus`; w5/061) so text/JSON Status matches hibernation even though the pinned client drops the separate `suspended` field
-  - [x] `keyvalues update <id|name>` — resolves by opaque id; core fields apply. **w4/m116 (2026-09-20):** `--ip-allow-list` had stored the list without publishing the store, so a private-born Key Value stayed unreachable and `kv-cli` kept targeting the in-cluster `.svc` host (live sweep 2026-09-17). A nonempty allowlist now publishes, on every entry point; clearing the list deliberately does not withdraw the endpoint (use the new explicit `public` field / `setKeyValuePublic` / `update_key_value(public:false)`). Verified by test, not yet by a live production run.
+  - [x] `keyvalues update <id|name>` — resolves by opaque id; core fields apply. **w4/m116 (2026-09-20):** `--ip-allow-list` had stored the list without publishing the store, so a private-born Key Value stayed unreachable and `kv-cli` kept targeting the in-cluster `.svc` host (live sweep 2026-09-17). A nonempty allowlist publishes on every entry point. **w2/m166 supersedes the sticky-clear part of w4/m116:** the pinned v2.27.0 client and official Render docs define `--clear-ip-allow-list` as disabling external access. Empty-list updates now withdraw publication; omission preserves it, and an explicit Bex `public` value wins. The [datastore state matrix](ADR021-keyvalue-management.md#datastore-allowlist-update-intent-w2m166) records legacy and create-default boundaries. The 2026-10-02 live finding proved the old clear admitted fresh authenticated traffic; the milestone acceptance records verification of the repair.
     - [x] `--name` — rename; opaque `red-` id stays stable
     - [x] `--plan`
     - [x] `--memory-policy` — mutates `maxmemoryPolicy` on read-back (fixed w7/m45)
-    - [x] `--ip-allow-list` — replaces the allow-list; CIDR + description return (fixed w7/m45)
-    - [x] `--clear-ip-allow-list` — empties the allow-list (fixed w7/m45)
+    - [x] `--ip-allow-list` — replaces the allow-list, enables the external route for matching sources, and returns CIDR + description (write w7/m45; publication w4/m116)
+    - [x] `--clear-ip-allow-list` — clears rules and disables new external connections after convergence (array write w7/m45; external-disable semantics w2/m166); internal access remains available
   - [x] `keyvalues suspend <id|name>`
   - [x] `keyvalues resume <id|name>`
   - [x] `keyvalues delete <id|name>` — unchanged CLI contract; durable cleanup remains internal (w2/m61)
@@ -160,8 +160,8 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--disk-autoscaling` — paid enable/disable; free enable is refused and legacy free disable remains allowed (w8/m50)
     - [x] `--connection-pool <none|pgbouncer>` — **w8/m33 / v2.26.0:** PATCH decodes `connectionPool` via `resolvePooler`; paid enable and legacy free disable are allowed, free enable is refused (w8/m50)
     - [x] `--high-availability`
-    - [x] `--ip-allow-list cidr=…,description=…` — replaces list; description returns
-    - [x] `--clear-ip-allow-list` — empties the list
+    - [x] `--ip-allow-list cidr=…,description=…` — replaces the list and enables external access for matching sources; description returns (w2/m166)
+    - [x] `--clear-ip-allow-list` — clears rules and disables primary/pooler/replica external routes after convergence (w2/m166); internal access remains available
     - [-] `--datadog-api-key <string>` — deliberate non-goal; named 400, credential never persisted
     - [-] `--datadog-site <string>` — deliberate non-goal; named 400
     - [~] `--project <id|name>` — flag parsed; needs an existing project
@@ -264,6 +264,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 
 - [~] **`blueprints`** — manage Blueprints (infrastructure as code)
   - [x] `blueprints validate <render.yaml>` — the unmodified v2.21.0 CLI successfully decoded both a valid `hello-go/render.yaml` response and an invalid `autoDeployTrigger: checksPass` response from freshly deployed `api.bex.co` on 2026-08-03 (the latter carried `services[0].autoDeployTrigger` plus source line/column). **w8/m19 production re-grade (2026-08-16):** after the m19 image rollout, the same unmodified CLI and the raw multipart response accepted one custom `.yaml` fixture containing static `buildCommand`, monorepo `dockerContext`, and private-image `image.creds.fromRegistryCreds.name`; the response was `valid:true`. This closes the CLI validate transport/decoding grade. It does not turn the Blueprint feature's overall partial row into blanket parity: the capability registry still intentionally rejects its documented subset, and the separate live apply legs are not evidence for this CLI command. **w8/m33 / v2.25.0:** `blueprints validate` now exits status 1 on an invalid blueprint for every `--output` mode (previously it could exit 0 while printing `valid:false`); this is a client-side exit-code change over the same `valid:true|false` body bex already returns, so the transport grade is unaffected.
+  - **Bex Blueprint datastore apply/export (w2/m166):** an omitted `ipAllowList` on sync preserves rules and public intent; `[]` disables external access and nonempty rules enable matching sources. Explicit lists have the same effect at create; allowed omission retains the Bex-native private default. Export writes `[]` for private resources, `0.0.0.0/0` plus `::/0` for public/empty resources, and existing rules for restricted public resources. Render YAML cannot retain inactive rules separately from publication, so the first apply can normalize storage without changing effective access; its plan must show that change, followed by a no-op plan. These are Bex apply/export semantics, not additional pinned-CLI commands or a blanket live-parity grade. [State matrix and export limits](ADR021-keyvalue-management.md#datastore-allowlist-update-intent-w2m166).
 - [x] **`environments <projectID>`** — decodes the RC15 cursor envelope into real values; unknown project fails not-found
 - [x] **`projects`** — lists projects in the active workspace
 

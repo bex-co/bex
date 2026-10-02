@@ -230,10 +230,7 @@ export function KeyValueDetailPage() {
                   <ConnectionInfoPanel id={keyValue.id} />
                 </section>
                 <section id="networking" className="scroll-mt-6">
-                  <KeyValueNetworkingPanel
-                    id={keyValue.id}
-                    isPublic={keyValue.public}
-                  />
+                  <KeyValueNetworkingPanel id={keyValue.id} />
                 </section>
                 <section id="plan" className="scroll-mt-6">
                   <KeyValuePlanSection

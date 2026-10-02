@@ -89,11 +89,9 @@ type KeyValueView struct {
 	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
 	PersistenceMode string `json:"persistenceMode,omitempty"`
 
-	// IPAllowList is the allowlist gating the EXTERNAL endpoint (Render's
-	// ipAllowList, {cidrBlock, description} entries — descriptions persist on
-	// the CR since w4/m24). Empty => the external route is open to all source
-	// IPs. Required in Render's keyValue schema — always serialized, as []
-	// when empty (w6/m109).
+	// IPAllowList gates the external endpoint. Public distinguishes disabled
+	// access from explicitly unrestricted or legacy public/empty configurations.
+	// Required in Render's keyValue schema — always serialized, as [] when empty.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
 
 	// bex-native extras (Render clients ignore unknown keys).
@@ -666,8 +664,9 @@ func (s *Service) setEnvironmentID(ctx context.Context, kv *appv1alpha1.KeyValue
 	return s.Client.Patch(ctx, kv, patch)
 }
 
-// GetIPAllowList returns the allowlist gating the external endpoint (empty
-// => open to all source IPs). The internal path is never gated.
+// GetIPAllowList returns the external endpoint's rules. Public intent determines
+// whether an empty list is disabled or explicitly unrestricted. The internal
+// path is never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
 	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
@@ -678,10 +677,9 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAll
 
 // SetIPAllowList replaces the external-endpoint allowlist — full replace, so
 // entries written without descriptions clear any stored ones. Every entry's
-// CIDR must be valid (a bad one is a 400 before any write); an empty list opens
-// the endpoint to all source IPs. The operator maps the CIDRs (never the
-// descriptions) to a Traefik ipAllowList middleware on the SNI route — the
-// same gate managed Postgres uses.
+// CIDR must be valid (a bad one is a 400 before any write). A nonempty list
+// enables external access for its sources; an empty list disables external
+// access. The internal path is unaffected.
 func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (KeyValueView, error) {
 	// Routed through the shared patch so this dedicated route cannot drift from
 	// PATCH /v1/key-value/{id}: before w4/m116 it wrote Spec.IPAllowList itself
@@ -773,24 +771,14 @@ type KeyValuePatch struct {
 	// like create; the operator's valkeyArgs re-derives the AOF/RDB flags and rolls
 	// the pod on the next sync, exactly as a maxmemoryPolicy change already does.
 	PersistenceMode *string
-	// IPAllowList is the external-endpoint allowlist (w7/m45): nil = unchanged;
-	// a non-nil empty slice CLEARS it (what `keyvalues update --clear-ip-allow-list`
-	// sends). Mirrors PostgresPatch.IPAllowList; the same field the dedicated
-	// PUT .../ip-allow-list route writes, so both entry points converge.
-	//
-	// A NONEMPTY list also publishes the store (w4/m116): Render treats adding an
-	// inbound rule as the event that enables external access, and bex already
-	// honored that at create — but never on update, so a store born private could
-	// never become public on any surface. See Public below for the asymmetry on
-	// clear.
+	// IPAllowList controls external access: nil preserves intent, a nonempty
+	// list publishes for those sources, and an empty list withdraws the public
+	// endpoint (Render's --clear-ip-allow-list). Internal access is unaffected.
 	IPAllowList *[]core.IPAllowListEntry
-	// Public is the explicit external-endpoint control (w4/m116): nil = unchanged.
-	// It exists because the implicit rule above is deliberately ONE-WAY —
-	// clearing the allowlist does NOT unpublish. Clearing is how a tenant opens
-	// the endpoint to all source IPs (`--clear-ip-allow-list`), and Render's own
-	// empty-list semantic is "open", not "off"; tearing down a live external
-	// endpoint out of what reads as a firewall edit would break running clients
-	// silently. Unpublishing is therefore always a named, explicit act.
+	// Public is a Bex override and wins over IPAllowList when both are present.
+	// Explicit true with an empty list preserves unrestricted external access;
+	// false withdraws the endpoint while retaining any rules. Nil alone leaves
+	// existing intent untouched, including legacy public/empty resources.
 	Public *bool
 }
 
@@ -837,11 +825,7 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 	}
 	if patch.IPAllowList != nil {
 		kv.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)
-		// Adding an inbound rule is the enabling event (Render semantic, ADR021).
-		// One-way on purpose — see KeyValuePatch.Public.
-		if len(*patch.IPAllowList) > 0 {
-			kv.Spec.Public = true
-		}
+		kv.Spec.Public = len(*patch.IPAllowList) > 0
 	}
 	// An explicit public wins over the implicit rule above, in either direction,
 	// so a caller can publish without an allowlist or unpublish while keeping one.

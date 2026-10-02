@@ -18,10 +18,13 @@ package apps
 
 import (
 	"context"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -158,6 +161,87 @@ func TestGeneratedBlueprintRePlansAsNoop(t *testing.T) {
 			t.Errorf("%s %q re-plans as %q with changedFields %v — bex's own export does not describe its own source",
 				action.Kind, action.Name, action.Operation, fieldPaths(action.ChangedFields))
 		}
+	}
+}
+
+func TestGeneratedBlueprintPreservesDatastoreExternalAccess(t *testing.T) {
+	t.Parallel()
+	rules := []appv1alpha1.IPAllowEntry{
+		{CIDR: "203.0.113.7/32", Description: "office"},
+		{CIDR: "2001:db8::7/128", Description: "office-v6"},
+	}
+	for _, tc := range []struct {
+		name      string
+		public    bool
+		stored    []appv1alpha1.IPAllowEntry
+		exported  []appv1alpha1.IPAllowEntry
+		firstPlan BlueprintPlanOperation
+	}{
+		{"private", false, nil, nil, BlueprintPlanNoop},
+		{"private with inactive rules", false, rules, nil, BlueprintPlanUpdate},
+		{"public with rules", true, rules, rules, BlueprintPlanNoop},
+		{"legacy unrestricted public", true, nil, []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "::/0"}}, BlueprintPlanUpdate},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			db := &appv1alpha1.Database{
+				ObjectMeta: metav1.ObjectMeta{Name: "dpg-access", Namespace: "default"},
+				Spec: appv1alpha1.DatabaseSpec{
+					Name: "access-db", Plan: "free", Public: tc.public, IPAllowList: slices.Clone(tc.stored),
+					EnvironmentIPAllowList: []string{"10.0.0.0/8"},
+				},
+			}
+			kv := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "red-access", Namespace: "default"},
+				Spec: appv1alpha1.KeyValueSpec{
+					Name: "access-cache", Plan: "free", Public: tc.public, IPAllowList: slices.Clone(tc.stored),
+					EnvironmentIPAllowList: []string{"10.0.0.0/8"},
+				},
+			}
+			svc, _ := newService(nil)
+			svc.Client = fakeClient(db, kv)
+			exported, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{
+				PostgresIDs: []string{db.Name}, KeyValueIDs: []string{kv.Name},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			parsed := parseBlueprintStackForTest(t, exported.Manifest)
+			if len(parsed.databases) != 1 || len(parsed.keyValues) != 1 {
+				t.Fatalf("export omitted datastores: %s", exported.Manifest)
+			}
+			if _, present := parsed.databases[0].fields["ipAllowList"]; !present {
+				t.Fatal("exported Postgres policy must be explicit, including private access")
+			}
+			if !slices.Equal(parsed.databases[0].spec.IPAllowList, tc.exported) || !slices.Equal(parsed.keyValues[0].spec.IPAllowList, tc.exported) {
+				t.Fatalf("export changed effective datastore rules: %s", exported.Manifest)
+			}
+			assertBlueprintDatastorePlan(t, svc, exported.Manifest, tc.firstPlan)
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: exported.Manifest}); err != nil {
+				t.Fatal(err)
+			}
+			gotDB := &appv1alpha1.Database{}
+			if err := svc.Client.Get(ctx, client.ObjectKeyFromObject(db), gotDB); err != nil {
+				t.Fatal(err)
+			}
+			gotKV := &appv1alpha1.KeyValue{}
+			if err := svc.Client.Get(ctx, client.ObjectKeyFromObject(kv), gotKV); err != nil {
+				t.Fatal(err)
+			}
+			db.Spec.IPAllowList = tc.exported
+			kv.Spec.IPAllowList = tc.exported
+			if !reflect.DeepEqual(db.Spec, gotDB.Spec) || !reflect.DeepEqual(kv.Spec, gotKV.Spec) {
+				t.Fatalf("adoption changed access or unrelated state: Postgres=%+v Key Value=%+v", gotDB.Spec, gotKV.Spec)
+			}
+			assertBlueprintDatastorePlan(t, svc, exported.Manifest, BlueprintPlanNoop)
+
+			fresh, _ := newService(nil)
+			created, err := fresh.DeployStack(ctx, DeployRequest{Manifest: exported.Manifest})
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertBlueprintDatastoreAccess(t, fresh, created, tc.public, tc.exported)
+		})
 	}
 }
 

@@ -654,6 +654,10 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "analytics"}},
 		},
 		Status: appv1alpha1.DatabaseStatus{
+			Host:                "orders-rw.default.svc",
+			Port:                5432,
+			SecretName:          "orders-app",
+			PoolerHost:          "orders-pooler.default.svc",
 			ReadReplicaStatuses: []appv1alpha1.DatabaseReadReplicaStatus{{Name: "retired"}},
 		},
 	}
@@ -664,5 +668,16 @@ func TestDatabasePublicFrontDoorStatus(t *testing.T) {
 	}
 	if got := db.Status.ReadReplicaStatuses; len(got) != 1 || got[0].ExternalHost != "orders-ro-analytics.db.example.test" {
 		t.Fatalf("read replica status = %#v", got)
+	}
+	before := db.DeepCopy()
+	db.Spec.Public = false
+	db.Spec.IPAllowList = nil
+	r.updateExternalAddressStatus(db)
+	if db.Status.ExternalHost != "" || db.Status.PoolerExternalHost != "" || db.Status.ReadReplicaStatuses[0].ExternalHost != "" {
+		t.Fatal("external disable retained a primary, pooler or replica hostname")
+	}
+	if db.Status.Host != before.Status.Host || db.Status.Port != before.Status.Port || db.Status.SecretName != before.Status.SecretName ||
+		db.Status.PoolerHost != before.Status.PoolerHost || db.Status.ReadReplicaStatuses[0].InternalHost != before.Status.ReadReplicaStatuses[0].InternalHost {
+		t.Fatal("external disable changed internal connection information")
 	}
 }

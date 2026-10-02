@@ -126,6 +126,7 @@ query DatabaseUsers($id: String!) {
 query DatabaseIpAllowList($id: String!) {
   database(id: $id) {
     id
+    public
     ipAllowListEntries {
       cidrBlock
       description
@@ -201,6 +202,7 @@ mutation SetDatabaseIpAllowList(
 ) {
   setDatabaseIpAllowList(id: $id, entries: $entries) {
     id
+    public
     ipAllowListEntries {
       cidrBlock
       description

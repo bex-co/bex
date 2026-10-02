@@ -17,7 +17,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [ ] **m167** — [Preserve every requested log text filter](m167/README.md) (6 tasks) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major silent omission across CLI, REST and MCP.
 
-- [ ] **m166** — [Clearing a datastore allowlist must block external access](m166/README.md) (6 tasks) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major Key Value/Postgres network-intent mismatch.
+- [x] **m166** — [Clearing a datastore allowlist must block external access](done/m166/README.md) (6 tasks; **DONE 2026-10-02**, local protocol acceptance; managed provisioning limitations recorded) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major Key Value/Postgres network-intent mismatch.
 
 - [x] **m165** — [Environment IDs must round-trip through the pinned Render CLI](done/m165/README.md) (6 tasks) — **DONE 2026-10-02**. Canonical `evm-*` discovery works in unchanged Render clients while durable `env-*` identities and legacy API links remain valid. Local acceptance: 113 CLI commands, ten expected refusals, all fixtures removed; backend, dashboard, CLI, and lint passed. ← live `$qa-find-bugs-cli` finding; implementation authorized by `$loopx w2`.
 

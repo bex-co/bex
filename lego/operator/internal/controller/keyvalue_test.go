@@ -137,6 +137,54 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	if !slices.Contains(args, "--tls-port") || !slices.Contains(args, strconv.Itoa(kvTLSPort)) {
 		t.Fatalf("public Valkey args lack TLS port: %v", args)
 	}
+
+	// External clear must retain the internal Service and immutable password.
+	var before corev1.Secret
+	if err := cl.Get(ctx, nn, &before); err != nil {
+		t.Fatal(err)
+	}
+	if len(before.Data["password"]) == 0 {
+		t.Fatal("initial connection has no password")
+	}
+	kv.Spec.Public = false
+	kv.Spec.IPAllowList = nil
+	if err := cl.Update(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	// The connection-info Secret is immutable. Its rebuild takes one extra
+	// reconcile but must never rotate the separate auth Secret.
+	for range 2 {
+		if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
+			t.Fatalf("reconcile external disable: %v", err)
+		}
+	}
+	if err := cl.Get(ctx, nn, kv); err != nil {
+		t.Fatal(err)
+	}
+	if kv.Status.ExternalHost != "" {
+		t.Fatalf("disabled resource retained external hostname %q", kv.Status.ExternalHost)
+	}
+	if err := cl.Get(ctx, nn, &service); err != nil {
+		t.Fatal(err)
+	}
+	if len(service.Spec.Ports) != 1 || service.Spec.Ports[0].Port != kvPort {
+		t.Fatalf("internal Service must retain only plaintext %d: %#v", kvPort, service.Spec.Ports)
+	}
+	var after corev1.Secret
+	if err := cl.Get(ctx, nn, &after); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"password", "username", "host", "port", "uri"} {
+		if string(after.Data[field]) != string(before.Data[field]) {
+			t.Errorf("external disable changed internal connection field %s", field)
+		}
+	}
+	if err := cl.Get(ctx, nn, &sts); err != nil {
+		t.Fatal(err)
+	}
+	if sts.Spec.Replicas == nil || *sts.Spec.Replicas != 1 {
+		t.Fatal("external disable stopped the internal datastore")
+	}
 }
 
 func TestKeyValuePublicFrontDoorFailsClosedWithoutIssuer(t *testing.T) {

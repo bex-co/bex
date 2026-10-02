@@ -72,13 +72,14 @@ query KeyValueInstanceTypes {
 }
 
 # The external-endpoint allowlist (Render's Networking control), the
-# managed-Postgres databaseIpAllowList sibling. Empty => open to all source IPs;
-# only meaningful when the store is public. Read/edited by the detail page's
-# Networking section. Entries carry a per-entry description alongside the CIDR
-# (w4/m24) — the editor round-trips both.
+# managed-Postgres databaseIpAllowList sibling. Saving a nonempty list enables
+# external access; saving [] disables it. Public intent distinguishes legacy
+# unrestricted stores from private ones. The Networking editor round-trips each
+# entry's CIDR and description (w4/m24).
 query KeyValueIpAllowList($id: String!) {
   keyValue(id: $id) {
     id
+    public
     ipAllowListEntries {
       cidrBlock
       description
@@ -145,6 +146,7 @@ mutation SetKeyValueIpAllowList(
 ) {
   setKeyValueIpAllowList(id: $id, entries: $entries) {
     id
+    public
     ipAllowListEntries {
       cidrBlock
       description

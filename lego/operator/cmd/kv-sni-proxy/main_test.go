@@ -46,8 +46,8 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	kv.Labels = map[string]string{labelWorkspace: "tea-one"}
 	kv.Spec.Public = true
 	kv.Status.ExternalHost = "kv-one.kv.bex.co"
-	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
-	kv.Spec.EnvironmentIPAllowList = []string{"203.0.113.0/28"}
+	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}, {CIDR: "2001:db8::/32"}}
+	kv.Spec.EnvironmentIPAllowList = []string{"203.0.113.0/28", "2001:db8:1::/48"}
 	if err := router.set(kv); err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +69,58 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	}
 	if _, ok := router.resolve("other.kv.bex.co", netip.MustParseAddr("203.0.113.9")); ok {
 		t.Fatal("unknown SNI resolved")
+	}
+	for _, tc := range []struct {
+		source string
+		want   bool
+	}{
+		{"2001:db8:1::9", true},
+		{"2001:db8:2::9", false},
+		{"2001:db9::9", false},
+	} {
+		if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(tc.source)); ok != tc.want {
+			t.Errorf("source %s resolved = %v, want %v", tc.source, ok, tc.want)
+		}
+	}
+
+	// A datastore clear is represented by public=false, even while status
+	// still carries the previous hostname. It withdraws the route immediately.
+	allowed := kv.Spec.IPAllowList
+	kv.Spec.IPAllowList = nil
+	kv.Spec.Public = false
+	if err := router.set(kv); err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []string{"203.0.113.9", "2001:db8:1::9"} {
+		if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(source)); ok {
+			t.Fatalf("cleared external access still routes %s", source)
+		}
+	}
+	kv.Spec.Public = true
+	kv.Spec.IPAllowList = allowed
+	if err := router.set(kv); err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []string{"203.0.113.9", "2001:db8:1::9"} {
+		if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr(source)); !ok {
+			t.Fatalf("restored external access did not route %s", source)
+		}
+	}
+	// Existing public/empty CRs retain their meaning. An absent resource
+	// layer must also continue to compose with an inherited environment rule.
+	kv.Spec.IPAllowList = nil
+	if err := router.set(kv); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr("203.0.113.20")); ok {
+		t.Fatal("legacy empty resource layer bypassed the environment rule")
+	}
+	kv.Spec.EnvironmentIPAllowList = nil
+	if err := router.set(kv); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := router.resolve(kv.Status.ExternalHost, netip.MustParseAddr("198.51.100.9")); !ok {
+		t.Fatal("legacy public/empty resource lost its unrestricted route")
 	}
 }
 
@@ -155,15 +207,7 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 		t.Fatal(err)
 	}
 	defer func() { _ = proxyListener.Close() }()
-	proxyDone := make(chan struct{})
-	go func() {
-		conn, acceptErr := proxyListener.Accept()
-		if acceptErr == nil {
-			handleConn(conn, router, meter, []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
-				sniproxy.NewLimiter(0, 0), 0, 0, discardLogger{})
-		}
-		close(proxyDone)
-	}()
+	proxyDone := serveTestProxyConnection(proxyListener, router, meter)
 
 	rawClient, err := net.Dial("tcp", proxyListener.Addr().String())
 	if err != nil {
@@ -223,6 +267,51 @@ func TestPublicProxyPreservesEndToEndTLSAndMetersOnlyBackendWrites(t *testing.T)
 	case <-time.After(5 * time.Second):
 		t.Fatal("proxy did not finish")
 	}
+
+	// Use the same verified certificate and source after an explicit clear.
+	// A stale status hostname cannot keep a new TLS handshake admitted.
+	t.Run("cleared external access", func(t *testing.T) {
+		kv := &appv1alpha1.KeyValue{}
+		kv.Name = "kv-one"
+		kv.Status.ExternalHost = host
+		if err := router.set(kv); err != nil {
+			t.Fatal(err)
+		}
+		deniedDone := serveTestProxyConnection(proxyListener, router, meter)
+		rawDenied, err := net.Dial("tcp", proxyListener.Addr().String())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = rawDenied.Close() }()
+		_ = rawDenied.SetDeadline(time.Now().Add(3 * time.Second))
+		if _, err := rawDenied.Write([]byte("PROXY TCP4 203.0.113.9 49.12.20.236 49152 6379\r\n")); err != nil {
+			t.Fatal(err)
+		}
+		denied := tls.Client(rawDenied, &tls.Config{RootCAs: roots, ServerName: host, MinVersion: tls.VersionTLS12})
+		if err := denied.Handshake(); err == nil {
+			t.Fatal("new TLS handshake succeeded after external access was cleared")
+		} else if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
+			t.Fatalf("clear stalled the handshake instead of closing it: %v", err)
+		}
+		select {
+		case <-deniedDone:
+		case <-time.After(5 * time.Second):
+			t.Fatal("denied proxy connection did not finish")
+		}
+	})
+}
+
+func serveTestProxyConnection(listener net.Listener, router *kvRouter, meter *sniproxy.ByteMeter) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		conn, err := listener.Accept()
+		if err == nil {
+			handleConn(conn, router, meter, []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")},
+				sniproxy.NewLimiter(0, 0), 0, 0, discardLogger{})
+		}
+	}()
+	return done
 }
 
 // TestHandleConnRejectsSaturatedSourceWithoutDialing proves the per-source

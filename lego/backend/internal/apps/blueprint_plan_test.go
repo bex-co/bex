@@ -189,6 +189,7 @@ func TestApplyBlueprintDatabaseSpecPresenceAndConstraints(t *testing.T) {
 		StorageGB:       10,
 		DiskAutoscaling: true,
 		Pooler:          true,
+		Public:          true,
 		IPAllowList:     []appv1alpha1.IPAllowEntry{{CIDR: "10.0.0.0/8"}},
 	}
 
@@ -200,10 +201,10 @@ func TestApplyBlueprintDatabaseSpecPresenceAndConstraints(t *testing.T) {
 		}
 	})
 
-	t.Run("declared empty list clears only the allow list", func(t *testing.T) {
+	t.Run("declared empty list disables external access", func(t *testing.T) {
 		got := *initial.DeepCopy()
 		changed, err := applyBlueprintDatabaseSpecForTest(&got, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{"ipAllowList": {}})
-		if err != nil || !changed || got.IPAllowList != nil || got.Plan != initial.Plan {
+		if err != nil || !changed || got.IPAllowList != nil || got.Public || got.Plan != initial.Plan {
 			t.Fatalf("explicit empty allow list = changed %v err %v spec %#v", changed, err, got)
 		}
 	})
@@ -259,6 +260,7 @@ func TestApplyBlueprintKeyValueSpecPresence(t *testing.T) {
 		Plan:            "starter",
 		MaxmemoryPolicy: "allkeys-lru",
 		PersistenceMode: "journal-snapshot",
+		Public:          true,
 		IPAllowList:     []appv1alpha1.IPAllowEntry{{CIDR: "192.0.2.0/24"}},
 	}
 	got := *initial.DeepCopy()

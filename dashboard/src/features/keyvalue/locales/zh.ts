@@ -486,16 +486,21 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.networkingHint": {
     message:
-      "仅这些 CIDR 网段可访问外部端点。留空表示对所有来源 IP 开放。内部端点始终不受影响。",
+      "保存 CIDR 规则后，匹配的来源 IP 可从外部连接。保存空列表将禁止外部连接。内部访问不受影响。",
     description: "Networking IP allowlist helper text",
   },
   "keyvalue.networkingInternalOnly": {
-    message: "该存储没有外部端点；允许列表将在存储设为公开后生效。",
-    description: "Networking note shown for an internal-only store",
+    message: "外部连接已禁用。保存一条或多条 IP 规则可启用外部访问。",
+    description: "External access is disabled; saving rules enables it",
   },
-  "keyvalue.networkingOpen": {
-    message: "对所有来源 IP 开放。",
-    description: "Networking panel shown when the allowlist is empty",
+  "keyvalue.networkingEmpty": {
+    message: "暂无 IP 规则。保存空列表将禁止外部连接。",
+    description: "Empty datastore allowlist draft and the effect of saving it",
+  },
+  "keyvalue.networkingPublicEmpty": {
+    message: "暂无 IP 规则，但外部访问仍已启用。保存此空列表可禁用外部访问。",
+    description:
+      "Existing public datastore with no rules; saving the empty list disables external access",
   },
   "keyvalue.networkingAdd": {
     message: "添加",
