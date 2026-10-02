@@ -29,7 +29,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m148** — [Track the complete first Blueprint deployment with environment groups](m148/README.md) (6 tasks, ~2h 55m) ← live `qa-find-bugs` 2026-10-02 sweep 8; two first `fromGroup` creations serve at rev-2 while their only deploy is Canceled; the literal-value control has one Live deploy.
 
-- [ ] **m147** — [Refresh service activity while the page stays open](m147/README.md) (6 tasks, ~2h 25m) ← live `qa-find-bugs` 2026-10-02 sweep 7; a fixed query window leaves a live deploy In Progress with Cancel and misses later service events. APIs and the Metrics timeline contain the facts.
+- [ ] **m147** — **BLOCKED (release pipeline: deploy dashboard; QA: live deploy/sleep/wake and Metrics/API controls, then fixture/session cleanup)** — [Refresh service activity while the page stays open](blocked/m147/README.md). t001–t005 done; 3,972 dashboard tests and lint/typecheck/knip passed. t006 hosted acceptance remains open.
 
 - [ ] **m146** — **BLOCKED (release pipeline: deploy backend; QA: replay static/group-only live no-op controls, then fixture/session cleanup)** — [Keep empty Blueprint environments idempotent](blocked/m146/README.md). t001/t002/t004/t005 done; full backend tests and lint passed. t003 hosted parity and t006 closeout remain open.
 
