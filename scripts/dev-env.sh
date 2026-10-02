@@ -372,6 +372,11 @@ refresh_kubeconfig() {
 # assuming the shared cluster has it, then wait for it to be READY. Pins the
 # same chart deploy/gitops/base/cnpg-operator.yaml does, minus the platform
 # nodeSelector a disposable kind node does not carry.
+cnpg_deployment() {
+  kubectl -n cnpg-system get deploy -l app.kubernetes.io/name=cloudnative-pg \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true
+}
+
 ensure_cnpg() {
   echo "==> CNPG operator (self-installing if absent)"
   if ! kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; then
@@ -383,14 +388,24 @@ ensure_cnpg() {
   fi
   kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=60s >/dev/null 2>&1 ||
     { echo "error: the CNPG 'clusters' CRD never established — operator install failed" >&2; exit 1; }
+  # The self-installed release is `cnpg`; the Argo cnpg-operator Application
+  # names it `cnpg-operator` (w1/108 bring-up, 2026-09-30). Resolve by label.
+  local cnpg_deploy
+  cnpg_deploy="$(cnpg_deployment)"
+  [ -n "$cnpg_deploy" ] ||
+    { echo "error: no cloudnative-pg Deployment in cnpg-system" >&2; exit 1; }
   # Pin the manager to the control-plane node: on the CAPD mock, worker-node pods
   # cannot reach the apiserver (OrbStack+Calico, docs/ADR004-app-deployment.md),
-  # so a worker-scheduled CNPG manager crashloops.
-  kubectl -n cnpg-system patch deploy cnpg-cloudnative-pg --type merge -p \
-    '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
-     "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
+  # so a worker-scheduled CNPG manager crashloops. Skip an Argo-managed copy:
+  # selfHeal would revert the pin, and its platform-pool placement is Argo's call.
+  if [ -z "$(kubectl -n cnpg-system get deploy "$cnpg_deploy" \
+    -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null)" ]; then
+    kubectl -n cnpg-system patch deploy "$cnpg_deploy" --type merge -p \
+      '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
+       "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
+  fi
   echo "    waiting for the CNPG operator to become ready..."
-  if ! kubectl -n cnpg-system rollout status deploy/cnpg-cloudnative-pg --timeout=180s; then
+  if ! kubectl -n cnpg-system rollout status "deploy/$cnpg_deploy" --timeout=180s; then
     # A degraded local cluster can crashloop the operator WITHOUT blocking dev-N:
     # the Clusters it must create may already exist and keep running (their
     # Postgres pods do not need a live operator). Only hard-fail when they don't.
@@ -401,7 +416,7 @@ ensure_cnpg() {
         echo "error: the CNPG operator did not become ready AND the DB Clusters do not exist — dev-$N's databases cannot be created."
         echo "diagnose:"
         echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system describe pod -l app.kubernetes.io/name=cloudnative-pg"
-        echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system logs deploy/cnpg-cloudnative-pg --tail=50"
+        echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system logs deploy/$cnpg_deploy --tail=50"
       } >&2
       exit 1
     fi
@@ -418,6 +433,17 @@ ensure_observability() {
     return
   fi
   echo "==> observability (Loki + log-shipper)"
+  # With the local GitOps platform up, Argo already owns monitoring/loki and
+  # log-shipper; a Helm install would fail on ownership (w1/108 bring-up,
+  # 2026-09-30). Reuse the platform copy — the port-forward targets the same
+  # `loki` Service either way.
+  if [ -n "$(kubectl -n monitoring get statefulset loki \
+    -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null)" ]; then
+    echo "    Argo-managed Loki present — reusing it"
+    kubectl -n monitoring rollout status statefulset/loki --timeout=180s ||
+      { echo "error: the Argo-managed Loki is not ready ('kubectl -n argocd get application loki')." >&2; exit 1; }
+    return
+  fi
   helm repo add grafana https://grafana.github.io/helm-charts >/dev/null 2>&1 || true
   helm repo update grafana >/dev/null
   render "$TEMPLATES/values/loki.values.yaml" >"$ENVDIR/.rendered-loki.values.yaml"
@@ -821,7 +847,7 @@ cmd_status() {
       no "no default StorageClass — CNPG DBs + Loki PVCs cannot bind (reprovision the cluster)"
     fi
     local cnpg_avail loki_ready
-    cnpg_avail="$(kubectl -n cnpg-system get deploy cnpg-cloudnative-pg -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
+    cnpg_avail="$(kubectl -n cnpg-system get deploy "$(cnpg_deployment)" -o jsonpath='{.status.availableReplicas}' 2>/dev/null)"
     if kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 && [ "${cnpg_avail:-0}" -ge 1 ]; then
       ok "CNPG operator ready"
     else
