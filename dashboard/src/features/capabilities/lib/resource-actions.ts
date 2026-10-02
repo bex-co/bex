@@ -3,6 +3,8 @@
 // enable an operation, and a decision fetched for one resource (or workspace)
 // answers nothing about another (ADR087 / w6/m143).
 
+import { snapshotIsFresh } from "./capability-policy";
+
 export const RESOURCE_ACTION_IDS = [
   "restart",
   "suspend",
@@ -30,9 +32,7 @@ export const RESOURCE_PRECONDITIONS = [
   "unavailable",
 ] as const;
 
-export type ResourcePrecondition =
-  | (typeof RESOURCE_PRECONDITIONS)[number]
-  | "";
+export type ResourcePrecondition = (typeof RESOURCE_PRECONDITIONS)[number] | "";
 
 const OUTCOMES = ["allowed", "denied", "unavailable"] as const;
 export type ResourceOutcome = (typeof OUTCOMES)[number];
@@ -111,10 +111,12 @@ export function resourceDecision(
   workspaceId: string | null,
   resourceId: string,
   action: ResourceActionId,
+  now = Date.now(),
 ): ResourceActionDecision | null {
   if (!snapshot || workspaceId === null) return null;
   if (snapshot.workspaceId !== workspaceId) return null;
   if (snapshot.resourceId !== resourceId) return null;
+  if (!snapshotIsFresh(snapshot, now)) return null;
   return snapshot.decisions[action] ?? null;
 }
 

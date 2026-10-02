@@ -1,16 +1,22 @@
-// Bind and recheck an open confirmation against the current workspace,
-// resource, optional deploy, and action decision before dispatch (w6/m143/t004).
+// Recheck a confirmation against its original context immediately before dispatch.
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApolloClient } from "@apollo/client/react";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   DeployActionsDocument,
   ServerActionsDocument,
+  ViewerCapabilitiesDocument,
 } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { getAccessGeneration } from "@/features/capabilities/lib/access-generation";
+import {
+  allowsAction,
+  toSnapshot,
+  type CapabilityAction,
+} from "@/features/capabilities/lib/capability-policy";
 import {
   gateAction,
   gateReason,
@@ -26,6 +32,7 @@ export type ActionConfirmBinding = {
   deployId?: string;
   action: ResourceActionId;
   generation: number;
+  requiredCapability?: CapabilityAction;
 };
 
 const SERVER_ACTIONS = new Set<ResourceActionId>([
@@ -36,20 +43,12 @@ const SERVER_ACTIONS = new Set<ResourceActionId>([
   "cron_cancel_run",
 ]);
 
-/**
- * Holds a pending confirmation bound to an exact context. Stale bindings are
- * derived away (not cleared in an effect) when workspace/resource/deploy or
- * access generation drifts; dispatch always rechecks over the network.
- *
- * `adjustDecision` is the caller's row-level rule, applied to the rechecked
- * decision exactly as it was applied when enabling the control. Without it,
- * a row the button enabled (an older rollback target the service-wide summary
- * does not see) was refused at dispatch (w4/m141). A refusal is never silent:
- * it is toasted with its reason before the recheck resolves `ok: false`.
- */
 export function useBoundActionConfirm(opts: {
   resourceId: string;
   deployId?: string;
+  /** Additional fresh workspace grant needed by a more privileged variant. */
+  requiredCapability?: CapabilityAction;
+  /** Preserve the selected deploy's rollback eligibility when rechecking. */
   adjustDecision?: (
     action: ResourceActionId,
     decision: ResourceActionDecision | null,
@@ -57,135 +56,226 @@ export function useBoundActionConfirm(opts: {
 }) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const { generation } = useCapabilities();
+  const capabilities = useCapabilities();
+  const { generation } = capabilities;
   const client = useApolloClient();
   const [pending, setPending] = useState<ActionConfirmBinding | null>(null);
+  const pendingRef = useRef<ActionConfirmBinding | null>(null);
+  const pendingAccessGeneration = useRef(getAccessGeneration());
+  const mounted = useRef(true);
+  const inFlight = useRef<AbortController | null>(null);
+  const currentContext = {
+    workspaceId: currentWorkspaceId,
+    ...opts,
+    generation,
+    eligible:
+      capabilities.loaded && !capabilities.stale && !capabilities.unavailable,
+    accessGeneration: getAccessGeneration(),
+  };
+  const latest = useRef(currentContext);
+  latest.current = currentContext;
 
-  const binding =
-    pending !== null &&
-    currentWorkspaceId !== null &&
-    pending.workspaceId === currentWorkspaceId &&
-    pending.resourceId === opts.resourceId &&
-    (pending.deployId === undefined || pending.deployId === opts.deployId) &&
-    pending.generation === generation
-      ? pending
-      : null;
-
-  const openConfirm = useCallback(
-    (action: ResourceActionId) => {
-      if (!currentWorkspaceId) return;
-      setPending({
-        workspaceId: currentWorkspaceId,
-        resourceId: opts.resourceId,
-        deployId: opts.deployId,
-        action,
-        generation,
-      });
+  const isBindingCurrent = useCallback(
+    (binding: ActionConfirmBinding | null) => {
+      const current = latest.current;
+      return (
+        binding !== null &&
+        mounted.current &&
+        pendingRef.current === binding &&
+        pendingAccessGeneration.current === getAccessGeneration() &&
+        current.eligible &&
+        current.workspaceId === binding.workspaceId &&
+        current.resourceId === binding.resourceId &&
+        current.deployId === binding.deployId &&
+        current.generation === binding.generation &&
+        current.requiredCapability === binding.requiredCapability &&
+        current.accessGeneration === getAccessGeneration()
+      );
     },
-    [currentWorkspaceId, opts.resourceId, opts.deployId, generation],
+    [],
   );
 
   const clearConfirm = useCallback(() => {
+    pendingRef.current = null;
+    inFlight.current?.abort();
     setPending(null);
   }, []);
 
-  const { adjustDecision } = opts;
-  const recheckBeforeDispatch = useCallback(async (): Promise<{
-    ok: boolean;
-    binding: ActionConfirmBinding | null;
-    precondition: string;
-  }> => {
-    // Every refusal says why: a dispatch that quietly does nothing reads as
-    // success to someone who just clicked Proceed (w4/m141).
-    const refuse = (decision: ResourceActionDecision | null) => {
-      setPending(null);
-      toast.error(
-        gateReason(gateAction(decision, decision ? "ready" : "unavailable"), t),
-      );
-      return { ok: false, binding: null, precondition: "" };
+  const binding = isBindingCurrent(pending) ? pending : null;
+  useEffect(() => {
+    if (pending && !binding && pendingRef.current === pending) clearConfirm();
+  }, [pending, binding, clearConfirm]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      pendingRef.current = null;
+      inFlight.current?.abort();
     };
-    if (!binding || !currentWorkspaceId) {
-      return refuse(null);
-    }
+  }, []);
 
-    try {
-      const useServer = SERVER_ACTIONS.has(binding.action);
-      let rows:
-        | {
-            action: string;
-            outcome: string;
-            reason?: string | null;
-            precondition?: string | null;
-          }[]
-        | null
-        | undefined;
-      if (useServer) {
-        const result = await client.query({
-          query: ServerActionsDocument,
-          variables: { id: binding.resourceId },
-          fetchPolicy: "network-only",
-          errorPolicy: "all",
-        });
-        rows = result.data?.serverActions;
-      } else {
-        const result = await client.query({
-          query: DeployActionsDocument,
-          variables: { serviceId: binding.resourceId },
-          fetchPolicy: "network-only",
-          errorPolicy: "all",
-        });
-        rows = result.data?.deployActions;
-      }
-      if (!rows) {
-        return refuse(null);
-      }
-      const snapshot = toResourceSnapshot(
-        binding.workspaceId,
-        binding.resourceId,
-        rows.flatMap((row) =>
-          row.action && row.outcome
-            ? [
-                {
-                  action: row.action,
-                  outcome: row.outcome,
-                  reason: row.reason ?? null,
-                  precondition: row.precondition ?? null,
-                },
-              ]
-            : [],
-        ),
-      );
-      const raw = resourceDecision(
-        snapshot,
-        binding.workspaceId,
-        binding.resourceId,
-        binding.action,
-      );
-      const decision = adjustDecision
-        ? adjustDecision(binding.action, raw)
-        : raw;
-      const ok =
-        decision !== null &&
-        decision.outcome === "allowed" &&
-        (decision.precondition === "" ||
-          decision.precondition === "protected_confirmation_required");
-      if (!ok) {
-        return refuse(decision);
-      }
-      return {
-        ok: true,
-        binding,
-        precondition: decision.precondition,
+  const openConfirm = useCallback(
+    (action: ResourceActionId): ActionConfirmBinding | null => {
+      const current = latest.current;
+      if (
+        !mounted.current ||
+        !current.workspaceId ||
+        !current.eligible ||
+        current.accessGeneration !== getAccessGeneration()
+      )
+        return null;
+      inFlight.current?.abort();
+      const next: ActionConfirmBinding = {
+        workspaceId: current.workspaceId,
+        resourceId: current.resourceId,
+        deployId: current.deployId,
+        action,
+        generation: current.generation,
+        requiredCapability: current.requiredCapability,
       };
-    } catch {
-      return refuse(null);
-    }
-  }, [binding, client, currentWorkspaceId, adjustDecision, t]);
+      pendingRef.current = next;
+      pendingAccessGeneration.current = getAccessGeneration();
+      setPending(next);
+      return next;
+    },
+    [],
+  );
+
+  const recheckBeforeDispatch = useCallback(
+    async (
+      explicitBinding?: ActionConfirmBinding | null,
+    ): Promise<{
+      ok: boolean;
+      binding: ActionConfirmBinding | null;
+      precondition: string;
+    }> => {
+      const target =
+        explicitBinding === undefined ? pendingRef.current : explicitBinding;
+      const rejected = { ok: false, binding: null, precondition: "" };
+      const refuse = (decision: ResourceActionDecision | null) => {
+        // A response from a closed/replaced dialog must not close the new one,
+        // toast on another page, or authorize its old mutation.
+        if (!isBindingCurrent(target)) return rejected;
+        clearConfirm();
+        toast.error(
+          gateReason(
+            gateAction(decision, decision ? "ready" : "unavailable"),
+            t,
+          ),
+        );
+        return rejected;
+      };
+      if (!target || !isBindingCurrent(target)) return rejected;
+      inFlight.current?.abort();
+      const ac = new AbortController();
+      inFlight.current = ac;
+      const accessGeneration = getAccessGeneration();
+      const current = () =>
+        !ac.signal.aborted &&
+        accessGeneration === getAccessGeneration() &&
+        isBindingCurrent(target);
+      const context = {
+        fetchOptions: { signal: ac.signal },
+        queryDeduplication: false,
+      };
+      try {
+        const rows = SERVER_ACTIONS.has(target.action)
+          ? (
+              await client.query({
+                query: ServerActionsDocument,
+                variables: {
+                  id: target.resourceId,
+                  ownerId: target.workspaceId,
+                },
+                fetchPolicy: "no-cache",
+                errorPolicy: "none",
+                context,
+              })
+            ).data?.serverActions
+          : (
+              await client.query({
+                query: DeployActionsDocument,
+                variables: {
+                  serviceId: target.resourceId,
+                  ownerId: target.workspaceId,
+                },
+                fetchPolicy: "no-cache",
+                errorPolicy: "none",
+                context,
+              })
+            ).data?.deployActions;
+        if (!current()) return rejected;
+        if (!rows) return refuse(null);
+        if (target.requiredCapability) {
+          const result = await client.query({
+            query: ViewerCapabilitiesDocument,
+            variables: { ownerId: target.workspaceId, fresh: true },
+            fetchPolicy: "no-cache",
+            errorPolicy: "none",
+            context,
+          });
+          if (!current()) return rejected;
+          const payload = result.data?.viewerCapabilities;
+          if (!payload) return refuse(null);
+          const snapshot = toSnapshot(
+            target.workspaceId,
+            payload.grants ?? [],
+            payload.role ?? null,
+          );
+          if (
+            !allowsAction(
+              { status: "ready", snapshot },
+              target.workspaceId,
+              target.requiredCapability,
+            )
+          ) {
+            return refuse({
+              action: target.action,
+              outcome:
+                snapshot.grants[target.requiredCapability] === "denied"
+                  ? "denied"
+                  : "unavailable",
+              reason: "",
+              precondition: "",
+            });
+          }
+        }
+        const snapshot = toResourceSnapshot(
+          target.workspaceId,
+          target.resourceId,
+          rows,
+        );
+        const raw = resourceDecision(
+          snapshot,
+          target.workspaceId,
+          target.resourceId,
+          target.action,
+        );
+        const decision = latest.current.adjustDecision
+          ? latest.current.adjustDecision(target.action, raw)
+          : raw;
+        if (!decision || gateAction(decision, "ready").kind !== "ready")
+          return refuse(decision);
+        if (!current()) return rejected;
+        return {
+          ok: true,
+          binding: target,
+          precondition: decision.precondition,
+        };
+      } catch {
+        return current() ? refuse(null) : rejected;
+      } finally {
+        if (inFlight.current === ac) inFlight.current = null;
+      }
+    },
+    [client, isBindingCurrent, clearConfirm, t],
+  );
 
   return {
     pending: binding,
     openConfirm,
     clearConfirm,
     recheckBeforeDispatch,
+    isBindingCurrent,
   };
 }

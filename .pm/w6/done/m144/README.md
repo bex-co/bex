@@ -52,4 +52,12 @@
 
 ### Live verification retry — 2026-10-02
 
-Still unverified: the authorized local recovery restored a verified kubeconfig and briefly Ready workload nodes, but dev-6 provisioning subsequently failed on the CNPG webhook and recurring API/TLS timeouts. No authenticated browser claims are made and the live DoD checkbox remains open. See [blocked follow-up 074](../../blocked/074.md) for recovery evidence and exact resume prerequisites. No test identities/workspaces were created.
+Still unverified: the authorized local recovery restored a verified kubeconfig and briefly Ready workload nodes, but dev-6 provisioning subsequently failed on the CNPG webhook and recurring API/TLS timeouts. No authenticated browser claims are made and the live DoD checkbox remains open. See [follow-up 074](../074.md) for recovery evidence and exact resume prerequisites. No test identities/workspaces were created.
+
+### Resumed verification — 2026-10-02
+
+Dev-6 now has real Kratos sessions and isolated OpenFGA. The resumed follow-up found reproducible stale projection and asynchronous confirmation defects; [m146](../../blocked/m146/README.md) owns the fixes and remaining live acceptance. The live DoD box remains unchecked.
+
+### Implementation follow-up and remaining live gate — 2026-10-02
+
+m146 fixes shared-workspace GraphQL action selection, stale/partial-error projections and confirmation races. Automated checks pass, including all 3,912 dashboard tests and the real-service backend suite. A real owner-driven Viewer downgrade and scoped denied action response were observed, but the full browser walkthrough and fixture cleanup remain blocked by local CAPD/auth database availability under host saturation. The live DoD box stays unchecked; [m146 evidence](../../blocked/m146/evidence.md) lists the remaining checks and fixture inventory.

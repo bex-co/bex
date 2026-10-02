@@ -2943,6 +2943,7 @@ export type QueryDeployArgs = {
 
 
 export type QueryDeployActionsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
   serviceId: Scalars['String']['input'];
 };
 
@@ -3255,6 +3256,7 @@ export type QueryServerArgs = {
 
 export type QueryServerActionsArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

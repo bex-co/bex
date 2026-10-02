@@ -22,6 +22,10 @@ const state: UseDeploysResult = {
 };
 const statusCalls: string[][] = [];
 
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useDeployActions: () => ({ status: "checking", refresh: vi.fn() }),
+}));
+
 vi.mock("../../hooks/use-deploys", () => ({
   useDeploys: (_serviceId: string, statuses: string[]) => {
     statusCalls.push(statuses);

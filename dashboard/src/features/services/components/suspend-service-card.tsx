@@ -14,7 +14,10 @@ import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
-import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
+import {
+  useBoundActionConfirm,
+  type ActionConfirmBinding,
+} from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   gateAction,
@@ -54,13 +57,23 @@ export function SuspendServiceCard({
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
   const serverActions = useServerActions(service.id);
-  const { pending: confirmBinding, openConfirm, clearConfirm, recheckBeforeDispatch } =
-    useBoundActionConfirm({ resourceId: service.id });
-  const [protectedConfirm, setProtectedConfirm] = useState<{
-    action: LifecycleAction;
+  const {
+    pending: confirmBinding,
+    openConfirm,
+    clearConfirm,
+    recheckBeforeDispatch,
+    isBindingCurrent,
+  } = useBoundActionConfirm({ resourceId: service.id });
+  const [storedProtectedConfirm, setProtectedConfirm] = useState<{
+    binding: ActionConfirmBinding;
     confirmation: string;
   } | null>(null);
-  const busy = pending !== null;
+  const protectedConfirm =
+    storedProtectedConfirm?.binding === confirmBinding
+      ? storedProtectedConfirm
+      : null;
+  const [checking, setChecking] = useState(false);
+  const busy = pending !== null || checking;
   const isSuspended = service.suspended;
   const isCronJob = isCron(service);
   const hasUrl = publiclyRoutable(service.type);
@@ -80,30 +93,44 @@ export function SuspendServiceCard({
     serverActions.status === "ready" ? "ready" : serverActions.status,
   );
   const permissionReason = gateReason(gate, t);
-  const confirmOpen = confirmBinding?.action === "suspend";
+  const confirmOpen = confirmBinding?.action === "suspend" && !protectedConfirm;
 
-  async function runAction(action: LifecycleAction, confirmation?: string) {
-    if (permissionReason && !confirmation) return;
-    const result = confirmation
-      ? await onRun(action, service, confirmation)
-      : await onRun(action, service);
-    if (result.status === "confirmation_required") {
-      setProtectedConfirm({ action, confirmation: result.confirmation });
-    } else if (result.status === "success") {
-      setProtectedConfirm(null);
+  function closeConfirm() {
+    clearConfirm();
+    setProtectedConfirm(null);
+  }
+
+  async function runAction(
+    binding: ActionConfirmBinding | null,
+    confirmation?: string,
+  ) {
+    if (
+      !binding ||
+      busy ||
+      (binding.action !== "suspend" && binding.action !== "resume")
+    )
+      return;
+    setChecking(true);
+    try {
+      const { ok } = await recheckBeforeDispatch(binding);
+      if (!ok) return;
+      const result = confirmation
+        ? await onRun(binding.action, service, confirmation)
+        : await onRun(binding.action, service);
+      if (!isBindingCurrent(binding)) return;
+      if (result.status === "confirmation_required") {
+        setProtectedConfirm({ binding, confirmation: result.confirmation });
+      } else if (result.status === "success" || !confirmation) {
+        closeConfirm();
+      }
+    } finally {
+      setChecking(false);
     }
   }
 
   async function handleResume() {
-    if (permissionReason) return;
-    await runAction("resume");
-  }
-
-  async function handleSuspendConfirm() {
-    const { ok } = await recheckBeforeDispatch();
-    if (!ok) return;
-    clearConfirm();
-    await runAction("suspend");
+    if (busy || permissionReason) return;
+    await runAction(openConfirm("resume"));
   }
 
   return (
@@ -164,7 +191,7 @@ export function SuspendServiceCard({
 
       <ConfirmDialog
         open={confirmOpen}
-        onOpenChange={(open) => !open && clearConfirm()}
+        onOpenChange={(open) => !open && closeConfirm()}
         title={t("services.confirmSuspendTitle", { name: service.name })}
         description={t(
           isCronJob
@@ -176,7 +203,9 @@ export function SuspendServiceCard({
         )}
         cancelLabel={t("services.confirmCancel")}
         confirmLabel={t("services.actionSuspend")}
-        onConfirm={() => void handleSuspendConfirm()}
+        pending={busy}
+        closeOnConfirm={false}
+        onConfirm={() => void runAction(confirmBinding)}
       />
 
       <ProtectedConfirmationDialog
@@ -188,16 +217,16 @@ export function SuspendServiceCard({
         requiredConfirmation={protectedConfirm?.confirmation ?? ""}
         actionLabel={
           protectedConfirm &&
-          (protectedConfirm.action === "suspend" ||
-            protectedConfirm.action === "resume")
-            ? t(ACTION_LABEL[protectedConfirm.action])
+          (protectedConfirm.binding.action === "suspend" ||
+            protectedConfirm.binding.action === "resume")
+            ? t(ACTION_LABEL[protectedConfirm.binding.action])
             : ""
         }
         busy={busy}
-        onOpenChange={(open) => !open && setProtectedConfirm(null)}
+        onOpenChange={(open) => !open && closeConfirm()}
         onConfirm={(confirmation) =>
           protectedConfirm
-            ? runAction(protectedConfirm.action, confirmation)
+            ? runAction(protectedConfirm.binding, confirmation)
             : Promise.resolve()
         }
       />

@@ -119,6 +119,10 @@ function renderActions(
 }
 
 beforeEach(() => {
+  const receivedAt = Date.now();
+  for (const snapshot of [allowedSnapshot, deniedCreateSnapshot]) {
+    snapshot.receivedAt = receivedAt;
+  }
   toastError.mockReset();
   cancelDeploy.mockReset();
   rollbackService.mockReset();

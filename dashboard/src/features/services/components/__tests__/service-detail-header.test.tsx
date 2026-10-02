@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -12,6 +12,7 @@ import { ServiceDetailHeader } from "@/features/services/components/service-deta
 import type { ServiceView } from "@/features/services/types";
 import type { InstanceTypeView } from "@/features/services/hooks/use-instance-types";
 import type { LatestDeploySummary } from "@/features/deploys/hooks/use-latest-deploy";
+import { mockAllowedResourceActions } from "@/test/mocks/resource-actions";
 
 // The instance-type chip and the Manual Deploy button both go through Apollo;
 // stub them at the hook boundary (the pattern every other panel's test uses) so
@@ -45,10 +46,33 @@ vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
   useAutoDeploy: () => ({ setAutoDeploy: vi.fn(), busy: false }),
 }));
 
-vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } =
-    await import("@/test/mocks/resource-actions");
-  return mockAllowedResourceActions("app");
+let resourceActions = mockAllowedResourceActions("app");
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useServerActions: () => resourceActions.useServerActions(),
+  useDeployActions: () => resourceActions.useDeployActions(),
+}));
+const permissionQuery = vi.fn();
+vi.mock("@apollo/client/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@apollo/client/react")>()),
+  useApolloClient: () => ({ query: permissionQuery }),
+}));
+
+beforeEach(() => {
+  resourceActions = mockAllowedResourceActions("app");
+  permissionQuery.mockReset().mockResolvedValue({
+    data: {
+      deployActions: [
+        {
+          action: "deploy",
+          outcome: "allowed",
+          reason: null,
+          precondition: null,
+        },
+      ],
+    },
+  });
+  triggerDeploy.mockClear();
+  restartServer.mockClear();
 });
 
 vi.mock("@/features/workspaces/context/hooks", async () => {
@@ -476,7 +500,7 @@ describe("ServiceDetailHeader", () => {
       await screen.findByRole("menuitem", { name: "Deploy latest commit" }),
     );
 
-    expect(triggerDeploy).toHaveBeenCalledWith("app");
+    await waitFor(() => expect(triggerDeploy).toHaveBeenCalledWith("app"));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
@@ -515,7 +539,7 @@ describe("ServiceDetailHeader", () => {
       "restarts on the commit or image it is running now",
     );
     await user.click(screen.getByRole("button", { name: "Restart" }));
-    expect(restartServer).toHaveBeenCalledWith("app");
+    await waitFor(() => expect(restartServer).toHaveBeenCalledWith("app"));
     expect(triggerDeploy).not.toHaveBeenCalled();
   });
 

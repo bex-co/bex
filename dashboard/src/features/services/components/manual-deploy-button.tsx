@@ -18,6 +18,11 @@ import { isCron } from "@/features/services/lib/service-type";
 import type { ServiceView } from "@/features/services/types";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
 import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  useBoundActionConfirm,
+  type ActionConfirmBinding,
+} from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   gateAction,
@@ -43,8 +48,8 @@ export interface ManualDeployButtonProps {
  * `restartServer`, which keeps the commit or image that is live; a
  * parameter-free `triggerDeploy` would build the branch head (w1/m148). A
  * specific-commit deploy also turns auto-deploy off, as Render's dashboard
- * does, so the next push cannot replace the pin. Permission gates on the
- * deploy verb (w6/m143).
+ * does, so the next push cannot replace the pin. A specific commit also needs
+ * the create grant because it chooses executable content.
  */
 export function ManualDeployButton({
   service,
@@ -52,14 +57,32 @@ export function ManualDeployButton({
 }: ManualDeployButtonProps) {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
+  const capabilities = useCapabilities();
   const deployActions = useDeployActions(service.id);
+  const actionConfirm = useBoundActionConfirm({ resourceId: service.id });
+  const commitConfirm = useBoundActionConfirm({
+    resourceId: service.id,
+    requiredCapability: "can_create",
+  });
   const { deploying, trigger, restart } = useTriggerDeploy();
   const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
   const navigate = useNavigate();
-  const [dialog, setDialog] = useState<"restart" | "commit" | null>(null);
-  const [commitId, setCommitId] = useState("");
+  const [storedDialog, setDialog] = useState<{
+    kind: "restart" | "commit";
+    binding: ActionConfirmBinding;
+    commitId: string;
+  } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const dialog =
+    storedDialog?.binding ===
+    (storedDialog?.kind === "commit"
+      ? commitConfirm.pending
+      : actionConfirm.pending)
+      ? storedDialog
+      : null;
+  const commitId = dialog?.kind === "commit" ? dialog.commitId : "";
   const base = serviceBaseForType(service.type);
-  const busy = deploying || autoDeployBusy || pending;
+  const busy = checking || deploying || autoDeployBusy || pending;
   const repoBacked = !!service.repo;
   // Render: a specific commit is "Not supported for cron jobs".
   const canDeployCommit = repoBacked && !isCron(service);
@@ -85,6 +108,13 @@ export function ManualDeployButton({
     deployActions.status === "ready" ? "ready" : deployActions.status,
   );
   const permissionReason = gateReason(gate, t);
+  const commitReason =
+    permissionReason ??
+    (capabilities.canCreate
+      ? undefined
+      : t(
+          capabilities.reasonKey("can_create") ?? "capabilities.actionChecking",
+        ));
 
   function openDeploy(deployId: string | null) {
     if (!deployId) return;
@@ -94,35 +124,64 @@ export function ManualDeployButton({
     });
   }
 
-  // Each handler rechecks permission right before dispatch so a stale allow
-  // cannot fire after permission loss while the menu or dialog stayed open.
+  function openDialog(kind: "restart" | "commit") {
+    if (busy || (kind === "commit" ? commitReason : permissionReason)) return;
+    const confirmation = kind === "commit" ? commitConfirm : actionConfirm;
+    const binding = confirmation.openConfirm("deploy");
+    if (binding) setDialog({ kind, binding, commitId: "" });
+  }
+
+  function closeDialog() {
+    actionConfirm.clearConfirm();
+    commitConfirm.clearConfirm();
+    setDialog(null);
+  }
+
+  async function runDeploy(
+    confirmation: typeof actionConfirm,
+    binding: ActionConfirmBinding | null,
+    run: () => Promise<string | null>,
+  ) {
+    if (busy || !binding) return;
+    setChecking(true);
+    try {
+      const { ok } = await confirmation.recheckBeforeDispatch(binding);
+      if (!ok) return;
+      const deployId = await run();
+      if (confirmation.isBindingCurrent(binding)) openDeploy(deployId);
+    } finally {
+      confirmation.clearConfirm();
+      setChecking(false);
+    }
+  }
+
   async function handleDeploy(opts?: { clearCache?: boolean }) {
-    if (permissionReason) return;
-    await deployActions.refresh();
-    openDeploy(
+    if (busy || permissionReason) return;
+    await runDeploy(actionConfirm, actionConfirm.openConfirm("deploy"), () =>
       opts?.clearCache
-        ? await trigger(service.id, { clearCache: "clear" })
-        : await trigger(service.id),
+        ? trigger(service.id, { clearCache: "clear" })
+        : trigger(service.id),
     );
   }
 
   async function handleRestart() {
-    if (permissionReason) return;
-    await deployActions.refresh();
-    openDeploy(await restart(service.id));
+    if (permissionReason || dialog?.kind !== "restart") return;
+    await runDeploy(actionConfirm, dialog.binding, () => restart(service.id));
   }
 
   async function handleDeployCommit() {
-    if (permissionReason || !shaValid) return;
-    await deployActions.refresh();
-    const deployId = await trigger(service.id, { commitId: sha });
-    if (!deployId) return;
-    // The API's commitId leaves auto-deploy on; Render's dashboard turns it
-    // off so the next push doesn't replace the commit just deployed.
-    if (service.autoDeploy !== false) {
-      await setAutoDeploy(service.id, false);
-    }
-    openDeploy(deployId);
+    if (commitReason || !shaValid || dialog?.kind !== "commit") return;
+    const { binding } = dialog;
+    await runDeploy(commitConfirm, binding, async () => {
+      const deployId = await trigger(service.id, { commitId: sha });
+      // Pinning also turns off auto-deploy; this second mutation needs its
+      // own fresh check if access changed during the deploy request.
+      if (deployId && service.autoDeploy !== false) {
+        const { ok } = await commitConfirm.recheckBeforeDispatch(binding);
+        if (ok) await setAutoDeploy(service.id, false);
+      }
+      return deployId;
+    });
   }
 
   return (
@@ -145,8 +204,8 @@ export function ManualDeployButton({
           {canDeployCommit && (
             <PermissionMenuItem
               disabled={busy}
-              permissionReason={permissionReason}
-              onSelect={() => setDialog("commit")}
+              permissionReason={commitReason}
+              onSelect={() => openDialog("commit")}
             >
               {t("services.deployMenuSpecificCommit")}
             </PermissionMenuItem>
@@ -166,7 +225,7 @@ export function ManualDeployButton({
           <PermissionMenuItem
             disabled={busy}
             permissionReason={permissionReason}
-            onSelect={() => setDialog("restart")}
+            onSelect={() => openDialog("restart")}
           >
             {t("services.deployMenuRestart")}
           </PermissionMenuItem>
@@ -174,8 +233,8 @@ export function ManualDeployButton({
       </DropdownMenu>
 
       <ConfirmDialog
-        open={dialog === "restart"}
-        onOpenChange={(open) => !open && setDialog(null)}
+        open={dialog?.kind === "restart"}
+        onOpenChange={(open) => !open && closeDialog()}
         title={t("services.confirmRestartTitle", { name: service.name })}
         description={t(
           service.type === "static_site"
@@ -186,29 +245,32 @@ export function ManualDeployButton({
         cancelLabel={t("services.confirmCancel")}
         confirmLabel={t("services.actionRestart")}
         destructive={false}
+        pending={busy}
+        closeOnConfirm={false}
+        confirmDisabled={!!permissionReason}
         onConfirm={() => void handleRestart()}
       />
 
       <ConfirmDialog
-        open={dialog === "commit"}
-        onOpenChange={(open) => {
-          if (open) return;
-          setDialog(null);
-          setCommitId("");
-        }}
+        open={dialog?.kind === "commit"}
+        onOpenChange={(open) => !open && closeDialog()}
         title={t("services.deployCommitTitle")}
         description={t("services.deployCommitBody")}
         cancelLabel={t("services.confirmCancel")}
         confirmLabel={t("services.deployCommitConfirm")}
         destructive={false}
-        confirmDisabled={!shaValid}
+        pending={busy}
+        closeOnConfirm={false}
+        confirmDisabled={!shaValid || !!commitReason}
         onConfirm={() => void handleDeployCommit()}
       >
         <TextField
           id="deploy-commit-sha"
           label={t("services.deployCommitLabel")}
           value={commitId}
-          onChange={setCommitId}
+          onChange={(value) => {
+            if (dialog) setDialog({ ...dialog, commitId: value });
+          }}
           error={shaError ? t("services.deployCommitInvalid") : undefined}
         />
       </ConfirmDialog>
