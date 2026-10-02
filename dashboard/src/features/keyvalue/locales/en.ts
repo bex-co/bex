@@ -460,8 +460,21 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.persistenceDescription": {
     message:
-      "Change how data is written to disk so it survives a restart. Saving restarts the store with its data kept, so connections drop for up to a minute.",
+      "Changing modes restarts the store and interrupts connections while data is prepared. Switching between Journal + Snapshot and Snapshot only preserves data. Switching to or from Off discards all data.",
     description: "Key Value detail persistence-mode card description",
+  },
+  "keyvalue.persistenceDiscardTitle": {
+    message: "Discard Key Value data?",
+    description: "Persistence Off transition destructive confirmation title",
+  },
+  "keyvalue.persistenceDiscardBody": {
+    message:
+      "Switching to or from Off restarts this store and discards all its data. This cannot be undone.",
+    description: "Persistence Off transition destructive confirmation body",
+  },
+  "keyvalue.persistenceDiscardConfirm": {
+    message: "Discard data and change mode",
+    description: "Persistence Off transition destructive confirmation confirm",
   },
   "keyvalue.persistenceLabel": {
     message: "Persistence mode",

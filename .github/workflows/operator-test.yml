@@ -40,6 +40,11 @@ jobs:
       - name: make test (operator + envtest)
         working-directory: lego/operator
         run: make test
+      - name: Valkey persistence survives engine restarts
+        working-directory: lego/operator
+        env:
+          BEX_TEST_VALKEY_DOCKER: "1"
+        run: go test ./internal/controller -run '^TestKeyValuePersistenceEngine$' -count=1 -timeout=30m
       # w1/m68: `make test` REGENERATES manifests/deepcopy before running, so a
       # stale committed CRD is silently repaired in the runner and the job stays
       # green — drift ships. That is not hypothetical: `spec.deletedUsers` was

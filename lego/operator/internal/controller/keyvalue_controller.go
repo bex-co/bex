@@ -31,6 +31,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -249,6 +250,8 @@ func secretDataEqual(left, right map[string][]byte) bool {
 type KeyValueReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	// APIReader establishes persistence bootstrap from current owned pods, not cached rollout state.
+	APIReader client.Reader
 	// Backup is the non-secret object-store contract for paid-plan RDB
 	// snapshots. All fields are required; an incomplete contract is disabled.
 	Backup BackupStore
@@ -608,6 +611,26 @@ func (r *KeyValueReconciler) retireHeadlessKeyValueService(ctx context.Context, 
 // sized to the tier.
 func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, intent keyValueIntent) error {
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, sts, func() error {
+		// Adopt legacy storage only when its workload would already restart.
+		// In particular, upgrading the operator must not restart every cache.
+		if sts.ResourceVersion != "" && sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation] == "" && len(sts.Spec.Template.Spec.InitContainers) == 0 {
+			projected := sts.DeepCopy()
+			applyKeyValueStatefulSet(projected, kv, intent)
+			delete(projected.Spec.Template.Annotations, keyValuePersistenceSourceAnnotation)
+			projected.Spec.Template.Spec.InitContainers = nil
+			if equality.Semantic.DeepEqual(sts.Spec.Template, projected.Spec.Template) {
+				sts.Spec = projected.Spec
+				return controllerutil.SetControllerReference(kv, sts, r.Scheme)
+			}
+		}
+		source, err := r.seedKeyValuePersistence(ctx, kv, sts)
+		if err != nil {
+			return err
+		}
+		if sts.Spec.Template.Annotations == nil {
+			sts.Spec.Template.Annotations = map[string]string{}
+		}
+		sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation] = source
 		applyKeyValueStatefulSet(sts, kv, intent)
 		return controllerutil.SetControllerReference(kv, sts, r.Scheme)
 	})
@@ -618,6 +641,7 @@ func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *
 // function of (sts, kv, intent) so the workload shape is testable without a
 // client.
 func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
+	source := cmp.Or(sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation], "unknown")
 	// selector / serviceName / volumeClaimTemplates are immutable on a
 	// StatefulSet — set them once, at create. The pod template (resources,
 	// image, env) is reapplied every reconcile so a plan/version bump rolls.
@@ -652,9 +676,11 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	// its node away. Manual/CAPI drains (node upgrades) still evict it —
 	// the StatefulSet reschedules it elsewhere.
 	sts.Spec.Template.Annotations = map[string]string{
+		keyValuePersistenceSourceAnnotation:              source,
 		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 		"app.bex.co/credential-revision":                 intent.credentialRevision,
 	}
+	sts.Spec.Template.Spec.InitContainers = []corev1.Container{keyValuePersistenceInit(kv, intent, source)}
 	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
 }
 
@@ -701,7 +727,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		FSGroupChangePolicy: ptr.To(corev1.FSGroupChangeOnRootMismatch),
 	}
 	spec.Containers = []corev1.Container{{
-		Name:  "valkey",
+		Name:  kvServerContainerName,
 		Image: valkeyImage(kv.Spec.Version),
 		// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
 		// $(VAR) from the container env list. appendonly persists to the PVC.
@@ -886,8 +912,13 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	replicas int32,
 	credentialRevision string,
 ) (ctrl.Result, error) {
-	_ = r.Get(ctx, client.ObjectKeyFromObject(sts), sts)
-	rolloutReady := statefulSetRolloutReady(sts, replicas)
+	writtenGeneration := sts.Generation
+	if err := r.Get(ctx, client.ObjectKeyFromObject(sts), sts); err != nil {
+		return ctrl.Result{}, err
+	}
+	// A cached old revision can be fully Ready while the just-written template
+	// has not started its persistence handoff yet.
+	rolloutReady := sts.Generation == writtenGeneration && statefulSetRolloutReady(sts, replicas)
 	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
 	if kv.Spec.Suspended || (rolloutReady && podsReady) {
 		kv.Status.CredentialRevision = credentialRevision
