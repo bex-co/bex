@@ -18,10 +18,13 @@ package events
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
@@ -38,7 +41,7 @@ import (
 //   - list_events is Render's contract, argument for argument: serviceId
 //     (required), eventTypes (an array), startTime, endTime, cursor, limit, plus
 //     the workspaceId every scoped tool gets from the api package's middleware.
-//     Like upstream it defaults the window to the LAST 7 DAYS
+//     Like upstream the first page defaults to the LAST 7 DAYS
 //     (listEventsDefaultLookback) — an agent written against Render's tool
 //     asks "why did this restart last night?" without a startTime.
 //   - list_service_events stays, unchanged, as a working alias (user decision
@@ -63,8 +66,8 @@ const listEventsDefaultLookback = 7 * 24 * time.Hour
 type listEventsArgs struct {
 	ServiceID  string   `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
 	EventTypes []string `json:"eventTypes,omitempty" jsonschema:"filter to any of these event types, e.g. server_failed and deploy_ended; omit for all types"`
-	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window; DEFAULTS TO 7 DAYS AGO — set it to reach older events"`
-	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window; defaults to now"`
+	StartTime  *string  `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window; defaults to 7 days ago on the first page"`
+	EndTime    *string  `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window; defaults to now"`
 	Cursor     string   `json:"cursor,omitempty" jsonschema:"resume after this cursor (the cursor of the last event of the previous page)"`
 	Limit      int      `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 20)"`
 }
@@ -81,9 +84,9 @@ type listServiceEventsArgs struct {
 	Limit     int    `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 20)"`
 }
 
-// listServiceEventsResult wraps the array — MCP tool outputs must be JSON objects.
+// listServiceEventsResult preserves the legacy structured JSON object.
 // Each item carries its cursor alongside the event, the same envelope REST
-// returns. Both list tools share it.
+// returns. This is the legacy tool's published output.
 type listServiceEventsResult struct {
 	Events []eventWithCursor `json:"events"`
 }
@@ -114,15 +117,43 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name: "list_events",
 		Description: "List a service's event history, newest first: deploys and builds started/ended, " +
 			"server failures and recoveries, suspends and resumes, restarts, scaling, plan changes, " +
-			"env-var and config writes — each with who did it and when. Defaults to the LAST 7 DAYS; " +
+			"env-var and config writes — each with who did it and when. The first page defaults to the LAST 7 DAYS; " +
 			"set startTime to reach older events. Page with cursor. Env-var VALUES never appear in an event. " +
 			"Events cover services only, not Postgres or Key Value instances.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEventsArgs) (*mcp.CallToolResult, listServiceEventsResult, error) {
-		filter := FilterOf(in.EventTypes, in.StartTime, in.EndTime, in.Cursor, in.Limit)
-		if filter.Since.IsZero() {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEventsArgs) (*mcp.CallToolResult, any, error) {
+		filter := FilterOf(in.EventTypes, "", "", in.Cursor, in.Limit)
+		var err error
+		filter.Since, err = parseListEventsTime("startTime", in.StartTime)
+		if err != nil {
+			return nil, nil, err
+		}
+		filter.Until, err = parseListEventsTime("endTime", in.EndTime)
+		if err != nil {
+			return nil, nil, err
+		}
+		filter.OpenStart = in.StartTime == nil && in.Cursor != ""
+		if filter.Since.IsZero() && !filter.OpenStart {
 			filter.Since = s.Now().Add(-listEventsDefaultLookback)
 		}
-		return s.listTool(ctx, in.ServiceID, filter)
+		events, err := s.List(ctx, in.ServiceID, filter)
+		if err != nil {
+			return nil, nil, err
+		}
+		out := make([]renderEvent, 0, len(events))
+		cursor := `""`
+		for _, event := range events {
+			out = append(out, toRenderEvent(event))
+			cursor = event.Cursor
+		}
+		body, err := json.Marshal(out)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Render returns text, not structured output: a bare event array followed
+		// by the last item's cursor (or a quoted empty string for an empty page).
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{
+			Text: string(body) + "\n\n cursor: " + cursor,
+		}}}, nil, nil
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_service_events",
@@ -130,17 +161,21 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"Render shipped list_events): same events, but filters with a single `type` string and " +
 			"defaults to the LAST HOUR; pass startTime to look further back. Page with cursor.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listServiceEventsArgs) (*mcp.CallToolResult, listServiceEventsResult, error) {
-		return s.listTool(ctx, in.ServiceID, FilterOf([]string{in.Type}, in.StartTime, in.EndTime, in.Cursor, in.Limit))
+		events, err := s.List(ctx, in.ServiceID, FilterOf([]string{in.Type}, in.StartTime, in.EndTime, in.Cursor, in.Limit))
+		if err != nil {
+			return nil, listServiceEventsResult{}, err
+		}
+		return nil, listServiceEventsResult{Events: toEventList(events)}, nil
 	})
 }
 
-// listTool is both list tools' shared body: the same Service.List REST and
-// GraphQL call, so a tool call and a REST call with the same params return the
-// same page.
-func (s *Service) listTool(ctx context.Context, service string, filter Filter) (*mcp.CallToolResult, listServiceEventsResult, error) {
-	events, err := s.List(ctx, service, filter)
-	if err != nil {
-		return nil, listServiceEventsResult{}, err
+func parseListEventsTime(field string, value *string) (time.Time, error) {
+	if value == nil {
+		return time.Time{}, nil
 	}
-	return nil, listServiceEventsResult{Events: toEventList(events)}, nil
+	// Upstream distinguishes an omitted bound from a supplied empty timestamp.
+	if *value == "" {
+		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp", core.ErrBadRequest, field)
+	}
+	return core.ParseTime(field, *value)
 }
