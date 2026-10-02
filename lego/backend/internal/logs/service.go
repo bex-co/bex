@@ -545,11 +545,6 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
-	pods, err := s.AppPodsIn(ctx, appNS, app.Name)
-	if err != nil {
-		return nil, err
-	}
-	s.translateInstanceFilter(ctx, resource, appNS, &q, candidatesFromPods(pods))
 	// Pre-deploy step logs (w1/m33): a distinct LIVE source (the migration Job's
 	// pod), read directly from the App's own namespace — the Job is co-located
 	// with the App (ADR043 D8), not in the build namespace — never the durable
@@ -557,9 +552,14 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	// logs. validate() guarantees predeploy is requested alone, so it owns the
 	// whole response.
 	if slices.Contains(q.Types, LogTypePreDeploy) {
-		entries, err := s.collectPreDeployLogs(ctx, appNS, q)
+		entries, err := s.collectPreDeployLogs(ctx, appNS, resource, q)
 		return setLogResource(entries, resource), err
 	}
+	pods, err := s.AppPodsIn(ctx, appNS, app.Name)
+	if err != nil {
+		return nil, err
+	}
+	s.translateInstanceFilter(ctx, resource, appNS, &q, candidatesFromPods(pods))
 	if s.History != nil {
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
@@ -1529,7 +1529,7 @@ func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod
 // namespace. Live-only: a Job pod that has been TTL-reaped is simply gone (an
 // empty read), never an error — the same ephemerality as build logs. Requires
 // PodLogs to be wired (ErrLogsUnavailable otherwise).
-func (s *Service) collectPreDeployLogs(ctx context.Context, appNS string, q LogQuery) ([]LogEntry, error) {
+func (s *Service) collectPreDeployLogs(ctx context.Context, appNS, resource string, q LogQuery) ([]LogEntry, error) {
 	if s.PodLogs == nil {
 		return nil, core.ErrLogsUnavailable
 	}
@@ -1537,9 +1537,20 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS string, q LogQ
 	if err != nil {
 		return nil, err
 	}
+	if len(q.Instance) > 0 {
+		// This source reads only extant migration pods, so historical App
+		// instance discovery cannot supply its candidates.
+		q.Instance = ids.ResolveInstanceSelectors(q.Instance, resource, candidatesFromPods(pods))
+		if len(q.Instance) == 0 {
+			return nil, nil
+		}
+	}
 	var out []LogEntry
 	for i := range pods {
 		pod := pods[i].Name
+		if !q.keepPod(pod) {
+			continue
+		}
 		entries, err := s.readContainerLogs(ctx, appNS, q.App, pod, core.PreDeployContainer, LogTypePreDeploy, q.Limit)
 		if err != nil {
 			// A reaped pod (or a container that never produced logs) drops out of
