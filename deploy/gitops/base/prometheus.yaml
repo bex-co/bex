@@ -219,9 +219,10 @@ spec:
                 target_matchers: [alertname=~"CertificateNotReady|CertificateExpiringSoon"]
                 equal: [namespace, name]
         server:
-          # Covers the dashboard's widest range preset (24h) with headroom;
-          # cardinality is tiny (a handful of scrape jobs), so this is
-          # disk-bounded, not memory-bounded. The PV rides the cluster default
+          # Retention bounds stored history, not the memory required to replay
+          # the WAL and evaluate queries. The production overlay owns its larger
+          # memory budget; this baseline keeps the local stack small.
+          # The PV rides the cluster default
           # StorageClass — hcloud-volumes on prod (a network volume, survives a
           # node loss), local-path on the CAPD mock (node-local) — so history
           # survives a pod restart (and a node loss on prod); with emptyDir a
