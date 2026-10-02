@@ -48,3 +48,7 @@
 - Mounted tests: `service-row-actions`, `deploy-actions`, `resource-actions` policy — permitted dispatch and zero forbidden dispatch (viewer deny, restart→deploy verb, cancel under billing, selected-target rollback).
 - Backend projection contract unchanged; no backend permission matrix edits.
 - Limitation: live authenticated two-role walkthrough on `dev-6` was not completed this session (local kind API server unavailable); unit/mounted coverage stands in for permission gating. Re-run browser evidence when `dev-6` is up.
+
+### Live verification retry — 2026-10-02
+
+Still unverified: the authorized local recovery restored a verified kubeconfig and briefly Ready workload nodes, but dev-6 provisioning subsequently failed on the CNPG webhook and recurring API/TLS timeouts. No authenticated browser claims are made and the live DoD checkbox remains open. See [blocked follow-up 074](../../blocked/074.md) for recovery evidence and exact resume prerequisites. No test identities/workspaces were created.
