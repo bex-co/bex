@@ -31,7 +31,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -250,7 +249,8 @@ func secretDataEqual(left, right map[string][]byte) bool {
 type KeyValueReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	// APIReader establishes persistence bootstrap from current owned pods, not cached rollout state.
+	// APIReader bypasses informer lag when fencing persistence handoffs against
+	// a replaced process or a superseding desired generation.
 	APIReader client.Reader
 	// Backup is the non-secret object-store contract for paid-plan RDB
 	// snapshots. All fields are required; an incomplete contract is disabled.
@@ -515,8 +515,12 @@ type keyValueIntent struct {
 	podLabels map[string]string
 	// authSecretName and credentialRevision are filled in after the credential
 	// Secrets reconcile, which is the only step that must precede the workload.
-	authSecretName     string
-	credentialRevision string
+	authSecretName       string
+	credentialRevision   string
+	persistenceToken     string
+	persistenceSource    string
+	persistenceLegacyPod *corev1.Pod
+	skipPersistenceInit  bool
 }
 
 func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string) keyValueIntent {
@@ -611,26 +615,6 @@ func (r *KeyValueReconciler) retireHeadlessKeyValueService(ctx context.Context, 
 // sized to the tier.
 func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, intent keyValueIntent) error {
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, sts, func() error {
-		// Adopt legacy storage only when its workload would already restart.
-		// In particular, upgrading the operator must not restart every cache.
-		if sts.ResourceVersion != "" && sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation] == "" && len(sts.Spec.Template.Spec.InitContainers) == 0 {
-			projected := sts.DeepCopy()
-			applyKeyValueStatefulSet(projected, kv, intent)
-			delete(projected.Spec.Template.Annotations, keyValuePersistenceSourceAnnotation)
-			projected.Spec.Template.Spec.InitContainers = nil
-			if equality.Semantic.DeepEqual(sts.Spec.Template, projected.Spec.Template) {
-				sts.Spec = projected.Spec
-				return controllerutil.SetControllerReference(kv, sts, r.Scheme)
-			}
-		}
-		source, err := r.seedKeyValuePersistence(ctx, kv, sts)
-		if err != nil {
-			return err
-		}
-		if sts.Spec.Template.Annotations == nil {
-			sts.Spec.Template.Annotations = map[string]string{}
-		}
-		sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation] = source
 		applyKeyValueStatefulSet(sts, kv, intent)
 		return controllerutil.SetControllerReference(kv, sts, r.Scheme)
 	})
@@ -641,7 +625,13 @@ func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *
 // function of (sts, kv, intent) so the workload shape is testable without a
 // client.
 func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
-	source := cmp.Or(sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation], "unknown")
+	// Capture legacy authority before replacing the old flags; never change this
+	// fallback on subsequent edits (including edits while suspended). The PVC
+	// marker takes over after the first initializer runs.
+	sourceMode := cmp.Or(intent.persistenceSource, keyValuePersistenceSource(sts, kv.Spec.PersistenceMode))
+	if intent.persistenceToken == "" {
+		intent.persistenceToken = sts.Spec.Template.Annotations[keyValuePersistenceTokenAnnotation]
+	}
 	// selector / serviceName / volumeClaimTemplates are immutable on a
 	// StatefulSet — set them once, at create. The pod template (resources,
 	// image, env) is reapplied every reconcile so a plan/version bump rolls.
@@ -676,11 +666,16 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 	// its node away. Manual/CAPI drains (node upgrades) still evict it —
 	// the StatefulSet reschedules it elsewhere.
 	sts.Spec.Template.Annotations = map[string]string{
-		keyValuePersistenceSourceAnnotation:              source,
 		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 		"app.bex.co/credential-revision":                 intent.credentialRevision,
 	}
-	sts.Spec.Template.Spec.InitContainers = []corev1.Container{keyValuePersistenceInit(kv, intent, source)}
+	if !intent.skipPersistenceInit {
+		sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation] = sourceMode
+		if intent.persistenceToken != "" {
+			sts.Spec.Template.Annotations[keyValuePersistenceTokenAnnotation] = intent.persistenceToken
+		}
+		sts.Spec.Template.Spec.InitContainers = []corev1.Container{keyValuePersistenceInit(kv, intent, sourceMode)}
+	}
 	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
 }
 
@@ -700,6 +695,11 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		}},
 	}
 	serverArgs := valkeyArgs(kv.Spec, intent.plan)
+	// Install the ephemeral Off directory with the handoff, never by rolling an
+	// unchanged legacy cache merely because the operator was upgraded.
+	if kv.Spec.PersistenceMode == "off" && !intent.skipPersistenceInit {
+		serverArgs = append(serverArgs, "--dir", "/tmp")
+	}
 	serverPorts := []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}}
 	var serverMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
@@ -727,7 +727,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		FSGroupChangePolicy: ptr.To(corev1.FSGroupChangeOnRootMismatch),
 	}
 	spec.Containers = []corev1.Container{{
-		Name:  kvServerContainerName,
+		Name:  "valkey",
 		Image: valkeyImage(kv.Spec.Version),
 		// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
 		// $(VAR) from the container env list. appendonly persists to the PVC.
@@ -826,6 +826,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.reconcileKeyValueService(ctx, &kv, intent); err != nil {
 		return r.kvFail(ctx, &kv, "ServiceFailed", err)
 	}
+	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, auth, &intent); done || err != nil {
+		return result, err
+	}
 	if err := r.reconcileKeyValueWorkload(ctx, &kv, sts, intent); err != nil {
 		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
 	}
@@ -916,15 +919,14 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	if err := r.Get(ctx, client.ObjectKeyFromObject(sts), sts); err != nil {
 		return ctrl.Result{}, err
 	}
-	// A cached old revision can be fully Ready while the just-written template
-	// has not started its persistence handoff yet.
+	// Never acknowledge a cached Ready revision older than the template just written.
 	rolloutReady := sts.Generation == writtenGeneration && statefulSetRolloutReady(sts, replicas)
 	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
 	if kv.Spec.Suspended || (rolloutReady && podsReady) {
 		kv.Status.CredentialRevision = credentialRevision
 		reason, message := "Provisioned", "valkey ready"
 		if kv.Spec.Suspended {
-			reason, message = reasonSuspended, "valkey suspended (scaled to zero)"
+			reason, message = reasonSuspended, "valkey suspended (scaled to zero); persistence settings apply on resume"
 		}
 		kv.Status.Phase = appv1alpha1.KVPhaseReady
 		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
@@ -942,6 +944,12 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	reason, message := "Provisioning", "waiting for the current Valkey StatefulSet revision"
 	if rolloutReady && !podsReady {
 		reason, message = "PodUnready", "a current Valkey pod is not Ready"
+	}
+	if persistenceReason, persistenceMessage := r.keyValuePersistenceProgress(ctx, kv, sts); persistenceReason != "" {
+		reason, message = persistenceReason, persistenceMessage
+		if reason == "PersistenceTransitionFailed" {
+			kv.Status.Phase = appv1alpha1.KVPhaseFailed
+		}
 	}
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,

@@ -22,228 +22,255 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
-// Opt in with BEX_TEST_VALKEY_DOCKER=1 go test ./internal/controller -run TestKeyValuePersistenceEngine.
-// Or set BEX_TEST_VALKEY_BIN_7/_8 to built engine bin directories (timeout must
-// be on PATH). Native runs exercise the same files and process restarts; Docker
-// additionally exercises the pinned image and production uid. Do not run native
-// handoffs concurrently: the production init script uses a pod-local /tmp socket.
-// Each Docker case owns a volume and exercises the production pinned engine.
-// Container replacement models a StatefulSet pod replacement against its PVC.
-func TestKeyValuePersistenceEngine(t *testing.T) {
-	if os.Getenv("BEX_TEST_VALKEY_DOCKER") != "1" && os.Getenv("BEX_TEST_VALKEY_BIN_7") == "" && os.Getenv("BEX_TEST_VALKEY_BIN_8") == "" {
-		t.Skip("set BEX_TEST_VALKEY_DOCKER=1 or BEX_TEST_VALKEY_BIN_7/_8 to test real Valkey persistence")
+// Run with BEX_TEST_VALKEY=1. These tests use the same pinned 7/8 engine images
+// and actual persistent Docker volumes; unit/envtest cannot prove disk format
+// conversion or expiration survival. They do not touch a Kubernetes cluster.
+func TestValkeyPersistenceEngine(t *testing.T) {
+	if os.Getenv("BEX_TEST_VALKEY") != "1" {
+		t.Skip("set BEX_TEST_VALKEY=1 to run pinned Valkey Docker durability tests")
 	}
 	for _, major := range []string{"7", "8"} {
 		t.Run(major, func(t *testing.T) {
-			t.Run("old_projection_replays_stale_journal", func(t *testing.T) {
-				engine := newPersistenceEngine(t, major)
-				deadline := engine.seedStaleJournal()
-				engine.start("journal-snapshot")
-				engine.want("baseline", "original")
-				engine.want("counter", "1")
-				engine.want("snapshot-marker", "")
-				engine.wantDeadline(deadline)
-				t.Log("old startup projection reproduced acknowledged, SAVE-persisted marker loss and counter rollback 23 -> 1")
-			})
-			t.Run("handoff_preserves_current_snapshot", func(t *testing.T) {
-				engine := newPersistenceEngine(t, major)
-				deadline := engine.seedStaleJournal()
-				engine.handoff("snapshot", "journal-snapshot")
-				engine.start("journal-snapshot")
-				engine.wantCurrent(deadline)
-				engine.command("SET", "post-handoff", "newer-than-snapshot")
-				engine.command("INCR", "counter")
-				// Kill without taking another RDB: retrying conversion from the old RDB
-				// would lose these acknowledged journal-only writes.
-				engine.command("CONFIG", "SET", "appendfsync", "always")
-				engine.command("SET", "fsync-barrier", "yes")
-				engine.stop(false)
-				engine.handoff("snapshot", "journal-snapshot")
-				engine.start("journal-snapshot")
-				engine.want("counter", "24")
-				engine.want("post-handoff", "newer-than-snapshot")
-				engine.want("snapshot-marker", "saved-current")
-				engine.wantDeadline(deadline)
-				engine.stop(true)
-				engine.start("journal-snapshot")
-				engine.want("counter", "24")
-				engine.want("post-handoff", "newer-than-snapshot")
-			})
-			t.Run("graceful_snapshot_shutdown_saves_acknowledged_writes", func(t *testing.T) {
-				engine := newPersistenceEngine(t, major)
-				engine.seedStaleJournal()
-				engine.start("snapshot")
-				engine.command("SET", "unsaved", "acknowledged-before-shutdown")
-				engine.command("INCR", "counter")
-				engine.stop(true)
-				engine.handoff("snapshot", "journal-snapshot")
-				engine.start("journal-snapshot")
-				engine.want("unsaved", "acknowledged-before-shutdown")
-				engine.want("counter", "24")
-			})
-			t.Run("failed_journal_enable_preserves_snapshot_and_retries", func(t *testing.T) {
-				engine := newPersistenceEngine(t, major)
-				deadline := engine.seedStaleJournal()
-				engine.files("mv appendonlydir preserved-old-journal; touch appendonlydir; chown 999:1000 appendonlydir")
-				ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-				defer cancel()
-				out, err := engine.handoffCommand(ctx, "snapshot", "journal-snapshot").CombinedOutput()
-				if err == nil {
-					t.Fatalf("handoff unexpectedly succeeded with blocked journal path: %s", out)
+			t.Run("old_projection_loses_saved_data", func(t *testing.T) {
+				e := newPersistenceEngine(t, major)
+				c := e.start("journal-snapshot")
+				e.set(c, "counter", "1")
+				e.stop()
+				c = e.start("snapshot")
+				e.set(c, "counter", "23")
+				e.set(c, "new", "kept")
+				if err := c.Save(context.Background()).Err(); err != nil {
+					t.Fatal(err)
 				}
-				if ctx.Err() != nil {
-					t.Fatalf("handoff did not reject failed journal enable promptly: %s", out)
+				e.stop()
+				c = e.start("journal-snapshot")
+				if got := c.Get(context.Background(), "counter").Val(); got != "1" {
+					t.Fatalf("old projection did not reproduce rollback: %q", got)
 				}
-				engine.start("snapshot")
-				engine.wantCurrent(deadline)
-				engine.stop(true)
-				engine.files("rm appendonlydir")
-				engine.handoff("snapshot", "journal-snapshot")
-				engine.start("journal-snapshot")
-				engine.wantCurrent(deadline)
+				if c.Exists(context.Background(), "new").Val() != 0 {
+					t.Fatal("old projection unexpectedly kept new key")
+				}
 			})
-			t.Run("interrupted_off_retirement_then_reversal_never_resurrects", func(t *testing.T) {
-				engine := newPersistenceEngine(t, major)
-				engine.seedStaleJournal()
-				// Model termination after committing Off intent and retiring only
-				// the snapshot. The remaining old AOF must not become authority.
-				engine.files("printf 'off\\n' > .bex-persistence-mode; chown 999:1000 .bex-persistence-mode; mkdir retired-before-kill; mv dump.rdb retired-before-kill/")
-				engine.handoff("snapshot", "journal-snapshot")
-				engine.start("journal-snapshot")
-				engine.want("baseline", "")
-				engine.want("counter", "")
-				engine.want("snapshot-marker", "")
+			t.Run("live_handoff_and_reverse_survive_restart", func(t *testing.T) {
+				e := newPersistenceEngine(t, major)
+				e.init("journal-snapshot", "journal-snapshot", "")
+				c := e.start("journal-snapshot")
+				e.set(c, "baseline", "original")
+				e.set(c, "counter", "1")
+				if err := c.Set(context.Background(), "expiry", "value", time.Hour).Err(); err != nil {
+					t.Fatal(err)
+				}
+				deadline := c.PExpireTime(context.Background(), "expiry").Val()
+				e.stop()
+				e.init("journal-snapshot", "snapshot", "")
+				c = e.start("snapshot")
+				e.set(c, "new", "kept")
+				e.set(c, "counter", "23")
+				if err := c.Save(context.Background()).Err(); err != nil {
+					t.Fatal(err)
+				}
+				e.stop()
+				c = e.start("snapshot") // explicit SAVE + ordinary-restart control
+				e.assert(c, "counter", "23")
+				e.assert(c, "new", "kept")
+				e.set(c, "after-save", "live")
+				e.prepare(c)
+				// An acknowledged write AFTER completion must be journaled too. Kill
+				// without shutdown SAVE: the live gate must not depend on old grace time.
+				e.set(c, "after-handoff", "acknowledged")
+				if err := c.Do(context.Background(), "WAITAOF", 1, 0, 5000).Err(); err != nil {
+					// Valkey 7 lacks WAITAOF; appendfsync always is used for this fixture.
+					t.Logf("WAITAOF unavailable: %v", err)
+				}
+				e.kill()
+				e.init("journal-snapshot", "journal-snapshot", "prepared-1")
+				c = e.start("journal-snapshot")
+				for k, v := range map[string]string{"baseline": "original", "counter": "23", "new": "kept", "after-save": "live", "after-handoff": "acknowledged"} {
+					e.assert(c, k, v)
+				}
+				if got := c.PExpireTime(context.Background(), "expiry").Val(); got != deadline {
+					t.Fatalf("expiry moved: %v -> %v", deadline, got)
+				}
+				e.stop()
+				// Consume a reversal; then retry the same old token after new snapshot
+				// writes. Reapplying the token would incorrectly reload an older AOF.
+				e.init("journal-snapshot", "snapshot", "prepared-1")
+				c = e.start("snapshot")
+				e.set(c, "counter", "41")
+				e.stop()
+				e.init("journal-snapshot", "snapshot", "prepared-1")
+				c = e.start("snapshot")
+				e.assert(c, "counter", "41")
+				e.stop()
+				// Resume a suspended store: no serving process exists for a live gate.
+				e.init("journal-snapshot", "journal-snapshot", "prepared-1")
+				c = e.start("journal-snapshot")
+				e.assert(c, "counter", "41")
 			})
 			t.Run("all_mode_pairs", func(t *testing.T) {
-				for _, source := range []string{"journal-snapshot", "snapshot", "off"} {
-					for _, target := range []string{"journal-snapshot", "snapshot", "off"} {
-						t.Run(source+"_to_"+target, func(t *testing.T) {
-							engine := newPersistenceEngine(t, major)
-							// Seed historical durable files before entering the source
-							// mode: Off must never resurrect that earlier keyspace.
-							engine.start("journal-snapshot")
-							engine.command("SET", "historical", "must-not-resurrect")
-							engine.command("SAVE")
-							engine.stop(true)
-							engine.handoff("journal-snapshot", source)
-							engine.start(source)
-							engine.command("SET", "current", "acknowledged")
-							engine.stop(true)
-							engine.handoff(source, target)
-							engine.start(target)
-							expected := "acknowledged"
-							if source == "off" || target == "off" {
-								expected = ""
-								engine.want("historical", "")
+				for _, from := range []string{"journal-snapshot", "snapshot", "off"} {
+					for _, to := range []string{"journal-snapshot", "snapshot", "off"} {
+						t.Run(from+"_to_"+to, func(t *testing.T) {
+							e := newPersistenceEngine(t, major)
+							e.init(from, from, "")
+							c := e.start(from)
+							e.set(c, "marker", "present")
+							e.stop()
+							e.init(from, to, "")
+							c = e.start(to)
+							if from == "off" || to == "off" {
+								if c.Exists(context.Background(), "marker").Val() != 0 {
+									t.Fatal("Off transition resurrected data")
+								}
+							} else {
+								e.assert(c, "marker", "present")
 							}
-							engine.want("current", expected)
 						})
 					}
 				}
 			})
-			t.Run("invalid_initialized_journal_fails_closed", func(t *testing.T) {
-				for _, damage := range []string{"missing", "corrupt", "comment-only", "history-only"} {
-					t.Run(damage, func(t *testing.T) {
-						engine := newPersistenceEngine(t, major)
-						engine.start("journal-snapshot")
-						engine.command("SET", "baseline", "original")
-						engine.command("SAVE")
-						engine.command("SET", "journal-only", "newer-than-snapshot")
-						engine.stop(false)
-						engine.handoff("journal-snapshot", "journal-snapshot")
-						engine.files("cp appendonlydir/appendonly.aof.manifest preserved.manifest")
-						switch damage {
-						case "missing":
-							engine.files("rm appendonlydir/appendonly.aof.manifest")
-						case "corrupt":
-							engine.files("printf 'invalid manifest\\n' > appendonlydir/appendonly.aof.manifest")
-						case "comment-only":
-							engine.files("printf '# incomplete manifest\\n' > appendonlydir/appendonly.aof.manifest")
-						case "history-only":
-							engine.files("printf 'file appendonly.aof.1.base.rdb seq 1 type h\\n' > appendonlydir/appendonly.aof.manifest")
+
+			t.Run("interrupted_handoffs_and_off_reversal", func(t *testing.T) {
+				for _, tc := range []struct{ name, source, target, boundary string }{
+					{"journal_after_save", "journal-snapshot", "snapshot", "cli SHUTDOWN NOSAVE"},
+					{"snapshot_after_enable", "snapshot", "journal-snapshot", "complete=no"},
+					{"off_before_deletion", "snapshot", "off", "# These are the exact managed Valkey defaults"},
+				} {
+					t.Run(tc.name, func(t *testing.T) {
+						e := newPersistenceEngine(t, major)
+						e.init(tc.source, tc.source, "")
+						c := e.start(tc.source)
+						e.set(c, "authoritative", "yes")
+						e.stop()
+						interrupted := strings.Replace(keyValuePersistenceScript, tc.boundary, "exit 42\n"+tc.boundary, 1)
+						if out, err := e.initScriptResult(tc.source, tc.target, "", interrupted); err == nil {
+							t.Fatalf("interruption not reached: %s", out)
 						}
-						checksums := engine.fileOutput("find appendonlydir -type f -exec cksum {} \\; | sort")
-						ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-						defer cancel()
-						out, err := engine.handoffCommand(ctx, "journal-snapshot", "snapshot").CombinedOutput()
-						if err == nil {
-							t.Fatalf("handoff accepted %s initialized journal: %s", damage, out)
+						// Reverse the interrupted Off request. Its persisted discard intent
+						// must complete before durable mode can start, rather than resurrect.
+						target := tc.target
+						if target == "off" {
+							target = "journal-snapshot"
 						}
-						if ctx.Err() != nil {
-							t.Fatalf("handoff did not fail within its own startup bound: %s", out)
+						e.init(tc.source, target, "")
+						c = e.start(target)
+						if tc.target == "off" {
+							if c.Exists(context.Background(), "authoritative").Val() != 0 {
+								t.Fatal("interrupted Off resurrected old data")
+							}
+						} else {
+							e.assert(c, "authoritative", "yes")
 						}
-						if got := engine.fileOutput("find appendonlydir -type f -exec cksum {} \\; | sort"); got != checksums {
-							t.Fatalf("failed handoff modified recoverable journal files: before %s after %s", checksums, got)
-						}
-						if got := engine.fileOutput("cat .bex-persistence-mode"); got != "journal-snapshot" {
-							t.Fatalf("failed handoff committed mode %q", got)
-						}
-						engine.files("cp preserved.manifest appendonlydir/appendonly.aof.manifest")
-						engine.handoff("journal-snapshot", "snapshot")
-						engine.start("snapshot")
-						engine.want("baseline", "original")
-						engine.want("journal-only", "newer-than-snapshot")
 					})
 				}
 			})
-			t.Run("unknown_retained_storage_requires_explicit_off_reset", func(t *testing.T) {
-				engine := newPersistenceEngine(t, major)
-				deadline := engine.seedStaleJournal()
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-				if out, err := engine.handoffCommand(ctx, "unknown", "journal-snapshot").CombinedOutput(); err == nil {
-					t.Fatalf("unknown retained storage was adopted: %s", out)
-				}
-				engine.start("snapshot")
-				engine.wantCurrent(deadline)
-				engine.stop(true)
-				engine.handoff("unknown", "off")
-				engine.start("off")
-				engine.want("baseline", "")
-				engine.want("snapshot-marker", "")
-			})
-			t.Run("first_boot_reversal_after_initialization", func(t *testing.T) {
-				for _, source := range []string{"journal-snapshot", "snapshot", "off"} {
-					for _, target := range []string{"journal-snapshot", "snapshot", "off"} {
-						t.Run(source+"_to_"+target, func(t *testing.T) {
-							engine := newPersistenceEngine(t, major)
-							// The first init must establish real files before declaring a
-							// durable mode, even if desired mode reverses before app start.
-							engine.handoff("new:"+source, source)
-							engine.handoff("new:"+source, target)
-							engine.start(target)
-							engine.command("SET", "first-write", "acknowledged")
-							engine.stop(true)
-							engine.handoff("new:"+source, target)
-							engine.start(target)
-							expected := "acknowledged"
-							if target == "off" {
-								expected = ""
-							}
-							engine.want("first-write", expected)
-						})
-					}
+			t.Run("new_suspended_mode_reversal", func(t *testing.T) {
+				for _, pair := range [][2]string{{"snapshot", "journal-snapshot"}, {"journal-snapshot", "snapshot"}} {
+					t.Run(pair[0]+"_to_"+pair[1], func(t *testing.T) {
+						e := newPersistenceEngine(t, major)
+						e.init(pair[0], pair[1], "")
+						c := e.start(pair[1])
+						e.set(c, "first-start", "retained")
+						e.stop()
+						e.init(pair[0], pair[1], "")
+						c = e.start(pair[1])
+						e.assert(c, "first-start", "retained")
+					})
 				}
 			})
-			t.Run("snapshot_without_prior_journal", func(t *testing.T) {
-				engine := newPersistenceEngine(t, major)
-				engine.start("snapshot")
-				engine.command("SET", "fresh", "never-journaled")
-				engine.command("SAVE")
-				engine.stop(true)
-				engine.handoff("snapshot", "journal-snapshot")
-				engine.start("journal-snapshot")
-				engine.want("fresh", "never-journaled")
-				engine.stop(false)
-				engine.start("journal-snapshot")
-				engine.want("fresh", "never-journaled")
+			t.Run("initialized_journal_invalid_manifest_fails", func(t *testing.T) {
+				for name, body := range map[string]string{"comments-only": "# empty journal manifest\n", "history-only": "file obsolete.aof seq 1 type h\n", "empty": ""} {
+					t.Run(name, func(t *testing.T) {
+						e := newPersistenceEngine(t, major)
+						e.init("journal-snapshot", "journal-snapshot", "")
+						c := e.start("journal-snapshot")
+						e.set(c, "recoverable", "yes")
+						e.stop()
+						e.docker("run", "--rm", "-v", e.volume+":/data", "-e", "MANIFEST="+body, "--entrypoint", "sh", e.image, "-ec", `cp /data/appendonlydir/appendonly.aof.manifest /data/original.manifest; printf '%s' "$MANIFEST" > /data/appendonlydir/appendonly.aof.manifest`)
+						checksums := func() string {
+							return e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "sha256sum /data/dump.rdb /data/.bex-persistence-mode /data/appendonlydir/*")
+						}
+						before := checksums()
+						if out, err := e.initResult("journal-snapshot", "journal-snapshot", ""); err == nil {
+							t.Fatalf("invalid journal accepted: %s", out)
+						}
+						assertPersistenceFilesUnchanged(t, before, checksums())
+						// Valkey parses an existing manifest even with AOF disabled.
+						// Repair the deliberately corrupted fixture, then prove the
+						// preserved journal still recovers the acknowledged write.
+						e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "mv /data/original.manifest /data/appendonlydir/appendonly.aof.manifest")
+						c = e.start("journal-snapshot")
+						e.assert(c, "recoverable", "yes")
+					})
+				}
+			})
+			t.Run("initialized_journal_missing_marker_fails", func(t *testing.T) {
+				e := newPersistenceEngine(t, major)
+				e.init("journal-snapshot", "journal-snapshot", "")
+				c := e.start("journal-snapshot")
+				e.set(c, "retained", "yes")
+				e.stop()
+				e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "rm /data/.bex-persistence-mode")
+				if out, err := e.initScriptResult("new:journal-snapshot", "journal-snapshot", "", keyValuePersistenceScript); err == nil {
+					t.Fatalf("lost marker guessed new volume: %s", out)
+				}
+				c = e.start("journal-snapshot")
+				e.assert(c, "retained", "yes")
+			})
+			t.Run("initialized_snapshot_missing_same_mode_fails", func(t *testing.T) {
+				e := newPersistenceEngine(t, major)
+				e.init("snapshot", "snapshot", "")
+				e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "rm /data/dump.rdb")
+				if out, err := e.initResult("snapshot", "snapshot", ""); err == nil {
+					t.Fatalf("missing initialized snapshot accepted: %s", out)
+				}
+			})
+			t.Run("missing_manifest_and_invalid_marker_fail_closed", func(t *testing.T) {
+				e := newPersistenceEngine(t, major)
+				e.init("journal-snapshot", "journal-snapshot", "")
+				c := e.start("journal-snapshot")
+				e.set(c, "recoverable", "yes")
+				e.stop()
+				e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "rm /data/appendonlydir/appendonly.aof.manifest")
+				if out, err := e.initResult("journal-snapshot", "journal-snapshot", ""); err == nil {
+					t.Fatalf("missing initialized journal accepted: %s", out)
+				}
+				if out, err := e.initResult("journal-snapshot", "snapshot", ""); err == nil {
+					t.Fatalf("missing journal accepted: %s", out)
+				}
+				e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "printf 'unknown\\n' > /data/.bex-persistence-mode")
+				if out, err := e.initResult("journal-snapshot", "snapshot", ""); err == nil {
+					t.Fatalf("invalid marker accepted: %s", out)
+				}
+				// Even both failures must leave the recoverable snapshot untouched.
+				c = e.start("snapshot")
+				e.assert(c, "recoverable", "yes")
+			})
+			t.Run("failed_rewrite_retains_snapshot_and_retries", func(t *testing.T) {
+				e := newPersistenceEngine(t, major)
+				e.init("snapshot", "snapshot", "")
+				c := e.start("snapshot")
+				e.set(c, "current", "snapshot-data")
+				e.stop()
+				// A file where AOF needs its directory reliably fails conversion.
+				e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "touch /data/appendonlydir")
+				if out, err := e.initResult("snapshot", "journal-snapshot", ""); err == nil {
+					t.Fatalf("conversion unexpectedly succeeded: %s", out)
+				}
+				c = e.start("snapshot")
+				e.assert(c, "current", "snapshot-data")
+				e.stop()
+				e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "rm /data/appendonlydir")
+				e.init("snapshot", "journal-snapshot", "")
+				c = e.start("journal-snapshot")
+				e.assert(c, "current", "snapshot-data")
 			})
 		})
 	}
@@ -252,241 +279,147 @@ func TestKeyValuePersistenceEngine(t *testing.T) {
 type persistenceEngine struct {
 	t                        *testing.T
 	image, volume, container string
-	bin, data                string
-	process                  *exec.Cmd
+	client                   *redis.Client
+	bootstrapped             bool
 }
 
 func newPersistenceEngine(t *testing.T, major string) *persistenceEngine {
-	t.Helper()
-	e := &persistenceEngine{t: t, image: valkeyImage(major), volume: fmt.Sprintf("bex-kv-persistence-%d", time.Now().UnixNano())}
-	e.bin = os.Getenv("BEX_TEST_VALKEY_BIN_" + major)
-	if e.bin != "" {
-		var err error
-		e.data, err = os.MkdirTemp("/tmp", "bex-kv-native-")
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() {
-			if e.process != nil {
-				e.stop(false)
-			}
-			if err := os.RemoveAll(e.data); err != nil {
-				t.Error(err)
-			}
-		})
-		return e
-	}
-	if os.Getenv("BEX_TEST_VALKEY_DOCKER") != "1" {
-		t.Skip("no native engine directory for major " + major)
-	}
-	e.docker("volume", "create", e.volume)
-	t.Cleanup(func() { e.docker("volume", "rm", e.volume) })
+	e := &persistenceEngine{t: t, image: valkeyImage(major)}
+	e.volume = strings.TrimSpace(e.docker("volume", "create"))
 	t.Cleanup(func() {
+		if e.client != nil {
+			_ = e.client.Close()
+		}
 		if e.container != "" {
 			e.docker("rm", "-f", e.container)
 		}
+		e.docker("volume", "rm", e.volume)
 	})
-	// Match the writable PVC ownership established by the pod fsGroup before init.
-	e.docker("run", "--rm", "-v", e.volume+":/data", e.image, "chown", "999:1000", "/data")
+	// Simulate the production PVC fsGroup before running the non-root init.
+	e.docker("run", "--rm", "-v", e.volume+":/data", "--entrypoint", "sh", e.image, "-ec", "chown 0:1000 /data; chmod 2770 /data")
 	return e
 }
-
 func (e *persistenceEngine) docker(args ...string) string {
 	e.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
 	if err != nil {
-		e.t.Fatalf("docker %s: %v\n%s", strings.Join(args, " "), err, out)
+		e.t.Fatalf("docker %s: %v\n%s", strings.Join(args[:min(len(args), 2)], " "), err, out)
 	}
-	return strings.TrimSpace(string(out))
+	return string(out)
 }
-
-func (e *persistenceEngine) start(mode string) {
+func (e *persistenceEngine) start(mode string) *redis.Client {
 	e.t.Helper()
-	appendonly := "no"
-	if mode == "journal-snapshot" {
-		appendonly = "yes"
+	args := []string{"run", "-d", "-p", "127.0.0.1::6379", "-v", e.volume + ":/data", e.image, "valkey-server", "--requirepass", "fixture-password", "--appendfsync", "always"}
+	switch mode {
+	case "off":
+		args = append(args, "--appendonly", "no", "--save", "", "--dir", "/tmp")
+	case "snapshot":
+		args = append(args, "--appendonly", "no")
+	default:
+		args = append(args, "--appendonly", "yes")
 	}
-	if e.bin != "" {
-		args := []string{"--dir", e.data, "--port", "0", "--unixsocket", filepath.Join(e.data, "server.sock"), "--requirepass", "test-secret", "--appendonly", appendonly, "--appendfsync", "always", "--logfile", filepath.Join(e.data, "server.log")}
-		if mode == "off" {
-			args = append(args, "--save", "")
-		}
-		e.process = exec.Command(filepath.Join(e.bin, "valkey-server"), args...)
-		if err := e.process.Start(); err != nil {
-			e.process = nil
-			e.t.Fatal(err)
-		}
-	} else {
-		e.container = e.volume + "-server"
-		args := []string{"run", "--name", e.container, "-d", "-v", e.volume + ":/data", e.image, "valkey-server", "--dir", "/data", "--requirepass", "test-secret", "--appendonly", appendonly, "--appendfsync", "always"}
-		if mode == "off" {
-			args = append(args, "--save", "")
-		}
-		e.docker(args...)
+	output := strings.Split(strings.TrimSpace(e.docker(args...)), "\n")
+	e.container = output[len(output)-1]
+	portCtx, cancelPort := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancelPort()
+	portOutput, err := exec.CommandContext(portCtx, "docker", "port", e.container, "6379/tcp").CombinedOutput()
+	if err != nil {
+		e.t.Fatalf("Valkey port unavailable: %v: %s\n%s", err, portOutput, e.docker("logs", e.container))
 	}
-	deadline := time.Now().Add(2 * time.Minute)
+	address := strings.TrimSpace(string(portOutput))
+	c := redis.NewClient(&redis.Options{Addr: address, Password: "fixture-password", Protocol: 2, MaxRetries: -1})
+	e.client = c
+	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		out, err := e.clientCommand(ctx, "PING").CombinedOutput()
-		cancel()
-		if err == nil && strings.TrimSpace(string(out)) == "PONG" {
-			return
+		if c.Ping(context.Background()).Err() == nil {
+			return c
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if e.bin != "" {
-		contents, _ := os.ReadFile(filepath.Join(e.data, "server.log"))
-		e.t.Fatalf("engine failed to become ready: %s", contents)
-	}
-	e.t.Fatalf("engine failed to become ready: %s", e.docker("logs", e.container))
+	e.t.Fatalf("Valkey did not start: %s", e.docker("logs", e.container))
+	return nil
 }
-
-func (e *persistenceEngine) clientCommand(ctx context.Context, args ...string) *exec.Cmd {
-	if e.bin != "" {
-		cmd := exec.CommandContext(ctx, filepath.Join(e.bin, "valkey-cli"), append([]string{"-s", filepath.Join(e.data, "server.sock"), "-e", "--raw"}, args...)...)
-		cmd.Env = append(os.Environ(), "REDISCLI_AUTH=test-secret")
-		return cmd
-	}
-	return exec.CommandContext(ctx, "docker", append([]string{"exec", "-e", "REDISCLI_AUTH=test-secret", e.container, "valkey-cli", "-e", "--raw"}, args...)...)
-}
-
-func (e *persistenceEngine) command(args ...string) string {
+func (e *persistenceEngine) stop() {
 	e.t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	out, err := e.clientCommand(ctx, args...).CombinedOutput()
-	if err != nil {
-		e.t.Fatalf("valkey command %v: %v: %s", args, err, out)
+	if e.client != nil {
+		_ = e.client.Close()
+		e.client = nil
 	}
-	return strings.TrimSpace(string(out))
-}
-
-func (e *persistenceEngine) stop(graceful bool) {
-	e.t.Helper()
-	if e.bin != "" {
-		if graceful {
-			if err := e.process.Process.Signal(syscall.SIGTERM); err != nil {
-				e.t.Error(err)
-			}
-		} else {
-			_ = e.process.Process.Kill()
-		}
-		exited := make(chan error, 1)
-		go func() { exited <- e.process.Wait() }()
-		select {
-		case err := <-exited:
-			e.process = nil
-			if graceful && err != nil {
-				e.t.Fatalf("graceful Valkey shutdown: %v", err)
-			}
-		case <-time.After(20 * time.Second):
-			_ = e.process.Process.Kill()
-			<-exited
-			e.process = nil
-			e.t.Fatal("Valkey shutdown exceeded 20 seconds")
-		}
-		return
-	}
-	if graceful {
-		e.docker("stop", "-t", "20", e.container)
-	} else {
-		e.docker("kill", e.container)
-	}
+	e.docker("stop", "-t", "30", e.container)
 	e.docker("rm", e.container)
 	e.container = ""
 }
-
-func (e *persistenceEngine) handoff(source, target string) {
+func (e *persistenceEngine) kill() {
 	e.t.Helper()
+	_ = e.client.Close()
+	e.client = nil
+	e.docker("kill", e.container)
+	e.docker("rm", e.container)
+	e.container = ""
+}
+func (e *persistenceEngine) initResult(source, target, token string) (string, error) {
+	if !e.bootstrapped {
+		source = "new:" + source
+		e.bootstrapped = true
+	}
+	return e.initScriptResult(source, target, token, keyValuePersistenceScript)
+}
+func (e *persistenceEngine) initScriptResult(source, target, token, script string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
-	out, err := e.handoffCommand(ctx, source, target).CombinedOutput()
-	if err != nil {
-		e.t.Fatalf("handoff %s -> %s: %v: %s", source, target, err, out)
+	cidFile := filepath.Join(e.t.TempDir(), "init.cid")
+	args := []string{"run", "--rm", "--cidfile", cidFile, "--user", "999:1000", "-v", e.volume + ":/data", "-e", "VALKEY_PASSWORD=fixture-password", "-e", "PERSISTENCE_SOURCE=" + source, "-e", "PERSISTENCE_TARGET=" + target, "-e", "PERSISTENCE_TOKEN=" + token, "--entrypoint", "sh", e.image, "-ec", script}
+	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
+	// Killing a timed-out docker CLI does not stop its container. Remove the
+	// exact captured container before the volume cleanup, even on failure.
+	if cid, readErr := os.ReadFile(cidFile); readErr == nil {
+		cleanup, cancelCleanup := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelCleanup()
+		_ = exec.CommandContext(cleanup, "docker", "rm", "-f", strings.TrimSpace(string(cid))).Run()
+	}
+	return string(out), err
+}
+func (e *persistenceEngine) init(source, target, token string) {
+	e.t.Helper()
+	if out, err := e.initResult(source, target, token); err != nil {
+		e.t.Fatalf("init %s -> %s: %v\n%s", source, target, err, out)
 	}
 }
-
-func (e *persistenceEngine) handoffCommand(ctx context.Context, source, target string) *exec.Cmd {
-	if e.bin != "" {
-		cmd := exec.CommandContext(ctx, "sh", "-ec", keyValuePersistenceHandoffScript)
-		cmd.Env = append(os.Environ(), "PATH="+e.bin+string(os.PathListSeparator)+os.Getenv("PATH"), "SOURCE_MODE="+source, "TARGET_MODE="+target, "DATA_DIR="+e.data)
-		return cmd
+func (e *persistenceEngine) set(c *redis.Client, k, v string) {
+	e.t.Helper()
+	if err := c.Set(context.Background(), k, v, 0).Err(); err != nil {
+		e.t.Fatal(err)
 	}
-	return exec.CommandContext(ctx, "docker", "run", "--rm", "--user", "999:1000", "-v", e.volume+":/data", "-e", "SOURCE_MODE="+source, "-e", "TARGET_MODE="+target, "-e", "DATA_DIR=/data", e.image, "sh", "-ec", keyValuePersistenceHandoffScript)
 }
-
-func (e *persistenceEngine) files(script string) {
+func (e *persistenceEngine) assert(c *redis.Client, k, v string) {
 	e.t.Helper()
-	e.fileOutput(script)
+	got, err := c.Get(context.Background(), k).Result()
+	if err != nil || got != v {
+		e.t.Fatalf("%s = %q (%v), want %q", k, got, err, v)
+	}
 }
-
-func (e *persistenceEngine) fileOutput(script string) string {
+func (e *persistenceEngine) prepare(c *redis.Client) {
 	e.t.Helper()
-	if e.bin != "" {
-		// Native runs use the caller's uid; Docker exercises the production uid999.
-		script = strings.ReplaceAll(script, "; chown 999:1000 appendonlydir", "")
-		script = strings.ReplaceAll(script, "; chown 999:1000 .bex-persistence-mode", "")
-		cmd := exec.Command("sh", "-ec", script)
-		cmd.Dir = e.data
-		out, err := cmd.CombinedOutput()
+	for range 100 {
+		ready, err := prepareValkeyJournal(context.Background(), c)
 		if err != nil {
-			e.t.Fatalf("fixture files: %v: %s", err, out)
+			e.t.Fatal(err)
 		}
-		return strings.TrimSpace(string(out))
+		if ready {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	return e.docker("run", "--rm", "-v", e.volume+":/data", e.image, "sh", "-ec", "cd /data; "+script)
+	e.t.Fatal(fmt.Errorf("live journal handoff timed out"))
 }
 
-func (e *persistenceEngine) want(key, value string) {
-	e.t.Helper()
-	if got := e.command("GET", key); got != value {
-		e.t.Fatalf("GET %s = %q, want %q", key, got, value)
+// assertPersistenceFilesUnchanged proves a refused handoff leaves the original
+// marker and durable files intact for diagnosis and explicit recovery.
+func assertPersistenceFilesUnchanged(t *testing.T, before, after string) {
+	t.Helper()
+	if after != before {
+		t.Fatalf("refused migration modified authoritative files: before %s; after %s", before, after)
 	}
-}
-
-func (e *persistenceEngine) wantDeadline(deadline string) {
-	e.t.Helper()
-	if got := e.command("PEXPIRETIME", "expiring"); got != deadline {
-		e.t.Fatalf("expiry deadline = %s, want %s (must never reset on restart)", got, deadline)
-	}
-}
-
-func (e *persistenceEngine) wantCurrent(deadline string) {
-	e.t.Helper()
-	e.want("baseline", "original")
-	e.want("counter", "23")
-	e.want("snapshot-marker", "saved-current")
-	e.wantDeadline(deadline)
-	if got := e.command("PTTL", "snapshot-marker"); got != "-1" {
-		e.t.Fatalf("non-expiring key PTTL = %s", got)
-	}
-}
-
-func (e *persistenceEngine) seedStaleJournal() string {
-	e.t.Helper()
-	e.start("journal-snapshot")
-	e.command("SET", "baseline", "original")
-	e.command("SET", "counter", "1")
-	deadline := strconv.FormatInt(time.Now().Add(60*time.Minute).UnixMilli(), 10)
-	e.command("SET", "expiring", "ttl-value", "PXAT", deadline)
-	e.command("SAVE")
-	e.stop(true)
-	e.start("snapshot")
-	e.want("baseline", "original")
-	e.want("counter", "1")
-	e.wantDeadline(deadline)
-	e.command("SET", "snapshot-marker", "saved-current")
-	e.command("INCR", "counter")
-	e.want("counter", "2")
-	e.command("SET", "counter", "23")
-	e.command("SAVE")
-	e.stop(true)
-	// The positive control rules out ordinary snapshot restart loss.
-	e.start("snapshot")
-	e.command("CONFIG", "SET", "maxmemory-policy", "noeviction")
-	e.wantCurrent(deadline)
-	e.stop(true)
-	return deadline
 }

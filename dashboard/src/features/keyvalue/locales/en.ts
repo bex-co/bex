@@ -463,19 +463,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
       "Changing modes restarts the store and interrupts connections while data is prepared. Switching between Journal + Snapshot and Snapshot only preserves data. Switching to or from Off discards all data.",
     description: "Key Value detail persistence-mode card description",
   },
-  "keyvalue.persistenceDiscardTitle": {
-    message: "Discard Key Value data?",
-    description: "Persistence Off transition destructive confirmation title",
-  },
-  "keyvalue.persistenceDiscardBody": {
-    message:
-      "Switching to or from Off restarts this store and discards all its data. This cannot be undone.",
-    description: "Persistence Off transition destructive confirmation body",
-  },
-  "keyvalue.persistenceDiscardConfirm": {
-    message: "Discard data and change mode",
-    description: "Persistence Off transition destructive confirmation confirm",
-  },
   "keyvalue.persistenceLabel": {
     message: "Persistence mode",
     description: "Accessible label for the persistence-mode select",
@@ -488,6 +475,19 @@ const enKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.persistenceSuccess": {
     message: "Updating persistence mode to {mode}…",
     description: "Toast after a persistence-mode update is accepted",
+  },
+  "keyvalue.persistenceConfirmTitle": {
+    message: "Delete all data and change persistence?",
+    description: "Destructive persistence-mode confirmation title",
+  },
+  "keyvalue.persistenceConfirmDescription": {
+    message:
+      "Switching to or from Off deletes all data in {name} and restarts the store. This cannot be undone.",
+    description: "Destructive persistence-mode confirmation description",
+  },
+  "keyvalue.persistenceConfirmAction": {
+    message: "Delete data and change mode",
+    description: "Destructive persistence-mode confirmation action",
   },
   "keyvalue.persistenceError": {
     message: "Couldn't update the persistence mode. Please try again.",
