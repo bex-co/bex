@@ -29,7 +29,7 @@ import (
 // rows. A type that fell out of the switch would silently match nothing.
 func TestPushDownRoutesEveryFactType(t *testing.T) {
 	for _, ft := range allFactTypes {
-		verbs, phases, factTypes, ad := pushDown(ft)
+		verbs, phases, factTypes, ad := pushDown([]string{ft})
 		if len(verbs) != 0 || len(phases) != 0 || ad != store.AutoDeployFilterNone {
 			t.Errorf("%s: pushDown returned non-fact filters verbs=%v phases=%v ad=%v", ft, verbs, phases, ad)
 		}
@@ -65,7 +65,7 @@ func TestCronRunEventsComeFromObservedFactsNotIntentVerbs(t *testing.T) {
 		if !slices.Contains(allFactTypes, ft) {
 			t.Errorf("%s missing from allFactTypes — a scheduled run stays invisible in an unfiltered feed", ft)
 		}
-		verbs, phases, factTypes, ad := pushDown(ft)
+		verbs, phases, factTypes, ad := pushDown([]string{ft})
 		if len(factTypes) != 1 || factTypes[0] != ft {
 			t.Errorf("%s: filtering by it must ask the store for exactly its fact rows, got %v", ft, factTypes)
 		}

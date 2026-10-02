@@ -1,6 +1,6 @@
 {
   "pin": {
-    "capturedAt": "2026-08-18",
+    "capturedAt": "2026-09-30",
     "capturedBy": "scripts/render-mcp-capture.py --ref main (MCP stdio tools/list)",
     "latestRelease": {
       "tag": "v0.3.0",
@@ -25,14 +25,20 @@
       "",
       "The drift check compares the 'tools' array only, so refreshing this file's 'pin'",
       "or 'source' metadata never registers as surface drift. Regenerate the comparable",
-      "half with: scripts/render-mcp-capture.py --ref <commit> --tools-only"
+      "half with: scripts/render-mcp-capture.py --ref <commit> --tools-only",
+      "",
+      "Refreshed 2026-09-30 by w1/m165 at d9a8abd (2026-09-25): upstream added list_events",
+      "(9d1f2b8, #170), which bex implements; and create_web_service/create_cron_job gained",
+      "dockerCommand/dockerContext/dockerfilePath while buildCommand/startCommand became",
+      "optional (bc94f8d, #154, Dockerfile-based creation). The tools array is the capture",
+      "verbatim; only this 'pin' block and 'source' are hand-maintained."
     ]
   },
   "source": {
     "repo": "github.com/render-oss/render-mcp-server",
     "ref": "main",
-    "commit": "89c1f01b45270303d3b596b275ba0aaca39c2972",
-    "commitDate": "2026-08-17T09:15:09Z"
+    "commit": "d9a8abd5366944987d89031ae014cc44cd683420",
+    "commitDate": "2026-09-25T16:21:45Z"
   },
   "tools": [
     {
@@ -41,6 +47,9 @@
         "autoDeploy",
         "branch",
         "buildCommand",
+        "dockerCommand",
+        "dockerContext",
+        "dockerfilePath",
         "envVars",
         "name",
         "plan",
@@ -52,11 +61,9 @@
         "workspaceId"
       ],
       "required": [
-        "buildCommand",
         "name",
         "runtime",
-        "schedule",
-        "startCommand"
+        "schedule"
       ]
     },
     {
@@ -110,6 +117,9 @@
         "autoDeploy",
         "branch",
         "buildCommand",
+        "dockerCommand",
+        "dockerContext",
+        "dockerfilePath",
         "envVars",
         "name",
         "plan",
@@ -120,10 +130,8 @@
         "workspaceId"
       ],
       "required": [
-        "buildCommand",
         "name",
-        "runtime",
-        "startCommand"
+        "runtime"
       ]
     },
     {
@@ -199,6 +207,21 @@
         "cursor",
         "limit",
         "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "serviceId"
+      ]
+    },
+    {
+      "name": "list_events",
+      "args": [
+        "cursor",
+        "endTime",
+        "eventTypes",
+        "limit",
+        "serviceId",
+        "startTime",
         "workspaceId"
       ],
       "required": [

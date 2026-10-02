@@ -624,7 +624,7 @@ func TestTypeFilterIsPushedDown(t *testing.T) {
 		t.Run(tc.eventType, func(t *testing.T) {
 			st := &fakeStore{}
 			svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
-			if _, err := svc.List(context.Background(), "web", Filter{Type: tc.eventType}); err != nil {
+			if _, err := svc.List(context.Background(), "web", Filter{Types: []string{tc.eventType}}); err != nil {
 				t.Fatal(err)
 			}
 			if !slices.Equal(st.got.Verbs, tc.wantVerbs) {
@@ -655,7 +655,7 @@ func TestAutoDeployTypeFilterIsPushedDown(t *testing.T) {
 		t.Run(tc.eventType, func(t *testing.T) {
 			st := &fakeStore{}
 			svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
-			if _, err := svc.List(context.Background(), "web", Filter{Type: tc.eventType}); err != nil {
+			if _, err := svc.List(context.Background(), "web", Filter{Types: []string{tc.eventType}}); err != nil {
 				t.Fatal(err)
 			}
 			// The verb must be SetAutoDeploy — all three discriminate within the same verb.
@@ -679,6 +679,86 @@ func TestAutoDeployTypeFilterIsPushedDown(t *testing.T) {
 			t.Errorf("unfiltered AutoDeploy = %v, want AutoDeployFilterNone (no constraint)", st.got.AutoDeploy)
 		}
 	})
+}
+
+// TestMultiTypeFilterIsTheUnionPushedDown is w1/m165's regression: Render's
+// type filter takes several types at once (REST `?type=a,b`, MCP list_events'
+// eventTypes array), and bex's filter held exactly one. The union must reach
+// the store as SQL sets — a Go-side union after the LIMIT would page short.
+func TestMultiTypeFilterIsTheUnionPushedDown(t *testing.T) {
+	cases := []struct {
+		name       string
+		types      []string
+		wantVerbs  []string
+		wantPhases []string
+		wantFacts  []string
+		wantAuto   store.AutoDeployFilter
+	}{
+		{"one source each", []string{TypeDeployEnded, TypeSuspenderAdded, TypeServerFailed},
+			[]string{"apps.Suspend"}, []string{store.EventPhaseEnded}, []string{TypeServerFailed}, store.AutoDeployFilterNone},
+		{"both deploy phases", []string{TypeDeployStarted, TypeDeployEnded},
+			nil, []string{store.EventPhaseStarted, store.EventPhaseEnded}, nil, store.AutoDeployFilterNone},
+		// Two auto-deploy sub-types share one verb: the verb appears once and the
+		// SQL discrimination is the OR of both sub-types, not the last one seen.
+		{"two auto-deploy sub-types", []string{TypeAutoDeployEnabled, TypeAutoDeployDisabled},
+			[]string{"apps.SetAutoDeploy"}, nil, nil, store.AutoDeployFilterEnabled | store.AutoDeployFilterDisabled},
+		{"auto-deploy plus another verb", []string{TypeAutoDeployEnabled, TypeSuspenderAdded},
+			[]string{"apps.SetAutoDeploy", "apps.Suspend"}, nil, nil, store.AutoDeployFilterEnabled},
+		{"a repeated type is asked for once", []string{TypeSuspenderAdded, TypeSuspenderAdded},
+			[]string{"apps.Suspend"}, nil, nil, store.AutoDeployFilterNone},
+		// Validation is the single-type filter's: an unknown type contributes
+		// nothing, so it neither widens the query nor voids its known siblings.
+		{"unknown beside a known type", []string{"no_such_type", TypeDeployEnded},
+			nil, []string{store.EventPhaseEnded}, nil, store.AutoDeployFilterNone},
+		{"only unknown types is an empty feed", []string{"no_such_type", "also_not_a_type"},
+			nil, nil, nil, store.AutoDeployFilterNone},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := &fakeStore{}
+			svc := newService(st, sampleApp("web", "srv-1", "tea-a"))
+			if _, err := svc.List(context.Background(), "web", Filter{Types: tc.types}); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(st.got.Verbs, tc.wantVerbs) {
+				t.Errorf("verbs = %v, want %v", st.got.Verbs, tc.wantVerbs)
+			}
+			if !slices.Equal(st.got.Phases, tc.wantPhases) {
+				t.Errorf("phases = %v, want %v", st.got.Phases, tc.wantPhases)
+			}
+			if !slices.Equal(st.got.FactTypes, tc.wantFacts) {
+				t.Errorf("fact types = %v, want %v", st.got.FactTypes, tc.wantFacts)
+			}
+			if st.got.AutoDeploy != tc.wantAuto {
+				t.Errorf("AutoDeploy = %v, want %v", st.got.AutoDeploy, tc.wantAuto)
+			}
+		})
+	}
+}
+
+// TestFilterOfReadsRendersCommaWire pins the one translator's reading of the
+// `type` wire: comma-separated on REST/GraphQL, an array on MCP, the same set.
+func TestFilterOfReadsRendersCommaWire(t *testing.T) {
+	cases := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{"absent", nil, nil},
+		{"empty string means all", []string{""}, nil},
+		{"one type", []string{TypeDeployEnded}, []string{TypeDeployEnded}},
+		{"comma list", []string{"deploy_ended,server_failed"}, []string{TypeDeployEnded, TypeServerFailed}},
+		{"spaces and a stray comma", []string{" deploy_ended , server_failed,"}, []string{TypeDeployEnded, TypeServerFailed}},
+		{"array entries", []string{TypeDeployEnded, TypeServerFailed}, []string{TypeDeployEnded, TypeServerFailed}},
+		{"array and comma forms agree", []string{"deploy_ended,server_failed", "deploy_ended"}, []string{TypeDeployEnded, TypeServerFailed}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := FilterOf(tc.in, "", "", "", 0).Types; !slices.Equal(got, tc.want) {
+				t.Errorf("FilterOf(%q).Types = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
 }
 
 // TestScheduledCronRunReachesTheFeed is w4/m118's behavioral regression, at the
@@ -738,7 +818,7 @@ func TestScheduledCronRunReachesTheFeed(t *testing.T) {
 	for _, ft := range []string{TypeCronJobRunStarted, TypeCronJobRunEnded} {
 		st := &fakeStore{}
 		svc := newService(st, sampleApp("cron", "srv-1", "tea-a"))
-		if _, err := svc.List(context.Background(), "cron", Filter{Type: ft}); err != nil {
+		if _, err := svc.List(context.Background(), "cron", Filter{Types: []string{ft}}); err != nil {
 			t.Fatal(err)
 		}
 		if !slices.Equal(st.got.FactTypes, []string{ft}) {
