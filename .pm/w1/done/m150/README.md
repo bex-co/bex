@@ -1,6 +1,6 @@
 # w1 · m150 — A service's inbound IP allowlist matches the load balancer's private address, not the client
 
-**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** todo (unblocked 2026-09-15; t003 blast radius done 2026-09-16; t001's safety gate cleared locally — see § The gate on t001).
+**Worker:** worker1 **Goal:** an inbound IP allowlist on a web service or static site admits exactly the public clients whose address falls in a listed CIDR, and nobody else. The address Traefik matches is the client's, carried through the Hetzner load balancer by PROXY protocol and trusted only from that load balancer, the way `w2/done/m57` t010 already does for Postgres and Key Value. No header a client sends can influence the match. **Status:** done (2026-10-02). t002 was applied to production in `fce2159cd`. Every DoD bullet, the static site and the environment layer were re-probed live from outside the cluster and pass; see § Live verification.
 
 ## Triage (2026-09-15)
 
@@ -88,13 +88,13 @@ The patch is deliberately **not committed**: this worker cannot push it without 
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Traefik `web`/`websecure` accept PROXY protocol only from the load balancer (`10.10.0.7/32`), rolled out before the listener change | 45m | — |
-| t002 | Enable PROXY protocol on the Terraform `http`/`https` listeners and prove the allowlist sees the client | 45m | t001 |
+| t001 | Traefik `web`/`websecure` accept PROXY protocol only from the load balancer (`10.10.0.7/32`), rolled out before the listener change — **DONE** | 45m | — |
+| t002 | Enable PROXY protocol on the Terraform `http`/`https` listeners and prove the allowlist sees the client — **DONE** | 45m | t001 |
 | t003 | Blast radius: every consumer of Traefik's client address on :80/:443 — **DONE** | 45m | t001 |
-| t004 | Render parity | 20m | t002, t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 40m | t004 |
-| t007 | Closeout | 10m | t006 |
+| t004 | Render parity — **DONE** | 20m | t002, t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 40m | t004 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -240,3 +240,63 @@ A Traefik that did not expect PROXY protocol answers the second with `400 Bad Re
 **That also exposed a live spoofing hole in the half-rolled state.** The load balancer is a byte-transparent TCP proxy, so a header the _client_ writes arrives from the trusted peer `10.10.0.7` and is believed: until t002, any Internet client could assert any source address, i.e. pass a tenant IP allow-list by prefixing one line. t002 closes it — once the load balancer sends its own header, a client-supplied `PROXY` line is the first line of the HTTP stream and is rejected. t006's regression should pin this (a client-sent PROXY line after the flip → `400`).
 
 **Pre-flip baseline:** `https://hello-go.onbex.co/` → `200` (caller `162.224.81.143`).
+
+## Live verification (2026-10-02, production, workspace `tea-d98210cbbpdc73dcrkvg`)
+
+t002 was applied in `fce2159cd`. infra.yml run 36969990700 succeeded on every step, including apply and "verify canonical edge target shape". All probes ran from `162.224.81.143`, outside the cluster, using `curl -4 -o /dev/null -w '%{http_code}'`. Each allow-list was set through REST and echoed back with `200`. Each row is six samples, 5s apart, starting 20s after the save. Every fixture was a native Go or static runtime, not `runtime: docker`, which currently fails admission in this workspace for an unrelated reason.
+
+**Service layer, every DoD bullet.** Fixture: the free Go web service `qa-20261002-m150` (`srv-davkq5htf7js73907lt0`), `PATCH /v1/services/{id} {"serviceDetails":{"ipAllowList":[…]}}`:
+
+```text
+06:20:07Z create 201 srv-davkq5htf7js73907lt0 https://qa-20261002-m150.onbex.co caller 162.224.81.143
+06:22:46Z live 200
+06:23:40Z own /32: PATCH 200 ["162.224.81.143/32"] -> 200 200 200 200 200 200
+06:24:34Z lb 10.10.0.7/32: PATCH 200 ["10.10.0.7/32"] -> 403 403 403 403 403 403
+06:25:29Z 10.0.0.0/8: PATCH 200 ["10.0.0.0/8"] -> 403 403 403 403 403 403
+06:26:23Z TEST-NET 203.0.113.0/24: PATCH 200 ["203.0.113.0/24"] -> 403 403 403 403 403 403
+06:26:23Z spoof PROXY 203.0.113.9 under TEST-NET-only list: HTTP/1.1 400 Bad Request
+06:27:18Z empty: PATCH 200 [] -> 200 200 200 200 200 200
+06:27:42Z logs 200 ClientHost counts: {"162.224.81.143":14,"178.104.181.30":1,"130.12.182.254":3}
+06:27:46Z delete 204 then GET 404
+```
+
+All four DoD bullets pass. The own `/32` is admitted. `10.10.0.7/32` and `10.0.0.0/8` now admit nobody from outside, where both used to admit everyone. The empty list stays open. The request log's `ClientHost` is the real caller: 0 of 18 records read `10.10.0.7`, against 50 of 50 at filing time. The other two addresses are unrelated Internet scanners. The PROXY line the client wrote itself is now rejected with `400`. Before t002 it was routed (§ t001 confirmed live), which closes the spoofing hole that state left open.
+
+**Static site and environment layer.** Fixtures: the static site `qa-20261002-m150-static` (`srv-davkui9tf7js73907lvg`, `examples/static-site`), set with `PATCH /v1/services/{id}`. Project `prj-davkuihtf7js73907m10`, environment `env-davkuihtf7js73907m1g`, and in it the free Go web service `qa-20261002-m150-envweb` (`srv-davkuj1tf7js73907m2g`), set with `PATCH /v1/environments/{id} {"ipAllowList":[…]}`. The service itself has no allow-list:
+
+```text
+06:29:27Z caller 162.224.81.143
+06:29:30Z [static] create 201 srv-davkui9tf7js73907lvg https://qa-20261002-m150-static.onbex.co
+06:29:30Z [env] project 201 prj-davkuihtf7js73907m10 env env-davkuihtf7js73907m1g
+06:29:32Z [env] web create 201 srv-davkuj1tf7js73907m2g https://qa-20261002-m150-envweb.onbex.co environmentId env-davkuihtf7js73907m1g
+          [static] live 200
+06:30:04Z [static] own /32: PATCH 200 ["162.224.81.143/32"] -> 200 200 200 200 200 200
+06:30:58Z [static] TEST-NET 203.0.113.0/24: PATCH 200 ["203.0.113.0/24"] -> 403 403 403 403 403 403
+06:31:52Z [static] 10.10.0.7/32: PATCH 200 ["10.10.0.7/32"] -> 403 403 403 403 403 403
+06:32:46Z [static] empty: PATCH 200 [] -> 200 200 200 200 200 200
+06:33:39Z [env] live 200
+06:33:41Z [env] seeded default: ["0.0.0.0/0","::/0"] -> 200 200 200 200 200 200
+06:34:36Z [env] 10.0.0.0/8: PATCH 200 ["10.0.0.0/8"] -> 403 403 403 403 403 403
+06:35:31Z [env] TEST-NET 203.0.113.0/24: PATCH 200 ["203.0.113.0/24"] -> 403 403 403 403 403 403
+06:36:26Z [env] own /32: PATCH 200 ["162.224.81.143/32"] -> 200 200 200 200 200 200
+06:37:21Z [env] 10.10.0.7/32: PATCH 200 ["10.10.0.7/32"] -> 403 403 403 403 403 403
+06:38:18Z delete service srv-davkuj1tf7js73907m2g 204 then GET 404
+06:38:25Z delete environment env-davkuihtf7js73907m1g 204 then GET 404
+06:38:28Z delete service srv-davkui9tf7js73907lvg 204 then GET 404
+06:38:32Z delete project prj-davkuihtf7js73907m10 204 then GET 404
+```
+
+The 2026-09-26 environment-layer table, re-run:
+
+| Environment `ipAllowList` | Expected | 2026-09-26 | 2026-10-02 |
+| --- | --- | --- | --- |
+| seeded default (`0.0.0.0/0`, `::/0`) | `200` | `200` | `200` ×6 |
+| `10.0.0.0/8` only | `403` | **`200` ×6** | `403` ×6 |
+| `203.0.113.0/24` only | `403` | `403` ×6 | `403` ×6 |
+| the caller's own `/32` | `200` | **`403` ×6** | `200` ×6 |
+
+The static site behaves exactly like the web service. Every fixture was deleted and returns `404`. The QA session was revoked (`qa-login.sh --logout`) and its state file deleted.
+
+**Edge shape.** `infra/terraform/main.tf` keeps `ssh` at `proxyprotocol = false`, and `http`, `https`, `postgres` and `valkey` at `true`. The run's "verify canonical edge target shape" step passed, and every probe above was served through the flipped listeners. `scripts/edge-proxyprotocol-validate.sh` (t005) now pins both the listener table and Traefik's `trustedIPs: [10.10.0.7/32]` on `web` and `websecure`.
+
+**Not probed:** IPv6. This machine has no v6 egress, and `<slug>.onbex.co` has no AAAA record (§ Evidence 2). The fix does not depend on the address family.
