@@ -177,32 +177,9 @@ for required in \
     fail=1
   }
 done
-for edge in ssh:22:32207 http:80:31218 https:443:31976 postgres:5432:31056 valkey:6379:31892; do
-  name="${edge%%:*}"
-  ports="${edge#*:}"
-  listen="${ports%%:*}"
-  destination="${ports##*:}"
-  block="$(awk -v name="$name" '
-    $0 == "resource \"hcloud_load_balancer_service\" \"" name "\" {" { found=1 }
-    found { print }
-    found && /^}$/ { exit }
-  ' infra/terraform/main.tf)"
-  if [ -z "$block" ] ||
-    ! grep -Eq "^[[:space:]]*listen_port[[:space:]]*=[[:space:]]*${listen}[[:space:]]*$" <<<"$block" ||
-    ! grep -Eq "^[[:space:]]*destination_port[[:space:]]*=[[:space:]]*${destination}[[:space:]]*$" <<<"$block" ||
-    ! grep -Eq "^[[:space:]]*port[[:space:]]*=[[:space:]]*${destination}[[:space:]]*$" <<<"$block"; then
-    echo "FAIL: Terraform edge listener $name must map :$listen to NodePort $destination with the same health-check port" >&2
-    fail=1
-  fi
-  expected_proxyprotocol=false
-  case "$name" in
-    http | https | postgres | valkey) expected_proxyprotocol=true ;;
-  esac
-  if ! grep -Eq "^[[:space:]]*proxyprotocol[[:space:]]*=[[:space:]]*${expected_proxyprotocol}[[:space:]]*$" <<<"$block"; then
-    echo "FAIL: Terraform edge listener $name must set proxyprotocol=$expected_proxyprotocol" >&2
-    fail=1
-  fi
-done
+
+echo "==> edge listeners and Traefik entrypoints agree on PROXY protocol (w1/m150)"
+bash scripts/edge-proxyprotocol-validate.sh || fail=1
 
 # Enabling PROXY protocol before header-capable proxy pods are Ready breaks both
 # datastore front doors. Terraform must apply a saved plan only after the same

@@ -129,3 +129,28 @@ func TestClientIPFallbacks(t *testing.T) {
 		t.Errorf("IPv6 XFF entry: got %q, want 2001:db8::1", got)
 	}
 }
+
+// TestClientIPBehindProductionEdge pins the keys bex-api derives with the
+// production trust set (BEX_TRUSTED_PROXY_CIDRS=10.244.0.0/16, the pod CIDR)
+// once the load balancer carries the client through PROXY protocol (w1/m150):
+// Traefik's pod is the peer and appends the real client — v4 or v6 — to
+// X-Forwarded-For, so each caller gets its own bucket. The load balancer's
+// private address is NOT a trusted proxy: a request whose peer is 10.10.0.7 has
+// its forwarding headers ignored rather than believed.
+func TestClientIPBehindProductionEdge(t *testing.T) {
+	p := mustTrustedProxies(t, "10.244.0.0/16")
+	const traefikPod = "10.244.3.17:52114"
+	cases := []struct{ name, peer, xff, want string }{
+		{"v4 client via Traefik", traefikPod, "198.51.100.23", "198.51.100.23"},
+		{"v6 client via Traefik", traefikPod, "2001:db8:0:0::7", "2001:db8::7"},
+		{"client-prepended XFF skipped", traefikPod, "203.0.113.1, 198.51.100.23", "198.51.100.23"},
+		{"load balancer peer is untrusted", "10.10.0.7:40000", "203.0.113.1", "10.10.0.7"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := p.ClientIP(reqFrom(tc.peer, tc.xff, "")); got != tc.want {
+				t.Errorf("peer %s XFF %q: got %q, want %q", tc.peer, tc.xff, got, tc.want)
+			}
+		})
+	}
+}
