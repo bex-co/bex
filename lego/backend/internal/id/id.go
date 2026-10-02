@@ -77,11 +77,9 @@ var (
 	// this resource isn't confirmed against a live capture (w2/m14).
 	RegistryCredential = Kind{prefix: "rgc", desc: "external image registry credential"}
 	Blueprint          = Kind{prefix: "blp", desc: "blueprint (render.yaml stack source)"} // w2/m15
-	// Environment is a named subset of a Project's services (e.g. staging/
-	// production) — the second half of w1/m31's grouping feature, layered on
-	// afterward. "env" (not "evg" — that's the pre-existing, unrelated EnvGroup
-	// env-var-grouping feature).
-	Environment = Kind{prefix: "env", desc: "environment (named subset of a project's services)"}
+	// Environment uses Render's public prefix. EnvironmentStorageID preserves
+	// the original env- identity in SQL, CR labels, and secret metadata.
+	Environment = Kind{prefix: "evm", desc: "environment (named subset of a project's services)"}
 	// Webhook / WebhookDelivery are bex-chosen prefixes (w3/m11 outbound event
 	// webhooks) — Render's public docs don't expose its webhook-endpoint id
 	// spelling, so these follow the RegistryCredential precedent.

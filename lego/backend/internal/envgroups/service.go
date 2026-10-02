@@ -261,6 +261,10 @@ type EnvGroupListFilter struct {
 // before any caller paginates the result. Multiple owner ids are each resolved
 // through the existing membership-checked workspace seam, then unioned.
 func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupListFilter) ([]EnvGroupView, error) {
+	filter.EnvironmentIDs = slices.Clone(filter.EnvironmentIDs)
+	for i := range filter.EnvironmentIDs {
+		filter.EnvironmentIDs[i] = id.EnvironmentStorageID(filter.EnvironmentIDs[i])
+	}
 	owners := filter.OwnerIDs
 	if len(owners) == 0 {
 		owners = []string{""}
@@ -295,7 +299,7 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 			if errors.Is(err, core.ErrConflict) {
 				view = EnvGroupView{
 					ID: group.id, Name: group.name, OwnerID: group.workspace,
-					EnvironmentID: group.environment, ServiceLinks: append([]string{}, group.links...),
+					EnvironmentID: id.EnvironmentPublicID(group.environment), ServiceLinks: append([]string{}, group.links...),
 					EnvVars: []EnvVarView{}, SecretFiles: []SecretFileView{},
 					CreatedAt: group.createdAt, UpdatedAt: group.updatedAt,
 					Availability: availabilityFromConflict(err),
@@ -456,6 +460,7 @@ func (s *Service) CreateEnvGroup(ctx context.Context, req CreateEnvGroupRequest)
 // workspace, so source cloning never needs to reveal values to a client or call
 // a second public mutation.
 func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGroupRequest) (EnvGroupView, error) {
+	req.EnvironmentID = id.EnvironmentStorageID(req.EnvironmentID)
 	if s.Store == nil {
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
@@ -705,6 +710,7 @@ func (s *Service) SetEnvironmentID(ctx context.Context, gid, environmentID strin
 // metadata write happens only after every linked service has been validated
 // against the *current* link set on each CAS attempt (w4/m97).
 func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (EnvGroupView, error) {
+	environmentID = id.EnvironmentStorageID(environmentID)
 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return EnvGroupView{}, err
@@ -1283,8 +1289,8 @@ func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels 
 		"ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH",
 		"linked services must have the same Environment scope as the environment group",
 		map[string]any{
-			"serviceId": serviceID, "serviceEnvironmentId": serviceEnvironment,
-			"targetEnvironmentId": groupEnvironment,
+			"serviceId": serviceID, "serviceEnvironmentId": id.EnvironmentPublicID(serviceEnvironment),
+			"targetEnvironmentId": id.EnvironmentPublicID(groupEnvironment),
 		},
 	)
 }
@@ -1309,7 +1315,7 @@ func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links [
 	return core.NewConflictError(
 		"ENV_GROUP_MOVE_INCOMPATIBLE_SERVICES",
 		"move the linked services to the target Environment or unlink them before moving this group",
-		map[string]any{"serviceIds": incompatible, "targetEnvironmentId": environmentID},
+		map[string]any{"serviceIds": incompatible, "targetEnvironmentId": id.EnvironmentPublicID(environmentID)},
 	)
 }
 
@@ -1718,7 +1724,7 @@ func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGrou
 		links = []string{}
 	}
 	base := EnvGroupView{
-		ID: gid, Name: m.name, OwnerID: m.workspace, EnvironmentID: m.environment,
+		ID: gid, Name: m.name, OwnerID: m.workspace, EnvironmentID: id.EnvironmentPublicID(m.environment),
 		ServiceLinks: links, CreatedAt: m.createdAt, UpdatedAt: m.updatedAt,
 		EnvVars: []EnvVarView{}, SecretFiles: []SecretFileView{},
 	}

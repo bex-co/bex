@@ -63,10 +63,10 @@ func newGroupingAdmissionFixture(t *testing.T, denyLaterChild bool) *groupingAdm
 		store.Project{ID: otherProject, TenantID: owner.ID, Name: "source", CreatedAt: conformEpoch, UpdatedAt: conformEpoch},
 	)}
 	f.groupings.envs[f.project] = []store.Environment{
-		{ID: f.env, ProjectID: f.project, TenantID: owner.ID, Name: "first", ProtectedStatus: core.ProtectedStatusUnprotected},
-		{ID: laterEnv, ProjectID: f.project, TenantID: owner.ID, Name: "later", ProtectedStatus: core.ProtectedStatusProtected},
+		{ID: id.EnvironmentStorageID(f.env), ProjectID: f.project, TenantID: owner.ID, Name: "first", ProtectedStatus: core.ProtectedStatusUnprotected},
+		{ID: id.EnvironmentStorageID(laterEnv), ProjectID: f.project, TenantID: owner.ID, Name: "later", ProtectedStatus: core.ProtectedStatusProtected},
 	}
-	f.groupings.envs[otherProject] = []store.Environment{{ID: otherEnv, ProjectID: otherProject, TenantID: owner.ID, Name: "source"}}
+	f.groupings.envs[otherProject] = []store.Environment{{ID: id.EnvironmentStorageID(otherEnv), ProjectID: otherProject, TenantID: owner.ID, Name: "source"}}
 	for _, member := range []struct {
 		tenant, project, environment string
 		ids                          map[string]string
@@ -82,7 +82,7 @@ func newGroupingAdmissionFixture(t *testing.T, denyLaterChild bool) *groupingAdm
 		pg.Spec.EnvironmentIPAllowList, kv.Spec.EnvironmentIPAllowList = []string{"198.51.100.1/32"}, []string{"198.51.100.1/32"}
 		for _, object := range []client.Object{pg, kv} {
 			labels := core.TenantLabels(member.tenant)
-			labels[core.LabelProject], labels[core.LabelEnvironment] = member.project, member.environment
+			labels[core.LabelProject], labels[core.LabelEnvironment] = member.project, id.EnvironmentStorageID(member.environment)
 			object.SetLabels(labels)
 			f.objects = append(f.objects, object)
 		}

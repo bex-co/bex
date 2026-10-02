@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // Environment is a row of `environments` — a named subset of a Project's
@@ -82,7 +83,7 @@ func (s *PGStore) CreateEnvironment(ctx context.Context, projectID, tenantID, na
 
 func (s *PGStore) GetEnvironment(ctx context.Context, id string) (Environment, error) {
 	return scanEnvironment(s.Pool.QueryRow(ctx,
-		`SELECT `+environmentColumns+` FROM environments WHERE id = $1`, id))
+		`SELECT `+environmentColumns+` FROM environments WHERE id = $1`, ids.EnvironmentStorageID(id)))
 }
 
 func (s *PGStore) ListEnvironments(ctx context.Context, projectID string) ([]Environment, error) {

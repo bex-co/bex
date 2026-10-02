@@ -174,7 +174,7 @@ func (a *maintenanceModeArg) toView() *MaintenanceModeView {
 // remains a one-region platform concern and is intentionally absent.
 type createWebServiceArgs struct {
 	OwnerID              string          `json:"-"`
-	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...) in the target workspace; assignment also joins its project"`
 	Name                 string          `json:"name" jsonschema:"the service name (a DNS label, 1-30 chars)"`
 	Type                 string          `json:"type,omitempty" jsonschema:"service type: web_service (default), private_service, or background_worker. Use create_cron_job for a cron_job"`
 	Repo                 string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
@@ -275,7 +275,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 // (a cron runs its command to completion on the schedule, not as a server).
 type createCronJobArgs struct {
 	OwnerID              string  `json:"-"`
-	EnvironmentID        string  `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	EnvironmentID        string  `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...) in the target workspace; assignment also joins its project"`
 	Name                 string  `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
 	Schedule             string  `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
 	Command              string  `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
@@ -542,7 +542,7 @@ type staticHeaderArg struct {
 // upstream args (w2/m91); publishPath stays required (genuine divergence).
 type createStaticSiteArgs struct {
 	OwnerID            string                  `json:"-"`
-	EnvironmentID      string                  `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	EnvironmentID      string                  `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...) in the target workspace; assignment also joins its project"`
 	Name               string                  `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
 	Repo               string                  `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
 	Image              string                  `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`

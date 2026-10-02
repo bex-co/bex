@@ -1,0 +1,203 @@
+{"environment_id": "evm-davmin29086tmfebshbg", "environment_name": "m165-b12642c0-client-0-env", "project_id": "prj-davmin29086tmfebshb0", "stage": "project-create"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.165, "stage": "environment-discovery", "stderr": ""}
+{"canonical_id": "evm-davmin29086tmfebshbg", "graphql": true, "legacy_input": "env-davmin29086tmfebshbg", "mcp": true, "name_filter_remains_name": true, "rest": true, "stage": "surface-identity"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.146, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.335, "stage": "keyvalues-get-id", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.107, "stage": "keyvalues-list-id", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.059, "stage": "keyvalues-get-name", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.075, "stage": "keyvalues-list-name", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.056, "stage": "keyvalues-get-no-scope", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.061, "stage": "kv-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.214, "stage": "keyvalues-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.08, "stage": "keyvalues-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.061, "stage": "keyvalues-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.083, "stage": "keyvalues-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.059, "stage": "keyvalues-get-no-scope", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.061, "stage": "kv-get-id", "stderr": ""}
+{"namespace": "tea-davmgda9086p27m757a0", "public_environment": "evm-davmin29086tmfebshbg", "resource_id": "red-davmina9086tmfebshc0", "stage": "durable-placement", "stored_environment": "env-davmin29086tmfebshbg"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.227, "stage": "postgres-create", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.289, "stage": "postgres-get-id", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.409, "stage": "postgres-list-id", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.113, "stage": "postgres-get-name", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.287, "stage": "postgres-list-name", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.075, "stage": "postgres-get-no-scope", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.185, "stage": "pg-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.117, "stage": "postgres-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.228, "stage": "postgres-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.286, "stage": "postgres-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.103, "stage": "postgres-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.061, "stage": "postgres-get-no-scope", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.068, "stage": "pg-get-id", "stderr": ""}
+{"namespace": "tea-davmgda9086p27m757a0", "public_environment": "evm-davmin29086tmfebshbg", "resource_id": "dpg-davmini9086tmfebshd0", "stage": "durable-placement", "stored_environment": "env-davmin29086tmfebshbg"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.107, "stage": "services-raw-environment-filter", "stderr": ""}
+{"binary": "current-bex", "exit": 0, "seconds": 0.074, "stage": "services-raw-environment-filter", "stderr": ""}
+{"detail_status": 404, "id": "red-davmina9086tmfebshc0", "stage": "cleanup-resource"}
+{"detail_status": 404, "id": "dpg-davmini9086tmfebshd0", "stage": "cleanup-resource"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.181, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "current-bex", "control": "name", "environment_id": "evm-davmin29086tmfebshbg", "id": "red-davmioa9086tmfebshf0", "kind": "keyvalues", "stage": "create-control"}
+{"detail_status": 404, "id": "red-davmioa9086tmfebshf0", "stage": "cleanup-resource"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.289, "stage": "postgres-create", "stderr": ""}
+{"binary": "current-bex", "control": "name", "environment_id": "evm-davmin29086tmfebshbg", "id": "dpg-davmioi9086tmfebshgg", "kind": "postgres", "stage": "create-control"}
+{"detail_status": 404, "id": "dpg-davmioi9086tmfebshgg", "stage": "cleanup-resource"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.089, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "current-bex", "control": "unscoped", "environment_id": null, "id": "red-davmioi9086tmfebshi0", "kind": "keyvalues", "stage": "create-control"}
+{"detail_status": 404, "id": "red-davmioi9086tmfebshi0", "stage": "cleanup-resource"}
+{"binary": "current-bex", "exit": 0, "seconds": 0.111, "stage": "postgres-create", "stderr": ""}
+{"binary": "current-bex", "control": "unscoped", "environment_id": "", "id": "dpg-davmioi9086tmfebshjg", "kind": "postgres", "stage": "create-control"}
+{"detail_status": 404, "id": "dpg-davmioi9086tmfebshjg", "stage": "cleanup-resource"}
+{"canonical_id": "evm-davmin29086tmfebshbg", "graphql": true, "legacy_input": "env-davmin29086tmfebshbg", "mcp": true, "name_filter_remains_name": true, "rest": true, "stage": "surface-identity"}
+{"environment_id": "evm-davmioi9086tmfebshm0", "environment_name": "m165-b12642c0-client-1-env", "project_id": "prj-davmioi9086tmfebshlg", "stage": "project-create"}
+{"public_id": "evm-davmioi9086tmfebshm0", "resource_recreation": false, "stage": "legacy-storage-inventory", "stored_id": "env-davmioi9086tmfebshm0"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.223, "stage": "environment-discovery", "stderr": ""}
+{"canonical_id": "evm-davmioi9086tmfebshm0", "graphql": true, "legacy_input": "env-davmioi9086tmfebshm0", "mcp": true, "name_filter_remains_name": true, "rest": true, "stage": "surface-identity"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 1.154, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.32, "stage": "keyvalues-get-id", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.28, "stage": "keyvalues-list-id", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.158, "stage": "keyvalues-get-name", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.222, "stage": "keyvalues-list-name", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.082, "stage": "keyvalues-get-no-scope", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.059, "stage": "kv-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.068, "stage": "keyvalues-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.074, "stage": "keyvalues-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.059, "stage": "keyvalues-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.07, "stage": "keyvalues-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.067, "stage": "keyvalues-get-no-scope", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.069, "stage": "kv-get-id", "stderr": ""}
+{"namespace": "tea-davmgda9086p27m757a0", "public_environment": "evm-davmioi9086tmfebshm0", "resource_id": "red-davmip29086tmfebshmg", "stage": "durable-placement", "stored_environment": "env-davmioi9086tmfebshm0"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.119, "stage": "postgres-create", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.194, "stage": "postgres-get-id", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.521, "stage": "postgres-list-id", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.131, "stage": "postgres-get-name", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.276, "stage": "postgres-list-name", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.105, "stage": "postgres-get-no-scope", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.123, "stage": "pg-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.083, "stage": "postgres-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.086, "stage": "postgres-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.063, "stage": "postgres-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.074, "stage": "postgres-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.057, "stage": "postgres-get-no-scope", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.083, "stage": "pg-get-id", "stderr": ""}
+{"namespace": "tea-davmgda9086p27m757a0", "public_environment": "evm-davmioi9086tmfebshm0", "resource_id": "dpg-davmipi9086tmfebshng", "stage": "durable-placement", "stored_environment": "env-davmioi9086tmfebshm0"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.256, "stage": "services-raw-environment-filter", "stderr": ""}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.121, "stage": "services-raw-environment-filter", "stderr": ""}
+{"detail_status": 404, "id": "red-davmip29086tmfebshmg", "stage": "cleanup-resource"}
+{"detail_status": 404, "id": "dpg-davmipi9086tmfebshng", "stage": "cleanup-resource"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.324, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "render-v2.27.0", "control": "name", "environment_id": "evm-davmioi9086tmfebshm0", "id": "red-davmiqa9086tmfebshpg", "kind": "keyvalues", "stage": "create-control"}
+{"detail_status": 404, "id": "red-davmiqa9086tmfebshpg", "stage": "cleanup-resource"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.347, "stage": "postgres-create", "stderr": ""}
+{"binary": "render-v2.27.0", "control": "name", "environment_id": "evm-davmioi9086tmfebshm0", "id": "dpg-davmiqa9086tmfebshr0", "kind": "postgres", "stage": "create-control"}
+{"detail_status": 404, "id": "dpg-davmiqa9086tmfebshr0", "stage": "cleanup-resource"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.123, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "render-v2.27.0", "control": "unscoped", "environment_id": null, "id": "red-davmiqa9086tmfebshsg", "kind": "keyvalues", "stage": "create-control"}
+{"detail_status": 404, "id": "red-davmiqa9086tmfebshsg", "stage": "cleanup-resource"}
+{"binary": "render-v2.27.0", "exit": 0, "seconds": 0.121, "stage": "postgres-create", "stderr": ""}
+{"binary": "render-v2.27.0", "control": "unscoped", "environment_id": "", "id": "dpg-davmiqi9086tmfebshu0", "kind": "postgres", "stage": "create-control"}
+{"detail_status": 404, "id": "dpg-davmiqi9086tmfebshu0", "stage": "cleanup-resource"}
+{"canonical_id": "evm-davmioi9086tmfebshm0", "graphql": true, "legacy_input": "env-davmioi9086tmfebshm0", "mcp": true, "name_filter_remains_name": true, "rest": true, "stage": "surface-identity"}
+{"environment_id": "evm-davmiqi9086tmfebsi0g", "environment_name": "m165-b12642c0-client-2-env", "project_id": "prj-davmiqi9086tmfebsi00", "stage": "project-create"}
+{"public_id": "evm-davmiqi9086tmfebsi0g", "resource_recreation": false, "stage": "legacy-storage-inventory", "stored_id": "env-davmiqi9086tmfebsi0g"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.1, "stage": "environment-discovery", "stderr": ""}
+{"canonical_id": "evm-davmiqi9086tmfebsi0g", "graphql": true, "legacy_input": "env-davmiqi9086tmfebsi0g", "mcp": true, "name_filter_remains_name": true, "rest": true, "stage": "surface-identity"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.351, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.187, "stage": "keyvalues-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.147, "stage": "keyvalues-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.244, "stage": "keyvalues-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.283, "stage": "keyvalues-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.102, "stage": "keyvalues-get-no-scope", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.066, "stage": "kv-get-id", "stderr": ""}
+{"namespace": "tea-davmgda9086p27m757a0", "public_environment": "evm-davmiqi9086tmfebsi0g", "resource_id": "red-davmir29086tmfebsi10", "stage": "durable-placement", "stored_environment": "env-davmiqi9086tmfebsi0g"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.471, "stage": "postgres-create", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.332, "stage": "postgres-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.647, "stage": "postgres-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.302, "stage": "postgres-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.395, "stage": "postgres-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.275, "stage": "postgres-get-no-scope", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.165, "stage": "pg-get-id", "stderr": ""}
+{"namespace": "tea-davmgda9086p27m757a0", "public_environment": "evm-davmiqi9086tmfebsi0g", "resource_id": "dpg-davmiri9086tmfebsi20", "stage": "durable-placement", "stored_environment": "env-davmiqi9086tmfebsi0g"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.966, "stage": "services-raw-environment-filter", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.355, "stage": "services-raw-environment-filter", "stderr": ""}
+{"detail_status": 404, "id": "red-davmir29086tmfebsi10", "stage": "cleanup-resource"}
+{"detail_status": 404, "id": "dpg-davmiri9086tmfebsi20", "stage": "cleanup-resource"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.555, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "installed-bex", "control": "name", "environment_id": "evm-davmiqi9086tmfebsi0g", "id": "red-davmisi9086tmfebsi40", "kind": "keyvalues", "stage": "create-control"}
+{"detail_status": 404, "id": "red-davmisi9086tmfebsi40", "stage": "cleanup-resource"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.38, "stage": "postgres-create", "stderr": ""}
+{"binary": "installed-bex", "control": "name", "environment_id": "evm-davmiqi9086tmfebsi0g", "id": "dpg-davmisq9086tmfebsi5g", "kind": "postgres", "stage": "create-control"}
+{"detail_status": 404, "id": "dpg-davmisq9086tmfebsi5g", "stage": "cleanup-resource"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.303, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "installed-bex", "control": "unscoped", "environment_id": null, "id": "red-davmisq9086tmfebsi70", "kind": "keyvalues", "stage": "create-control"}
+{"detail_status": 404, "id": "red-davmisq9086tmfebsi70", "stage": "cleanup-resource"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.326, "stage": "postgres-create", "stderr": ""}
+{"binary": "installed-bex", "control": "unscoped", "environment_id": "", "id": "dpg-davmit29086tmfebsi8g", "kind": "postgres", "stage": "create-control"}
+{"detail_status": 404, "id": "dpg-davmit29086tmfebsi8g", "stage": "cleanup-resource"}
+{"canonical_id": "evm-davmiqi9086tmfebsi0g", "graphql": true, "legacy_input": "env-davmiqi9086tmfebsi0g", "mcp": true, "name_filter_remains_name": true, "rest": true, "stage": "surface-identity"}
+{"installed_older_read_controls": true, "legacy_durable_placement": true, "pinned_clients": ["current Bex (Render v2.27.0)", "unmodified Render v2.27.0"], "stage": "acceptance-pass"}
+{"detail_status": 404, "id": "evm-davmin29086tmfebshbg", "stage": "cleanup-environment"}
+{"detail_status": 404, "id": "evm-davmioi9086tmfebshm0", "stage": "cleanup-environment"}
+{"detail_status": 404, "id": "evm-davmiqi9086tmfebsi0g", "stage": "cleanup-environment"}
+{"detail_status": 404, "id": "prj-davmin29086tmfebshb0", "stage": "cleanup-project"}
+{"detail_status": 404, "id": "prj-davmioi9086tmfebshlg", "stage": "cleanup-project"}
+{"detail_status": 404, "id": "prj-davmiqi9086tmfebsi00", "stage": "cleanup-project"}
+{"remaining_environments": [], "remaining_projects": [], "remaining_resources": [], "stage": "cleanup-complete"}
+{"environment_id": "evm-davmjkq9086tmfebsifg", "environment_name": "m165-be4bf25f-pair226-env", "project_id": "prj-davmjkq9086tmfebsif0", "stage": "project-create"}
+{"environment_id": "evm-davmjkq9086tmfebsih0", "environment_name": "m165-be4bf25f-other-env", "project_id": "prj-davmjkq9086tmfebsigg", "stage": "project-create"}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.625, "stage": "same-pin-environment-discovery", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 2.071, "stage": "same-pin-environment-discovery", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 1.193, "stage": "keyvalues-create", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.25, "stage": "same-pin-keyvalues-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.478, "stage": "same-pin-keyvalues-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.093, "stage": "same-pin-keyvalues-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.194, "stage": "same-pin-keyvalues-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.11, "stage": "same-pin-keyvalues-get-no-scope", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.122, "stage": "same-pin-keyvalues-get-id", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.121, "stage": "same-pin-keyvalues-list-id", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.149, "stage": "same-pin-keyvalues-get-name", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.565, "stage": "same-pin-keyvalues-list-name", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.062, "stage": "same-pin-keyvalues-get-no-scope", "stderr": ""}
+{"binary": "current-bex", "exit": 1, "seconds": 0.21, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "render-v2.27.0", "exit": 1, "seconds": 0.182, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "installed-bex", "exit": 1, "seconds": 0.1, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "render-installed-pin", "exit": 1, "seconds": 0.062, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "render-installed-pin", "exit": 1, "seconds": 0.074, "stage": "legacy-literal-cli-limit", "stderr": "Error: no environment found with name \"env-davmjkq9086tmfebsifg\""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.14, "stage": "postgres-create", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.081, "stage": "same-pin-postgres-get-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.102, "stage": "same-pin-postgres-list-id", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.085, "stage": "same-pin-postgres-get-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.079, "stage": "same-pin-postgres-list-name", "stderr": ""}
+{"binary": "installed-bex", "exit": 0, "seconds": 0.063, "stage": "same-pin-postgres-get-no-scope", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.068, "stage": "same-pin-postgres-get-id", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.1, "stage": "same-pin-postgres-list-id", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.062, "stage": "same-pin-postgres-get-name", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.195, "stage": "same-pin-postgres-list-name", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.088, "stage": "same-pin-postgres-get-no-scope", "stderr": ""}
+{"binary": "current-bex", "exit": 1, "seconds": 0.253, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "render-v2.27.0", "exit": 1, "seconds": 0.117, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "installed-bex", "exit": 1, "seconds": 0.091, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "render-installed-pin", "exit": 1, "seconds": 0.07, "stage": "mismatched-project-name-selector", "stderr": "Error: no environment found with name \"m165-be4bf25f-pair226-env\""}
+{"binary": "render-installed-pin", "exit": 1, "seconds": 0.075, "stage": "legacy-literal-cli-limit", "stderr": "Error: no environment found with name \"env-davmjkq9086tmfebsifg\""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.156, "stage": "same-pin-services-raw-filter", "stderr": ""}
+{"binary": "render-installed-pin", "exit": 0, "seconds": 0.091, "stage": "same-pin-services-raw-filter", "stderr": ""}
+{"anonymous_status": 401, "environment_input": "evm-davmjkq9086tmfebsifg", "foreign_workspace_status": 403, "stage": "authorization-neighbors", "wrong_project_filter": []}
+{"anonymous_status": 401, "environment_input": "env-davmjkq9086tmfebsifg", "foreign_workspace_status": 403, "stage": "authorization-neighbors", "wrong_project_filter": []}
+{"anonymous_status": 401, "authenticated_status": 404, "environment_input": "evm-malformed", "stage": "lookup-neighbors"}
+{"anonymous_status": 401, "authenticated_status": 404, "environment_input": "evm-00000000000000000000", "stage": "lookup-neighbors"}
+{"stage": "cleanup-secondary-account-requested", "state": "pending", "workspace_id": "tea-davmjn29086tmfebsijg"}
+{"id_name_read_controls": true, "installed_bex": "vdev-140f1ef06 / Render v2.26.0 / 6c0f561f8af9", "stage": "installed-pair-pass", "unmodified_render": "v2.26.0 / 6c0f561f8af9"}
+{"detail_status": 404, "id": "dpg-davmjmi9086tmfebsiig", "stage": "cleanup-resource"}
+{"detail_status": 404, "id": "red-davmjlq9086tmfebsihg", "stage": "cleanup-resource"}
+{"detail_status": 404, "id": "evm-davmjkq9086tmfebsifg", "stage": "cleanup-environment"}
+{"detail_status": 404, "id": "evm-davmjkq9086tmfebsih0", "stage": "cleanup-environment"}
+{"detail_status": 404, "id": "prj-davmjkq9086tmfebsif0", "stage": "cleanup-project"}
+{"detail_status": 404, "id": "prj-davmjkq9086tmfebsigg", "stage": "cleanup-project"}
+{"remaining_environments": [], "remaining_projects": [], "remaining_resources": [], "stage": "cleanup-complete"}
+{"count": 0, "kind": "postgres", "stage": "cleanup-list-absence"}
+{"count": 0, "kind": "keyvalues", "stage": "cleanup-list-absence"}
+{"count": 0, "kind": "services", "stage": "cleanup-list-absence"}
+{"count": 0, "kind": "projects", "stage": "cleanup-list-absence"}
+{"stage": "cleanup-primary-account-requested", "state": "pending", "workspace_id": "tea-davmgda9086p27m757a0"}
+{"account": "primary", "kratos_admin_status": 404, "stage": "cleanup-account-absence"}
+{"account": "secondary", "kratos_admin_status": 404, "stage": "cleanup-account-absence"}
+{"namespace": "tea-davmgda9086p27m757a0", "present": false, "stage": "cleanup-namespace-absence"}
+{"namespace": "tea-davmjn29086tmfebsijg", "present": false, "stage": "cleanup-namespace-absence"}
+{"hydra_admin_status": 404, "stage": "cleanup-oauth-key-absence"}

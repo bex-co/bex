@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -79,8 +80,8 @@ func TestSetServices_ProjectsLabelWhenIsolationEnabled(t *testing.T) {
 	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
 		t.Fatalf("SetServices: %v", err)
 	}
-	if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != e.ID {
-		t.Errorf("web's core.LabelNetworkIsolation = %q, want %q", got, e.ID)
+	if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != id.EnvironmentStorageID(e.ID) {
+		t.Errorf("web's core.LabelNetworkIsolation = %q, want %q", got, id.EnvironmentStorageID(e.ID))
 	}
 	if got := getApp(t, cl, "worker").Labels[core.LabelNetworkIsolation]; got != "" {
 		t.Errorf("worker (never assigned) should carry no core.LabelNetworkIsolation, got %q", got)
@@ -95,7 +96,7 @@ func TestSetServices_ClearsLabelWhenServiceLeaves(t *testing.T) {
 	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
 	svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, true, nil)
 	svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"})
-	if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != e.ID {
+	if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != id.EnvironmentStorageID(e.ID) {
 		t.Fatalf("precondition: web should carry the label, got %q", got)
 	}
 
@@ -135,8 +136,8 @@ func TestSetACL_TogglingIsolationSyncsExistingMembers(t *testing.T) {
 	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, true, nil); err != nil {
 		t.Fatalf("SetACL (enable isolation): %v", err)
 	}
-	if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != e.ID {
-		t.Errorf("after enabling isolation, want label %q, got %q", e.ID, got)
+	if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != id.EnvironmentStorageID(e.ID) {
+		t.Errorf("after enabling isolation, want label %q, got %q", id.EnvironmentStorageID(e.ID), got)
 	}
 
 	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, false, nil); err != nil {
@@ -280,8 +281,8 @@ func TestDeleteACLBearerEnvironmentRequiresCanManage(t *testing.T) {
 			// …and, when isolation is armed, the member's isolation label
 			// (the environment id) survives with it.
 			if tc.name == "network isolation" {
-				if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != e.ID {
-					t.Fatalf("refused delete must leave member labels intact: got %q, want %q", got, e.ID)
+				if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != id.EnvironmentStorageID(e.ID) {
+					t.Fatalf("refused delete must leave member labels intact: got %q, want %q", got, id.EnvironmentStorageID(e.ID))
 				}
 			}
 
@@ -359,8 +360,8 @@ func TestACLBearingMembershipTeardownRequiresCanManage(t *testing.T) {
 		if _, err := dev.SetDatabases(ctx, e.ID, nil); !errors.Is(err, core.ErrForbidden) {
 			t.Fatalf("developer SetDatabases on ACL-bearing environment = %v, want ErrForbidden", err)
 		}
-		if got := dbs.dbs["dpg-one"].EnvironmentID; got != e.ID {
-			t.Fatalf("refused database-link mutation changed environmentID: got %q, want %q", got, e.ID)
+		if got := dbs.dbs["dpg-one"].EnvironmentID; got != id.EnvironmentStorageID(e.ID) {
+			t.Fatalf("refused database-link mutation changed environmentID: got %q, want %q", got, id.EnvironmentStorageID(e.ID))
 		}
 	})
 
@@ -462,7 +463,7 @@ func TestClearServiceEnvironmentLayer_ClearsLabelAndAllowList(t *testing.T) {
 	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
 		t.Fatalf("SetServices: %v", err)
 	}
-	if got := getApp(t, cl, "web"); got.Labels[core.LabelNetworkIsolation] != e.ID || len(got.Spec.EnvironmentIPAllowList) != 1 {
+	if got := getApp(t, cl, "web"); got.Labels[core.LabelNetworkIsolation] != id.EnvironmentStorageID(e.ID) || len(got.Spec.EnvironmentIPAllowList) != 1 {
 		t.Fatalf("precondition: web should carry the environment layer, got labels=%v spec=%v", got.Labels, got.Spec.EnvironmentIPAllowList)
 	}
 
@@ -511,12 +512,12 @@ func TestClearMembersForProject_ClearsEveryChildEnvironmentsMembers(t *testing.T
 	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
 		t.Fatalf("SetServices: %v", err)
 	}
-	dbs.dbs["indb"] = postgres.PostgresView{ID: "indb", OwnerID: "tea-a", EnvironmentID: e.ID}
-	if err := dbs.SetEnvironmentIPAllowList(context.Background(), "indb", e.ID, []string{"10.0.0.0/8"}); err != nil {
+	dbs.add(postgres.PostgresView{ID: "indb", OwnerID: "tea-a", EnvironmentID: e.ID})
+	if err := dbs.SetEnvironmentIPAllowList(context.Background(), "indb", id.EnvironmentStorageID(e.ID), []string{"10.0.0.0/8"}); err != nil {
 		t.Fatalf("seed db layer: %v", err)
 	}
-	kvs.kvs["inkv"] = keyvalue.KeyValueView{ID: "inkv", OwnerID: "tea-a", EnvironmentID: e.ID}
-	if err := kvs.SetEnvironmentIPAllowList(context.Background(), "inkv", e.ID, []string{"10.0.0.0/8"}); err != nil {
+	kvs.add(keyvalue.KeyValueView{ID: "inkv", OwnerID: "tea-a", EnvironmentID: e.ID})
+	if err := kvs.SetEnvironmentIPAllowList(context.Background(), "inkv", id.EnvironmentStorageID(e.ID), []string{"10.0.0.0/8"}); err != nil {
 		t.Fatalf("seed kv layer: %v", err)
 	}
 	if got := getApp(t, cl, "web").Spec.EnvironmentIPAllowList; len(got) != 1 {

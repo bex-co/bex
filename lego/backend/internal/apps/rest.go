@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -684,6 +685,9 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		// serviceType enum (type=, w2/m52) OR the same way.
 		names := core.QueryList(q, "name")
 		environmentIDs := core.QueryList(q, "environmentId")
+		for i := range environmentIDs {
+			environmentIDs[i] = ids.EnvironmentPublicID(environmentIDs[i])
+		}
 		types := core.QueryList(q, "type")
 		// Render ORs repeated suspension, runtime (deprecated env alias), and
 		// region values. Region is compared literally with platform metadata.

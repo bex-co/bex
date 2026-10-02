@@ -54,7 +54,7 @@ type suspendPostgresArgs struct {
 // createPostgresArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createPostgresArgs struct {
-	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...; legacy env-... accepted) in the target workspace; assignment also joins its project"`
 	Name          string `json:"name" jsonschema:"the database name"`
 	DatabaseName  string `json:"databaseName,omitempty" jsonschema:"optional physical PostgreSQL database name; lowercase letters, digits, and underscores"`
 	DatabaseUser  string `json:"databaseUser,omitempty" jsonschema:"optional physical PostgreSQL owner role; lowercase letters, digits, and underscores"`
