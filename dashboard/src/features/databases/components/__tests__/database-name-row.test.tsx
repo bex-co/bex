@@ -17,6 +17,7 @@ const database: DatabaseDetailView = {
   version: "16",
   diskSizeGB: 1,
   diskAutoscalingEnabled: false,
+  poolerEnabled: false,
   createdAt: "2026-07-14T00:00:00Z",
   public: false,
   suspended: "not_suspended",

@@ -882,6 +882,7 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 		core.LabelProject:     "prj-platform",
 		core.LabelEnvironment: "env-production",
 	}
+	got.Spec.Plan = "basic-256mb"
 	if err := cl.Update(ctx, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -897,7 +898,7 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	if got.Spec.StorageGB != 20 {
 		t.Errorf("spec.storageGB = %d, want 20", got.Spec.StorageGB)
 	}
-	if got.Spec.Plan != "free" {
+	if got.Spec.Plan != "basic-256mb" {
 		t.Errorf("plan should be untouched by a disk-only update, got %q", got.Spec.Plan)
 	}
 

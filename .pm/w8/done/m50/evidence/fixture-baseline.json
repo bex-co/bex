@@ -1,0 +1,30 @@
+{
+  "utc": "2026-10-02T20:33:03.179371+00:00",
+  "stage": "baseline fixture, no m50 feature assertions",
+  "workspace": "tea-db019si9086liljjeovg",
+  "database": {
+    "id": "dpg-db019t29086liljjep0g",
+    "name": "m50-562d3188-free",
+    "plan": "free",
+    "version": "17",
+    "diskSizeGB": 1,
+    "diskAutoscalingEnabled": false,
+    "highAvailabilityEnabled": false,
+    "connectionPool": "none",
+    "poolerEnabled": false,
+    "status": "creating",
+    "readReplicas": []
+  },
+  "database_spec": {
+    "name": "m50-562d3188-free",
+    "plan": "free",
+    "storageGB": 1,
+    "version": "17"
+  },
+  "resources": [
+    [
+      "postgres",
+      "dpg-db019t29086liljjep0g"
+    ]
+  ]
+}

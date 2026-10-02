@@ -2398,6 +2398,8 @@ func TestSettingsChangeDuringRunPreserved(t *testing.T) {
 		Status: "active", Name: "app", AutoSync: true,
 	})
 	gated := &stageGateStore{fakeBlueprintStore: fs, entered: make(chan struct{}), proceed: make(chan struct{})}
+	release := sync.OnceFunc(func() { close(gated.proceed) })
+	t.Cleanup(release)
 	svc := &Service{
 		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
 		Blueprints:      gated,
@@ -2410,13 +2412,19 @@ func TestSettingsChangeDuringRunPreserved(t *testing.T) {
 		_, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", stackManifest, "", nil)
 		done <- err
 	}()
-	<-gated.entered
+	select {
+	case <-gated.entered:
+	case err := <-done:
+		t.Fatalf("sync stopped before staging: %v", err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("sync did not reach staging")
+	}
 	newName := "renamed-mid-run"
 	autoOff := false
 	if _, err := svc.UpdateBlueprint(ctx, "blp-1", "tea-a", UpdateBlueprintRequest{Name: &newName, AutoSync: &autoOff}); err != nil {
 		t.Fatalf("mid-run settings update: %v", err)
 	}
-	close(gated.proceed)
+	release()
 	if err := <-done; err != nil {
 		t.Fatalf("sync with mid-run settings change: %v", err)
 	}

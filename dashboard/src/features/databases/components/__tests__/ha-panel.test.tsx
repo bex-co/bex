@@ -46,6 +46,7 @@ const DATABASE: DatabaseDetailView = {
   databaseUser: "shop_user",
   highAvailabilityEnabled: false,
   diskAutoscalingEnabled: false,
+  poolerEnabled: false,
   readReplicas: [],
   externalHost: null,
   backupsEnabled: false,

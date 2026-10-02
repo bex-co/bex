@@ -398,8 +398,8 @@ type bexFromRegistryCreds struct {
 
 // bexDatabase is one entry in databases:. Field names follow render.yaml; bex
 // honors plan/diskSizeGB/postgresMajorVersion/ipAllowList/readReplicas/
-// highAvailability plus the create-time physical databaseName/user. region and
-// storageAutoscalingEnabled remain documented omissions.
+// highAvailability/storageAutoscalingEnabled/connectionPool plus the create-time
+// physical databaseName/user. Region remains unsupported.
 type bexDatabase struct {
 	Name                      string                            `json:"name"`
 	DatabaseName              string                            `json:"databaseName"`
@@ -614,8 +614,8 @@ var kvPropertyKey = map[string]string{
 
 // DeployStack applies a whole render.yaml in one call: databases first (dependents
 // reference them via fromDatabase), then services, each as an idempotent upsert.
-// All validation runs in parseStack before any write — one invalid entry rejects
-// the whole apply with a per-entry error, nothing partially created.
+// Compilation and current-state admission run before any write — one invalid
+// entry rejects the whole apply with a per-entry error, nothing partially created.
 func (s *Service) DeployStack(ctx context.Context, req DeployRequest) (StackResult, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
@@ -3015,9 +3015,8 @@ func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	return ApplyBlueprintServiceSpec(dst, want, fields)
 }
 
-func blueprintDatabaseSpecChanged(cur, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
-	probe := cur
-	return ApplyBlueprintDatabaseSpec(&probe, want, fields)
+func blueprintDatabaseSpecChanged(cur *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
+	return ApplyBlueprintDatabaseSpec(cur.DeepCopy(), want, fields)
 }
 
 func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map[string]BlueprintField) bool {
@@ -3052,7 +3051,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, db.name, db.spec.StorageGB, allocated)
 			}
 		}
-		specChanged, err := blueprintDatabaseSpecChanged(existing.Spec, db.spec, db.fields)
+		specChanged, err := blueprintDatabaseSpecChanged(existing, db.spec, db.fields)
 		if err != nil {
 			return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
 		}
@@ -3063,7 +3062,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		}
 		base := client.MergeFrom(existing.DeepCopy())
 		if specChanged {
-			if _, err := ApplyBlueprintDatabaseSpec(&existing.Spec, db.spec, db.fields); err != nil {
+			if _, err := ApplyBlueprintDatabaseSpec(existing, db.spec, db.fields); err != nil {
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
 			}
 		}
@@ -3075,6 +3074,9 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			return StackDatabaseView{}, err
 		}
 		return stackDatabaseView(existing), nil
+	}
+	if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+		return StackDatabaseView{}, fmt.Errorf("%w: database %q %s", core.ErrBadRequest, db.name, blueprintDatabaseAdmissionConflict(err, db.fields))
 	}
 	d := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},

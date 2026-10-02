@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [x] **m50** — [Enforce Postgres tier capacity across write paths](done/m50/README.md) (9 tasks) ← promoted from `035` on 2026-10-02.
+
 - [x] **m49** — [Reject invalid image deploy inputs with actionable errors](done/m49/README.md) (7 tasks) ← promoted from `033` on 2026-10-02. Completed 2026-10-02; full suites/lint and 57 live checks passed.
 
 - [x] **m48** — [Close the log filtering and Blueprint validation gaps](done/m48/README.md) (6 tasks) ← from `032`; completed 2026-10-02 with full backend/lint checks, five pinned Alloy cases, and 50 live local acceptance checks.
@@ -77,7 +79,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **033** — [Promoted to m49](done/033.md) (2026-10-02); original production findings retained.
 - [x] **034** — [Validate service display names](done/034.md) — **DONE 2026-10-02**: shared named refusals, Unicode/identity controls, full backend/lint checks, 135 live checks and fixture cleanup passed.
 - `036` — **duplicate of `w4/171`, fixed and live-verified 2026-09-30 on `de9ac4d1c`** (blast-radius evidence only). Was BLOCKER: since `cae30d1e0`, every deploy of a web service with env vars fails ("snapshot …-env … unknown namespace for the cache"): the new release-config snapshot reads tenant Secrets through the namespace-scoped cached client. Roll back or use the uncached client (~10m rollback / ~1h fix) ← `/qa-find-bugs-cli` post-deploy smoke, 2026-09-28
-- `035` — Free Postgres escapes its tier through sibling flags: `--read-replica`, any `--disk-size-gb`, `--disk-autoscaling` (to 16 TB) and `--connection-pool pgbouncer` are accepted on `plan: free`; only HA is gated (m43) (~70m) ← `/qa-find-bugs-cli` sweep 58, 2026-09-27
+- [x] **035** — [Completed through m50](done/035.md) (2026-10-02); original production findings retained.
 
 
 > `031.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 45) and fixed 2026-09-27 — moved to `done/`. `bex logs --level warning|notice|critical|alert|emergency` now matches: queries map Render's level names onto the stored buckets, and the shipper emits `warning` (not `warn`) from now on.

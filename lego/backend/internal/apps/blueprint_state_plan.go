@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -35,7 +36,7 @@ import (
 // no-op cannot be proved without revealing its values.
 func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string) (BlueprintPlan, bool, error) {
 	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
-		return BlueprintPlan{}, false, nil
+		return BlueprintPlan{}, false, checkBlueprintDatabaseCreates(st)
 	}
 	resolver, err := newBlueprintActionResolver(ctx, s, st)
 	if err != nil {
@@ -180,6 +181,15 @@ func (r *blueprintActionResolver) ResolveBlueprintResource(_ context.Context, ki
 func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resource BlueprintResourceIR, current BlueprintCurrentResource, exists bool) (BlueprintPlanAction, error) {
 	action := BlueprintPlanAction{Kind: resource.Kind, Name: resource.Name, SourcePath: resource.SourcePath, ResourceID: current.ID}
 	if !exists {
+		if resource.Kind == BlueprintResourcePostgres {
+			db, ok := parsedBlueprintDatabase(r.parsed, resource.Name)
+			if !ok {
+				return BlueprintPlanAction{}, fmt.Errorf("compiled database is missing")
+			}
+			if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+				return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, blueprintDatabaseAdmissionConflict(err, db.fields))
+			}
+		}
 		action.Operation = BlueprintPlanCreate
 		return action, nil
 	}
@@ -212,20 +222,16 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 		if !ok {
 			return BlueprintPlanAction{}, fmt.Errorf("compiled database is missing")
 		}
-		probe := r.databases[resource.Name].Spec
-		changed, err := ApplyBlueprintDatabaseSpec(&probe, database.spec, database.fields)
+		probe := r.databases[resource.Name].DeepCopy()
+		changed, err := ApplyBlueprintDatabaseSpec(probe, database.spec, database.fields)
 		if err != nil {
-			if conflict, ok := err.(*BlueprintFieldConflictError); ok {
-				return BlueprintPlanAction{}, fmt.Errorf("%w: database %q %s %s", core.ErrBadRequest, resource.Name, conflict.Path, conflict.Message)
-			}
-			return BlueprintPlanAction{}, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+			return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, err)
 		}
 		if changed {
 			action.Operation = BlueprintPlanUpdate
-			live := r.databases[resource.Name].Spec
+			live := r.databases[resource.Name]
 			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields, func(name string) (bool, error) {
-				probe := *live.DeepCopy()
-				return ApplyBlueprintDatabaseSpec(&probe, database.spec, oneField(database.fields, name))
+				return ApplyBlueprintDatabaseSpec(live.DeepCopy(), database.spec, oneField(database.fields, name))
 			})
 			return action, nil
 		}

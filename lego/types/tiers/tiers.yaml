@@ -80,7 +80,7 @@ postgres:
   # dbPlans fallback).
   default: free
   # Render's normal product/API ceiling. The operator and backend consume this
-  # value directly; the dashboard carries a build-tested mirror.
+  # value directly; the dashboard reads per-plan API capability metadata.
   diskAutoscalingCapGB: 16384
   tiers:
     - id: free

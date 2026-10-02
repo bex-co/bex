@@ -35,7 +35,7 @@ import (
 
 func TestDiskAutoscalingRESTCreatePatchAndReadFieldNames(t *testing.T) {
 	svc, cl := newService()
-	w := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"autoscale-db","plan":"free","enableDiskAutoscaling":true}`)
+	w := serveREST(svc, http.MethodPost, "/v1/postgres", `{"name":"autoscale-db","plan":"basic-256mb","enableDiskAutoscaling":true}`)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create => %d: %s", w.Code, w.Body.String())
 	}
@@ -76,11 +76,11 @@ func TestDiskAutoscalingRESTCreatePatchAndReadFieldNames(t *testing.T) {
 func TestDiskAutoscalingGraphQLAndMCPAdapterParity(t *testing.T) {
 	gqlDB := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "gql-autoscale", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{Name: "gql-autoscale", Plan: "free"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "gql-autoscale", Plan: "basic-256mb"},
 	}
 	mcpDB := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "mcp-autoscale", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{Name: "mcp-autoscale", Plan: "free"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "mcp-autoscale", Plan: "basic-256mb"},
 	}
 	svc, cl := newService(gqlDB, mcpDB)
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
@@ -143,7 +143,7 @@ func TestDiskAutoscalingCreateParityGraphQLAndMCP(t *testing.T) {
 	result := graphql.Do(graphql.Params{
 		Schema:        schema,
 		Context:       context.Background(),
-		RequestString: `mutation { createDatabase(name:"gql-created", enableDiskAutoscaling:true) { diskAutoscalingEnabled } }`,
+		RequestString: `mutation { createDatabase(name:"gql-created", plan:"basic-256mb", enableDiskAutoscaling:true) { diskAutoscalingEnabled } }`,
 	})
 	if len(result.Errors) > 0 {
 		t.Fatalf("GraphQL create errors: %+v", result.Errors)
@@ -157,6 +157,7 @@ func TestDiskAutoscalingCreateParityGraphQLAndMCP(t *testing.T) {
 	defer cleanup()
 	mcpView := call("create_postgres", map[string]any{
 		"name":                  "mcp-created",
+		"plan":                  "basic-256mb",
 		"enableDiskAutoscaling": true,
 	})
 	if mcpView["diskAutoscalingEnabled"] != true {

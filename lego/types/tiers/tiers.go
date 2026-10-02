@@ -75,8 +75,8 @@ type PostgresTier struct {
 	// CPU and Memory are k8s resource.Quantity strings (per instance).
 	CPU    string `json:"cpu"`
 	Memory string `json:"memory"`
-	// StorageGB is the plan's volume-size floor — spec.storageGB may grow
-	// past it, never shrink below.
+	// StorageGB is the plan's included volume size. Paid plans may grow past
+	// it; free storage is fixed at this size.
 	StorageGB int32 `json:"storageGB"`
 	// Instances is the CNPG cluster size.
 	Instances int32 `json:"instances"`
@@ -230,8 +230,47 @@ func (c PostgresCatalog) IDs() []string {
 
 // DiskAutoscalingCapGB is the shared maximum grow-only Postgres disk size.
 // The reviewed catalog is the runtime source for both operator decisions and
-// backend tool descriptions; the dashboard mirror is guarded against it.
+// backend tool descriptions; the dashboard reads per-plan storage metadata.
 func (c PostgresCatalog) DiskAutoscalingCapGB() int32 { return c.diskAutoscalingCapGB }
+
+// MaxStorageGB is the admitted logical storage ceiling for the plan. Free
+// storage is fixed; paid plans share the catalog's storage/autoscaling cap.
+func (c PostgresCatalog) MaxStorageGB(planID string) int32 {
+	tier, ok := c.ByID(c.CanonicalID(planID))
+	if !ok {
+		tier = c.Default()
+	}
+	if !tier.paid() {
+		return tier.StorageGB
+	}
+	return c.diskAutoscalingCapGB
+}
+
+func (t PostgresTier) paid() bool { return t.ID != "" && t.ID != "free" }
+
+// SupportsDiskAutoscaling excludes fixed-storage free databases.
+func (t PostgresTier) SupportsDiskAutoscaling() bool { return t.paid() }
+
+// SupportsConnectionPooling follows Render's paid-compute requirement.
+func (t PostgresTier) SupportsConnectionPooling() bool { return t.paid() }
+
+const (
+	PostgresReadReplicaMinCPU             = "0.5"
+	PostgresMaxReadReplicas               = 5
+	PostgresReadReplicaMinStorageGB int32 = 10
+)
+
+var readReplicaMinCPU = resource.MustParse(PostgresReadReplicaMinCPU)
+
+// MaxReadReplicas is the plan's compute-based replica limit. Admission also
+// requires at least PostgresReadReplicaMinStorageGB of effective storage.
+func (t PostgresTier) MaxReadReplicas() int {
+	cpu, err := resource.ParseQuantity(t.CPU)
+	if err != nil || cpu.Cmp(readReplicaMinCPU) < 0 {
+		return 0
+	}
+	return PostgresMaxReadReplicas
+}
 
 // EffectiveStorageGB is a managed Postgres instance's logical, billed/provisioned
 // disk size in GB: the largest of the plan's included floor, the requested

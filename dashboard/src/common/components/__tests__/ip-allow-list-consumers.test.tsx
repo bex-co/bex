@@ -21,6 +21,9 @@ vi.mock("@/features/databases/hooks/use-access-control", () => ({
     poolLoading: false,
   }),
 }));
+vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
+  useDatabaseInstanceTypes: () => ({ instanceTypes: [] }),
+}));
 vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
   useKeyValueNetworking: () => ({
     allowList: state.entries,
@@ -33,7 +36,10 @@ vi.mock("@/features/services/hooks/use-service-networking", () => ({
 }));
 
 const consumers = [
-  { name: "Postgres", panel: () => <AccessControlPanel id="dpg-source" /> },
+  {
+    name: "Postgres",
+    panel: () => <AccessControlPanel id="dpg-source" plan="free" />,
+  },
   {
     name: "Key Value",
     panel: () => <KeyValueNetworkingPanel id="kv-source" isPublic />,

@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-02T20:43:53.345106+00:00",
+  "review": "simplify Agent 1 Code Reuse",
+  "scope": "complete current git diff HEAD under lego/ and dashboard/, plus three untracked admission files",
+  "diff_sha256": "16685775f788da55e0990d97010c24fcee15dc71fbef5f231d39b75d82960866",
+  "new_files_sha256": {
+    "lego/backend/internal/postgres/admission.go": "8d42282629f8787151affc762a892862bb13ae84a9e36dd20f9b6ee0671acd07",
+    "lego/backend/internal/postgres/admission_test.go": "d4bca4f5ef3bc2e0eb7d891f4ebf4f4a238e259f1833d8e78b5699e8051c4c58",
+    "lego/backend/internal/apps/blueprint_postgres_admission_test.go": "77a34c68bcdd9a37531ae9c0e8f561a9feb87de560cc5c12f6cb4c9cff5a45ac"
+  },
+  "findings": [
+    {
+      "priority": "low",
+      "file": "lego/backend/internal/postgres/admission_test.go",
+      "line": 254,
+      "finding": "The new GraphQL branch rebuilds the same Query/Mutation schema as existing pgGQLSchema(svc).",
+      "existing_helper": "lego/backend/internal/postgres/dryrun_test.go:128",
+      "recommendation": "Call pgGQLSchema(svc) in admissionCreateCall. The metadata-only schema can remain query-only intentionally."
+    },
+    {
+      "priority": "low",
+      "file": "lego/backend/internal/apps/blueprint.go",
+      "line": 698,
+      "finding": "The new planner-error location loop reconstructs a JSON pointer from the already formatted display path, duplicating the existing resource-error location pipeline.",
+      "existing_helper": "blueprintResourceValidationErrors at lego/backend/internal/apps/blueprint.go:734; blueprintResourceError at deploy.go:1339",
+      "recommendation": "Where current-state planning knows the resource kind/name, retain that in blueprintResourceError and use blueprintResourceValidationErrors to locate the failure; keep existing fallback for unstructured planner errors. This also reuses blueprintValidationMessage sentinel normalization."
+    }
+  ],
+  "otherwise": "Shared catalog predicates, effective storage high-water, resolvePooler, PostgresPatch.apply, pgMCPSession and cached dashboard tier hook are already reused appropriately. No need for new generic GraphQL list conversion or dashboard plan-selection wrappers.",
+  "mutations": "none; read-only review, no Go jobs; dev-8 fixture preserved"
+}

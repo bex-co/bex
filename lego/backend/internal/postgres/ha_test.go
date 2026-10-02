@@ -106,14 +106,14 @@ func TestHARefusedBelowOneCPU(t *testing.T) {
 func TestHAPlanChangeUnderHARefused(t *testing.T) {
 	ctx := context.Background()
 	svc, cl := newService()
-	seedDatabaseSpec(t, cl, "ha-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", HighAvailability: true}, false)
+	seedDatabaseSpec(t, cl, "ha-db", appv1alpha1.DatabaseSpec{Plan: "basic-256mb", HighAvailability: true}, false)
 
 	const remedy = "disable high availability first"
 	w := serveREST(svc, "PATCH", "/v1/postgres/ha-db", `{"plan":"free"}`)
 	if w.Code != 400 || !strings.Contains(w.Body.String(), remedy) {
 		t.Errorf("PATCH plan under HA => want 400 %q, got %d: %s", remedy, w.Code, w.Body.String())
 	}
-	if _, err := svc.SetPlan(ctx, "ha-db", "basic-256mb"); err == nil || !strings.Contains(err.Error(), remedy) {
+	if _, err := svc.SetPlan(ctx, "ha-db", "basic-1gb"); err == nil || !strings.Contains(err.Error(), remedy) {
 		t.Errorf("SetPlan under HA => want %q, got %v", remedy, err)
 	}
 	if _, err := svc.PreviewSetPlan(ctx, "ha-db", "free"); err == nil || !strings.Contains(err.Error(), remedy) {
@@ -132,11 +132,11 @@ func TestHAPlanChangeUnderHARefused(t *testing.T) {
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "ha-db"}, &cr); err != nil {
 		t.Fatal(err)
 	}
-	if cr.Spec.Plan != "basic-1gb" || !cr.Spec.HighAvailability {
+	if cr.Spec.Plan != "basic-256mb" || !cr.Spec.HighAvailability {
 		t.Fatalf("refused plan changes must leave plan/HA alone, got plan %q HA %v", cr.Spec.Plan, cr.Spec.HighAvailability)
 	}
 
-	// Disabling HA with the downgrade in the same PATCH is always allowed.
+	// Disabling HA with a storage-compatible downgrade in one PATCH is allowed.
 	if w := serveREST(svc, "PATCH", "/v1/postgres/ha-db", `{"plan":"free","enableHighAvailability":false}`); w.Code != 200 {
 		t.Fatalf("downgrade + HA off => 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -151,7 +151,7 @@ func TestHAPlanChangeUnderHARefused(t *testing.T) {
 func TestHACreateWithReadReplicas(t *testing.T) {
 	svc, cl := newService()
 	w := serveREST(svc, "POST", "/v1/postgres",
-		`{"name":"rep-db","readReplicas":[{"name":"reader-1"},{"name":"reader-2"}]}`)
+		`{"name":"rep-db","plan":"basic-1gb","diskSizeGB":10,"readReplicas":[{"name":"reader-1"},{"name":"reader-2"}]}`)
 	if w.Code != 201 {
 		t.Fatalf("create => 201, got %d: %s", w.Code, w.Body.String())
 	}

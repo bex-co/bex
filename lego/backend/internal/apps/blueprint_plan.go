@@ -17,10 +17,12 @@ limitations under the License.
 package apps
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -358,8 +360,9 @@ func (e *BlueprintFieldConflictError) Error() string {
 // ApplyBlueprintDatabaseSpec applies only declared database fields. Its
 // immutability and grow-only checks happen before the caller mutates a CR, so a
 // plan cannot report a change that the operator would later ignore.
-func ApplyBlueprintDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
-	before := *dst.DeepCopy()
+func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
+	before := *db.Spec.DeepCopy()
+	dst := before.DeepCopy()
 	present := func(name string) bool { _, ok := fields[name]; return ok }
 	if present("databaseName") {
 		if dst.DatabaseName != "" && want.DatabaseName != dst.DatabaseName {
@@ -407,7 +410,49 @@ func ApplyBlueprintDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.
 			return false, &BlueprintFieldConflictError{Path: "plan", Message: err.Error() + "; disable high availability first"}
 		}
 	}
+	if present("diskSizeGB") && dst.StorageGB < postgres.DatabaseStorageHighWater(db) {
+		return false, &BlueprintFieldConflictError{Path: "diskSizeGB", Message: "cannot shrink allocated storage"}
+	}
+	if err := postgres.CheckDatabaseAdmission(db, *dst); err != nil {
+		return false, blueprintDatabaseAdmissionConflict(err, fields)
+	}
+	db.Spec = *dst
 	return !reflect.DeepEqual(before, *dst), nil
+}
+
+func blueprintDatabaseAdmissionConflict(err error, fields map[string]BlueprintField) *BlueprintFieldConflictError {
+	field := "plan"
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		if name, ok := coded.Params["field"].(string); ok {
+			field = name
+		}
+	}
+	if field == "enableDiskAutoscaling" {
+		field = "storageAutoscalingEnabled"
+	}
+	if _, present := fields[field]; !present {
+		if _, changesPlan := fields["plan"]; changesPlan {
+			field = "plan"
+		}
+	}
+	return &BlueprintFieldConflictError{Path: field, Message: err.Error()}
+}
+
+func blueprintDatabaseResourceError(name string, err error) blueprintResourceErrors {
+	return blueprintResourceErrors{{kind: BlueprintResourcePostgres, name: name,
+		err: fmt.Errorf("%w: database %q %s", core.ErrBadRequest, name, err)}}
+}
+
+// The stateless plan fallback still validates creation capacity. Stateful plans
+// check after merging so omitted plan/storage fields retain their live values.
+func checkBlueprintDatabaseCreates(st parsedStack) error {
+	for _, db := range st.databases {
+		if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+			return blueprintDatabaseResourceError(db.name, blueprintDatabaseAdmissionConflict(err, db.fields))
+		}
+	}
+	return nil
 }
 
 // ApplyBlueprintKeyValueSpec is the equivalent presence-aware updater for a

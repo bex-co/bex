@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-02T21:05:07.762135+00:00",
+  "retained_owned_test_services": [
+    {
+      "name": "bex-w8-m48-test-postgres",
+      "running": true,
+      "status": "running"
+    },
+    {
+      "name": "bex-w8-m48-test-openfga",
+      "running": true,
+      "status": "running"
+    },
+    {
+      "name": "bex-w8-m48-test-openbao",
+      "running": true,
+      "status": "running"
+    }
+  ],
+  "live_dev8_database_port": 55080,
+  "dedicated_test_database_port": 55280,
+  "dedicated_test_env_path": "/tmp/bex-w8-m48-test.env",
+  "cleanup_owner": "root: retain for subsequent w8 work or remove after ship",
+  "live_dev8_base_retained": true,
+  "live_api_health_status": 200
+}

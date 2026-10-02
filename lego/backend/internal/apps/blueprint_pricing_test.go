@@ -144,6 +144,7 @@ func TestValidateBlueprintEstimatedPricingVariableCosts(t *testing.T) {
 databases:
   - name: db
     plan: basic-1gb
+    diskSizeGB: 10
     highAvailability: {enabled: true}
     readReplicas:
       - name: db-reader
@@ -154,7 +155,7 @@ databases:
 	}
 	est := v.EstimatedPricing
 	// cron: variable only. scaled: one base line + multi_instance variable.
-	// db: primary + standby + replica lines at $15.05 each.
+	// db: primary + standby + replica lines at $16.10 each.
 	wantVar := map[string]string{"nightly": pricing.VariableCron, "scaled": pricing.VariableMultiInstance}
 	if len(est.Variable) != len(wantVar) {
 		t.Fatalf("Variable = %+v, want %v", est.Variable, wantVar)
@@ -166,9 +167,9 @@ databases:
 	}
 	wantLines := []struct{ name, usd string }{
 		{"scaled", "4.90"},
-		{"db", "15.05"},
-		{"db (standby)", "15.05"},
-		{"db (replica)", "15.05"},
+		{"db", "16.10"},
+		{"db (standby)", "16.10"},
+		{"db (replica)", "16.10"},
 	}
 	if len(est.Lines) != len(wantLines) {
 		t.Fatalf("lines = %+v, want %d entries", est.Lines, len(wantLines))
@@ -178,8 +179,8 @@ databases:
 			t.Errorf("line %d = %+v, want %q at %s", i, est.Lines[i], w.name, w.usd)
 		}
 	}
-	if est.TotalUSD != "50.05" { // 4.90 + 3 × 15.05
-		t.Errorf("TotalUSD = %s, want 50.05", est.TotalUSD)
+	if est.TotalUSD != "53.20" { // 4.90 + 3 × 16.10
+		t.Errorf("TotalUSD = %s, want 53.20", est.TotalUSD)
 	}
 }
 

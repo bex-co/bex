@@ -203,6 +203,10 @@ type clusterParams struct {
 	// highAvailability, when true, provisions a replicated cluster (≥2 instances,
 	// primary + standby) with pod anti-affinity. Render's enableHighAvailability.
 	highAvailability bool
+	// readReplicas add independently provisioned readers to the shared -ro pool.
+	// currentInstances preserves capacity for legacy declarations outside policy.
+	readReplicas     int
+	currentInstances int64
 	// parameters are additional postgresql.conf key-value overrides from
 	// Database.spec.parameters. Merged on top of the built-in defaults;
 	// shared_preload_libraries is always forced to include pg_stat_statements.
@@ -400,13 +404,10 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 // (no client) so the plan->Cluster projection is unit-testable. When p.recovery
 // is set (with a backup store), the cluster bootstraps through the Barman Cloud
 // plugin from a source Database's backups — a NEW instance, never in place.
-// When p.highAvailability is true, instances is raised to at least 2 and pod
-// anti-affinity is set to spread the primary and standby across nodes.
+// Eligible readers add instances independently of the HA standby. HA also
+// sets pod anti-affinity to spread the primary and standby across nodes.
 func cnpgClusterSpec(p clusterParams) map[string]any {
-	instances := int64(p.plan.Instances)
-	if p.highAvailability && instances < 2 {
-		instances = 2
-	}
+	instances := databaseInstanceCount(p)
 	spec := map[string]any{
 		"instances": instances,
 		"storage": map[string]any{
@@ -422,10 +423,9 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// per-primary PDB allows zero disruptions, so it blocks every node drain
 	// while protecting nothing: the lone instance moves with the same brief
 	// downtime either way. After the 2026-08-09 rotation three such pods
-	// pinned an autoscaled node for six days (ADR060 D8; w7/m90). HA clusters
-	// (>=2 instances) keep CNPG's default so a standby survives a drain. The
-	// key is omitted rather than set to true for HA, so the projection deletes
-	// it when a Cluster grows from one instance and CNPG's default returns.
+	// pinned an autoscaled node for six days (ADR060 D8; w7/m90). Clusters with
+	// standbys keep CNPG's default so a reader survives a drain. Omitting the
+	// key restores that default when a Cluster grows from one instance.
 	if instances == 1 {
 		spec["enablePDB"] = false
 	}
@@ -777,6 +777,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		recovery:         db.Spec.Recovery, users: db.Spec.Users,
 		deletedUsers:      db.Spec.DeletedUsers,
 		highAvailability:  db.Spec.HighAvailability,
+		readReplicas:      len(db.Spec.ReadReplicas),
 		parameters:        db.Spec.Parameters,
 		serverAltDNSNames: databaseServerAltDNSNames(&db, r.DBDomain),
 	}); err != nil {
@@ -816,12 +817,9 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.settleSuspended(ctx, &db, exportRequeue)
 	}
 
-	// Desired cluster size: the plan default, raised to 2 for HA so the ready-gate
-	// waits for the standby to come up before reporting the cluster as Ready.
-	desiredInstances := int64(plan.Instances)
-	if db.Spec.HighAvailability && desiredInstances < 2 {
-		desiredInstances = 2
-	}
+	// The projection includes readers as well as any HA standby. Read the
+	// accepted intent so readiness cannot use a different capacity calculation.
+	desiredInstances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
 
 	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(exportRequeue, diskRequeue))
 }
@@ -891,6 +889,7 @@ func (r *DatabaseReconciler) prepareBackups(ctx context.Context, db *appv1alpha1
 // namespace). The caller owns cluster because the readiness gate reads it back.
 func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, params clusterParams) error {
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
+		params.currentInstances = cnpgInstanceCount(cluster)
 		spec := cnpgClusterSpec(params)
 		// Mark CNPG-managed pods as tenant databases so the node log shipper can
 		// exclude platform/auth CNPG clusters. Propagate workspace identity through

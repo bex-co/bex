@@ -16,6 +16,7 @@ import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAccessControl } from "@/features/databases/hooks/use-access-control";
+import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 
 /**
  * The database detail's Access Control section: the external-endpoint IP
@@ -23,9 +24,19 @@ import { useAccessControl } from "@/features/databases/hooks/use-access-control"
  * reveals the password once, delete), and an on-demand reveal of the pooled
  * connection strings. Mirrors the services env-vars panel shape.
  */
-export function AccessControlPanel({ id }: { id: string }) {
+export function AccessControlPanel({
+  id,
+  plan,
+}: {
+  id: string;
+  plan: string | null;
+}) {
   const { t } = useTranslations();
   const access = useAccessControl(id);
+  const { instanceTypes } = useDatabaseInstanceTypes();
+  const supportsPooling = instanceTypes.find(
+    (it) => it.id === plan,
+  )?.supportsConnectionPooling;
 
   return (
     <Card>
@@ -41,7 +52,7 @@ export function AccessControlPanel({ id }: { id: string }) {
           access={access}
         />
         <UsersSection access={access} />
-        <PoolerSection access={access} />
+        <PoolerSection access={access} supportsPooling={supportsPooling} />
       </CardContent>
     </Card>
   );
@@ -172,7 +183,13 @@ function UsersSection({ access }: { access: Access }) {
   );
 }
 
-function PoolerSection({ access }: { access: Access }) {
+function PoolerSection({
+  access,
+  supportsPooling,
+}: {
+  access: Access;
+  supportsPooling: boolean | undefined;
+}) {
   const { t } = useTranslations();
   return (
     <section className="space-y-2">
@@ -200,7 +217,11 @@ function PoolerSection({ access }: { access: Access }) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {t("databases.accessPoolerDisabled")}
+            {t(
+              supportsPooling === false
+                ? "databases.accessPoolerPlanUnsupported"
+                : "databases.accessPoolerDisabled",
+            )}
           </p>
         )
       ) : (

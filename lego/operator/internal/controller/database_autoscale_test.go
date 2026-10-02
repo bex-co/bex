@@ -41,12 +41,43 @@ import (
 )
 
 var _ = Describe("Database disk autoscaling", func() {
+	It("leaves flagged free databases and their allocated storage intact", func(ctx SpecContext) {
+		for _, size := range []int32{1, 15} {
+			db := &appv1alpha1.Database{
+				ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("dpg-free-autoscale-%d", size), Namespace: "default"},
+				Spec: appv1alpha1.DatabaseSpec{
+					Name: fmt.Sprintf("free-autoscale-%d", size), Plan: "free", StorageGB: size, DiskAutoscaling: true,
+				},
+			}
+			Expect(k8sClient.Create(ctx, db)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), db) })
+			db.Status.AllocatedStorageGB = size
+			Expect(k8sClient.Status().Update(ctx, db)).To(Succeed())
+			recorder := record.NewFakeRecorder(1)
+			r := &DatabaseReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), Recorder: recorder,
+				DiskUsageReader: func(context.Context, string, string) (DatabaseDiskUsage, error) {
+					Fail("fixed-storage databases must not sample for automatic growth")
+					return DatabaseDiskUsage{}, nil
+				},
+			}
+			requeue, err := r.applyDiskAutoscaling(ctx, db)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(requeue).To(BeZero())
+			got := &appv1alpha1.Database{}
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(db), got)).To(Succeed())
+			Expect(got.Spec).To(Equal(db.Spec))
+			Expect(got.Status.AllocatedStorageGB).To(Equal(size))
+			Expect(got.Status.DiskResizeHistory).To(BeEmpty())
+			Expect(recorder.Events).NotTo(Receive())
+		}
+	})
+
 	It("persists one grow-only resize and audit entry past the threshold", func(ctx SpecContext) {
 		now := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
 		db := &appv1alpha1.Database{
 			ObjectMeta: metav1.ObjectMeta{Name: "dpg-autoscale-envtest", Namespace: "default"},
 			Spec: appv1alpha1.DatabaseSpec{
-				Name: "autoscale-envtest", Plan: "free", StorageGB: 10, DiskAutoscaling: true,
+				Name: "autoscale-envtest", Plan: "basic-256mb", StorageGB: 10, DiskAutoscaling: true,
 			},
 		}
 		Expect(k8sClient.Create(ctx, db)).To(Succeed())
@@ -128,7 +159,7 @@ func TestDiskAutoscalingSampleFailuresDebouncePersistAndReset(t *testing.T) {
 	}
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-sample-failures", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", StorageGB: 10, DiskAutoscaling: true},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-256mb", StorageGB: 10, DiskAutoscaling: true},
 		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.Database{}).WithObjects(db).Build()
@@ -205,7 +236,7 @@ func TestDiskAutoscalingSampleFailureStaysQuietBeforeDatabaseReady(t *testing.T)
 	}
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-provisioning", Namespace: "default"},
-		Spec:       appv1alpha1.DatabaseSpec{DiskAutoscaling: true},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-256mb", DiskAutoscaling: true},
 		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseProvisioning},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.Database{}).WithObjects(db).Build()
@@ -244,7 +275,7 @@ func TestApplyDatabaseDiskAutoscalingPersistsOneResizeEventAndStatus(t *testing.
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-autoscale", Namespace: "default"},
 		Spec: appv1alpha1.DatabaseSpec{
-			Plan: "free", StorageGB: 10, DiskAutoscaling: true,
+			Plan: "basic-256mb", StorageGB: 10, DiskAutoscaling: true,
 		},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.Database{}).WithObjects(db).Build()
@@ -408,7 +439,7 @@ func TestDatabaseDiskAutoscaleBlockedByNamespaceQuota(t *testing.T) {
 	}
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-quota", Namespace: "tea-quota"},
-		Spec:       appv1alpha1.DatabaseSpec{Plan: "free", StorageGB: 10, DiskAutoscaling: true},
+		Spec:       appv1alpha1.DatabaseSpec{Plan: "basic-256mb", StorageGB: 10, DiskAutoscaling: true},
 		Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady},
 	}
 	// 10 GiB used, 12 GiB hard — no room for the +5 GiB grow to 15 GiB.
@@ -531,5 +562,44 @@ func TestPrometheusDatabaseDiskUsageReaderChoosesFullestPVC(t *testing.T) {
 	}
 	if usage.PVC != "dpg-one-2" || usage.UsedBytes != 95 || usage.CapacityBytes != 100 {
 		t.Fatalf("usage = %+v", usage)
+	}
+}
+
+func TestFreeDatabaseAutoscalingPreservesStorageWithoutReadingOrGrowing(t *testing.T) {
+	for _, plan := range []string{"free", "", "unknown"} {
+		for _, size := range []int32{1, 15} {
+			t.Run(fmt.Sprintf("%s-%dGB", plan, size), func(t *testing.T) {
+				scheme := runtime.NewScheme()
+				if err := appv1alpha1.AddToScheme(scheme); err != nil {
+					t.Fatal(err)
+				}
+				db := &appv1alpha1.Database{
+					ObjectMeta: metav1.ObjectMeta{Name: "fixed-storage", Namespace: "default"},
+					Spec:       appv1alpha1.DatabaseSpec{Plan: plan, StorageGB: size, DiskAutoscaling: true},
+					Status:     appv1alpha1.DatabaseStatus{AllocatedStorageGB: size, Phase: appv1alpha1.DBPhaseReady},
+				}
+				cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appv1alpha1.Database{}).WithObjects(db).Build()
+				recorder := record.NewFakeRecorder(1)
+				r := &DatabaseReconciler{Client: cl, Scheme: scheme, Recorder: recorder, DiskUsageReader: func(context.Context, string, string) (DatabaseDiskUsage, error) {
+					t.Fatal("fixed-storage database read an autoscaling sample")
+					return DatabaseDiskUsage{}, nil
+				}}
+				if delay, err := r.applyDiskAutoscaling(context.Background(), db.DeepCopy()); err != nil || delay != 0 {
+					t.Fatalf("apply = %s/%v, want no growth work", delay, err)
+				}
+				var got appv1alpha1.Database
+				if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &got); err != nil {
+					t.Fatal(err)
+				}
+				if got.Spec.StorageGB != size || got.Status.AllocatedStorageGB != size || !got.Spec.DiskAutoscaling || got.Spec.Plan != plan || len(got.Status.DiskResizeHistory) != 0 || got.Annotations[annotDiskAutoscaleAt] != "" {
+					t.Fatalf("fixed-storage state changed: spec=%+v status=%+v", got.Spec, got.Status)
+				}
+				select {
+				case event := <-recorder.Events:
+					t.Fatalf("fixed-storage database emitted a growth event: %s", event)
+				default:
+				}
+			})
+		}
 	}
 }

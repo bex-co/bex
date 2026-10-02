@@ -345,6 +345,14 @@ const zhDatabases: Record<string, TranslationEntry> = {
       "使用率达到 90% 时，存储将增加 50% 并向上取整到 5 GB。扩容不可逆，且每 12 小时最多一次。",
     description: "Accessible explanation of Postgres disk autoscaling",
   },
+  "databases.diskAutoscalingCurrentSize": {
+    message: "当前 {current} GB",
+    description: "Current disk size while plan limits are unavailable",
+  },
+  "databases.diskAutoscalingPlanUnsupported": {
+    message: "当前规格不支持磁盘自动扩容。已启用的设置仍可关闭。",
+    description: "Plan restriction beside the disk autoscaling switch",
+  },
   "databases.diskAutoscalingEnabled": {
     message: "已启用磁盘自动扩容。",
     description: "Toast after enabling Postgres disk autoscaling",
@@ -826,6 +834,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "内部连接池连接",
     description: "Access panel pooled-string label (in-cluster)",
   },
+  "databases.accessPoolerPlanUnsupported": {
+    message: "当前规格不支持连接池。请先选择支持连接池的规格，再启用连接池。",
+    description: "Pooler empty state on an unsupported plan",
+  },
   "databases.accessPoolerExternal": {
     message: "外部连接池连接",
     description: "Access panel pooled-string label (public)",
@@ -913,6 +925,23 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "{name} 不支持高可用（需要至少 1 个 CPU）。请先关闭高可用。",
     description:
       "Plan picker refusal when an HA database selects a plan below 1 CPU; mirrors the API message (w8/m43)",
+  },
+  "databases.planPickerStorageUnsupported": {
+    message:
+      "{name} 最多支持 {max} GB 存储。该数据库已有 {current} GB，且无法缩容。请选择存储容量足够的规格。",
+    description: "Plan change blocked by the database's existing storage",
+  },
+  "databases.planPickerReplicasUnsupported": {
+    message: "{name} 的只读副本上限为 {max}，该数据库当前有 {current} 个。",
+    description: "Plan change blocked by the database's read replicas",
+  },
+  "databases.planPickerAutoscalingUnsupported": {
+    message: "{name} 不支持磁盘自动扩容。请先关闭磁盘自动扩容。",
+    description: "Plan change blocked while disk autoscaling is enabled",
+  },
+  "databases.planPickerPoolerUnsupported": {
+    message: "{name} 不支持连接池。请先关闭连接池。",
+    description: "Plan change blocked while a connection pooler is enabled",
   },
   // --- Plan section (m16) ---
   "databases.planTitle": {

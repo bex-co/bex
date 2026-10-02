@@ -498,10 +498,15 @@ export type DatabaseInstanceType = {
   __typename: 'DatabaseInstanceType';
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  maxReadReplicas: Maybe<Scalars['Int']['output']>;
+  maxStorageGB: Maybe<Scalars['Int']['output']>;
   memory: Maybe<Scalars['String']['output']>;
   monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
+  readReplicaMinStorageGB: Maybe<Scalars['Int']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
+  supportsConnectionPooling: Maybe<Scalars['Boolean']['output']>;
+  supportsDiskAutoscaling: Maybe<Scalars['Boolean']['output']>;
   supportsHighAvailability: Maybe<Scalars['Boolean']['output']>;
 };
 
@@ -555,6 +560,10 @@ export type DatabaseQueryResult = {
 export type DatabaseQueryRow = {
   __typename: 'DatabaseQueryRow';
   values: Maybe<Array<Maybe<Scalars['String']['output']>>>;
+};
+
+export type DatabaseReadReplicaInput = {
+  name: Scalars['String']['input'];
 };
 
 export type DatabaseRecoveryInfo = {
@@ -1364,6 +1373,7 @@ export type MutationCreateBlueprintArgs = {
 
 
 export type MutationCreateDatabaseArgs = {
+  connectionPool?: InputMaybe<Scalars['String']['input']>;
   databaseName?: InputMaybe<Scalars['String']['input']>;
   databaseUser?: InputMaybe<Scalars['String']['input']>;
   diskSizeGB?: InputMaybe<Scalars['Int']['input']>;
@@ -1377,6 +1387,7 @@ export type MutationCreateDatabaseArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   plan?: InputMaybe<Scalars['String']['input']>;
   public?: InputMaybe<Scalars['Boolean']['input']>;
+  readReplicas?: InputMaybe<Array<DatabaseReadReplicaInput>>;
   version?: InputMaybe<Scalars['String']['input']>;
 };
 

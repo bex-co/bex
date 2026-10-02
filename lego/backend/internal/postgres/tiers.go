@@ -37,11 +37,16 @@ import (
 // copy of the ladder the w1/m8 catalog collapsed. ID is the Database CRD's
 // spec.plan spelling (what createDatabase accepts), matching the other fields.
 type DatabaseInstanceType struct {
-	ID        string
-	Name      string
-	CPU       string
-	Memory    string
-	StorageGB int32
+	ID                        string
+	Name                      string
+	CPU                       string
+	Memory                    string
+	StorageGB                 int32
+	MaxStorageGB              int32
+	SupportsDiskAutoscaling   bool
+	SupportsConnectionPooling bool
+	MaxReadReplicas           int
+	ReadReplicaMinStorageGB   int32
 	// SupportsHighAvailability is PlanSupportsHighAvailability for this plan.
 	SupportsHighAvailability bool
 	// MonthlyUSD is the always-on monthly price from the one price sheet
@@ -64,13 +69,18 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]DatabaseInstanceType, er
 		t, _ := tiers.Postgres.ByID(id)
 		monthlyUSD, _ := pricing.Default.InstanceMonthlyUSD(id, store.ResourceKindPostgres)
 		out[i] = DatabaseInstanceType{
-			MonthlyUSD:               monthlyUSD,
-			ID:                       t.ID,
-			Name:                     pgTierDisplayName(id),
-			CPU:                      t.CPU,
-			Memory:                   t.Memory,
-			StorageGB:                t.StorageGB,
-			SupportsHighAvailability: PlanSupportsHighAvailability(t),
+			MonthlyUSD:                monthlyUSD,
+			ID:                        t.ID,
+			Name:                      pgTierDisplayName(id),
+			CPU:                       t.CPU,
+			Memory:                    t.Memory,
+			StorageGB:                 t.StorageGB,
+			SupportsHighAvailability:  PlanSupportsHighAvailability(t),
+			MaxStorageGB:              tiers.Postgres.MaxStorageGB(t.ID),
+			SupportsDiskAutoscaling:   t.SupportsDiskAutoscaling(),
+			SupportsConnectionPooling: t.SupportsConnectionPooling(),
+			MaxReadReplicas:           t.MaxReadReplicas(),
+			ReadReplicaMinStorageGB:   tiers.PostgresReadReplicaMinStorageGB,
 		}
 	}
 	return out, nil

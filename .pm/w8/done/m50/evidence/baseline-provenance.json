@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-02T20:32:44.904949+00:00",
+  "stage": "prepatch-fixture-preparation",
+  "head": "bef13580f12d3572a9297941f6e108ad363428b3",
+  "api_origin": "http://localhost:54080",
+  "live_database_endpoint": {
+    "host": "localhost",
+    "port": 55080,
+    "database": "bex"
+  },
+  "test_database_endpoint": {
+    "host": "localhost",
+    "port": 55280,
+    "database": "bex_w8_m49_test"
+  },
+  "cli_pin": "github.com/render-oss/cli@v1.1.3-0.20260909214233-a764810a7682",
+  "artifacts": {
+    "bex-api": {
+      "sha256": "0ac2539a588716dac1f62479b298177e108525f34a6b53341b921d5f1c3c56e5"
+    },
+    "bex-current": {
+      "sha256": "543a3ec325a8a06714517e5fb1e160d0bb38512e7c3cef7c7034fab518a760e6"
+    },
+    "render-upstream": {
+      "sha256": "225c5bfb5ea72ef223341ba4a71f8e5e680989d6712cb4f5beeb414ad58cd9d5"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "all-attempts.jsonl": "dce8646b0a5bbf8512341a3357815f99ea4313e3fec56f1ed58574eacad5c10d",
+  "baseline-provenance.json": "cb37f691936d4bd0fd11bcdc22e7b33a77753b26d9e1b7ee91ddfd20b4ec23bc",
+  "checks.jsonl": "51c76cd36f85f2ebf938ed333b57a9a24a1596bdd2d2196609921ca114e4e398",
+  "cleanup-evidence.jsonl": "c5e84cd4f7f1c46cd0e1bbcf5640e2a51d4cc1014e1ae6c151e2eb234c0f1700",
+  "existing-operator-runtime-observation.json": "b690ea16bd5ca2b4c36fdeddb8137d2b96469c07d7135a218343ee8d07b32c68",
+  "final-api-provenance.json": "46e71e9bacab419f3a189ee096efb9ea05b228938cae1f0047442951b6579434",
+  "fixture-baseline.json": "2866d29fee040796b24a8188b32da6da5c59b98490601a9cb01b5761063ddb61",
+  "fixture-cnpg-api-egress.json": "1d32a3eaca79bcc119ab7ea3aeb1705a665f1f1b4864d03dca7a4d22e0681516",
+  "fixture-ledger.json": "ee4c6163dbde893dcbf68deb6eb0af4e136e07a03abd974cbf4a43dc8b7e54dd",
+  "harness-transients.jsonl": "3bab728848b546479815fae1f1f61dab7258bcedb0f250e0aa887daee461180a",
+  "operator-reuse-review.json": "61ede9f0c2c18c1953dfd43811b55d9d68ac27c47b7ee5ec9df4883d17e66625",
+  "reader-runtime-evidence.jsonl": "fc832a0e6bac05bdde7cd3f4c6652d2c62400138697a766e2b41d6e09e9f7cb1",
+  "reader-runtime-projection.json": "cb5e3dfabae571470a1fdd95cec1c82ab1b84a6b518239ca4a23093ab2edaf51",
+  "reader-runtime-provenance.json": "11bc410217e163d859c930f80480b66fd32552b05787222298786dd16a7fb033",
+  "retained-infrastructure.json": "59737ce4c2308951dc4f4fb14d3360fc4a9a833919e33ae7f8fadcd50982c144",
+  "reuse-review.json": "86177827b82bb5dd2ddfd588a1de241e5d274c4837ec297d7d0fdf5a5c31809b",
+  "summary.json": "0b49e80ef78b4eeebea6087b9dca1bbcab1e842941ed69af242e29200bb23cff",
+  "test-postgres-reset-1.json": "c2752c0ede6b2e14b3f576f4549ac4a7ecdaa2dd98bebbe4c00a39c59a53bfa9",
+  "test-postgres-reset-2.json": "a3586853f4c421ec5c9a6a81c090dcc4ac6901c48ad569e3a13dcdf1758a60cc",
+  "test-postgres-reset-3.json": "3022b799054f660abf0fda9f9b92fc025e0cfef878e5289c4bde6653690d54bd",
+  "verification.json": "ecef88707398ed700d90050b0ab5e928039f80ae1e46d84ca29fab81dd5adca2"
+}

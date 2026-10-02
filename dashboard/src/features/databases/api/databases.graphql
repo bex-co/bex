@@ -228,6 +228,10 @@ query DatabaseInstanceTypes {
     cpu
     memory
     storageGB
+    maxStorageGB
+    supportsDiskAutoscaling
+    supportsConnectionPooling
+    maxReadReplicas
     supportsHighAvailability
     # The price from bex-api's one price sheet (w4/156).
     monthlyUsd

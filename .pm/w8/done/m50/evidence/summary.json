@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-02T21:05:08.005190+00:00",
+  "scope": "Authenticated local dev-8 API admission, pinned CLI acceptance, and exact production CNPG projection runtime proof; production and shared operators unchanged",
+  "phase": "complete; tenant fixtures and standalone runtime resources absent",
+  "final_unique_admission_controls": 59,
+  "final_passing_admission_controls": 59,
+  "raw_admission_attempt_rows": 63,
+  "earlier_failed_admission_rows_retained": 4,
+  "tenant_cleanup_checks": 9,
+  "standalone_runtime_stages_passed": 4,
+  "standalone_runtime_assertions": [
+    "two Running/Ready instances and a Ready read-only-service endpoint",
+    "primary f|off; reader t|on|42 after inserting one row through primary service"
+  ],
+  "standalone_runtime_cleanup_verified": true,
+  "api_sha256": "0db9744d37d1a43b63c8be54ced4208dcd05465ae407acd2b57155cb2d85e8d6",
+  "bex_cli_compatibility_version": "Render CLI 2.27.0",
+  "same_pin_unmodified_render_module": "github.com/render-oss/cli@v1.1.3-0.20260909214233-a764810a7682",
+  "cli_sha256": {
+    "bex-current": "543a3ec325a8a06714517e5fb1e160d0bb38512e7c3cef7c7034fab518a760e6",
+    "render-upstream": "225c5bfb5ea72ef223341ba4a71f8e5e680989d6712cb4f5beeb414ad58cd9d5"
+  },
+  "coverage": [
+    "Free replica/storage/autoscaling/pooler create refusals through REST, GraphQL, MCP, current Bex and unmodified same-pin Render CLI",
+    "Free storage/autoscaling/pooler update refusals through REST/MCP/both CLIs plus GraphQL autoscaling",
+    "Replica CPU 0.5/storage 10/count 5 boundaries and paid storage 16384 ceiling (negative/dry-run, no huge writes)",
+    "Located Blueprint refusals, eligible Blueprint validation, and merged-state downgrade refusal",
+    "Both paid tiers accept pooler/autoscaling in no-write previews",
+    "Dashboard GraphQL capability metadata matches free/paid/replica rules",
+    "Explicit false/none and get controls on free through both CLIs",
+    "Eligible basic-1gb 10GB API create preserves reader declaration, primary Ready, both CLI get controls",
+    "Unsupported basic-256mb downgrade refused across REST/GQL/MCP/both CLIs, with desired specs/inventory unchanged",
+    "Exact cnpgClusterSpec output for basic-1gb 10Gi, HA=false and one reader reaches two Ready instances; read-only service returns replicated row while in recovery and read-only mode"
+  ],
+  "limits": [
+    "The shared Bex operator was not rolled out. The original API-created fixture had one primary and no Ready reader; that observation is retained. The new operator is covered by root unit/envtest, while live reader proof applies its exact production projection directly as an isolated CNPG Cluster without a Database owner.",
+    "Existing hcloud-volumes uses rancher.io/local-path in this local CAPD cluster; the live proof does not validate Hetzner CSI.",
+    "Operator autoscaling/readiness/quota behavior is covered by root automated tests; no large storage or replica-count live writes were performed.",
+    "One tenant-fixture-only NetworkPolicy allowed CNPG pods to the current Kubernetes API service/endpoint; the policy was removed with the verified absent namespace.",
+    "Earlier temporary harness mistakes (long name, REST errors envelope, CLI data wrapper) and local one-Postgres workspace quota refusal remain beside corrected passing results; OAuth token renewed after its 15-minute expiry.",
+    "Free fixture was retired before eligible paid create to honor local one-database quota; no other workspace was changed.",
+    "No live dashboard browser exercise; live GraphQL metadata and adapter calls plus root UI tests cover this change."
+  ],
+  "all_tenant_fixtures_cleaned": true,
+  "all_standalone_runtime_fixtures_cleaned": true,
+  "dedicated_test_postgres_resets": 3,
+  "retained_test_infrastructure_separate_from_tenant_fixtures": true,
+  "production_changed": false
+}

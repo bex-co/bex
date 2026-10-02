@@ -66,6 +66,7 @@ export function toDatabaseDetailView(
     databaseUser: d.databaseUser ?? null,
     highAvailabilityEnabled: d.highAvailabilityEnabled ?? false,
     diskAutoscalingEnabled: d.diskAutoscalingEnabled ?? false,
+    poolerEnabled: d.poolerEnabled ?? false,
     readReplicas: (d.readReplicas ?? [])
       .filter((r): r is NonNullable<typeof r> => r != null && r.name != null)
       .map((r) => ({

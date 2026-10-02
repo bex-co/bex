@@ -1,0 +1,27 @@
+{
+  "built_at_utc": "2026-10-02T20:47:09.638054+00:00",
+  "source_head": "bef13580f12d3572a9297941f6e108ad363428b3",
+  "api_sha256": "0db9744d37d1a43b63c8be54ced4208dcd05465ae407acd2b57155cb2d85e8d6",
+  "source_dirty": true,
+  "changed_production_sources": {
+    "lego/backend/internal/apps/blueprint.go": "ca5aac5d36a0ffba2e73df9209475c2c9db67c62a988461f0a7981b576f01924",
+    "lego/backend/internal/apps/blueprint_plan.go": "23acaa4e9f95ae3514de0e0c114d04ed82757d0180447373a30df6771cb3e9a9",
+    "lego/backend/internal/apps/blueprint_state_plan.go": "2877095fec8b914dc815c1bc993c47737c33f6ba85d905921d38ea69ae07141a",
+    "lego/backend/internal/apps/deploy.go": "1779d892be5cd4851bd333da7c148a81f5e9e9357cfebbc8f93154afa6f82e93",
+    "lego/backend/internal/postgres/admission.go": "8d42282629f8787151affc762a892862bb13ae84a9e36dd20f9b6ee0671acd07",
+    "lego/backend/internal/postgres/graphql.go": "881a7e24c850ede11be01787308fb2e0028f258b39004bbbd108dfed67d4f9a0",
+    "lego/backend/internal/postgres/mcp.go": "3635ad53ffb7c0384d7f6fdc6fc61f0861b68880d55270706e780ee77ed8e1ad",
+    "lego/backend/internal/postgres/service.go": "f109e8821c141017542833d4b5b684db8870ad48d69fdeb5d0b084f9dbd9ebc9",
+    "lego/backend/internal/postgres/tiers.go": "1f8649842d79788031630dc1a42423d06aea8c2c1556be0a7eb760716e251093",
+    "lego/types/tiers/tiers.go": "f99312bc664b2706ea3017809374a6298bf620b34e3453d1ee99896a9c71c7b5"
+  },
+  "api_origin": "http://localhost:54080",
+  "health_status": 200,
+  "cli_pin": "github.com/render-oss/cli@v1.1.3-0.20260909214233-a764810a7682",
+  "cli_sha256": {
+    "bex-current": "543a3ec325a8a06714517e5fb1e160d0bb38512e7c3cef7c7034fab518a760e6",
+    "render-upstream": "225c5bfb5ea72ef223341ba4a71f8e5e680989d6712cb4f5beeb414ad58cd9d5"
+  },
+  "shared_operator_unchanged": true,
+  "production_changed": false
+}

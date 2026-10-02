@@ -1,8 +1,8 @@
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useUpdateDatabaseDiskAutoscaling } from "@/features/databases/hooks/use-update-database-disk-autoscaling";
+import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import type { DatabaseDetailView } from "@/features/databases/types";
-import { DISK_AUTOSCALING_CAP_GB } from "@/features/databases/lib/disk";
 
 export interface DatabaseDiskAutoscalingControlProps {
   database: DatabaseDetailView;
@@ -15,8 +15,12 @@ export function DatabaseDiskAutoscalingControl({
 }: DatabaseDiskAutoscalingControlProps) {
   const { t } = useTranslations();
   const { updateDiskAutoscaling, busy } = useUpdateDatabaseDiskAutoscaling();
+  const { instanceTypes } = useDatabaseInstanceTypes();
+  const plan = instanceTypes.find((it) => it.id === database.plan);
+  const enableBlocked = !plan?.supportsDiskAutoscaling;
 
   async function handleChange(enabled: boolean) {
+    if (enabled && enableBlocked) return;
     if (await updateDiskAutoscaling(database.id, enabled)) onChanged();
   }
 
@@ -30,21 +34,34 @@ export function DatabaseDiskAutoscalingControl({
           {t("databases.diskAutoscalingLabel")}
         </label>
         <span className="block text-xs text-muted-foreground">
-          {t("databases.diskAutoscalingSize", {
-            current: database.diskSizeGB ?? 0,
-            cap: DISK_AUTOSCALING_CAP_GB,
-          })}
+          {plan?.maxStorageGB != null
+            ? t("databases.diskAutoscalingSize", {
+                current: database.diskSizeGB ?? 0,
+                cap: plan.maxStorageGB,
+              })
+            : t("databases.diskAutoscalingCurrentSize", {
+                current: database.diskSizeGB ?? 0,
+              })}
         </span>
+        {plan && enableBlocked ? (
+          <span className="block text-xs text-muted-foreground">
+            {t("databases.diskAutoscalingPlanUnsupported")}
+          </span>
+        ) : null}
       </div>
       <Switch
         id="database-disk-autoscaling"
         checked={database.diskAutoscalingEnabled}
-        disabled={busy}
+        disabled={busy || (enableBlocked && !database.diskAutoscalingEnabled)}
         aria-describedby="database-disk-autoscaling-hint"
         onCheckedChange={(enabled) => void handleChange(enabled)}
       />
       <span id="database-disk-autoscaling-hint" className="sr-only">
-        {t("databases.diskAutoscalingHint")}
+        {t(
+          plan && enableBlocked
+            ? "databases.diskAutoscalingPlanUnsupported"
+            : "databases.diskAutoscalingHint",
+        )}
       </span>
     </div>
   );

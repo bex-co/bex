@@ -78,13 +78,13 @@ func TestValidateBlueprintRefusesHAOnSubCPUPlan(t *testing.T) {
 // HA database to a plan without HA is a field conflict with the remedy, and
 // turning HA off in the same sync is allowed.
 func TestApplyBlueprintDatabaseSpecRefusesPlanChangeUnderHA(t *testing.T) {
-	dst := appv1alpha1.DatabaseSpec{Plan: "basic-1gb", HighAvailability: true}
-	_, err := ApplyBlueprintDatabaseSpec(&dst, appv1alpha1.DatabaseSpec{Plan: "free"}, map[string]BlueprintField{"plan": {}})
+	dst := appv1alpha1.DatabaseSpec{Plan: "basic-256mb", HighAvailability: true}
+	_, err := applyBlueprintDatabaseSpecForTest(&dst, appv1alpha1.DatabaseSpec{Plan: "free"}, map[string]BlueprintField{"plan": {}})
 	var conflict *BlueprintFieldConflictError
 	if !errors.As(err, &conflict) || conflict.Path != "plan" || !strings.Contains(conflict.Message, "disable high availability first") {
 		t.Fatalf("plan change under HA => want plan conflict, got %v", err)
 	}
-	changed, err := ApplyBlueprintDatabaseSpec(&dst, appv1alpha1.DatabaseSpec{Plan: "free"},
+	changed, err := applyBlueprintDatabaseSpecForTest(&dst, appv1alpha1.DatabaseSpec{Plan: "free"},
 		map[string]BlueprintField{"plan": {}, "highAvailability": {}})
 	if err != nil || !changed || dst.HighAvailability || dst.Plan != "free" {
 		t.Errorf("plan change + HA off => allowed, got changed=%v err=%v spec=%+v", changed, err, dst)

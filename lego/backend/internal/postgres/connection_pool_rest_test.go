@@ -52,7 +52,7 @@ func TestRESTCreatePostgresConnectionPoolEnum(t *testing.T) {
 	svc, cl := newService()
 
 	// Render's enum on create maps onto spec.pooler and round-trips in the view.
-	code, pg := createPG(t, svc, `{"name":"pooled-db","plan":"free","connectionPool":"pgbouncer"}`)
+	code, pg := createPG(t, svc, `{"name":"pooled-db","plan":"basic-256mb","connectionPool":"pgbouncer"}`)
 	if code != http.StatusCreated {
 		t.Fatalf("create pgbouncer => 201, got %d", code)
 	}
@@ -73,13 +73,13 @@ func TestRESTCreatePostgresConnectionPoolEnum(t *testing.T) {
 	}
 
 	// The legacy pooler bool still works and reads back as the enum.
-	code, pg = createPG(t, svc, `{"name":"legacy-db","plan":"free","pooler":true}`)
+	code, pg = createPG(t, svc, `{"name":"legacy-db","plan":"basic-256mb","pooler":true}`)
 	if code != http.StatusCreated || pg.ConnectionPool != "pgbouncer" || !specPooler(t, cl, pg.ID) {
 		t.Fatalf("create pooler:true => %d view %+v", code, pg)
 	}
 
 	// Both fields with identical intent are fine.
-	code, pg = createPG(t, svc, `{"name":"both-db","plan":"free","pooler":true,"connectionPool":"pgbouncer"}`)
+	code, pg = createPG(t, svc, `{"name":"both-db","plan":"basic-256mb","pooler":true,"connectionPool":"pgbouncer"}`)
 	if code != http.StatusCreated || pg.ConnectionPool != "pgbouncer" || !specPooler(t, cl, pg.ID) {
 		t.Fatalf("create identical dual-field => %d view %+v", code, pg)
 	}
@@ -116,7 +116,7 @@ func TestRESTCreatePostgresConnectionPoolNamedErrors(t *testing.T) {
 
 func TestRESTPatchPostgresConnectionPool(t *testing.T) {
 	svc, cl := newService()
-	seedPGWithLabels(t, svc, "patch-pool", appv1alpha1.DatabaseSpec{Plan: "free"}, nil)
+	seedPGWithLabels(t, svc, "patch-pool", appv1alpha1.DatabaseSpec{Plan: "basic-256mb"}, nil)
 
 	// Render's enum toggles the pooler both ways and round-trips in the view.
 	rec := serveREST(svc, http.MethodPatch, "/v1/postgres/patch-pool", `{"connectionPool":"pgbouncer"}`)

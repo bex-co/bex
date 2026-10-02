@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-02",
+  "results": {
+    "backend_full": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-backend-full.log",
+      "log_sha256": "46cb267e331a22873213ce52c7e0074f7846a71529016c89595414c0178c5370"
+    },
+    "operator_full": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-operator-full.log",
+      "log_sha256": "833d7e1faa3bd04b3f26382da2fb9edfa3fc5a457ac40322c85a2c9fe2e8f3a2"
+    },
+    "go_lint_and_deadcode": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-lint.log",
+      "log_sha256": "ba05e122f7aa17d045901051ff6f6337aa8968ebbaf7d70472495b9488177f75"
+    },
+    "dashboard_full": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-dashboard-test.log",
+      "log_sha256": "84eaccfe315172f01a45e0b22ba1323eaa1dca54c317fabff29968e9b8dfa34b"
+    },
+    "dashboard_focused": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-dashboard-focused.log",
+      "log_sha256": "0ce13e9f260d187f243a08c81848b1236aabbd1fcad9f1d45b68d006f4852934"
+    },
+    "dashboard_lint": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-dashboard-lint.log",
+      "log_sha256": "e8977cb81f7194cd6cc278eb5bdc1911562849f8a6414efa374f15342865f217"
+    },
+    "dashboard_codegen": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-dashboard-codegen.log",
+      "log_sha256": "5d7e40905d458d1bc75a2dc0a40efc41eab14eaa2e5745bae03cf5abf386c6f4"
+    },
+    "dashboard_typecheck_final": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-dashboard-typecheck-final.log",
+      "log_sha256": "9994fcbc4440ee2093475633aad6d79ad2a04b7cbed16b2f08bcd445bb15b7cd"
+    },
+    "staging_gate_cleanup": {
+      "result": "pass",
+      "local_log": "/tmp/bex-w8-m50-staging-cleanup.log",
+      "log_sha256": "1a426201f515f8cac0d9b0a7a55c1f328866cf17b02be062488568c712b1429e"
+    }
+  },
+  "backend_services": "Dedicated real PostgreSQL, OpenFGA and OpenBao; unchanged packages used Go test cache. Manual real-cluster optional tests had no BEX_TEST_KUBECONFIG.",
+  "dashboard_counts": {
+    "full_files": 457,
+    "full_tests": 3866,
+    "latest_focused_files": 6,
+    "latest_focused_tests": 47
+  },
+  "reviews": "Reuse, quality and efficiency completed for original change and reader extension; helper/location reuse and staging gate cleanup applied.",
+  "initial_backend_failures": "Old successful Blueprint fixture used ineligible basic-256mb/5GB readers. Interrupted only the hung apps test process to inspect its blocked staging gate, corrected eligible fixtures/pricing, strengthened early-failure/cleanup behavior, and reran successfully. No production workaround.",
+  "api_input_note": "All ten recorded API production Go hashes match the accepted build. tiers.yaml changed only a stale dashboard-mirror comment after that build; catalog values/prices are unchanged.",
+  "root_independent_evidence_check": {
+    "payload_hashes_verified": 20,
+    "known_private_values_checked": 4,
+    "credential_matches": 0,
+    "operator_final_source_hashes_verified": true
+  },
+  "live_operator_scope": "Unit/envtest cover reconciliation, quota and readiness. The shared operator was unchanged; the live runtime fixture used the exact generated production CNPG projection."
+}

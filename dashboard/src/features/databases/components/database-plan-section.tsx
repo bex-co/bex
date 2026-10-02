@@ -38,18 +38,47 @@ export function DatabasePlanSection({
   const [confirming, setConfirming] = useState(false);
 
   const selectedType = instanceTypes.find((it) => it.id === selected);
-  // The API refuses a plan without HA while HA is on (w8/m43); say so here
-  // rather than let Save fail.
-  const haBlocked =
-    database.highAvailabilityEnabled &&
-    selectedType != null &&
-    selectedType.id !== database.plan &&
-    !selectedType.supportsHighAvailability;
   const dirty = selected != null && selected !== database.plan;
-  const canSave = dirty && !haBlocked;
+  let planError: string | null = null;
+  if (dirty && selectedType) {
+    const params = { name: selectedType.name };
+    if (
+      database.highAvailabilityEnabled &&
+      !selectedType.supportsHighAvailability
+    ) {
+      planError = t("databases.planPickerHAUnsupported", params);
+    } else if (
+      database.diskSizeGB != null &&
+      selectedType.maxStorageGB != null &&
+      database.diskSizeGB > selectedType.maxStorageGB
+    ) {
+      planError = t("databases.planPickerStorageUnsupported", {
+        ...params,
+        current: database.diskSizeGB,
+        max: selectedType.maxStorageGB,
+      });
+    } else if (database.readReplicas.length > selectedType.maxReadReplicas) {
+      planError = t("databases.planPickerReplicasUnsupported", {
+        ...params,
+        max: selectedType.maxReadReplicas,
+        current: database.readReplicas.length,
+      });
+    } else if (
+      database.diskAutoscalingEnabled &&
+      !selectedType.supportsDiskAutoscaling
+    ) {
+      planError = t("databases.planPickerAutoscalingUnsupported", params);
+    } else if (
+      database.poolerEnabled &&
+      !selectedType.supportsConnectionPooling
+    ) {
+      planError = t("databases.planPickerPoolerUnsupported", params);
+    }
+  }
+  const canSave = dirty && selectedType != null && planError == null;
 
   async function handleConfirm() {
-    if (operateDenied) return;
+    if (operateDenied || !canSave) return;
     setConfirming(false);
     if (!selectedType) return;
     const ok = await updatePlan(
@@ -88,11 +117,9 @@ export function DatabasePlanSection({
           />
         )}
 
-        {haBlocked ? (
+        {planError ? (
           <p className="text-destructive text-sm" role="alert">
-            {t("databases.planPickerHAUnsupported", {
-              name: selectedType.name,
-            })}
+            {planError}
           </p>
         ) : null}
 

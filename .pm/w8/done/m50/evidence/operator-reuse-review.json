@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-02T20:59:22.278721+00:00",
+  "review": "simplify Agent1 reuse follow-up",
+  "scope": "new operator named-reader instance, readiness and autoscaling quota delta; new operator tests; root apps fixture corrections",
+  "reviewed_sha256": {
+    "lego/operator/internal/controller/database_instances.go": "4e7c5f792060406c84579695ca6d75fcc5aaedb617ee8693f0667d6b1bae97bf",
+    "lego/operator/internal/controller/database_controller.go": "d2e2521f48f07939edb8a4e3c5ff2f52695cecb21bec828e7dd52e1abddb9890",
+    "lego/operator/internal/controller/database_autoscale.go": "e64c7da0df1e4d2a4856d832490d1e3be3cdf557f31bc2f5972c47752286229f",
+    "lego/operator/internal/controller/database_instances_test.go": "048fff44f217ce83c008c581d2ea29f78ac5156a0e9fb79bcabba58666256b27",
+    "lego/operator/internal/controller/database_instances_envtest_test.go": "d89819e3f20e2230036b5b5bb9439bdd7c25335007d07ce7fe5bd765dbbdff8e",
+    "lego/operator/internal/controller/database_autoscale_test.go": "86284a9ebf7fe79cfb0d906fc5a76f4189cc761dc4c837629d86129f56906015",
+    "lego/operator/internal/controller/database_reader_runtime_projection_test.go": "e5fcbb9e032c6a39b8b1b5feee78708de667327cfaf0a67a98edc504c3daffa7",
+    "lego/backend/internal/apps/blueprint_pricing_test.go": "c88506dfff1b5b164b47f227c638412e4e15df3d0497cfe0331a14d879c5ae03",
+    "lego/backend/internal/apps/blueprint_test.go": "fc8242d036524d8610e5d771a049af4f8f886d24c36b51e915425f4cbbe9c70e",
+    "lego/backend/internal/apps/stack_test.go": "0a3acff08a962d140e65a39f4af6816ce78514e33ddf2cf074ed46a975acf8fe"
+  },
+  "actionable_findings": [],
+  "evidence": [
+    "databaseInstanceCount is shared by CNPG projection and disk-growth quota; readiness consumes accepted Cluster spec.instances instead of duplicating capacity logic.",
+    "cnpgInstanceCount is reused for legacy capacity preservation and quota accounting; existing readClusterStatus performs I/O/status mutation and is not an interchangeable pure helper.",
+    "Eligibility consumes the shared types tier predicates/constants; importing backend admission into operator would break the module boundary.",
+    "New tests reuse databaseStorageFixture, resolvePlan, cnpgClusterSpec, cnpgStorageGB and namedReaders; the runtime artifact is emitted by the actual builder.",
+    "Apps corrections retain the existing stack fixture and price assertions and add bounded existing channel coordination; no new utility is warranted."
+  ],
+  "mutations": "none; no source edits or Go jobs",
+  "final_followup_at": "2026-10-02T21:05:07.761918+00:00",
+  "final_production_sources_sha256": {
+    "lego/operator/internal/controller/database_instances.go": "912096ea00cf9966ff7f729a17cdcaf8d1de54f4900729238f9e6743c3f62678",
+    "lego/operator/internal/controller/database_controller.go": "d2e2521f48f07939edb8a4e3c5ff2f52695cecb21bec828e7dd52e1abddb9890",
+    "lego/operator/internal/controller/database_autoscale.go": "517a66db091754562d6d4cfa31bbaa1f47d5d1590610669af3477d473b78f93c",
+    "lego/types/tiers/tiers.go": "f99312bc664b2706ea3017809374a6298bf620b34e3453d1ee99896a9c71c7b5",
+    "lego/types/tiers/tiers.yaml": "f66f38fb2700248ff4d10693182cf2258b38153a6b1fa5a8b8e14b91c67c59b0"
+  },
+  "followup_evidence": [
+    "The observed-count quota correction reuses cnpgObservedInstanceCount inside cnpgInstanceCount and quota accounting; intent and observed capacity have different roles, so no further unification is warranted.",
+    "The temporary runtime exporter was removed after generating the exact production projection."
+  ],
+  "final_actionable_findings": []
+}

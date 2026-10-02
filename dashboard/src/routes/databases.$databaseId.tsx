@@ -318,7 +318,10 @@ function DatabaseDetailPage() {
                 <section id="access-control" className="scroll-mt-6">
                   <DeferredMount hashId="access-control" minHeight={240}>
                     <Suspense fallback={<CardSkeleton rows={3} />}>
-                      <AccessControlPanel id={database.id} />
+                      <AccessControlPanel
+                        id={database.id}
+                        plan={database.plan}
+                      />
                     </Suspense>
                   </DeferredMount>
                 </section>

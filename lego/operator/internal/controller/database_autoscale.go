@@ -26,9 +26,11 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -60,7 +62,7 @@ const (
 )
 
 // DatabaseDiskUsage is the fullest CNPG instance PVC's current kubelet sample.
-// HA replicas each hold a complete copy, so the fullest replica drives growth.
+// Readers and HA standbys each hold a full copy; the fullest drives growth.
 type DatabaseDiskUsage struct {
 	PVC           string
 	UsedBytes     int64
@@ -173,11 +175,12 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 			return databaseDiskAutoscaleInterval, fmt.Errorf("persist disk autoscale status: %w", err)
 		}
 	}
-	if !db.Spec.DiskAutoscaling || db.Spec.Suspended {
+	plan, currentGB := resolvePlan(db.Spec)
+	if !db.Spec.DiskAutoscaling || db.Spec.Suspended || !plan.SupportsDiskAutoscaling() {
 		if err := r.resetDiskSampleFailures(ctx, db); err != nil {
 			return 0, err
 		}
-		// Autoscaling off (or suspended) — a lingering quota block is now moot.
+		// Disabled, suspended, or fixed storage: no further growth is possible.
 		return 0, r.clearDiskGrowthBlockedByQuota(ctx, db)
 	}
 	if r.DiskUsageReader == nil {
@@ -193,7 +196,6 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 		return databaseDiskAutoscaleInterval, err
 	}
 
-	plan, currentGB := resolvePlan(db.Spec)
 	currentGB = max(currentGB, db.Status.AllocatedStorageGB)
 	now := r.databaseNow()
 	lastResize, _ := time.Parse(time.RFC3339, db.Annotations[annotDiskAutoscaleAt])
@@ -210,12 +212,21 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 	// the quota's headroom here turns that silent failure into an observable
 	// Database condition and backs off, instead of stranding spec.storageGB ahead
 	// of a PVC that cannot grow. CNPG grows one PVC per instance, so the aggregate
-	// delta scales with the cluster size.
-	instances := int64(plan.Instances)
-	if db.Spec.HighAvailability && instances < 2 {
-		instances = 2
+	// delta scales with the cluster size. Crossing the replica storage minimum
+	// can also add readers, each of which needs a whole new PVC.
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	if err := r.Get(ctx, client.ObjectKeyFromObject(db), cluster); err != nil && !apierrors.IsNotFound(err) {
+		return databaseDiskAutoscaleInterval, fmt.Errorf("read cluster for disk growth: %w", err)
 	}
-	blocked, quotaDetail, quotaErr := r.diskGrowthQuotaBlocks(ctx, db.Namespace, int64(nextGB-currentGB)*instances)
+	params := clusterParams{plan: plan, storageGB: nextGB, highAvailability: db.Spec.HighAvailability,
+		readReplicas: len(db.Spec.ReadReplicas), currentInstances: cnpgInstanceCount(cluster)}
+	// Declared scale-up may not have allocated its reader PVC yet. Subtract
+	// only observed capacity; the usage sample proves one PVC if status is absent.
+	currentInstances := max(int64(1), cnpgObservedInstanceCount(cluster))
+	nextInstances := max(databaseInstanceCount(params), currentInstances)
+	deltaGB := int64(nextGB)*nextInstances - int64(currentGB)*currentInstances
+	blocked, quotaDetail, quotaErr := r.diskGrowthQuotaBlocks(ctx, db.Namespace, deltaGB)
 	if quotaErr != nil {
 		// Could not read the quota — back off and retry rather than growing blind
 		// (risking the silent CNPG resize failure) or hot-looping an error.
