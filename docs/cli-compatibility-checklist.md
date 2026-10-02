@@ -120,7 +120,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] query mode — resolves a service by name; empty windows return stable cursors (no parse crash)
   - [~] `--tail` — streams App or standalone build logs over WebSocket, with all text terms preserved; request/pre-deploy/datastore tails and store-only filters remain unsupported
   - [x] `-r, --resources <ids>` — required in non-interactive mode; honored
-  - [x] `--instance <ids>` — in live-pod mode the instance label is the pod name
+  - [x] `--instance <ids>` — [comma-separated instance IDs](https://github.com/render-oss/cli/blob/a764810a768202704e7206eb7b87a47211fcd98e/cmd/logs.go#L80); Bex accepts public IDs and legacy raw pod names, and emits public IDs. Bex-only `type=predeploy` queries via REST, GraphQL, and MCP resolve selectors against the authorized service's existing migration pods before reading logs (w2/039). Omitted selectors include all matching migration pods; unknown or foreign selectors match none, with text/time filters and limits still applied. This live source has no history fallback after TTL cleanup and no tail support. The pinned CLI still rejects `--type predeploy`; shipped migration output remains available under `build` as documented below.
   - [x] `--start <time>`
   - [x] `--end <time>`
   - [x] `--direction <backward|forward>`
