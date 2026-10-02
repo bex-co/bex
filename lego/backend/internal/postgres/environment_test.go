@@ -18,7 +18,9 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -131,5 +133,42 @@ func TestListPostgres_ReadsEnvironmentIDLabel(t *testing.T) {
 	list, err := svc.ListPostgres(ctxAs("user-a"), "")
 	if err != nil || len(list) != 1 || list[0].EnvironmentID != "env-1" {
 		t.Fatalf("ListPostgres = %+v, err=%v; want one instance with EnvironmentID=env-1", list, err)
+	}
+}
+
+func TestLegacyEnvironmentDiscoveryKeepsDatabasePlacementAndProtection(t *testing.T) {
+	const stored = "env-c185th5c2rvvnhbfiltg"
+	const public = "evm-c185th5c2rvvnhbfiltg"
+	db := databaseForProtection("dpg-orders", "orders", false)
+	db.Labels[core.LabelEnvironment] = stored
+	db.Labels[core.LabelProject] = "prj-platform"
+	svc, cl := newService(db, databaseForProtection("dpg-unassigned", "unassigned", false))
+	svc.Protection = &fakeProtectionStore{statuses: map[string]string{stored: core.ProtectedStatusProtected}}
+
+	view, err := svc.GetPostgres(t.Context(), db.Name)
+	if err != nil || view.EnvironmentID != public {
+		t.Fatalf("discovery = %+v, err=%v; want public environment %q", view, err, public)
+	}
+	for _, selector := range []string{view.EnvironmentID, stored} {
+		response := serveREST(svc, http.MethodGet, "/v1/postgres?environmentId="+selector, "")
+		var page []postgresWithCursor
+		if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &page) != nil ||
+			len(page) != 1 || page[0].Postgres.ID != db.Name || page[0].Postgres.EnvironmentID != public {
+			t.Fatalf("list with %s = %d %s", selector, response.Code, response.Body.String())
+		}
+	}
+	if _, err := svc.Suspend(t.Context(), db.Name); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("legacy protected environment allowed unconfirmed suspend: %v", err)
+	}
+	confirmed := core.WithConfirm(t.Context(), ProtectedConfirmation("suspend", db.Spec.Name))
+	if _, err := svc.Suspend(confirmed, db.Name); err != nil {
+		t.Fatalf("confirmed suspend: %v", err)
+	}
+	var persisted appv1alpha1.Database
+	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(db), &persisted); err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Labels[core.LabelEnvironment] != stored || persisted.Labels[core.LabelProject] != "prj-platform" || !persisted.Spec.Suspended {
+		t.Fatalf("canonical discovery changed durable placement or missed suspend: labels=%v suspended=%v", persisted.Labels, persisted.Spec.Suspended)
 	}
 }

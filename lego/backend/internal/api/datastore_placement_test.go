@@ -38,6 +38,7 @@ import (
 type datastorePlacementStore struct{ *conformProjectStore }
 
 func (s *datastorePlacementStore) GetEnvironment(_ context.Context, environmentID string) (store.Environment, error) {
+	environmentID = id.EnvironmentStorageID(environmentID)
 	for _, envs := range s.envs {
 		for _, env := range envs {
 			if env.ID == environmentID {
@@ -118,7 +119,7 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 						projectID = projectB
 					}
 					groupings.envs[projectID] = append(groupings.envs[projectID], store.Environment{
-						ID: envID, ProjectID: projectID, TenantID: owner.ID, Name: fmt.Sprintf("env-%d", i),
+						ID: id.EnvironmentStorageID(envID), ProjectID: projectID, TenantID: owner.ID, Name: fmt.Sprintf("env-%d", i),
 						ProtectedStatus: core.ProtectedStatusUnprotected,
 						IPAllowList:     []core.IPAllowListEntry{{CIDRBlock: fmt.Sprintf("192.0.2.%d/32", i+1)}},
 					})
@@ -136,7 +137,7 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 				for _, resource := range []client.Object{db, kv} {
 					resource.GetLabels()[core.LabelProject] = projectA
 					if initialEnv != "" {
-						resource.GetLabels()[core.LabelEnvironment] = initialEnv
+						resource.GetLabels()[core.LabelEnvironment] = id.EnvironmentStorageID(initialEnv)
 					}
 				}
 				ownRules := []appv1alpha1.IPAllowEntry{{CIDR: "198.51.100.9/32", Description: "datastore-owned"}}
@@ -212,11 +213,14 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 					for _, envs := range groupings.envs {
 						for _, env := range envs {
 							object := decodeObject(t, request(http.MethodGet, "/v1/environments/"+env.ID, "", http.StatusOK))
-							assertMembers("REST environment", object, env.ID == wantEnvironment)
+							if object["id"] != id.EnvironmentPublicID(env.ID) {
+								t.Errorf("legacy environment lookup returned id %v, want %s", object["id"], id.EnvironmentPublicID(env.ID))
+							}
+							assertMembers("REST environment", object, env.ID == id.EnvironmentStorageID(wantEnvironment))
 							data := gql(t, h, fmt.Sprintf(`{ environment(id:%q) { databaseIds keyValueIds } }`, env.ID))
-							assertMembers("GraphQL environment", data["environment"].(map[string]any), env.ID == wantEnvironment)
+							assertMembers("GraphQL environment", data["environment"].(map[string]any), env.ID == id.EnvironmentStorageID(wantEnvironment))
 							object = callTool[map[string]any](t, cs, "get_environment", map[string]any{"id": env.ID})
-							assertMembers("MCP environment", object, env.ID == wantEnvironment)
+							assertMembers("MCP environment", object, env.ID == id.EnvironmentStorageID(wantEnvironment))
 						}
 					}
 					var gotDB appv1alpha1.Database
@@ -226,6 +230,12 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 					}
 					if err := base.Client.Get(t.Context(), client.ObjectKeyFromObject(kv), &gotKV); err != nil {
 						t.Fatal(err)
+					}
+					for _, resource := range []client.Object{&gotDB, &gotKV} {
+						labels := resource.GetLabels()
+						if labels[core.LabelProject] != wantProject || labels[core.LabelEnvironment] != id.EnvironmentStorageID(wantEnvironment) {
+							t.Errorf("%s durable placement = %v, want project %q and stored environment %q", resource.GetName(), labels, wantProject, id.EnvironmentStorageID(wantEnvironment))
+						}
 					}
 					var inherited []string
 					if wantEnvironment != "" {

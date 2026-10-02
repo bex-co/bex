@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProjectEnvironmentSelector } from "../project-environment-selector";
+import { parseNewServiceSearch } from "@/features/services/lib/create-context";
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -97,4 +98,64 @@ describe("ProjectEnvironmentSelector", () => {
       screen.getAllByRole("option").map((option) => option.textContent),
     ).toEqual(["No environment", "Production"]);
   });
+
+  it("preselects a saved legacy creation link against canonical discovery", () => {
+    const environmentId = "evm-davm6imde41s73canq0g";
+    environmentsState.environments = [
+      { id: environmentId, projectId: "prj-empty", name: "Production" },
+    ];
+    const search = parseNewServiceSearch({
+      projectId: "prj-empty",
+      environmentId: "env-davm6imde41s73canq0g",
+    });
+    const onEnvironmentChange = vi.fn();
+    render(
+      <ProjectEnvironmentSelector
+        projectId={search.projectId ?? null}
+        environmentId={search.environmentId ?? null}
+        onProjectChange={vi.fn()}
+        onEnvironmentChange={onEnvironmentChange}
+      />,
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: "Environment" }),
+    ).toHaveTextContent("Production");
+    expect(onEnvironmentChange).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "unknown",
+      id: "env-davm6imde41s73canq00",
+      projectId: "prj-empty",
+    },
+    {
+      label: "foreign",
+      id: "env-davm6imde41s73canq0g",
+      projectId: "prj-other",
+    },
+  ])(
+    "still clears a $label environment from a legacy creation link",
+    ({ id, projectId }) => {
+      environmentsState.environments = [
+        { id: "evm-davm6imde41s73canq0g", projectId, name: "Production" },
+      ];
+      const search = parseNewServiceSearch({
+        projectId: "prj-empty",
+        environmentId: id,
+      });
+      const onEnvironmentChange = vi.fn();
+      render(
+        <ProjectEnvironmentSelector
+          projectId={search.projectId ?? null}
+          environmentId={search.environmentId ?? null}
+          onProjectChange={vi.fn()}
+          onEnvironmentChange={onEnvironmentChange}
+        />,
+      );
+
+      expect(onEnvironmentChange).toHaveBeenCalledWith(null);
+    },
+  );
 });

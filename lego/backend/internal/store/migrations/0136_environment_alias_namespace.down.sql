@@ -1,0 +1,1 @@
+ALTER TABLE environments DROP CONSTRAINT environments_storage_id_namespace;

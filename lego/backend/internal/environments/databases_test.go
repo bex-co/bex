@@ -22,6 +22,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -33,8 +34,8 @@ import (
 // fakes standing in for *postgres.Service/*keyvalue.Service.
 
 // fakeDatabaseIndex is an in-memory DatabaseIndex — a map of Database name to
-// its current view, mutated in place by SetEnvironmentID/SetProjectID so a
-// test can assert on the resulting label state after a verb runs.
+// its stored label state, mutated in place by SetEnvironmentID/SetProjectID.
+// ListPostgres projects the public environment ID just like the real service.
 type fakeDatabaseIndex struct {
 	envLayers map[string][]string
 	mu        sync.Mutex
@@ -52,6 +53,7 @@ func newDatabaseIndex() *fakeDatabaseIndex {
 func (f *fakeDatabaseIndex) add(v postgres.PostgresView) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	v.EnvironmentID = id.EnvironmentStorageID(v.EnvironmentID)
 	f.dbs[v.ID] = v
 }
 
@@ -62,6 +64,7 @@ func (f *fakeDatabaseIndex) ListPostgres(_ context.Context, ownerID string) ([]p
 	var out []postgres.PostgresView
 	for _, d := range f.dbs {
 		if ownerID == "" || d.OwnerID == ownerID {
+			d.EnvironmentID = id.EnvironmentPublicID(d.EnvironmentID)
 			out = append(out, d)
 		}
 	}
@@ -132,6 +135,7 @@ func newKeyValueIndex() *fakeKeyValueIndex {
 func (f *fakeKeyValueIndex) add(v keyvalue.KeyValueView) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	v.EnvironmentID = id.EnvironmentStorageID(v.EnvironmentID)
 	f.kvs[v.ID] = v
 }
 
@@ -142,6 +146,7 @@ func (f *fakeKeyValueIndex) ListKeyValues(_ context.Context, ownerID string) ([]
 	var out []keyvalue.KeyValueView
 	for _, kv := range f.kvs {
 		if ownerID == "" || kv.OwnerID == ownerID {
+			kv.EnvironmentID = id.EnvironmentPublicID(kv.EnvironmentID)
 			out = append(out, kv)
 		}
 	}

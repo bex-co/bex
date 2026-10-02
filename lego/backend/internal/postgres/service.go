@@ -451,7 +451,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		ParameterOverrides:      declaredParameters(d),
 		OwnerID:                 d.Labels[core.LabelTenant],
 		ProjectID:               d.Labels[core.LabelProject],
-		EnvironmentID:           d.Labels[core.LabelEnvironment],
+		EnvironmentID:           id.EnvironmentPublicID(d.Labels[core.LabelEnvironment]),
 		BlueprintID:             d.Labels[core.LabelBlueprint],
 	}
 }

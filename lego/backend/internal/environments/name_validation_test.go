@@ -25,6 +25,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -66,7 +67,7 @@ func TestNameValidation(t *testing.T) {
 					if err != nil || view.Name != "production" {
 						t.Fatalf("result: %+v, %v", view, err)
 					}
-					if st.envs[view.ID].Name != "production" {
+					if st.envs[id.EnvironmentStorageID(view.ID)].Name != "production" {
 						t.Fatal("trimmed name was not persisted")
 					}
 				}

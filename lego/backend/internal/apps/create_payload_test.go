@@ -67,7 +67,7 @@ func (s *blueprintGroupingTestStore) ListEnvironments(_ context.Context, project
 }
 
 func (s *blueprintGroupingTestStore) CreateEnvironment(_ context.Context, projectID, tenantID, name string) (store.Environment, error) {
-	environment := store.Environment{ID: ids.New(ids.Environment), ProjectID: projectID, TenantID: tenantID, Name: name}
+	environment := store.Environment{ID: ids.EnvironmentStorageID(ids.New(ids.Environment)), ProjectID: projectID, TenantID: tenantID, Name: name}
 	s.environments = append(s.environments, environment)
 	return environment, nil
 }
@@ -198,7 +198,7 @@ func seededProtectedEnvironmentStore() (*blueprintGroupingTestStore, store.Envir
 	st := &blueprintGroupingTestStore{recordingStore: &recordingStore{}}
 	project := store.Project{ID: ids.New(ids.Project), TenantID: "tea-a", Name: "platform"}
 	environment := store.Environment{
-		ID:                      ids.New(ids.Environment),
+		ID:                      ids.EnvironmentStorageID(ids.New(ids.Environment)),
 		ProjectID:               project.ID,
 		TenantID:                "tea-a",
 		Name:                    "production",

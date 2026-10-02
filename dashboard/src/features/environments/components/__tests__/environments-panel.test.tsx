@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
+import { parseProjectResourceSearch } from "@/features/projects/lib/resource-filter";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -297,6 +298,49 @@ describe("EnvironmentsPanel", () => {
       JSON.stringify({
         projectId: "prj-1",
         environmentId: "env-production",
+      }),
+    );
+  });
+
+  it("keeps a legacy project link on its environment and creates canonical links", () => {
+    const empty: EnvironmentView = {
+      id: "evm-davm6imde41s73canq00",
+      projectId: "prj-1",
+      name: "staging",
+      ownerId: "tea-1",
+      createdAt: null,
+      serviceIds: [],
+      databaseIds: [],
+      keyValueIds: [],
+      envGroupIds: [],
+      protectedStatus: "unprotected",
+      networkIsolationEnabled: false,
+      ipAllowListEntries: [],
+    };
+    environmentsState.environments = [
+      empty,
+      { ...empty, id: "evm-davm6imde41s73canq0g", name: "production" },
+    ];
+    const search = parseProjectResourceSearch({
+      env: "env-davm6imde41s73canq0g",
+    });
+    const onResourceFilterChange = vi.fn();
+    renderPanel({
+      resourceFilter: {
+        environmentId: search.env ?? null,
+        query: "",
+        kind: "all",
+      },
+      onResourceFilterChange,
+    });
+
+    expect(screen.getByTestId("env-card")).toHaveTextContent("production");
+    expect(onResourceFilterChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "New Service" })).toHaveAttribute(
+      "data-search",
+      JSON.stringify({
+        projectId: "prj-1",
+        environmentId: "evm-davm6imde41s73canq0g",
       }),
     );
   });

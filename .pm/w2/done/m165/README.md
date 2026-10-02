@@ -1,17 +1,17 @@
 # w2 · m165 — Environment IDs must round-trip through the pinned Render CLI
 
-**Worker:** worker2 **Goal:** IDs returned by environment discovery work as `--environment` selectors for Postgres and Key Value, while existing environment identities, placement, and access controls survive. **Status:** todo
+**Worker:** worker2 **Goal:** IDs returned by environment discovery work as `--environment` selectors for Postgres and Key Value, while existing environment identities, placement, and access controls survive. **Status:** done (2026-10-02)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Repair the environment ID producer/consumer contract | 50m | — |
-| t002 | Verify shared callers, legacy identities, and authorization boundaries | 45m | t001 |
-| t003 | Render parity across REST, GraphQL, MCP, and dashboard | 25m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage and live CLI acceptance | 45m | t003, t004 |
-| t006 | Closeout | 10m | t005 |
+| t001 | Repair the environment ID producer/consumer contract — **DONE** | 50m | — |
+| t002 | Verify shared callers, legacy identities, and authorization boundaries — **DONE** | 45m | t001 |
+| t003 | Render parity across REST, GraphQL, MCP, and dashboard — **DONE** | 25m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage and live CLI acceptance — **DONE** | 45m | t003, t004 |
+| t006 | Closeout — **DONE** | 10m | t005 |
 
 ## Definition of done
 
@@ -29,3 +29,9 @@
 - **Expected outcome:** A customer can copy an environment ID from Bex discovery and use it to scope datastore automation successfully, including environments created before this fix.
 - **Why now:** Live production returns `env-*`, but the pinned client recognizes only `evm-*`. This breaks multiple datastore operations before their target request is sent. Changing only future mints would strand all existing environments, so identity compatibility needs explicit treatment.
 - **Scope:** One confirmed bug, one repair task, and a separate shared-code/legacy verification task. This is roughly three hours including the standing closing tasks. Render parity is included because IDs cross every tenant-facing surface. No product fix, commit, or push was authorized by the QA request.
+
+## Completion — 2026-10-02
+
+Discovery and resource references now expose `evm-*`, accepted by the unchanged pinned Render CLI, while stored `env-*` identities and legacy API links retain the same memberships and access controls. Saved dashboard links select the intended environment. Strict alias normalization and a validated SQL namespace constraint prevent ambiguous identities.
+
+[Acceptance, cleanup, shared-caller coverage, and validation](evidence/2026-10-02-acceptance.md) record 113 successful local CLI commands, ten expected rejections, real PostgreSQL identity regressions, all 3,831 dashboard tests, the full backend and CLI suites, and lint. Local acceptance does not claim production rollout or datastore connectivity. The source text above records the original QA filing; the subsequent `$loopx w2` request authorized this implementation and ship.

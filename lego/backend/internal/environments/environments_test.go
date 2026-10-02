@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -71,15 +72,15 @@ func (f *fakeStore) CreateEnvironment(_ context.Context, projectID, tenantID, na
 			return store.Environment{}, fmt.Errorf("environment: %w", store.ErrConflict)
 		}
 	}
-	e := store.Environment{ID: id.New(id.Environment), ProjectID: projectID, TenantID: tenantID, Name: name, ProtectedStatus: ProtectedStatusUnprotected}
+	e := store.Environment{ID: id.EnvironmentStorageID(id.New(id.Environment)), ProjectID: projectID, TenantID: tenantID, Name: name, ProtectedStatus: ProtectedStatusUnprotected}
 	f.envs[e.ID] = e
 	return e, nil
 }
 
-func (f *fakeStore) GetEnvironment(_ context.Context, id string) (store.Environment, error) {
+func (f *fakeStore) GetEnvironment(_ context.Context, environmentID string) (store.Environment, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	e, ok := f.envs[id]
+	e, ok := f.envs[id.EnvironmentStorageID(environmentID)]
 	if !ok {
 		return store.Environment{}, fmt.Errorf("environment: %w", store.ErrNotFound)
 	}
@@ -95,6 +96,7 @@ func (f *fakeStore) ListEnvironments(_ context.Context, projectID string) ([]sto
 			out = append(out, e)
 		}
 	}
+	slices.SortFunc(out, func(a, b store.Environment) int { return a.CreatedAt.Compare(b.CreatedAt) })
 	return out, nil
 }
 

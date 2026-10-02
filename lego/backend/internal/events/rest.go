@@ -106,7 +106,7 @@ type renderDetails struct {
 	// type (string vs int pointer) differs, so `any` is required for a flat struct.
 	From any `json:"from,omitempty"`
 	To   any `json:"to,omitempty"`
-	// service_moved (w6/m134): the before/after public prj-/env- ids. A side
+	// service_moved (w6/m134): the before/after public prj-/evm- ids. A side
 	// with no placement is omitted, so assign shows only *To, unassign only
 	// *From, and a move both.
 	ProjectFrom     *string `json:"projectFrom,omitempty"`
