@@ -104,6 +104,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   const { events, loading, loadingMore, hasMore, error, refetch, loadMore } =
     useServiceEvents(serviceId, {
       limit: 20,
+      live: true,
       ...historyWindow,
       historyStartTime: service?.createdAt ?? undefined,
       windowHours: 720,
@@ -174,6 +175,22 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {error && events.length > 0 ? (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-3 border-b px-5 py-3 text-sm"
+            >
+              <span>{t("services.eventsErrorDescription")}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void refetch()}
+              >
+                <RefreshCcw className="size-3.5" aria-hidden="true" />
+                {t("services.eventsRetry")}
+              </Button>
+            </div>
+          ) : null}
           {loading && events.length === 0 ? (
             <div className="space-y-5 p-5 sm:p-6">
               {[0, 1, 2].map((i) => (
@@ -187,7 +204,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                 </div>
               ))}
             </div>
-          ) : error ? (
+          ) : error && events.length === 0 ? (
             <div className="flex flex-col items-center px-6 py-14 text-center">
               <div className="bg-destructive/10 text-destructive mb-4 flex size-10 items-center justify-center rounded-full">
                 <AlertCircle className="size-5" aria-hidden="true" />
@@ -385,8 +402,7 @@ function EventSummary({
   const projectTo = details?.projectTo ?? null;
   const environmentFrom = details?.environmentFrom ?? null;
   const environmentTo = details?.environmentTo ?? null;
-  const projectChanged =
-    type === "service_moved" && projectFrom !== projectTo;
+  const projectChanged = type === "service_moved" && projectFrom !== projectTo;
   const environmentChanged =
     type === "service_moved" && environmentFrom !== environmentTo;
   const placementLabel = (id: string | null) =>
@@ -430,10 +446,7 @@ function EventSummary({
             </Badge>
           ) : null}
         </div>
-        <DeployFailureReason
-          reason={details?.failureReason}
-          className="mt-1"
-        />
+        <DeployFailureReason reason={details?.failureReason} className="mt-1" />
         <DeployFailureReason
           reason={details?.cancelReason}
           tone="neutral"
