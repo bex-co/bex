@@ -19,6 +19,7 @@ package deploys
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -120,7 +121,17 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// permission tri-state and the blocking precondition computed by the
 		// same predicates the verbs enforce (RollbackEligible, the suspended +
 		// billing gates). A bex extension consumed by mobile's action gating.
-		"deployActions": gqlutil.KeyVerb(gqlutil.ActionDecisionsOut, "serviceId", s.ActionCapabilities),
+		"deployActions": &graphql.Field{
+			Type: gqlutil.ActionDecisionsOut,
+			Args: graphql.FieldConfigArgument{
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"ownerId":   gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				ctx := core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				return s.ActionCapabilities(ctx, p.Args["serviceId"].(string))
+			},
+		},
 		// deploy is the single-resource fetch-by-id twin of deploys(serviceId, …)
 		// (w9/m1/t001), closing GraphQL's drift from REST's GET
 		// .../deploys/{deployId} and MCP's get_deploy — the dashboard's deploy

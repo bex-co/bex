@@ -1103,7 +1103,17 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// (ADR087, w6/m136): permission tri-state + blocking precondition per
 		// action, from the same predicates the verbs enforce. A bex extension —
 		// mobile gates its controls on it instead of guessing from state.
-		"serverActions": gqlutil.IDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
+		"serverActions": &graphql.Field{
+			Type: gqlutil.ActionDecisionsOut,
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				ctx := core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				return s.ActionCapabilities(ctx, p.Args["id"].(string))
+			},
+		},
 		// First-class cron run reads (bex extensions over Render's current public
 		// API, which only exposes trigger/cancel-current). Both delegate to the
 		// same status.runs verbs REST/MCP use.

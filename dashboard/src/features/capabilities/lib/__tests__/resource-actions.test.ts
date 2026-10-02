@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CAPABILITY_FRESHNESS_MS } from "../capability-policy";
 import {
   blockedReasonKey,
   decisionForSelectedRollback,
@@ -39,6 +40,36 @@ const decide = (
 ) => resourceDecision(state, workspaceId, resourceId, action);
 
 describe("resource-action policy (w6/m143/t001)", () => {
+  it("refuses expired decisions and receipts from a future clock", () => {
+    const state = snapshot([{ action: "deploy", outcome: "allowed" }]);
+    expect(
+      resourceDecision(
+        state,
+        "tea-a",
+        "srv-one",
+        "deploy",
+        state.receivedAt + CAPABILITY_FRESHNESS_MS - 1,
+      )?.outcome,
+    ).toBe("allowed");
+    expect(
+      resourceDecision(
+        state,
+        "tea-a",
+        "srv-one",
+        "deploy",
+        state.receivedAt + CAPABILITY_FRESHNESS_MS,
+      ),
+    ).toBeNull();
+    expect(
+      resourceDecision(
+        state,
+        "tea-a",
+        "srv-one",
+        "deploy",
+        state.receivedAt - 1,
+      ),
+    ).toBeNull();
+  });
   it("readies only an allowed decision with no precondition", () => {
     const state = snapshot([
       { action: "deploy", outcome: "allowed" },
@@ -76,12 +107,12 @@ describe("resource-action policy (w6/m143/t001)", () => {
   });
 
   it("presents denied and unavailable distinctly for disable-with-reason", () => {
-    expect(gateAction({ outcome: "denied", precondition: "" }, "ready")).toEqual(
-      {
-        kind: "denied",
-        reasonKey: "capabilities.actionDenied",
-      },
-    );
+    expect(
+      gateAction({ outcome: "denied", precondition: "" }, "ready"),
+    ).toEqual({
+      kind: "denied",
+      reasonKey: "capabilities.actionDenied",
+    });
     expect(gateAction(null, "unavailable")).toEqual({
       kind: "unavailable",
       reasonKey: "capabilities.actionUnavailable",

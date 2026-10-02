@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { repoCommitUrl } from "@/features/services/lib/repo";
 import { useDeploys, type DeployRow } from "../hooks/use-deploys";
 import {
@@ -116,6 +117,16 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
   const visibleDeploys = useMemo(
     () => deploys.filter((deploy) => deployMatchesSearch(deploy, search)),
     [deploys, search],
+  );
+  const projection = useDeployActions(
+    !loading &&
+      visibleDeploys.some(
+        (deploy) =>
+          isCancelableDeployStatus(deploy.status) ||
+          deploy.status === "deactivated",
+      )
+      ? serviceId
+      : null,
   );
 
   // Native plural keys (w6/062): `_one`/`_other` are resolved by i18next from
@@ -282,7 +293,9 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                   {/* Until the card is wide enough for the full table, fold
                       Trigger/Duration under the deploy identity instead. */}
                   <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground @3xl/deploys:hidden">
-                    <span>{deployTriggerLabel(d.trigger, d.rollbackOf, t)}</span>
+                    <span>
+                      {deployTriggerLabel(d.trigger, d.rollbackOf, t)}
+                    </span>
                     <span aria-hidden="true">·</span>
                     <span className="tabular-nums">{durationLabel(d, t)}</span>
                   </div>
@@ -297,6 +310,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                   {hasListAction ? (
                     <div className="flex justify-end">
                       <DeployActions
+                        projection={projection}
                         serviceId={serviceId}
                         deployId={d.id}
                         status={d.status}

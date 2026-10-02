@@ -1,10 +1,8 @@
-// Hooks binding serverActions / deployActions to the exact workspace +
-// service on screen (w6/m143). Snapshots refresh on the m144 access
-// generation so a new identity/workspace/access context never gates on
-// stale decisions.
+// Resource action results are short-lived evaluations bound to the exact
+// workspace, resource and access generation that requested them.
 
-import { useEffect } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useApolloClient } from "@apollo/client/react";
 import type { DocumentNode } from "graphql";
 import {
   DeployActionsDocument,
@@ -12,9 +10,12 @@ import {
 } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { getAccessGeneration } from "@/features/capabilities/lib/access-generation";
+import { snapshotIsFresh } from "@/features/capabilities/lib/capability-policy";
 import {
   toResourceSnapshot,
   type ResourceActionSnapshot,
+  type ResourceActionInput,
 } from "@/features/capabilities/lib/resource-actions";
 
 export type ResourceActionsState =
@@ -26,113 +27,110 @@ export type ResourceActionsState =
       refresh: () => Promise<void>;
     };
 
-type RawRow = {
-  action?: string | null;
-  outcome?: string | null;
-  reason?: string | null;
-  precondition?: string | null;
-};
+type ProjectionResult =
+  | { status: "checking" | "unavailable" }
+  | { status: "ready"; snapshot: ResourceActionSnapshot };
 
 function useProjection(
   document: DocumentNode,
-  variables: Record<string, string>,
-  select: (data: unknown) => readonly RawRow[] | null | undefined,
+  field: "serverActions" | "deployActions",
   resourceId: string | null,
 ): ResourceActionsState {
-  const { currentWorkspaceId } = useWorkspace();
+  const { currentWorkspaceId: workspaceId } = useWorkspace();
   const capabilities = useCapabilities();
-  const workspaceId = currentWorkspaceId;
-  const query = useQuery(document, {
-    variables,
-    skip: !workspaceId || resourceId === null,
-    fetchPolicy: "cache-and-network",
-    errorPolicy: "all",
-    notifyOnNetworkStatusChange: true,
-  });
+  const client = useApolloClient();
+  const { generation, checkedAt } = capabilities;
+  const eligible =
+    capabilities.loaded && !capabilities.stale && !capabilities.unavailable;
+  const lease = useMemo(
+    () => ({ workspaceId, resourceId, generation, checkedAt, eligible }),
+    [workspaceId, resourceId, generation, checkedAt, eligible],
+  );
+  const currentLease = useRef(lease);
+  currentLease.current = lease;
+  const inFlight = useRef<AbortController | null>(null);
+  const [result, setResult] = useState<{
+    lease: typeof lease;
+    value: ProjectionResult;
+  } | null>(null);
 
-  // Access/identity/workspace transitions invalidate every projected decision.
-  const generation = capabilities.generation;
-  useEffect(() => {
-    if (workspaceId && resourceId !== null) {
-      void query.refetch(variables).catch(() => undefined);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generation]);
-
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
+    if (
+      !workspaceId ||
+      !resourceId ||
+      !eligible ||
+      currentLease.current !== lease
+    )
+      return;
+    inFlight.current?.abort();
+    const ac = new AbortController();
+    inFlight.current = ac;
+    const accessGeneration = getAccessGeneration();
+    const current = () =>
+      !ac.signal.aborted &&
+      currentLease.current === lease &&
+      getAccessGeneration() === accessGeneration;
+    setResult({ lease, value: { status: "checking" } });
     try {
-      await query.refetch(variables);
+      const response = await client.query({
+        query: document,
+        variables:
+          field === "serverActions"
+            ? { id: resourceId, ownerId: workspaceId }
+            : { serviceId: resourceId, ownerId: workspaceId },
+        fetchPolicy: "no-cache",
+        errorPolicy: "none",
+        context: {
+          fetchOptions: { signal: ac.signal },
+          queryDeduplication: false,
+        },
+      });
+      if (!current()) return;
+      const rows = (
+        response.data as Record<string, ResourceActionInput[]> | undefined
+      )?.[field];
+      if (!Array.isArray(rows)) throw new Error("action check unavailable");
+      setResult({
+        lease,
+        value: {
+          status: "ready",
+          snapshot: toResourceSnapshot(workspaceId, resourceId, rows),
+        },
+      });
     } catch {
-      // Fail closed: leave previous snapshot for display; next render re-derives.
+      if (current()) setResult({ lease, value: { status: "unavailable" } });
+    } finally {
+      if (inFlight.current === ac) inFlight.current = null;
     }
-  };
+  }, [client, document, field, workspaceId, resourceId, eligible, lease]);
 
-  if (!workspaceId || resourceId === null) {
-    return { status: "checking", refresh };
-  }
-  // Only a completed response for the CURRENT variables binds. Cached rows
-  // from a previous target must never gate this target's controls.
-  if (query.loading && select(query.data) === undefined) {
-    return { status: "checking", refresh };
-  }
-  if (query.error && select(query.data) === undefined) {
+  // The provider's shared focus/reconnect/poll lifecycle supplies checkedAt.
+  // Its expiry disables these results too, without adding one timer per row.
+  useEffect(() => {
+    void refresh();
+    return () => inFlight.current?.abort();
+  }, [refresh]);
+
+  if (capabilities.unavailable || capabilities.stale)
     return { status: "unavailable", refresh };
-  }
-  const rows = select(query.data);
-  if (rows) {
-    return {
-      status: "ready",
-      refresh,
-      snapshot: toResourceSnapshot(
-        workspaceId,
-        resourceId,
-        rows.flatMap((row) =>
-          row.action && row.outcome
-            ? [
-                {
-                  action: row.action,
-                  outcome: row.outcome,
-                  reason: row.reason ?? null,
-                  precondition: row.precondition ?? null,
-                },
-              ]
-            : [],
-        ),
-      ),
-    };
-  }
-  if (query.error) return { status: "unavailable", refresh };
-  return { status: "checking", refresh };
+  if (!eligible || result?.lease !== lease)
+    return { status: "checking", refresh };
+  if (
+    result.value.status === "ready" &&
+    !snapshotIsFresh(result.value.snapshot)
+  )
+    return { status: "unavailable", refresh };
+  return { ...result.value, refresh };
 }
 
-function selectField(field: string) {
-  return (data: unknown): readonly RawRow[] | null | undefined => {
-    if (!data || typeof data !== "object") return undefined;
-    const rows = (data as Record<string, unknown>)[field];
-    return Array.isArray(rows) ? (rows as RawRow[]) : undefined;
-  };
-}
-
-/** Lifecycle decisions for one service (serverActions). */
 export function useServerActions(
   serviceId: string | null,
 ): ResourceActionsState {
-  return useProjection(
-    ServerActionsDocument,
-    { id: serviceId ?? "" },
-    selectField("serverActions"),
-    serviceId,
-  );
+  return useProjection(ServerActionsDocument, "serverActions", serviceId);
 }
 
-/** Deploy trigger/cancel/rollback decisions for one service. */
 export function useDeployActions(
   serviceId: string | null,
 ): ResourceActionsState {
-  return useProjection(
-    DeployActionsDocument,
-    { serviceId: serviceId ?? "" },
-    selectField("deployActions"),
-    serviceId,
-  );
+  return useProjection(DeployActionsDocument, "deployActions", serviceId);
 }

@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { SuspendServiceCard } from "@/features/services/components/suspend-service-card";
 import type { ServiceView } from "@/features/services/types";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
+import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import i18n from "@/i18n/init";
 
 vi.mock("@/features/projects/hooks/use-move-to-project", () => ({
@@ -24,8 +27,9 @@ vi.mock("@apollo/client/react", () => ({
   useMutation: vi.fn(() => [vi.fn(), { loading: false }]),
 }));
 
+let workspaceId = "tea-test";
 vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
+  useWorkspace: () => ({ currentWorkspaceId: workspaceId }),
 }));
 
 const allowedServer = toResourceSnapshot("tea-test", "app", [
@@ -35,7 +39,12 @@ const allowedServer = toResourceSnapshot("tea-test", "app", [
 ]);
 const allowedDeploy = toResourceSnapshot("tea-test", "app", [
   { action: "deploy", outcome: "allowed", reason: null, precondition: null },
-  { action: "cancel_deploy", outcome: "allowed", reason: null, precondition: null },
+  {
+    action: "cancel_deploy",
+    outcome: "allowed",
+    reason: null,
+    precondition: null,
+  },
   { action: "rollback", outcome: "allowed", reason: null, precondition: null },
 ]);
 const deniedOperate = toResourceSnapshot("tea-test", "app", [
@@ -96,6 +105,17 @@ const service = {
 } as ServiceView;
 
 beforeEach(() => {
+  const receivedAt = Date.now();
+  for (const snapshot of [
+    allowedServer,
+    allowedDeploy,
+    deniedOperate,
+    deniedDeploy,
+  ]) {
+    snapshot.receivedAt = receivedAt;
+  }
+  workspaceId = "tea-test";
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   apolloQuery.mockReset();
   serverState = {
     status: "ready",
@@ -109,11 +129,160 @@ beforeEach(() => {
   };
   apolloQuery.mockResolvedValue({
     data: {
-      serverActions: [
-        { action: "suspend", outcome: "allowed", reason: null, precondition: null },
-      ],
+      serverActions: Object.values(allowedServer.decisions),
+      deployActions: Object.values(allowedDeploy.decisions),
     },
   });
+});
+
+describe.each([
+  ["resource list", ServiceRowActions],
+  ["settings", SuspendServiceCard],
+] as const)("%s protected confirmation freshness", (surface, Component) => {
+  async function openProtectedConfirmation() {
+    const onRun = vi.fn().mockResolvedValue({
+      status: "confirmation_required",
+      confirmation: "sudo suspend service app",
+    });
+    const user = userEvent.setup();
+    const view = render(
+      <Component service={service} pending={null} onRun={onRun} />,
+    );
+    if (surface === "resource list") {
+      await user.click(
+        screen.getByRole("button", { name: "Open actions menu" }),
+      );
+      await user.click(screen.getByRole("menuitem", { name: "Suspend" }));
+    } else {
+      await user.click(screen.getByRole("button", { name: "Suspend" }));
+    }
+    const confirm = await screen.findByRole("alertdialog");
+    await user.click(within(confirm).getByRole("button", { name: "Suspend" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(onRun).toHaveBeenCalledExactlyOnceWith("suspend", service);
+    await user.type(
+      within(dialog).getByLabelText("Sudo Command"),
+      "sudo suspend service app",
+    );
+    return { user, onRun, dialog, ...view };
+  }
+
+  it.each(["denied", "unavailable"])(
+    "does not retry when the fresh permission check is %s",
+    async (outcome) => {
+      const { user, onRun, dialog } = await openProtectedConfirmation();
+      if (outcome === "unavailable") {
+        apolloQuery.mockRejectedValue(new Error("permission request failed"));
+      } else {
+        apolloQuery.mockResolvedValue({
+          data: { serverActions: Object.values(deniedOperate.decisions) },
+        });
+      }
+      await user.click(within(dialog).getByRole("button", { name: "Suspend" }));
+      expect(onRun).toHaveBeenCalledTimes(1);
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+    },
+  );
+
+  it.each(["workspace", "resource", "generation"])(
+    "discards the server-issued phrase after the %s changes",
+    async (change) => {
+      const { onRun, rerender } = await openProtectedConfirmation();
+      if (change === "workspace") workspaceId = "tea-second";
+      if (change === "generation") {
+        vi.mocked(useCapabilities).mockReturnValue(
+          mockCapabilities({ generation: 2 }),
+        );
+      }
+      rerender(
+        <Component
+          service={
+            change === "resource"
+              ? { ...service, id: "other", name: "other" }
+              : service
+          }
+          pending={null}
+          onRun={onRun}
+        />,
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onRun).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("ignores a protected-confirmation response that arrives after access changes", async () => {
+    let finish!: (result: ProtectedActionResult) => void;
+    const onRun = vi.fn(
+      () =>
+        new Promise<ProtectedActionResult>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Component service={service} pending={null} onRun={onRun} />,
+    );
+    if (surface === "resource list") {
+      await user.click(
+        screen.getByRole("button", { name: "Open actions menu" }),
+      );
+      await user.click(screen.getByRole("menuitem", { name: "Suspend" }));
+    } else {
+      await user.click(screen.getByRole("button", { name: "Suspend" }));
+    }
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Suspend",
+      }),
+    );
+    await waitFor(() => expect(onRun).toHaveBeenCalledTimes(1));
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ generation: 2 }),
+    );
+    rerender(<Component service={service} pending={null} onRun={onRun} />);
+    await act(async () => {
+      finish({
+        status: "confirmation_required",
+        confirmation: "sudo suspend service app",
+      });
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(onRun).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["denied", "unavailable"])(
+    "does not resume when the fresh permission check is %s",
+    async (outcome) => {
+      if (outcome === "unavailable") {
+        apolloQuery.mockRejectedValue(new Error("permission request failed"));
+      } else {
+        apolloQuery.mockResolvedValue({
+          data: { serverActions: Object.values(deniedOperate.decisions) },
+        });
+      }
+      const onRun = vi.fn().mockResolvedValue({ status: "success" });
+      const user = userEvent.setup();
+      render(
+        <Component
+          service={{ ...service, suspended: true }}
+          pending={null}
+          onRun={onRun}
+        />,
+      );
+      if (surface === "resource list") {
+        await user.click(
+          screen.getByRole("button", { name: "Open actions menu" }),
+        );
+        await user.click(screen.getByRole("menuitem", { name: "Resume" }));
+      } else {
+        await user.click(screen.getByRole("button", { name: "Resume" }));
+      }
+      expect(onRun).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("ServiceRowActions", () => {
@@ -272,7 +441,9 @@ describe.each([
       if (surface === "settings") {
         expect(screen.getAllByText(copy.cron)).toHaveLength(2);
       }
-      await user.click(within(dialog).getByRole("button", { name: copy.suspend }));
+      await user.click(
+        within(dialog).getByRole("button", { name: copy.suspend }),
+      );
       await waitFor(() => expect(onRun).toHaveBeenCalledWith("suspend", cron));
       expect(onRun).toHaveBeenCalledTimes(1);
     });
@@ -285,7 +456,9 @@ describe.each([
     ] as const)("keeps %s suspension semantics", async (type, publicUrl) => {
       const { dialog } = await openSuspend({ ...service, type });
       expect(
-        within(dialog).getByText(publicUrl ? copy.publicConfirm : copy.privateConfirm),
+        within(dialog).getByText(
+          publicUrl ? copy.publicConfirm : copy.privateConfirm,
+        ),
       ).toBeInTheDocument();
       if (surface === "settings") {
         expect(
