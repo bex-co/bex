@@ -139,11 +139,11 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [~] `--plan <free|basic_*|pro_*|accelerated_*>` — bex's own tier names round-trip; v2.25.0's help/picker also advertises Render's spec-based compute plans (`0.1c-256mb` … `128c-1024g`), which map onto bex rungs when unambiguous (w8/011); larger names still 400
     - [~] `--region <frankfurt|ohio|oregon|singapore|virginia>` — accepted; platform-stamped `local-capd`
     - [x] `--version <int>`
-    - [x] `--disk-size-gb <int>`
-    - [x] `--disk-autoscaling`
-    - [x] `--connection-pool <none|pgbouncer>` — **w8/m33 / v2.26.0:** CLI validates the enum then sends `connectionPool`; bex folds it onto its native `pooler` bool (`resolvePooler`), so `pgbouncer` provisions the CNPG Pooler and `none` leaves it off (wire-shape graded; w2/024 alignment)
+    - [x] `--disk-size-gb <int>` — free is fixed at 1 GB; paid storage is capped at 16,384 GB (w8/m50)
+    - [x] `--disk-autoscaling` — requires a paid plan; free is a named 400 (w8/m50)
+    - [x] `--connection-pool <none|pgbouncer>` — **w8/m33 / v2.26.0:** CLI validates the enum then sends `connectionPool`; bex folds it onto its native `pooler` bool (`resolvePooler`), so `pgbouncer` provisions the CNPG Pooler on paid plans and `none` leaves it off; free enable returns a named 400 (w8/m50) (wire-shape graded; w2/024 alignment)
     - [x] `--high-availability` — persists to the CR spec (status flips once replicas are ready)
-    - [x] `--read-replica <name>` — persists to the CR spec
+    - [x] `--read-replica <name>` — requires at least 0.5 CPU and 10 GB storage; maximum five; the existing `basic-1gb` plan qualifies at 10 GB (w8/m50)
     - [x] `--database-name <string>` — persisted as the immutable physical database name and live-proven through CNPG SQL identity
     - [x] `--database-user <string>` — persisted as the immutable owner role and live-proven through CNPG SQL identity; either custom-name flag may be omitted independently
     - [-] `--datadog-api-key <string>` — deliberate non-goal; named 400, credential never persisted
@@ -155,10 +155,10 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `postgres get <id|name>` — resolves by name; every field intact; `-o text` renders Workspace/Region; v2.26.0's detail output also shows the connection-pool mode, which bex returns as the `connectionPool` enum (`pgbouncer`/`none`); after suspend, `status` is `suspended` (w5/061) so text Status stays truthful when the renderer omits the `suspended` field
   - [x] `postgres update <id|name>`
     - [x] `--name` — rename; opaque `dpg-` id stays stable
-    - [x] `--plan` — compute changes independently; an operator regression proves downgrade cannot reduce the accepted disk high-water mark
+    - [x] `--plan` — rejects unsupported retained replicas/pooler/autoscaling or allocated storage before writes; accepted changes preserve the disk high-water mark (w8/m50)
     - [x] `--disk-size-gb` — grow succeeds; shrink returns a named 400 and leaves intent/state unchanged (w2/m60 exact PATCH regression)
-    - [x] `--disk-autoscaling` — flips true↔false
-    - [x] `--connection-pool <none|pgbouncer>` — **w8/m33 / v2.26.0:** PATCH decodes `connectionPool` via `resolvePooler`; toggles the CNPG Pooler on read-back (wire-shape graded)
+    - [x] `--disk-autoscaling` — paid enable/disable; free enable is refused and legacy free disable remains allowed (w8/m50)
+    - [x] `--connection-pool <none|pgbouncer>` — **w8/m33 / v2.26.0:** PATCH decodes `connectionPool` via `resolvePooler`; paid enable and legacy free disable are allowed, free enable is refused (w8/m50)
     - [x] `--high-availability`
     - [x] `--ip-allow-list cidr=…,description=…` — replaces list; description returns
     - [x] `--clear-ip-allow-list` — empties the list

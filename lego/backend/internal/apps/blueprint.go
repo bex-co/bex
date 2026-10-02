@@ -693,8 +693,11 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 			if !errors.Is(planErr, core.ErrBadRequest) {
 				return BlueprintValidation{}, planErr
 			}
-			msg := strings.TrimPrefix(planErr.Error(), "bad request: ")
-			return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, blueprintManifestCreateMessage(msg))}}, nil
+			if errors.As(planErr, &refused) {
+				return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
+			}
+			msg := blueprintManifestCreateMessage(blueprintValidationMessage(planErr))
+			return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, msg)}}, nil
 		} else if available {
 			plan.Mode = "current_state"
 			plan.Actions = actionPlan.Actions
@@ -1856,7 +1859,7 @@ func blueprintErrorPath(ir BlueprintIR, message string) string {
 }
 
 func blueprintErrorField(message string) string {
-	for _, field := range []string{"maintenanceMode", "highAvailability", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
+	for _, field := range []string{"maintenanceMode", "highAvailability", "readReplicas", "diskSizeGB", "storageAutoscalingEnabled", "connectionPool", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
 			return "." + field
 		}

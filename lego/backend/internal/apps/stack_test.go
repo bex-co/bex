@@ -71,8 +71,8 @@ services:
     rootDir: worker
 databases:
   - name: db
-    plan: basic-256mb
-    diskSizeGB: 5
+    plan: basic-1gb
+    diskSizeGB: 10
     postgresMajorVersion: "16"
     readReplicas:
       - name: db-ro
@@ -94,7 +94,7 @@ func TestParseStackProjectsServicesAndDatabases(t *testing.T) {
 		t.Fatalf("services = %d, want 3", len(st.services))
 	}
 	db := st.databases[0].spec
-	if db.Name != "db" || db.Plan != "basic-256mb" || db.StorageGB != 5 || db.Version != "16" {
+	if db.Name != "db" || db.Plan != "basic-1gb" || db.StorageGB != 10 || db.Version != "16" {
 		t.Errorf("db spec = %+v", db)
 	}
 	if len(db.ReadReplicas) != 1 || db.ReadReplicas[0].Name != "db-ro" {
@@ -423,7 +423,7 @@ func TestDeployStackAppliesDatabasesFirstThenServices(t *testing.T) {
 	if err := cl.Get(context.Background(), key(res.Databases[0].ID), &db); err != nil {
 		t.Fatalf("database %s not created: %v", res.Databases[0].ID, err)
 	}
-	if db.Spec.Name != "db" || db.Spec.Plan != "basic-256mb" {
+	if db.Spec.Name != "db" || db.Spec.Plan != "basic-1gb" {
 		t.Errorf("db spec = %+v", db.Spec)
 	}
 	for _, name := range []string{"web", "api", "worker"} {
@@ -685,7 +685,7 @@ databases:
 	}
 
 	changed := strings.Replace(manifest, "orders_data", "other_data", 1)
-	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: changed}); err == nil || !strings.Contains(err.Error(), "databaseName is immutable") {
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: changed}); err == nil || (!strings.Contains(err.Error(), "databaseName") || !strings.Contains(err.Error(), "is immutable")) {
 		t.Fatalf("changed physical identifier error = %v", err)
 	}
 	unchanged := getDB(t, cl, db.Name)

@@ -35,7 +35,6 @@ import {
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
 import { POSTGRES_VERSIONS } from "@/features/databases/lib/versions";
-import { DISK_AUTOSCALING_CAP_GB } from "@/features/databases/lib/disk";
 import { isValidPostgresIdentifier } from "@/features/databases/lib/identifiers";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
@@ -106,24 +105,24 @@ export function CreateDatabaseDialog({
     databaseName === "" || isValidPostgresIdentifier(databaseName);
   const databaseUserValid =
     databaseUser === "" || isValidPostgresIdentifier(databaseUser);
-  // The disk field is optional (blank = the plan's default volume). When set it
-  // must be a whole number between the plan's floor (spec.storageGB can grow past
-  // it but not below) and the hard 16 TiB volume cap — otherwise the backend
-  // rejects it and, before this gate, only a post-submit error surfaced.
   const diskFloor = selectedPlan?.storageGB ?? 1;
+  const diskCeiling = selectedPlan?.maxStorageGB;
   const diskEntered = diskSizeGB.trim() !== "";
   const diskNum = Number(diskSizeGB);
   const diskValid =
     !diskEntered ||
     (Number.isInteger(diskNum) &&
       diskNum >= diskFloor &&
-      diskNum <= DISK_AUTOSCALING_CAP_GB);
+      diskCeiling != null &&
+      diskNum <= diskCeiling);
+  const showDiskError = diskEntered && !diskValid && diskCeiling != null;
   const canSubmit =
     nameValid &&
     databaseNameValid &&
     databaseUserValid &&
     diskValid &&
-    plan !== "" &&
+    selectedPlan != null &&
+    diskCeiling != null &&
     !busy;
 
   function reset() {
@@ -308,22 +307,21 @@ export function CreateDatabaseDialog({
                 id="db-disk"
                 type="number"
                 min={diskFloor}
-                max={DISK_AUTOSCALING_CAP_GB}
+                max={diskCeiling ?? undefined}
+                disabled={diskCeiling == null}
                 value={diskSizeGB}
                 onChange={(e) => setDiskSizeGB(e.target.value)}
                 placeholder={
                   selectedPlan ? String(selectedPlan.storageGB) : undefined
                 }
-                aria-invalid={diskEntered && !diskValid}
-                aria-describedby={
-                  diskEntered && !diskValid ? "db-disk-error" : undefined
-                }
+                aria-invalid={showDiskError}
+                aria-describedby={showDiskError ? "db-disk-error" : undefined}
               />
-              {diskEntered && !diskValid ? (
+              {showDiskError ? (
                 <p id="db-disk-error" className="text-sm text-destructive">
                   {t("databases.fieldDiskError", {
                     min: diskFloor,
-                    max: DISK_AUTOSCALING_CAP_GB,
+                    max: diskCeiling,
                   })}
                 </p>
               ) : null}

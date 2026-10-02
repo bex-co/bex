@@ -164,11 +164,16 @@ var databaseUserWithPasswordGQLType = graphql.NewObject(graphql.ObjectConfig{
 var databaseInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseInstanceType",
 	Fields: graphql.Fields{
-		"id":        gqlutil.StrField(func(t DatabaseInstanceType) any { return t.ID }),
-		"name":      gqlutil.StrField(func(t DatabaseInstanceType) any { return t.Name }),
-		"cpu":       gqlutil.StrField(func(t DatabaseInstanceType) any { return t.CPU }),
-		"memory":    gqlutil.StrField(func(t DatabaseInstanceType) any { return t.Memory }),
-		"storageGB": gqlutil.IntField(func(t DatabaseInstanceType) any { return t.StorageGB }),
+		"id":                        gqlutil.StrField(func(t DatabaseInstanceType) any { return t.ID }),
+		"name":                      gqlutil.StrField(func(t DatabaseInstanceType) any { return t.Name }),
+		"cpu":                       gqlutil.StrField(func(t DatabaseInstanceType) any { return t.CPU }),
+		"memory":                    gqlutil.StrField(func(t DatabaseInstanceType) any { return t.Memory }),
+		"storageGB":                 gqlutil.IntField(func(t DatabaseInstanceType) any { return t.StorageGB }),
+		"maxStorageGB":              gqlutil.IntField(func(t DatabaseInstanceType) any { return t.MaxStorageGB }),
+		"supportsDiskAutoscaling":   gqlutil.BoolField(func(t DatabaseInstanceType) any { return t.SupportsDiskAutoscaling }),
+		"supportsConnectionPooling": gqlutil.BoolField(func(t DatabaseInstanceType) any { return t.SupportsConnectionPooling }),
+		"maxReadReplicas":           gqlutil.IntField(func(t DatabaseInstanceType) any { return t.MaxReadReplicas }),
+		"readReplicaMinStorageGB":   gqlutil.IntField(func(t DatabaseInstanceType) any { return t.ReadReplicaMinStorageGB }),
 		// The plan offers high availability (w8/m43) — the same predicate the
 		// write paths enforce, so the dashboard never re-derives it from cpu.
 		"supportsHighAvailability": gqlutil.BoolField(func(t DatabaseInstanceType) any { return t.SupportsHighAvailability }),
@@ -197,6 +202,13 @@ var parameterInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Fields: graphql.InputObjectConfigFieldMap{
 		"name":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})
+
+var readReplicaInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "DatabaseReadReplicaInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 	},
 })
 
@@ -483,10 +495,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// when present it wins over ipAllowList.
 				"ipAllowListEntries":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 				"enableHighAvailability": gqlutil.Arg(graphql.Boolean),
+				"readReplicas":           gqlutil.Arg(graphql.NewList(graphql.NewNonNull(readReplicaInputGQLType))),
+				"connectionPool":         gqlutil.Arg(graphql.String),
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
 				"dryRun": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				items, _ := p.Args["readReplicas"].([]any)
+				replicas := make([]ReadReplicaInput, 0, len(items))
+				for _, item := range items {
+					replicas = append(replicas, ReadReplicaInput{Name: item.(map[string]any)["name"].(string)})
+				}
 				return s.CreatePostgres(p.Context, CreatePostgresRequest{
 					Name:                  p.Args["name"].(string),
 					OwnerID:               gqlutil.Str(p.Args, "ownerId"),
@@ -501,6 +520,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					IPAllowList: core.AllowListOrCIDRs(
 						gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"])),
 					EnableHighAvailability: gqlutil.Bool(p.Args, "enableHighAvailability"),
+					ReadReplicas:           replicas,
+					ConnectionPool:         gqlutil.Str(p.Args, "connectionPool"),
 					DryRun:                 gqlutil.Bool(p.Args, "dryRun"),
 				})
 			},

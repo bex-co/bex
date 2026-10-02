@@ -176,6 +176,11 @@ func TestUpdatePostgresCarriesTheFoldedFields(t *testing.T) {
 
 	t.Run("disk autoscaling", func(t *testing.T) {
 		_, cl, call := updatePostgresFixture(t)
+		db := getDatabase(t, cl, "dpg-upd")
+		db.Spec.Plan = "basic-256mb"
+		if err := cl.Update(context.Background(), db); err != nil {
+			t.Fatal(err)
+		}
 		if res := call("update_postgres", map[string]any{"postgresId": "dpg-upd", "enableDiskAutoscaling": true}); res.IsError {
 			t.Fatalf("disk autoscaling: %+v", res.Content)
 		}

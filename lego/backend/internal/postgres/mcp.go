@@ -62,11 +62,13 @@ type createPostgresArgs struct {
 	Version       string `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (omit for the default)"`
 	// DiskSizeGb is Render's MCP spelling. DiskSizeGB is the legacy bex alias
 	// (w2/m91); when both are set, DiskSizeGb wins.
-	DiskSizeGb            *int32   `json:"diskSizeGb,omitempty" jsonschema:"disk size in GB (omit for the plan default); Render's MCP spelling"`
-	DiskSizeGB            *int32   `json:"diskSizeGB,omitempty" jsonschema:"legacy bex alias of diskSizeGb; ignored when diskSizeGb is also set"`
-	EnableDiskAutoscaling bool     `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full"`
-	Public                bool     `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
-	IPAllowList           []string `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
+	DiskSizeGb            *int32             `json:"diskSizeGb,omitempty" jsonschema:"disk size in GB (omit for the plan default); Render's MCP spelling"`
+	DiskSizeGB            *int32             `json:"diskSizeGB,omitempty" jsonschema:"legacy bex alias of diskSizeGb; ignored when diskSizeGb is also set"`
+	EnableDiskAutoscaling bool               `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full; requires a paid plan"`
+	ReadReplicas          []ReadReplicaInput `json:"readReplicas,omitempty" jsonschema:"named read replicas; at most five, requiring at least 0.5 CPU and 10 GB storage"`
+	ConnectionPool        string             `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it"`
+	Public                bool               `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
+	IPAllowList           []string           `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
 	// IPAllowListEntries is the description-carrying form (w4/m24); when
 	// present it wins over ipAllowList.
 	IPAllowListEntries     []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
@@ -123,7 +125,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
-		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGb (legacy alias diskSizeGB), public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
+		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGb (legacy alias diskSizeGB), public, ipAllowList/ipAllowListEntries, enableHighAvailability, readReplicas and connectionPool are optional. Free storage is fixed at 1 GB; autoscaling and connection pooling require paid plans. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.NamedWorkspace(ctx),
@@ -138,6 +140,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Public:                 in.Public,
 			IPAllowList:            core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList),
 			EnableHighAvailability: in.EnableHighAvailability,
+			ReadReplicas:           in.ReadReplicas,
+			ConnectionPool:         in.ConnectionPool,
 			DryRun:                 in.DryRun,
 		})
 		if err != nil {
@@ -300,9 +304,7 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 // present one replaces that whole list or map — the same semantics REST PATCH
 // has, because both go through UpdatePostgres.
 //
-// It carries exactly the two folded settings. Plan, version, disk autoscaling,
-// and name were folded in from their own tools at w1/m74 — see the field
-// comments below.
+// Pointer fields preserve omission when changing multiple settings together.
 type updatePostgresArgs struct {
 	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
 	// Name, Plan, Version and EnableDiskAutoscaling folded in from
@@ -313,7 +315,9 @@ type updatePostgresArgs struct {
 	Name                  *string                  `json:"name,omitempty" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters). A rename changes only the label — the id, connection details, and data plane stay put"`
 	Plan                  *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	Version               *string                  `json:"version,omitempty" jsonschema:"the target PostgreSQL major version (13 through 18); must be newer than the running version. The database is OFFLINE during CNPG's pg_upgrade, and durable plans require a completed physical backup first"`
-	EnableDiskAutoscaling *bool                    `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
+	DiskSizeGB            *int32                   `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB; grow-only, and fixed at 1 GB on free"`
+	ConnectionPool        string                   `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it; omission leaves it unchanged"`
+	EnableDiskAutoscaling *bool                    `json:"enableDiskAutoscaling,omitempty" jsonschema:"paid plans only; automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
 	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
 	IPAllowListCidrs      *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
@@ -360,15 +364,21 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		// The disk-autoscaling cap is interpolated from the shared plan catalog
 		// rather than written out, so the number an agent reads cannot drift from
 		// the number the operator enforces (pinned by the adapter-parity test).
-		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: the external-endpoint IP allowlist and/or the postgresql.conf parameter overrides. Pass only what you want to change — an omitted argument is left alone; a present one REPLACES that whole list or map (pass an empty one to clear it). Pass dryRun:true to validate and preview without writes. Also carries the name, plan, major version, and disk-autoscaling toggle — a plan change is billable and a version upgrade takes the database offline during pg_upgrade, so dryRun is worth using first. This tool replaces the retired set_postgres_ip_allow_list / set_postgres_parameter_overrides (w1/m71) and rename_postgres / update_postgres_plan / update_postgres_version / update_postgres_disk_autoscaling (w1/m74). With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
+		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, connection pooling, external access, IP allowlist, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
+		if err != nil {
+			return nil, PostgresView{}, err
+		}
+		pooler, err := resolvePooler(nil, in.ConnectionPool)
 		if err != nil {
 			return nil, PostgresView{}, err
 		}
 		patch := PostgresPatch{
 			Name:                  in.Name,
 			Plan:                  in.Plan,
+			DiskSizeGB:            in.DiskSizeGB,
+			Pooler:                pooler,
 			Version:               in.Version,
 			EnableDiskAutoscaling: in.EnableDiskAutoscaling,
 			ParameterOverrides:    in.ParameterOverrides,

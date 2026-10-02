@@ -107,6 +107,14 @@ Reading Render's pricing carefully: Free and Basic-256mb are _identical specs_ (
 
 Every Render Postgres feature (per-tenant version, daily backup, PITR, HA, pooling, hibernation) maps to a CNPG mechanism — so CNPG is sufficient for Render parity, and there is no case for switching to Crunchy (pgBackRest only wins at extreme scale) or a multi-engine strategy (Redis etc. is a _separate operator_, not a CNPG gap).
 
+### Capacity admission (w8/m50)
+
+The existing catalog now owns capability metadata as well as resource sizes. [Free Postgres has fixed 1 GB storage](https://render.com/docs/free), so free creates and storage growth cannot exceed that size and free disk autoscaling is unsupported. Paid storage retains the catalog's 16,384 GB ceiling. [Managed pooling requires a paid plan](https://render.com/docs/postgresql-connection-pooling). [Read replicas require 0.5 CPU, 10 GB effective storage and a maximum of five](https://render.com/docs/postgresql-read-replicas); `basic-1gb` with 10 GB qualifies, independently of HA's 1-CPU rule. Primary documentation checked 2026-10-02; no plan or price is added.
+
+One admission helper checks creates and merged updates, including dry runs, plan changes and Blueprint sync. The allocated-storage high-water mark participates, so a downgrade cannot disguise an existing larger volume. Refusals precede writes. Existing unsupported settings survive unrelated edits and can be disabled; storage and replicas are never silently shrunk or removed. The operator skips automatic growth on free even when an older database still has autoscaling enabled. Dashboard controls consume server metadata rather than duplicating plan policy.
+
+Eligible named readers add one CNPG instance each to the plan/HA baseline; readiness waits for that total. Autoscale quota uses the change in aggregate provisioned storage, including readers that become eligible when storage grows to 10 GB. Ineligible legacy declarations add no instances and preserve already declared or observed instance capacity; explicitly clearing the list permits removal. Reader names remain aliases to one shared CNPG `-ro` pool, not independent per-name clusters. The previous projection published aliases without creating readers when HA was off; w8/m50 corrects that missing mechanism.
+
 ### 6. Lifecycle (create → URLs → connect → delete)
 
 1. **Create** `Database{metadata.name: dpg-<xid>, spec: {name, plan, version, storage, databaseName?, databaseUser?}}`; the API validates explicit physical identifiers and the CRD makes them immutable.
