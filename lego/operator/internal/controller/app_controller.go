@@ -880,14 +880,21 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	}
 	runtimeSecret := ""
 	nativeEnvRevision := ""
-	nativeLiterals := buildEnv(builder, app.Spec.Env)
-	if builder == build.BuilderNative {
-		merged, rev, err := r.projectNativeBuildEnv(ctx, app, buildNs, nativeLiterals)
+	buildLiterals := buildEnv(builder, app.Spec.Env)
+	switch builder {
+	case build.BuilderNative:
+		merged, rev, err := r.projectNativeBuildEnv(ctx, app, buildNs, buildLiterals)
 		if err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 		}
 		runtimeSecret = merged
 		nativeEnvRevision = rev
+	case build.BuilderBuildpack:
+		projected, err := r.projectBuildpackBuildEnv(ctx, app, buildLiterals)
+		if err != nil {
+			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
+		}
+		buildLiterals = projected
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
 	if err != nil {
@@ -913,7 +920,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		StaticSite:        app.Spec.Type == appv1alpha1.TypeStaticSite,
 		BuildCommand:      app.Spec.BuildCommand,
 		StartCommand:      app.Spec.StartCommand,
-		BuildEnv:          nativeLiterals,
+		BuildEnv:          buildLiterals,
 		RuntimeEnvSecret:  runtimeSecret,
 		NativeEnvRevision: nativeEnvRevision,
 		Revision:          releaseBuildRevision(app),
@@ -1409,24 +1416,9 @@ func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alp
 	if len(sources) == 0 && len(literals) == 0 {
 		return "", build.NativeEnvNoneRevision, nil
 	}
-	reader := r.uncachedSecretClient()
-	data := map[string][]byte{}
-	for _, source := range sources {
-		ref := source.SecretRef
-		var src corev1.Secret
-		if err := reader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ref.Name}, &src); err != nil {
-			if ref.Optional != nil && *ref.Optional && apierrors.IsNotFound(err) {
-				continue
-			}
-			return "", "", fmt.Errorf("reading native build env Secret %s/%s: %w", app.Namespace, ref.Name, err)
-		}
-		// rejectProtectedSecretRefs already vets the spec references; re-check at
-		// the read like copyCloneSecret does, so a protected operational Secret
-		// can never be laundered into a mountable merged copy (codex F1/F7).
-		if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
-			return "", "", fmt.Errorf("refusing to project protected operator Secret %s/%s into a native build", app.Namespace, ref.Name)
-		}
-		maps.Copy(data, src.Data)
+	data, err := r.readBuildEnvSources(ctx, app, sources)
+	if err != nil {
+		return "", "", err
 	}
 	input := nativeEnvInputToken(string(app.UID), data, literals)
 	var revision string
@@ -1462,6 +1454,77 @@ func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alp
 		revision = merged.Annotations[annotNativeEnvRevision]
 	}
 	return merged.Name, revision, nil
+}
+
+// readBuildEnvSources reads a build's ordered env Secret sources (envFromSources
+// of the in-flight release) into one map, later sources winning — the runtime
+// envFrom precedence. A missing optional group Secret contributes nothing; any
+// other read failure, including the service's own Secret missing, fails the
+// build rather than building with a partial environment.
+func (r *AppReconciler) readBuildEnvSources(ctx context.Context, app *appv1alpha1.App, sources []corev1.EnvFromSource) (map[string][]byte, error) {
+	reader := r.uncachedSecretClient()
+	data := map[string][]byte{}
+	for _, source := range sources {
+		ref := source.SecretRef
+		var src corev1.Secret
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ref.Name}, &src); err != nil {
+			if ref.Optional != nil && *ref.Optional && apierrors.IsNotFound(err) {
+				continue
+			}
+			return nil, fmt.Errorf("reading build env Secret %s/%s: %w", app.Namespace, ref.Name, err)
+		}
+		// rejectProtectedSecretRefs already vets the spec references; re-check at
+		// the read like copyCloneSecret does, so a protected operational Secret
+		// can never be laundered into a build (codex F1/F7).
+		if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
+			return nil, fmt.Errorf("refusing to project protected operator Secret %s/%s into a build", app.Namespace, ref.Name)
+		}
+		maps.Copy(data, src.Data)
+	}
+	return data, nil
+}
+
+// projectBuildpackBuildEnv is the buildpack (kpack) counterpart of
+// projectNativeBuildEnv (w1/121). Render exposes a service's environment to its
+// build; on the buildpack path the build-visible part is Paketo's own
+// configuration surface — BP_* (build) and BPE_* (launch) — so those keys are
+// read from the same ordered Secret sources the native build merges (groups,
+// then the service's own Secret), and the selected literals win last.
+//
+// Only BP_/BPE_ keys leave the Secrets: kpack v0.18 rejects secretKeyRef in
+// Image/Build env (pkg/apis/build/v1alpha2/build_validation.go,
+// validateBuildEnvSecretKeyRefs), so a projected value is a plaintext Image
+// spec field. Every other service variable stays out of the kpack build rather
+// than landing in a CR in clear.
+func (r *AppReconciler) projectBuildpackBuildEnv(ctx context.Context, app *appv1alpha1.App, literals []corev1.EnvVar) ([]corev1.EnvVar, error) {
+	sources := envFromSources(inFlightRelease(app))
+	if len(sources) == 0 {
+		return literals, nil
+	}
+	data, err := r.readBuildEnvSources(ctx, app, sources)
+	if err != nil {
+		return nil, err
+	}
+	merged := map[string]string{}
+	for key, value := range data {
+		if buildpackEnvName(key) {
+			merged[key] = string(value)
+		}
+	}
+	for _, item := range literals {
+		merged[item.Name] = item.Value
+	}
+	out := make([]corev1.EnvVar, 0, len(merged))
+	for _, key := range slices.Sorted(maps.Keys(merged)) {
+		out = append(out, corev1.EnvVar{Name: key, Value: merged[key]})
+	}
+	return out, nil
+}
+
+// buildpackEnvName reports whether a variable is Paketo build (BP_) or launch
+// (BPE_) configuration — the only names a kpack build receives.
+func buildpackEnvName(name string) bool {
+	return strings.HasPrefix(name, "BP_") || strings.HasPrefix(name, "BPE_")
 }
 
 // nativeBuildLiterals keeps the preparer's build-relevant literal set so the
@@ -1532,15 +1595,16 @@ func effectiveDeployRef(spec appv1alpha1.AppSpec) string {
 // buildEnv selects literal App.spec.env entries for the active source builder.
 // Native builds receive every literal (the OpenBao-backed bulk Secret travels
 // separately as a BuildKit secret); kpack receives only its documented BP_ and
-// BPE_ configuration. SecretKeyRef entries never enter a world-readable Image
-// CR or generated Dockerfile.
+// BPE_ configuration (projectBuildpackBuildEnv adds the same keys from the
+// service's Secret sources). SecretKeyRef entries never enter a world-readable
+// Image CR or generated Dockerfile.
 func buildEnv(builder string, env []appv1alpha1.EnvVar) []corev1.EnvVar {
 	out := make([]corev1.EnvVar, 0, len(env))
 	for _, item := range env {
 		if item.ValueFrom != nil {
 			continue
 		}
-		if builder == build.BuilderBuildpack && !strings.HasPrefix(item.Name, "BP_") && !strings.HasPrefix(item.Name, "BPE_") {
+		if builder == build.BuilderBuildpack && !buildpackEnvName(item.Name) {
 			continue
 		}
 		out = append(out, corev1.EnvVar{Name: item.Name, Value: item.Value})
