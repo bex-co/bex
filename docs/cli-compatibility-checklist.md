@@ -62,6 +62,8 @@ This launcher record does not replace the unmodified server oracle below: that c
 
 ### Intended divergences (not bugs)
 
+- **Log text search (w2/m167):** the [Render CLI](https://render.com/docs/cli-reference#logs) accepts comma-separated `--text` values and the [logs API](https://api-docs.render.com/reference/list-logs) accepts an array. The exact v2.27.0 pin sends repeated `text` keys; Bex preserves all of them and matches their OR, ANDed with the other supported filters. Bex treats each term as a case-insensitive literal substring, including wildcard/regex characters, while Render documents wildcard/regex text search. Exact empty terms are ignored, duplicates after lowercasing have no additional effect, and spaces remain literal; no effective terms means no text filter. GraphQL/dashboard and datastore convenience searches remain scalar. See [the full contract and source limits](ADR010-observability.md#log-filters).
+
 - **Blueprint size (w8/m48):** bex limits decoded YAML to **512 KiB** before parsing. Oversized `blueprints validate` uploads receive a named 413 for that limit. Render documents a [10 MB total multipart request bound](https://api-docs.render.com/reference/validate-blueprint); bex keeps the smaller pre-decode amplification guard. Request-envelope allowance is separate from the YAML budget.
 
 - `--region` is accepted but **platform-stamped** from `BEX_REGION` (`local-capd` in dev-9, `fsn1` in production); the submitted hint is not persisted. Both truthful installation values sit outside the CLI's closed Render-region enum, so a bare `services create --from` clone fails client-side and needs an explicit `--region`.
@@ -116,14 +118,14 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `keyvalues delete <id|name>` — unchanged CLI contract; durable cleanup remains internal (w2/m61)
 - [~] **`logs`** — view logs for services and datastores (single command). (Upstream defect at this pin: with no usable credential — absent, expired-beyond-refresh, or corrupt `cli.yaml` — the command panics with a Go stack trace and exits 2 in every non-interactive mode instead of a clean login error; see the Real-gaps bullet above. Re-check when the CLI pin moves. The `[x]` rows below grade the authenticated paths.)
   - [x] query mode — resolves a service by name; empty windows return stable cursors (no parse crash)
-  - [x] `--tail` — streams live pod-log JSON
+  - [~] `--tail` — streams App or standalone build logs over WebSocket, with all text terms preserved; request/pre-deploy/datastore tails and store-only filters remain unsupported
   - [x] `-r, --resources <ids>` — required in non-interactive mode; honored
   - [x] `--instance <ids>` — in live-pod mode the instance label is the pod name
   - [x] `--start <time>`
   - [x] `--end <time>`
   - [x] `--direction <backward|forward>`
   - [x] `--limit <count>`
-  - [x] `--text <query>` — filter genuinely applied (empty result on no match)
+  - [~] `--text <values>` — comma-separated CLI values become repeated REST terms and match as an OR, with other filters still ANDed; reversing or duplicating terms does not duplicate lines. Case-insensitive literal substrings only; see the text-search divergence above. The same terms apply to supported tails, while label-value discovery does not evaluate line text
   - [x] `--level <levels>` — durable-logs supplement: a planted JSON `error` line is isolated exactly; an unmatched level is an honest empty. (The CLI's own `--level` enum has no `unknown`, so bex's honest plaintext bucket is reachable over REST only — upstream flag shape, not a bex gap.) Dev-9 (no Loki) answers `503`
   - [x] `--type <types>` — closed enum `app`/`request`/`build` (client rejects bex-only `predeploy`); `app` works live without the store; durable supplement proved `app`/`request`; **`build` also carries pre-deploy Job stdout once shipped (w5/m100)** so `pre_deploy_failed` is diagnosable without a type the CLI cannot send
   - [x] `--host <hosts>` — durable-logs supplement: matches only the probe host; an absent host is an honest empty. Dev-9 (no Loki) answers `503`

@@ -152,7 +152,7 @@ func logQueryFromArgs(args map[string]any) (LogQuery, error) {
 		q.Types = types
 	}
 	if s, ok := args["text"].(string); ok {
-		q.Search = s
+		q.Search = []string{s}
 	}
 	// Direction is validated by the verb (LogQuery.validate), not here — one
 	// enforcement point for all three surfaces.
