@@ -210,6 +210,9 @@ func main() {
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
 		BaseDomain: cfg.BaseDomain,
+		// One shared detector (and DNS cache) for the allowlist's
+		// Cloudflare-proxied-domain warning on services and environments.
+		ProxiedHosts: core.NewProxiedHostDetector(),
 		// BEX_REGION is the explicit platform placement surfaced in Render
 		// resource metadata. Empty is honestly omitted.
 		Region:        cfg.Region,

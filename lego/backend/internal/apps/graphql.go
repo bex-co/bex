@@ -518,6 +518,12 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.NewList(gqlutil.IPAllowEntryType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.IPAllowList }),
 		},
+		// ipAllowListProxiedDomains (bex extension, w1/m171) names the
+		// Cloudflare-proxied custom domains on which the allowlist sees
+		// Cloudflare's edge address instead of the client's. Computed by
+		// service(id)/server(id) and setServiceIpAllowList; null on lists.
+		"ipAllowListProxiedDomains": gqlutil.Typed(graphql.NewList(graphql.NewNonNull(graphql.String)),
+			func(a AppView) any { return a.IPAllowListProxiedDomains }),
 		// maintenanceMode is Render's maintenanceMode object, and it is a
 		// web_service property: Render declares it solely on
 		// webServiceDetails, and REST/MCP omit the key entirely for every other

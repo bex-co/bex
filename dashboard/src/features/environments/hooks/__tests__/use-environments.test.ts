@@ -70,7 +70,31 @@ describe("useEnvironments", () => {
       protectedStatus: "unprotected",
       networkIsolationEnabled: false,
       ipAllowListEntries: [],
+      // w1/m171: absent means nothing to warn about.
+      ipAllowListProxiedDomains: [],
     });
+  });
+
+  it("maps the Cloudflare-proxied allowlist domains (w1/m171)", () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        environments: [
+          {
+            __typename: "Environment",
+            id: "env-1",
+            ipAllowListProxiedDomains: ["shop.example.com", null, ""],
+          },
+        ],
+      },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useEnvironments("prj-1"));
+    expect(result.current.environments[0]?.ipAllowListProxiedDomains).toEqual([
+      "shop.example.com",
+    ]);
   });
 
   it("maps w6/m19 protected-environment ACL fields when present", () => {

@@ -11,5 +11,9 @@ mutation SetServiceIpAllowList(
       cidrBlock
       description
     }
+    # The save is accepted either way; this names the Cloudflare-proxied
+    # custom domains it cannot filter (w1/m171) and refreshes the cached
+    # service so the Networking card's notice follows the new list.
+    ipAllowListProxiedDomains
   }
 }

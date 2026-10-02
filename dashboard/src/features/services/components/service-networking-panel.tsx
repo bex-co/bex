@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
+import { IPAllowListProxiedNotice } from "@/common/components/ip-allow-list-proxied-notice";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceNetworking } from "@/features/services/hooks/use-service-networking";
@@ -19,6 +20,7 @@ import { useServiceNetworking } from "@/features/services/hooks/use-service-netw
 export function ServiceNetworkingPanel({
   serviceId,
   currentAllowList,
+  proxiedDomains,
   onSaved,
 }: {
   serviceId: string;
@@ -30,6 +32,11 @@ export function ServiceNetworkingPanel({
       } | null>
     | null
     | undefined;
+  /**
+   * Cloudflare-proxied custom domains on which this allowlist sees
+   * Cloudflare's address instead of the client's (w1/m171).
+   */
+  proxiedDomains?: ReadonlyArray<string | null> | null;
   /** Called after a successful save so the parent can refetch if needed. */
   onSaved?: () => void;
 }) {
@@ -50,6 +57,7 @@ export function ServiceNetworkingPanel({
         <CardDescription>{t("services.networkingDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
+        <IPAllowListProxiedNotice domains={proxiedDomains} />
         {/* key remounts the editable draft whenever the server list changes */}
         <IPAllowListEditor
           key={ipAllowListEntryKey(normalized)}

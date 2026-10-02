@@ -337,6 +337,34 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Timestamp tooltip: label of the row showing the instant as Unix seconds",
   },
+  "common.ipAllowListProxiedTitle_one": {
+    message: "The allowlist can't see clients on {count} custom domain",
+    description:
+      "Title of the warning shown under an inbound IP allowlist when one of the custom domains it covers is proxied by Cloudflare (w1/m171)",
+  },
+  "common.ipAllowListProxiedTitle_other": {
+    message: "The allowlist can't see clients on {count} custom domains",
+    description:
+      "Title of the warning shown under an inbound IP allowlist when several custom domains it covers are proxied by Cloudflare (w1/m171)",
+  },
+  "common.ipAllowListProxiedBody_one": {
+    message:
+      "This domain is proxied by Cloudflare, so the allowlist matches Cloudflare's address there, not the visitor's. The list is saved, but on this domain it will block visitors you meant to allow:",
+    description:
+      "Body of the Cloudflare-proxied allowlist warning, followed by the one proxied hostname (w1/m171)",
+  },
+  "common.ipAllowListProxiedBody_other": {
+    message:
+      "These domains are proxied by Cloudflare, so the allowlist matches Cloudflare's address there, not the visitor's. The list is saved, but on these domains it will block visitors you meant to allow:",
+    description:
+      "Body of the Cloudflare-proxied allowlist warning, followed by the list of proxied hostnames (w1/m171)",
+  },
+  "common.ipAllowListProxiedFix": {
+    message:
+      "To filter real client addresses, set the DNS record to DNS only (grey cloud) in Cloudflare.",
+    description:
+      "How to fix the Cloudflare-proxied allowlist warning: switch the record from proxied (orange cloud) to DNS only (w1/m171)",
+  },
 };
 
 export default enCommon;

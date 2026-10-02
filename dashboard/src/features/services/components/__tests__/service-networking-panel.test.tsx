@@ -107,4 +107,34 @@ describe("ServiceNetworkingPanel", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", []);
   });
+
+  it("names the Cloudflare-proxied domains the allowlist cannot filter (w1/m171)", () => {
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={[{ cidrBlock: "203.0.113.0/24", description: "" }]}
+        proxiedDomains={["shop.example.com"]}
+      />,
+    );
+
+    const notice = screen.getByTestId("ip-allow-list-proxied-notice");
+    expect(notice).toHaveTextContent(
+      "The allowlist can't see clients on 1 custom domain",
+    );
+    expect(notice).toHaveTextContent("shop.example.com");
+    expect(notice).toHaveTextContent("DNS only (grey cloud)");
+    // A warning, not a refusal: the editor stays and can still save.
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("renders no Cloudflare notice without proxied domains", () => {
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={[{ cidrBlock: "203.0.113.0/24", description: "" }]}
+        proxiedDomains={null}
+      />,
+    );
+    expect(screen.queryByTestId("ip-allow-list-proxied-notice")).toBeNull();
+  });
 });
