@@ -51,6 +51,8 @@ var _ = Describe("Canceling a config-change deploy (w1/m152)", func() {
 		GinkgoHelper()
 		_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 		Expect(err).NotTo(HaveOccurred())
+		_, err = r.reconcileSavedConfigurationStatus(ctx, reconcile.Request{NamespacedName: nn})
+		Expect(err).NotTo(HaveOccurred())
 	}
 	getApp := func() *appv1alpha1.App {
 		GinkgoHelper()
@@ -141,6 +143,10 @@ var _ = Describe("Canceling a config-change deploy (w1/m152)", func() {
 		for range 3 {
 			pass()
 		}
+		app = getApp()
+		Expect(app.Status.UndeployedChanges).To(BeTrue(), "a candidate is not yet the serving release")
+		markReady()
+		pass()
 		app = getApp()
 		Expect(app.Status.UndeployedChanges).To(BeFalse())
 		Expect(app.Status.ReleaseGeneration).To(BeNumerically(">", 1))

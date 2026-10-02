@@ -299,8 +299,8 @@ export function ServiceDetailHeader({
       <HeaderFacts service={service} />
 
       {service.undeployedChanges ? (
-        // Saved settings can differ from the runtime after a cancel or rollback;
-        // restarting preserves that runtime. Display the operator's distinction
+        // Save only, cancellation and rollback can leave saved settings different
+        // from the runtime. Restart preserves it. Read the operator's distinction
         // instead of inferring it from the most recent deploy's status.
         <p className="text-muted-foreground text-sm" role="status">
           {t("services.undeployedChangesHint")}

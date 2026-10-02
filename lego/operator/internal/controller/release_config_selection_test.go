@@ -109,6 +109,17 @@ func materializeSelectedTestRelease(t *testing.T, r *AppReconciler, app *appv1al
 	if err := r.applyServingDeployment(ctx, app, dep, deploymentParams{image: image, port: 3000, replicas: effectiveReplicas(runtime)}, nil); err != nil {
 		t.Fatal(err)
 	}
+	// Publish the serving revision before comparing status: dispatch alone is
+	// not proof the replacement is live.
+	app.Status.ActiveRevision = releaseRevision(app)
+	app.Status.Image = image
+	app.Status.UndeployedChanges, err = r.servingConfigurationDiffers(ctx, app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
+		t.Fatal(err)
+	}
 	return dep
 }
 
@@ -232,8 +243,12 @@ func TestSelectedConfigurationChecksSourcesOncePerRuntimeReconcile(t *testing.T)
 				t.Fatal(err)
 			}
 			for name, count := range reads {
-				if count != 1 {
-					t.Errorf("%s fetched %d times in one pass, want one selected/saved comparison", name, count)
+				want := 0
+				if appv1alpha1.IsReleaseSnapshotName(name) {
+					want = 1
+				}
+				if count != want {
+					t.Errorf("%s fetched %d times in one runtime pass, want %d for snapshot validation", name, count, want)
 				}
 			}
 			// Validation is bounded within a pass, not cached across passes. Losing

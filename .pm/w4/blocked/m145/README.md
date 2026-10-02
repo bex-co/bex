@@ -1,16 +1,16 @@
 # w4 · m145 — Report ordinary Save-only configuration as pending
 
-**Worker:** worker4 **Goal:** Make the saved-versus-running indicator reflect ordinary Save-only changes without deploying them. **Status:** todo
+**Worker:** worker4 **Goal:** Make the saved-versus-running indicator reflect ordinary Save-only changes without deploying them. **Status:** blocked — t001–t005 done; t006 requires platform release and production QA replay
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Track effective Save-only divergence without a rollout | 55m | — |
-| t002 | Audit shared writers, runtime types and passing controls | 40m | t001 |
-| t003 | Render parity and API/dashboard verification | 25m | t002 |
-| t004 | Simplify | 20m | t003 |
-| t005 | Test coverage | 30m | t003, t004 |
+| t001 | Track effective Save-only divergence without a rollout — **DONE** | 55m | — |
+| t002 | Audit shared writers, runtime types and passing controls — **DONE** | 40m | t001 |
+| t003 | Render parity and API/dashboard verification — **DONE** | 25m | t002 |
+| t004 | Simplify — **DONE** | 20m | t003 |
+| t005 | Test coverage — **DONE** | 30m | t003, t004 |
 | t006 | Closeout with live replay and cleanup | 20m | t005 |
 
 ## Definition of done
@@ -28,3 +28,7 @@
 - **Why now:** Two fresh production saves reproduce false reporting, including after a standard deploy correctly cleared the same flag. Cancellation and rollback fixes leave this ordinary path uncovered.
 - **Render parity included:** REST/GraphQL/MCP/UI consume this status. Render documents deferred application; this field/banner is a Bex extension.
 - **Scope:** One major reporting bug, not lost data or broken deploy dispatch. About 3h 10m across six tasks, including a dedicated shared-code audit. This filing implements no product fix.
+
+## Implementation outcome — 2026-10-02
+
+[Implementation and local verification](implementation.md) complete t001–t005. **Gate:** platform release owner deploys backend/operator/dashboard; QA owner replays every live DoD and records fixture/session cleanup. t006 remains open. No production fixture/session was created in this implementation run.

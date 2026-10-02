@@ -22,12 +22,17 @@ import (
 
 // Pending environment projection annotations let bex-api stage the first
 // service-local Secret without changing App.spec (and therefore without
-// rolling the current pods). The operator consumes these names the next time
-// some independent spec change deliberately reconciles the workload.
+// rolling the current pods). The operator consumes these names on the next
+// release, while reconciliation of the current release retains its sources.
 const (
 	PendingEnvSecretAnnotation   = "app.bex.co/pending-env-secret"
 	PendingFilesSecretAnnotation = "app.bex.co/pending-files-secret"
 )
+
+// AnnotationSavedConfigRevision is an opaque notification for an effective
+// service-local Save-only write. It contains no configuration or value digest,
+// changes no release identity, and wakes only configuration-status comparison.
+const AnnotationSavedConfigRevision = "app.bex.co/saved-config-revision"
 
 // AnnotationReleaseGeneration pins a backend-opened deploy to the App
 // generation whose release work it represents. Metadata-only and operational
@@ -1481,9 +1486,11 @@ type AppStatus struct {
 	UnscopedSnapshotGeneration int64 `json:"unscopedSnapshotGeneration,omitempty"`
 
 	// UndeployedChanges reports saved configuration that differs from the serving
-	// release after cancellation or historical configuration selection. Saved
-	// settings remain available for the next standard deploy. An identical-config
-	// Restart does not set this flag merely because it selects a release record.
+	// pod release, including service-local Save-only writes, cancellation and
+	// historical selection. Missing historical evidence after a save is treated
+	// conservatively as pending. Static build inputs do not use this comparison.
+	// Saved settings remain available for the next standard deploy; merely
+	// selecting an identical configuration for Restart does not set the flag.
 	// +optional
 	UndeployedChanges bool `json:"undeployedChanges,omitempty"`
 

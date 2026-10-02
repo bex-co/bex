@@ -114,9 +114,9 @@ type renderService struct {
 	// — so this is a bex extension rather than a parity gap.
 	PublicRoutingNotice string `json:"publicRoutingNotice,omitempty"`
 	Phase               string `json:"phase,omitempty"`
-	// UndeployedChanges is a bex extension: Render has no field for a canceled
-	// deploy whose saved changes are still pending. Omitted when false, so a
-	// Render client sees nothing new on an ordinary service (w1/m152 t003).
+	// UndeployedChanges is a bex extension for saved configuration that differs
+	// from the serving release. Render has no equivalent field. Omitted when
+	// false, so matching saved/running configuration keeps its existing shape.
 	UndeployedChanges bool     `json:"undeployedChanges,omitempty"`
 	Replicas          int32    `json:"replicas"`
 	Revision          string   `json:"revision,omitempty"`

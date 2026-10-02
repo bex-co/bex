@@ -168,8 +168,8 @@ describe("ServiceEnvPage group creation", () => {
 const NOTICE =
   "Saved changes aren't live yet. Use a standard deploy to apply them.";
 
-// This page lists saved values. Cancellation, rollback and a restart of that
-// release can leave those values different from the running configuration.
+// This page lists saved values. Save only, cancellation, rollback and a restart
+// of that release can leave them different from the running configuration.
 describe("ServiceEnvPage undeployed-changes notice", () => {
   beforeEach(() => useServer.mockReset());
 
@@ -197,5 +197,19 @@ describe("ServiceEnvPage undeployed-changes notice", () => {
     // A second polling consumer drifts into separate round trips (use-server.ts);
     // the detail layout owns the cadence.
     expect(useServer).toHaveBeenCalledWith("srv-1", { poll: false });
+  });
+
+  it("follows the authoritative flag as Save only settles and a revert clears it", () => {
+    useServer.mockReturnValue({ service: { undeployedChanges: false } });
+    const { rerender } = render(<ServiceEnvPage serviceId="srv-1" />);
+    expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
+
+    useServer.mockReturnValue({ service: { undeployedChanges: true } });
+    rerender(<ServiceEnvPage serviceId="srv-1" />);
+    expect(screen.getByText(NOTICE)).toBeInTheDocument();
+
+    useServer.mockReturnValue({ service: { undeployedChanges: false } });
+    rerender(<ServiceEnvPage serviceId="srv-1" />);
+    expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
   });
 });

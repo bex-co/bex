@@ -941,9 +941,9 @@ func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env ma
 
 // projectEnv updates the derived Kubernetes Secret and App reference without
 // changing restartedAt or persisting the App. Batch environment writes call it
-// together with projectFiles, then patch the App exactly once when a rollout was
-// requested. The older single-item verbs keep calling materializeEnv and retain
-// their immediate-roll behavior.
+// together with projectFiles, then patch the App once to notify a Save-only
+// comparison or request a rollout. The older single-item verbs keep calling
+// materializeEnv and retain their immediate-roll behavior.
 func (s *Service) projectEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string) error {
 	if err := s.upsertSecret(ctx, a, envSecretName(a.Name), env); err != nil {
 		return err

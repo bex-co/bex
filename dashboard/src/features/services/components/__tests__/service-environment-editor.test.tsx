@@ -20,6 +20,7 @@ const save = vi.fn();
 const trigger = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
+const toastWarning = vi.fn();
 // Mutable so individual tests can render the secret-files empty state.
 let fileNames: Array<{ id: string; name: string }> = [];
 // Mutable so individual tests can flag a key as manifest-managed (w4/m120) or
@@ -31,6 +32,7 @@ vi.mock("sonner", () => ({
   toast: {
     success: (...a: unknown[]) => toastSuccess(...a),
     error: (...a: unknown[]) => toastError(...a),
+    warning: (...a: unknown[]) => toastWarning(...a),
   },
 }));
 
@@ -91,6 +93,7 @@ beforeEach(() => {
   envKeysLoading = false;
   toastSuccess.mockReset();
   toastError.mockReset();
+  toastWarning.mockReset();
   revealEnv
     .mockReset()
     .mockImplementation(async (key: string) => `${key}-value`);
@@ -298,6 +301,95 @@ describe("ServiceEnvironmentEditor", () => {
       ),
     );
     expect(save).toHaveBeenCalledTimes(1);
+    expect(trigger).not.toHaveBeenCalled();
+  });
+
+  it("explains deferred application after Save only without starting a deploy", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for ALPHA" }),
+      "saved-v2",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Environment save options" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Save only" }),
+    );
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Environment saved without a deploy. Use a standard deploy to apply any pending changes.",
+      ),
+    );
+    expect(save).toHaveBeenCalledWith(
+      "web",
+      {
+        envVars: [{ key: "ALPHA", value: "saved-v2" }],
+        secretFiles: [],
+      },
+      "save_only",
+    );
+    expect(trigger).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    // Only the operator's status can assert a saved/runtime difference: a
+    // masked replacement could also be a no-op or a revert to the live value.
+    expect(
+      screen.queryByText(/Saved changes aren't live yet/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes an accepted draft when refresh fails and explains how to recover", async () => {
+    save.mockResolvedValueOnce({ refreshFailed: true });
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for ALPHA" }),
+      "saved-v2",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Environment save options" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Save only" }),
+    );
+
+    await waitFor(() =>
+      expect(toastWarning).toHaveBeenCalledWith(
+        "Environment saved, but this page couldn't refresh. Reload to check the latest values and deployment status.",
+      ),
+    );
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("saved-v2")).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledOnce();
+    expect(trigger).not.toHaveBeenCalled();
+  });
+
+  it("keeps an uncommitted draft on write failure and gives no saved feedback", async () => {
+    save.mockRejectedValueOnce(new Error("write unavailable"));
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Value for ALPHA" }),
+      "unsaved-v2",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Environment save options" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Save only" }),
+    );
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    expect(screen.getByDisplayValue("unsaved-v2")).toBeInTheDocument();
+    expect(toastSuccess).not.toHaveBeenCalled();
+    expect(toastWarning).not.toHaveBeenCalled();
     expect(trigger).not.toHaveBeenCalled();
   });
 

@@ -19,16 +19,17 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"github.com/graphql-go/graphql"
 )
 
-// undeployed_changes_test.go covers the API half of w1/m152 t003: after a deploy
-// carrying saved changes is canceled, the service runs an earlier release than its
-// saved spec, and every surface has to say so rather than imply the saved values are
-// live. The operator owns the fact (status.undeployedChanges); these tests pin that
-// the API carries it and does not invent it.
+// Save only, cancellation and historical selection can leave saved configuration
+// different from the serving release. The operator owns the fact; the API must
+// carry it without treating the notification metadata itself as divergence.
 
 func TestViewCarriesUndeployedChanges(t *testing.T) {
 	a := sampleApp("web")
@@ -65,27 +66,51 @@ func TestRenderServiceOmitsUndeployedChangesUnlessSet(t *testing.T) {
 	}
 }
 
-func TestGraphQLServiceUndeployedChanges(t *testing.T) {
-	a := sampleApp("web")
-	a.Status.UndeployedChanges = true
-	svc, _ := newService(nil, a)
-	schema, err := graphql.NewSchema(graphql.SchemaConfig{
-		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
-		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
-	})
-	if err != nil {
-		t.Fatalf("schema: %v", err)
-	}
-	res := graphql.Do(graphql.Params{
-		Schema:        schema,
-		Context:       context.Background(),
-		RequestString: `{ service(id:"web") { undeployedChanges } }`,
-	})
-	if len(res.Errors) > 0 {
-		t.Fatalf("errors: %v", res.Errors)
-	}
-	got := res.Data.(map[string]any)["service"].(map[string]any)["undeployedChanges"]
-	if got != true {
-		t.Errorf("GraphQL undeployedChanges = %v, want true", got)
+func TestServiceReadsCarryAuthoritativeUndeployedChanges(t *testing.T) {
+	for _, pending := range []bool{false, true} {
+		name := "saved matches serving release"
+		if pending {
+			name = "saved differs from serving release"
+		}
+		t.Run(name, func(t *testing.T) {
+			a := sampleApp("web")
+			a.Status.UndeployedChanges = pending
+			a.Annotations = map[string]string{appv1alpha1.AnnotationSavedConfigRevision: "opaque-notification"}
+			svc, _ := newService(nil, a)
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			response := httptest.NewRecorder()
+			mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
+			if response.Code != http.StatusOK {
+				t.Fatalf("REST read: %d %s", response.Code, response.Body.String())
+			}
+			var rest map[string]any
+			if err := json.Unmarshal(response.Body.Bytes(), &rest); err != nil {
+				t.Fatal(err)
+			}
+			call, cleanup := appsMCPClient(t, svc)
+			defer cleanup()
+			mcp := call("get_service", map[string]any{"serviceId": "web"})
+			for surface, result := range map[string]map[string]any{"REST": rest, "MCP": mcp} {
+				got, exists := result["undeployedChanges"]
+				if pending && got != true || !pending && exists {
+					t.Errorf("%s undeployedChanges = %v (present %t), pending %t", surface, got, exists, pending)
+				}
+			}
+			res := graphql.Do(graphql.Params{
+				Schema:        mustSchema(t, svc),
+				Context:       context.Background(),
+				RequestString: `{ service(id:"web") { undeployedChanges } server(id:"web") { undeployedChanges } }`,
+			})
+			if len(res.Errors) > 0 {
+				t.Fatalf("GraphQL errors: %v", res.Errors)
+			}
+			for _, alias := range []string{"service", "server"} {
+				got := res.Data.(map[string]any)[alias].(map[string]any)["undeployedChanges"]
+				if got != pending {
+					t.Errorf("GraphQL %s undeployedChanges = %v, want %t", alias, got, pending)
+				}
+			}
+		})
 	}
 }

@@ -60,6 +60,8 @@ var _ = Describe("Canceling any config_change (w1/m152 t004)", func() {
 			for _, n := range names {
 				_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn(n)})
 				Expect(err).NotTo(HaveOccurred())
+				_, err = r.reconcileSavedConfigurationStatus(ctx, reconcile.Request{NamespacedName: nn(n)})
+				Expect(err).NotTo(HaveOccurred())
 			}
 		}
 	}
