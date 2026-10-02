@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m149** — [Remove Key Value TLS artifacts on deletion](m149/README.md) (7 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweeps 9–10; two public Free deletes leave ownerless TLS Secrets while the private control cleans up, and the existing audit falsely passes.
+
 - [ ] **m148** — [Track the complete first Blueprint deployment with environment groups](m148/README.md) (6 tasks, ~2h 55m) ← live `qa-find-bugs` 2026-10-02 sweep 8; two first `fromGroup` creations serve at rev-2 while their only deploy is Canceled; the literal-value control has one Live deploy.
 
 - [ ] **m147** — [Refresh service activity while the page stays open](m147/README.md) (6 tasks, ~2h 25m) ← live `qa-find-bugs` 2026-10-02 sweep 7; a fixed query window leaves a live deploy In Progress with Cancel and misses later service events. APIs and the Metrics timeline contain the facts.
