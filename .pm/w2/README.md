@@ -122,7 +122,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] [039 — Honor instance filters for pre-deploy log reads](039.md) ← w2/m167 consumer audit, 2026-10-02
+- [x] [039 — Honor instance filters for pre-deploy log reads](done/039.md) — **DONE 2026-10-02** ← w2/m167 consumer audit, 2026-10-02
 
 - [x] [038 — Align default Postgres create allowlist readback with external access](done/038.md) — **DONE 2026-10-02** ← w2/m166 parity follow-up, 2026-10-02
 
