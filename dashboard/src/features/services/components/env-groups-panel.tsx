@@ -51,9 +51,12 @@ export function EnvGroupsPanel({
   const { t } = useTranslations();
   const { groups, loading, error, refetch } = useEnvGroups();
   const { linkGroup, unlinkGroup, busy } = useEnvGroupMutations(refetch);
-  const { service, loading: serviceLoading } = useServer(serviceId, {
-    poll: false,
-  });
+  const {
+    service,
+    loading: serviceLoading,
+    error: serviceError,
+    refetch: refetchService,
+  } = useServer(serviceId, { poll: false });
   // The service's own env-var keys, to flag linked-group keys the service
   // overrides at runtime (w6/067; last envFrom source wins — the service's).
   // Same query the environment editor on this page runs, so Apollo shares it.
@@ -218,17 +221,25 @@ export function EnvGroupsPanel({
         )}
       </CardContent>
       <NewEnvGroupDialog
+        key={`${scope.ownerId}:${serviceId}`}
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={() => void refetch()}
         refetch={refetch}
         services={service ? [service] : []}
         servicesLoading={serviceLoading}
+        servicesError={serviceError}
         initialServiceIds={[serviceId]}
         environments={scope.environments}
         serviceEnvironmentById={scope.serviceEnvironmentById}
         initialEnvironmentId={serviceEnvironmentId}
         scopeLoading={scope.loading}
+        scopeReady={scope.ready}
+        scopeError={scope.error}
+        onRetry={() => {
+          scope.retry();
+          void refetchService().catch(() => undefined);
+        }}
       />
     </Card>
   );
@@ -275,7 +286,8 @@ function EnvGroupItem({
   // (checked first — it beats every group), otherwise a later-linked group may.
   const keyShadow = (key: string): string | null => {
     if (!linked) return null;
-    if (serviceKeys.has(key)) return t("services.envGroupKeyOverridden", { key });
+    if (serviceKeys.has(key))
+      return t("services.envGroupKeyOverridden", { key });
     const winner = shadowedKeys?.get(key);
     return winner
       ? t("services.envGroupKeyShadowedByGroup", { key, group: winner })

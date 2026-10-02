@@ -10,5 +10,5 @@ export const Route = createFileRoute("/static/$serviceId/env")({
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
-  return <ServiceEnvPage serviceId={serviceId} />;
+  return <ServiceEnvPage key={serviceId} serviceId={serviceId} />;
 }

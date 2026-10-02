@@ -117,6 +117,17 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Loading workspace services…",
     description: "Initial service links loading state",
   },
+  "envGroups.createScopeLoading": {
+    message: "Loading environments and services…",
+    description:
+      "Create dialog waits for a confirmed scope and link candidates",
+  },
+  "envGroups.createScopeError": {
+    message:
+      "Couldn't load the environment or services. Retry before creating the group.",
+    description:
+      "Create dialog blocks submission when scope or service lookup fails",
+  },
   "envGroups.noServicesToLink": {
     message: "This workspace has no services to link yet.",
     description: "Initial service links empty state",
