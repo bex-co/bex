@@ -1,0 +1,26 @@
+{"check": "json-524288", "manifest_bytes": 524288, "message": null, "passed": true, "request_bytes": 524348, "status": 200, "surface": "REST json", "valid": true}
+{"check": "json-524289", "manifest_bytes": 524289, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 524349, "status": 413, "surface": "REST json", "valid": null}
+{"check": "json-614400", "manifest_bytes": 614400, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 614460, "status": 413, "surface": "REST json", "valid": null}
+{"check": "json-3145728", "manifest_bytes": 3145728, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 3145788, "status": 413, "surface": "REST json", "valid": null}
+{"check": "multipart-524288", "manifest_bytes": 524288, "message": null, "passed": true, "request_bytes": 524536, "status": 200, "surface": "REST multipart", "valid": true}
+{"check": "multipart-524289", "manifest_bytes": 524289, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 524537, "status": 413, "surface": "REST multipart", "valid": null}
+{"check": "multipart-614400", "manifest_bytes": 614400, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 614648, "status": 413, "surface": "REST multipart", "valid": null}
+{"check": "multipart-3145728", "manifest_bytes": 3145728, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 3145976, "status": 413, "surface": "REST multipart", "valid": null}
+{"check": "json-escaped-524288", "manifest_bytes": 524288, "message": null, "passed": true, "request_bytes": 3145313, "status": 200, "surface": "REST json-escaped", "valid": true}
+{"check": "json-escaped-524289", "manifest_bytes": 524289, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 3145319, "status": 413, "surface": "REST json-escaped", "valid": null}
+{"check": "json-envelope-4194304", "manifest_bytes": 1024, "message": null, "passed": true, "request_bytes": 4194304, "status": 200, "surface": "REST json", "valid": true}
+{"check": "json-envelope-4194305", "manifest_bytes": 1024, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 4194305, "status": 413, "surface": "REST json", "valid": null}
+{"check": "multipart-envelope-4194304", "manifest_bytes": 1024, "message": null, "passed": true, "request_bytes": 4194304, "status": 200, "surface": "REST multipart", "valid": true}
+{"check": "multipart-envelope-4194305", "manifest_bytes": 1024, "message": "Blueprint manifests are limited to 512 KiB", "passed": true, "request_bytes": 4194305, "status": 413, "surface": "REST multipart", "valid": null}
+{"check": "bex-current-524288", "exit": 0, "manifest_bytes": 524288, "named_limit": false, "passed": true, "surface": "bex-current"}
+{"check": "bex-current-524289", "exit": 1, "manifest_bytes": 524289, "named_limit": true, "passed": true, "surface": "bex-current"}
+{"check": "bex-current-614400", "exit": 1, "manifest_bytes": 614400, "named_limit": true, "passed": true, "surface": "bex-current"}
+{"check": "bex-current-3145728", "exit": 1, "manifest_bytes": 3145728, "named_limit": true, "passed": true, "surface": "bex-current"}
+{"check": "render-current-pin-524288", "exit": 0, "manifest_bytes": 524288, "named_limit": false, "passed": true, "surface": "render-current-pin"}
+{"check": "render-current-pin-524289", "exit": 1, "manifest_bytes": 524289, "named_limit": true, "passed": true, "surface": "render-current-pin"}
+{"check": "render-current-pin-614400", "exit": 1, "manifest_bytes": 614400, "named_limit": true, "passed": true, "surface": "render-current-pin"}
+{"check": "render-current-pin-3145728", "exit": 1, "manifest_bytes": 3145728, "named_limit": true, "passed": true, "surface": "render-current-pin"}
+{"check": "bex-installed-524288", "exit": 0, "manifest_bytes": 524288, "named_limit": false, "passed": true, "surface": "bex-installed"}
+{"check": "bex-installed-524289", "exit": 1, "manifest_bytes": 524289, "named_limit": true, "passed": true, "surface": "bex-installed"}
+{"check": "bex-installed-614400", "exit": 1, "manifest_bytes": 614400, "named_limit": true, "passed": true, "surface": "bex-installed"}
+{"check": "bex-installed-3145728", "exit": 1, "manifest_bytes": 3145728, "named_limit": true, "passed": true, "surface": "bex-installed"}

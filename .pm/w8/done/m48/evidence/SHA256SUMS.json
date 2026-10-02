@@ -1,0 +1,17 @@
+{
+  "adapter-evidence.jsonl": "a328202d532737e9bea6aaa12a50b84cc436cfbda44196171c42ce1a4be0bbde",
+  "alloy-evidence.json": "0cb3c19990426babafe3032b1dfaa7fa8f083a7feb092821b9d1ccce187ed3c9",
+  "binary-evidence.json": "bce2973d6b5b2e46dd20c0f99780a7be0d4828cfe3c73d5638653f65077d8a7b",
+  "blueprint-evidence.jsonl": "a580c52f7f4542d0997b5989a91e75cddc14e0ebccf79faba72a9521d7536e1f",
+  "cleanup-evidence.jsonl": "24809b23e03629aebdbf6807da8fec64b8c954809f046d1b04286ee3d3365034",
+  "efficiency-review.json": "b1427ac692c631d7853a91aea5826315a64f52d9db7382e52f8b7c81eb6bad15",
+  "eviction-cli-evidence.json": "ee1f62738741b9b2ec1d67544cb710cbd26f690d9425d3197676f4f427ad071b",
+  "eviction-evidence.json": "8396f7cc3306aab7f4dc0a545c61c08fd4bce25ff20238cbcebb4df4995b6c79",
+  "final-api-build.json": "2ae2fa48559a1a1880e677854349e8b05497c536cc2aafabce37c70ea098ac3e",
+  "level-discovery-evidence.json": "95a2af336a7162b4457f2842a4db43c9199304cee16fe7a14cdfbe29ea2e0673",
+  "local-recovery.json": "b1f953489c659daba0afe7d5db85d4eb50e51b814601b820bfb0bf6755a53acc",
+  "log-evidence.jsonl": "3435a919a1b3794a0103f51a2a04d004a559d8ea97ce45211c3af6740344d1ec",
+  "pipeline-provenance.json": "8e19af5c32590287b5ce45304c7e25841336cd1b2015db431893153d2a05cb94",
+  "projection.alloy": "90e730aca0959219ae6812c4a581ffb5c28eed258032218adee1c873a1f200c6",
+  "summary.json": "39e0ad43c3ca3a505e99e4a6d1c1fab9067f35998ea6a721520acc14d00b58a0"
+}

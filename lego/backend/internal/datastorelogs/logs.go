@@ -204,16 +204,18 @@ func (in Instance) parseLine(pod, line string) (Entry, bool) {
 // rule the log shipper's type=postgres pipeline applies. That container's PID 1
 // is CNPG's instance manager: it logs its own JSON and re-emits PostgreSQL's
 // csvlog as logger=postgres msg=record with the line under record. A record
-// becomes PostgreSQL's own stderr shape with its severity as the level; any
-// other logger is operator chatter and is dropped (keep=false); a line that is
-// not CNPG JSON passes through unchanged.
+// becomes PostgreSQL's own stderr shape with its severity as the level. Other
+// logger output and logger-less logging_pod probes are instance-manager chatter
+// and are dropped (keep=false); a line that is not CNPG JSON passes unchanged.
 func CNPGLine(line string) (message, level string, keep bool) {
 	if !strings.HasPrefix(strings.TrimSpace(line), "{") {
 		return line, "", true
 	}
 	var wrapped struct {
-		Logger string `json:"logger"`
-		Record *struct {
+		Logger     string `json:"logger"`
+		Message    string `json:"msg"`
+		LoggingPod string `json:"logging_pod"`
+		Record     *struct {
 			LogTime       string `json:"log_time"`
 			ProcessID     any    `json:"process_id"`
 			ErrorSeverity string `json:"error_severity"`
@@ -222,10 +224,13 @@ func CNPGLine(line string) (message, level string, keep bool) {
 			Hint          string `json:"hint"`
 		} `json:"record"`
 	}
-	if err := json.Unmarshal([]byte(line), &wrapped); err != nil || wrapped.Logger == "" {
+	if err := json.Unmarshal([]byte(line), &wrapped); err != nil {
 		return line, "", true
 	}
-	if wrapped.Logger != "postgres" {
+	if wrapped.Logger == "" && wrapped.LoggingPod == "" {
+		return line, "", true
+	}
+	if wrapped.Logger != "postgres" || wrapped.Message != "record" {
 		return "", "", false
 	}
 	r := wrapped.Record

@@ -1,0 +1,32 @@
+[
+  {
+    "binary": "bex-current",
+    "path": "/Users/tianpan/projects/bex/.pm/w8/dev-8/bin/bex-current",
+    "version": "bex vdev-w8-m48\ncompatible with Render CLI v2.27.0",
+    "render_module": [
+      "dep\tgithub.com/render-oss/cli\tv1.1.3-0.20260909214233-a764810a7682\th1:DAlz9Xu4EKRTV/I0LyHxBt8muqsNfo361snKirVVPqE=",
+      "build\t-ldflags=\"-X github.com/render-oss/cli/pkg/cfg.Version=2.27.0 -X main.bexVersion=dev-w8-m48\""
+    ],
+    "sha256": "543a3ec325a8a06714517e5fb1e160d0bb38512e7c3cef7c7034fab518a760e6"
+  },
+  {
+    "binary": "render-current-pin",
+    "path": "/Users/tianpan/projects/bex/.pm/w8/dev-8/bin/render-upstream",
+    "version": "render v2.27.0\n\nA new version is available: v2.28.0                              \n                                                                 \nTo upgrade, see: https://render.com/docs/cli#1-install-or-upgrade",
+    "render_module": [
+      "path\tgithub.com/render-oss/cli",
+      "mod\tgithub.com/render-oss/cli\t(devel)",
+      "build\t-ldflags=\"-X github.com/render-oss/cli/pkg/cfg.Version=2.27.0\""
+    ],
+    "sha256": "225c5bfb5ea72ef223341ba4a71f8e5e680989d6712cb4f5beeb414ad58cd9d5"
+  },
+  {
+    "binary": "bex-installed",
+    "path": "/Users/tianpan/.local/bin/bex",
+    "version": "bex vdev-140f1ef06\ncompatible with Render CLI v2.26.0",
+    "render_module": [
+      "dep\tgithub.com/render-oss/cli\tv1.1.3-0.20260901190744-6c0f561f8af9\th1:WdRKarUUGnDRvTkOMxe51wiiXA3FHvxyfkAemJea0Xs="
+    ],
+    "sha256": "185f6c0ad5ceffa8e8634ac680d851c1e4f12f187349a7f50f9ca2de38886818"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "check": "owned-ephemeral-storage-eviction",
+  "pod": "m48-dc9d2a4e-evict",
+  "write_bytes": 4194304,
+  "pod_ephemeral_limit_bytes": 2097152,
+  "evicted": true,
+  "genuine_placeholder_observed": false,
+  "placeholder_bodies": 0,
+  "reason": "Pod ephemeral local storage usage exceeds the total limit of containers 2Mi. ",
+  "phase": "Failed"
+}

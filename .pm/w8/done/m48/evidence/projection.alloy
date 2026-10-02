@@ -1,0 +1,221 @@
+logging { format = "json" }
+discovery.kubernetes "pods" {
+ role = "pod"
+ namespaces { names = ["tea-davvr429086qtm2o8ha0"] }
+}
+discovery.relabel "app_pods" {
+  targets = discovery.kubernetes.pods.targets
+
+  // Ship only tenant App pods (they carry app.bex.co/app); drop the
+  // rest so single-replica Loki holds just what bex-api can serve.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_bex_co_app"]
+    regex         = ""
+    action        = "drop"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_bex_co_app"]
+    target_label  = "app"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+}
+
+loki.source.kubernetes "app_pods" {
+  targets    = discovery.relabel.app_pods.output
+  forward_to = [loki.process.app_logs.receiver]
+}
+
+loki.process "app_logs" {
+  // Kubelet retries can return this body when a container's log
+  // file is gone. Match only the complete containerd placeholder;
+  // quoted/structured messages and surrounding app text survive.
+  // The API source strips kubelet timestamps, so a tenant line
+  // byte-identical to this body is indistinguishable here.
+  stage.drop {
+    expression          = "^unable to retrieve container logs for containerd://[0-9a-f]{64}\\r?\\n?$"
+    drop_counter_reason = "kubelet_container_logs_gone"
+  }
+
+  // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan
+  // via "level", pino numeric aside) and `severity` (OTel/GCP).
+  stage.json {
+    expressions = {
+      level    = "level",
+      severity = "severity",
+    }
+  }
+
+  // slog's TextHandler and logrus's TextFormatter emit logfmt.
+  // Extract only explicit severity keys, never message substrings.
+  // Gated to non-JSON lines carrying a top-level level=/severity=
+  // token: JSON and quoted plain text are not logfmt, and decoding
+  // them logged "failed to decode logfmt" per line (w7/m155, 8,979
+  // in one production day), burying genuine ingestion errors.
+  stage.match {
+    selector = `{app=~".+"} !~ "^\\s*[{]" |~ "(^|\\s)(level|severity)="`
+    stage.logfmt {
+      mapping = { level = "", severity = "" }
+    }
+  }
+
+  // Normalize the vocabulary to Render's five buckets. Anything not
+  // recognized collapses to `unknown` rather than minting an unbounded
+  // label value per typo — the cardinality budget above holds because
+  // this template can only ever emit those 5 values.
+  stage.template {
+    source   = "level"
+    // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
+    // note at the top of this file for why.
+    template = "{{ $l := ToLower (or .Value .severity) }}{{ if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") }}error{{ else if or (eq $l \"warn\") (eq $l \"warning\") }}warning{{ else if or (eq $l \"info\") (eq $l \"notice\") }}info{{ else if or (eq $l \"debug\") (eq $l \"trace\") }}debug{{ else }}unknown{{ end }}"
+  }
+
+  // The `unknown` bucket, and Render's type vocabulary (app | request
+  // | build) so list_log_label_values(label="type") discovers real
+  // values. These are DEFAULTS: they must precede stage.labels, which
+  // overwrites `level` with the normalized severity. Lines without
+  // a recognized severity retain the honest `unknown` bucket.
+  stage.static_labels {
+    values = {
+      type  = "app",
+      level = "unknown",
+    }
+  }
+
+  stage.labels {
+    values = { level = "level" }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+discovery.relabel "database_pods" {
+  targets = discovery.kubernetes.pods.targets
+
+  // The Database reconciler stamps this bounded inherited label.
+  // Platform/auth CNPG clusters do not carry it and are excluded.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_bex_co_component"]
+    regex         = "database"
+    action        = "keep"
+  }
+  // The postgres container carries PostgreSQL's output, wrapped
+  // by CNPG's instance manager; database_logs below unwraps it.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    regex         = "postgres"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  // CNPG's cluster label equals the immutable Database CR dpg- id.
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_cnpg_io_cluster"]
+    target_label  = "database"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+}
+
+loki.source.kubernetes "database_pods" {
+  targets    = discovery.relabel.database_pods.output
+  forward_to = [loki.process.database_logs.receiver]
+}
+
+loki.process "database_logs" {
+  stage.drop {
+    source              = "database"
+    expression          = "^$"
+    drop_counter_reason = "missing_database_id"
+  }
+
+  // In CNPG the postgres container's PID 1 is the instance
+  // manager: it logs its own JSON (controller start-up, leases,
+  // config reloads) and re-emits PostgreSQL's csvlog as
+  // logger=postgres msg=record with the line under record.*
+  // (w8/030). Only PostgreSQL's output is the tenant's log: the
+  // operator chatter is dropped, and each record is rewritten to
+  // PostgreSQL's own stderr shape with its severity as `level`.
+  // A line that is not JSON passes through verbatim.
+  stage.json {
+    expressions = {
+      cnpg_logger = "logger",
+      cnpg_record = "msg == 'record'",
+      cnpg_probe  = "logging_pod != null && logging_pod != ''",
+      pg_time     = "record.log_time",
+      pg_pid      = "record.process_id",
+      pg_severity = "record.error_severity",
+      pg_message  = "record.message",
+      pg_detail   = "record.detail",
+      pg_hint     = "record.hint",
+    }
+  }
+  stage.labels {
+    values = {
+      cnpg_logger = "",
+      cnpg_record = "",
+      cnpg_probe  = "",
+    }
+  }
+  stage.match {
+    selector            = "{cnpg_logger=~\".+\", cnpg_logger!=\"postgres\"}"
+    action              = "drop"
+    drop_counter_reason = "cnpg_instance_manager"
+  }
+  stage.match {
+    selector            = "{cnpg_logger=\"\", cnpg_probe=\"true\"}"
+    action              = "drop"
+    drop_counter_reason = "cnpg_instance_manager"
+  }
+  stage.match {
+    selector            = "{cnpg_logger=\"postgres\", cnpg_record!=\"true\"}"
+    action              = "drop"
+    drop_counter_reason = "cnpg_non_record"
+  }
+  stage.match {
+    selector = "{cnpg_logger=\"postgres\", cnpg_record=\"true\"}"
+    stage.template {
+      source   = "pg_line"
+      template = "{{ .pg_time }} [{{ .pg_pid }}] {{ .pg_severity }}:  {{ .pg_message }}{{ if .pg_detail }} DETAIL:  {{ .pg_detail }}{{ end }}{{ if .pg_hint }} HINT:  {{ .pg_hint }}{{ end }}"
+    }
+    stage.template {
+      source   = "level"
+      template = "{{ $s := .pg_severity }}{{ if or (eq $s \"ERROR\") (eq $s \"FATAL\") (eq $s \"PANIC\") }}error{{ else if eq $s \"WARNING\" }}warning{{ else if or (eq $s \"LOG\") (eq $s \"INFO\") (eq $s \"NOTICE\") }}info{{ else }}debug{{ end }}"
+    }
+    stage.labels {
+      values = { level = "level" }
+    }
+    stage.output {
+      source = "pg_line"
+    }
+  }
+  stage.label_drop {
+    values = ["cnpg_logger", "cnpg_record", "cnpg_probe"]
+  }
+
+  stage.static_labels {
+    values = { type = "postgres" }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+loki.write "default" {
+ endpoint { url = "http://w8-m48-loki.dev-8-auth.svc:3100/loki/api/v1/push" }
+}

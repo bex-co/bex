@@ -1,0 +1,2 @@
+{"surface": "GraphQL HTTP", "manifest_bytes": 614400, "status": 200, "valid": false, "errors": [{"code": "BLUEPRINT_YAML_TOO_LARGE", "error": "Blueprint manifests are limited to 512 KiB"}], "passed": true}
+{"surface": "MCP HTTP validate_bex_yml", "manifest_bytes": 614400, "status": 200, "valid": false, "errors": [{"code": "BLUEPRINT_YAML_TOO_LARGE", "error": "Blueprint manifests are limited to 512 KiB", "path": ""}], "passed": true}

@@ -210,6 +210,16 @@ spec:
               // containing the word "error" is not an error). Lines without a
               // recognized structured severity are labelled `unknown`.
               loki.process "app_logs" {
+                // Kubelet retries can return this body when a container's log
+                // file is gone. Match only the complete containerd placeholder;
+                // quoted/structured messages and surrounding app text survive.
+                // The API source strips kubelet timestamps, so a tenant line
+                // byte-identical to this body is indistinguishable here.
+                stage.drop {
+                  expression          = "^unable to retrieve container logs for containerd://[0-9a-f]{64}\\r?\\n?$"
+                  drop_counter_reason = "kubelet_container_logs_gone"
+                }
+
                 // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan
                 // via "level", pino numeric aside) and `severity` (OTel/GCP).
                 stage.json {
@@ -491,6 +501,8 @@ spec:
                 stage.json {
                   expressions = {
                     cnpg_logger = "logger",
+                    cnpg_record = "msg == 'record'",
+                    cnpg_probe  = "logging_pod != null && logging_pod != ''",
                     pg_time     = "record.log_time",
                     pg_pid      = "record.process_id",
                     pg_severity = "record.error_severity",
@@ -500,7 +512,11 @@ spec:
                   }
                 }
                 stage.labels {
-                  values = { cnpg_logger = "" }
+                  values = {
+                    cnpg_logger = "",
+                    cnpg_record = "",
+                    cnpg_probe  = "",
+                  }
                 }
                 stage.match {
                   selector            = "{cnpg_logger=~\".+\", cnpg_logger!=\"postgres\"}"
@@ -508,7 +524,17 @@ spec:
                   drop_counter_reason = "cnpg_instance_manager"
                 }
                 stage.match {
-                  selector = "{cnpg_logger=\"postgres\"}"
+                  selector            = "{cnpg_logger=\"\", cnpg_probe=\"true\"}"
+                  action              = "drop"
+                  drop_counter_reason = "cnpg_instance_manager"
+                }
+                stage.match {
+                  selector            = "{cnpg_logger=\"postgres\", cnpg_record!=\"true\"}"
+                  action              = "drop"
+                  drop_counter_reason = "cnpg_non_record"
+                }
+                stage.match {
+                  selector = "{cnpg_logger=\"postgres\", cnpg_record=\"true\"}"
                   stage.template {
                     source   = "pg_line"
                     template = "{{ "{{" }} .pg_time {{ "}}" }} [{{ "{{" }} .pg_pid {{ "}}" }}] {{ "{{" }} .pg_severity {{ "}}" }}:  {{ "{{" }} .pg_message {{ "}}" }}{{ "{{" }} if .pg_detail {{ "}}" }} DETAIL:  {{ "{{" }} .pg_detail {{ "}}" }}{{ "{{" }} end {{ "}}" }}{{ "{{" }} if .pg_hint {{ "}}" }} HINT:  {{ "{{" }} .pg_hint {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
@@ -525,7 +551,7 @@ spec:
                   }
                 }
                 stage.label_drop {
-                  values = ["cnpg_logger"]
+                  values = ["cnpg_logger", "cnpg_record", "cnpg_probe"]
                 }
 
                 stage.static_labels {

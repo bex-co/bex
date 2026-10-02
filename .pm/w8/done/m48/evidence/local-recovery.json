@@ -1,0 +1,68 @@
+{
+  "repair": "Regenerated only missing apiserver leaf cert/key after kind IP-change path referenced absent /kind/kubeadm.conf. Existing CA unchanged. Restarted kubelet to clear API container crash backoff; no workload or cluster data reset.",
+  "node": "bex-kpwfg-98bls",
+  "api_address": "192.168.158.5",
+  "service_cidr": "10.128.0.0/12",
+  "extra_sans": [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "host.docker.internal",
+    "192.168.158.5",
+    "bex-kpwfg-98bls",
+    "bex-lb",
+    "192.168.158.3"
+  ],
+  "san_source": "infra/clusterapi/overlays/local-capd/cluster.yaml:343",
+  "ca_unchanged": true,
+  "cert_output": "[certs] Generating \"apiserver\" certificate and key\n[certs] apiserver serving cert is signed for DNS names [bex-kpwfg-98bls bex-lb host.docker.internal kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local localhost] and IPs [10.128.0.1 192.168.158.5 127.0.0.1 0.0.0.0 192.168.158.3]",
+  "endpoint_repair": {
+    "load_balancer": "bex-lb",
+    "backend_before": "192.168.158.3:6443",
+    "backend_after": "192.168.158.5:6443",
+    "reload_signal": "USR2",
+    "worker_kubelet_api_before": "https://192.168.158.2:6443",
+    "worker_kubelet_api_after": "https://bex-lb:6443",
+    "workers": [
+      "bex-worker-0-h9gfk-7qp66-wqwml",
+      "bex-tenant-0-2kq5n-8m7cl-sp9vc"
+    ],
+    "action": "Restarted kubelet services to reconnect existing nodes; no workload deletion"
+  },
+  "second_engine_exit": "GUI graceful termination 2026-10-02T19:09:20Z, diskclient received SIGTERM; launched normal app via open -a OrbStack",
+  "durable_repair": {
+    "kind_bootstrap_config": "/kind/kubeadm.conf restored with nonsecret SAN/network settings so kind can regenerate only leaf cert after future node IP changes",
+    "load_balancer_backend": "bex-kpwfg-98bls:6443 resolved through existing Docker DNS resolver",
+    "worker_kubelet_api": "https://bex-lb:6443"
+  },
+  "kube_proxy_repair": {
+    "before": "https://192.168.158.2:6443",
+    "after": "https://bex-lb:6443",
+    "reason": "API LB address rotated; proxy could not refresh Service routing",
+    "action": "Patched only ConfigMap endpoint and restarted local kube-proxy DaemonSet"
+  },
+  "fixture_authz_recovery": "Restored only the existing disposable account admin and API-key developer workspace tuples after in-memory FGA restart",
+  "initial_repair_note": "Top-level api_address/SAN output describes the first restart repair; second restart changed container IPs again. Durable DNS endpoint/config repair below was then verified.",
+  "final_verification": {
+    "at": "2026-10-02T19:25:47.316682+00:00",
+    "node_addresses": {
+      "bex-kpwfg-98bls": [
+        "192.168.158.6"
+      ],
+      "bex-lb": [
+        "192.168.158.5"
+      ],
+      "bex-worker-0-h9gfk-7qp66-wqwml": [
+        "192.168.158.4"
+      ],
+      "bex-tenant-0-2kq5n-8m7cl-sp9vc": [
+        "192.168.158.2"
+      ]
+    },
+    "serving_certificate_sans": "X509v3 Subject Alternative Name: \n    DNS:bex-kpwfg-98bls, DNS:bex-lb, DNS:host.docker.internal, DNS:kubernetes, DNS:kubernetes.default, DNS:kubernetes.default.svc, DNS:kubernetes.default.svc.cluster.local, DNS:localhost, IP Address:10.128.0.1, IP Address:192.168.158.6, IP Address:127.0.0.1, IP Address:0.0.0.0, IP Address:192.168.158.3",
+    "owning_dev8_kubeconfig_works": true,
+    "production_mutation": false,
+    "shared_monitoring_mutation": false,
+    "cluster_data_reset": false
+  }
+}

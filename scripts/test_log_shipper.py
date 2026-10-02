@@ -1,4 +1,4 @@
-"""Exercise the Helm-rendered app pipeline in the chart's actual Alloy image.
+"""Exercise the Helm-rendered log pipelines in the chart's actual Alloy image.
 
 Run: python3 -m unittest scripts/test_log_shipper.py -v
 Requires Docker, Helm, and yq v4; no cluster or credentials.
@@ -48,7 +48,10 @@ def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "
         test.assertIsNotNone(pipeline, f"rendered chart is missing the {pipeline_name} pipeline")
         # Keep every production stage; replace only the input and sink.
         pipeline = pipeline.group().replace("loki.write.default.receiver", "loki.echo.test.receiver")
-        files = {"lines.log": "\n".join(lines) + "\n"}
+        # A final plain line proves a single-file pipeline consumed the entire
+        # fixture before we assert that earlier noise was dropped.
+        barrier = "bex-log-shipper-done-" + uuid.uuid4().hex
+        files = {"lines.log": "\n".join([*lines, barrier]) + "\n"}
         if relabel:
             block_name, pods = relabel
             block = re.search(r'^discovery\.relabel "%s" \{\n.*?^\}' % block_name, config, re.M | re.S)
@@ -90,6 +93,7 @@ loki.echo "test" {}
             deadline = time.monotonic() + 30
             actual = {}
             output = ""
+            completed = False
             while time.monotonic() < deadline:
                 output = run("docker", "logs", name, stderr=subprocess.STDOUT)
                 for line in output.splitlines():
@@ -99,23 +103,55 @@ loki.echo "test" {}
                         continue
                     # Alloy names the echo component `receiver` (<=1.11) or `component_id`.
                     if (entry.get("receiver") or entry.get("component_id")) == "loki.echo.test":
+                        if entry["entry"] == barrier:
+                            completed = True
+                            continue
                         labels = dict(re.findall(r'(\w+)="([^"\\]*)"', entry["labels"]))
                         test.assertEqual(labels.get("type"), receiver_type)
                         actual[entry["entry"]] = labels
-                if len(actual) >= expect:
+                if completed or (relabel and len(actual) >= expect):
                     break
                 if run("docker", "inspect", "-f", "{{.State.Running}}", name) != "true":
                     test.fail(f"Alloy exited before processing the fixture:\n{output}")
                 time.sleep(0.25)
-            # A pipeline that drops lines never reaches len(lines), so the
-            # full deadline passes first — long enough for a line that should
-            # have been dropped to show up.
+            if not relabel:
+                test.assertTrue(completed, f"Alloy did not finish the fixture:\n{output}")
             return actual, output
         finally:
             run("docker", "rm", "-f", name)
 
 
 class AppLogLevelsTest(unittest.TestCase):
+    def test_missing_container_flood_dropped_without_matching_app_messages(self):
+        placeholder = "unable to retrieve container logs for containerd://" + "a1" * 32
+        # These are application message bodies after Alloy has removed the
+        # kubelet timestamp. An application's own timestamp remains in its body;
+        # a tenant emitting the exact placeholder body is indistinguishable.
+        cases = {
+            "started tenant job": "unknown",
+            json.dumps({"level": "error", "msg": placeholder}): "error",
+            f'level=warn msg="{placeholder}"': "warning",
+            f"2026-10-02T00:00:00Z {placeholder}": "unknown",
+            f"error: {placeholder}": "unknown",
+            f"{placeholder} while reconnecting": "unknown",
+            f'"{placeholder}"': "unknown",
+            placeholder[:-1]: "unknown",
+            placeholder + "0": "unknown",
+            placeholder[:-1] + "g": "unknown",
+            placeholder.replace("containerd", "other-runtime"): "unknown",
+            "completed tenant job": "unknown",
+        }
+        lines = list(cases)
+        lines[2:2] = [placeholder] * 100
+        actual, output = run_pipeline(self, "app_logs", lines, "app",
+                                      'namespace = "tenant", app = "web", pod = "web-1", container = "app"')
+        self.assertEqual(set(actual), set(cases), f"unexpected App lines:\n{output}")
+        for line, level in cases.items():
+            with self.subTest(line=line):
+                self.assertEqual({key: value for key, value in actual[line].items() if key != "filename"},
+                                 {"namespace": "tenant", "app": "web", "pod": "web-1",
+                                  "container": "app", "type": "app", "level": level})
+
     def test_structured_severity_and_bounded_labels(self):
         cases = {
             '{"level":"error","msg":"json error"}': "error",
@@ -179,23 +215,38 @@ class PostgresLogsTest(unittest.TestCase):
         lines = [
             '{"level":"info","logger":"instance-manager","msg":"Starting EventSource"}',
             '{"level":"info","logger":"cluster-resource","msg":"Defaulting for Cluster"}',
-            '{"logger":"postgres","msg":"record","record":{"log_time":"2026-09-27 01:00:02.123 UTC","process_id":"42","error_severity":"LOG","message":"database system is ready to accept connections"}}',
+            '{"level":"info","msg":"startup probe failing","logging_pod":"dpg-test-1"}',
+            '{"level":"info","logger":"","logging_pod":"dpg-test-1","msg":"readiness probe failing"}',
+            '{"logger":"postgres","msg":"Starting log pipe"}',
+            '{"logger":"postgres","record":{"log_time":"t","process_id":"9","error_severity":"LOG","message":"not a record without msg=record"}}',
+            '{"logger":"postgres","msg":"record","logging_pod":"dpg-test-1","record":{"log_time":"2026-09-27 01:00:02.123 UTC","process_id":"42","error_severity":"LOG","message":"database system is ready to accept connections"}}',
             '{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"77","error_severity":"FATAL","message":"password authentication failed","detail":"pg_hba line 5"}}',
             '{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"78","error_severity":"WARNING","message":"checkpoints too frequent","hint":"raise max_wal_size"}}',
+            '{"msg":"logging_pod is only mentioned in this message"}',
             'plain line kept verbatim',
         ]
         want = {
             "2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections": "info",
             "t [77] FATAL:  password authentication failed DETAIL:  pg_hba line 5": "error",
             "t [78] WARNING:  checkpoints too frequent HINT:  raise max_wal_size": "warning",
+            '{"msg":"logging_pod is only mentioned in this message"}': None,
             "plain line kept verbatim": None,
         }
-        actual, output = run_pipeline(self, "database_logs", lines, "postgres")
+        for severity, level in {"ERROR": "error", "PANIC": "error", "INFO": "info", "NOTICE": "info",
+                                "DEBUG1": "debug", "DEBUG5": "debug"}.items():
+            lines.append(json.dumps({"logger": "postgres", "msg": "record", "record": {
+                "log_time": "t", "process_id": 79, "error_severity": severity, "message": "level control"}}))
+            want[f"t [79] {severity}:  level control"] = level
+        actual, output = run_pipeline(self, "database_logs", lines, "postgres",
+                                      'namespace = "tenant", database = "dpg-test", pod = "dpg-test-1", container = "postgres"')
         self.assertEqual(set(actual), set(want), f"unexpected Postgres lines:\n{output}")
         for line, level in want.items():
             with self.subTest(line=line):
-                self.assertEqual(actual[line].get("level"), level)
-                self.assertNotIn("cnpg_logger", actual[line])
+                labels = {"namespace": "tenant", "database": "dpg-test", "pod": "dpg-test-1",
+                          "container": "postgres", "type": "postgres"}
+                if level is not None:
+                    labels["level"] = level
+                self.assertEqual({key: value for key, value in actual[line].items() if key != "filename"}, labels)
 
 
 class PlatformLogsTest(unittest.TestCase):

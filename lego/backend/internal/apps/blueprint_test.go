@@ -1031,38 +1031,52 @@ func TestValidateBlueprintSyntaxErrorIncludesLine(t *testing.T) {
 	}
 }
 
-func TestDecodeBlueprintValidationRequestAllowsTenMiBFileOnly(t *testing.T) {
+func TestDecodeBlueprintValidationRequestBoundsTheEnvelope(t *testing.T) {
 	t.Parallel()
-	requestFor := func(contents []byte) *http.Request {
+	requestFor := func(format string, size int) *http.Request {
 		t.Helper()
+		if format == "json" {
+			const body = `{"bexYaml":"services: []"}`
+			r := httptest.NewRequest(http.MethodPost, BlueprintValidationPath, strings.NewReader(body+strings.Repeat(" ", size-len(body))))
+			return r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		}
 		var body bytes.Buffer
 		writer := multipart.NewWriter(&body)
-		if err := writer.WriteField("ownerId", "tea-test"); err != nil {
+		if err := writer.SetBoundary("blueprint-envelope-boundary"); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.WriteField("ownerId", connOwner); err != nil {
 			t.Fatal(err)
 		}
 		part, err := writer.CreateFormFile("file", "render.yaml")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := part.Write(contents); err != nil {
+		if _, err := part.Write([]byte("services: []")); err != nil {
 			t.Fatal(err)
 		}
 		if err := writer.Close(); err != nil {
 			t.Fatal(err)
 		}
-		req := httptest.NewRequest(http.MethodPost, "/v1/blueprints/validate", &body)
+		// MIME permits an epilogue after the final boundary. It still counts
+		// against the request envelope even though it is not manifest content.
+		body.WriteString(strings.Repeat(" ", size-body.Len()))
+		req := httptest.NewRequest(http.MethodPost, BlueprintValidationPath, &body)
 		req.Header.Set("Content-Type", writer.FormDataContentType())
 		return req
 	}
 
-	valid := bytes.Repeat([]byte{'x'}, maxBlueprintValidationFileBytes)
-	owner, contents, _, err := decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(valid))
-	if err != nil || owner != "tea-test" || len(contents) != len(valid) {
-		t.Fatalf("10 MiB file = owner %q bytes %d err %v", owner, len(contents), err)
-	}
-	_, _, _, err = decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(append(valid, 'x')))
-	if err == nil || !strings.Contains(err.Error(), "10 MiB") {
-		t.Fatalf("10 MiB + 1 file error = %v", err)
+	for _, format := range []string{"json", "multipart"} {
+		t.Run(format, func(t *testing.T) {
+			_, contents, _, err := decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(format, MaxBlueprintValidationBodyBytes))
+			if err != nil || contents != "services: []" {
+				t.Fatalf("at-limit envelope = contents %q err %v", contents, err)
+			}
+			_, _, _, err = decodeBlueprintValidationRequest(httptest.NewRecorder(), requestFor(format, MaxBlueprintValidationBodyBytes+1))
+			if !errors.Is(err, ErrBlueprintTooLarge) {
+				t.Fatalf("oversized envelope error = %v", err)
+			}
+		})
 	}
 }
 

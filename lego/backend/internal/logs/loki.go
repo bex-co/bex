@@ -439,11 +439,17 @@ func labelMatcher(name string, values []string) string {
 	if len(values) == 1 && !strings.Contains(values[0], "*") {
 		return fmt.Sprintf("%s=%q", name, values[0])
 	}
+	return fmt.Sprintf("%s=~%q", name, labelValuePattern(values))
+}
+
+// labelValuePattern gives Loki and pod-log filters the same literal, OR, and
+// wildcard semantics. Compile errors must be handled by callers accepting input.
+func labelValuePattern(values []string) string {
 	alts := make([]string, 0, len(values))
 	for _, v := range values {
 		alts = append(alts, strings.ReplaceAll(regexp.QuoteMeta(v), `\*`, ".*"))
 	}
-	return fmt.Sprintf("%s=~%q", name, "^("+strings.Join(alts, "|")+")$")
+	return "^(" + strings.Join(alts, "|") + ")$"
 }
 
 // storedLevels maps Render's level names — the only ones the pinned CLI

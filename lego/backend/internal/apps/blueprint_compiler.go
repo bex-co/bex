@@ -711,7 +711,7 @@ func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceP
 	if len(manifest) > blueprintMaxManifestBytes {
 		return &BlueprintSource{Locations: map[string]BlueprintSourceLocation{}}, []BlueprintSourceProblem{{
 			Code: "BLUEPRINT_YAML_TOO_LARGE", Path: "#",
-			Message: fmt.Sprintf("Blueprint manifests are limited to %d KiB", blueprintMaxManifestBytes>>10),
+			Message: ErrBlueprintTooLarge.Error(),
 		}}
 	}
 	decoder := yaml.NewDecoder(strings.NewReader(manifest))
@@ -774,6 +774,10 @@ const (
 	// trips this budget first, a key-heavy one trips blueprintMaxNodes first.
 	blueprintMaxLocations = 75_000
 )
+
+// ErrBlueprintTooLarge keeps transport refusals and compiler diagnostics on
+// the same manifest byte limit, including bodies refused before YAML decoding.
+var ErrBlueprintTooLarge = fmt.Errorf("Blueprint manifests are limited to %d KiB", blueprintMaxManifestBytes>>10)
 
 // blueprintWalkBudget enforces the structural budgets above while a Blueprint
 // YAML document is materialized: it counts nodes as the walk visits them and,

@@ -60,6 +60,8 @@ This launcher record does not replace the unmodified server oracle below: that c
 
 ### Intended divergences (not bugs)
 
+- **Blueprint size (w8/m48):** bex limits decoded YAML to **512 KiB** before parsing. Oversized `blueprints validate` uploads receive a named 413 for that limit. Render documents a [10 MB total multipart request bound](https://api-docs.render.com/reference/validate-blueprint); bex keeps the smaller pre-decode amplification guard. Request-envelope allowance is separate from the YAML budget.
+
 - `--region` is accepted but **platform-stamped** from `BEX_REGION` (`local-capd` in dev-9, `fsn1` in production); the submitted hint is not persisted. Both truthful installation values sit outside the CLI's closed Render-region enum, so a bare `services create --from` clone fails client-side and needs an explicit `--region`.
 - `--previews` is rejected platform-wide (`400 "not supported by this platform"`).
 - Postgres Datadog forwarding is not implemented. Supplying `--datadog-api-key` or `--datadog-site` on create or update returns a named 400; bex never accepts or persists the credential.

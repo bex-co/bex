@@ -14,7 +14,7 @@ bex calls its application manifest `bex.yml` while describing it as “render.ya
 - `autoDeployTrigger: checksPass` currently becomes the same boolean as `commit`, even though bex does not implement a branch-check gate;
 - adapter gaps remain for capabilities that bex already has elsewhere, including registry credentials, platform-subdomain policy, static routes and headers, Postgres disk autoscaling, and PgBouncer;
 - `scripts/app-apply.sh` is a second manifest compiler that bypasses the Blueprint store, authorization, validation plan, sync history, and several canonical resource shapes;
-- validation reports the first semantic error, its plan counts declarations instead of current-state actions, and its multipart limit is 2 MiB rather than Render's documented 10 MB;
+- validation reports the first semantic error, its plan counts declarations instead of current-state actions, and its multipart request limit is 2 MiB rather than Render's documented 10 MB;
 - `docs/ADR006-bex-api.md` and the Blueprint row in `docs/ADR018-render-parity.md` contain claims that no longer match either the implementation or Render's current behavior.
 
 This creates a dangerous false-success mode: a user can submit a valid Render Blueprint, receive a successful bex validation or sync, and end up with materially different infrastructure. An explicit “unsupported” error is incomplete parity; a successful no-op is incorrect behavior.
@@ -25,7 +25,7 @@ Research was refreshed on 2026-08-02 against Render's primary sources:
 
 - the [Blueprint YAML reference](https://render.com/docs/blueprint-spec) says the default root filename is `render.yaml`, defines resource-specific required fields and create-versus-existing omission behavior, and distinguishes `autoDeployTrigger: commit`, `checksPass`, and `off`;
 - Render's [official JSON Schema](https://render.com/schema/render.yaml.json) is JSON Schema 2020-12, rejects unevaluated root fields and additional resource fields, and requires fields such as service `type`, `name`, and (except Key Value) `runtime`. The snapshot fetched for this decision had SHA-256 `665539cb0c191856ba38d292b985a963880bb69b030d666e5fe7788e78e7e696`;
-- the [Validate Blueprint endpoint](https://api-docs.render.com/reference/validate-blueprint) accepts `multipart/form-data`, requires `ownerId` plus a file, permits files up to 10 MB, and validates without mutation;
+- the [Validate Blueprint endpoint](https://api-docs.render.com/reference/validate-blueprint) accepts `multipart/form-data`, requires `ownerId` plus a file, limits the entire request body (including the file) to 10 MB, and validates without mutation;
 - the [Blueprint lifecycle documentation](https://render.com/docs/infrastructure-as-code) confirms that sync does not delete resources removed from the file and that existing environment values not overwritten by the Blueprint are retained.
 
 The upstream schema is unversioned at its URL and can change independently of bex. Runtime correctness therefore cannot depend on fetching it live.
@@ -128,7 +128,13 @@ Resource deletion remains manual. Render now explicitly documents that Blueprint
 
 ### D6 — Validation and planning match the Render-compatible wire contract
 
-The REST validation endpoint keeps Render's multipart shape and 200-with-validation-result behavior, raises its Blueprint file limit to 10 MB, and reports every independently actionable error it can safely discover. Each error carries a stable code, JSON-style path, message, and source line/column when known. Errors and plans never contain secret values.
+The REST validation endpoint keeps Render's multipart shape and 200-with-validation-result behavior, and reports every independently actionable error it can safely discover. Each error carries a stable code, JSON-style path, message, and source line/column when known. Errors and plans never contain secret values.
+
+**Manifest size divergence (w8/m48, 2026-10-02):** bex limits the decoded manifest to **512 KiB (524,288 bytes)**, including comments and whitespace. This pre-decode guard bounds YAML amplification before the structural node, nesting, scalar, collection, and resource budgets run. Those budgets remain unchanged. Render's documented 10 MB limit covers its entire multipart request body; bex deliberately enforces the smaller manifest limit.
+
+REST accepts both Render's multipart file upload and bex's existing JSON `{bexYaml, ownerId?, blueprintId?}` form. A manifest over 512 KiB receives HTTP 413 with `Blueprint manifests are limited to 512 KiB`, including 600 KiB and 3 MiB uploads. The independently bounded request envelope allows **4 MiB**: six bytes per manifest byte for worst-case JSON escapes plus 1 MiB for metadata and multipart headers. Exactly-at-limit decoded manifests remain admissible; crossing either byte bound produces the same named refusal. The route's envelope bound applies before OpenAPI decoding even when the global API body limit is disabled or configured differently. Other routes retain their configured limits.
+
+GraphQL, MCP, and dashboard validation retain the shared compiler result (`valid: false`, `BLUEPRINT_YAML_TOO_LARGE`) with that same 512 KiB message; their ordinary transport body limits still apply before the compiler. The dashboard uses GraphQL and displays the returned diagnostic, so it needs no independent size rule.
 
 The plan is a current-state diff, not a declaration count. It identifies create, update, no-op, unsupported, and conflict actions and is the exact immutable input to execution. Validation without store access may return a clearly labeled structural plan; it must not present declaration counts as the number of changes.
 
