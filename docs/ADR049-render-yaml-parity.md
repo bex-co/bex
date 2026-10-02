@@ -124,6 +124,8 @@ Render's rules are the default. Examples that must be locked by conformance fixt
 - explicit empty lists follow each field’s semantics: replacement fields may differ from omission, while `envVars: []` preserves undeclared existing values and produces no change when the service is otherwise unchanged;
 - `pro plus`, `pro max`, and `pro ultra` use Render's Blueprint spellings at the boundary and translate to internal tier IDs only after validation.
 
+For service environments, an explicit `envVars: []` declares no replacements and retains undeclared values. After merging, an empty literal environment uses the same representation as a serialized App read. An unchanged empty or group-only declaration therefore produces a service no-op; existing environment groups keep their separate conservative update plan. Nonempty declared values still reconcile in stable order. This preserves field presence while avoiding a deployment caused only by empty-slice representation.
+
 Resource deletion remains manual. Render now explicitly documents that Blueprint sync never deletes a resource removed from the file, so bex's no-sync-delete behavior is parity, not a divergence.
 
 ### D6 — Validation and planning match the Render-compatible wire contract
