@@ -98,4 +98,6 @@ Open and done board items and targeted history were searched. [w1/m163](../../w1
 
 ## Hunt cleanup
 
+**Resolved at 07:53:17Z:** the exact Docker App lookup returned no objects. The operator's normal finalizer retry completed; no forced removal or platform change was used. All seven API fixtures and both App resources are now absent.
+
 All seven API fixtures (two services, three groups, one environment and one project) were deleted and each exact-ID REST read returned 404; the overview no longer listed them. The native App disappeared. At filing time the failed Docker App still has a deletion timestamp and finalizer. Its 07:36:07Z operator error names registry tag cleanup: `zot.bex-registry.svc:5000` refused the connection. Zot subsequently showed Ready, but the App had not yet disappeared on the next check. This infrastructure residue is still being monitored by the continuing hunt; no finalizer was forced away and no unrelated resource was changed. The run's Kratos session was successfully revoked and its local cookie files removed.
