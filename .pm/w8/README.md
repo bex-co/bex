@@ -75,7 +75,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.
 - [x] **033** — [Promoted to m49](done/033.md) (2026-10-02); original production findings retained.
-- `034` — A service rename accepts control characters (a newline splits the `services -o text` table), unbounded length, and another service's `srv-` id as the display name (~30m; coordinate with m47) ← `/qa-find-bugs-cli` sweep 56, 2026-09-27
+- [x] **034** — [Validate service display names](done/034.md) — **DONE 2026-10-02**: shared named refusals, Unicode/identity controls, full backend/lint checks, 135 live checks and fixture cleanup passed.
 - `036` — **duplicate of `w4/171`, fixed and live-verified 2026-09-30 on `de9ac4d1c`** (blast-radius evidence only). Was BLOCKER: since `cae30d1e0`, every deploy of a web service with env vars fails ("snapshot …-env … unknown namespace for the cache"): the new release-config snapshot reads tenant Secrets through the namespace-scoped cached client. Roll back or use the uncached client (~10m rollback / ~1h fix) ← `/qa-find-bugs-cli` post-deploy smoke, 2026-09-28
 - `035` — Free Postgres escapes its tier through sibling flags: `--read-replica`, any `--disk-size-gb`, `--disk-autoscaling` (to 16 TB) and `--connection-pool pgbouncer` are accepted on `plan: free`; only HA is gated (m43) (~70m) ← `/qa-find-bugs-cli` sweep 58, 2026-09-27
 

@@ -1,0 +1,12 @@
+{
+  "baseline-provenance.json": "c0401f8cc88c70513847800a68c3fe0fbf363aa51cf37d5d83dcd0ac0c7ce418",
+  "checks.jsonl": "7c7fc30521addcf525968b352b1376e0a007a3db49b0b4f17cb35812ee3a2081",
+  "cleanup-evidence.jsonl": "a06d9432d61e9262b92baf400e134cd0e4d8762176d5a7a5365bac912fa10cba",
+  "cli-text-evidence.json": "085906bb08ee9511619a3091c000913c5d1183c0baea219dcf606332528d6260",
+  "contracts-and-limits.json": "cd3899a2bed43063750fb343424d4d304b2c7ece4f5221799aae7153b33e53bd",
+  "final-api-provenance.json": "cf9f49888aed2f3c86ac0fc36471aa76f7defd6c4db3caeb8d7331148caf3192",
+  "fixture-ledger.json": "f10da386b5b64294af5e7444f923e476a8708be2cc7700cdfcc155b4f4d1ea44",
+  "harness-transients.jsonl": "713ace216e9af68022a692327c1fa8bbcebdb8542a3e70337707633dde32031e",
+  "summary.json": "dfe8b8cb67acdd3b58410648aa57e1e58fe8f7013286131656e25e86f1635365",
+  "test-postgres-reset.json": "902caf0fc0a6794847ad9af76c68a89e34c78d26706dcf208219047c358ef01d"
+}

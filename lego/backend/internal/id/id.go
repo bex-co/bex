@@ -226,6 +226,30 @@ func KindOf(s string) (Kind, bool) {
 		return Kind{}, false
 	}
 	prefix := s[:len(s)-xidLen-1] // strip "-<xid>"
+	return kindForPrefix(prefix)
+}
+
+// LooksLikeResourceID reserves ID-shaped human labels, including the legacy
+// env- spelling and the broader lowercase-alphanumeric lookalike shape.
+// It is not canonical ID validation; callers resolving IDs must use KindOf.
+func LooksLikeResourceID(s string) bool {
+	prefix, suffix, ok := strings.Cut(s, "-")
+	if !ok || len(suffix) != xidLen {
+		return false
+	}
+	for _, c := range suffix {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'z') {
+			return false
+		}
+	}
+	if prefix == "env" {
+		return true
+	}
+	_, ok = kindForPrefix(prefix)
+	return ok
+}
+
+func kindForPrefix(prefix string) (Kind, bool) {
 	for _, k := range kinds {
 		if k.prefix == prefix {
 			return k, true

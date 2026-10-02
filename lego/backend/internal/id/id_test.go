@@ -69,6 +69,36 @@ func TestNewIsWellFormedAndDNSSafe(t *testing.T) {
 	}
 }
 
+func TestLooksLikeResourceIDReservesRegisteredKindsWithoutBroadeningValidation(t *testing.T) {
+	for _, kind := range Kinds() {
+		if value := New(kind); !LooksLikeResourceID(value) {
+			t.Errorf("minted %s ID %q is not reserved", kind.Prefix(), value)
+		}
+		value := kind.Prefix() + "-" + strings.Repeat("z", 20)
+		if !LooksLikeResourceID(value) {
+			t.Errorf("alphanumeric %s ID lookalike %q is not reserved", kind.Prefix(), value)
+		}
+		if _, ok := KindOf(value); ok || WellFormed(value) {
+			t.Errorf("reservation broadened canonical validation for %q", value)
+		}
+	}
+	for _, value := range []string{EnvironmentStorageID(New(Environment)), "env-" + strings.Repeat("z", 20)} {
+		if !LooksLikeResourceID(value) {
+			t.Errorf("legacy environment spelling %q is not reserved", value)
+		}
+	}
+	for _, value := range []string{
+		"", "srv-human", "srv-" + strings.Repeat("a", 19), "srv-" + strings.Repeat("a", 21),
+		"srv-" + strings.Repeat("A", 20), "srv-" + strings.Repeat("é", 10),
+		"srv-" + strings.Repeat("a", 19) + "_", "srv_" + strings.Repeat("a", 20),
+		"zzz-" + strings.Repeat("a", 20), "srv-" + strings.Repeat("a", 20) + "-worker",
+	} {
+		if LooksLikeResourceID(value) {
+			t.Errorf("ordinary name %q was reserved", value)
+		}
+	}
+}
+
 // TestDeriveIsDeterministicAndWellFormed pins the contract the service-events
 // feed rests on (w3/m7): a derived id is a pure function of its parts, is
 // shaped exactly like a minted one (so it passes WellFormed/KindOf and Render's

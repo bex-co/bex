@@ -33,6 +33,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/http/httpguts"
@@ -4251,9 +4253,9 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 
 // SetDisplayName changes the human-facing label for an App without changing
 // its immutable Kubernetes object name or any identity derived from that name
-// (including platform hostnames and TLS secret names). Whitespace at the edges
-// is presentation noise and is trimmed; an empty value clears the label so
-// clients fall back to the immutable Name.
+// (including platform hostnames and TLS secret names). Ordinary edge whitespace
+// is trimmed; an empty value clears the label so clients fall back to the
+// immutable Name. Labels must stay single-line and distinct from resource IDs.
 //
 // The CR remains the writer of truth — displayName is not projector-owned, so
 // unlike suspend/scale/plan a resync will never revert the patch. The row write
@@ -4266,7 +4268,10 @@ func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) 
 	if err != nil {
 		return AppView{}, err
 	}
-	trimmed := strings.TrimSpace(displayName)
+	trimmed, err := checkDisplayName(a, displayName)
+	if err != nil {
+		return AppView{}, err
+	}
 	previous := a.Spec.DisplayName
 	view, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error {
@@ -4287,6 +4292,27 @@ func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) 
 		s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetDisplayName)
 	}
 	return view, nil
+}
+
+func checkDisplayName(a *appv1alpha1.App, value string) (string, error) {
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return "", err
+	}
+	// Check before trimming: an edge newline or tab is still an invalid label.
+	for _, c := range value {
+		if unicode.IsControl(c) || c == '\u2028' || c == '\u2029' {
+			return "", core.NewBadRequestError("DISPLAY_NAME_CONTROL_CHARACTER", "display name must not contain control characters or line separators", nil)
+		}
+	}
+	value = strings.TrimSpace(value)
+	const maxLength = 100
+	if utf8.RuneCountInString(value) > maxLength {
+		return "", core.NewBadRequestError("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("display name must be at most %d Unicode code points", maxLength), map[string]any{"maxLength": maxLength})
+	}
+	if ids.LooksLikeResourceID(value) {
+		return "", core.NewBadRequestError("DISPLAY_NAME_RESOURCE_ID_RESERVED", "display name must not look like a resource ID", nil)
+	}
+	return value, nil
 }
 
 // setSuspended flips suspension with the row as the single writer of intent.

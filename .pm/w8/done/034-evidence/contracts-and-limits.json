@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-02T20:17:33.228828+00:00",
+  "read_only": true,
+  "render_account_mutated": false,
+  "render_exact_name_limit": "unverified; 100 Unicode code points is the Bex boundary under test, not a verified Render limit",
+  "render_rules_live_probed": false,
+  "sources": [
+    {
+      "url": "https://render.com/docs/cli-reference",
+      "finding": "Official services update documents --name Service name and a noninteractive rename example; the checked reference does not establish a numeric display-name bound."
+    },
+    {
+      "url": "https://api-docs.render.com/reference/requests",
+      "finding": "PATCH supplies fields to change, including empty/null values, and leaves omitted fields alone. Individual field behavior can still differ; no Render account mutation was performed."
+    },
+    {
+      "url": "https://api-docs.render.com/reference/create-service",
+      "finding": "Create-service name is required and unique within a workspace; this does not prove rename control-character, length, or ID-like-name rules."
+    }
+  ],
+  "dashboard_contract": [
+    {
+      "path": "dashboard/src/features/services/api/display-name.graphql:4",
+      "finding": "SetDisplayName uses id and displayName, returning id/name/displayName."
+    },
+    {
+      "path": "dashboard/src/features/services/hooks/use-display-name.ts:23",
+      "finding": "The hook sends those variables; catches GraphQL failures and displays mutationErrorMessage via toast.error; returns false."
+    },
+    {
+      "path": "dashboard/src/features/services/components/display-name-row.tsx:44",
+      "finding": "Calls the hook and refreshes only on success. Current component supplies no client-side 100-code-point boundary."
+    }
+  ],
+  "live_ui_limit": "Dashboard at localhost50080 is not running. Direct GraphQL route will be checked live; visual header/list/breadcrumb rendering is not asserted.",
+  "mcp_contract": {
+    "tool": "update_service",
+    "field": "displayName",
+    "scope": "Bex extension; no claim of upstream Render MCP rename parity"
+  },
+  "pinned_cli": {
+    "module": "github.com/render-oss/cli@v1.1.3-0.20260909214233-a764810a7682",
+    "name_flag": "services update --name",
+    "normalization": "pkg/types/service/serviceupdate.go:66 TrimSpace before sending HTTP; edge controls removed by client are not server-observable",
+    "empty_clear": "Name is a plain string and empty is treated as no update flag; empty/whitespace-only clear is checked through direct REST/GraphQL/MCP only",
+    "text_output": "Both binaries will be checked for exactly one physical row per owned service after rejected interior controls and accepted ordinary label"
+  }
+}

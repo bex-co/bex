@@ -1,0 +1,33 @@
+{
+  "closed_at": "2026-10-02T20:23:45.772878+00:00",
+  "workspace": "tea-db00vpq9086kece8jdj0",
+  "services": [
+    {
+      "role": "control",
+      "id": "srv-db00vpq9086kece8jdkg",
+      "immutable_name": "r034-d438ca0e-c"
+    },
+    {
+      "role": "target",
+      "id": "srv-db00vpq9086kece8jdm0",
+      "immutable_name": "r034-d438ca0e-t"
+    }
+  ],
+  "services_api_404": true,
+  "kratos_identity_404": true,
+  "hydra_client_404": true,
+  "namespace_absent": true,
+  "owned_persistent_volumes_remaining": 0,
+  "remaining_infrastructure": {
+    "base_stack": "dev-8 + dev-8-auth, API and forwards retained",
+    "live_fga": "bex-w8-m48-dev-openfga",
+    "test_containers": [
+      "bex-w8-m48-test-postgres",
+      "bex-w8-m48-test-openfga",
+      "bex-w8-m48-test-openbao"
+    ],
+    "test_env_private": "/tmp/bex-w8-m48-test.env",
+    "retained_for_parent": true
+  },
+  "production_or_other_dev_namespace_mutations": false
+}

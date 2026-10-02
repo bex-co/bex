@@ -152,6 +152,10 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"DisplayName"},
 		present:  func(p ServicePatch) bool { return p.DisplayName != nil },
 		relation: canOperate,
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			_, err := checkDisplayName(probe, *p.DisplayName)
+			return err
+		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetDisplayName(ctx, id, *p.DisplayName)
 		},

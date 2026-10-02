@@ -251,7 +251,7 @@ func TestEachRowsCheckAndVerbAgree(t *testing.T) {
 	// half the property.
 	patches := map[string]ServicePatch{
 		"refused": {
-			DisplayName: s("Renamed"), Repo: s("not a repo url"),
+			DisplayName: s("Invalid\nname"), Repo: s("not a repo url"),
 			MaintenanceMode: &MaintenanceModeView{Enabled: true, URI: "http://%zz"},
 			Plan:            s("no-such-plan"), IdleTTLSeconds: i(-1),
 			MaxShutdownDelaySeconds: i(9999), RootDir: s("../escape"),
