@@ -181,9 +181,6 @@ type Service struct {
 	// StartedNotifier is invoked asynchronously after a trigger opens its deploy
 	// row. nil keeps notifications disabled without changing trigger behavior.
 	StartedNotifier DeployStartedNotifier
-	// Environment restores a rollback target's saved env vars and secret files
-	// (w1/m152 t009). nil keeps rollback image-only.
-	Environment EnvironmentRestorer
 	// Commits resolves the triggering ref to the exact commit a
 	// build-from-git deploy runs (w9/001) — github.Service's
 	// DeployCommitSource. nil ⇒ deploy rows open with no commit metadata.
@@ -484,6 +481,8 @@ type TriggerParams struct {
 	// (w4/m141): the new deploy row records it as a rollback of this deploy.
 	// Unexported, so no surface can set it.
 	rollbackOf *store.Deploy
+	// disableAutoDeploy carries the dashboard option for static republishing.
+	disableAutoDeploy bool
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -521,12 +520,10 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
 }
 
-// Restart restarts a service on the release it is running. Render's restart
-// "always uses the exact same Git commit and configuration as the running
-// instance", so for a repo-backed service this opens a deploy pinned to the
-// live deploy's commit: a restart never picks up commits pushed since
-// (w1/m148). An image-backed service redeploys its configured image, as a
-// parameter-free Trigger does.
+// Restart selects the live release's artifact and configuration without changing
+// saved settings. For a legacy repo deploy with no resolved artifact, it retains
+// the existing commit-pinned rebuild fallback; this cannot promise historical
+// configuration that was never recorded.
 //
 // Authorization is lifecycle, like a parameter-free trigger: the commit is the
 // one already running, not content the caller selects, so a contributor can
@@ -539,6 +536,15 @@ func (s *Service) Restart(ctx context.Context, service string) (DeployView, erro
 	}
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return DeployView{}, err
+	}
+	if err := core.NotFoundIfDeleting(a); err != nil {
+		return DeployView{}, err
+	}
+	if selected, err := s.restartSelectedRelease(ctx, a); selected != nil || err != nil {
+		if err != nil {
+			return DeployView{}, err
+		}
+		return *selected, nil
 	}
 	p := TriggerParams{restart: true}
 	if a.Spec.Repo != "" {
@@ -713,9 +719,14 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		}
 		return nil
 	}
+	disablesAutoDeploy := p.disableAutoDeploy && a.Spec.AutoDeploy
 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) {
 		stampReleaseGeneration(a, release)
 		stampClearCacheRelease(a, release, p.ClearCache)
+		a.Spec.ReleaseConfig = nil
+		if p.disableAutoDeploy {
+			a.Spec.AutoDeploy = false
+		}
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
 		if a.Spec.Repo != "" {
 			a.Spec.Image = ""
@@ -756,6 +767,9 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	})
 	if err != nil {
 		return DeployView{}, err
+	}
+	if disablesAutoDeploy {
+		s.RecordAutoDeployChanged(ctx, a, false)
 	}
 	if store.IsOpenDeployStatus(d.Status) {
 		s.notifyDeployStarted(ctx, a, service)
@@ -961,11 +975,11 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 // through the same reconciler write-back every other deploy uses. Only a
 // deploy that itself reached live is a valid target — ResolvedImage is the
 // only field trustworthy enough to restore blind (an in-progress, failed, or
-// canceled deploy never has one). Restores what ran (the image), not
-// workspace config — replicas/tier/idleTTL stay put, keeping this minimal.
+// canceled deploy never has one). Selects historical runtime configuration
+// without overwriting the saved settings used by subsequent standard deploys.
 //
 // SECURITY (codex round-16 #2/#5): deployID SELECTs the executable image that
-// becomes App.spec.image, so this is create-like (can_create), not lifecycle —
+// becomes the runtime selection, so this is create-like (can_create), not lifecycle —
 // the same executable-selection class as Trigger(imageUrl). It also produces a
 // deploy write, so it shares Trigger's RequireBillingMutation gate.
 //
@@ -1028,41 +1042,14 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	// restore; re-publishing the target's commit restores its files (w4/m141).
 	// It is the commit-pinned trigger path, recorded as a rollback of target.
 	if rollbackRepublishes(a, target) {
-		return s.triggerFetched(ctx, service, a, TriggerParams{CommitID: target.Commit, rollbackOf: &target}, store.TriggerRollback)
+		return s.triggerFetched(ctx, service, a, TriggerParams{CommitID: target.Commit, rollbackOf: &target, disableAutoDeploy: o.DisableAutoDeploy}, store.TriggerRollback)
 	}
-	// Restore the target's environment into the saved state before the release
-	// opens, so this rollback's single dispatch rolls once, with those values
-	// (w1/m152 t009). nil means image-only: no record for that release.
-	restored, err := s.restoreTargetConfig(ctx, a, target)
+	selected, err := s.targetReleaseConfig(ctx, a, target, false)
 	if err != nil {
 		return DeployView{}, err
 	}
-	// Only an actual flip is news: a rollback on a service whose auto-deploy was
-	// already off must not add a "disabled" row to its events feed.
 	disablesAutoDeploy := o.DisableAutoDeploy && a.Spec.AutoDeploy
-	// Row-first: the projector owns spec.image for store-managed Apps, so the
-	// row updates before the CR patch below — the same writeThroughStore
-	// discipline apps.Service's suspend/plan/scale verbs follow, applied here
-	// since Rollback is deploys' first verb that changes a row-owned field.
-	d, err := s.openRelease(ctx, a, appID, func() error {
-		if err := s.Store.SetAppImage(ctx, appID, target.ResolvedImage); err != nil {
-			return fmt.Errorf("update source of truth: %w", err)
-		}
-		return nil
-	}, func(a *appv1alpha1.App, release int64) {
-		stampReleaseGeneration(a, release)
-		a.Spec.Image = target.ResolvedImage
-		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339Nano)
-		if restored != nil {
-			a.Spec.StartCommand = restored.startCommand
-		}
-		if o.DisableAutoDeploy {
-			a.Spec.AutoDeploy = false
-		}
-	}, func(release int64) (store.Deploy, error) {
-		return s.Store.CreateRollbackDeploy(ctx, appID, target.ResolvedImage, target.ID, release,
-			store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage}, core.SubjectFrom(ctx))
-	})
+	d, err := s.openSelectedRelease(ctx, a, target, selected, true, o.DisableAutoDeploy)
 	if err != nil {
 		return DeployView{}, err
 	}

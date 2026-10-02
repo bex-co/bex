@@ -128,14 +128,13 @@ function renderHeader(
 }
 
 describe("ServiceDetailHeader", () => {
-  // w1/m152 t003: after a canceled deploy the service runs an earlier release than
-  // its saved settings. The header used to say nothing while the Environment tab
-  // showed the saved values as if they were live.
-  it("says saved changes are not live after a canceled deploy", async () => {
+  // The server owns the saved/running distinction. The notice also applies to a
+  // rollback and a restart of that release, so it must not claim a cancellation.
+  it("explains how to apply saved settings that are not running", async () => {
     renderHeader(svc({ undeployedChanges: true }));
     expect(
       await screen.findByText(
-        "Saved changes aren't live yet — the deploy that carried them was canceled. They ship with the next deploy.",
+        "Saved changes aren't live yet. Use a standard deploy to apply them.",
       ),
     ).toBeInTheDocument();
   });

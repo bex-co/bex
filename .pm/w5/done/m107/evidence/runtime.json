@@ -1,0 +1,672 @@
+{
+  "A": {
+    "time": "2026-10-02T04:49:53.526275+00:00",
+    "stage": "A",
+    "generation": 3,
+    "releaseGeneration": 3,
+    "releaseConfig": null,
+    "phase": "Running",
+    "deploy": {
+      "id": "dep-davjeh1jg4r1kicjkf10",
+      "status": "live",
+      "trigger": "config_change",
+      "createdAt": "2026-10-02T04:47:00.45804Z",
+      "updatedAt": "2026-10-02T04:49:51.402547Z"
+    },
+    "runtime": [
+      {
+        "pod": "tea-davjdk1jg4r2nk99cil0-w5-m107-rollback-8cdc4756-zrwlv",
+        "marker": "command=A env=env-A file=file-A"
+      }
+    ],
+    "saved_rest": {
+      "serviceDetails": {
+        "env": "image",
+        "internalAddress": "w5-m107-rollback:8080",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "starter",
+        "port": 8080,
+        "region": "local-capd",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "image",
+        "url": "https://w5-m107-rollback.onbex.co"
+      },
+      "undeployedChanges": null
+    },
+    "env_rest": [
+      {
+        "envVar": {
+          "key": "W5_MARKER",
+          "value": "env-A",
+          "revision": "evr1_AAAAAAAAAAE"
+        },
+        "cursor": "W5_MARKER"
+      }
+    ],
+    "files_rest": [
+      {
+        "secretFile": {
+          "name": "w5-marker.txt"
+        },
+        "cursor": "w5-marker.txt"
+      }
+    ],
+    "saved_graphql": {
+      "service": {
+        "envVar": {
+          "value": "env-A"
+        },
+        "id": "srv-davjeh1jg4r1kicjkeug",
+        "secretFile": {
+          "content": "file-A"
+        },
+        "startCommand": "mkdir -p /tmp/www; printf \"command=A env=%s file=%s\\n\" \"$W5_MARKER\" \"$(cat /etc/secrets/w5-marker.txt)\" | tee /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www",
+        "undeployedChanges": false
+      }
+    }
+  },
+  "B": {
+    "time": "2026-10-02T04:50:23.922159+00:00",
+    "stage": "B",
+    "generation": 7,
+    "releaseGeneration": 7,
+    "releaseConfig": null,
+    "phase": "Running",
+    "deploy": {
+      "id": "dep-davjft1jg4r3s5qqcf0g",
+      "status": "live",
+      "trigger": "api",
+      "createdAt": "2026-10-02T04:49:56.094699Z",
+      "updatedAt": "2026-10-02T04:50:21.466858Z"
+    },
+    "runtime": [
+      {
+        "pod": "tea-davjdk1jg4r2nk99cil0-w5-m107-rollback-76577cc47d-mk4pb",
+        "marker": "command=B env=env-B file=file-B"
+      }
+    ],
+    "saved_rest": {
+      "serviceDetails": {
+        "env": "image",
+        "internalAddress": "w5-m107-rollback:8080",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "starter",
+        "port": 8080,
+        "region": "local-capd",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "image",
+        "url": "https://w5-m107-rollback.onbex.co"
+      },
+      "undeployedChanges": null
+    },
+    "env_rest": [
+      {
+        "envVar": {
+          "key": "W5_MARKER",
+          "value": "env-B",
+          "revision": "evr1_AAAAAAAAAAI"
+        },
+        "cursor": "W5_MARKER"
+      }
+    ],
+    "files_rest": [
+      {
+        "secretFile": {
+          "name": "w5-marker.txt"
+        },
+        "cursor": "w5-marker.txt"
+      }
+    ],
+    "saved_graphql": {
+      "service": {
+        "envVar": {
+          "value": "env-B"
+        },
+        "id": "srv-davjeh1jg4r1kicjkeug",
+        "secretFile": {
+          "content": "file-B"
+        },
+        "startCommand": "mkdir -p /tmp/www; printf \"command=B env=%s file=%s\\n\" \"$W5_MARKER\" \"$(cat /etc/secrets/w5-marker.txt)\" | tee /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www",
+        "undeployedChanges": false
+      }
+    }
+  },
+  "rollback-A": {
+    "time": "2026-10-02T04:50:51.783646+00:00",
+    "stage": "rollback-A",
+    "generation": 8,
+    "releaseGeneration": 8,
+    "releaseConfig": {
+      "generation": 8,
+      "image": "docker.io/library/busybox:1.36",
+      "sourceGeneration": 3
+    },
+    "phase": "Running",
+    "deploy": {
+      "id": "dep-davjg4hjg4r3s5qqcf20",
+      "status": "live",
+      "trigger": "rollback",
+      "createdAt": "2026-10-02T04:50:26.30701Z",
+      "updatedAt": "2026-10-02T04:50:51.418425Z"
+    },
+    "runtime": [
+      {
+        "pod": "tea-davjdk1jg4r2nk99cil0-w5-m107-rollback-64d4dc7c94-7bdr9",
+        "marker": "command=A env=env-A file=file-A"
+      }
+    ],
+    "saved_rest": {
+      "serviceDetails": {
+        "env": "image",
+        "internalAddress": "w5-m107-rollback:8080",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "starter",
+        "port": 8080,
+        "region": "local-capd",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "image",
+        "url": "https://w5-m107-rollback.onbex.co"
+      },
+      "undeployedChanges": true
+    },
+    "env_rest": [
+      {
+        "envVar": {
+          "key": "W5_MARKER",
+          "value": "env-B",
+          "revision": "evr1_AAAAAAAAAAI"
+        },
+        "cursor": "W5_MARKER"
+      }
+    ],
+    "files_rest": [
+      {
+        "secretFile": {
+          "name": "w5-marker.txt"
+        },
+        "cursor": "w5-marker.txt"
+      }
+    ],
+    "saved_graphql": {
+      "service": {
+        "envVar": {
+          "value": "env-B"
+        },
+        "id": "srv-davjeh1jg4r1kicjkeug",
+        "secretFile": {
+          "content": "file-B"
+        },
+        "startCommand": "mkdir -p /tmp/www; printf \"command=B env=%s file=%s\\n\" \"$W5_MARKER\" \"$(cat /etc/secrets/w5-marker.txt)\" | tee /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www",
+        "undeployedChanges": true
+      }
+    }
+  },
+  "restart-A": {
+    "time": "2026-10-02T04:51:52.958819+00:00",
+    "stage": "restart-A",
+    "generation": 9,
+    "releaseGeneration": 9,
+    "releaseConfig": {
+      "generation": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "preserveGroupValues": true,
+      "sourceGeneration": 8
+    },
+    "phase": "Running",
+    "deploy": {
+      "id": "dep-davjgl1jg4r3s5qqcf40",
+      "status": "live",
+      "trigger": "api",
+      "createdAt": "2026-10-02T04:51:32.568638Z",
+      "updatedAt": "2026-10-02T04:51:51.383766Z"
+    },
+    "runtime": [
+      {
+        "pod": "tea-davjdk1jg4r2nk99cil0-w5-m107-rollback-86844d5649-nx2vs",
+        "marker": "command=A env=env-A file=file-A"
+      }
+    ],
+    "saved_rest": {
+      "serviceDetails": {
+        "env": "image",
+        "internalAddress": "w5-m107-rollback:8080",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "starter",
+        "port": 8080,
+        "region": "local-capd",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "image",
+        "url": "https://w5-m107-rollback.onbex.co"
+      },
+      "undeployedChanges": true
+    },
+    "env_rest": [
+      {
+        "envVar": {
+          "key": "W5_MARKER",
+          "value": "env-B",
+          "revision": "evr1_AAAAAAAAAAI"
+        },
+        "cursor": "W5_MARKER"
+      }
+    ],
+    "files_rest": [
+      {
+        "secretFile": {
+          "name": "w5-marker.txt"
+        },
+        "cursor": "w5-marker.txt"
+      }
+    ],
+    "saved_graphql": {
+      "service": {
+        "envVar": {
+          "value": "env-B"
+        },
+        "id": "srv-davjeh1jg4r1kicjkeug",
+        "secretFile": {
+          "content": "file-B"
+        },
+        "startCommand": "mkdir -p /tmp/www; printf \"command=B env=%s file=%s\\n\" \"$W5_MARKER\" \"$(cat /etc/secrets/w5-marker.txt)\" | tee /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www",
+        "undeployedChanges": true
+      }
+    }
+  },
+  "replacement-A": {
+    "time": "2026-10-02T04:52:30.390546+00:00",
+    "stage": "replacement-A",
+    "generation": 9,
+    "releaseGeneration": 9,
+    "releaseConfig": {
+      "generation": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "preserveGroupValues": true,
+      "sourceGeneration": 8
+    },
+    "phase": "Running",
+    "deploy": {
+      "id": "dep-davjgl1jg4r3s5qqcf40",
+      "status": "live",
+      "trigger": "api",
+      "createdAt": "2026-10-02T04:51:32.568638Z",
+      "updatedAt": "2026-10-02T04:51:51.383766Z"
+    },
+    "runtime": [
+      {
+        "pod": "tea-davjdk1jg4r2nk99cil0-w5-m107-rollback-86844d5649-7t846",
+        "marker": "command=A env=env-A file=file-A"
+      }
+    ],
+    "saved_rest": {
+      "serviceDetails": {
+        "env": "image",
+        "internalAddress": "w5-m107-rollback:8080",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "starter",
+        "port": 8080,
+        "region": "local-capd",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "image",
+        "url": "https://w5-m107-rollback.onbex.co"
+      },
+      "undeployedChanges": true
+    },
+    "env_rest": [
+      {
+        "envVar": {
+          "key": "W5_MARKER",
+          "value": "env-B",
+          "revision": "evr1_AAAAAAAAAAI"
+        },
+        "cursor": "W5_MARKER"
+      }
+    ],
+    "files_rest": [
+      {
+        "secretFile": {
+          "name": "w5-marker.txt"
+        },
+        "cursor": "w5-marker.txt"
+      }
+    ],
+    "saved_graphql": {
+      "service": {
+        "envVar": {
+          "value": "env-B"
+        },
+        "id": "srv-davjeh1jg4r1kicjkeug",
+        "secretFile": {
+          "content": "file-B"
+        },
+        "startCommand": "mkdir -p /tmp/www; printf \"command=B env=%s file=%s\\n\" \"$W5_MARKER\" \"$(cat /etc/secrets/w5-marker.txt)\" | tee /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www",
+        "undeployedChanges": true
+      }
+    }
+  },
+  "reconciler-restart-A": {
+    "time": "2026-10-02T04:54:28.377980+00:00",
+    "stage": "reconciler-restart-A",
+    "generation": 9,
+    "releaseGeneration": 9,
+    "releaseConfig": {
+      "generation": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "preserveGroupValues": true,
+      "sourceGeneration": 8
+    },
+    "phase": "Running",
+    "deploy": {
+      "id": "dep-davjgl1jg4r3s5qqcf40",
+      "status": "live",
+      "trigger": "api",
+      "createdAt": "2026-10-02T04:51:32.568638Z",
+      "updatedAt": "2026-10-02T04:51:51.383766Z"
+    },
+    "runtime": [
+      {
+        "pod": "tea-davjdk1jg4r2nk99cil0-w5-m107-rollback-86844d5649-7t846",
+        "marker": "command=A env=env-A file=file-A"
+      }
+    ],
+    "saved_rest": {
+      "serviceDetails": {
+        "env": "image",
+        "internalAddress": "w5-m107-rollback:8080",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "starter",
+        "port": 8080,
+        "region": "local-capd",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "image",
+        "url": "https://w5-m107-rollback.onbex.co"
+      },
+      "undeployedChanges": true
+    },
+    "env_rest": [
+      {
+        "envVar": {
+          "key": "W5_MARKER",
+          "value": "env-B",
+          "revision": "evr1_AAAAAAAAAAI"
+        },
+        "cursor": "W5_MARKER"
+      }
+    ],
+    "files_rest": [
+      {
+        "secretFile": {
+          "name": "w5-marker.txt"
+        },
+        "cursor": "w5-marker.txt"
+      }
+    ],
+    "saved_graphql": {
+      "service": {
+        "envVar": {
+          "value": "env-B"
+        },
+        "id": "srv-davjeh1jg4r1kicjkeug",
+        "secretFile": {
+          "content": "file-B"
+        },
+        "startCommand": "mkdir -p /tmp/www; printf \"command=B env=%s file=%s\\n\" \"$W5_MARKER\" \"$(cat /etc/secrets/w5-marker.txt)\" | tee /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www",
+        "undeployedChanges": true
+      }
+    }
+  },
+  "normal-B": {
+    "time": "2026-10-02T04:54:52.223488+00:00",
+    "stage": "normal-B",
+    "generation": 10,
+    "releaseGeneration": 10,
+    "releaseConfig": null,
+    "phase": "Running",
+    "deploy": {
+      "id": "dep-davji11jg4r3s5qqcf8g",
+      "status": "live",
+      "trigger": "api",
+      "createdAt": "2026-10-02T04:54:28.48587Z",
+      "updatedAt": "2026-10-02T04:54:51.405143Z"
+    },
+    "runtime": [
+      {
+        "pod": "tea-davjdk1jg4r2nk99cil0-w5-m107-rollback-7577d74697-qs6jk",
+        "marker": "command=B env=env-B file=file-B"
+      }
+    ],
+    "saved_rest": {
+      "serviceDetails": {
+        "env": "image",
+        "internalAddress": "w5-m107-rollback:8080",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "starter",
+        "port": 8080,
+        "region": "local-capd",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "image",
+        "url": "https://w5-m107-rollback.onbex.co"
+      },
+      "undeployedChanges": null
+    },
+    "env_rest": [
+      {
+        "envVar": {
+          "key": "W5_MARKER",
+          "value": "env-B",
+          "revision": "evr1_AAAAAAAAAAI"
+        },
+        "cursor": "W5_MARKER"
+      }
+    ],
+    "files_rest": [
+      {
+        "secretFile": {
+          "name": "w5-marker.txt"
+        },
+        "cursor": "w5-marker.txt"
+      }
+    ],
+    "saved_graphql": {
+      "service": {
+        "envVar": {
+          "value": "env-B"
+        },
+        "id": "srv-davjeh1jg4r1kicjkeug",
+        "secretFile": {
+          "content": "file-B"
+        },
+        "startCommand": "mkdir -p /tmp/www; printf \"command=B env=%s file=%s\\n\" \"$W5_MARKER\" \"$(cat /etc/secrets/w5-marker.txt)\" | tee /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www",
+        "undeployedChanges": false
+      }
+    }
+  },
+  "mcp-rollback-A": {
+    "get_service": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"createdAt\":\"2026-10-02T04:47:00Z\",\"dashboardUrl\":\"http://localhost:50050/web/srv-davjeh1jg4r1kicjkeug\",\"displayName\":\"\",\"id\":\"srv-davjeh1jg4r1kicjkeug\",\"idleTTLSeconds\":0,\"imagePath\":\"docker.io/library/busybox:1.36\",\"immutableName\":\"w5-m107-rollback\",\"name\":\"w5-m107-rollback\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-davjdk1jg4r2nk99cil0\",\"phase\":\"Running\",\"publicRoutingNotice\":\"this service has no public address: the platform subdomain is not available on this installation, and no custom domain is attached. Add a custom domain to serve it publicly.\",\"pushDeliveryMethod\":\"none\",\"replicas\":1,\"revision\":\"rev-8\",\"serviceDetails\":{\"env\":\"image\",\"internalAddress\":\"w5-m107-rollback:8080\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"starter\",\"port\":8080,\"region\":\"local-capd\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"image\",\"url\":\"https://w5-m107-rollback.onbex.co\"},\"slug\":\"w5-m107-rollback\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"undeployedChanges\":true,\"updatedAt\":\"2026-10-02T04:50:41Z\"}"
+          }
+        ],
+        "structuredContent": {
+          "autoDeploy": "no",
+          "autoDeployTrigger": "off",
+          "createdAt": "2026-10-02T04:47:00Z",
+          "dashboardUrl": "http://localhost:50050/web/srv-davjeh1jg4r1kicjkeug",
+          "displayName": "",
+          "id": "srv-davjeh1jg4r1kicjkeug",
+          "idleTTLSeconds": 0,
+          "imagePath": "docker.io/library/busybox:1.36",
+          "immutableName": "w5-m107-rollback",
+          "name": "w5-m107-rollback",
+          "notificationsToSend": "default",
+          "notifyOnFail": "default",
+          "ownerId": "tea-davjdk1jg4r2nk99cil0",
+          "phase": "Running",
+          "publicRoutingNotice": "this service has no public address: the platform subdomain is not available on this installation, and no custom domain is attached. Add a custom domain to serve it publicly.",
+          "pushDeliveryMethod": "none",
+          "replicas": 1,
+          "revision": "rev-8",
+          "serviceDetails": {
+            "env": "image",
+            "internalAddress": "w5-m107-rollback:8080",
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            },
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "starter",
+            "port": 8080,
+            "region": "local-capd",
+            "renderSubdomainPolicy": "enabled",
+            "runtime": "image",
+            "url": "https://w5-m107-rollback.onbex.co"
+          },
+          "slug": "w5-m107-rollback",
+          "suspended": "not_suspended",
+          "suspenders": [],
+          "type": "web_service",
+          "undeployedChanges": true,
+          "updatedAt": "2026-10-02T04:50:41Z"
+        }
+      }
+    },
+    "list_env_vars": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"envVars\":[{\"key\":\"W5_MARKER\",\"revision\":\"evr1_AAAAAAAAAAI\",\"value\":\"env-B\"}]}"
+          }
+        ],
+        "structuredContent": {
+          "envVars": [
+            {
+              "key": "W5_MARKER",
+              "revision": "evr1_AAAAAAAAAAI",
+              "value": "env-B"
+            }
+          ]
+        }
+      }
+    },
+    "list_secret_files": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"secretFiles\":[{\"name\":\"w5-marker.txt\"}]}"
+          }
+        ],
+        "structuredContent": {
+          "secretFiles": [
+            {
+              "name": "w5-marker.txt"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "mcp-file-rollback-A": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"content\":\"file-B\",\"name\":\"w5-marker.txt\"}"
+        }
+      ],
+      "structuredContent": {
+        "content": "file-B",
+        "name": "w5-marker.txt"
+      }
+    }
+  },
+  "rest-file-rollback-A": {
+    "name": "w5-marker.txt",
+    "content": "file-B"
+  },
+  "already-running-guard": {
+    "status": 409,
+    "body": {
+      "error": "conflict: deploy \"dep-davji11jg4r3s5qqcf8g\" is already live \u2014 nothing to roll back to",
+      "id": "conflict",
+      "message": "conflict: deploy \"dep-davji11jg4r3s5qqcf8g\" is already live \u2014 nothing to roll back to"
+    }
+  },
+  "dashboard": {
+    "rollback": {
+      "envB": true,
+      "fileB": true,
+      "savedChangesNotice": true,
+      "groupError": false
+    },
+    "normal": {
+      "envB": true,
+      "fileB": true,
+      "savedChangesNotice": false,
+      "latestLive": true,
+      "groupError": false
+    }
+  },
+  "cleanup": {
+    "time": "2026-10-02T04:56:38.093769+00:00",
+    "fixture_service_deleted": true,
+    "fixture_workspaces_deleted": [
+      "tea-davjdk1jg4r2nk99cik0",
+      "tea-davjdk1jg4r2nk99cil0"
+    ],
+    "identity_deleted": true,
+    "fixture_namespace_deletion_observed": true,
+    "fixture_resources_remaining": 0,
+    "scoped_reconciler_stopped": true,
+    "isolated_bao_and_rbac_removed": true,
+    "private_auth_files_removed": true,
+    "standard_dev5_api_health": "ok"
+  }
+}

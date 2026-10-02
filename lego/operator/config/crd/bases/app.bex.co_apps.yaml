@@ -702,6 +702,39 @@ spec:
                   reference from which to infer a host). ExternalRegistryPullSecret is the
                   derived Kubernetes Secret name; this field is the durable user intent.
                 type: string
+              releaseConfig:
+                description: |-
+                  ReleaseConfig selects historical runtime inputs for one rollback or restart.
+                  Saved configuration remains in the other spec fields. A later deployment
+                  supersedes Generation and therefore returns to the saved configuration.
+                properties:
+                  generation:
+                    format: int64
+                    minimum: 1
+                    type: integer
+                  image:
+                    maxLength: 512
+                    minLength: 1
+                    pattern: ^[A-Za-z0-9][A-Za-z0-9._/:@-]*$
+                    type: string
+                  preserveGroupValues:
+                    description: |-
+                      PreserveGroupValues is used by Restart. Rollback takes current values
+                      from the target's surviving group associations; Restart retains its exact
+                      running configuration, including already-snapshotted group values.
+                    type: boolean
+                  sourceGeneration:
+                    description: |-
+                      SourceGeneration zero explicitly requests the legacy image-only fallback.
+                      A positive generation must have a release record; its loss is an error.
+                    format: int64
+                    minimum: 0
+                    type: integer
+                required:
+                - generation
+                - image
+                - sourceGeneration
+                type: object
               replicas:
                 default: 1
                 description: Replicas for the kubernetes runtime (pods bin-packed
@@ -1274,14 +1307,10 @@ spec:
                 type: string
               undeployedChanges:
                 description: |-
-                  UndeployedChanges reports that the service is running an earlier release than
-                  its saved spec because the deploy carrying the newer spec was canceled
-                  (w1/m152 t003). The saved changes stay saved and ship with the next deploy;
-                  this field is how every surface says so instead of implying they are live.
-
-                  The operator sets it while it is settling a cancel over a release that served
-                  and clears it once a release dispatches normally. Cron jobs and static sites
-                  have no Deployment to settle and never set it.
+                  UndeployedChanges reports saved configuration that differs from the serving
+                  release after cancellation or historical configuration selection. Saved
+                  settings remain available for the next standard deploy. An identical-config
+                  Restart does not set this flag merely because it selects a release record.
                 type: boolean
               unscopedSnapshotGeneration:
                 description: |-

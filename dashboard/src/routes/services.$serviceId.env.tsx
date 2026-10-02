@@ -48,9 +48,8 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
         </Button>
       </div>
       {service?.undeployedChanges ? (
-        // The values below are the SAVED ones. After a canceled deploy they are
-        // not what the service runs, and this page used to show them without
-        // saying so (w1/m152 t003).
+        // These are saved values. The operator reports when they differ from
+        // the running configuration, including after cancellation or rollback.
         <p className="text-muted-foreground text-sm" role="status">
           {t("services.undeployedChangesHint")}
         </p>

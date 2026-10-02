@@ -44,10 +44,10 @@ export interface ServiceView {
    */
   publicRoutingNotice?: string | null;
   /**
-   * The service runs an earlier release than its saved settings because the
-   * deploy carrying them was canceled; they ship with the next deploy (w1/m152
-   * t003). Operator-owned, passed through. Only the detail `server` query selects
-   * it, so a list row reads undefined.
+   * Saved settings have not been applied to the running release, including after
+   * cancellation, rollback or restart. A standard deploy applies them.
+   * Operator-owned, passed through. Only the detail `server` query selects it,
+   * so a list row reads undefined.
    */
   undeployedChanges?: boolean;
   /**

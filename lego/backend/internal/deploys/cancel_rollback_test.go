@@ -350,12 +350,12 @@ func TestRollbackRestoresPreviousLiveImage(t *testing.T) {
 	if rolled.Trigger != "rollback" || rolled.Image != "web:v1" || rolled.RollbackOf != first.ID {
 		t.Fatalf("rolled-back deploy = %+v", rolled)
 	}
-	if ds.setImage["srv-1"] != "web:v1" {
-		t.Errorf("row-first write: SetAppImage(srv-1, ...) = %q, want web:v1", ds.setImage["srv-1"])
+	if len(ds.setImage) != 0 {
+		t.Error("rollback overwrote the saved image row")
 	}
 	got := getApp(t, cl, "web")
-	if got.Spec.Image != "web:v1" {
-		t.Errorf("app spec.image after rollback = %q, want web:v1", got.Spec.Image)
+	if got.Spec.Image != "web:bad" || got.Spec.ReleaseConfig == nil || got.Spec.ReleaseConfig.Image != "web:v1" {
+		t.Errorf("rollback must select v1 while keeping saved image web:bad: %+v", got.Spec.ReleaseConfig)
 	}
 	if got.Spec.RestartedAt == "" {
 		t.Error("Rollback must bump spec.restartedAt so the CR converges immediately")

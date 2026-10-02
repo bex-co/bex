@@ -87,6 +87,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"PreDeployCommand":           IdentityRelease,
 	"IdleTTLSeconds":             IdentityOperational,
 	"RestartedAt":                IdentityArtifact | IdentityRelease,
+	"ReleaseConfig":              IdentityRelease,
 	"Suspended":                  IdentityOperational,
 	"Autoscaling":                IdentityOperational,
 	// A disk is a release input because attaching, detaching, or remounting one

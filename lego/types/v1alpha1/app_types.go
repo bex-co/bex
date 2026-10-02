@@ -36,6 +36,12 @@ const (
 // stable identity.
 const AnnotationReleaseGeneration = "app.bex.co/release-generation"
 
+// AnnotationReleaseConfigScaled records an explicit scale during a selected
+// historical release. Its value is that release generation, so even scaling to
+// the already-saved count supersedes the initial historical instance count
+// without changing the selected image/environment or opening another deploy.
+const AnnotationReleaseConfigScaled = "app.bex.co/release-config-scaled"
+
 // AnnotationPendingSourceGeneration marks a generation that only changes the
 // configured repo/branch/image. The operator keeps the active release serving
 // until a later deploy verb stamps AnnotationReleaseGeneration at this or a
@@ -678,6 +684,12 @@ type AppSpec struct {
 	// See docs/ADR007-restart-suspend-and-resume.md.
 	// +optional
 	RestartedAt string `json:"restartedAt,omitempty"`
+
+	// ReleaseConfig selects historical runtime inputs for one rollback or restart.
+	// Saved configuration remains in the other spec fields. A later deployment
+	// supersedes Generation and therefore returns to the saved configuration.
+	// +optional
+	ReleaseConfig *ReleaseConfigReference `json:"releaseConfig,omitempty"`
 
 	// Suspended parks the App without losing anything: the kubernetes runtime
 	// scales the Deployment to 0 (Service, Ingress, TLS and Replicas are all
@@ -1461,14 +1473,10 @@ type AppStatus struct {
 	// +optional
 	UnscopedSnapshotGeneration int64 `json:"unscopedSnapshotGeneration,omitempty"`
 
-	// UndeployedChanges reports that the service is running an earlier release than
-	// its saved spec because the deploy carrying the newer spec was canceled
-	// (w1/m152 t003). The saved changes stay saved and ship with the next deploy;
-	// this field is how every surface says so instead of implying they are live.
-	//
-	// The operator sets it while it is settling a cancel over a release that served
-	// and clears it once a release dispatches normally. Cron jobs and static sites
-	// have no Deployment to settle and never set it.
+	// UndeployedChanges reports saved configuration that differs from the serving
+	// release after cancellation or historical configuration selection. Saved
+	// settings remain available for the next standard deploy. An identical-config
+	// Restart does not set this flag merely because it selects a release record.
 	// +optional
 	UndeployedChanges bool `json:"undeployedChanges,omitempty"`
 
