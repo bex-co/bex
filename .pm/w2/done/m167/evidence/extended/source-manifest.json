@@ -1,0 +1,30 @@
+{
+  "base_commit": "f70d8e1c52fa7a15b42ba63936a35d6fca384d2d",
+  "built_utc": "2026-10-02T22:14:51.854175+00:00",
+  "source_files": {
+    "lego/backend/internal/api/server.go": {
+      "sha256": "18139c3dca8280de563cfb536af7d866b7c4d5d07e87782d86c102a38f9b2cba",
+      "mtime_before_build_completed": true
+    },
+    "lego/backend/internal/logs/service.go": {
+      "sha256": "fcc6e5476f7b36fae36293c378f862b1c4b7084386637e0555c1cf1d4f89d790",
+      "mtime_before_build_completed": true
+    },
+    "lego/backend/internal/logs/loki.go": {
+      "sha256": "5fba311aaeec4ea1e38b650a27ec2cca374b39470beb35301c3dc9fa4aab7a90",
+      "mtime_before_build_completed": true
+    },
+    "lego/backend/internal/logs/rest.go": {
+      "sha256": "c46ba6138cd79ed222b3acce08bbad3a9a137407cc7d91417731e5c2c544c4be",
+      "mtime_before_build_completed": true
+    },
+    "lego/backend/internal/logs/mcp.go": {
+      "sha256": "8cf2f708849be54890b0ef0971b87c6841ee49cdadca07fcdcf90f79f6019c85",
+      "mtime_before_build_completed": true
+    },
+    "lego/backend/internal/logs/graphql.go": {
+      "sha256": "82f042fe0e9eac4346c1a57d7c39db0db071b6443b1654b68a259cb40504df11",
+      "mtime_before_build_completed": true
+    }
+  }
+}

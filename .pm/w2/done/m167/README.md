@@ -1,17 +1,17 @@
 # w2 · m167 — Preserve every requested log text filter
 
-**Worker:** worker2 **Goal:** the pinned CLI and MCP search all supplied text values with OR semantics, consistently across stored and live log sources. **Status:** todo
+**Worker:** worker2 **Goal:** the pinned CLI and MCP search all supplied text values with OR semantics, consistently across stored and live log sources. **Status:** done (2026-10-02; local CLI/Loki acceptance, full backend integration suite)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Preserve and evaluate the complete text-filter set | 45m | — |
-| t002 | Audit every adapter, log source, and paging boundary | 40m | t001 |
-| t003 | Render parity and compatible scalar consumers | 25m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Behavioral regressions and live CLI acceptance | 45m | t003, t004 |
-| t006 | Closeout | 10m | t005 |
+| t001 | Preserve and evaluate the complete text-filter set — **DONE** | 45m | — |
+| t002 | Audit every adapter, log source, and paging boundary — **DONE** | 40m | t001 |
+| t003 | Render parity and compatible scalar consumers — **DONE** | 25m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Behavioral regressions and live CLI acceptance — **DONE** | 45m | t003, t004 |
+| t006 | Closeout — **DONE** | 10m | t005 |
 
 ## Definition of done
 

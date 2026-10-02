@@ -1,0 +1,24 @@
+{
+  "owned_container": "bex-w2-m167-live-kfnuzajf-loki",
+  "container_removed": true,
+  "container_owner_verified": "w2-m167-live-kfnuzajf",
+  "api_resource_cleanup": {
+    "namespace_delete_accepted": true,
+    "remaining_apps": 0
+  },
+  "processes_stopped": [
+    52972,
+    46327,
+    53777,
+    53896
+  ],
+  "owned_ports_closed": {
+    "api": true,
+    "service": true,
+    "loki": true
+  },
+  "token_and_kubeconfig_removed": true,
+  "client_config_dirs_removed": true,
+  "loki_storage": "container tmpfs removed with owned container",
+  "shared_resources_changed": false
+}

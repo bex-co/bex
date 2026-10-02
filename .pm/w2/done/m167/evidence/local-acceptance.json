@@ -1,0 +1,433 @@
+{
+  "substrate": "local composed API + real Loki + Docker emitter stdout",
+  "app": "srv-db02p19jg4rc448vcojg",
+  "cases": [
+    {
+      "case": "bex qa_text_A,qa_text_B",
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_A\",\n  \"timestamp\": \"2026-10-02T22:13:17.121285Z\"\n}{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.122285Z-6e2e5976\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_B\",\n  \"timestamp\": \"2026-10-02T22:13:17.122285Z\"\n}",
+      "stderr": ""
+    },
+    {
+      "case": "bex qa_text_B,qa_text_A",
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_A\",\n  \"timestamp\": \"2026-10-02T22:13:17.121285Z\"\n}{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.122285Z-6e2e5976\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_B\",\n  \"timestamp\": \"2026-10-02T22:13:17.122285Z\"\n}",
+      "stderr": ""
+    },
+    {
+      "case": "render qa_text_A,qa_text_B",
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_A\",\n  \"timestamp\": \"2026-10-02T22:13:17.121285Z\"\n}{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.122285Z-6e2e5976\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_B\",\n  \"timestamp\": \"2026-10-02T22:13:17.122285Z\"\n}",
+      "stderr": ""
+    },
+    {
+      "case": "render qa_text_B,qa_text_A",
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_A\",\n  \"timestamp\": \"2026-10-02T22:13:17.121285Z\"\n}{\n  \"id\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.122285Z-6e2e5976\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db02p19jg4rc448vcojg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"qa_text_B\",\n  \"timestamp\": \"2026-10-02T22:13:17.122285Z\"\n}",
+      "stderr": ""
+    },
+    {
+      "case": "REST ['qa_text_A', 'qa_text_B']",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:33.879201Z",
+        "nextEndTime": "2026-10-02T22:13:17.121284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3",
+            "message": "qa_text_A",
+            "timestamp": "2026-10-02T22:13:17.121285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          },
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.122285Z-6e2e5976",
+            "message": "qa_text_B",
+            "timestamp": "2026-10-02T22:13:17.122285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "REST ['qa_text_B', 'qa_text_A']",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:34.233056Z",
+        "nextEndTime": "2026-10-02T22:13:17.121284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3",
+            "message": "qa_text_A",
+            "timestamp": "2026-10-02T22:13:17.121285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          },
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.122285Z-6e2e5976",
+            "message": "qa_text_B",
+            "timestamp": "2026-10-02T22:13:17.122285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "REST ['qa_text_A', 'qa_text_A']",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:34.650138Z",
+        "nextEndTime": "2026-10-02T22:13:17.121284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3",
+            "message": "qa_text_A",
+            "timestamp": "2026-10-02T22:13:17.121285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "REST ['QA_TEXT_A']",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:34.952439Z",
+        "nextEndTime": "2026-10-02T22:13:17.121284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3",
+            "message": "qa_text_A",
+            "timestamp": "2026-10-02T22:13:17.121285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "REST ['[a].*']",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:35.219133Z",
+        "nextEndTime": "2026-10-02T22:13:17.124284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.124285Z-1202a9b7",
+            "message": "literal [a].*",
+            "timestamp": "2026-10-02T22:13:17.124285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "REST ['no_match']",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:35Z",
+        "nextEndTime": "2026-10-02T22:13:35Z",
+        "logs": []
+      }
+    },
+    {
+      "case": "GraphQL scalar",
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "logs": [
+              {
+                "message": "qa_text_A"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "MCP initialize",
+      "status": 200,
+      "body": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"capabilities\":{\"logging\":{},\"tools\":{\"listChanged\":true}},\"protocolVersion\":\"2024-11-05\",\"serverInfo\":{\"name\":\"bex\",\"version\":\"0.1.0\"}}}\n\n"
+    },
+    {
+      "case": "MCP OR",
+      "status": 200,
+      "body": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"hasMore\\\":false,\\\"logs\\\":[{\\\"labels\\\":{\\\"container\\\":\\\"app\\\",\\\"instance\\\":\\\"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\\\",\\\"level\\\":\\\"info\\\",\\\"service\\\":\\\"srv-db02p19jg4rc448vcojg\\\",\\\"type\\\":\\\"app\\\"},\\\"message\\\":\\\"qa_text_A\\\",\\\"timestamp\\\":\\\"2026-10-02T22:13:17.121285Z\\\"},{\\\"labels\\\":{\\\"container\\\":\\\"app\\\",\\\"instance\\\":\\\"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\\\",\\\"level\\\":\\\"info\\\",\\\"service\\\":\\\"srv-db02p19jg4rc448vcojg\\\",\\\"type\\\":\\\"app\\\"},\\\"message\\\":\\\"qa_text_B\\\",\\\"timestamp\\\":\\\"2026-10-02T22:13:17.122285Z\\\"}],\\\"nextEndTime\\\":\\\"2026-10-02T22:13:17.121284999Z\\\",\\\"nextStartTime\\\":\\\"2026-10-02T21:13:36.312992Z\\\"}\"}],\"structuredContent\":{\"hasMore\":false,\"logs\":[{\"labels\":{\"container\":\"app\",\"instance\":\"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\",\"level\":\"info\",\"service\":\"srv-db02p19jg4rc448vcojg\",\"type\":\"app\"},\"message\":\"qa_text_A\",\"timestamp\":\"2026-10-02T22:13:17.121285Z\"},{\"labels\":{\"container\":\"app\",\"instance\":\"srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h\",\"level\":\"info\",\"service\":\"srv-db02p19jg4rc448vcojg\",\"type\":\"app\"},\"message\":\"qa_text_B\",\"timestamp\":\"2026-10-02T22:13:17.122285Z\"}],\"nextEndTime\":\"2026-10-02T22:13:17.121284999Z\",\"nextStartTime\":\"2026-10-02T21:13:36.312992Z\"}}}\n\n"
+    },
+    {
+      "case": "REST OR AND nonmatching level",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:36Z",
+        "nextEndTime": "2026-10-02T22:13:36Z",
+        "logs": []
+      }
+    },
+    {
+      "case": "REST empty term ignored",
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-02T21:13:36.904529Z",
+        "nextEndTime": "2026-10-02T22:13:17.121284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3",
+            "message": "qa_text_A",
+            "timestamp": "2026-10-02T22:13:17.121285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "REST page 1",
+      "status": 200,
+      "body": {
+        "hasMore": true,
+        "nextStartTime": "2026-10-02T21:13:36.914785Z",
+        "nextEndTime": "2026-10-02T22:13:17.122284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.122285Z-6e2e5976",
+            "message": "qa_text_B",
+            "timestamp": "2026-10-02T22:13:17.122285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "case": "REST page 2",
+      "status": 200,
+      "body": {
+        "hasMore": true,
+        "nextStartTime": "2026-10-02T21:13:17.122284999Z",
+        "nextEndTime": "2026-10-02T22:13:17.121284999Z",
+        "logs": [
+          {
+            "id": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h-2026-10-02T22:13:17.121285Z-6d2e57e3",
+            "message": "qa_text_A",
+            "timestamp": "2026-10-02T22:13:17.121285Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db02p19jg4rc448vcojg"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db02p19jg4rc448vcojg-0belha0gspbvq7be2p7h"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "info"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

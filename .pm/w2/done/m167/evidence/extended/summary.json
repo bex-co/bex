@@ -1,0 +1,9 @@
+{
+  "checks": 54,
+  "passed": 54,
+  "all_passed": true,
+  "harness_corrections": [
+    "Initial CLI parser assumed one JSON document; pinned CLI emits concatenated JSON objects. Corrected parser and re-ran all consumers; initial response already held both lines.",
+    "Rebuilt the composed API after source normalization changed. One premature restart raced the build; stopped that process and reran after build completion with the original owned fixture IDs. Final evidence uses the rebuilt binary."
+  ]
+}

@@ -260,15 +260,6 @@ func TestNormalizeTypes(t *testing.T) {
 	}
 }
 
-func TestFirstNonEmpty(t *testing.T) {
-	if got := firstNonEmpty(nil); got != "" {
-		t.Errorf("nil => %q", got)
-	}
-	if got := firstNonEmpty([]string{"", "hit", "miss"}); got != "hit" {
-		t.Errorf("first non-empty => %q", got)
-	}
-}
-
 // --- REST logs fragment (Render envelope) ---
 
 func serveREST(svc *Service, method, path string) *httptest.ResponseRecorder {

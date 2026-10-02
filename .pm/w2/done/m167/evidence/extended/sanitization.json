@@ -1,0 +1,20 @@
+{
+  "files": [
+    "acceptance.md",
+    "evidence.jsonl",
+    "summary.json",
+    "versions.json",
+    "source-manifest.json",
+    "cleanup.json"
+  ],
+  "private_token_present": false,
+  "private_key_or_kubeconfig_present": false,
+  "file_sha256": {
+    "acceptance.md": "9f9c6e71e61ccc857b96f349d221f1f00720c458ed87f97ebc80412fb825d93d",
+    "evidence.jsonl": "fec3d1698570ed0823bff8a9dde143fa116a1e87bd40869c7bc25d7c75799b8d",
+    "summary.json": "20f48138ff1015bafc46742a50acbf7c84a453fd3b4fd73845f18dcc8f0e9ad9",
+    "versions.json": "c9341f52d7cd74645102c115fddd7b3a90cdc5028188997fcc75ebea2a8ce890",
+    "source-manifest.json": "5cf190abbcac92ec5d02e5087d76b537e9e2c3085fe6ab46f4083e25b28023b9",
+    "cleanup.json": "28af38e056934b6df7fd37ef53d2de1a80de2dca86eeedd6a5ea7c102e9304fe"
+  }
+}

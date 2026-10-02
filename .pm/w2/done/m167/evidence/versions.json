@@ -1,0 +1,12 @@
+{
+  "render_pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "build": "unchanged module cache, upstream version ldflag",
+  "bex": {
+    "sha256": "ea9e5e2c92a1094030e7537765092b633c7ec8793a076eeb55a136f6157cf8d0",
+    "version": "bex v0.2.1\ncompatible with Render CLI v2.27.0"
+  },
+  "render": {
+    "sha256": "b9c5f8f3e98e545c293a077d106ece8a5c4cae12f03ec2f9c707ad9d402e2b36",
+    "version": "render v2.27.0\n\nA new version is available: v2.28.0                              \n                                                                 \nTo upgrade, see: https://render.com/docs/cli#1-install-or-upgrade"
+  }
+}
