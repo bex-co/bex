@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
@@ -55,28 +55,12 @@ export function IPAllowListEditor({
   saving: boolean;
   onSave: (entries: IPAllowListEntryDraft[]) => Promise<boolean>;
 }) {
-  // Rows carry their own identity because React reconciles by key, and the key
-  // used to be `${index}-${entry.cidrBlock}` — the editable value itself. One
-  // Backspace in a CIDR field therefore changed the row's identity, so React
-  // deleted the old row's DOM subtree and mounted a new one; the focused input
-  // went with it and every keystroke after the first was dropped on the floor.
-  // Description edits did not touch the key, which is exactly why they worked
-  // and made the failure look field-specific (w4/135).
-  //
-  // Index alone cannot serve either: `move` reorders rows, and a render-time
-  // generated value is new on every render, which is the same bug again.
+  // Keep keys independent of editable values and positions so typing, moving
+  // and removing rows preserve the surviving inputs' focus and caret.
+  const nextRowID = useRef(entries.length);
   const [draft, setDraft] = useState<IPAllowListRow[]>(() =>
-    entries.map((entry, index) => ({ id: index, entry })),
+    entries.map((entry, id) => ({ id, entry })),
   );
-  /**
-   * Next free identity, derived from the rows themselves rather than held in a
-   * ref — a ref cannot be read during render, and deriving it keeps `add` pure.
-   * Monotonic against the CURRENT rows, so an id is never reused by a row added
-   * after an earlier one was removed.
-   */
-  const nextRowID = (rows: IPAllowListRow[]) =>
-    rows.reduce((max, row) => Math.max(max, row.id), -1) + 1;
-  /** The public, ordered entries — what dirty, validation and Save all see. */
   const draftEntries = draft.map((row) => row.entry);
   const [cidr, setCIDR] = useState("");
   const [description, setDescription] = useState("");
@@ -101,7 +85,7 @@ export function IPAllowListEditor({
     setDraft([
       ...draft,
       {
-        id: nextRowID(draft),
+        id: nextRowID.current++,
         entry: { cidrBlock: nextCIDR, description: description.trim() },
       },
     ]);
