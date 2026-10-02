@@ -349,3 +349,67 @@ func TestEnvironmentIPAllowListChaining(t *testing.T) {
 		})
 	}
 }
+
+// TestIPAllowListMiddlewareMatchesTCPPeerOnly pins w1/m150's trust boundary:
+// every allowlist middleware the operator emits — the service layer
+// (`-ip-allow`) and the environment layer (`-env-ip-allow`), on the web_service
+// and static_site paths — is `ipAllowList: {sourceRange: [...]}` and nothing
+// else. With no ipStrategy, Traefik matches the connection's remote address,
+// which the edge sets from the load balancer's PROXY header (trusted only from
+// 10.10.0.7/32). An ipStrategy (depth or excludedIPs) would match
+// X-Forwarded-For instead — a header the client writes — so any caller could
+// name its own address past the allowlist.
+func TestIPAllowListMiddlewareMatchesTCPPeerOnly(t *testing.T) {
+	for _, typ := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite} {
+		t.Run(typ, func(t *testing.T) {
+			scheme := newIPAllowListScheme()
+			app := appWithAllowList("peer-acl", []string{"203.0.113.0/24"}, typ)
+			app.Spec.EnvironmentIPAllowList = []string{"198.51.100.0/24"}
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+				WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{
+				Client: cl, Scheme: scheme, Mode: ModeKubernetes,
+				BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod",
+			}
+			ctx := context.Background()
+			if typ == appv1alpha1.TypeWebService {
+				// The real web path: Reconcile → reconcileIngressWithMiddlewares.
+				// Pass 1 adds the finalizer; pass 2 reconciles the workloads.
+				for range 2 {
+					if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: "peer-acl", Namespace: "default"}}); err != nil {
+						t.Fatalf("Reconcile: %v", err)
+					}
+				}
+			} else {
+				// reconcileStaticSite needs S3 before it reaches the middleware
+				// step, so drive the primitive it calls (as the static test above).
+				app.Spec.PublishPath = "dist"
+				if _, err := r.reconcileIPAllowListMiddleware(ctx, app); err != nil {
+					t.Fatalf("reconcileIPAllowListMiddleware: %v", err)
+				}
+			}
+			for name, want := range map[string]string{
+				"peer-acl-ip-allow":     "203.0.113.0/24",
+				"peer-acl-env-ip-allow": "198.51.100.0/24",
+			} {
+				o := &unstructured.Unstructured{}
+				o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+				if err := cl.Get(ctx, types.NamespacedName{Name: name, Namespace: "default"}, o); err != nil {
+					t.Fatalf("middleware %s: %v", name, err)
+				}
+				spec, _, _ := unstructured.NestedMap(o.Object, "spec")
+				allow, ok := spec["ipAllowList"].(map[string]any)
+				if len(spec) != 1 || !ok {
+					t.Fatalf("%s spec = %v, want only ipAllowList", name, spec)
+				}
+				if _, has := allow["ipStrategy"]; has {
+					t.Fatalf("%s sets ipAllowList.ipStrategy %v: the match would read X-Forwarded-For, which the client controls", name, allow["ipStrategy"])
+				}
+				ranges, _ := allow["sourceRange"].([]any)
+				if len(allow) != 1 || len(ranges) != 1 || ranges[0] != want {
+					t.Fatalf("%s ipAllowList = %v, want exactly {sourceRange: [%s]}", name, allow, want)
+				}
+			}
+		})
+	}
+}
