@@ -444,4 +444,45 @@ describe("EnvironmentCard", () => {
       ],
     });
   });
+
+  it("warns that the allowlist sees Cloudflare on proxied member domains (w1/m171)", async () => {
+    const user = userEvent.setup();
+    renderCard({
+      environment: {
+        ...env,
+        ipAllowListEntries: [{ cidrBlock: "10.0.0.0/8", description: "" }],
+        ipAllowListProxiedDomains: ["shop.example.com", "www.example.com"],
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "All settings" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    const notice = within(dialog).getByTestId("ip-allow-list-proxied-notice");
+    expect(notice).toHaveTextContent(
+      "The allowlist can't see clients on 2 custom domains",
+    );
+    expect(within(notice).getByText("shop.example.com")).toBeInTheDocument();
+    expect(within(notice).getByText("www.example.com")).toBeInTheDocument();
+    // The list stays editable and saveable: a warning, never a refusal.
+    expect(
+      within(dialog).getByRole("textbox", { name: "New CIDR block" }),
+    ).toBeEnabled();
+  });
+
+  it("shows no Cloudflare warning when no member domain is proxied", async () => {
+    const user = userEvent.setup();
+    renderCard({ environment: { ...env, ipAllowListProxiedDomains: [] } });
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "All settings" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).queryByTestId("ip-allow-list-proxied-notice"),
+    ).toBeNull();
+  });
 });

@@ -476,6 +476,13 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	if len(a.IPAllowList) > 0 && appv1alpha1.TypePubliclyRoutable(svcType) {
 		details["ipAllowList"] = cloneIPAllowEntries(a.IPAllowList)
 	}
+	// ipAllowListProxiedDomains is a bex extension beside the field it warns
+	// about (w1/m171; Render has no counterpart): the custom domains on which
+	// that allowlist sees Cloudflare's edge, not the client. Omitted when empty
+	// or not computed, so every other response stays byte-identical.
+	if len(a.IPAllowListProxiedDomains) > 0 && appv1alpha1.TypePubliclyRoutable(svcType) {
+		details["ipAllowListProxiedDomains"] = append([]string(nil), a.IPAllowListProxiedDomains...)
+	}
 	// Render declares renderSubdomainPolicy only on webServiceDetails/
 	// staticSiteDetails — the platform subdomain is a property only a routable
 	// type HAS. private/worker/cron omit it entirely (render-public-api-1.json),

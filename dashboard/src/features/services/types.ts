@@ -245,6 +245,13 @@ export interface ServiceView {
     description: string | null;
   } | null> | null;
   /**
+   * Cloudflare-proxied custom domains on which the allowlist sees
+   * Cloudflare's address instead of the client's (w1/m171, bex extension).
+   * null when not selected or not computed (only the detail `server` query
+   * and the allowlist save return it).
+   */
+  ipAllowListProxiedDomains?: string[] | null;
+  /**
    * Shared egress IPs (`Service.outboundIps`, w8/010). null when not selected
    * (list query); detail `server` query returns `{type, ips}` (always shared).
    */

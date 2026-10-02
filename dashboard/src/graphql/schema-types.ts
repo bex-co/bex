@@ -777,6 +777,7 @@ export type Environment = {
   id: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
+  ipAllowListProxiedDomains: Maybe<Array<Scalars['String']['output']>>;
   keyValueIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   name: Maybe<Scalars['String']['output']>;
   networkIsolationEnabled: Maybe<Scalars['Boolean']['output']>;
@@ -3580,6 +3581,7 @@ export type Service = {
   internalAddress: Maybe<Scalars['String']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
+  ipAllowListProxiedDomains: Maybe<Array<Scalars['String']['output']>>;
   lastSuccessfulRunAt: Maybe<Scalars['String']['output']>;
   latestDeployId: Maybe<Scalars['String']['output']>;
   linkedEnvGroupIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;

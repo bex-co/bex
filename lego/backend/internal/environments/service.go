@@ -121,6 +121,10 @@ type Service struct {
 	// (codex-security round 12, finding 5). 0 disables, matching the Blueprint
 	// path.
 	MaxGroupings int
+	// ProxiedHosts detects member services' custom domains that resolve into
+	// Cloudflare's edge, where the environment's inbound allowlist layer sees
+	// Cloudflare instead of the client (w1/m171). nil detects nothing.
+	ProxiedHosts *core.ProxiedHostDetector
 }
 
 // groupingQuotaStore is the optional store capability behind the direct-create
@@ -202,6 +206,11 @@ type EnvironmentView struct {
 	// IPAllowList is Render's [{cidrBlock, description}] objects — descriptions
 	// persist in the store row since w4/m24.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
+	// IPAllowListProxiedDomains is a bex extension (w1/m171): the member
+	// services' Cloudflare-proxied custom domains while IPAllowList restricts
+	// traffic. On those hosts the environment layer matches Cloudflare's edge
+	// address, not the client's. Omitted when there are none.
+	IPAllowListProxiedDomains []string `json:"ipAllowListProxiedDomains,omitempty"`
 }
 
 // CreateEnvironmentRequest is the neutral create input shared by REST,
@@ -445,13 +454,20 @@ func (s *Service) List(ctx context.Context, projectID string) ([]EnvironmentView
 	if err != nil {
 		return nil, err
 	}
-	out := make([]EnvironmentView, 0, len(rows))
+	servicesByEnv := make(map[string][]string, len(rows))
 	for _, e := range rows {
 		sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, toView(e, sids, dbsByEnv[e.ID], kvsByEnv[e.ID], groupsByEnv[e.ID]))
+		servicesByEnv[e.ID] = sids
+	}
+	proxied := s.proxiedDomainsByEnvironment(ctx, p.TenantID, rows, servicesByEnv)
+	out := make([]EnvironmentView, 0, len(rows))
+	for _, e := range rows {
+		v := toView(e, servicesByEnv[e.ID], dbsByEnv[e.ID], kvsByEnv[e.ID], groupsByEnv[e.ID])
+		v.IPAllowListProxiedDomains = proxied[e.ID]
+		out = append(out, v)
 	}
 	return out, nil
 }
@@ -483,9 +499,12 @@ func (s *Service) ListWorkspace(ctx context.Context, workspaceID string) ([]Envi
 	if err != nil {
 		return nil, err
 	}
+	proxied := s.proxiedDomainsByEnvironment(ctx, workspaceID, rows, servicesByEnv)
 	out := make([]EnvironmentView, 0, len(rows))
 	for _, e := range rows {
-		out = append(out, toView(e, servicesByEnv[e.ID], dbsByEnv[e.ID], kvsByEnv[e.ID], groupsByEnv[e.ID]))
+		v := toView(e, servicesByEnv[e.ID], dbsByEnv[e.ID], kvsByEnv[e.ID], groupsByEnv[e.ID])
+		v.IPAllowListProxiedDomains = proxied[e.ID]
+		out = append(out, v)
 	}
 	return out, nil
 }
@@ -1140,7 +1159,52 @@ func (s *Service) view(ctx context.Context, e store.Environment, serviceIDs []st
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	return toView(e, serviceIDs, dids[e.ID], kids[e.ID], gids[e.ID]), nil
+	v := toView(e, serviceIDs, dids[e.ID], kids[e.ID], gids[e.ID])
+	v.IPAllowListProxiedDomains = s.proxiedDomainsByEnvironment(ctx, e.TenantID,
+		[]store.Environment{e}, map[string][]string{e.ID: serviceIDs})[e.ID]
+	return v, nil
+}
+
+// proxiedDomainsByEnvironment is EnvironmentView.IPAllowListProxiedDomains
+// for each of envs (w1/m171): the Cloudflare-proxied custom domains of its
+// member services, for an environment whose allowlist actually restricts
+// traffic. One App list serves every environment; the lookups are a hint, so
+// any failure reads as "nothing to warn about" rather than failing the view.
+func (s *Service) proxiedDomainsByEnvironment(ctx context.Context, tenantID string, envs []store.Environment, servicesByEnv map[string][]string) map[string][]string {
+	if s.ProxiedHosts == nil || s.Client == nil {
+		return nil
+	}
+	envs = slices.DeleteFunc(slices.Clone(envs), func(e store.Environment) bool {
+		return !core.AllowListRestricts(e.IPAllowList) || len(servicesByEnv[e.ID]) == 0
+	})
+	if len(envs) == 0 {
+		return nil
+	}
+	var apps appv1alpha1.AppList
+	if err := s.ListByTenant(ctx, &apps, tenantID); err != nil {
+		return nil
+	}
+	hostsByService := make(map[string][]string, len(apps.Items))
+	for i := range apps.Items {
+		a := &apps.Items[i]
+		if a.DeletionTimestamp != nil {
+			continue
+		}
+		id := store.ManagedAppID(a.Labels)
+		if id == "" {
+			id = a.Name
+		}
+		hostsByService[id] = core.AppCustomDomains(a)
+	}
+	out := make(map[string][]string, len(envs))
+	for _, e := range envs {
+		var hosts []string
+		for _, sid := range servicesByEnv[e.ID] {
+			hosts = append(hosts, hostsByService[sid]...)
+		}
+		out[e.ID] = s.ProxiedHosts.CloudflareProxied(ctx, hosts)
+	}
+	return out
 }
 
 // toFullView is view for a caller that hasn't already read the service

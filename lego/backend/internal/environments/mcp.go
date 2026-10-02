@@ -92,8 +92,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_environment",
 		Description: "Get a single environment by id. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in environmentIDArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		e, err := s.Get(ctx, in.ID)
-		return nil, e, err
+		return environmentResult(s.Get(ctx, in.ID))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -104,15 +103,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Name: in.Name, ProjectID: in.ProjectID, ProtectedStatus: in.ProtectedStatus,
 			NetworkIsolationEnabled: in.NetworkIsolationEnabled, IPAllowList: in.IPAllowList,
 		})
-		return nil, e, err
+		return environmentResult(e, err)
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_environment",
 		Description: "Update an environment in one call: its name, the protected-environment ACL (protectedStatus, networkIsolationEnabled, ipAllowList), and/or which services, databases, key-value instances, and env groups belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). Assigning a service, database, or key-value instance also joins it to the environment's project. This tool replaces the retired set_environment_acl / set_environment_services / set_environment_databases / set_environment_keyvalues / set_environment_env_groups (w1/m71) and rename_environment (w1/m74 — pass name here instead). bex extension (Render parity: PATCH /environments/{id}).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		e, err := s.applyEnvironmentPatch(ctx, in)
-		return nil, e, err
+		return environmentResult(s.applyEnvironmentPatch(ctx, in))
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -163,4 +161,14 @@ func (s *Service) applyEnvironmentPatch(ctx context.Context, in updateEnvironmen
 	})
 
 	return ops.Run(func() (EnvironmentView, error) { return s.Get(ctx, in.ID) })
+}
+
+// environmentResult adds MCP's text warning (w1/m171) when the environment's
+// allowlist sees Cloudflare on a member's custom domain; otherwise the SDK's
+// default rendering is untouched.
+func environmentResult(e EnvironmentView, err error) (*mcp.CallToolResult, EnvironmentView, error) {
+	if err != nil {
+		return nil, EnvironmentView{}, err
+	}
+	return mcputil.WithWarning(e, core.ProxiedAllowListWarning(e.IPAllowListProxiedDomains)), e, nil
 }

@@ -575,10 +575,24 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	ctx, flushRollout := rollout.Batch(ctx)
 	defer flushRollout()
 	var ops core.PatchOps[AppView]
+	// The patch answers with the LAST row's view, so the allowlist row's
+	// proxied-domain warning (w1/m171) would be lost behind any later row;
+	// carry it to the final view.
+	var proxied []string
 	for _, row := range presentServicePatchRows(p) {
-		ops.Add(true, func() (AppView, error) { return row.apply(ctx, s, id, p) })
+		ops.Add(true, func() (AppView, error) {
+			v, err := row.apply(ctx, s, id, p)
+			if v.IPAllowListProxiedDomains != nil {
+				proxied = v.IPAllowListProxiedDomains
+			}
+			return v, err
+		})
 	}
-	return ops.Run(func() (AppView, error) { return s.Get(ctx, id) })
+	v, err := ops.Run(func() (AppView, error) { return s.Get(ctx, id) })
+	if err == nil && v.IPAllowListProxiedDomains == nil {
+		v.IPAllowListProxiedDomains = proxied
+	}
+	return v, err
 }
 
 // presentServicePatchRows is the rows p actually asks for, in table order.

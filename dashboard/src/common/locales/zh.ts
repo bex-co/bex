@@ -335,6 +335,23 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Timestamp tooltip: label of the row showing the instant as Unix seconds",
   },
+  "common.ipAllowListProxiedTitle_other": {
+    message: "白名单在 {count} 个自定义域名上无法识别客户端",
+    description:
+      "Title of the warning shown under an inbound IP allowlist when custom domains it covers are proxied by Cloudflare (w1/m171)",
+  },
+  "common.ipAllowListProxiedBody_other": {
+    message:
+      "以下域名经由 Cloudflare 代理，白名单在这些域名上匹配的是 Cloudflare 的地址，而不是访问者的地址。白名单已保存，但在这些域名上会拦截你本想放行的访问者：",
+    description:
+      "Body of the Cloudflare-proxied allowlist warning, followed by the list of proxied hostnames (w1/m171)",
+  },
+  "common.ipAllowListProxiedFix": {
+    message:
+      "如需按真实客户端地址过滤，请在 Cloudflare 中将该 DNS 记录设为仅 DNS（灰色云朵）。",
+    description:
+      "How to fix the Cloudflare-proxied allowlist warning: switch the record from proxied (orange cloud) to DNS only (w1/m171)",
+  },
 };
 
 export default zhCommon;
