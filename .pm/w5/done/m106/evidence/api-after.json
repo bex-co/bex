@@ -1,0 +1,86 @@
+{
+  "at": "2026-10-02T03:30:38.705Z",
+  "rest": [
+    {
+      "cronJobRun": {
+        "id": "crr-k6lqo96v0krmmdhlitb7",
+        "status": "pending",
+        "startedAt": "2026-10-02T03:30:24Z"
+      },
+      "cursor": "crr-k6lqo96v0krmmdhlitb7"
+    },
+    {
+      "cronJobRun": {
+        "id": "crr-ikvp5d4r3ijuih81g8jv",
+        "status": "canceled",
+        "startedAt": "2026-10-02T03:29:44Z",
+        "finishedAt": "2026-10-02T03:29:51.694405Z"
+      },
+      "cursor": "crr-ikvp5d4r3ijuih81g8jv"
+    },
+    {
+      "cronJobRun": {
+        "id": "crr-b14vmqcq1tt3tr0ugl7l",
+        "status": "canceled",
+        "startedAt": "2026-10-02T03:28:31Z",
+        "finishedAt": "2026-10-02T03:29:11.893354Z"
+      },
+      "cursor": "crr-b14vmqcq1tt3tr0ugl7l"
+    },
+    {
+      "cronJobRun": {
+        "id": "crr-0hkfdm7rf8l2epc8etp9",
+        "status": "successful",
+        "startedAt": "2026-10-02T03:27:00Z",
+        "finishedAt": "2026-10-02T03:28:29Z"
+      },
+      "cursor": "crr-0hkfdm7rf8l2epc8etp9"
+    },
+    {
+      "cronJobRun": {
+        "id": "crr-9o9sc7iffqob5i4p6kj0",
+        "status": "canceled",
+        "startedAt": "2026-10-02T03:26:02Z",
+        "finishedAt": "2026-10-02T03:26:28.598495Z"
+      },
+      "cursor": "crr-9o9sc7iffqob5i4p6kj0"
+    }
+  ],
+  "graphql": {
+    "data": {
+      "cronJobRuns": [
+        {
+          "finishedAt": "",
+          "id": "crr-k6lqo96v0krmmdhlitb7",
+          "startedAt": "2026-10-02T03:30:24Z",
+          "status": "pending"
+        },
+        {
+          "finishedAt": "2026-10-02T03:29:51.694405Z",
+          "id": "crr-ikvp5d4r3ijuih81g8jv",
+          "startedAt": "2026-10-02T03:29:44Z",
+          "status": "canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T03:29:11.893354Z",
+          "id": "crr-b14vmqcq1tt3tr0ugl7l",
+          "startedAt": "2026-10-02T03:28:31Z",
+          "status": "canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T03:28:29Z",
+          "id": "crr-0hkfdm7rf8l2epc8etp9",
+          "startedAt": "2026-10-02T03:27:00Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T03:26:28.598495Z",
+          "id": "crr-9o9sc7iffqob5i4p6kj0",
+          "startedAt": "2026-10-02T03:26:02Z",
+          "status": "canceled"
+        }
+      ]
+    }
+  },
+  "dashboard": "Started\tDuration\tStatus\tActions\n\nnow\n\t—\tRunning\tCancel\n\nnow\n\t8s\tCanceled\t\n\n2m\n\t41s\tCanceled\t\n\n3m\n\t1m 29s\tSucceeded\t\n\n4m\n\t27s\tCanceled\t"
+}

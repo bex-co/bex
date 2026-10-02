@@ -1,0 +1,5 @@
+Building custom golangci-lint with plugins...
+0 issues.
+0 issues.
+0 issues.
+0 issues.

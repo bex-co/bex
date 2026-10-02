@@ -1,0 +1,15 @@
+--- FAIL: TestCronPreemptionWaitsForEveryActiveRun (0.11s)
+    --- FAIL: TestCronPreemptionWaitsForEveryActiveRun/requested-cancellation (0.10s)
+        cron_preemption_test.go:72: deleting active Job before pausing schedule: cron read=<nil>
+        cron_preemption_test.go:91: schedule resumed during preemption; a pending tick can start a second run
+        cron_preemption_test.go:91: schedule resumed during preemption; a pending tick can start a second run
+    --- FAIL: TestCronPreemptionWaitsForEveryActiveRun/unobserved-scheduled-run (0.01s)
+        cron_preemption_test.go:94: manual replacement materialized before old Pods were gone: <nil>
+        cron_preemption_test.go:96: cancellation for tea-x-qa-20260917-p12-cron-scheduled not persisted before Job deletion
+        cron_preemption_test.go:94: manual replacement materialized before old Pods were gone: <nil>
+        cron_preemption_test.go:96: cancellation for tea-x-qa-20260917-p12-cron-scheduled not persisted before Job deletion
+        cron_preemption_test.go:112: cancellation for tea-x-qa-20260917-p12-cron-scheduled not persisted before Job deletion
+        cron_preemption_test.go:119: active run was not preempted
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/controller	0.752s
+FAIL

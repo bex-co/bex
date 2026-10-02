@@ -1,0 +1,867 @@
+{
+  "serviceId": "srv-davcqdhjg4r2nk99ci50",
+  "workspaceId": "tea-davcqapjg4r2nk99chtg",
+  "methodology": {
+    "reconciler": "current repository AppReconciler.Reconcile invoked for exactly one App using real cluster client; namespace write checks restrict fixture/dev-5 only",
+    "reconcileIntervalSeconds": 2,
+    "observerPollSeconds": 1,
+    "limitations": [
+      "Direct reconcile loop bypasses production manager watch delivery; local evidence does not prove production acceptance.",
+      "Polling may miss a short final Pod terminated status before garbage collection; retained running sample and explicit snapshot establish lower bound rather than invented finish time.",
+      "API canceled finishedAt is intent time; it is not the container termination timestamp. Deleted Pod final states missed by polling remain null, never inferred from API history."
+    ]
+  },
+  "apps": [
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+      "uid": "c44f62c5-f300-4824-b867-4213eb58a503",
+      "createdAt": "2026-10-01T21:14:30Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:30:50.062395+00:00",
+      "ownerReferences": null
+    }
+  ],
+  "cronJobs": [
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+      "uid": "0e137897-bec2-4607-8c9e-c2b621e44967",
+      "createdAt": "2026-10-01T21:15:10Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:30:25.241418+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "app.bex.co/v1alpha1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "App",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "c44f62c5-f300-4824-b867-4213eb58a503"
+        }
+      ],
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": false,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848156",
+      "uid": "ef39c1e2-d726-43ae-8520-9b627e2586a9",
+      "createdAt": "2026-10-01T21:16:00Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-01T21:16:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-01T21:16:09Z",
+          "lastTransitionTime": "2026-10-01T21:16:09Z",
+          "message": "Job has reached the specified backoff limit",
+          "reason": "BackoffLimitExceeded",
+          "status": "True",
+          "type": "FailureTarget"
+        },
+        {
+          "lastProbeTime": "2026-10-01T21:16:09Z",
+          "lastTransitionTime": "2026-10-01T21:16:09Z",
+          "message": "Job has reached the specified backoff limit",
+          "reason": "BackoffLimitExceeded",
+          "status": "True",
+          "type": "Failed"
+        }
+      ],
+      "jobStartTime": "2026-10-01T21:16:00Z",
+      "jobCompletionTime": null,
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848520",
+      "uid": "fc297597-8794-4456-a50f-5698b8b8ff6a",
+      "createdAt": "2026-10-02T03:20:06Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-02T03:20:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-02T03:21:35Z",
+          "lastTransitionTime": "2026-10-02T03:21:35Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-02T03:21:35Z",
+          "lastTransitionTime": "2026-10-02T03:21:35Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "jobStartTime": "2026-10-02T03:20:06Z",
+      "jobCompletionTime": "2026-10-02T03:21:35Z",
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848521",
+      "uid": "d37208e9-6e88-4261-9261-bcbede3ca898",
+      "createdAt": "2026-10-02T03:21:36Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-02T03:21:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-02T03:23:04Z",
+          "lastTransitionTime": "2026-10-02T03:23:04Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-02T03:23:04Z",
+          "lastTransitionTime": "2026-10-02T03:23:04Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "jobStartTime": "2026-10-02T03:21:36Z",
+      "jobCompletionTime": "2026-10-02T03:23:04Z",
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848523",
+      "uid": "e44af540-a6d0-4d39-b12e-56f3fa77a559",
+      "createdAt": "2026-10-02T03:23:04Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-02T03:23:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-02T03:24:32Z",
+          "lastTransitionTime": "2026-10-02T03:24:32Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-02T03:24:32Z",
+          "lastTransitionTime": "2026-10-02T03:24:32Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "jobStartTime": "2026-10-02T03:23:04Z",
+      "jobCompletionTime": "2026-10-02T03:24:32Z",
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848524",
+      "uid": "b371e19d-4473-49ea-9094-73e1dd618239",
+      "createdAt": "2026-10-02T03:24:32Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:26:02.876081+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-02T03:24:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-02T03:26:01Z",
+          "lastTransitionTime": "2026-10-02T03:26:01Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-02T03:26:02Z",
+          "lastTransitionTime": "2026-10-02T03:26:02Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "jobStartTime": "2026-10-02T03:24:32Z",
+      "jobCompletionTime": "2026-10-02T03:26:01Z",
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848526",
+      "uid": "37600889-51b6-4fb2-82ea-f00f372e4a73",
+      "createdAt": "2026-10-02T03:26:02Z",
+      "firstObservedAt": "2026-10-02T03:26:02.876081+00:00",
+      "lastObservedAt": "2026-10-02T03:26:31.969890+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-02T03:26:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [],
+      "jobStartTime": "2026-10-02T03:26:02Z",
+      "jobCompletionTime": null,
+      "deletionTimestamp": "2026-10-02T03:26:29Z"
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-run-9a52a106",
+      "uid": "4549955e-3fba-4553-9877-8f1dd52be710",
+      "createdAt": "2026-10-02T03:27:00Z",
+      "firstObservedAt": "2026-10-02T03:27:00.960533+00:00",
+      "lastObservedAt": "2026-10-02T03:28:30.941124+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "app.bex.co/v1alpha1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "App",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "c44f62c5-f300-4824-b867-4213eb58a503"
+        }
+      ],
+      "scheduledAt": null,
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [
+        {
+          "lastProbeTime": "2026-10-02T03:28:29Z",
+          "lastTransitionTime": "2026-10-02T03:28:29Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-10-02T03:28:29Z",
+          "lastTransitionTime": "2026-10-02T03:28:29Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "jobStartTime": "2026-10-02T03:27:00Z",
+      "jobCompletionTime": "2026-10-02T03:28:29Z",
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848528",
+      "uid": "c92fdc4f-cee3-4b14-976d-1a90590ce66a",
+      "createdAt": "2026-10-02T03:28:31Z",
+      "firstObservedAt": "2026-10-02T03:28:32.590266+00:00",
+      "lastObservedAt": "2026-10-02T03:29:14.488333+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-02T03:28:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [],
+      "jobStartTime": "2026-10-02T03:28:31Z",
+      "jobCompletionTime": null,
+      "deletionTimestamp": "2026-10-02T03:29:12Z"
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-run-2e8d0993",
+      "uid": "2b5bff49-1092-40c2-a592-da714b2646d1",
+      "createdAt": "2026-10-02T03:29:44Z",
+      "firstObservedAt": "2026-10-02T03:29:45.236071+00:00",
+      "lastObservedAt": "2026-10-02T03:29:54.097795+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "app.bex.co/v1alpha1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "App",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "c44f62c5-f300-4824-b867-4213eb58a503"
+        }
+      ],
+      "scheduledAt": null,
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [],
+      "jobStartTime": "2026-10-02T03:29:44Z",
+      "jobCompletionTime": null,
+      "deletionTimestamp": "2026-10-02T03:29:52Z"
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848530",
+      "uid": "4ca5bff5-1aa5-4c52-a290-d448fb20b5af",
+      "createdAt": "2026-10-02T03:30:24Z",
+      "firstObservedAt": "2026-10-02T03:30:25.241418+00:00",
+      "lastObservedAt": "2026-10-02T03:30:25.241418+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "CronJob",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069",
+          "uid": "0e137897-bec2-4607-8c9e-c2b621e44967"
+        }
+      ],
+      "scheduledAt": "2026-10-02T03:30:00Z",
+      "spec": {
+        "backoffLimit": 0,
+        "suspend": false,
+        "parallelism": 1,
+        "completions": 1
+      },
+      "conditions": [],
+      "jobStartTime": "2026-10-02T03:30:24Z",
+      "jobCompletionTime": null,
+      "deletionTimestamp": null
+    }
+  ],
+  "pods": [
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848156-x8k7m",
+      "uid": "3b6816c6-51b4-41da-a19b-076f9b9c023f",
+      "createdAt": "2026-10-01T21:16:00Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848156",
+          "uid": "ef39c1e2-d726-43ae-8520-9b627e2586a9"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-01T21:16:05Z",
+          "finishedAt": "2026-10-01T21:16:05Z",
+          "exitCode": 23,
+          "state": "terminated",
+          "restartCount": 0,
+          "ready": false
+        }
+      ],
+      "logLines": [
+        "2026-10-01T21:16:05.568689293Z W5_CRON_FAIL",
+        "2026-10-01T21:16:05.570784793Z 1790889365"
+      ],
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848520-7hcdf",
+      "uid": "6b359c6d-b1ca-4c5e-b2df-e0fc59c3cabd",
+      "createdAt": "2026-10-02T03:20:06Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848520",
+          "uid": "fc297597-8794-4456-a50f-5698b8b8ff6a"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:20:07Z",
+          "finishedAt": "2026-10-02T03:21:32Z",
+          "exitCode": 0,
+          "state": "terminated",
+          "restartCount": 0,
+          "ready": false
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:20:07.939289043Z W5_CRON_LONG_START",
+        "2026-10-02T03:20:07.943125418Z 1790911207",
+        "2026-10-02T03:21:32.946675763Z W5_CRON_LONG_END",
+        "2026-10-02T03:21:32.948675638Z 1790911292"
+      ],
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848521-j567c",
+      "uid": "c84eb462-84a9-4ee3-8de3-8b673954e2ab",
+      "createdAt": "2026-10-02T03:21:36Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848521",
+          "uid": "d37208e9-6e88-4261-9261-bcbede3ca898"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:21:36Z",
+          "finishedAt": "2026-10-02T03:23:01Z",
+          "exitCode": 0,
+          "state": "terminated",
+          "restartCount": 0,
+          "ready": false
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:21:36.921547168Z W5_CRON_LONG_START",
+        "2026-10-02T03:21:36.922783709Z 1790911296",
+        "2026-10-02T03:23:01.932360096Z W5_CRON_LONG_END",
+        "2026-10-02T03:23:01.935805680Z 1790911381"
+      ],
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848523-f8xzg",
+      "uid": "82a3b697-ac55-49ed-9c2b-0f8ce2fa399b",
+      "createdAt": "2026-10-02T03:23:04Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848523",
+          "uid": "e44af540-a6d0-4d39-b12e-56f3fa77a559"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:23:05Z",
+          "finishedAt": "2026-10-02T03:24:30Z",
+          "exitCode": 0,
+          "state": "terminated",
+          "restartCount": 0,
+          "ready": false
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:23:05.175117625Z W5_CRON_LONG_START",
+        "2026-10-02T03:23:05.175755667Z 1790911385",
+        "2026-10-02T03:24:30.177765095Z W5_CRON_LONG_END",
+        "2026-10-02T03:24:30.179671220Z 1790911470"
+      ],
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848524-xpn47",
+      "uid": "96cc980c-b9fd-46cf-8d09-ab4506c9048a",
+      "createdAt": "2026-10-02T03:24:32Z",
+      "firstObservedAt": "2026-10-02T03:25:40.696301+00:00",
+      "lastObservedAt": "2026-10-02T03:26:02.876081+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848524",
+          "uid": "b371e19d-4473-49ea-9094-73e1dd618239"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:24:34Z",
+          "finishedAt": "2026-10-02T03:25:59Z",
+          "exitCode": 0,
+          "state": "terminated",
+          "restartCount": 0,
+          "ready": false
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:24:34.019520583Z W5_CRON_LONG_START",
+        "2026-10-02T03:24:34.020187208Z 1790911474",
+        "2026-10-02T03:25:59.039718053Z W5_CRON_LONG_END",
+        "2026-10-02T03:25:59.042192095Z 1790911559"
+      ],
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848526-kv88j",
+      "uid": "0b7c61da-29d0-4679-9bc7-24684b187333",
+      "createdAt": "2026-10-02T03:26:02Z",
+      "firstObservedAt": "2026-10-02T03:26:02.876081+00:00",
+      "lastObservedAt": "2026-10-02T03:26:30.245815+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848526",
+          "uid": "37600889-51b6-4fb2-82ea-f00f372e4a73"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:26:03Z",
+          "finishedAt": null,
+          "exitCode": null,
+          "state": "running",
+          "restartCount": 0,
+          "ready": true
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:26:03.465905305Z W5_CRON_LONG_START",
+        "2026-10-02T03:26:03.470875764Z 1790911563"
+      ],
+      "deletionTimestamp": "2026-10-02T03:26:59Z"
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-run-9a52a106-qq4mn",
+      "uid": "aeb5b09f-da13-4782-9d5d-519e3fc7b007",
+      "createdAt": "2026-10-02T03:27:00Z",
+      "firstObservedAt": "2026-10-02T03:27:00.960533+00:00",
+      "lastObservedAt": "2026-10-02T03:28:30.941124+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-run-9a52a106",
+          "uid": "4549955e-3fba-4553-9877-8f1dd52be710"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:27:01Z",
+          "finishedAt": "2026-10-02T03:28:26Z",
+          "exitCode": 0,
+          "state": "terminated",
+          "restartCount": 0,
+          "ready": false
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:27:01.800869888Z W5_CRON_LONG_START",
+        "2026-10-02T03:27:01.802283763Z 1790911621",
+        "2026-10-02T03:28:26.816516844Z W5_CRON_LONG_END",
+        "2026-10-02T03:28:26.818856302Z 1790911706"
+      ],
+      "deletionTimestamp": null
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848528-kcdlk",
+      "uid": "ec74089f-79bb-44c8-986f-219f6647c0d4",
+      "createdAt": "2026-10-02T03:28:31Z",
+      "firstObservedAt": "2026-10-02T03:28:32.590266+00:00",
+      "lastObservedAt": "2026-10-02T03:29:43.700886+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848528",
+          "uid": "c92fdc4f-cee3-4b14-976d-1a90590ce66a"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:28:32Z",
+          "finishedAt": "2026-10-02T03:29:43Z",
+          "exitCode": 137,
+          "state": "terminated",
+          "restartCount": 0,
+          "ready": false
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:28:32.841284680Z W5_CRON_LONG_START",
+        "2026-10-02T03:28:32.842855180Z 1790911712"
+      ],
+      "deletionTimestamp": "2026-10-02T03:29:42Z"
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-run-2e8d0993-bznrl",
+      "uid": "c85f2f86-7e7d-4535-8868-a06ac0f9c66a",
+      "createdAt": "2026-10-02T03:29:44Z",
+      "firstObservedAt": "2026-10-02T03:29:45.236071+00:00",
+      "lastObservedAt": "2026-10-02T03:29:54.097795+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-run-2e8d0993",
+          "uid": "2b5bff49-1092-40c2-a592-da714b2646d1"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:29:46Z",
+          "finishedAt": null,
+          "exitCode": null,
+          "state": "running",
+          "restartCount": 0,
+          "ready": true
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:29:46.258405297Z W5_CRON_LONG_START",
+        "2026-10-02T03:29:46.283425464Z 1790911786"
+      ],
+      "deletionTimestamp": "2026-10-02T03:30:22Z"
+    },
+    {
+      "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848530-qbfmz",
+      "uid": "6e47ee5c-a50c-4b06-9a87-6671b649b36f",
+      "createdAt": "2026-10-02T03:30:24Z",
+      "firstObservedAt": "2026-10-02T03:30:25.241418+00:00",
+      "lastObservedAt": "2026-10-02T03:30:51.495420+00:00",
+      "ownerReferences": [
+        {
+          "apiVersion": "batch/v1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "Job",
+          "name": "tea-davcqapjg4r2nk99chtg-w5-cron-069-29848530",
+          "uid": "4ca5bff5-1aa5-4c52-a290-d448fb20b5af"
+        }
+      ],
+      "executions": [
+        {
+          "container": "app",
+          "startedAt": "2026-10-02T03:30:25Z",
+          "finishedAt": null,
+          "exitCode": null,
+          "state": "running",
+          "restartCount": 0,
+          "ready": true
+        }
+      ],
+      "logLines": [
+        "2026-10-02T03:30:25.054651593Z W5_CRON_LONG_START",
+        "2026-10-02T03:30:25.057709218Z 1790911825"
+      ],
+      "deletionTimestamp": "2026-10-02T03:31:20Z"
+    }
+  ],
+  "cronJobTransitions": [
+    {
+      "observedAt": "2026-10-02T03:25:40.696301+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": false,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:26:02.876081+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": false,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:26:30.245815+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:27:00.960533+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:28:32.590266+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": false,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:28:44.134745+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:29:09.197863+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": false,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:29:14.488333+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:29:45.236071+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": true,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    },
+    {
+      "observedAt": "2026-10-02T03:30:25.241418+00:00",
+      "spec": {
+        "schedule": "* * * * *",
+        "suspend": false,
+        "concurrencyPolicy": "Forbid",
+        "startingDeadlineSeconds": null
+      }
+    }
+  ]
+}

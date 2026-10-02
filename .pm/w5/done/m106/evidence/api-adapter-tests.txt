@@ -1,0 +1,1 @@
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	0.808s
