@@ -333,40 +333,91 @@ func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
 
 func TestRESTPostgresPublicDefaultIsAdapterSpecific(t *testing.T) {
 	tests := []struct {
-		name       string
-		body       string
-		wantPublic bool
+		name, fields string
+		wantPublic   bool
+		wantCIDRs    []string
 	}{
-		{"Render omission", `{"name":"render-default"}`, true},
-		{"Render explicit private", `{"name":"render-private","public":false}`, false},
-		{"Render explicit public", `{"name":"render-public","public":true}`, true},
+		{"omitted", "", true, []string{"0.0.0.0/0", "::/0"}},
+		{"null", `,"ipAllowList":null`, true, []string{"0.0.0.0/0", "::/0"}},
+		{"empty", `,"ipAllowList":[]`, false, nil},
+		{"restricted", `,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, true, []string{"192.0.2.0/24"}},
+		{"private", `,"public":false`, false, nil},
+		{"public", `,"public":true`, true, []string{"0.0.0.0/0", "::/0"}},
+		{"public-empty-override", `,"public":true,"ipAllowList":[]`, true, nil},
+		{"private-rules-override", `,"public":false,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, false, []string{"192.0.2.0/24"}},
+		{"private-null", `,"public":false,"ipAllowList":null`, false, nil},
+		{"public-null", `,"public":true,"ipAllowList":null`, true, []string{"0.0.0.0/0", "::/0"}},
+		{"private-empty", `,"public":false,"ipAllowList":[]`, false, nil},
+		{"public-rules", `,"public":true,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, true, []string{"192.0.2.0/24"}},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc, _ := newService()
-			w := serveREST(svc, http.MethodPost, "/v1/postgres", tt.body)
-			if w.Code != http.StatusCreated {
-				t.Fatalf("create = %d: %s", w.Code, w.Body.String())
-			}
-			var pg PostgresView
-			if err := json.Unmarshal(w.Body.Bytes(), &pg); err != nil {
-				t.Fatal(err)
-			}
-			if pg.Public != tt.wantPublic {
-				t.Fatalf("public = %v, want %v", pg.Public, tt.wantPublic)
-			}
-		})
+		for _, preview := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/preview=%v", tt.name, preview), func(t *testing.T) {
+				svc, k8s := newService()
+				path := "/v1/postgres"
+				wantStatus := http.StatusCreated
+				if preview {
+					path += "?dryRun=true"
+					wantStatus = http.StatusOK
+				}
+				w := serveREST(svc, http.MethodPost, path, `{"name":"pg-default"`+tt.fields+`}`)
+				if w.Code != wantStatus {
+					t.Fatalf("create = %d: %s", w.Code, w.Body.String())
+				}
+				var pg PostgresView
+				if err := json.Unmarshal(w.Body.Bytes(), &pg); err != nil {
+					t.Fatal(err)
+				}
+				gotCIDRs := core.AllowListCIDRs(pg.IPAllowList)
+				if pg.Public != tt.wantPublic || !slices.Equal(gotCIDRs, tt.wantCIDRs) {
+					t.Fatalf("public=%v rules=%v, want public=%v rules=%v", pg.Public, gotCIDRs, tt.wantPublic, tt.wantCIDRs)
+				}
+				if _, ok := decodeMap(t, w.Body.Bytes())["ipAllowList"].([]any); !ok {
+					t.Fatal("create ipAllowList must be an array, including when empty")
+				}
+				var databases appv1alpha1.DatabaseList
+				if err := k8s.List(context.Background(), &databases); err != nil {
+					t.Fatal(err)
+				}
+				if preview {
+					if len(databases.Items) != 0 {
+						t.Fatal("preview persisted database")
+					}
+					return
+				}
+				if len(databases.Items) != 1 {
+					t.Fatalf("persisted %d databases", len(databases.Items))
+				}
+				db := databases.Items[0]
+				if db.Spec.Public != pg.Public || !reflect.DeepEqual(core.AllowListOrEmpty(core.AllowListFromSpec(db.Spec.IPAllowList)), pg.IPAllowList) {
+					t.Fatal("readback disagrees with persisted access intent")
+				}
+				readback := serveREST(svc, http.MethodGet, "/v1/postgres/"+pg.ID, "")
+				if readback.Code != http.StatusOK {
+					t.Fatalf("get = %d: %s", readback.Code, readback.Body.String())
+				}
+				var got PostgresView
+				if err := json.Unmarshal(readback.Body.Bytes(), &got); err != nil {
+					t.Fatal(err)
+				}
+				if got.Public != pg.Public || !reflect.DeepEqual(got.IPAllowList, pg.IPAllowList) {
+					t.Fatal("GET access intent disagrees with create response")
+				}
+				if _, ok := decodeMap(t, readback.Body.Bytes())["ipAllowList"].([]any); !ok {
+					t.Fatal("GET ipAllowList must be an array, including when empty")
+				}
+			})
+		}
 	}
 
-	// Shared bex-native verbs (the seam GraphQL/MCP/Blueprint adapters call)
-	// retain their private-by-default contract.
+	// Native callers retain their private-by-default contract.
 	svc, _ := newService()
 	pg, err := svc.CreatePostgres(context.Background(), CreatePostgresRequest{Name: "shared-default"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pg.Public {
-		t.Fatal("shared CreatePostgres omission became public")
+	if pg.Public || len(pg.IPAllowList) != 0 {
+		t.Fatal("native create defaults changed")
 	}
 }
 
@@ -497,7 +548,7 @@ func TestPostgresDatadogFieldsFailClosedWithoutLeakingCredential(t *testing.T) {
 func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 	want := core.IPAllowListEntry{CIDRBlock: "203.0.113.0/24", Description: "office"}
 
-	restService, _ := newService()
+	restService, restClient := newService()
 	rest := serveREST(restService, "POST", "/v1/postgres",
 		`{"name":"acl-rest","ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}`)
 	if rest.Code != http.StatusCreated {
@@ -508,25 +559,24 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gqlService, _ := newService()
-	gqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
-		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: gqlService.GraphQLQuery()}),
-		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: gqlService.GraphQLMutation()}),
-	})
+	gqlService, gqlClient := newService()
+	gqlSchema, err := pgGQLSchema(gqlService)
 	if err != nil {
 		t.Fatal(err)
 	}
 	gqlResult := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `
 		mutation { createDatabase(name:"acl-gql", ipAllowListEntries:[{cidrBlock:"203.0.113.0/24", description:"office"}]) {
+			id public
 			ipAllowListEntries { cidrBlock description }
 		} }`})
 	if len(gqlResult.Errors) != 0 {
 		t.Fatalf("GraphQL create: %v", gqlResult.Errors)
 	}
-	gqlEntries := gqlResult.Data.(map[string]any)["createDatabase"].(map[string]any)["ipAllowListEntries"].([]any)
+	gqlView := gqlResult.Data.(map[string]any)["createDatabase"].(map[string]any)
+	gqlEntries := gqlView["ipAllowListEntries"].([]any)
 	gqlEntry := gqlEntries[0].(map[string]any)
 
-	mcpService, _ := newService()
+	mcpService, mcpClient := newService()
 	mcpCall, cleanup := pgMCPClient(t, mcpService)
 	defer cleanup()
 	mcpView := mcpCall("create_postgres", map[string]any{
@@ -542,35 +592,110 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 		t.Fatalf("create allowlist drift: REST=%+v GraphQL=%v MCP=%v", restView.IPAllowList, gqlEntry, mcpEntry)
 	}
 
-	badREST := serveREST(restService, "POST", "/v1/postgres", `{"name":"bad-rest","ipAllowList":[{"cidrBlock":"not-a-cidr"}]}`)
-	badGQL := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(), RequestString: `mutation { createDatabase(name:"bad-gql", ipAllowList:["not-a-cidr"]) { id } }`})
-	badMCPService, _ := newService()
-	badServer := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-	badMCPService.RegisterMCP(badServer)
-	serverTransport, clientTransport := mcp.NewInMemoryTransports()
-	ctx := context.Background()
-	if _, err := badServer.Connect(ctx, serverTransport, nil); err != nil {
-		t.Fatal(err)
+	if !restView.Public || gqlView["public"] != false || mcpView["public"] != false {
+		t.Fatalf("create publication defaults drifted: REST=%v GraphQL=%v MCP=%v", restView.Public, gqlView["public"], mcpView["public"])
 	}
-	badClient, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer badClient.Close()
-	badMCP, err := badClient.CallTool(ctx, &mcp.CallToolParams{Name: "create_postgres", Arguments: map[string]any{"name": "bad-mcp", "ipAllowList": []string{"not-a-cidr"}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	mcpErrorText := ""
-	if len(badMCP.Content) > 0 {
-		if text, ok := badMCP.Content[0].(*mcp.TextContent); ok {
-			mcpErrorText = text.Text
+	for _, created := range []struct {
+		name       string
+		client     client.Client
+		id         string
+		wantPublic bool
+	}{
+		{"REST", restClient, restView.ID, true},
+		{"GraphQL", gqlClient, gqlView["id"].(string), false},
+		{"MCP", mcpClient, mcpView["id"].(string), false},
+	} {
+		stored := getDatabase(t, created.client, created.id)
+		if stored.Spec.Public != created.wantPublic || !slices.Equal(core.AllowListFromSpec(stored.Spec.IPAllowList), []core.IPAllowListEntry{want}) {
+			t.Fatalf("%s persisted public=%v rules=%v", created.name, stored.Spec.Public, stored.Spec.IPAllowList)
 		}
 	}
-	if badREST.Code != http.StatusBadRequest || len(badGQL.Errors) != 1 || !badMCP.IsError ||
-		!strings.Contains(badREST.Body.String(), "CIDR") ||
-		!strings.Contains(badGQL.Errors[0].Message, "CIDR") || !strings.Contains(mcpErrorText, "CIDR") {
-		t.Fatalf("invalid CIDR mismatch: REST=%d %s GraphQL=%v MCP=%+v", badREST.Code, badREST.Body.String(), badGQL.Errors, badMCP)
+
+	on, off := true, false
+	for _, tc := range []struct {
+		name      string
+		public    *bool
+		withRules bool
+	}{
+		{"omitted", nil, false},
+		{"private-empty", &off, false},
+		{"public-empty", &on, false},
+		{"private-rules", &off, true},
+		{"public-rules", &on, true},
+	} {
+		t.Run("native/"+tc.name, func(t *testing.T) {
+			name := "native-" + tc.name
+			args := map[string]any{"name": name}
+			gqlArgs := fmt.Sprintf("name:%q", name)
+			if tc.public != nil {
+				args["public"] = *tc.public
+				gqlArgs += fmt.Sprintf(", public:%v", *tc.public)
+			}
+			wantRules := 0
+			if tc.withRules {
+				args["ipAllowListEntries"] = []core.IPAllowListEntry{want}
+				gqlArgs += `, ipAllowListEntries:[{cidrBlock:"203.0.113.0/24", description:"office"}]`
+				wantRules = 1
+			}
+			result := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(),
+				RequestString: `mutation { createDatabase(` + gqlArgs + `) { id public } }`})
+			if len(result.Errors) != 0 {
+				t.Fatalf("GraphQL create: %v", result.Errors)
+			}
+			gql := result.Data.(map[string]any)["createDatabase"].(map[string]any)
+			mcp := mcpCall("create_postgres", args)
+			wantPublic := tc.public != nil && *tc.public
+			for _, created := range []struct {
+				name   string
+				client client.Client
+				view   map[string]any
+			}{
+				{"GraphQL", gqlClient, gql},
+				{"MCP", mcpClient, mcp},
+			} {
+				stored := getDatabase(t, created.client, created.view["id"].(string))
+				if created.view["public"] != wantPublic || stored.Spec.Public != wantPublic || len(stored.Spec.IPAllowList) != wantRules {
+					t.Fatalf("%s create: public=%v stored public=%v rules=%v, want public=%v rule count=%d", created.name, created.view["public"], stored.Spec.Public, stored.Spec.IPAllowList, wantPublic, wantRules)
+				}
+			}
+		})
+	}
+
+	badClient, cleanupBad := pgMCPSession(t, mcpService)
+	defer cleanupBad()
+	for _, public := range []string{"omitted", "false", "true"} {
+		t.Run("invalid/"+public, func(t *testing.T) {
+			before := []int{countDatabases(t, restClient), countDatabases(t, gqlClient), countDatabases(t, mcpClient)}
+			restPublic, gqlPublic := "", ""
+			args := map[string]any{"name": "bad-mcp-" + public, "ipAllowList": []string{"not-a-cidr"}}
+			if public != "omitted" {
+				restPublic = `,"public":` + public
+				gqlPublic = ",public:" + public
+				args["public"] = public == "true"
+			}
+			badREST := serveREST(restService, "POST", "/v1/postgres", `{"name":"bad-rest-`+public+`","ipAllowList":[{"cidrBlock":"not-a-cidr"}]`+restPublic+`}`)
+			badGQL := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(),
+				RequestString: `mutation { createDatabase(name:"bad-gql-` + public + `", ipAllowList:["not-a-cidr"]` + gqlPublic + `) { id } }`})
+			badMCP, err := badClient.CallTool(context.Background(), &mcp.CallToolParams{Name: "create_postgres", Arguments: args})
+			if err != nil {
+				t.Fatal(err)
+			}
+			mcpErrorText := ""
+			if len(badMCP.Content) > 0 {
+				if text, ok := badMCP.Content[0].(*mcp.TextContent); ok {
+					mcpErrorText = text.Text
+				}
+			}
+			if badREST.Code != http.StatusBadRequest || len(badGQL.Errors) != 1 || !badMCP.IsError ||
+				!strings.Contains(badREST.Body.String(), "CIDR") ||
+				!strings.Contains(badGQL.Errors[0].Message, "CIDR") || !strings.Contains(mcpErrorText, "CIDR") {
+				t.Fatalf("invalid CIDR mismatch: REST=%d %s GraphQL=%v MCP=%+v", badREST.Code, badREST.Body.String(), badGQL.Errors, badMCP)
+			}
+			after := []int{countDatabases(t, restClient), countDatabases(t, gqlClient), countDatabases(t, mcpClient)}
+			if !slices.Equal(before, after) {
+				t.Fatalf("invalid CIDR created databases: REST/GraphQL/MCP before=%v after=%v", before, after)
+			}
+		})
 	}
 }
 
