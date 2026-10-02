@@ -455,8 +455,21 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.persistenceDescription": {
     message:
-      "更改数据写入磁盘的方式，以便在重启后保留。保存会重启存储并保留数据，连接会中断最多一分钟。",
+      "更改模式会重启存储，数据准备期间连接会中断。在“日志 + 快照”和“仅快照”之间切换会保留数据。切换到或从“关闭”模式切换会丢弃所有数据。",
     description: "Key Value detail persistence-mode card description",
+  },
+  "keyvalue.persistenceDiscardTitle": {
+    message: "丢弃键值存储数据？",
+    description: "Persistence Off transition destructive confirmation title",
+  },
+  "keyvalue.persistenceDiscardBody": {
+    message:
+      "切换到或从“关闭”模式切换会重启此存储并丢弃其所有数据。此操作无法撤销。",
+    description: "Persistence Off transition destructive confirmation body",
+  },
+  "keyvalue.persistenceDiscardConfirm": {
+    message: "丢弃数据并更改模式",
+    description: "Persistence Off transition destructive confirmation confirm",
   },
   "keyvalue.persistenceLabel": {
     message: "持久化模式",

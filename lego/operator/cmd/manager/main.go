@@ -570,6 +570,7 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 			"secretNameConfigured", kvBackupSecret != "")
 	}
 	if err := (&controller.KeyValueReconciler{
+		APIReader:             mgr.GetAPIReader(),
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
 		SecretClient:          uncachedClient, // see DatabaseReconciler above

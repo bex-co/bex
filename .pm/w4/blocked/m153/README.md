@@ -1,16 +1,16 @@
 # w4 · m153 — Preserve Key Value data when re-enabling journaling
 
-**Worker:** worker4 **Goal:** switching a managed Key Value from Snapshot only to Journal + Snapshot preserves the current keyspace instead of replaying an older journal. **Status:** blocked (prepared implementation is unshipped; full Valkey 8 verification requires a healthy Docker host)
+**Worker:** worker4 **Goal:** switching a managed Key Value from Snapshot only to Journal + Snapshot preserves the current keyspace instead of replaying an older journal. **Status:** blocked (t001, t002 and t005 done; pinned Linux image verification and deployed TLS/UI acceptance remain)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Define and gate the persistence transition state | 35m | — |
-| t002 | Complete the journal handoff before rolling Valkey | 55m | w4/m153/t001 |
+| t001 | Define and gate the persistence transition state — **DONE** | 35m | — |
+| t002 | Complete the journal handoff before rolling Valkey — **DONE** | 55m | w4/m153/t001 |
 | t003 | Verify shared writers, mode transitions and controls | 40m | w4/m153/t002 |
 | t004 | Render parity and truthful persistence copy | 20m | w4/m153/t002, w4/m153/t003 |
-| t005 | Simplify the milestone changes | 20m | w4/m153/t004 |
+| t005 | Simplify the milestone changes — **DONE** | 20m | w4/m153/t004 |
 | t006 | Prove data survival with real Valkey restarts | 50m | w4/m153/t004, w4/m153/t005 |
 | t007 | Closeout after live data acceptance | 10m | w4/m153/t006 |
 
@@ -36,7 +36,11 @@ Repeat [finding.md](finding.md)'s Free/public fixture, using its actual external
 - **Dedupe:** uncovered runtime transition gap in w6/done/m127 and w4/done/066. w7/done/m69 already handles AOF conversion for throwaway restores, but the managed-resource reconciler does not call that script. w1/blocked/m166 addresses endpoint/readiness flapping; a successful authenticated PING still passes on the wrong keyspace.
 - **Limits:** reproduced on Valkey 8.1.9, Free/public, through dashboard GraphQL writes. REST/MCP reads agree; their write paths, Blueprint/direct CR changes, Valkey 7, other modes and failure races are source-traced or unverified, assigned to t003/t006. All hunt resources were removed and its session revoked; the known TLS Secret residue was cleaned by exact identity under w4/m149's existing finding.
 
-## Blocked implementation — 2026-10-02
+## Current verdict — 2026-10-02
+
+See [current implementation](current-implementation.md) for the replacement implementation, passing native Valkey 7/8 data matrix and remaining Linux-image/release/QA gates. t001/t002/t005 are done; t003/t004/t006/t007 retain unobserved acceptance. The archive below is historical and must not be applied over the new implementation.
+
+## Earlier blocked attempt — 2026-10-02
 
 The complete 19-file implementation is preserved in [implementation.patch](implementation.patch), with its transition table, checks and limitations in [verification.md](verification.md). **No product source changes from m153 were shipped.** The patch was reverse-checked and removed from the working source so other w4 items can ship without carrying an unverified persistence change. All task frontmatter remains open until the patch is applied, fully verified and landed.
 

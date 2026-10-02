@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/key-value-persistence-mode-section";
@@ -27,6 +27,93 @@ beforeEach(() => {
 });
 
 describe("KeyValuePersistenceModeSection", () => {
+  it.each([
+    ["journal-snapshot", "Off", "off"],
+    ["off", "Snapshot only", "snapshot"],
+  ])(
+    "requires a phrase before discarding data from %s",
+    async (from, option, to) => {
+      hookState.mode = from;
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      render(<KeyValuePersistenceModeSection id="red-abc" name="cache" />);
+      await user.click(
+        screen.getByRole("button", { name: "Edit persistence mode" }),
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: "Persistence mode" }),
+      );
+      await user.click(screen.getByRole("option", { name: option }));
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      const dialog = screen.getByRole("alertdialog");
+      const confirm = within(dialog).getByRole("button", {
+        name: "Discard data and change mode",
+      });
+      expect(save).not.toHaveBeenCalled();
+      expect(confirm).toBeDisabled();
+      await user.type(
+        within(dialog).getByRole("textbox"),
+        "sudo discard key value cache",
+      );
+      await user.click(confirm);
+      expect(save).toHaveBeenCalledExactlyOnceWith(to);
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+    },
+  );
+
+  it("keeps failed writes open and refuses a confirmation after the saved mode changes", async () => {
+    hookState.mode = "off";
+    save.mockResolvedValue(false);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const { rerender } = render(
+      <KeyValuePersistenceModeSection id="red-abc" name="cache" />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Edit persistence mode" }),
+    );
+    await user.click(
+      screen.getByRole("combobox", { name: "Persistence mode" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Snapshot only" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.type(
+      within(dialog).getByRole("textbox"),
+      "sudo discard key value cache",
+    );
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Discard data and change mode",
+      }),
+    );
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(save).toHaveBeenCalledExactlyOnceWith("snapshot");
+    hookState.mode = "journal-snapshot";
+    rerender(<KeyValuePersistenceModeSection id="red-abc" name="cache" />);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a destructive transition without writing", async () => {
+    hookState.mode = "off";
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    render(<KeyValuePersistenceModeSection id="red-abc" />);
+    await user.click(
+      screen.getByRole("button", { name: "Edit persistence mode" }),
+    );
+    await user.click(
+      screen.getByRole("combobox", { name: "Persistence mode" }),
+    );
+    await user.click(screen.getByRole("option", { name: "Snapshot only" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
   it("is read-only until the pencil, then fires the mutation with the new mode", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(<KeyValuePersistenceModeSection id="red-abc" />);
