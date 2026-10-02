@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -48,11 +49,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
+	reasonKVCertificateFailed = "CertificateFailed"
 	// kvStorageClass is the StorageClass for Valkey data volumes (same class the
 	// Database controller uses for Postgres PVCs).
 	kvStorageClass = "hcloud-volumes"
@@ -343,18 +346,61 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 		kv.Status.ExternalHost = ""
 		return "TLSIssuerMissing", fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint")
 	}
+	certificate := &unstructured.Unstructured{}
+	certificate.SetGroupVersionKind(certManagerCertificateGVK)
+	certificate.SetName(tlsSecretName)
+	certificate.SetNamespace(kv.Namespace)
 	if !public {
-		return "CertificateCleanupFailed", deleteOwned(ctx, r.Client, kv, certManagerCertificateGVK, tlsSecretName)
+		if err := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(certificate), certificate); err != nil {
+			return "CertificateCleanupFailed", client.IgnoreNotFound(err)
+		}
+		if _, err := r.rememberKeyValueTLSCertificate(ctx, kv, certificate); err != nil {
+			return "CertificateCleanupFailed", err
+		}
+		return "CertificateCleanupFailed", deleteKeyValueTLSObject(ctx, r.Client, certificate)
+	}
+	// Do not let secretTemplate provenance relabel an unrelated or previous
+	// lifetime's private key into this lifetime's cleanup authority.
+	secret := &corev1.Secret{}
+	if err := r.secretClient().Get(ctx, client.ObjectKeyFromObject(certificate), secret); err == nil {
+		identity, identityErr := r.keyValueTLSIdentity(kv)
+		if identityErr != nil {
+			return reasonKVCertificateFailed, identityErr
+		}
+		existing := certificate.DeepCopy()
+		if readErr := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(existing), existing); readErr == nil {
+			if !metav1.IsControlledBy(existing, kv) {
+				return reasonKVCertificateFailed, fmt.Errorf("refusing foreign KeyValue TLS Certificate")
+			}
+			identity.CertificateUID = string(existing.GetUID())
+		} else if !apierrors.IsNotFound(readErr) {
+			return reasonKVCertificateFailed, readErr
+		}
+		if err := validateKeyValueTLSSecret(kv, secret, identity); err != nil {
+			return reasonKVCertificateFailed, err
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return reasonKVCertificateFailed, err
 	}
 	host := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
 	spec := map[string]any{
-		"secretName": tlsSecretName,
-		"dnsNames":   []any{host},
+		"secretName":     tlsSecretName,
+		"secretTemplate": map[string]any{"labels": map[string]any{execution.LabelKeyValueUID: string(kv.UID)}},
+		"dnsNames":       []any{host},
 		"issuerRef": map[string]any{
 			"name": r.ClusterIssuer, "kind": "ClusterIssuer",
 		},
 	}
-	return "CertificateFailed", upsertOwned(ctx, r.Client, r.Scheme, kv, certManagerCertificateGVK, tlsSecretName, spec)
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, certificate, func() error {
+		if certificate.GetResourceVersion() != "" && !metav1.IsControlledBy(certificate, kv) {
+			return fmt.Errorf("refusing foreign KeyValue TLS Certificate")
+		}
+		if err := projectUnstructuredSpec(certificate, spec); err != nil {
+			return err
+		}
+		return controllerutil.SetControllerReference(kv, certificate, r.Scheme)
+	})
+	return reasonKVCertificateFailed, err
 }
 
 func (r *KeyValueReconciler) reconcileKeyValueCredentials(
@@ -542,7 +588,7 @@ func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageG
 		storageGB:     storageGB,
 		internalHost:  fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace),
 		public:        kv.Spec.Public && kvDomain != "",
-		tlsSecretName: kv.Name + "-kv-tls",
+		tlsSecretName: keyValueTLSName(kv),
 		replicas:      replicas,
 		labels:        map[string]string{labelKeyValue: kv.Name},
 		podLabels:     podLabels,
@@ -791,6 +837,10 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		logf.FromContext(ctx).Info("refusing KeyValue outside a canonical tenant namespace (codex #11)",
 			"namespace", kv.Namespace, "name", kv.Name)
 		return ctrl.Result{}, nil
+	}
+
+	if err := r.ensureKeyValueTLSFinalizer(ctx, &kv); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	plan, requestedStorageGB := resolveKVPlan(kv.Spec)

@@ -88,7 +88,7 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	scheme.AddKnownTypeWithName(certManagerCertificateGVK, &unstructured.Unstructured{})
 
 	kv := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: "acl-kv", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "acl-kv", Namespace: "default", UID: "kv-public-test"},
 		Spec: appv1alpha1.KeyValueSpec{
 			Plan: "free", Public: true,
 			IPAllowList: []appv1alpha1.IPAllowEntry{
@@ -119,6 +119,10 @@ func TestKeyValuePublicFrontDoor(t *testing.T) {
 	if err := cl.Get(ctx, types.NamespacedName{Name: "acl-kv-kv-tls", Namespace: "default"}, certificate); err != nil {
 		t.Fatalf("public TLS Certificate not created: %v", err)
 	}
+	// The fake client does not assign server UIDs; withdrawal persists this
+	// Certificate lifetime before deleting the producer.
+	certificate.SetUID("certificate-public-test")
+	NewWithT(t).Expect(cl.Update(ctx, certificate)).To(Succeed())
 	if dnsNames, _, _ := unstructured.NestedStringSlice(certificate.Object, "spec", "dnsNames"); len(dnsNames) != 1 || dnsNames[0] != "acl-kv.kv.example.test" {
 		t.Fatalf("Certificate dnsNames = %v", dnsNames)
 	}

@@ -332,6 +332,25 @@ aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
 }
 
 func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *appv1alpha1.KeyValue) (result ctrl.Result, err error) {
+	// The old paid-backup finalizer also fences deletion of a legacy instance
+	// that began terminating before the independent TLS duty was adopted.
+	if controllerutil.ContainsFinalizer(kv, kvTLSFinalizer) || controllerutil.ContainsFinalizer(kv, kvFinalizer) {
+		done, cleanupErr := r.reconcileKeyValueTLSCleanup(ctx, kv)
+		if cleanupErr != nil {
+			if r.kvDeletionOverran(kv) {
+				r.recordKVDeletionStalled(ctx, kv, "TLS cleanup returned errors")
+			}
+			return result, cleanupErr
+		}
+		if !done {
+			return r.kvDeletionPending(ctx, kv, "waiting for TLS Certificate and Secret deletion"), nil
+		}
+		if controllerutil.RemoveFinalizer(kv, kvTLSFinalizer) {
+			if err := r.Update(ctx, kv); err != nil {
+				return result, err
+			}
+		}
+	}
 	if !controllerutil.ContainsFinalizer(kv, kvFinalizer) {
 		return result, nil
 	}
@@ -397,7 +416,7 @@ func (r *KeyValueReconciler) recordKVDeletionStalled(ctx context.Context, kv *ap
 		Status:             metav1.ConditionTrue,
 		Reason:             reasonCleanupExceededDeadline,
 		ObservedGeneration: kv.Generation,
-		Message: fmt.Sprintf("key value finalization has not completed within %s of deletion (%s); the finalizer is retained so no backup data is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
+		Message: fmt.Sprintf("key value finalization has not completed within %s of deletion (%s); the finalizer is retained so no backup data or TLS material is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
 			r.kvFinalizerOverrunWindow(), blockedStep),
 	})
 	if !changed {

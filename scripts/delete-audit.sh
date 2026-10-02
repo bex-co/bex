@@ -25,10 +25,13 @@
 #     - no backup-purge Job/Pod remains after its durable terminal result
 #   KV:
 #     - KeyValue CR, StatefulSet, PVC, both immutable Secrets, backup CronJob,
-#       backup/purge Jobs and Pods, and S3 prefix are absent
+#       backup/purge Jobs and Pods, exact <name>-kv-tls Certificate and issued
+#       TLS Secret, and S3 prefix are absent
 #
 # Usage:
 #   bash scripts/delete-audit.sh [--app NAME] [--static NAME] [--db NAME] [--kv NAME]
+#   APPS_NS=<workspace> bash scripts/delete-audit.sh --kv <KeyValue-CR-name>
+#   bash scripts/delete-audit.test.sh  # isolated TLS-residue/access-error regression
 #
 # Environment (reads from .env if present):
 #   APPS_NS           — apps namespace (default: default)
@@ -312,6 +315,21 @@ audit_kv() {
       ok "KeyValue Secret $secret_name is absent"
     else
       fail "KeyValue Secret $secret_name still exists in $APPS_NS"
+    fi
+  done
+
+  # Certificate and issued Secret share the operator's exact reserved name.
+  # --ignore-not-found suppresses absence only; authorization/transport errors
+  # are failures, never evidence that TLS material was removed. Read names only.
+  local tls_kind tls_resource
+  for tls_kind in certificates.cert-manager.io secret; do
+    if ! tls_resource=$(kubectl get "$tls_kind" -n "$APPS_NS" "${name}-kv-tls" \
+      --ignore-not-found -o name 2>/dev/null); then
+      fail "could not verify KeyValue TLS $tls_kind ${name}-kv-tls in $APPS_NS"
+    elif [ -n "$tls_resource" ]; then
+      fail "KeyValue TLS $tls_kind ${name}-kv-tls still exists in $APPS_NS"
+    else
+      ok "KeyValue TLS $tls_kind ${name}-kv-tls is absent from $APPS_NS"
     fi
   done
 
