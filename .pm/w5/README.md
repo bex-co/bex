@@ -19,7 +19,7 @@ User approved the three Render-aligned follow-ups and requested `/pm` filing fol
 
 - [x] **m107** — [Preserve saved settings during rollback](done/m107/README.md) (8 tasks) — **DONE 2026-10-01**; saved B survives rollback/Restart A, ordinary deploy uses B; module checks and isolated runtime proof passed, fixtures removed.
 - [x] **m108** — [Prevent canceled cron runs returning after history eviction](done/m108/README.md) (7 tasks) — **DONE 2026-10-01**; durable manual acknowledgement survives history eviction, later cancellation and lifecycle changes; new-trigger race covered, full checks/live proof passed, fixtures removed.
-- [ ] **m109** — [Enforce the twelve-hour cron runtime limit](m109/README.md) (7 tasks; 2h40m total).
+- [x] **m109** — [Enforce the twelve-hour cron runtime limit](done/m109/README.md) (7 tasks) — **DONE 2026-10-01**; scheduled/manual Jobs and identified active runs capped at twelve hours; tests/lint and accelerated real timeout/recovery proof passed; fixtures and overrides removed.
 
 **Resumed — 2026-10-01:** Git write/network access is restored. `git pull --rebase --autostash origin main` succeeded and dev-5 passed its health inventory. The earlier read-only `.git/FETCH_HEAD` failure is resolved; resume execution at m107/t001.
 

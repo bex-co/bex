@@ -1,0 +1,2750 @@
+{
+  "default-manual-43200": {
+    "time": "2026-10-02T05:19:43.134010+00:00",
+    "runAt": "2026-10-02T05:19:36.250285Z",
+    "cancelRun": null,
+    "phase": "Running",
+    "runs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Running"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:19:36.250285Z",
+    "cron": {
+      "suspend": true,
+      "schedule": "0 0 1 1 *",
+      "deadline": 43200,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "uid": "b94a703c-1328-4c08-9144-e445a63ddfb1",
+        "createdAt": "2026-10-02T05:19:37Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:19:36.250285Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 43200,
+        "backoffLimit": 0,
+        "status": {
+          "active": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:19:37Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740-fpsst",
+            "uid": "eeb54823-f189-465d-9925-9136ab3597ef",
+            "phase": "Running",
+            "startTime": "2026-10-02T05:19:38Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://57b862bc1c5fc495e63ffa5b2c852c3d6c974186e84996c3e767de1ce10abc59",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": true,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": true,
+                "state": {
+                  "running": {
+                    "startedAt": "2026-10-02T05:19:41Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      }
+    ]
+  },
+  "baseline-43200": {
+    "time": "2026-10-02T05:21:01.466310+00:00",
+    "runAt": "2026-10-02T05:19:36.250285Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+      "requestedAt": "2026-10-02T05:19:43.218613Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Running"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:19:36.250285Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "* * * * *",
+      "deadline": 43200,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "uid": "1625fc7f-c3dd-4212-b53b-f337c56f4064",
+        "createdAt": "2026-10-02T05:21:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:21:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 43200,
+        "backoffLimit": 0,
+        "status": {
+          "active": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:00Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641-8x7w4",
+            "uid": "ff4db00b-17cb-4d10-8591-2c0ed807aed1",
+            "phase": "Running",
+            "startTime": "2026-10-02T05:21:00Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://2a910f9ab40ba1d3edd76d4e168dc7a3e82a677e771e88330adab3484522d9cc",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": true,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": true,
+                "state": {
+                  "running": {
+                    "startedAt": "2026-10-02T05:21:01Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      }
+    ]
+  },
+  "deadline-overlay": {
+    "time": "2026-10-02T05:21:05.459977+00:00",
+    "productionConstant": "const cronRunActiveDeadlineSeconds int64 = 12 * 60 * 60",
+    "testOnlySeconds": 12,
+    "method": "Go -overlay scoped reconciler only; existing active scheduled Job adopts shorter deadline without changing startTime",
+    "sourceSHA256": "81e89e8f1ccee2c74b26f44c0f994db227a3d9d530654d9689974486571914b2"
+  },
+  "scheduled-terminating": {
+    "time": "2026-10-02T05:21:20.897932+00:00",
+    "runAt": "2026-10-02T05:19:36.250285Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+      "requestedAt": "2026-10-02T05:19:43.218613Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Running"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:19:36.250285Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "* * * * *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "uid": "1625fc7f-c3dd-4212-b53b-f337c56f4064",
+        "createdAt": "2026-10-02T05:21:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:21:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:21:15Z",
+              "lastTransitionTime": "2026-10-02T05:21:15Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:00Z",
+          "terminating": 1,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641-8x7w4",
+            "uid": "ff4db00b-17cb-4d10-8591-2c0ed807aed1",
+            "phase": "Running",
+            "startTime": "2026-10-02T05:21:00Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://2a910f9ab40ba1d3edd76d4e168dc7a3e82a677e771e88330adab3484522d9cc",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": true,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": true,
+                "state": {
+                  "running": {
+                    "startedAt": "2026-10-02T05:21:01Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": "2026-10-02T05:21:45Z"
+          }
+        ]
+      }
+    ]
+  },
+  "scheduled-timeout": {
+    "time": "2026-10-02T05:21:48.603318+00:00",
+    "runAt": "2026-10-02T05:19:36.250285Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+      "requestedAt": "2026-10-02T05:19:43.218613Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:19:36.250285Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "* * * * *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "uid": "1625fc7f-c3dd-4212-b53b-f337c56f4064",
+        "createdAt": "2026-10-02T05:21:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:21:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:21:15Z",
+              "lastTransitionTime": "2026-10-02T05:21:15Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:21:47Z",
+              "lastTransitionTime": "2026-10-02T05:21:47Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:00Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      }
+    ]
+  },
+  "manual-timeout-created": {
+    "time": "2026-10-02T05:21:52.217627+00:00",
+    "job": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+      "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+      "createdAt": "2026-10-02T05:21:52Z",
+      "annotations": {
+        "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+      },
+      "owners": [
+        {
+          "apiVersion": "app.bex.co/v1alpha1",
+          "blockOwnerDeletion": true,
+          "controller": true,
+          "kind": "App",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+          "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+        }
+      ],
+      "deadline": 12,
+      "backoffLimit": 0,
+      "status": {
+        "active": 1,
+        "ready": 0,
+        "startTime": "2026-10-02T05:21:52Z",
+        "terminating": 0,
+        "uncountedTerminatedPods": {}
+      },
+      "pods": [
+        {
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11-lmscz",
+          "uid": "75bc341e-f70a-4df7-bc01-02b4fcb64220",
+          "phase": "Pending",
+          "startTime": "2026-10-02T05:21:52Z",
+          "containerStatuses": [
+            {
+              "image": "docker.io/library/busybox:1.36",
+              "imageID": "",
+              "lastState": {},
+              "name": "app",
+              "ready": false,
+              "restartCount": 0,
+              "started": false,
+              "state": {
+                "waiting": {
+                  "reason": "ContainerCreating"
+                }
+              }
+            }
+          ],
+          "deletionTimestamp": null
+        }
+      ]
+    }
+  },
+  "manual-terminating": {
+    "time": "2026-10-02T05:22:04.369808+00:00",
+    "runAt": "2026-10-02T05:21:50.254831Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+      "requestedAt": "2026-10-02T05:19:43.218613Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "startedAt": "2026-10-02T05:21:52Z",
+        "status": "Running"
+      },
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:21:50.254831Z",
+    "cron": {
+      "suspend": true,
+      "schedule": "0 0 1 1 *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "uid": "1625fc7f-c3dd-4212-b53b-f337c56f4064",
+        "createdAt": "2026-10-02T05:21:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:21:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:21:15Z",
+              "lastTransitionTime": "2026-10-02T05:21:15Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:21:47Z",
+              "lastTransitionTime": "2026-10-02T05:21:47Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:00Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+        "createdAt": "2026-10-02T05:21:52Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:22:04Z",
+              "lastTransitionTime": "2026-10-02T05:22:04Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:52Z",
+          "terminating": 1,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11-lmscz",
+            "uid": "75bc341e-f70a-4df7-bc01-02b4fcb64220",
+            "phase": "Running",
+            "startTime": "2026-10-02T05:21:52Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://793ad3682678bfa9ab4930d9b9fe1c90fb54021bd095a5799b1b951700c9f8c8",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": true,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": true,
+                "state": {
+                  "running": {
+                    "startedAt": "2026-10-02T05:21:53Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": "2026-10-02T05:22:34Z"
+          }
+        ]
+      }
+    ]
+  },
+  "manual-timeout": {
+    "time": "2026-10-02T05:22:37.796067+00:00",
+    "runAt": "2026-10-02T05:21:50.254831Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+      "requestedAt": "2026-10-02T05:19:43.218613Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "finishedAt": "2026-10-02T05:22:35Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "startedAt": "2026-10-02T05:21:52Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:21:50.254831Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "0 0 1 1 *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+        "createdAt": "2026-10-02T05:21:52Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:22:04Z",
+              "lastTransitionTime": "2026-10-02T05:22:04Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:22:35Z",
+              "lastTransitionTime": "2026-10-02T05:22:35Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:52Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      }
+    ]
+  },
+  "later-scheduled": {
+    "time": "2026-10-02T05:24:05.275545+00:00",
+    "runAt": "2026-10-02T05:21:50.254831Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+      "requestedAt": "2026-10-02T05:19:43.218613Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "finishedAt": "2026-10-02T05:24:03Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "startedAt": "2026-10-02T05:24:00Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:22:35Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "startedAt": "2026-10-02T05:21:52Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:21:50.254831Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "24 05 * * *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "uid": "2901325d-db72-42d0-bf59-cb02db559329",
+        "createdAt": "2026-10-02T05:24:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:24:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:03Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:00Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644-m8zqc",
+            "uid": "00af8a43-60a6-456c-be03-94c81ec5da3e",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:00Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:01Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:01Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+        "createdAt": "2026-10-02T05:21:52Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:22:04Z",
+              "lastTransitionTime": "2026-10-02T05:22:04Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:22:35Z",
+              "lastTransitionTime": "2026-10-02T05:22:35Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:52Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      }
+    ]
+  },
+  "later-manual": {
+    "time": "2026-10-02T05:24:18.994047+00:00",
+    "runAt": "2026-10-02T05:24:07.377198Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+      "requestedAt": "2026-10-02T05:19:43.218613Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "finishedAt": "2026-10-02T05:24:12Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "startedAt": "2026-10-02T05:24:08Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:24:03Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "startedAt": "2026-10-02T05:24:00Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:22:35Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "startedAt": "2026-10-02T05:21:52Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:24:07.377198Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "0 0 1 1 *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "uid": "2901325d-db72-42d0-bf59-cb02db559329",
+        "createdAt": "2026-10-02T05:24:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:24:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:03Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:00Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644-m8zqc",
+            "uid": "00af8a43-60a6-456c-be03-94c81ec5da3e",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:00Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:01Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:01Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+        "createdAt": "2026-10-02T05:21:52Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:22:04Z",
+              "lastTransitionTime": "2026-10-02T05:22:04Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:22:35Z",
+              "lastTransitionTime": "2026-10-02T05:22:35Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:52Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "uid": "1a1d992f-ae1a-43e3-ae5b-9fddb5bb8bd5",
+        "createdAt": "2026-10-02T05:24:08Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:24:07.377198Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:12Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:08Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b-9cvm6",
+            "uid": "e54785f0-fa82-430c-a1fb-1f97c6f4e400",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:08Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:10Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:10Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      }
+    ]
+  },
+  "cancel-response": {
+    "time": "2026-10-02T05:24:23.625314+00:00",
+    "httpStatus": 204,
+    "emptyBody": true
+  },
+  "canceled": {
+    "time": "2026-10-02T05:24:57.592524+00:00",
+    "runAt": "2026-10-02T05:24:21.661322Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-db27795d",
+      "requestedAt": "2026-10-02T05:24:23.618585Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "finishedAt": "2026-10-02T05:24:23.618585Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-db27795d",
+        "startedAt": "2026-10-02T05:24:23Z",
+        "status": "Canceled"
+      },
+      {
+        "finishedAt": "2026-10-02T05:24:12Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "startedAt": "2026-10-02T05:24:08Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:24:03Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "startedAt": "2026-10-02T05:24:00Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:22:35Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "startedAt": "2026-10-02T05:21:52Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:24:21.661322Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "0 0 1 1 *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "uid": "2901325d-db72-42d0-bf59-cb02db559329",
+        "createdAt": "2026-10-02T05:24:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:24:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:03Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:00Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644-m8zqc",
+            "uid": "00af8a43-60a6-456c-be03-94c81ec5da3e",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:00Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:01Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:01Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+        "createdAt": "2026-10-02T05:21:52Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:22:04Z",
+              "lastTransitionTime": "2026-10-02T05:22:04Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:22:35Z",
+              "lastTransitionTime": "2026-10-02T05:22:35Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:52Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "uid": "1a1d992f-ae1a-43e3-ae5b-9fddb5bb8bd5",
+        "createdAt": "2026-10-02T05:24:08Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:24:07.377198Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:12Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:08Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b-9cvm6",
+            "uid": "e54785f0-fa82-430c-a1fb-1f97c6f4e400",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:08Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:10Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:10Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      }
+    ]
+  },
+  "suspended": {
+    "time": "2026-10-02T05:25:00.035016+00:00",
+    "runAt": "2026-10-02T05:24:21.661322Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-db27795d",
+      "requestedAt": "2026-10-02T05:24:23.618585Z"
+    },
+    "phase": "Hibernated",
+    "runs": [
+      {
+        "finishedAt": "2026-10-02T05:24:23.618585Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-db27795d",
+        "startedAt": "2026-10-02T05:24:23Z",
+        "status": "Canceled"
+      },
+      {
+        "finishedAt": "2026-10-02T05:24:12Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "startedAt": "2026-10-02T05:24:08Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:24:03Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "startedAt": "2026-10-02T05:24:00Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:22:35Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "startedAt": "2026-10-02T05:21:52Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:24:21.661322Z",
+    "cron": {
+      "suspend": true,
+      "schedule": "0 0 1 1 *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "uid": "2901325d-db72-42d0-bf59-cb02db559329",
+        "createdAt": "2026-10-02T05:24:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:24:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:03Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:00Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644-m8zqc",
+            "uid": "00af8a43-60a6-456c-be03-94c81ec5da3e",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:00Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:01Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:01Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+        "createdAt": "2026-10-02T05:21:52Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:22:04Z",
+              "lastTransitionTime": "2026-10-02T05:22:04Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:22:35Z",
+              "lastTransitionTime": "2026-10-02T05:22:35Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:52Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "uid": "1a1d992f-ae1a-43e3-ae5b-9fddb5bb8bd5",
+        "createdAt": "2026-10-02T05:24:08Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:24:07.377198Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:12Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:08Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b-9cvm6",
+            "uid": "e54785f0-fa82-430c-a1fb-1f97c6f4e400",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:08Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:10Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:10Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      }
+    ]
+  },
+  "resumed": {
+    "time": "2026-10-02T05:25:01.740705+00:00",
+    "runAt": "2026-10-02T05:24:21.661322Z",
+    "cancelRun": {
+      "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-db27795d",
+      "requestedAt": "2026-10-02T05:24:23.618585Z"
+    },
+    "phase": "Running",
+    "runs": [
+      {
+        "finishedAt": "2026-10-02T05:24:23.618585Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-db27795d",
+        "startedAt": "2026-10-02T05:24:23Z",
+        "status": "Canceled"
+      },
+      {
+        "finishedAt": "2026-10-02T05:24:12Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "startedAt": "2026-10-02T05:24:08Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:24:03Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "startedAt": "2026-10-02T05:24:00Z",
+        "status": "Succeeded"
+      },
+      {
+        "finishedAt": "2026-10-02T05:22:35Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "startedAt": "2026-10-02T05:21:52Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:21:47Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+        "startedAt": "2026-10-02T05:21:00Z",
+        "status": "Failed"
+      },
+      {
+        "finishedAt": "2026-10-02T05:19:43.218613Z",
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+        "startedAt": "2026-10-02T05:19:37Z",
+        "status": "Canceled"
+      }
+    ],
+    "manualRunHandledAt": "2026-10-02T05:24:21.661322Z",
+    "cron": {
+      "suspend": false,
+      "schedule": "0 0 1 1 *",
+      "deadline": 12,
+      "concurrencyPolicy": "Forbid"
+    },
+    "jobs": [
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+        "uid": "2901325d-db72-42d0-bf59-cb02db559329",
+        "createdAt": "2026-10-02T05:24:00Z",
+        "annotations": {
+          "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:24:00Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "CronJob",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:03Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:03Z",
+              "lastTransitionTime": "2026-10-02T05:24:03Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:00Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644-m8zqc",
+            "uid": "00af8a43-60a6-456c-be03-94c81ec5da3e",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:00Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:01Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:01Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+        "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+        "createdAt": "2026-10-02T05:21:52Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:22:04Z",
+              "lastTransitionTime": "2026-10-02T05:22:04Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "FailureTarget"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:22:35Z",
+              "lastTransitionTime": "2026-10-02T05:22:35Z",
+              "message": "Job was active longer than specified deadline",
+              "reason": "DeadlineExceeded",
+              "status": "True",
+              "type": "Failed"
+            }
+          ],
+          "failed": 1,
+          "ready": 0,
+          "startTime": "2026-10-02T05:21:52Z",
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": []
+      },
+      {
+        "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+        "uid": "1a1d992f-ae1a-43e3-ae5b-9fddb5bb8bd5",
+        "createdAt": "2026-10-02T05:24:08Z",
+        "annotations": {
+          "app.bex.co/manual-run-at": "2026-10-02T05:24:07.377198Z"
+        },
+        "owners": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+            "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+          }
+        ],
+        "deadline": 12,
+        "backoffLimit": 0,
+        "status": {
+          "completionTime": "2026-10-02T05:24:12Z",
+          "conditions": [
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-10-02T05:24:12Z",
+              "lastTransitionTime": "2026-10-02T05:24:12Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "ready": 0,
+          "startTime": "2026-10-02T05:24:08Z",
+          "succeeded": 1,
+          "terminating": 0,
+          "uncountedTerminatedPods": {}
+        },
+        "pods": [
+          {
+            "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b-9cvm6",
+            "uid": "e54785f0-fa82-430c-a1fb-1f97c6f4e400",
+            "phase": "Succeeded",
+            "startTime": "2026-10-02T05:24:08Z",
+            "containerStatuses": [
+              {
+                "allocatedResources": {
+                  "cpu": "500m",
+                  "ephemeral-storage": "2Gi",
+                  "memory": "512Mi"
+                },
+                "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                "image": "docker.io/library/busybox:1.36",
+                "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                "lastState": {},
+                "name": "app",
+                "ready": false,
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "requests": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  }
+                },
+                "restartCount": 0,
+                "started": false,
+                "state": {
+                  "terminated": {
+                    "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                    "exitCode": 0,
+                    "finishedAt": "2026-10-02T05:24:10Z",
+                    "reason": "Completed",
+                    "startedAt": "2026-10-02T05:24:10Z"
+                  }
+                },
+                "user": {
+                  "linux": {
+                    "gid": 0,
+                    "supplementalGroups": [
+                      0,
+                      10
+                    ],
+                    "uid": 0
+                  }
+                }
+              }
+            ],
+            "deletionTimestamp": null
+          }
+        ]
+      }
+    ]
+  },
+  "execution-proof": {
+    "time": "2026-10-02T05:25:02.340366+00:00",
+    "executions": [
+      {
+        "job": {
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+          "uid": "2901325d-db72-42d0-bf59-cb02db559329",
+          "createdAt": "2026-10-02T05:24:00Z",
+          "annotations": {
+            "batch.kubernetes.io/cronjob-scheduled-timestamp": "2026-10-02T05:24:00Z"
+          },
+          "owners": [
+            {
+              "apiVersion": "batch/v1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "CronJob",
+              "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+              "uid": "a504d1ce-2173-4e9f-a37d-aef8ecde0517"
+            }
+          ],
+          "deadline": 12,
+          "backoffLimit": 0,
+          "status": {
+            "completionTime": "2026-10-02T05:24:03Z",
+            "conditions": [
+              {
+                "lastProbeTime": "2026-10-02T05:24:03Z",
+                "lastTransitionTime": "2026-10-02T05:24:03Z",
+                "message": "Reached expected number of succeeded pods",
+                "reason": "CompletionsReached",
+                "status": "True",
+                "type": "SuccessCriteriaMet"
+              },
+              {
+                "lastProbeTime": "2026-10-02T05:24:03Z",
+                "lastTransitionTime": "2026-10-02T05:24:03Z",
+                "message": "Reached expected number of succeeded pods",
+                "reason": "CompletionsReached",
+                "status": "True",
+                "type": "Complete"
+              }
+            ],
+            "ready": 0,
+            "startTime": "2026-10-02T05:24:00Z",
+            "succeeded": 1,
+            "terminating": 0,
+            "uncountedTerminatedPods": {}
+          },
+          "pods": [
+            {
+              "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644-m8zqc",
+              "uid": "00af8a43-60a6-456c-be03-94c81ec5da3e",
+              "phase": "Succeeded",
+              "startTime": "2026-10-02T05:24:00Z",
+              "containerStatuses": [
+                {
+                  "allocatedResources": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                  "image": "docker.io/library/busybox:1.36",
+                  "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                  "lastState": {},
+                  "name": "app",
+                  "ready": false,
+                  "resources": {
+                    "limits": {
+                      "cpu": "500m",
+                      "ephemeral-storage": "2Gi",
+                      "memory": "512Mi"
+                    },
+                    "requests": {
+                      "cpu": "500m",
+                      "ephemeral-storage": "2Gi",
+                      "memory": "512Mi"
+                    }
+                  },
+                  "restartCount": 0,
+                  "started": false,
+                  "state": {
+                    "terminated": {
+                      "containerID": "containerd://64f1c227c064d26e8710fb810c2f5c0c8a9a15d0c715758955500f984a8b2098",
+                      "exitCode": 0,
+                      "finishedAt": "2026-10-02T05:24:01Z",
+                      "reason": "Completed",
+                      "startedAt": "2026-10-02T05:24:01Z"
+                    }
+                  },
+                  "user": {
+                    "linux": {
+                      "gid": 0,
+                      "supplementalGroups": [
+                        0,
+                        10
+                      ],
+                      "uid": 0
+                    }
+                  }
+                }
+              ],
+              "deletionTimestamp": null
+            }
+          ]
+        },
+        "logs": [
+          {
+            "pod": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644-m8zqc",
+            "exitCode": 0,
+            "output": "W5_M109_QUICK"
+          }
+        ]
+      },
+      {
+        "job": {
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+          "uid": "efe51821-92f7-4148-88eb-c24bcc5a08b1",
+          "createdAt": "2026-10-02T05:21:52Z",
+          "annotations": {
+            "app.bex.co/manual-run-at": "2026-10-02T05:21:50.254831Z"
+          },
+          "owners": [
+            {
+              "apiVersion": "app.bex.co/v1alpha1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "App",
+              "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+              "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+            }
+          ],
+          "deadline": 12,
+          "backoffLimit": 0,
+          "status": {
+            "conditions": [
+              {
+                "lastProbeTime": "2026-10-02T05:22:04Z",
+                "lastTransitionTime": "2026-10-02T05:22:04Z",
+                "message": "Job was active longer than specified deadline",
+                "reason": "DeadlineExceeded",
+                "status": "True",
+                "type": "FailureTarget"
+              },
+              {
+                "lastProbeTime": "2026-10-02T05:22:35Z",
+                "lastTransitionTime": "2026-10-02T05:22:35Z",
+                "message": "Job was active longer than specified deadline",
+                "reason": "DeadlineExceeded",
+                "status": "True",
+                "type": "Failed"
+              }
+            ],
+            "failed": 1,
+            "ready": 0,
+            "startTime": "2026-10-02T05:21:52Z",
+            "terminating": 0,
+            "uncountedTerminatedPods": {}
+          },
+          "pods": []
+        },
+        "logs": []
+      },
+      {
+        "job": {
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+          "uid": "1a1d992f-ae1a-43e3-ae5b-9fddb5bb8bd5",
+          "createdAt": "2026-10-02T05:24:08Z",
+          "annotations": {
+            "app.bex.co/manual-run-at": "2026-10-02T05:24:07.377198Z"
+          },
+          "owners": [
+            {
+              "apiVersion": "app.bex.co/v1alpha1",
+              "blockOwnerDeletion": true,
+              "controller": true,
+              "kind": "App",
+              "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+              "uid": "49666ee9-d0d3-4eee-bc73-84b50fc4596f"
+            }
+          ],
+          "deadline": 12,
+          "backoffLimit": 0,
+          "status": {
+            "completionTime": "2026-10-02T05:24:12Z",
+            "conditions": [
+              {
+                "lastProbeTime": "2026-10-02T05:24:12Z",
+                "lastTransitionTime": "2026-10-02T05:24:12Z",
+                "message": "Reached expected number of succeeded pods",
+                "reason": "CompletionsReached",
+                "status": "True",
+                "type": "SuccessCriteriaMet"
+              },
+              {
+                "lastProbeTime": "2026-10-02T05:24:12Z",
+                "lastTransitionTime": "2026-10-02T05:24:12Z",
+                "message": "Reached expected number of succeeded pods",
+                "reason": "CompletionsReached",
+                "status": "True",
+                "type": "Complete"
+              }
+            ],
+            "ready": 0,
+            "startTime": "2026-10-02T05:24:08Z",
+            "succeeded": 1,
+            "terminating": 0,
+            "uncountedTerminatedPods": {}
+          },
+          "pods": [
+            {
+              "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b-9cvm6",
+              "uid": "e54785f0-fa82-430c-a1fb-1f97c6f4e400",
+              "phase": "Succeeded",
+              "startTime": "2026-10-02T05:24:08Z",
+              "containerStatuses": [
+                {
+                  "allocatedResources": {
+                    "cpu": "500m",
+                    "ephemeral-storage": "2Gi",
+                    "memory": "512Mi"
+                  },
+                  "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                  "image": "docker.io/library/busybox:1.36",
+                  "imageID": "docker.io/library/busybox@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662",
+                  "lastState": {},
+                  "name": "app",
+                  "ready": false,
+                  "resources": {
+                    "limits": {
+                      "cpu": "500m",
+                      "ephemeral-storage": "2Gi",
+                      "memory": "512Mi"
+                    },
+                    "requests": {
+                      "cpu": "500m",
+                      "ephemeral-storage": "2Gi",
+                      "memory": "512Mi"
+                    }
+                  },
+                  "restartCount": 0,
+                  "started": false,
+                  "state": {
+                    "terminated": {
+                      "containerID": "containerd://0bbb9dbc4cf0bdaf379bacfb69c8677df6df8b8ad440045e7509a8e3b4ac78d9",
+                      "exitCode": 0,
+                      "finishedAt": "2026-10-02T05:24:10Z",
+                      "reason": "Completed",
+                      "startedAt": "2026-10-02T05:24:10Z"
+                    }
+                  },
+                  "user": {
+                    "linux": {
+                      "gid": 0,
+                      "supplementalGroups": [
+                        0,
+                        10
+                      ],
+                      "uid": 0
+                    }
+                  }
+                }
+              ],
+              "deletionTimestamp": null
+            }
+          ]
+        },
+        "logs": [
+          {
+            "pod": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b-9cvm6",
+            "exitCode": 0,
+            "output": "W5_M109_QUICK"
+          }
+        ]
+      }
+    ]
+  },
+  "surfaces-timeouts": {
+    "time": "2026-10-02T05:22:37.917365+00:00",
+    "rest": [
+      {
+        "cronJobRun": {
+          "id": "crr-kmd0g15uvqv682mavdkk",
+          "status": "unsuccessful",
+          "startedAt": "2026-10-02T05:21:52Z",
+          "finishedAt": "2026-10-02T05:22:35Z"
+        },
+        "cursor": "crr-kmd0g15uvqv682mavdkk"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-j5nnhqlu34d4sunnh79b",
+          "status": "unsuccessful",
+          "startedAt": "2026-10-02T05:21:00Z",
+          "finishedAt": "2026-10-02T05:21:47Z"
+        },
+        "cursor": "crr-j5nnhqlu34d4sunnh79b"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-lc4r3hhur44g7a21uodr",
+          "status": "canceled",
+          "startedAt": "2026-10-02T05:19:37Z",
+          "finishedAt": "2026-10-02T05:19:43.218613Z"
+        },
+        "cursor": "crr-lc4r3hhur44g7a21uodr"
+      }
+    ],
+    "graphql": {
+      "cronJobRuns": [
+        {
+          "finishedAt": "2026-10-02T05:22:35Z",
+          "id": "crr-kmd0g15uvqv682mavdkk",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+          "startedAt": "2026-10-02T05:21:52Z",
+          "status": "unsuccessful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:21:47Z",
+          "id": "crr-j5nnhqlu34d4sunnh79b",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+          "startedAt": "2026-10-02T05:21:00Z",
+          "status": "unsuccessful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:19:43.218613Z",
+          "id": "crr-lc4r3hhur44g7a21uodr",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+          "startedAt": "2026-10-02T05:19:37Z",
+          "status": "canceled"
+        }
+      ]
+    },
+    "mcp": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-02T05:22:35Z\",\"id\":\"crr-kmd0g15uvqv682mavdkk\",\"startedAt\":\"2026-10-02T05:21:52Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-02T05:21:47Z\",\"id\":\"crr-j5nnhqlu34d4sunnh79b\",\"startedAt\":\"2026-10-02T05:21:00Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-02T05:19:43.218613Z\",\"id\":\"crr-lc4r3hhur44g7a21uodr\",\"startedAt\":\"2026-10-02T05:19:37Z\",\"status\":\"canceled\"}],\"cursor\":\"crr-lc4r3hhur44g7a21uodr\"}"
+          }
+        ],
+        "structuredContent": {
+          "cronJobRuns": [
+            {
+              "finishedAt": "2026-10-02T05:22:35Z",
+              "id": "crr-kmd0g15uvqv682mavdkk",
+              "startedAt": "2026-10-02T05:21:52Z",
+              "status": "unsuccessful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:21:47Z",
+              "id": "crr-j5nnhqlu34d4sunnh79b",
+              "startedAt": "2026-10-02T05:21:00Z",
+              "status": "unsuccessful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:19:43.218613Z",
+              "id": "crr-lc4r3hhur44g7a21uodr",
+              "startedAt": "2026-10-02T05:19:37Z",
+              "status": "canceled"
+            }
+          ],
+          "cursor": "crr-lc4r3hhur44g7a21uodr"
+        }
+      }
+    }
+  },
+  "surfaces-final": {
+    "time": "2026-10-02T05:25:01.836784+00:00",
+    "rest": [
+      {
+        "cronJobRun": {
+          "id": "crr-535ct0lo83g9doosqkvc",
+          "status": "canceled",
+          "startedAt": "2026-10-02T05:24:23Z",
+          "finishedAt": "2026-10-02T05:24:23.618585Z"
+        },
+        "cursor": "crr-535ct0lo83g9doosqkvc"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-1h8ite7htqum5ro64g42",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:24:08Z",
+          "finishedAt": "2026-10-02T05:24:12Z"
+        },
+        "cursor": "crr-1h8ite7htqum5ro64g42"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-plkta2em87nmu2lamdc0",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:24:00Z",
+          "finishedAt": "2026-10-02T05:24:03Z"
+        },
+        "cursor": "crr-plkta2em87nmu2lamdc0"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-kmd0g15uvqv682mavdkk",
+          "status": "unsuccessful",
+          "startedAt": "2026-10-02T05:21:52Z",
+          "finishedAt": "2026-10-02T05:22:35Z"
+        },
+        "cursor": "crr-kmd0g15uvqv682mavdkk"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-j5nnhqlu34d4sunnh79b",
+          "status": "unsuccessful",
+          "startedAt": "2026-10-02T05:21:00Z",
+          "finishedAt": "2026-10-02T05:21:47Z"
+        },
+        "cursor": "crr-j5nnhqlu34d4sunnh79b"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-lc4r3hhur44g7a21uodr",
+          "status": "canceled",
+          "startedAt": "2026-10-02T05:19:37Z",
+          "finishedAt": "2026-10-02T05:19:43.218613Z"
+        },
+        "cursor": "crr-lc4r3hhur44g7a21uodr"
+      }
+    ],
+    "graphql": {
+      "cronJobRuns": [
+        {
+          "finishedAt": "2026-10-02T05:24:23.618585Z",
+          "id": "crr-535ct0lo83g9doosqkvc",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-db27795d",
+          "startedAt": "2026-10-02T05:24:23Z",
+          "status": "canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:24:12Z",
+          "id": "crr-1h8ite7htqum5ro64g42",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-86d1824b",
+          "startedAt": "2026-10-02T05:24:08Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:24:03Z",
+          "id": "crr-plkta2em87nmu2lamdc0",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848644",
+          "startedAt": "2026-10-02T05:24:00Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:22:35Z",
+          "id": "crr-kmd0g15uvqv682mavdkk",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-10b9ca11",
+          "startedAt": "2026-10-02T05:21:52Z",
+          "status": "unsuccessful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:21:47Z",
+          "id": "crr-j5nnhqlu34d4sunnh79b",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-29848641",
+          "startedAt": "2026-10-02T05:21:00Z",
+          "status": "unsuccessful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:19:43.218613Z",
+          "id": "crr-lc4r3hhur44g7a21uodr",
+          "name": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron-run-e2fb6740",
+          "startedAt": "2026-10-02T05:19:37Z",
+          "status": "canceled"
+        }
+      ]
+    },
+    "mcp": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-02T05:24:23.618585Z\",\"id\":\"crr-535ct0lo83g9doosqkvc\",\"startedAt\":\"2026-10-02T05:24:23Z\",\"status\":\"canceled\"},{\"finishedAt\":\"2026-10-02T05:24:12Z\",\"id\":\"crr-1h8ite7htqum5ro64g42\",\"startedAt\":\"2026-10-02T05:24:08Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:24:03Z\",\"id\":\"crr-plkta2em87nmu2lamdc0\",\"startedAt\":\"2026-10-02T05:24:00Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:22:35Z\",\"id\":\"crr-kmd0g15uvqv682mavdkk\",\"startedAt\":\"2026-10-02T05:21:52Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-02T05:21:47Z\",\"id\":\"crr-j5nnhqlu34d4sunnh79b\",\"startedAt\":\"2026-10-02T05:21:00Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-02T05:19:43.218613Z\",\"id\":\"crr-lc4r3hhur44g7a21uodr\",\"startedAt\":\"2026-10-02T05:19:37Z\",\"status\":\"canceled\"}],\"cursor\":\"crr-lc4r3hhur44g7a21uodr\"}"
+          }
+        ],
+        "structuredContent": {
+          "cronJobRuns": [
+            {
+              "finishedAt": "2026-10-02T05:24:23.618585Z",
+              "id": "crr-535ct0lo83g9doosqkvc",
+              "startedAt": "2026-10-02T05:24:23Z",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-02T05:24:12Z",
+              "id": "crr-1h8ite7htqum5ro64g42",
+              "startedAt": "2026-10-02T05:24:08Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:24:03Z",
+              "id": "crr-plkta2em87nmu2lamdc0",
+              "startedAt": "2026-10-02T05:24:00Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:22:35Z",
+              "id": "crr-kmd0g15uvqv682mavdkk",
+              "startedAt": "2026-10-02T05:21:52Z",
+              "status": "unsuccessful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:21:47Z",
+              "id": "crr-j5nnhqlu34d4sunnh79b",
+              "startedAt": "2026-10-02T05:21:00Z",
+              "status": "unsuccessful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:19:43.218613Z",
+              "id": "crr-lc4r3hhur44g7a21uodr",
+              "startedAt": "2026-10-02T05:19:37Z",
+              "status": "canceled"
+            }
+          ],
+          "cursor": "crr-lc4r3hhur44g7a21uodr"
+        }
+      }
+    }
+  },
+  "ui-timeouts": {
+    "time": "2026-10-02T05:23:33.451990+00:00",
+    "path": "/services/srv-davjt41jg4r0n61fs8hg/events",
+    "rows": [
+      {
+        "status": "Failed",
+        "duration": "43s"
+      },
+      {
+        "status": "Failed",
+        "duration": "47s"
+      },
+      {
+        "status": "Canceled",
+        "duration": "6s"
+      }
+    ],
+    "screenshot": "timeouts.png"
+  },
+  "ui-final": {
+    "time": "2026-10-02T05:25:11.201583+00:00",
+    "path": "/services/srv-davjt41jg4r0n61fs8hg/events",
+    "rows": [
+      "StartedDurationStatusActions",
+      "now1sCanceled",
+      "1m4sSucceeded",
+      "1m3sSucceeded",
+      "3m43sFailed",
+      "4m47sFailed"
+    ],
+    "screenshot": "final.png"
+  },
+  "cleanup-proof": {
+    "time": "2026-10-02T05:25:33.116300+00:00",
+    "fixtureNamespacesAbsent": [
+      "tea-davjt2hjg4r0n61fs8gg",
+      "tea-davjt2hjg4r0n61fs8fg"
+    ],
+    "identityAbsent": true,
+    "privateCredentialsRemoved": true,
+    "scopedReconcilerStopped": true,
+    "temporaryDeadlineOverlayRemoved": true,
+    "dev5APIHealth": 200,
+    "trackedSourceEditedByLiveAgent": false
+  },
+  "cleaned-fixture": {
+    "workspace": "tea-davjt2hjg4r0n61fs8gg",
+    "service": "srv-davjt41jg4r0n61fs8hg",
+    "name": "w5-m109-cron",
+    "appname": "tea-davjt2hjg4r0n61fs8gg-w5-m109-cron",
+    "identity": "a5905f0a-9032-4dcb-99d8-f92f9547dfbb",
+    "harness_pid": 76606
+  },
+  "observationSummary": {
+    "count": 234,
+    "first": "2026-10-02T05:20:41.080153+00:00",
+    "last": "2026-10-02T05:25:17.665182+00:00",
+    "maxActiveOrTerminatingJobs": 1
+  },
+  "podTerminationEvidence": "Both timeout Pods were observed Running with termination requested, then absent when their Job reached Failed/DeadlineExceeded (failed=1, terminating=0); final container exit code was not retained.",
+  "qualityReview": {
+    "scope": "read-only Simplify QUALITY review of /private/tmp/w5-m109-review.diff",
+    "result": "clean",
+    "notes": "Shared constant and owned-run helper keep policy direct; adoption reuses existing Job list; no redundant persistent state, unnecessary abstractions, or clarity issue found."
+  }
+}

@@ -30,6 +30,18 @@ graph LR
 - **Cancellation** — `spec.cancelRun` (a `CronRunCancellation` intent carried across the backend→operator boundary) triggers a **foreground delete** of the exact backing Job; the operator records `Canceled` in status and refuses to let a stable `runAt` recreate a canceled manual Job. A manual replacement waits until the foreground deletion removes the active Job, so there is never even a brief overlap.
 - **Run history** — `cronRuns()` lists all Jobs labeled `app=<name>` (scheduled + one-off), sorts newest-first, maps Job conditions to a run status, and writes them to `App.status.runs` (capped at **10 entries**, retaining terminal entries after Kubernetes garbage-collects their Jobs until newer entries evict them). `Owns(&batchv1.CronJob{})` wires CronJob/Job events back into the reconcile queue.
 
+## Twelve-hour execution bound (w5/m109)
+
+[Render documents a twelve-hour active-run limit](https://render.com/docs/cronjobs#single-run-guarantee), with no manual exemption. Both the scheduled Job template and new manual Jobs set `spec.activeDeadlineSeconds=43200`; `backoffLimit=0` is unchanged. The deadline belongs to the Job, not its Pod template.
+
+The operator also caps safely identified active Jobs while reading existing run history: scheduled Jobs must belong to the current CronJob UID, and manual Jobs must have the exact App owner and a known trigger identity. Existing shorter deadlines remain intact; terminal, deleting, foreign and unidentified Jobs are untouched. Older manual Jobs whose trigger identity cannot be recovered are not guessed. Adoption preserves `status.startTime`, so an already-overdue run can terminate promptly instead of receiving another twelve hours.
+
+[Kubernetes counts from Job startTime](https://kubernetes.io/docs/reference/kubernetes-api/batch/job-v1/), when the controller begins processing it. This includes Pod scheduling and image-pull waits (inferred from that origin). A schedule waiting for an earlier run has no Job yet and consumes no deadline. Suspending the Job resets its clock on resume; Bex service suspension only suspends future CronJob scheduling, so existing Jobs continue aging. See [CronJob suspension](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-suspension).
+
+[Deadline expiry](https://kubernetes.io/docs/concepts/workloads/controllers/job/#job-termination-and-cleanup) yields Job `Failed` with reason `DeadlineExceeded`; controller processing and Pod termination grace can extend the wall-clock exit time. Run history waits for terminal `Failed`, not the earlier `FailureTarget`, and exposes the existing `unsuccessful` status on REST/GraphQL/MCP and Failed in the dashboard. Manual scheduling resumes after actual terminal observation. No user cancellation or success is fabricated, and the handled-trigger guard prevents timeout cleanup from replaying the manual run.
+
+Research date: 2026-10-01. Render's exact origin, grace and timeout status remain undocumented, so this is a conservative Job-lifetime bound with an explicit timing uncertainty. Local evidence uses a temporary shortened deadline and proves the Kubernetes mechanism and surface outcome, not a twelve-hour wall-clock execution.
+
 ## CR contract
 
 `App` (`lego/types/v1alpha1/app_types.go`, helpers in `cron.go`):
@@ -103,7 +115,7 @@ The `crr-…` id hides the Kubernetes Job name while staying stable across reads
 - **First-class run history is a bex extension.** Render's current OpenAPI exposes no list-runs, get-run, or per-run-cancel routes — only trigger (`POST .../runs`) and cancel-current (`DELETE .../runs`). bex mirrors both current routes and adds the three historical reads in Render's own envelope/id/error grammar.
 - **Terminal per-run cancel is 409, not a silent no-op.** Render's cancel-current OpenAPI documents only 204; a conflict is more honest than a successful no-op on an already-finished run.
 - **Actor fields are omitted, not fabricated.** `triggeredBy`/`canceledBy` have no durable source (Jobs drop caller identity), so they are honestly absent.
-- **12-hour cap and persistent disks.** Render stops a run after 12h and disallows disks on crons. bex inherits Kubernetes' Job semantics; a hard `activeDeadlineSeconds` cap and disk rejection are the natural follow-ups if strict parity is wanted.
+- **Deadline timing is not established as exact Render parity.** Both scheduled and manual Jobs now have a twelve-hour Job deadline (w5/m109), including pending scheduling/image-pull time. Render does not document its timer origin, termination grace or timeout status. Cron services already reject persistent disks.
 - **Not the same as one-off jobs.** Render's `/services/{id}/jobs` (run an arbitrary command in the service context) is an execution surface deliberately off-roadmap (`DO_NOT_DO` §pillar 5) — separate from scheduled cron jobs. Likewise **pre-deploy commands** are one-shot `batch/v1.Job`s gating a rollout ([ADR004-app-deployment.md](ADR004-app-deployment.md)), a different mechanism from a CronJob.
 
 ## Run visibility in the service Activity feed (w4/m118)

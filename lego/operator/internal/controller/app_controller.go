@@ -3723,6 +3723,7 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 		// repeating the tenant's side effects — while ForbidConcurrent skipped
 		// every tick in between.
 		cj.Spec.JobTemplate.Spec.BackoffLimit = new(int32(cronRunBackoffLimit))
+		cj.Spec.JobTemplate.Spec.ActiveDeadlineSeconds = new(cronRunActiveDeadlineSeconds)
 		return controllerutil.SetControllerReference(app, cj, r.Scheme)
 	}); err != nil {
 		return ctrl.Result{}, &stepFailure{reason: "CronJobFailed", err: err}
@@ -3749,7 +3750,7 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 		}
 	}
 
-	runs, err := r.cronRuns(ctx, app)
+	runs, err := r.cronRuns(ctx, app, cj)
 	if err != nil {
 		return ctrl.Result{}, &stepFailure{reason: "CronRunFailed", err: err}
 	}
@@ -3886,6 +3887,10 @@ func (r *AppReconciler) preemptOtherCronRuns(ctx context.Context, app *appv1alph
 // A superseding trigger may arrive before the previous manual Job reached run
 // history, so both owner kinds must participate in foreground preemption.
 func otherOwnedCronRun(app *appv1alpha1.App, cron *batchv1.CronJob, job *batchv1.Job) bool {
+	return job.Name != manualRunJobName(app.Name, app.Spec.RunAt) && ownedCronRun(app, cron, job)
+}
+
+func ownedCronRun(app *appv1alpha1.App, cron *batchv1.CronJob, job *batchv1.Job) bool {
 	owner := metav1.GetControllerOf(job)
 	if owner == nil {
 		return false
@@ -3895,9 +3900,11 @@ func otherOwnedCronRun(app *appv1alpha1.App, cron *batchv1.CronJob, job *batchv1
 		return owner.Name == cron.Name && owner.UID == cron.UID
 	case "App":
 		runAt := job.Annotations[annotationManualRunAt]
+		if runAt == "" {
+			runAt = app.Spec.RunAt // the current legacy manual Job has a known identity
+		}
 		return owner.Name == app.Name && owner.UID == app.UID &&
-			runAt != "" && job.Name == manualRunJobName(app.Name, runAt) &&
-			job.Name != manualRunJobName(app.Name, app.Spec.RunAt)
+			runAt != "" && job.Name == manualRunJobName(app.Name, runAt)
 	default:
 		return false
 	}
@@ -3982,6 +3989,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 	job.Annotations = map[string]string{annotationManualRunAt: app.Spec.RunAt}
 	job.Spec.Template = template
 	job.Spec.BackoffLimit = new(int32(cronRunBackoffLimit)) // one execution, like a scheduled run (w8/028)
+	job.Spec.ActiveDeadlineSeconds = new(cronRunActiveDeadlineSeconds)
 	if err := controllerutil.SetControllerReference(app, job, r.Scheme); err != nil {
 		return err
 	}
@@ -3993,7 +4001,7 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 
 // cronRuns lists the Jobs backing an App's cron (by labelApp — both the CronJob's
 // scheduled Jobs and one-off RunAt Jobs), newest first, capped at maxCronRuns.
-func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App) ([]appv1alpha1.CronRun, error) {
+func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App, cron *batchv1.CronJob) ([]appv1alpha1.CronRun, error) {
 	var jobs batchv1.JobList
 	if err := r.buildPlaneClient().List(ctx, &jobs, client.InNamespace(app.Namespace), client.MatchingLabels{labelApp: app.Name}); err != nil {
 		return nil, err
@@ -4007,6 +4015,9 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App) ([]a
 	}
 	current := make(map[string]appv1alpha1.CronRun, len(items))
 	for i := range items {
+		if err := r.enforceCronRunDeadline(ctx, app, cron, &items[i]); err != nil {
+			return nil, err
+		}
 		run := toCronRun(&items[i])
 		if old, ok := prior[run.Name]; ok {
 			if run.StartedAt == "" {
