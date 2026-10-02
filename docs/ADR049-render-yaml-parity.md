@@ -121,7 +121,7 @@ Render's rules are the default. Examples that must be locked by conformance fixt
 - omitted `numInstances`, IP allow lists, auto-deploy setting, subdomain policy, database disk size/autoscaling, and connection-pool setting preserve existing values where the Render reference says so;
 - omitted `buildFilter` clears existing build filters, because Render documents this field as replacement semantics;
 - environment variables not declared by the Blueprint are retained, while explicitly Blueprint-owned values continue to reconcile;
-- an explicit empty list is distinct from an omitted list;
+- explicit empty lists follow each field’s semantics: replacement fields may differ from omission, while `envVars: []` preserves undeclared existing values and produces no change when the service is otherwise unchanged;
 - `pro plus`, `pro max`, and `pro ultra` use Render's Blueprint spellings at the boundary and translate to internal tier IDs only after validation.
 
 Resource deletion remains manual. Render now explicitly documents that Blueprint sync never deletes a resource removed from the file, so bex's no-sync-delete behavior is parity, not a divergence.
