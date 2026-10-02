@@ -143,6 +143,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     routes: null,
     headers: null,
     ipAllowListEntries: null,
+    ipAllowListProxiedDomains: null,
     outboundIps: null,
     ...overrides,
   };
@@ -216,6 +217,8 @@ describe("toServiceView", () => {
       headers: [],
       ipAllowList: null,
       ipAllowListEntries: null,
+      // Not selected by the list node (only server(id) computes it, w1/m171).
+      ipAllowListProxiedDomains: null,
       outboundIps: null,
       maintenanceMode: null,
     });

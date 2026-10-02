@@ -21,6 +21,7 @@ package mcputil
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"runtime/debug"
@@ -61,4 +62,24 @@ func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, O
 		res, out, err = h(ctx, req, in)
 		return res, out, core.MCPError(err)
 	})
+}
+
+// WithWarning is the CallToolResult a typed handler returns when a successful
+// result carries a human warning: the JSON text block the SDK would have
+// generated for out, then warning as its own text block, so an agent reading
+// only the text still sees it. An empty warning returns nil — the SDK's
+// default rendering, byte-identical to a handler that never called this. The
+// SDK fills StructuredContent from out either way.
+func WithWarning(out any, warning string) *mcp.CallToolResult {
+	if warning == "" {
+		return nil
+	}
+	body, err := json.Marshal(out)
+	if err != nil {
+		return nil
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{
+		&mcp.TextContent{Text: string(body)},
+		&mcp.TextContent{Text: warning},
+	}}
 }

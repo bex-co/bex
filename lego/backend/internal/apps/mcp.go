@@ -1204,7 +1204,8 @@ func renderServiceResult(app AppView, err error) (*mcp.CallToolResult, renderSer
 	if err != nil {
 		return nil, renderService{}, err
 	}
-	return nil, toRenderService(app), nil
+	out := toRenderService(app)
+	return mcputil.WithWarning(out, core.ProxiedAllowListWarning(app.IPAllowListProxiedDomains)), out, nil
 }
 
 // customDomainResult is renderServiceResult's twin for the domain verbs.

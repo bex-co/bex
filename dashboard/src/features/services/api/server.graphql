@@ -141,6 +141,9 @@ query Server($id: String!) {
       cidrBlock
       description
     }
+    # bex extension (w1/m171): Cloudflare-proxied custom domains on which the
+    # allowlist sees Cloudflare's address instead of the client's.
+    ipAllowListProxiedDomains
     # Shared egress IPs for Connect / outbound allowlisting (w8/010). Always
     # type "shared" on bex; empty ips is truthful on CAPD, not an error.
     outboundIps {

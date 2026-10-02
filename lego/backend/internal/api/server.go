@@ -417,6 +417,10 @@ type Deps struct {
 	// — the apps service names custom-domain DNS targets `<app>.<BaseDomain>` from it.
 	// Empty falls back to deriving the platform host from an App's status URLs.
 	BaseDomain string
+	// ProxiedHosts detects Cloudflare-proxied custom domains so the service
+	// and environment allowlist responses can warn that the allowlist sees
+	// Cloudflare's edge there (w1/m171). nil (tests) detects nothing.
+	ProxiedHosts *core.ProxiedHostDetector
 	// Region is BEX_REGION, the explicit platform placement name projected onto
 	// Render resource metadata. Empty means region is unavailable and omitted;
 	// it is never inferred from an object-store or provider setting.
@@ -769,6 +773,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		// The direct-create grouping quota shares the Blueprint bound
 		// (codex-security round 12, finding 5).
 		MaxGroupings: d.MaxBlueprintGroupings,
+		ProxiedHosts: d.ProxiedHosts,
 	}
 	environmentCreateResolver := environments.NewCreateResolver(environmentsSvc)
 	pg.Environments = environmentCreateResolver
@@ -876,7 +881,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		APIKeys:    accountKeys,
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 	}
-	appsSvc := &apps.Service{Base: base, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
+	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
 	srv := &Server{
 		Apps: appsSvc,
 		Logs: logSvc,

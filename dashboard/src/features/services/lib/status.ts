@@ -102,6 +102,10 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     ipAllowList: "ipAllowList" in s ? (s.ipAllowList ?? null) : null,
     ipAllowListEntries:
       "ipAllowListEntries" in s ? (s.ipAllowListEntries ?? null) : null,
+    ipAllowListProxiedDomains:
+      "ipAllowListProxiedDomains" in s
+        ? (s.ipAllowListProxiedDomains ?? null)
+        : null,
     outboundIps: "outboundIps" in s ? toOutboundIps(s.outboundIps) : null,
     routes: "routes" in s ? toStaticRoutes(s.routes) : [],
     headers: "headers" in s ? toStaticHeaders(s.headers) : [],

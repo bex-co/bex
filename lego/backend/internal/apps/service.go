@@ -69,6 +69,10 @@ type Service struct {
 	// host enters App.spec and becomes routable. nil uses the system resolver;
 	// tests inject a deterministic verifier.
 	DomainOwnership DomainOwnershipVerifier
+	// ProxiedHosts detects custom domains that resolve into Cloudflare's edge,
+	// where an inbound IP allowlist sees Cloudflare instead of the client
+	// (w1/m171). nil detects nothing, so the warning field stays empty.
+	ProxiedHosts *core.ProxiedHostDetector
 	// DiskSnapshots lists the objects the operator's nightly snapshot Job
 	// writes, and SnapshotSecret signs the 24-hour keys a listing hands out and
 	// a restore hands back (docs/ADR082-persistent-disks.md D5). Either unset ⇒
@@ -601,6 +605,14 @@ type AppView struct {
 	// static_site. Both CIDR and description persist; enforcement projects only
 	// CIDRs. Empty means open to all source IPs.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+	// IPAllowListProxiedDomains is a bex extension (w1/m171): the custom
+	// domains proxied by Cloudflare while IPAllowList restricts traffic. On
+	// those hosts the allowlist matches Cloudflare's edge address, not the
+	// client's — m150 Decision 2's warning, chosen over refusing so an existing
+	// allowlist keeps saving. It costs DNS lookups, so only Get (REST by-id GET,
+	// GraphQL service(id), MCP get_service) and the allowlist writes compute
+	// it; like PushDeliveryMethod, absent elsewhere means "not computed".
+	IPAllowListProxiedDomains []string `json:"ipAllowListProxiedDomains,omitempty"`
 	// MaintenanceMode is Render's maintenanceMode object (spec.maintenanceMode):
 	// {enabled, uri}. web_service only — every other type reports the zero
 	// value. The Settings → Maintenance Mode section reads it and writes it via
@@ -1394,6 +1406,7 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 	// mutations and previews return, which the field is no part of the contract
 	// for, keep paying nothing for a lookup that costs GitHub round-trips.
 	v.PushDeliveryMethod = s.pushDeliveryMethod(ctx, a)
+	v.IPAllowListProxiedDomains = s.allowListProxiedDomains(ctx, a)
 	return v, nil
 }
 
@@ -4161,9 +4174,30 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 	if err := core.ValidateAllowList(entries); err != nil {
 		return AppView{}, err
 	}
-	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.SetIPAllowListEntries(core.AllowListToSpec(entries))
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	// The save is accepted either way (m150 Decision 2 warns, never refuses);
+	// the response names the hosts where the new list sees Cloudflare.
+	v.IPAllowListProxiedDomains = s.allowListProxiedDomains(ctx, a)
+	return v, nil
+}
+
+// allowListProxiedDomains is AppView.IPAllowListProxiedDomains for a: the
+// Cloudflare-proxied custom domains, but only while a's own allowlist
+// actually restricts traffic.
+func (s *Service) allowListProxiedDomains(ctx context.Context, a *appv1alpha1.App) []string {
+	if !core.AllowListRestricts(core.AllowListFromSpec(a.Spec.EffectiveIPAllowListEntries())) {
+		return nil
+	}
+	return s.ProxiedHosts.CloudflareProxied(ctx, core.AppCustomDomains(a))
 }
 
 // ConfigureMaintenanceMode is the explicit atomic-object spelling used by the

@@ -29,6 +29,12 @@ export interface EnvironmentView {
   protectedStatus: string;
   networkIsolationEnabled: boolean;
   ipAllowListEntries: EnvironmentIPAllowListEntry[];
+  /**
+   * Member services' Cloudflare-proxied custom domains, on which this
+   * allowlist sees Cloudflare's address instead of the client's (w1/m171).
+   * Always set by `mapEnvironments`; optional so hand-built views may omit it.
+   */
+  ipAllowListProxiedDomains?: string[];
 }
 
 export interface UseEnvironmentsOptions {
@@ -90,6 +96,9 @@ export function mapEnvironments(
           : (environment.ipAllowList ?? [])
               .filter((cidr): cidr is string => cidr != null && cidr !== "")
               .map((cidrBlock) => ({ cidrBlock, description: "" })),
+      ipAllowListProxiedDomains: (
+        environment.ipAllowListProxiedDomains ?? []
+      ).filter((host): host is string => host != null && host !== ""),
     }));
 }
 

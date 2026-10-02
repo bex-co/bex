@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
+import { IPAllowListProxiedNotice } from "@/common/components/ip-allow-list-proxied-notice";
 import { Button } from "@/common/components/ui/button";
 import {
   Dialog,
@@ -171,6 +172,9 @@ function EnvironmentSettingsForm({
           <p className="text-sm text-muted-foreground">
             {t("environments.ipAllowListHint")}
           </p>
+          <IPAllowListProxiedNotice
+            domains={environment.ipAllowListProxiedDomains}
+          />
           <div className="space-y-2">
             {ipAllowListEntries.length === 0 ? (
               <span className="text-sm text-muted-foreground">

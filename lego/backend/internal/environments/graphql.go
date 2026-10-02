@@ -44,6 +44,10 @@ var environmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"networkIsolationEnabled": gqlutil.BoolField(func(e EnvironmentView) any { return e.NetworkIsolationEnabled }),
 		"ipAllowList":             gqlutil.StrsField(func(e EnvironmentView) any { return core.AllowListCIDRs(e.IPAllowList) }),
 		"ipAllowListEntries":      gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(e EnvironmentView) any { return e.IPAllowList }),
+		// bex extension (w1/m171): member custom domains proxied by
+		// Cloudflare, where this allowlist sees Cloudflare's edge address.
+		"ipAllowListProxiedDomains": gqlutil.Typed(graphql.NewList(graphql.NewNonNull(graphql.String)),
+			func(e EnvironmentView) any { return e.IPAllowListProxiedDomains }),
 	},
 })
 

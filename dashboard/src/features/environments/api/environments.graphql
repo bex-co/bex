@@ -15,6 +15,7 @@ fragment EnvironmentFields on Environment {
     cidrBlock
     description
   }
+  ipAllowListProxiedDomains
 }
 
 query Environments($projectId: String!) {

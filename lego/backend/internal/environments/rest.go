@@ -70,6 +70,10 @@ type renderEnvironment struct {
 	ProtectedStatus         string                  `json:"protectedStatus"`
 	NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
 	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
+	// IPAllowListProxiedDomains is a bex extension (w1/m171, no Render
+	// counterpart): member custom domains where the allowlist sees
+	// Cloudflare's edge, not the client. Omitted when there are none.
+	IPAllowListProxiedDomains []string `json:"ipAllowListProxiedDomains,omitempty"`
 }
 
 type environmentWithCursor struct {
@@ -89,18 +93,19 @@ func toRenderEnvironment(e EnvironmentView) renderEnvironment {
 		return in
 	}
 	return renderEnvironment{
-		ID:                      e.ID,
-		ProjectID:               e.ProjectID,
-		Name:                    e.Name,
-		ServiceIDs:              empty(e.ServiceIDs),
-		DatabaseIDs:             empty(e.DatabaseIDs),
-		KeyValueIDs:             empty(e.KeyValueIDs),
-		DatabasesIDs:            empty(e.DatabaseIDs),
-		RedisIDs:                empty(e.KeyValueIDs),
-		EnvGroupIDs:             empty(e.EnvGroupIDs),
-		ProtectedStatus:         e.ProtectedStatus,
-		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
-		IPAllowList:             allowList,
+		ID:                        e.ID,
+		ProjectID:                 e.ProjectID,
+		Name:                      e.Name,
+		ServiceIDs:                empty(e.ServiceIDs),
+		DatabaseIDs:               empty(e.DatabaseIDs),
+		KeyValueIDs:               empty(e.KeyValueIDs),
+		DatabasesIDs:              empty(e.DatabaseIDs),
+		RedisIDs:                  empty(e.KeyValueIDs),
+		EnvGroupIDs:               empty(e.EnvGroupIDs),
+		ProtectedStatus:           e.ProtectedStatus,
+		NetworkIsolationEnabled:   e.NetworkIsolationEnabled,
+		IPAllowList:               allowList,
+		IPAllowListProxiedDomains: e.IPAllowListProxiedDomains,
 	}
 }
 
