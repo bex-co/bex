@@ -1,0 +1,10 @@
+{
+  "checks": 93,
+  "all_passed": true,
+  "created_and_deleted_databases": 17,
+  "runtime_network_connection_tested": false,
+  "harness_notes": [
+    "Explicit null is rejected by composed validation; corrected the initial harness expectation without changing the API.",
+    "Shortened override fixture names to satisfy the existing 30-character database name limit."
+  ]
+}

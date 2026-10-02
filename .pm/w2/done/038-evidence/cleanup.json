@@ -1,0 +1,47 @@
+{
+  "variants": [
+    {
+      "variant": "current",
+      "api_cleanup": {
+        "databasesDeletedDuringShutdown": 0,
+        "namespaceDeleteAccepted": true,
+        "remainingDatabases": 0,
+        "secretsDeleted": 6
+      },
+      "processes_stopped": [
+        9415,
+        10351,
+        10434
+      ],
+      "owned_ports_closed": {
+        "api": true,
+        "control": true
+      },
+      "credentials_removed": true,
+      "cli_config_dirs_removed": true
+    },
+    {
+      "variant": "original",
+      "api_cleanup": {
+        "databasesDeletedDuringShutdown": 0,
+        "namespaceDeleteAccepted": true,
+        "remainingDatabases": 0,
+        "secretsDeleted": 0
+      },
+      "processes_stopped": [
+        10312,
+        10524,
+        10540
+      ],
+      "owned_ports_closed": {
+        "api": true,
+        "control": true
+      },
+      "credentials_removed": true,
+      "cli_config_dirs_removed": true
+    }
+  ],
+  "containers_created": 0,
+  "shared_resources_changed": false,
+  "all_created_databases_deleted_via_REST_and_verified_404": true
+}

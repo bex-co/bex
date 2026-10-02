@@ -1,0 +1,8 @@
+{
+  "base_commit": "76b2697d5975ef790c58be2c8f899b5f1fd964b8",
+  "rest_sha256": "99831ff469fa2bef2cde70f3827c5eb01cc60493df4cb20c4b2a2728081c77a3",
+  "api_binary_sha256": "2afda18f23d1e1261be9cdcc1f522db7486adbfc3ecce3faaf94f685f56b65af",
+  "source_unchanged_during_build": true,
+  "rest_unchanged_after_acceptance": true,
+  "original_rest_sha256": "6d6b200962e360ea6882a2e537c78f94f8c75d95e21b54ee34b128b649f9d7a0"
+}

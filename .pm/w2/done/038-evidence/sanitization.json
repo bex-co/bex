@@ -1,0 +1,14 @@
+{
+  "private_tokens_or_database_passwords_present": false,
+  "private_keys_or_kubeconfig_present": false,
+  "files": {
+    "acceptance.md": "7bbb21f6546db4ab7c21b039fdd29943eae8e3a974aed58995c609c837b2e99d",
+    "evidence.jsonl": "875a13226d2c540b0cbcef567de7c7d65262588be5b26b75c33a4d2b2f84c027",
+    "summary.json": "2455aaae446924216efdf514cfe912df79f27f58ff0be52580561c1c922f249c",
+    "versions.json": "16a173bd318a286d0036f5a8ffee6a2f74c0d6b8b305a6e26857154ca9780969",
+    "source-manifest.json": "31ded7a454cc279a64c93ceba3059eaad4db1bfa291af002c3572944c49fdac1",
+    "cleanup.json": "fbbf59ab803a31436fed0cd34f13c994f9cd4acb359dd43003250ce14265ce65",
+    "original-evidence.jsonl": "8d248b1b99fda678593f32b7c9aee8a0263642d1d06b904280a1d81207080a5e",
+    "original-summary.json": "f517260a9673901f92130ac6cb202b71607893ce0f2d11062e8a60b0bde339fd"
+  }
+}
