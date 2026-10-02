@@ -1,6 +1,6 @@
 # w1 · m159 — Dashboard truth: a datastore's own Status row, the landing after "Move to project", and seven count strings
 
-**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001–t006 done; only t007 closeout remains, pending the live dashboard walk — see § Closeout gate)
+**Worker:** worker1 **Goal:** the dashboard never contradicts itself about a resource's state or its location. A suspended Key Value or Postgres reads Suspended in every row that names its status, a resource moved into a project opens on the environment it actually landed in, and every `{count}` message reads correctly at one. **Status:** todo (t001–t006 done; t007 closeout is open. The 2026-09-30 live walk passed bullets 1 and 3, but bullet 2 fails when the project page is loaded fresh: a load-order race lands it on the first empty environment. See § Live closeout 2026-09-30)
 
 ## Tasks (in order)
 
@@ -145,6 +145,88 @@ All four ran green on 2026-09-28: `4 files / 169 tests passed`.
 
 Nothing else in the milestone is outstanding.
 
+## Live closeout 2026-09-30
+
+**Result: two of three bullets pass live; the move-to-project landing fails on a cold load of the project page. t007 stays open and m159 stays in `blocked/`.**
+
+**Build under test.** Production dashboard pin `ghcr.io/bex-co/bex-dashboard@sha256:6564b585…` (`deploy/gitops/base/dashboard.yaml`), written by `5c83c46c6` "pin platform images to `de9ac4d1c880`". `git merge-base --is-ancestor 7a2982f4e de9ac4d1c880` succeeds, so m159's fix commit (`7a2982f4e`, 2026-09-15) is in the deployed build.
+
+**How the walk ran.** Headless Chromium (Playwright 1.63, scratchpad install) driven by Node scripts. The QA session came from `scripts/qa-login.sh <scratch file>`, which reads `QA_EMAIL`/`QA_PASSWORD` from `.env` inside its own process. No credential, cookie or token entered a tool argument or any output. The session was revoked at the end (`qa-login.sh --logout` → `ok logged-out`) and the state file was deleted. Workspace: `tea-d98210cbbpdc73dcrkvg`. Suspend and "Move to project" went through the UI (row-actions menu and the Danger Zone dialogs). Create and delete went through GraphQL from inside the signed-in page.
+
+**Fixtures** (all created 2026-09-30 17:56–17:58Z, deleted 18:04Z):
+
+| Fixture                          | id                         | Deleted → `GET` |
+| -------------------------------- | -------------------------- | --------------- |
+| Key Value `qa-20260930-m159kv`   | `red-daukqpg5maoc7384lncg` | 404             |
+| Postgres `qa-20260930-m159pg`    | `dpg-daukqpg5maoc7384lndg` | 404             |
+| Project `qa-20260930-m159p`      | `prj-daukqqo5maoc7384lnf0` | 404             |
+| Environment `qa-e1` (in project) | `env-daukqvjei8sc73dev1eg` | 404             |
+
+- **Control reads.** The same REST routes returned 200 for existing workspace resources, so the 404s mean deleted and not an unknown route. A final GraphQL list of projects, Key Value stores and databases shows no `qa-2026…` leftovers.
+
+### 1. A suspended datastore reads suspended everywhere: **PASS**
+
+The free Key Value store was suspended at 18:01:00Z through the "Suspend Key Value Instance" dialog, using the sudo phrase. The free Postgres (the free plan was available and cost nothing) was suspended at 18:01:53Z through "Suspend Database". The API then reported `status: suspended` for both.
+
+```text
+en kv: header badge "Suspended" | Status = Suspended | Instance type = Free
+en pg: header badge "Suspended" | Status = Suspended | Instance type = Free
+zh kv: header badge "已暂停"     | 状态 = 已暂停     | 实例类型 = Free
+zh pg: header badge "已暂停"     | 状态 = 已暂停     | 实例类型 = Free
+```
+
+- **No wire words.** Neither the wire word `available` nor the lowercase plan id `free` appears anywhere on either page, in either locale.
+- **The zh plan name.** In zh the plan reads `Free` because that is the catalog display name the API returns (`keyValueInstanceTypes` / `databaseInstanceTypes`: `{id: free, name: Free}`). The plan picker shows the same name.
+- **Screenshots** (session scratchpad `m159/`): `kv-suspended-{en,zh}.png` and `pg-suspended-{en,zh}.png`. Each shows the h1 with a grey Suspended / 已暂停 pill and a Details card whose Status row reads the same word, with Instance type `Free`.
+
+### 2. A moved resource is visible where it landed: **FAIL (cold load)**
+
+The setup was a project with one empty environment, `qa-e1`. On the Overview's Ungrouped Resources row for `qa-20260930-m159kv`, the walk used Actions → "Move to project" → `qa-20260930-m159p`. The toast read `"qa-20260930-m159kv" moved to "qa-20260930-m159p".` (18:02:51Z). The screenshots are `move-menu.png` and `move-after.png`.
+
+- **Pass: opening the project by clicking its card on the Overview.** The page lands on `/project/prj-daukqqo5maoc7384lnf0?env=unassigned`, and the selector reads **Unassigned** (zh: **未分配**). The picker also offers `qa-e1`. The table under Unassigned lists `qa-20260930-m159kv · Key Value · Suspended`. Screenshots: `project-landing-{en,zh}.png`.
+- **Fail: opening the bare project URL on a fresh page load** (reload, bookmark, pasted link or new tab). 3 of 3 attempts rewrote the URL to `?env=env-daukqvjei8sc73dev1eg`. The selector reads `qa-e1` with the text "0 resources" and "No resources in this environment yet", and the moved store is not on screen. This is the filed symptom exactly. Screenshot: `project-cold-load-en.png`.
+
+```text
+cold load #1..#3: final=/project/prj-daukqqo5maoc7384lnf0?env=env-daukqvjei8sc73dev1eg selected=qa-e1 kvVisible=false
+  batch 1: Workspaces+Environments
+  batch 2: Projects+BillingReadiness+Services+Databases+KeyValues+EnvGroups
+```
+
+- **Root cause (from reading the code; the fix is untested).** The failure is a load-order race in `dashboard/src/features/environments/components/environments-panel.tsx`.
+  - `Environments` resolves in the first `BatchHttpLink` batch. The Project's resource lists arrive in the second.
+  - In that window `unassignedRows` is empty, so `selectEnvironmentId` falls through to `environments[0]` (`:66-67`).
+  - The canonicalizing effect (`:131`) is gated only on the environments query's `loading` (`:100`). It writes `?env=<first env>` into the URL right away, and that explicit id then wins over the Unassigned default for good.
+  - The comment at `:115-119` guards this race for an explicit `?env=unassigned` URL, but not for a URL with no `env`.
+  - The card click passes only because the Overview has already filled Apollo's cache with the resource lists.
+  - The t006 test (`environments-panel.test.tsx` "lands on Unassigned when every Environment is empty") passes `projectRows` synchronously, so it cannot see the race.
+- **Suggested fix.** Do not canonicalize a missing `env` until the Project's resource lists have settled too. For example, pass a `rowsLoading` flag into `EnvironmentsPanel` and add it to the `:131` guard. Add a test that resolves `Environments` before the resource lists.
+
+### 3. Counts read correctly at one: **PASS**
+
+On `/blueprints/new` → GitHub → `bex-co/bex` (branch `main`), with the path field set:
+
+```text
+en examples/hello-go/render.yaml   : Blueprint file parsed successfully — 1 resource will change.
+en examples/stack-demo/render.yaml : Blueprint file parsed successfully — 3 resources will change.
+zh examples/hello-go/render.yaml   : 蓝图文件解析成功 — 将变更 1 个资源。
+zh examples/stack-demo/render.yaml : 蓝图文件解析成功 — 将变更 3 个资源。
+```
+
+- **The DoD wording is out of date.** The DoD's "to sync" wording is from filing time. `w4/m138` (`f75f0749f`, which is in the deployed build) later reworded the key to "will change". The plural is what m159 fixed, and it is correct at both 1 and 3.
+- **No `(s)`.** No `(s)` appears anywhere in the page body.
+- **Screenshots:** `bp-{en,zh}-{hello-go,stack-demo}.png`.
+
+### Side observation (not filed; seen only in headless Chromium)
+
+On a fresh headless load, no `ViewerCapabilities` request goes out. Every capability-gated button stays disabled, and the Instance type card shows "Permissions could not be refreshed. Try again — this is not a role change." This covers Suspend, Delete and the plan picker.
+
+- **It clears on focus.** A `window` `focus` event fires the request (200, all grants `allowed`) and enables the buttons. The walk sent that event before each UI action.
+- **Unconfirmed in a headed browser.** It was not reproduced in a real browser, so it is recorded here and not filed. The code in question is `features/capabilities/context/capabilities-provider.tsx`: the initial `refresh("workspace")` whose request never leaves the page.
+
+### To close
+
+Fix the cold-load race above (a small w1 follow-up, or reopen t002), ship it, then re-walk only bullet 2 with a fresh-page load of `/project/<id>`. Bullets 1 and 3 need no re-walk.
+
 ## Blast radius
 
 - **Who is hit.** Every datastore detail page, every "Move to project" from a resource row, and seven strings across Blueprints, env groups and services.
@@ -157,3 +239,13 @@ Nothing else in the milestone is outstanding.
 - **Expected outcome:** no dashboard row contradicts the resource it describes, and no count message reads "1 resources".
 - **Why now:** all three were found live and none needs a decision; they are the cheapest user-visible wins left in w1's inbox.
 - **Render parity is included** because all three are user-facing dashboard surfaces; `w6/done/062` set the plural rule this restores.
+
+## Cold-load race fix (2026-09-30)
+
+The live walk's bullet-2 failure is fixed in code. `EnvironmentsPanel` canonicalized the URL as soon as the Environments query resolved; on a fresh `/project/<id>` load that happens before the services/databases/key-value lists, so `unassignedRows` was still empty, `selectEnvironmentId` fell back to `environments[0]`, and that id was written into `?env=` and then honored as an explicit request forever after.
+
+- `environments-panel.tsx`: new `resourcesLoading` prop; the canonicalizing effect waits for it as well as for `loading`.
+- `project.$projectId.index.tsx`: passes `servicesLoading || databasesLoading || keyValuesLoading`.
+- Regression: `environments-panel.test.tsx` — "does not pin the first Environment into the URL before resources load (w1/m159)" renders the cold-load order (Environments first, rows later) and asserts the only URL write is `unassigned`. It **fails without the guard** (called with `env-1`) and passes with it. `vitest src/features/environments` 66/66, `yarn typecheck` clean.
+
+**Remaining for t007:** once this ships and a pin lands, re-walk bullet 2 only (fresh load of `/project/<id>` after a row-level move lands on Unassigned with the resource on screen). Bullets 1 and 3 passed live today.
