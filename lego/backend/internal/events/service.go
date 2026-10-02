@@ -670,6 +670,9 @@ type Filter struct {
 	Until  time.Time
 	Cursor string
 	Limit  int
+	// OpenStart suppresses the legacy one-hour default for a cursor continuation.
+	// MaxQueryHours still bounds the effective query when configured.
+	OpenStart bool
 }
 
 // FilterOf builds a Filter from the five params Render's endpoint takes, in the
@@ -755,7 +758,14 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	}
 	since, until := filter.Since, filter.Until
 	if since.IsZero() {
-		since = s.Now().Add(-DefaultWindow)
+		if !filter.OpenStart {
+			since = s.Now().Add(-DefaultWindow)
+		} else if s.MaxQueryHours > 0 {
+			if until.IsZero() {
+				until = s.Now()
+			}
+			since = until.Add(-time.Duration(s.MaxQueryHours) * time.Hour)
+		}
 	}
 	if err := s.checkWindow(since, until); err != nil {
 		return nil, err

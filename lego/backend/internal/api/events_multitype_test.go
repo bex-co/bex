@@ -17,6 +17,8 @@ limitations under the License.
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"slices"
 	"strings"
@@ -24,6 +26,7 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/events"
@@ -70,7 +73,7 @@ func TestEventsMultiTypeFilterAgreesAcrossSurfaces(t *testing.T) {
 
 	fake.gotFil = store.ServiceEventFilter{}
 	cs := mcpSessionAs(t, srv, "user-x")
-	callTool[map[string]any](t, cs, "list_events", map[string]any{
+	callRenderEvents(t, cs, map[string]any{
 		"serviceId": "web", "startTime": "2026-07-01T00:00:00Z",
 		"eventTypes": []string{"deploy_ended", "server_failed", "suspender_added"},
 	})
@@ -123,15 +126,15 @@ func TestListEventsWindowFollowsUpstream(t *testing.T) {
 		Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true},
 		Clock: func() time.Time { return at },
 	}
-	_, srv := serverWith(t, base, Deps{EventStore: fake})
+	srv := NewServer(base, Deps{EventStore: fake})
 	cs := mcpSessionAs(t, srv, "user-x")
 
-	callTool[map[string]any](t, cs, "list_events", map[string]any{"serviceId": "web"})
+	callRenderEvents(t, cs, map[string]any{"serviceId": "web"})
 	if want := at.Add(-7 * 24 * time.Hour); !fake.gotFil.Since.Equal(want) {
 		t.Errorf("list_events default Since = %s, want %s (upstream's 7-day lookback)", fake.gotFil.Since, want)
 	}
 
-	callTool[map[string]any](t, cs, "list_events", map[string]any{"serviceId": "web", "startTime": "2026-07-01T00:00:00Z"})
+	callRenderEvents(t, cs, map[string]any{"serviceId": "web", "startTime": "2026-07-01T00:00:00Z"})
 	if want := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC); !fake.gotFil.Since.Equal(want) {
 		t.Errorf("list_events explicit Since = %s, want %s", fake.gotFil.Since, want)
 	}
@@ -143,6 +146,141 @@ func TestListEventsWindowFollowsUpstream(t *testing.T) {
 
 	// serviceId is required, as upstream declares it.
 	callToolError(t, cs, "list_events", map[string]any{"eventTypes": []string{"deploy_ended"}})
+
+	// Render applies its default only on the first page. An explicit bound
+	// still applies when paging, and the legacy tool retains its old default.
+	cursor := core.EncodeKeysetCursor(at.Add(-8*24*time.Hour), "older-event:")
+	callRenderEvents(t, cs, map[string]any{"serviceId": "web", "cursor": cursor})
+	if !fake.gotFil.Since.IsZero() || fake.gotFil.AfterKey != "older-event:" {
+		t.Errorf("cursor-only filter = %+v, want no lower bound and the decoded cursor", fake.gotFil)
+	}
+	callRenderEvents(t, cs, map[string]any{
+		"serviceId": "web", "cursor": cursor, "startTime": "2026-07-01T00:00:00Z",
+	})
+	if want := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC); !fake.gotFil.Since.Equal(want) {
+		t.Errorf("explicit cursor-page Since = %s, want %s", fake.gotFil.Since, want)
+	}
+	callTool[map[string]any](t, cs, "list_service_events", map[string]any{"serviceId": "web", "cursor": cursor})
+	if want := at.Add(-events.DefaultWindow); !fake.gotFil.Since.Equal(want) {
+		t.Errorf("legacy cursor-page Since = %s, want unchanged %s", fake.gotFil.Since, want)
+	}
+
+	// Omitting startTime on a continuation must not bypass the deployment's
+	// query cap. An explicit end anchors that cap in the historical window.
+	srv.Events.MaxQueryHours = 30 * 24
+	callRenderEvents(t, cs, map[string]any{"serviceId": "web", "cursor": cursor})
+	if want := at.Add(-30 * 24 * time.Hour); !fake.gotFil.Since.Equal(want) || !fake.gotFil.Until.Equal(at) {
+		t.Errorf("cursor-only capped window = %s..%s, want %s..%s", fake.gotFil.Since, fake.gotFil.Until, want, at)
+	}
+	for _, until := range []time.Time{at, at.Add(-15 * 24 * time.Hour)} {
+		callRenderEvents(t, cs, map[string]any{
+			"serviceId": "web", "cursor": cursor, "endTime": until.Format(time.RFC3339),
+		})
+		if want := until.Add(-30 * 24 * time.Hour); !fake.gotFil.Since.Equal(want) || !fake.gotFil.Until.Equal(until) {
+			t.Errorf("capped cursor window = %s..%s, want %s..%s", fake.gotFil.Since, fake.gotFil.Until, want, until)
+		}
+	}
+	fake.gotFil = store.ServiceEventFilter{}
+	callToolError(t, cs, "list_events", map[string]any{
+		"serviceId": "web", "cursor": cursor, "startTime": at.Add(-31 * 24 * time.Hour).Format(time.RFC3339),
+	})
+	if fake.gotFil.Limit != 0 {
+		t.Fatal("explicit window over the cap reached the store")
+	}
+}
+
+// callRenderEvents reads the upstream text contract rather than bex's legacy
+// structured envelope. Parsing the published shape also catches an accidental
+// return to {events:[{event,cursor}]} even if the selected rows are correct.
+func callRenderEvents(t *testing.T, cs *mcp.ClientSession, args map[string]any) ([]wireEvent, string) {
+	t.Helper()
+	result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "list_events", Arguments: args})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Content) != 1 {
+		t.Fatalf("list_events result = %+v, want one successful text block", result)
+	}
+	content, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("list_events content = %T, want text", result.Content[0])
+	}
+	if result.IsError {
+		t.Fatalf("list_events error: %s", content.Text)
+	}
+	array, cursor, ok := strings.Cut(content.Text, "\n\n cursor: ")
+	if !ok {
+		t.Fatalf("list_events text lacks Render's cursor suffix: %s", content.Text)
+	}
+	var page []wireEvent
+	if err := json.Unmarshal([]byte(array), &page); err != nil || page == nil {
+		t.Fatalf("list_events JSON = %s (error %v), want an event array", array, err)
+	}
+	if len(page) == 0 && cursor != `""` {
+		t.Fatalf("empty list_events cursor = %q, want a quoted empty string", cursor)
+	}
+	if cursor == `""` {
+		cursor = ""
+	}
+	if (len(page) == 0) != (cursor == "") {
+		t.Fatalf("list_events page has %d events and cursor %q", len(page), cursor)
+	}
+	return page, cursor
+}
+
+func TestListEventsRejectsInvalidTimesBeforeReading(t *testing.T) {
+	fake := eventFixture(time.Now())
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	cs := mcpSessionAs(t, NewServer(base, Deps{EventStore: fake}), "user-x")
+	for _, field := range []string{"startTime", "endTime"} {
+		for _, value := range []string{"not-a-time", ""} {
+			t.Run(field+"/"+value, func(t *testing.T) {
+				fake.gotFil = store.ServiceEventFilter{}
+				callToolError(t, cs, "list_events", map[string]any{"serviceId": "web", field: value})
+				if fake.gotFil.Limit != 0 {
+					t.Fatalf("invalid %s reached the store: %+v", field, fake.gotFil)
+				}
+			})
+		}
+	}
+	// Existing callers keep the documented lenient time parsing of the alias.
+	callTool[map[string]any](t, cs, "list_service_events", map[string]any{"serviceId": "web", "startTime": "not-a-time"})
+}
+
+func TestListEventsCannotReadForeignWorkspace(t *testing.T) {
+	foreign := eventsApp()
+	foreign.Name = "foreign"
+	foreign.Labels[core.LabelTenant] = "tea-b"
+	foreign.Labels[store.LabelAppID] = "srv-foreign"
+	fake := eventFixture(time.Now())
+	base := &core.Base{
+		Client: fakeClient(eventsApp(), foreign), Namespace: "default",
+		Authz: allowOwnChecker{}, Workspace: nonMemberResolver{},
+	}
+	cs := mcpSessionAs(t, NewServer(base, Deps{EventStore: fake}), "user-x")
+	// Prove this identity can read its own resource with an explicit selector.
+	callRenderEvents(t, cs, map[string]any{"serviceId": "srv-1", "workspaceId": "tea-a"})
+	for _, tool := range []string{"list_events", "list_service_events"} {
+		for _, args := range []map[string]any{
+			{"serviceId": "srv-foreign"},
+			{"serviceId": "srv-foreign", "workspaceId": "tea-a"},
+			{"serviceId": "srv-foreign", "workspaceId": "tea-b"},
+			{"serviceId": "srv-1", "workspaceId": "tea-b"},
+		} {
+			fake.gotFil = store.ServiceEventFilter{}
+			callToolError(t, cs, tool, args)
+			if fake.gotFil.Limit != 0 {
+				t.Fatalf("%s %v reached the store: %+v", tool, args, fake.gotFil)
+			}
+		}
+	}
+	denied := &fakeChecker{allow: false}
+	base.Authz = denied
+	fake.gotFil = store.ServiceEventFilter{}
+	callToolError(t, cs, "list_events", map[string]any{"serviceId": "srv-1", "workspaceId": "tea-a"})
+	if fake.gotFil.Limit != 0 {
+		t.Fatal("denied same-workspace read reached the store")
+	}
 }
 
 // TestListEventsCommaListIsOperationScoped: the comma-list concession is made

@@ -35,7 +35,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
-- [ ] **m145** — [Render list_events and multi-type event filtering](m145/README.md) (7 tasks; ~4h15 total) ← approved Render-only proposal 2026-09-30; absorbs `w1/m165/t003`, retains the legacy tool alias.
+- [x] **m145** — [Render list_events and multi-type event filtering](done/m145/README.md) — done 2026-10-02 (7 tasks); completed MCP response/cursor parity and real-Postgres adapter regressions atop the implementation already shipped by w1/m165; legacy alias retained.
 
 - [x] **m143** — [Make dashboard service and deploy actions permission-aware](done/m143/README.md) (8 tasks; ~5h) ← approved brainstorm proposal 1, 2026-09-10
 - [x] **m144** — [Refresh dashboard permissions after workspace access changes](done/m144/README.md) (8 tasks; ~5h) ← approved brainstorm proposal 2, 2026-09-10; final integration depends on m143 closeout
