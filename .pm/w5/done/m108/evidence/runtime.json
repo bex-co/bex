@@ -1,0 +1,1595 @@
+{
+  "manual-active": {
+    "time": "2026-10-02T05:11:11.694133+00:00",
+    "runAt": "2026-10-02T05:11:07.707529Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-later-cancel",
+      "requestedAt": "2026-10-02T05:09:46.324183Z"
+    },
+    "status": {
+      "activeRevision": "rev-9",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:11:09Z",
+          "message": "cron scheduled: 0 0 1 1 *",
+          "observedGeneration": 10,
+          "reason": "Scheduled",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:11:07.707529Z",
+      "observedGeneration": 10,
+      "phase": "Running",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:70534cd8aca1c17a8b10ba4e1c6f9a960ae7a0985e381627c73f9318b7216d92",
+      "releaseGeneration": 9,
+      "runs": [
+        {
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-62390693",
+          "status": "Running"
+        },
+        {
+          "finishedAt": "2026-10-02T05:10:27Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-3831d16d",
+          "startedAt": "2026-10-02T05:10:23Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:46.324183Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-later-cancel",
+          "startedAt": "2026-10-02T05:09:44Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:38Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-12",
+          "startedAt": "2026-10-02T05:09:34Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:32Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-11",
+          "startedAt": "2026-10-02T05:09:27Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:25Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-10",
+          "startedAt": "2026-10-02T05:09:21Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:19Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-09",
+          "startedAt": "2026-10-02T05:09:15Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:13Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-08",
+          "startedAt": "2026-10-02T05:09:09Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:07Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-07",
+          "startedAt": "2026-10-02T05:09:03Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:00Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-06",
+          "startedAt": "2026-10-02T05:08:55Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-11",
+        "uid": "3621b684-3d5c-4fad-80af-df6b6c60675c",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-12",
+        "uid": "f394880f-b53d-41c7-9e2f-354be07f3dd7",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-3831d16d",
+        "uid": "ec3e2bfb-f16c-4529-884a-90307e774206",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-62390693",
+        "uid": "8ece316c-fe0b-43a3-8245-a7a560b30458",
+        "active": 1,
+        "succeeded": 0,
+        "failed": 0
+      }
+    ]
+  },
+  "manual-cancel-response": {
+    "time": "2026-10-02T05:11:12.480568+00:00",
+    "httpStatus": 204,
+    "responseBodyEmpty": true
+  },
+  "manual-canceled": {
+    "time": "2026-10-02T05:11:18.463300+00:00",
+    "runAt": "2026-10-02T05:11:07.707529Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-62390693",
+      "requestedAt": "2026-10-02T05:11:12.437292Z"
+    },
+    "status": {
+      "activeRevision": "rev-9",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:11:15Z",
+          "message": "cron scheduled: 0 0 1 1 *",
+          "observedGeneration": 11,
+          "reason": "Scheduled",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:11:07.707529Z",
+      "observedGeneration": 11,
+      "phase": "Running",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:70534cd8aca1c17a8b10ba4e1c6f9a960ae7a0985e381627c73f9318b7216d92",
+      "releaseGeneration": 9,
+      "runs": [
+        {
+          "finishedAt": "2026-10-02T05:11:12.437292Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-62390693",
+          "startedAt": "2026-10-02T05:11:09Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:10:27Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-3831d16d",
+          "startedAt": "2026-10-02T05:10:23Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:46.324183Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-later-cancel",
+          "startedAt": "2026-10-02T05:09:44Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:38Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-12",
+          "startedAt": "2026-10-02T05:09:34Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:32Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-11",
+          "startedAt": "2026-10-02T05:09:27Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:25Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-10",
+          "startedAt": "2026-10-02T05:09:21Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:19Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-09",
+          "startedAt": "2026-10-02T05:09:15Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:13Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-08",
+          "startedAt": "2026-10-02T05:09:09Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:07Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-07",
+          "startedAt": "2026-10-02T05:09:03Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:00Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-06",
+          "startedAt": "2026-10-02T05:08:55Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-11",
+        "uid": "3621b684-3d5c-4fad-80af-df6b6c60675c",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-12",
+        "uid": "f394880f-b53d-41c7-9e2f-354be07f3dd7",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-3831d16d",
+        "uid": "ec3e2bfb-f16c-4529-884a-90307e774206",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      }
+    ]
+  },
+  "history-evicted": {
+    "time": "2026-10-02T05:12:40.874776+00:00",
+    "runAt": "2026-10-02T05:11:07.707529Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-62390693",
+      "requestedAt": "2026-10-02T05:11:12.437292Z"
+    },
+    "status": {
+      "activeRevision": "rev-9",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:11:15Z",
+          "message": "cron scheduled: 0 0 1 1 *",
+          "observedGeneration": 11,
+          "reason": "Scheduled",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:11:07.707529Z",
+      "observedGeneration": 11,
+      "phase": "Running",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:70534cd8aca1c17a8b10ba4e1c6f9a960ae7a0985e381627c73f9318b7216d92",
+      "releaseGeneration": 9,
+      "runs": [
+        {
+          "finishedAt": "2026-10-02T05:12:39Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:33Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:24Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:15Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:10Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:06Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:58Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:52Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:47Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-04",
+          "startedAt": "2026-10-02T05:11:43Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:42Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-03",
+          "startedAt": "2026-10-02T05:11:36Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+        "uid": "a2a17a66-250f-4b52-b35b-79fd74e4d43f",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+        "uid": "9fc8c186-1c37-4a87-84f0-0e135c5f984b",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+        "uid": "7e556232-2a93-41fe-949a-de1e59fb34b4",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      }
+    ]
+  },
+  "later-cancel-response": {
+    "time": "2026-10-02T05:12:52.442342+00:00",
+    "httpStatus": 204,
+    "responseBodyEmpty": true
+  },
+  "later-canceled": {
+    "time": "2026-10-02T05:12:59.940455+00:00",
+    "runAt": "2026-10-02T05:11:07.707529Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+      "requestedAt": "2026-10-02T05:12:52.432671Z"
+    },
+    "status": {
+      "activeRevision": "rev-9",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:12:53Z",
+          "message": "cron scheduled: 0 0 1 1 *",
+          "observedGeneration": 12,
+          "reason": "Scheduled",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:11:07.707529Z",
+      "observedGeneration": 12,
+      "phase": "Running",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:70534cd8aca1c17a8b10ba4e1c6f9a960ae7a0985e381627c73f9318b7216d92",
+      "releaseGeneration": 9,
+      "runs": [
+        {
+          "finishedAt": "2026-10-02T05:12:52.432671Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+          "startedAt": "2026-10-02T05:12:50Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:39Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:33Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:24Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:15Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:10Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:06Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:58Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:52Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:47Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-04",
+          "startedAt": "2026-10-02T05:11:43Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+        "uid": "a2a17a66-250f-4b52-b35b-79fd74e4d43f",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+        "uid": "9fc8c186-1c37-4a87-84f0-0e135c5f984b",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+        "uid": "7e556232-2a93-41fe-949a-de1e59fb34b4",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      }
+    ]
+  },
+  "reconciler-restarted": {
+    "time": "2026-10-02T05:13:11.288687+00:00",
+    "runAt": "2026-10-02T05:11:07.707529Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+      "requestedAt": "2026-10-02T05:12:52.432671Z"
+    },
+    "status": {
+      "activeRevision": "rev-9",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:12:53Z",
+          "message": "cron scheduled: 0 0 1 1 *",
+          "observedGeneration": 12,
+          "reason": "Scheduled",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:11:07.707529Z",
+      "observedGeneration": 12,
+      "phase": "Running",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:70534cd8aca1c17a8b10ba4e1c6f9a960ae7a0985e381627c73f9318b7216d92",
+      "releaseGeneration": 9,
+      "runs": [
+        {
+          "finishedAt": "2026-10-02T05:12:52.432671Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+          "startedAt": "2026-10-02T05:12:50Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:39Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:33Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:24Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:15Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:10Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:06Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:58Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:52Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:47Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-04",
+          "startedAt": "2026-10-02T05:11:43Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+        "uid": "a2a17a66-250f-4b52-b35b-79fd74e4d43f",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+        "uid": "9fc8c186-1c37-4a87-84f0-0e135c5f984b",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+        "uid": "7e556232-2a93-41fe-949a-de1e59fb34b4",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      }
+    ]
+  },
+  "suspended": {
+    "time": "2026-10-02T05:13:12.831419+00:00",
+    "runAt": "2026-10-02T05:11:07.707529Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+      "requestedAt": "2026-10-02T05:12:52.432671Z"
+    },
+    "status": {
+      "activeRevision": "rev-9",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:13:12Z",
+          "message": "cron schedule suspended",
+          "observedGeneration": 13,
+          "reason": "Suspended",
+          "status": "False",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:11:07.707529Z",
+      "observedGeneration": 13,
+      "phase": "Hibernated",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:70534cd8aca1c17a8b10ba4e1c6f9a960ae7a0985e381627c73f9318b7216d92",
+      "releaseGeneration": 9,
+      "runs": [
+        {
+          "finishedAt": "2026-10-02T05:12:52.432671Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+          "startedAt": "2026-10-02T05:12:50Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:39Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:33Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:24Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:15Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:10Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:06Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:58Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:52Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:47Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-04",
+          "startedAt": "2026-10-02T05:11:43Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+        "uid": "a2a17a66-250f-4b52-b35b-79fd74e4d43f",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+        "uid": "9fc8c186-1c37-4a87-84f0-0e135c5f984b",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+        "uid": "7e556232-2a93-41fe-949a-de1e59fb34b4",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      }
+    ]
+  },
+  "suspend-resume": {
+    "time": "2026-10-02T05:13:21.448444+00:00",
+    "runAt": "2026-10-02T05:11:07.707529Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+      "requestedAt": "2026-10-02T05:12:52.432671Z"
+    },
+    "status": {
+      "activeRevision": "rev-9",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:13:14Z",
+          "message": "cron scheduled: 0 0 1 1 *",
+          "observedGeneration": 14,
+          "reason": "Scheduled",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 9,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:11:07.707529Z",
+      "observedGeneration": 14,
+      "phase": "Running",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:70534cd8aca1c17a8b10ba4e1c6f9a960ae7a0985e381627c73f9318b7216d92",
+      "releaseGeneration": 9,
+      "runs": [
+        {
+          "finishedAt": "2026-10-02T05:12:52.432671Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+          "startedAt": "2026-10-02T05:12:50Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:39Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:33Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:24Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:15Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:10Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:06Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:58Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:52Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:47Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-04",
+          "startedAt": "2026-10-02T05:11:43Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+        "uid": "a2a17a66-250f-4b52-b35b-79fd74e4d43f",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+        "uid": "9fc8c186-1c37-4a87-84f0-0e135c5f984b",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+        "uid": "7e556232-2a93-41fe-949a-de1e59fb34b4",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      }
+    ]
+  },
+  "fresh-once": {
+    "time": "2026-10-02T05:13:31.719093+00:00",
+    "runAt": "2026-10-02T05:13:21.64464Z",
+    "cancelRun": {
+      "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+      "requestedAt": "2026-10-02T05:12:52.432671Z"
+    },
+    "status": {
+      "activeRevision": "rev-15",
+      "artifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "artifactImage": "docker.io/library/busybox:1.36",
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-02T05:13:22Z",
+          "message": "cron scheduled: 0 0 1 1 *",
+          "observedGeneration": 16,
+          "reason": "Scheduled",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "configSnapshotGeneration": 15,
+      "image": "docker.io/library/busybox:1.36",
+      "manualRunHandledAt": "2026-10-02T05:13:21.64464Z",
+      "observedGeneration": 16,
+      "phase": "Running",
+      "releaseArtifactFingerprint": "artifact-v1:c148827779531eba6b5d327b59c8d983d981a80bb7bc8fa284c6794f4367a149",
+      "releaseFingerprint": "release-v1:7c465d9b372dd01c497f526d7c1fe77c639768aa76c2114373187bc2dc51154c",
+      "releaseGeneration": 15,
+      "runs": [
+        {
+          "finishedAt": "2026-10-02T05:13:26Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-5fb26acf",
+          "startedAt": "2026-10-02T05:13:22Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:52.432671Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+          "startedAt": "2026-10-02T05:12:50Z",
+          "status": "Canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:39Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:33Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:24Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:15Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:10Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:06Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:58Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "status": "Succeeded"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:52Z",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "status": "Succeeded"
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+        "uid": "9fc8c186-1c37-4a87-84f0-0e135c5f984b",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+        "uid": "7e556232-2a93-41fe-949a-de1e59fb34b4",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      },
+      {
+        "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-5fb26acf",
+        "uid": "43586740-5ce9-4b64-ac60-ccf86fa33b08",
+        "active": 0,
+        "succeeded": 1,
+        "failed": 0
+      }
+    ]
+  },
+  "fresh-proof": {
+    "time": "2026-10-02T05:13:31.720208+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-5fb26acf",
+    "jobUID": "43586740-5ce9-4b64-ac60-ccf86fa33b08",
+    "succeeded": 1,
+    "podCount": 1,
+    "log": "W5_M108_FRESH"
+  },
+  "surfaces-canceled": {
+    "time": "2026-10-02T05:11:19.899918+00:00",
+    "rest": [
+      {
+        "cronJobRun": {
+          "id": "crr-rpvbs0f3lvo43gb7r34s",
+          "status": "canceled",
+          "startedAt": "2026-10-02T05:11:09Z",
+          "finishedAt": "2026-10-02T05:11:12.437292Z"
+        },
+        "cursor": "crr-rpvbs0f3lvo43gb7r34s"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-p44frd56nbc51tl6o7hj",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:10:23Z",
+          "finishedAt": "2026-10-02T05:10:27Z"
+        },
+        "cursor": "crr-p44frd56nbc51tl6o7hj"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-5md54f9shnmbnse98oob",
+          "status": "canceled",
+          "startedAt": "2026-10-02T05:09:44Z",
+          "finishedAt": "2026-10-02T05:09:46.324183Z"
+        },
+        "cursor": "crr-5md54f9shnmbnse98oob"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-95r1t7gv2om01j7o5if8",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:09:34Z",
+          "finishedAt": "2026-10-02T05:09:38Z"
+        },
+        "cursor": "crr-95r1t7gv2om01j7o5if8"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-dmael9t02oefir10tbvc",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:09:27Z",
+          "finishedAt": "2026-10-02T05:09:32Z"
+        },
+        "cursor": "crr-dmael9t02oefir10tbvc"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-q8uonh67i4rc2c4qa9vj",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:09:21Z",
+          "finishedAt": "2026-10-02T05:09:25Z"
+        },
+        "cursor": "crr-q8uonh67i4rc2c4qa9vj"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-62pjhglsmgia1ea73nfs",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:09:15Z",
+          "finishedAt": "2026-10-02T05:09:19Z"
+        },
+        "cursor": "crr-62pjhglsmgia1ea73nfs"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-r2ho0ouhp5dsj91heils",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:09:09Z",
+          "finishedAt": "2026-10-02T05:09:13Z"
+        },
+        "cursor": "crr-r2ho0ouhp5dsj91heils"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-mlm8ktt7evlri79rpcc5",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:09:03Z",
+          "finishedAt": "2026-10-02T05:09:07Z"
+        },
+        "cursor": "crr-mlm8ktt7evlri79rpcc5"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-ptcp75b97slm5akou4tn",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:08:55Z",
+          "finishedAt": "2026-10-02T05:09:00Z"
+        },
+        "cursor": "crr-ptcp75b97slm5akou4tn"
+      }
+    ],
+    "graphql": {
+      "cronJobRuns": [
+        {
+          "finishedAt": "2026-10-02T05:11:12.437292Z",
+          "id": "crr-rpvbs0f3lvo43gb7r34s",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-62390693",
+          "startedAt": "2026-10-02T05:11:09Z",
+          "status": "canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:10:27Z",
+          "id": "crr-p44frd56nbc51tl6o7hj",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-3831d16d",
+          "startedAt": "2026-10-02T05:10:23Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:46.324183Z",
+          "id": "crr-5md54f9shnmbnse98oob",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-later-cancel",
+          "startedAt": "2026-10-02T05:09:44Z",
+          "status": "canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:38Z",
+          "id": "crr-95r1t7gv2om01j7o5if8",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-12",
+          "startedAt": "2026-10-02T05:09:34Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:32Z",
+          "id": "crr-dmael9t02oefir10tbvc",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-11",
+          "startedAt": "2026-10-02T05:09:27Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:25Z",
+          "id": "crr-q8uonh67i4rc2c4qa9vj",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-10",
+          "startedAt": "2026-10-02T05:09:21Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:19Z",
+          "id": "crr-62pjhglsmgia1ea73nfs",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-09",
+          "startedAt": "2026-10-02T05:09:15Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:13Z",
+          "id": "crr-r2ho0ouhp5dsj91heils",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-08",
+          "startedAt": "2026-10-02T05:09:09Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:07Z",
+          "id": "crr-mlm8ktt7evlri79rpcc5",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-07",
+          "startedAt": "2026-10-02T05:09:03Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:09:00Z",
+          "id": "crr-ptcp75b97slm5akou4tn",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-accel-06",
+          "startedAt": "2026-10-02T05:08:55Z",
+          "status": "successful"
+        }
+      ]
+    },
+    "mcp": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-02T05:11:12.437292Z\",\"id\":\"crr-rpvbs0f3lvo43gb7r34s\",\"startedAt\":\"2026-10-02T05:11:09Z\",\"status\":\"canceled\"},{\"finishedAt\":\"2026-10-02T05:10:27Z\",\"id\":\"crr-p44frd56nbc51tl6o7hj\",\"startedAt\":\"2026-10-02T05:10:23Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:09:46.324183Z\",\"id\":\"crr-5md54f9shnmbnse98oob\",\"startedAt\":\"2026-10-02T05:09:44Z\",\"status\":\"canceled\"},{\"finishedAt\":\"2026-10-02T05:09:38Z\",\"id\":\"crr-95r1t7gv2om01j7o5if8\",\"startedAt\":\"2026-10-02T05:09:34Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:09:32Z\",\"id\":\"crr-dmael9t02oefir10tbvc\",\"startedAt\":\"2026-10-02T05:09:27Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:09:25Z\",\"id\":\"crr-q8uonh67i4rc2c4qa9vj\",\"startedAt\":\"2026-10-02T05:09:21Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:09:19Z\",\"id\":\"crr-62pjhglsmgia1ea73nfs\",\"startedAt\":\"2026-10-02T05:09:15Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:09:13Z\",\"id\":\"crr-r2ho0ouhp5dsj91heils\",\"startedAt\":\"2026-10-02T05:09:09Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:09:07Z\",\"id\":\"crr-mlm8ktt7evlri79rpcc5\",\"startedAt\":\"2026-10-02T05:09:03Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:09:00Z\",\"id\":\"crr-ptcp75b97slm5akou4tn\",\"startedAt\":\"2026-10-02T05:08:55Z\",\"status\":\"successful\"}],\"cursor\":\"crr-ptcp75b97slm5akou4tn\"}"
+          }
+        ],
+        "structuredContent": {
+          "cronJobRuns": [
+            {
+              "finishedAt": "2026-10-02T05:11:12.437292Z",
+              "id": "crr-rpvbs0f3lvo43gb7r34s",
+              "startedAt": "2026-10-02T05:11:09Z",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-02T05:10:27Z",
+              "id": "crr-p44frd56nbc51tl6o7hj",
+              "startedAt": "2026-10-02T05:10:23Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:46.324183Z",
+              "id": "crr-5md54f9shnmbnse98oob",
+              "startedAt": "2026-10-02T05:09:44Z",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:38Z",
+              "id": "crr-95r1t7gv2om01j7o5if8",
+              "startedAt": "2026-10-02T05:09:34Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:32Z",
+              "id": "crr-dmael9t02oefir10tbvc",
+              "startedAt": "2026-10-02T05:09:27Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:25Z",
+              "id": "crr-q8uonh67i4rc2c4qa9vj",
+              "startedAt": "2026-10-02T05:09:21Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:19Z",
+              "id": "crr-62pjhglsmgia1ea73nfs",
+              "startedAt": "2026-10-02T05:09:15Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:13Z",
+              "id": "crr-r2ho0ouhp5dsj91heils",
+              "startedAt": "2026-10-02T05:09:09Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:07Z",
+              "id": "crr-mlm8ktt7evlri79rpcc5",
+              "startedAt": "2026-10-02T05:09:03Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:09:00Z",
+              "id": "crr-ptcp75b97slm5akou4tn",
+              "startedAt": "2026-10-02T05:08:55Z",
+              "status": "successful"
+            }
+          ],
+          "cursor": "crr-ptcp75b97slm5akou4tn"
+        }
+      }
+    }
+  },
+  "surfaces-final": {
+    "time": "2026-10-02T05:13:31.860464+00:00",
+    "rest": [
+      {
+        "cronJobRun": {
+          "id": "crr-lstnnias7f57hpk4gm7g",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:13:22Z",
+          "finishedAt": "2026-10-02T05:13:26Z"
+        },
+        "cursor": "crr-lstnnias7f57hpk4gm7g"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-7ojmef0ms63qgac5udba",
+          "status": "canceled",
+          "startedAt": "2026-10-02T05:12:50Z",
+          "finishedAt": "2026-10-02T05:12:52.432671Z"
+        },
+        "cursor": "crr-7ojmef0ms63qgac5udba"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-0qhdm55drscimo3vir68",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "finishedAt": "2026-10-02T05:12:39Z"
+        },
+        "cursor": "crr-0qhdm55drscimo3vir68"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-ku89u9im4o7gcua5u24a",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "finishedAt": "2026-10-02T05:12:33Z"
+        },
+        "cursor": "crr-ku89u9im4o7gcua5u24a"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-gprud55oijhlncptte45",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "finishedAt": "2026-10-02T05:12:24Z"
+        },
+        "cursor": "crr-gprud55oijhlncptte45"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-qdrh0v701mlag4e0v86o",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "finishedAt": "2026-10-02T05:12:15Z"
+        },
+        "cursor": "crr-qdrh0v701mlag4e0v86o"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-qs39lh9ihn0s1h98ttha",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "finishedAt": "2026-10-02T05:12:10Z"
+        },
+        "cursor": "crr-qs39lh9ihn0s1h98ttha"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-nfvo20i33s88318pivqo",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "finishedAt": "2026-10-02T05:12:06Z"
+        },
+        "cursor": "crr-nfvo20i33s88318pivqo"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-ugkbi1gbf05okp2510g5",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "finishedAt": "2026-10-02T05:11:58Z"
+        },
+        "cursor": "crr-ugkbi1gbf05okp2510g5"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-mo2bnktuhv1bbirl2fv3",
+          "status": "successful",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "finishedAt": "2026-10-02T05:11:52Z"
+        },
+        "cursor": "crr-mo2bnktuhv1bbirl2fv3"
+      }
+    ],
+    "graphql": {
+      "cronJobRuns": [
+        {
+          "finishedAt": "2026-10-02T05:13:26Z",
+          "id": "crr-lstnnias7f57hpk4gm7g",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-run-5fb26acf",
+          "startedAt": "2026-10-02T05:13:22Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:52.432671Z",
+          "id": "crr-7ojmef0ms63qgac5udba",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-later-cancel",
+          "startedAt": "2026-10-02T05:12:50Z",
+          "status": "canceled"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:39Z",
+          "id": "crr-0qhdm55drscimo3vir68",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+          "startedAt": "2026-10-02T05:12:35Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:33Z",
+          "id": "crr-ku89u9im4o7gcua5u24a",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+          "startedAt": "2026-10-02T05:12:28Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:24Z",
+          "id": "crr-gprud55oijhlncptte45",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+          "startedAt": "2026-10-02T05:12:19Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:15Z",
+          "id": "crr-qdrh0v701mlag4e0v86o",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+          "startedAt": "2026-10-02T05:12:11Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:10Z",
+          "id": "crr-qs39lh9ihn0s1h98ttha",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+          "startedAt": "2026-10-02T05:12:06Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:12:06Z",
+          "id": "crr-nfvo20i33s88318pivqo",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+          "startedAt": "2026-10-02T05:12:02Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:58Z",
+          "id": "crr-ugkbi1gbf05okp2510g5",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+          "startedAt": "2026-10-02T05:11:54Z",
+          "status": "successful"
+        },
+        {
+          "finishedAt": "2026-10-02T05:11:52Z",
+          "id": "crr-mo2bnktuhv1bbirl2fv3",
+          "name": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+          "startedAt": "2026-10-02T05:11:48Z",
+          "status": "successful"
+        }
+      ]
+    },
+    "mcp": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-02T05:13:26Z\",\"id\":\"crr-lstnnias7f57hpk4gm7g\",\"startedAt\":\"2026-10-02T05:13:22Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:12:52.432671Z\",\"id\":\"crr-7ojmef0ms63qgac5udba\",\"startedAt\":\"2026-10-02T05:12:50Z\",\"status\":\"canceled\"},{\"finishedAt\":\"2026-10-02T05:12:39Z\",\"id\":\"crr-0qhdm55drscimo3vir68\",\"startedAt\":\"2026-10-02T05:12:35Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:12:33Z\",\"id\":\"crr-ku89u9im4o7gcua5u24a\",\"startedAt\":\"2026-10-02T05:12:28Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:12:24Z\",\"id\":\"crr-gprud55oijhlncptte45\",\"startedAt\":\"2026-10-02T05:12:19Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:12:15Z\",\"id\":\"crr-qdrh0v701mlag4e0v86o\",\"startedAt\":\"2026-10-02T05:12:11Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:12:10Z\",\"id\":\"crr-qs39lh9ihn0s1h98ttha\",\"startedAt\":\"2026-10-02T05:12:06Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:12:06Z\",\"id\":\"crr-nfvo20i33s88318pivqo\",\"startedAt\":\"2026-10-02T05:12:02Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:11:58Z\",\"id\":\"crr-ugkbi1gbf05okp2510g5\",\"startedAt\":\"2026-10-02T05:11:54Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-02T05:11:52Z\",\"id\":\"crr-mo2bnktuhv1bbirl2fv3\",\"startedAt\":\"2026-10-02T05:11:48Z\",\"status\":\"successful\"}],\"cursor\":\"crr-mo2bnktuhv1bbirl2fv3\"}"
+          }
+        ],
+        "structuredContent": {
+          "cronJobRuns": [
+            {
+              "finishedAt": "2026-10-02T05:13:26Z",
+              "id": "crr-lstnnias7f57hpk4gm7g",
+              "startedAt": "2026-10-02T05:13:22Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:12:52.432671Z",
+              "id": "crr-7ojmef0ms63qgac5udba",
+              "startedAt": "2026-10-02T05:12:50Z",
+              "status": "canceled"
+            },
+            {
+              "finishedAt": "2026-10-02T05:12:39Z",
+              "id": "crr-0qhdm55drscimo3vir68",
+              "startedAt": "2026-10-02T05:12:35Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:12:33Z",
+              "id": "crr-ku89u9im4o7gcua5u24a",
+              "startedAt": "2026-10-02T05:12:28Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:12:24Z",
+              "id": "crr-gprud55oijhlncptte45",
+              "startedAt": "2026-10-02T05:12:19Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:12:15Z",
+              "id": "crr-qdrh0v701mlag4e0v86o",
+              "startedAt": "2026-10-02T05:12:11Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:12:10Z",
+              "id": "crr-qs39lh9ihn0s1h98ttha",
+              "startedAt": "2026-10-02T05:12:06Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:12:06Z",
+              "id": "crr-nfvo20i33s88318pivqo",
+              "startedAt": "2026-10-02T05:12:02Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:11:58Z",
+              "id": "crr-ugkbi1gbf05okp2510g5",
+              "startedAt": "2026-10-02T05:11:54Z",
+              "status": "successful"
+            },
+            {
+              "finishedAt": "2026-10-02T05:11:52Z",
+              "id": "crr-mo2bnktuhv1bbirl2fv3",
+              "startedAt": "2026-10-02T05:11:48Z",
+              "status": "successful"
+            }
+          ],
+          "cursor": "crr-mo2bnktuhv1bbirl2fv3"
+        }
+      }
+    }
+  },
+  "verification": {
+    "time": "2026-10-02T05:13:31.902661+00:00",
+    "actual_later_successes": 12,
+    "original_job_reappeared_after_cancellation": false,
+    "history_capped_at": 10,
+    "fresh_job_unique_uids": 1,
+    "fresh_pod_count": 1,
+    "surface_histories_equal": true,
+    "observation_snapshots": 104
+  },
+  "accel-01": {
+    "time": "2026-10-02T05:11:25.157953+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-01",
+    "uid": "a86fc035-02de-4ac9-a1a6-64e193426dfb",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_01"
+    ]
+  },
+  "accel-02": {
+    "time": "2026-10-02T05:11:36.258150+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-02",
+    "uid": "4faf12a6-cbf1-4ac1-9620-2ef1eb922f3c",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_02"
+    ]
+  },
+  "accel-03": {
+    "time": "2026-10-02T05:11:43.589239+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-03",
+    "uid": "d7753656-afa1-40af-8519-24370576c259",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_03"
+    ]
+  },
+  "accel-04": {
+    "time": "2026-10-02T05:11:48.265756+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-04",
+    "uid": "826528ff-ce5c-4eea-80a1-879a1ca4f990",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_04"
+    ]
+  },
+  "accel-05": {
+    "time": "2026-10-02T05:11:54.095934+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-05",
+    "uid": "0f76a345-23a8-4d61-b69b-e0df049d4a6f",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_05"
+    ]
+  },
+  "accel-06": {
+    "time": "2026-10-02T05:12:02.197117+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-06",
+    "uid": "90126e8c-b2b0-406a-9cff-5085b4e41c34",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_06"
+    ]
+  },
+  "accel-07": {
+    "time": "2026-10-02T05:12:06.877284+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-07",
+    "uid": "7d1278e9-16a0-4f9a-9dfc-52407d845c85",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_07"
+    ]
+  },
+  "accel-08": {
+    "time": "2026-10-02T05:12:11.555475+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-08",
+    "uid": "209d2b1d-c557-4131-8cf9-b40fe5b6088a",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_08"
+    ]
+  },
+  "accel-09": {
+    "time": "2026-10-02T05:12:19.661014+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-09",
+    "uid": "31d53a30-f8f8-47cc-8de2-55c7a3269bed",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_09"
+    ]
+  },
+  "accel-10": {
+    "time": "2026-10-02T05:12:27.655724+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-10",
+    "uid": "a2a17a66-250f-4b52-b35b-79fd74e4d43f",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_10"
+    ]
+  },
+  "accel-11": {
+    "time": "2026-10-02T05:12:35.829305+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-11",
+    "uid": "9fc8c186-1c37-4a87-84f0-0e135c5f984b",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_11"
+    ]
+  },
+  "accel-12": {
+    "time": "2026-10-02T05:12:40.580178+00:00",
+    "job": "tea-davjlmhjg4r0n61fs7qg-w5-m108-cron-c2-accel-12",
+    "uid": "7e556232-2a93-41fe-949a-de1e59fb34b4",
+    "succeeded": 1,
+    "podCount": 1,
+    "logs": [
+      "W5_M108_ACCEL_12"
+    ]
+  },
+  "dashboard": {
+    "initial_manual_canceled_visible": true,
+    "final_page_statuses": [
+      "Succeeded",
+      "Canceled",
+      "Succeeded",
+      "Succeeded",
+      "Succeeded"
+    ],
+    "final_page_running_count": 0,
+    "page_size": 5
+  },
+  "cleanup": {
+    "time": "2026-10-02T05:15:01.688906+00:00",
+    "service_deleted": true,
+    "both_fixture_workspaces_deleted": true,
+    "both_namespaces_absent": true,
+    "identity_deleted": true,
+    "private_auth_state_removed": true
+  }
+}

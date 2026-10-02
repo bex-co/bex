@@ -26,9 +26,9 @@ graph LR
 `reconcileCronJob` (`lego/operator/internal/controller/app_controller.go`) materializes and manages everything:
 
 - **Scheduled runs** — a `batch/v1.CronJob` named after the App, with `ConcurrencyPolicy: ForbidConcurrent` (Render's "at most one run active" guarantee) and `spec.suspend = App.Spec.Suspended` (suspend pauses scheduling without dropping history). The pod template comes from `cronPodSpec` — the built image run to completion, no HTTP port.
-- **Manual runs ("Trigger Run")** — a change to `spec.runAt` (a verb-as-timestamp field) creates a one-off `batch/v1.Job` with a deterministic name from `ManualCronRunJobName()`. Skipped while suspended or when a cancellation is pending.
+- **Manual runs ("Trigger Run")** — a change to `spec.runAt` (a verb-as-timestamp field) creates a one-off `batch/v1.Job` with a deterministic name from `ManualCronRunJobName()`. Skipped while suspended, while cancellation is pending, or after that exact intent has already been handled. The internal acknowledgement does not mark an executing Job terminal.
 - **Cancellation** — `spec.cancelRun` (a `CronRunCancellation` intent carried across the backend→operator boundary) triggers a **foreground delete** of the exact backing Job; the operator records `Canceled` in status and refuses to let a stable `runAt` recreate a canceled manual Job. A manual replacement waits until the foreground deletion removes the active Job, so there is never even a brief overlap.
-- **Run history** — `cronRuns()` lists all Jobs labeled `app=<name>` (scheduled + one-off), sorts newest-first, maps Job conditions to a run status, and writes them to `App.status.runs` (capped at **10** terminal entries, **retained after Kubernetes garbage-collects the Jobs**). `Owns(&batchv1.CronJob{})` wires CronJob/Job events back into the reconcile queue.
+- **Run history** — `cronRuns()` lists all Jobs labeled `app=<name>` (scheduled + one-off), sorts newest-first, maps Job conditions to a run status, and writes them to `App.status.runs` (capped at **10 entries**, retaining terminal entries after Kubernetes garbage-collects their Jobs until newer entries evict them). `Owns(&batchv1.CronJob{})` wires CronJob/Job events back into the reconcile queue.
 
 ## CR contract
 
@@ -41,9 +41,22 @@ graph LR
 | `spec.command` | optional entrypoint override (`/bin/sh -c`) |
 | `spec.runAt` | RFC3339 timestamp; a change triggers one manual run |
 | `spec.cancelRun` | `CronRunCancellation` intent for an in-flight run |
+| `status.manualRunHandledAt` | exact handled `spec.runAt` token; bounded internal replay guard, independent of public history |
 | `status.runs[]` | `CronRun{ Name, StartedAt, FinishedAt, Status }`, newest first, ≤10 |
 
 The mechanism-facing status vocabulary is `Running` / `Succeeded` / `Failed` / `Canceled`; bex-api maps it to Render's wire enum below.
+
+## Manual intent acknowledgement (w5/m108)
+
+A stable `spec.runAt` must not create the same manual run again after its Job disappears. The cancellation slot can be reused and the ten-entry history can evict the old run, so neither is a durable replay guard. `status.manualRunHandledAt` records one exact trigger token after its deterministic Job has been created or observed, or its cancellation accepted. An active Job still pauses scheduling; an absent acknowledged Job is not recreated. The marker never fabricates a terminal result or an evicted public history row. A fresh trigger has a different token and executes normally.
+
+Acknowledgement persists with an optimistic status patch before cancellation deletes the Job or reconciliation replaces bounded history. A failed create cannot acknowledge an unexecuted trigger; a lost acknowledgement retries against the existing Job. A concurrent spec/status update conflicts instead of allowing stale acknowledgement to overwrite a newer one. Manual Jobs have no TTL; ordinary restart recovers from the retained Job. External removal of the Job between creation and the first persisted acknowledgement can still erase the only evidence, so this is not an exactly-once guarantee under arbitrary object deletion.
+
+New manual Jobs also retain their trigger token as an internal annotation. If a newer trigger arrives before the prior Job reaches history, reconciliation identifies that earlier App-owned manual Job by owner and deterministic identity, and foreground-deletes it before creating the replacement. Unrelated App-owned Jobs are excluded. A known current legacy App-owned Job without a history row receives the same binding before acknowledgement. Other unmarked legacy Jobs continue relying on explicit cancellation/history; unrelated identities are not guessed.
+
+Existing Apps adopt the acknowledgement from their current manual Job, matching observed history, or matching cancellation. When all three are already missing, an old trigger and an unhandled fresh trigger are indistinguishable. Migration retains the existing dispatch behavior in this ambiguous state, so an already-evicted legacy intent can still replay; age and observed generation are not proof of execution. An operator with external evidence can suspend the service, acknowledge that exact old token, and resume, or deliberately replace it with a new manual trigger. The fix prevents future loss of observed materialization; it cannot reconstruct evidence discarded before upgrade.
+
+[Render's cron contract](https://render.com/docs/cronjobs#single-run-guarantee) and [cancel-current endpoint](https://api-docs.render.com/reference/cancel-cron-job-run), rechecked 2026-10-01, establish cancellation and single-run behavior. They do not specify history retention or internal acknowledgement storage. This guard is Bex correctness supporting cancellation parity, with unchanged REST/GraphQL/MCP/dashboard run shapes.
 
 ## API surface (one Core, three adapters)
 
