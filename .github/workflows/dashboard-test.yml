@@ -1,13 +1,10 @@
 name: test (dashboard)
 
-# Run the dashboard test suite on every push/PR touching dashboard/, and as a
+# Run the dashboard test suite on every PR touching dashboard/, and as a
 # reusable workflow called by deploy.yml to gate the build+push+deploy job.
+# Main pushes run once through deploy.yml; avoid duplicate gates competing on
+# the shared Mac host. deploy.yml includes this workflow and all test inputs.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "dashboard/**"
-      - ".github/workflows/dashboard-test.yml"
   pull_request:
     paths:
       - "dashboard/**"

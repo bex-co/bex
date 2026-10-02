@@ -47,3 +47,28 @@ All of these run on the shared self-hosted pool `[self-hosted, Linux, ARM64, bex
 - **Expected outcome:** pushes to `main` deploy without a human re-running flaky gates, and the existing red-streak detector flags a stall like this one within a day.
 - **Why now:** production has been frozen for more than 32 h. Every live verification that depends on a recent fix is blocked, including w9/m94 t004 and w7/m150's live copy check, and QA hunts keep reporting deploy lag as if it were a product bug. **The immediate unblock is a human decision, not part of this milestone:** re-run `deploy.yml` on current `main` (a production deploy, so an agent should not trigger it without explicit approval).
 - **Render parity omitted:** CI/deploy infrastructure only. No REST, GraphQL, MCP, or UI surface changes.
+
+## Status update (2026-09-27 ~07:45Z, `/qa-find-bugs-cli` loop)
+
+The self-hosted `bex-ci` pool has run no job since about 05:21Z (the last real completion was `docs (prettier)`). Every self-hosted workflow is `queued`, about 38 runs: `go lint`, `govulncheck`, `test (backend|dashboard|operator)`, `scripts (test)`, `docs (prettier)`. `deploy.yml` run `36300177540` (`d55061dbb`, created 06:28Z) has sat `queued` with all six gate jobs waiting on `self-hosted,Linux,ARM64,bex-ci`. It holds the deploy concurrency group, so each later push's run goes `pending` and is then `cancelled` by the next push (33 of the last 40 runs).
+
+Production is therefore still `726042a28` (last deploy 2026-09-26 05:53Z). On `main` but **not live**: `w8/023`–`028`, `w8/m43`–`m46`, and `w4/m136`–`m140`/`142`–`144`. This looks like runners offline or wedged on the host, not flaky gates. It needs someone with access to the runner host (DO_NOT_DO #RUNNER-HOSTS: the operator's Mac).
+
+## Status update (2026-09-28 ~05:30Z, `/qa-find-bugs-cli` loop)
+
+`deploy.yml` run `36373293497` (`016391810`: 8 fixes, including `87c93899d` "bound permanent rollout image pull failures") sat `pending`/`queued` for about 1.5 h behind an 18-run backlog. Its `test-opensandbox-controller` gate then ended `failure` after 16 min (04:57–05:13Z) with **no failed step and no retrievable log** (`BlobNotFound`), which looks like a runner-lost job rather than a test failure. The deploy will not build or ship until the gate is re-run. Production stays on `4a0422577`.
+
+## Unblocking work (2026-10-02)
+
+The login and stale deploy-history blockers are resolved. Runs `36542511672` (`f22a0b068`), `36544512390` (`d303bd582`) and `36549825739` (`de9ac4d1c`) each completed build and deploy successfully on 2026-09-29. Ten inspected noncancelled deploy runs had a successful OpenSandbox gate, including `36919000487` whose unrelated backend gate failed. The sandbox-copy DoD was already satisfied on 2026-09-26 (§ Status update); t007's old login note was stale.
+
+The user accepted removing duplicate main gates. The four reusable suites now run directly on PRs and through `deploy.yml` on main. Their workflow/script-only paths are included in `deploy.yml`, preserving coverage when only CI inputs change. Those input-only main changes also use the production pipeline. A superseded main push can be cancelled before testing; current main is gated before building. This removes four duplicate jobs per qualifying main push without changing tests, timeouts, runner hosts or fleet configuration.
+
+Local workflow validation passes. **Remaining:** ship the workflow changes and observe the updated CI route. The shared host still has 7 CI + 3 production runners with 4-CPU quotas on a 15-CPU Docker VM, so reducing fleet concurrency remains a follow-up if contention persists after deduplication. No claim is made that the timeout-only change removed that host-wide cause.
+
+
+## Verification and remaining release gate (2026-10-02)
+
+Full backend suite against isolated Postgres/OpenFGA/OpenBao, operator `make test`, full CLI suite, backend/CLI lint, targeted Go race tests, workflow guards and ci-red-streak fixtures passed. The final affected backend packages passed again after review changes. Overlay mutation checks confirmed the image, workspace and rename regressions fail with their fixes removed. Markdown was formatted; QA fixtures and the isolated credentials were cleaned up.
+
+Implementation and review are complete locally. Repository `AGENTS.md` requires an explicit `$ship` before commit/push. After ship, observe CI/production and complete this milestone's remaining live closeout; m45 also needs the updated CLI released. The earlier policy/sign-off/login blockers are resolved.

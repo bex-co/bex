@@ -1,12 +1,8 @@
 name: test (OpenSandbox controller patches)
 
+# Main pushes run once through deploy.yml; avoid duplicate gates competing on
+# the shared Mac host. deploy.yml includes this workflow and all test inputs.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "deploy/opensandbox/controller.Dockerfile"
-      - "deploy/opensandbox/patches/**"
-      - ".github/workflows/opensandbox-controller-test.yml"
   pull_request:
     paths:
       - "deploy/opensandbox/controller.Dockerfile"

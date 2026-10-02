@@ -8,7 +8,7 @@
 | ---- | ----------------------------------------------------------------------------------------------------------- | --- | ---------------- |
 | t001 | Decide how the selected workspace reaches name resolution (request hint vs. refuse-ambiguous), record it — **DONE**     | 30m | —                |
 | t002 | Server: name resolution refuses a name that matches services in more than one accessible workspace (409 + ids) — **DONE** | 45m | t001             |
-| t003 | Carry the CLI's selected workspace to name-based by-path verbs, per t001's decision                           | 45m | t001             |
+| t003 | Carry the CLI's selected workspace to name-based by-path verbs, per t001's decision — **DONE**                           | 45m | t001             |
 | t004 | Enumerate every name-accepting by-path verb (deploys, restart, instances, jobs, logs, …) and cover each — **DONE**       | 30m | t002, t003       |
 | t005 | Render parity — **DONE**                                                                                                | 20m | t004             |
 | t006 | Simplify — **DONE**                                                                                                     | 15m | t005             |
@@ -66,3 +66,18 @@ t001, t002, t004–t007 are done. With no workspace named, a service name visibl
 
 1. **t003: user sign-off** on the launcher header (t001 option (a)) that lets the selected workspace win for names, which DoD bullet 1 needs.
 2. **t008: live closeout** after deploy (`blocked/m42`) with a logged-in CLI, fixtures only.
+
+## Unblocking work (2026-10-02)
+
+The user approved t001's native-header option. The local launcher sends the saved or environment-selected workspace as `X-Bex-Workspace` to the configured control plane. The API resolves workspace names within the caller's memberships, validates access, and scopes name-addressed `/v1/services/{name}` paths only. Typed service IDs ignore the hint and keep resource-workspace authorization. An explicit selection never falls through to a foreign workspace; no-selection ambiguity still returns 409.
+
+Tests cover ID and name selections, saved/environment precedence, renamed services, no-selection ambiguity, unknown/nonmember selections, nested paths and cross-workspace immutable IDs. GraphQL/dashboard retain their existing owner/resource-ID contract, MCP its `workspaceId`; the header is explicitly a bex extension, with no upstream fork.
+
+**Remaining:** ship the API and launcher, release the CLI, and verify the two-workspace name/read/restart scenario live. The sign-off and login blockers are resolved.
+
+
+## Verification and remaining release gate (2026-10-02)
+
+Full backend suite against isolated Postgres/OpenFGA/OpenBao, operator `make test`, full CLI suite, backend/CLI lint, targeted Go race tests, workflow guards and ci-red-streak fixtures passed. The final affected backend packages passed again after review changes. Overlay mutation checks confirmed the image, workspace and rename regressions fail with their fixes removed. Markdown was formatted; QA fixtures and the isolated credentials were cleaned up.
+
+Implementation and review are complete locally. Repository `AGENTS.md` requires an explicit `$ship` before commit/push. After ship, observe CI/production and complete this milestone's remaining live closeout; m45 also needs the updated CLI released. The earlier policy/sign-off/login blockers are resolved.

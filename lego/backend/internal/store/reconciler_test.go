@@ -471,6 +471,7 @@ func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	app := getApp(t, cl)
 	app.Spec.Builder = "dockerfile"
 	app.Spec.RestartedAt = "2026-07-05T00:00:00Z"
+	app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, Image: "img:override"}
 	if err := cl.Update(ctx, app); err != nil {
 		t.Fatal(err)
 	}
@@ -506,6 +507,9 @@ func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	}
 	if slices.Contains(app.Spec.Hosts, "pending.example.com") {
 		t.Errorf("pending ownership claim reached the reconciler projection: %v", app.Spec.Hosts)
+	}
+	if selected := app.Spec.ReleaseConfig; selected == nil || selected.Generation != 3 || selected.Image != "img:override" {
+		t.Fatalf("projection stomped release selection: %+v", selected)
 	}
 	if app.Spec.Builder != "dockerfile" || app.Spec.RestartedAt != "2026-07-05T00:00:00Z" {
 		t.Errorf("unowned fields stomped: builder=%q restartedAt=%q", app.Spec.Builder, app.Spec.RestartedAt)

@@ -39,7 +39,7 @@ func main() {
 	// Must follow Apply, which resolves the control-plane host this stamps
 	// against. It covers the detached analytics sender too: that subprocess
 	// re-executes this binary, so it runs main and installs the same wrapper.
-	bridge.InstallVersionHeader(bexVersion)
+	bridge.InstallControlPlaneHeaders(bexVersion)
 	// The Bex-native coding commands (`bex code`, `bex glm`, …) and the
 	// self-update command are additions to the imported command tree; the
 	// upstream commands remain untouched.

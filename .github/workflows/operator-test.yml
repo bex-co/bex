@@ -1,16 +1,12 @@
 name: test (operator)
 
-# Run the operator test suite (unit + envtest) on every push/PR touching
+# Run the operator test suite (unit + envtest) on every PR touching
 # lego/operator or lego/types, and as a reusable workflow called by deploy.yml
 # to gate the build+push+deploy job.
 # `make test` auto-runs manifests/generate/fmt/vet before the test run.
+# Main pushes run once through deploy.yml; avoid duplicate gates competing on
+# the shared Mac host. deploy.yml includes this workflow and all test inputs.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "lego/operator/**"
-      - "lego/types/**"
-      - ".github/workflows/operator-test.yml"
   pull_request:
     paths:
       - "lego/operator/**"

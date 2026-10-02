@@ -395,3 +395,31 @@ func TestCancelAfterRollbackKeepsTheSelectedServingTemplate(t *testing.T) {
 		t.Fatal("cancel rewrote saved configuration")
 	}
 }
+
+// imageUrl selects only an artifact: commands, health checks and configuration
+// snapshots still come from saved settings, and the next release uses the saved
+// image. This is also how a failed override stops affecting later config deploys.
+func TestImageOverrideUsesSavedConfigurationAndExpiresOnNextRelease(t *testing.T) {
+	r, app := selectedReleaseFixture(t)
+	app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, Image: "image:C"}
+	if err := r.Update(context.Background(), app); err != nil {
+		t.Fatal(err)
+	}
+	dep := materializeSelectedTestRelease(t, r, app)
+	c := dep.Spec.Template.Spec.Containers[0]
+	if c.Image != "image:C" || c.Command[2] != "echo B" || c.ReadinessProbe.HTTPGet.Path != "/B" {
+		t.Fatalf("runtime = image %q, command %v, probe %q", c.Image, c.Command, c.ReadinessProbe.HTTPGet.Path)
+	}
+	if selectedTestValue(t, r, "api-env-r3") != "B" || selectedTestValue(t, r, "api-evg-shared-env-r3") != "group-B" {
+		t.Fatal("image override selected historical environment")
+	}
+	if app.Spec.Image != "image:B" {
+		t.Fatal("override changed saved image")
+	}
+	app.Generation = 4
+	app.Status.ReleaseGeneration = 4
+	app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "4"
+	if image, ok := reusableArtifactImage(app, appReleaseDecision{}); !ok || image != "image:B" {
+		t.Fatalf("next release image = %q, reusable %v; want saved image:B", image, ok)
+	}
+}
