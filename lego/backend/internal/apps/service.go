@@ -3484,7 +3484,17 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	fromReplicas := a.Spec.Replicas
 	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppReplicas(ctx, id, replicas) },
-		func(a *appv1alpha1.App) { a.Spec.Replicas = replicas })
+		func(a *appv1alpha1.App) {
+			a.Spec.Replicas = replicas
+			// Explicit scaling supersedes a rollback's historical count even when
+			// the requested count already equals the saved configuration.
+			if ref := a.ActiveReleaseConfig(); ref != nil {
+				if a.Annotations == nil {
+					a.Annotations = map[string]string{}
+				}
+				a.Annotations[appv1alpha1.AnnotationReleaseConfigScaled] = strconv.FormatInt(ref.Generation, 10)
+			}
+		})
 	if err != nil {
 		return AppView{}, err
 	}

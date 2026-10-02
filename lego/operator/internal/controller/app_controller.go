@@ -124,8 +124,8 @@ const (
 	reasonPriorReleaseServing = appv1alpha1.ReasonPriorReleaseServing
 )
 
-// generationOrDeletionPredicate adds App's explicit registry-credential
-// rotation edge to the lifecycle-aware primary predicate shared with Database.
+// generationOrDeletionPredicate adds App's explicit registry-credential rotation
+// and historical-release scaling edges to the shared lifecycle predicate.
 type generationOrDeletionPredicate struct {
 	generationDeletionOrFinalizerPredicate
 }
@@ -134,8 +134,10 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 	rotationRequested := e.ObjectNew != nil &&
 		e.ObjectNew.GetAnnotations()[annotRotateRegistryCreds] == registryCredentialRotateTrue &&
 		(e.ObjectOld == nil || e.ObjectOld.GetAnnotations()[annotRotateRegistryCreds] != registryCredentialRotateTrue)
+	scaledSelection := e.ObjectNew != nil && e.ObjectOld != nil &&
+		e.ObjectNew.GetAnnotations()[appv1alpha1.AnnotationReleaseConfigScaled] != e.ObjectOld.GetAnnotations()[appv1alpha1.AnnotationReleaseConfigScaled]
 	return p.generationDeletionOrFinalizerPredicate.Update(e) ||
-		rotationRequested
+		rotationRequested || scaledSelection
 }
 
 // labelApp marks the workloads bex creates for an App.
@@ -2108,7 +2110,6 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if err := r.convergeSharedChildren(ctx, app, port); err != nil {
 		return r.failStep(ctx, app, err)
 	}
-
 	// A cron_job diverges entirely: a batch/v1 CronJob, no Deployment/Service/Ingress.
 	if app.Spec.Type == appv1alpha1.TypeCronJob {
 		return r.reconcileCronJob(ctx, app, image, port)
@@ -2121,6 +2122,9 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// A background_worker runs the image with no HTTP port: a bare Deployment, no
 	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
 	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
+	if err := r.ensureSelectedConfigBeforePlanning(ctx, app); err != nil {
+		return r.fail(ctx, app, "DeployFailed", err)
+	}
 
 	plan, res, halted, err := r.planReplicas(ctx, app, false)
 	if halted {
@@ -2147,13 +2151,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		}
 	}
 
-	// Snapshot this release's configuration BEFORE projecting the template, so the
-	// template can reference immutable copies that already exist (w1/m152). Setting
-	// the status field in memory here is what flips the projection over; the write
-	// rides this pass's existing status update. If that write is lost the snapshots
-	// still exist and the next pass re-runs this idempotently, so the Deployment
-	// never references a Secret that is missing.
-	if err := r.ensureReleaseConfigSnapshot(ctx, app); err != nil {
+	// Snapshot saved inputs after pre-deploy and persist the projection generation
+	// before applying its template. Historical inputs were already materialized
+	// and checked before replica planning, so this stage leaves them alone.
+	if err := r.ensureSavedReleaseConfigSnapshot(ctx, app); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
 
@@ -2282,7 +2283,11 @@ func (r *AppReconciler) convergeSharedChildren(ctx context.Context, app *appv1al
 // failure carrying its reason (stepFailure). The rollout and both held-release
 // paths (w1/m156, w1/m157) scale from the plan it returns.
 func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, poll bool) (replicaPlan, ctrl.Result, bool, error) {
-	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app)
+	effectiveApp, err := r.selectedRuntimeApp(ctx, app)
+	if err != nil {
+		return replicaPlan{}, ctrl.Result{}, true, &stepFailure{reason: "DeployFailed", err: err}
+	}
+	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, effectiveApp)
 
 	// Hibernating drains the App's own Service. Let the public Ingress move to
 	// the activator FIRST and give Traefik a pass to ingest it, because the two
@@ -3635,7 +3640,11 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
-	tmpl := r.cronPodSpec(app, image, port, labels)
+	effectiveApp, err := r.selectedRuntimeApp(ctx, app)
+	if err != nil {
+		return r.fail(ctx, app, "DeployFailed", err)
+	}
+	tmpl := r.cronPodSpec(effectiveApp, image, port, labels)
 	if restore != nil {
 		tmpl = *restore
 	}

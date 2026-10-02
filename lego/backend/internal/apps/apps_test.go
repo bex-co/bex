@@ -2026,3 +2026,22 @@ func (r *recordingStore) DeleteDisk(_ context.Context, id string) error {
 	r.disks[id] = d
 	return nil
 }
+
+func TestScaleSavedCountOverridesRollbackCountWithoutDeployingSavedConfig(t *testing.T) {
+	a := sampleApp("web")
+	a.Generation = 3
+	a.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "3"}
+	a.Spec.StartCommand = "saved-B"
+	a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, SourceGeneration: 1, Image: "web:A"}
+	svc, cl := newService(nil, a)
+	if _, err := svc.Scale(context.Background(), "web", a.Spec.Replicas); err != nil {
+		t.Fatal(err)
+	}
+	got := getApp(t, cl, "web")
+	if got.Annotations[appv1alpha1.AnnotationReleaseConfigScaled] != "3" {
+		t.Fatal("same-saved explicit scale did not override historical count")
+	}
+	if got.Spec.ReleaseConfig == nil || got.Spec.ReleaseConfig.SourceGeneration != 1 || got.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "3" || got.Spec.RestartedAt != "" || got.Spec.StartCommand != "saved-B" {
+		t.Fatal("scaling replaced the rollback's runtime selection or deployed saved config")
+	}
+}

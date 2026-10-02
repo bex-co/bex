@@ -77,7 +77,7 @@ func IsReleaseSnapshotName(name string) bool {
 // ReleaseRecordName is the per-release record of what a generation ran with beyond
 // its configuration Secrets: the exact pod template the operator applied (restored
 // verbatim when a cancel settles back onto that release) and the release's
-// restorable spec fields (restored into the saved spec by a rollback to it).
+// restorable spec fields (selected for runtime by a rollback to it).
 func ReleaseRecordName(app string, generation int64) string {
 	return ReleaseSnapshotName(app+"-podtemplate", generation)
 }
@@ -94,5 +94,62 @@ const (
 // deploy"; render.com/docs/rollbacks). Plan, custom domains and disks are
 // deliberately absent: Render keeps the current ones, and so does bex.
 type ReleaseRecordSpec struct {
+	// Version 1 records source membership and literal env in addition to the
+	// original start command. Version 0 derives those from its pod template.
+	Version      int    `json:"version,omitempty"`
 	StartCommand string `json:"startCommand,omitempty"`
+	// Pointers distinguish an explicitly empty value from a legacy record that
+	// predates these fields. Legacy replicas cannot be reconstructed from a pod.
+	Command         *string `json:"command,omitempty"`
+	HealthCheckPath *string `json:"healthCheckPath,omitempty"`
+	Replicas        *int32  `json:"replicas,omitempty"`
+	// SavedReplicas is the saved count when this template was applied. It lets
+	// a later operational scale supersede a rollback's initial historical count.
+	SavedReplicas    *int32   `json:"savedReplicas,omitempty"`
+	Env              []EnvVar `json:"env,omitempty"`
+	EnvFromSecret    string   `json:"envFromSecret,omitempty"`
+	EnvFromSecrets   []string `json:"envFromSecrets,omitempty"`
+	FilesFromSecrets []string `json:"filesFromSecrets,omitempty"`
+}
+
+// ReleaseConfigReference selects one retained release without changing saved
+// settings. The backend binds it to the newly requested release generation.
+type ReleaseConfigReference struct {
+	// +kubebuilder:validation:Minimum=1
+	Generation int64 `json:"generation"`
+	// SourceGeneration zero explicitly requests the legacy image-only fallback.
+	// A positive generation must have a release record; its loss is an error.
+	// +kubebuilder:validation:Minimum=0
+	SourceGeneration int64 `json:"sourceGeneration"`
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=512
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9][A-Za-z0-9._/:@-]*$`
+	Image string `json:"image"`
+	// PreserveGroupValues is used by Restart. Rollback takes current values
+	// from the target's surviving group associations; Restart retains its exact
+	// running configuration, including already-snapshotted group values.
+	// +optional
+	PreserveGroupValues bool `json:"preserveGroupValues,omitempty"`
+}
+
+// ActiveReleaseConfig returns the selection belonging to the current or newly
+// requested release. Operational metadata generations do not expire it; an
+// actual later deployment does. The operator adopts direct CR release edits in
+// status before consulting this helper.
+func (a *App) ActiveReleaseConfig() *ReleaseConfigReference {
+	ref := a.Spec.ReleaseConfig
+	if ref == nil || ref.Generation <= 0 || ref.Image == "" {
+		return nil
+	}
+	gen := a.Status.ReleaseGeneration
+	if requested, err := strconv.ParseInt(a.Annotations[AnnotationReleaseGeneration], 10, 64); err == nil && requested > gen {
+		gen = requested
+	}
+	if gen <= 0 {
+		gen = a.Generation
+	}
+	if gen != ref.Generation {
+		return nil
+	}
+	return ref
 }

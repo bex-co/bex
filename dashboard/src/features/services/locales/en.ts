@@ -267,9 +267,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.undeployedChangesHint": {
     message:
-      "Saved changes aren't live yet — the deploy that carried them was canceled. They ship with the next deploy.",
+      "Saved changes aren't live yet. Use a standard deploy to apply them.",
     description:
-      "Notice on the service header and Environment page when a canceled deploy left saved changes undeployed (w1/m152)",
+      "Notice when saved settings differ from the running release after cancellation, rollback or restart",
   },
   "services.statusSleepingHint": {
     message: "Sleeping to save resources — wakes on the next request.",
@@ -4135,22 +4135,24 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsRollbackConfirmBody": {
     message:
-      "The service will redeploy with this deploy's image, environment variables and start command, and auto-deploy will be turned off so the next push doesn't undo the rollback. A deploy older than the last 20 releases restores the image only.",
+      "The service will run this deploy's image and retained configuration. Saved settings stay unchanged and apply with the next standard deploy. Auto-deploy will be turned off. Older deploys without retained configuration restore only the image.",
     description: "Rollback confirm dialog body",
   },
   "services.eventsRollbackConfirmBodyCommit": {
     message:
-      "The service will redeploy with this deploy's image (built from {commit}), environment variables and start command, and auto-deploy will be turned off so the next push doesn't undo the rollback. A deploy older than the last 20 releases restores the image only.",
+      "The service will run this deploy's image (built from {commit}) and retained configuration. Saved settings stay unchanged and apply with the next standard deploy. Auto-deploy will be turned off. Older deploys without retained configuration restore only the image.",
     description:
       "Rollback confirm dialog body naming the commit being restored",
   },
   "services.eventsRollbackConfirmBodyStatic": {
-    message: "The site will be published again from this deploy.",
+    message:
+      "The site will be published again from this deploy. Saved settings stay unchanged, and auto-deploy will be turned off.",
     description:
       "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
   },
   "services.eventsRollbackConfirmBodyStaticCommit": {
-    message: "The site will be published again from this deploy, {commit}.",
+    message:
+      "The site will be published again from this deploy, {commit}. Saved settings stay unchanged, and auto-deploy will be turned off.",
     description:
       "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
   },

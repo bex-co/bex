@@ -18,6 +18,7 @@ package deploys
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -64,11 +65,10 @@ func rollbackRepublishes(a *appv1alpha1.App, d store.Deploy) bool {
 // exposure was to a client binding an affordance straight to the capability
 // response, which is what that query is for.
 //
-// The comparison is against the App's spec (spec.image, or spec.buildCommit),
-// and the narrowness is deliberate and mirrors the verb: a deploy stays live
-// until a NEWER one goes live, so after a failed rollout the spec can drift off
-// the still-live last-good deploy, and rolling back to it then is a legitimate
-// recovery.
+// A selected runtime is compared by its release identity, since saved settings
+// intentionally differ after rollback. Without a selection, a newer requested
+// configuration generation or image can make the still-live target a useful
+// recovery even when the later release failed.
 func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
 	if !RollbackEligible(a, d) {
 		return false
@@ -79,7 +79,13 @@ func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
 	if rollbackRepublishes(a, d) {
 		return d.Commit != a.Spec.BuildCommit
 	}
-	return d.ResolvedImage != a.Spec.Image
+	if selected := a.ActiveReleaseConfig(); selected != nil {
+		return d.Generation != selected.Generation || d.ResolvedImage != selected.Image
+	}
+	// A failed configuration-only release can leave the same image selected but
+	// different saved settings. The previous live generation is a valid recovery.
+	requested, _ := strconv.ParseInt(a.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
+	return d.ResolvedImage != a.Spec.Image || (d.Generation > 0 && requested > d.Generation)
 }
 
 // eligibilityScanLimit bounds the projection's deploy-history scan. The verb

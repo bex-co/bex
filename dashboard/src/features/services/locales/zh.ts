@@ -261,10 +261,9 @@ const zhServices: Record<string, TranslationEntry> = {
       "Services status badge: a free-tier App auto-hibernated after idle (bex extension)",
   },
   "services.undeployedChangesHint": {
-    message:
-      "已保存的更改尚未生效 —— 携带这些更改的部署已被取消，它们将在下次部署时发布。",
+    message: "已保存的更改尚未生效。请通过常规部署应用这些更改。",
     description:
-      "Notice on the service header and Environment page when a canceled deploy left saved changes undeployed (w1/m152)",
+      "Notice when saved settings differ from the running release after cancellation, rollback or restart",
   },
   "services.statusSleepingHint": {
     message: "为节省资源已休眠 —— 下次请求时自动唤醒。",
@@ -4048,22 +4047,23 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsRollbackConfirmBody": {
     message:
-      "服务将使用此部署的镜像、环境变量和启动命令重新部署，并关闭自动部署，以免下次推送撤销此次回滚。早于最近 20 次发布的部署只会恢复镜像。",
+      "服务将使用此部署的镜像和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。自动部署将被关闭。未保留配置的较旧部署只会恢复镜像。",
     description: "Rollback confirm dialog body",
   },
   "services.eventsRollbackConfirmBodyCommit": {
     message:
-      "服务将使用此部署的镜像（基于 {commit} 构建）、环境变量和启动命令重新部署，并关闭自动部署，以免下次推送撤销此次回滚。早于最近 20 次发布的部署只会恢复镜像。",
+      "服务将使用此部署的镜像（基于 {commit} 构建）和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。自动部署将被关闭。未保留配置的较旧部署只会恢复镜像。",
     description:
       "Rollback confirm dialog body naming the commit being restored",
   },
   "services.eventsRollbackConfirmBodyStatic": {
-    message: "站点将按此部署重新发布。",
+    message: "站点将按此部署重新发布。已保存的设置保持不变，自动部署将被关闭。",
     description:
       "Rollback confirm dialog body for a static site: it re-publishes the deploy's files, it has no image or instances (w4/m141)",
   },
   "services.eventsRollbackConfirmBodyStaticCommit": {
-    message: "站点将按此部署（{commit}）重新发布。",
+    message:
+      "站点将按此部署（{commit}）重新发布。已保存的设置保持不变，自动部署将被关闭。",
     description:
       "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
   },

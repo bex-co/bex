@@ -329,11 +329,10 @@ describe("DeployActions", () => {
       await screen.findByRole("button", { name: /^Roll back to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
-    // w1/m152 t009: a rollback restores the target's image, environment variables
-    // and start command, and a dashboard rollback turns auto-deploy off. The dialog
-    // must say both — it used to promise the image alone.
+    // Runtime restoration must not imply overwriting saved settings. Disclose
+    // the dashboard auto-deploy behavior and the legacy image-only limitation.
     expect(dialog).toHaveTextContent(
-      "The service will redeploy with this deploy's image, environment variables and start command, and auto-deploy will be turned off so the next push doesn't undo the rollback.",
+      "The service will run this deploy's image and retained configuration. Saved settings stay unchanged and apply with the next standard deploy. Auto-deploy will be turned off. Older deploys without retained configuration restore only the image.",
     );
     expect(dialog.textContent ?? "").not.toContain("built from");
   });
