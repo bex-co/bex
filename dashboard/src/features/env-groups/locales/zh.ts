@@ -115,6 +115,16 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "正在加载工作区服务…",
     description: "Initial service links loading state",
   },
+  "envGroups.createScopeLoading": {
+    message: "正在加载环境和服务…",
+    description:
+      "Create dialog waits for a confirmed scope and link candidates",
+  },
+  "envGroups.createScopeError": {
+    message: "无法加载环境或服务。请重试后再创建环境变量组。",
+    description:
+      "Create dialog blocks submission when scope or service lookup fails",
+  },
   "envGroups.noServicesToLink": {
     message: "此工作区还没有可关联的服务。",
     description: "Initial service links empty state",

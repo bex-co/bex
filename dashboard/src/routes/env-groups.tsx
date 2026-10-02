@@ -81,7 +81,12 @@ export function EnvGroupsPage() {
   const { currentWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
   const { groups, loading, error, refetch } = useEnvGroups();
-  const { services, loading: servicesLoading } = useServices();
+  const {
+    services,
+    loading: servicesLoading,
+    error: servicesError,
+    refetch: refetchServices,
+  } = useServices();
   const scope = useEnvGroupScopeIndex();
   const [searchState, setSearchState] = useState({
     workspaceId: currentWorkspaceId,
@@ -117,12 +122,20 @@ export function EnvGroupsPage() {
           </p>
         </div>
         <NewEnvGroupDialog
+          key={currentWorkspaceId}
           refetch={refetch}
           services={services}
           servicesLoading={servicesLoading}
+          servicesError={servicesError}
           environments={scope.environments}
           serviceEnvironmentById={scope.serviceEnvironmentById}
           scopeLoading={scope.loading}
+          scopeReady={scope.ready}
+          scopeError={scope.error}
+          onRetry={() => {
+            scope.retry();
+            void refetchServices().catch(() => undefined);
+          }}
           onCreated={(groupId) =>
             void navigate({
               to: "/env-groups/$groupId",

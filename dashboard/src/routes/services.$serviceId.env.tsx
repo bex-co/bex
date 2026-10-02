@@ -15,7 +15,7 @@ export const Route = createFileRoute("/services/$serviceId/env")({
 
 function RouteComponent() {
   const { serviceId } = Route.useParams();
-  return <ServiceEnvPage serviceId={serviceId} />;
+  return <ServiceEnvPage key={serviceId} serviceId={serviceId} />;
 }
 
 // The Environment tab (w4/m6.5): a Render-style environment surface over bex-api.

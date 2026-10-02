@@ -374,6 +374,285 @@ describe("NewEnvGroupDialog", () => {
     expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeTruthy();
   });
 
+  it.each(["before", "after"])(
+    "initializes the first controlled opening when scope resolves %s opening",
+    async (resolution) => {
+      const user = userEvent.setup();
+      const props = {
+        onCreated: vi.fn(),
+        services: SERVICES,
+        initialServiceIds: ["srv-qa"],
+      };
+      const { rerender } = render(
+        <NewEnvGroupDialog {...props} open={false} scopeLoading />,
+      );
+      if (resolution === "after") {
+        rerender(<NewEnvGroupDialog {...props} open scopeLoading />);
+        expect(screen.getByRole("status")).toHaveTextContent(
+          "Loading environments and services",
+        );
+        expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: "Create Environment Group" }),
+        ).toBeDisabled();
+      }
+      const resolved = {
+        ...props,
+        environments: ENVIRONMENTS,
+        serviceEnvironmentById: SERVICE_ENVIRONMENTS,
+        initialEnvironmentId: "evm-qa",
+      };
+      rerender(
+        <NewEnvGroupDialog {...resolved} open={resolution === "after"} />,
+      );
+      rerender(<NewEnvGroupDialog {...resolved} open />);
+
+      expect(
+        screen.getByRole("combobox", { name: "Environment" }),
+      ).toHaveTextContent("qa-env");
+      expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeChecked();
+      expect(
+        screen.queryByRole("checkbox", { name: /workspace-svc/ }),
+      ).not.toBeInTheDocument();
+      await user.type(screen.getByLabelText("Group name"), "first-open");
+      await user.click(
+        screen.getByRole("button", { name: "Create Environment Group" }),
+      );
+      expect(createGroup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "first-open",
+          environmentId: "evm-qa",
+          serviceIds: ["srv-qa"],
+        }),
+      );
+    },
+  );
+
+  it("keeps an edited draft through refresh and a failed retry", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    const props = {
+      open: true,
+      onCreated: vi.fn(),
+      onRetry,
+      services: SERVICES,
+      environments: ENVIRONMENTS,
+      serviceEnvironmentById: SERVICE_ENVIRONMENTS,
+      initialEnvironmentId: "evm-qa",
+      initialServiceIds: ["srv-qa"],
+      scopeReady: true,
+    };
+    const { rerender } = render(<NewEnvGroupDialog {...props} />);
+    await user.type(screen.getByLabelText("Group name"), "edited-draft");
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(
+      screen.getByRole("option", { name: "Workspace (no Environment)" }),
+    );
+    await user.click(screen.getByRole("checkbox", { name: /workspace-svc/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Add Environment Variable" }),
+    );
+    await user.type(screen.getByLabelText("Key"), "TOKEN");
+    await user.type(screen.getByLabelText("Value"), "draft-value");
+
+    rerender(<NewEnvGroupDialog {...props} scopeLoading servicesLoading />);
+    expect(screen.getByLabelText("Group name")).toHaveValue("edited-draft");
+    expect(
+      screen.getByRole("checkbox", { name: /workspace-svc/ }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    ).toBeDisabled();
+    rerender(
+      <NewEnvGroupDialog {...props} scopeError={new Error("timeout")} />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load the environment or services",
+    );
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+    rerender(
+      <NewEnvGroupDialog
+        {...props}
+        serviceEnvironmentById={new Map(SERVICE_ENVIRONMENTS)}
+      />,
+    );
+    expect(screen.getByLabelText("Value")).toHaveValue("draft-value");
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+    expect(createGroup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "edited-draft",
+        environmentId: null,
+        serviceIds: ["srv-ws"],
+        envVars: [
+          { key: "TOKEN", value: "draft-value", generateValue: undefined },
+        ],
+      }),
+    );
+  });
+
+  it("never submits a selection hidden by a membership refresh", async () => {
+    const user = userEvent.setup();
+    const props = {
+      open: true,
+      onCreated: vi.fn(),
+      services: SERVICES,
+      environments: ENVIRONMENTS,
+      initialEnvironmentId: "evm-qa",
+      initialServiceIds: ["srv-qa"],
+    };
+    const { rerender } = render(
+      <NewEnvGroupDialog
+        {...props}
+        serviceEnvironmentById={SERVICE_ENVIRONMENTS}
+      />,
+    );
+    expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeChecked();
+    await user.type(screen.getByLabelText("Group name"), "moved-service");
+    rerender(
+      <NewEnvGroupDialog
+        {...props}
+        serviceEnvironmentById={new Map([["srv-qa", "evm-prod"]])}
+      />,
+    );
+    expect(
+      screen.queryByRole("checkbox", { name: /qa-svc/ }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+    expect(createGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentId: "evm-qa", serviceIds: [] }),
+    );
+  });
+
+  it.each(["forbidden", "timeout"])(
+    "blocks unresolved scope after %s and initializes from a successful retry",
+    async (message) => {
+      const user = userEvent.setup();
+      const onRetry = vi.fn();
+      const props = {
+        open: true,
+        onCreated: vi.fn(),
+        onRetry,
+        services: SERVICES,
+        initialServiceIds: ["srv-qa"],
+      };
+      const { rerender } = render(
+        <NewEnvGroupDialog
+          {...props}
+          scopeReady={false}
+          scopeError={new Error(message)}
+        />,
+      );
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Retry before creating",
+      );
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: "Create Environment Group" }),
+      );
+      expect(createGroup).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("button", { name: "Try again" }));
+      expect(onRetry).toHaveBeenCalledOnce();
+      rerender(
+        <NewEnvGroupDialog
+          {...props}
+          scopeReady
+          environments={ENVIRONMENTS}
+          serviceEnvironmentById={SERVICE_ENVIRONMENTS}
+          initialEnvironmentId="evm-qa"
+        />,
+      );
+      expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeChecked();
+      expect(
+        screen.getByRole("combobox", { name: "Environment" }),
+      ).toHaveTextContent("qa-env");
+    },
+  );
+
+  it("waits for a known workspace and the preselected service", () => {
+    const props = {
+      open: true,
+      onCreated: vi.fn(),
+      initialServiceIds: ["srv-qa"],
+    };
+    const { rerender } = render(
+      <NewEnvGroupDialog {...props} scopeReady={false} servicesLoading />,
+    );
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    ).toBeDisabled();
+    rerender(<NewEnvGroupDialog {...props} scopeReady servicesLoading />);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading environments and services",
+    );
+    rerender(<NewEnvGroupDialog {...props} scopeReady />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load");
+  });
+
+  it("reopens a controlled dialog with fresh defaults and an empty draft", async () => {
+    const user = userEvent.setup();
+    const props = {
+      onCreated: vi.fn(),
+      services: SERVICES,
+      environments: ENVIRONMENTS,
+      serviceEnvironmentById: SERVICE_ENVIRONMENTS,
+      initialServiceIds: ["srv-qa"],
+      initialEnvironmentId: "evm-qa",
+    };
+    const { rerender } = render(<NewEnvGroupDialog {...props} open />);
+    await user.type(screen.getByLabelText("Group name"), "discard-me");
+    await user.click(screen.getByRole("checkbox", { name: /qa-svc/ }));
+    rerender(<NewEnvGroupDialog {...props} open={false} />);
+    rerender(<NewEnvGroupDialog {...props} open />);
+    expect(screen.getByLabelText("Group name")).toHaveValue("");
+    expect(screen.getByRole("checkbox", { name: /qa-svc/ })).toBeChecked();
+    expect(
+      screen.getByRole("combobox", { name: "Environment" }),
+    ).toHaveTextContent("qa-env");
+  });
+
+  it("keeps uncontrolled Workspace creation and resets an explicit-environment draft on reopen", async () => {
+    const user = userEvent.setup();
+    render(
+      <NewEnvGroupDialog
+        onCreated={vi.fn()}
+        services={SERVICES}
+        environments={ENVIRONMENTS}
+        serviceEnvironmentById={SERVICE_ENVIRONMENTS}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "New Environment Group" }),
+    );
+    await user.click(screen.getByRole("combobox", { name: "Environment" }));
+    await user.click(screen.getByRole("option", { name: "qa-env" }));
+    await user.click(screen.getByRole("checkbox", { name: /qa-svc/ }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(
+      screen.getByRole("button", { name: "New Environment Group" }),
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Environment" }),
+    ).toHaveTextContent("Workspace");
+    expect(
+      screen.queryByRole("checkbox", { name: /qa-svc/ }),
+    ).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Group name"), "workspace-group");
+    await user.click(screen.getByRole("checkbox", { name: /workspace-svc/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+    expect(createGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentId: null, serviceIds: ["srv-ws"] }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("says an Environment has no services rather than pretending none exist", async () => {
     const user = userEvent.setup();
     renderScoped();

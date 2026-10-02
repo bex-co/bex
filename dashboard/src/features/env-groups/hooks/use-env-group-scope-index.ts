@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApolloClient } from "@apollo/client/react";
 import { EnvGroupScopeIndexDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -27,12 +27,22 @@ export function useEnvGroupScopeIndex() {
  */
 export function useWorkspaceEnvironmentIndex(ownerId: string | null) {
   const client = useApolloClient();
+  const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<{
     ownerId: string | null;
+    attempt: number;
+    ready: boolean;
     projects: ProjectView[];
     environments: EnvironmentView[];
     error?: Error;
-  }>({ ownerId: null, projects: [], environments: [] });
+  }>({
+    ownerId: null,
+    attempt: -1,
+    ready: false,
+    projects: [],
+    environments: [],
+  });
+  const retry = useCallback(() => setAttempt((current) => current + 1), []);
 
   useEffect(() => {
     let active = true;
@@ -41,10 +51,16 @@ export function useWorkspaceEnvironmentIndex(ownerId: string | null) {
       .query({
         query: EnvGroupScopeIndexDocument,
         variables: { ownerId },
-        fetchPolicy: "cache-first",
+        fetchPolicy: attempt === 0 ? "cache-first" : "network-only",
         errorPolicy: "none",
       })
       .then((result) => {
+        if (
+          !Array.isArray(result.data?.projects) ||
+          !Array.isArray(result.data?.workspaceEnvironments)
+        ) {
+          throw new Error("environment index is incomplete");
+        }
         const loadedProjects = mapProjects(result.data?.projects, ownerId);
         const loadedEnvironments = mapEnvironments(
           result.data?.workspaceEnvironments,
@@ -52,6 +68,8 @@ export function useWorkspaceEnvironmentIndex(ownerId: string | null) {
         if (active) {
           setSnapshot({
             ownerId,
+            attempt,
+            ready: true,
             projects: loadedProjects,
             environments: loadedEnvironments,
           });
@@ -59,27 +77,32 @@ export function useWorkspaceEnvironmentIndex(ownerId: string | null) {
       })
       .catch((cause: unknown) => {
         if (active) {
-          setSnapshot({
+          setSnapshot((previous) => ({
             ownerId,
-            projects: [],
-            environments: [],
+            attempt,
+            ready: previous.ownerId === ownerId && previous.ready,
+            projects: previous.ownerId === ownerId ? previous.projects : [],
+            environments:
+              previous.ownerId === ownerId ? previous.environments : [],
             error:
               cause instanceof Error
                 ? cause
                 : new Error("environment index failed"),
-          });
+          }));
         }
       });
     return () => {
       active = false;
     };
-  }, [client, ownerId]);
+  }, [client, ownerId, attempt]);
 
-  const current = snapshot.ownerId === ownerId;
+  const current = ownerId != null && snapshot.ownerId === ownerId;
   const projects = current ? snapshot.projects : EMPTY_PROJECTS;
   const environments = current ? snapshot.environments : EMPTY_ENVIRONMENTS;
-  const error = current ? snapshot.error : undefined;
-  const loading = ownerId != null && !current;
+  const settled = current && snapshot.attempt === attempt;
+  const error = settled ? snapshot.error : undefined;
+  const loading = ownerId != null && !settled;
+  const ready = current && snapshot.ready;
 
   const byId = useMemo(
     () =>
@@ -97,11 +120,14 @@ export function useWorkspaceEnvironmentIndex(ownerId: string | null) {
   }, [environments]);
 
   return {
+    ownerId,
     projects,
     environments,
     byId,
     serviceEnvironmentById,
+    ready,
     loading,
     error,
+    retry,
   };
 }

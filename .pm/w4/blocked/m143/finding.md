@@ -150,7 +150,7 @@ Exhaustive component grep found **two production NewEnvGroupDialog consumers**: 
 
 ## Dedupe and complete m111 acceptance review
 
-The issue is a regression/incomplete acceptance from [w4/m111](../done/m111/README.md), fix `23b518049`, still present on HEAD. Its full DoD was walked:
+The issue is a regression/incomplete acceptance from [w4/m111](../../done/m111/README.md), fix `23b518049`, still present on HEAD. Its full DoD was walked:
 
 1. Workspace list filters: **pass**. The workspace-scoped native control appears; the environment-scoped Docker control does not.
 2. In-environment list create: **pass**. Pick QA environment → current service appears → `qa-20261002-group-list-r1` created with correct scope/link.
