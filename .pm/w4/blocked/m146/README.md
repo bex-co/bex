@@ -41,3 +41,7 @@ Read the finding's complete w1/m24, w6/m125, w4/m124 and w4/m138 disposition bef
 ## Blocked closeout — 2026-10-02
 
 Implementation, full backend tests, backend lint and simplify review passed. The release pipeline must deploy the backend fix; QA must execute all live README controls and fixture/session cleanup. See [verification](verification.md) for exact local evidence and unverified surfaces.
+
+## Supplemental checks — 2026-10-02
+
+[Additional direct-apply, connected Git/auto-sync and actual group/seed handler coverage](supplemental-verification.md) extends the shipped tests. Hosted parity and closeout remain open.
