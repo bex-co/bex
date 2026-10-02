@@ -77,7 +77,7 @@ const (
 	// (w7/m85 t007 — caught by scripts/image-pin-validate.sh --verify-digests,
 	// which asks the registry whether each digest exists rather than trusting it
 	// to look right).
-	defaultPushImage = "quay.io/skopeo/stable:v1.22.2@sha256:64ac45c5a1c01230896fbae960b2213e32a5040e4009b83b5f5cbf31a35f61c3"
+	defaultPushImage = "quay.io/skopeo/stable:v1.22.2@sha256:2b7d76dde38c5924e1945348840c58786fc192201f2fd545832e58b53d26f7b8"
 )
 
 // defaultSignImage is the cosign image the signing container runs when tenant
