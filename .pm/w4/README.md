@@ -17,7 +17,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m154** — [Preserve URL path semantics in static edge rules](m154/README.md) (7 tasks, ~3h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 16; encoded wildcard filenames become query/fragment syntax, while accepted query-bearing or encoded rewrite destinations return 404 despite direct-destination and plain-path controls passing.
 
-- [ ] **m153** — **BLOCKED (CI must pass pinned Linux Valkey image tests; release/QA must verify deployed Free/public TLS/UI sequences and cleanup)** — [Preserve Key Value data when re-enabling journaling](blocked/m153/README.md). t001/t002/t005 done; replacement handoff passes native Valkey 7/8 data matrices. See [current evidence](blocked/m153/current-implementation.md); archived patch is superseded. t003/t004/t006/t007 retain hosted acceptance.
+- [ ] **m153** — **BLOCKED (production-deploy pipeline must release operator and dashboard; QA must then verify both live TLS data-survival sequences, API/UI state, rename and cleanup)** — [Preserve Key Value data when re-enabling journaling](blocked/m153/README.md). t001/t002/t005 done; full operator/backend/dashboard checks, real Valkey 7/8 transition/failure tests and lint passed. t003/t004 hosted controls, t006 live acceptance and t007 closeout remain open.
 
 - [ ] **m152** — [Keep relative hosting times current on open pages](m152/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 14; two fresh cron pages freeze Last run/Next run/Created while exact API times and the deploy-row timer remain correct.
 

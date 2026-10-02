@@ -1,6 +1,8 @@
-# m153 current implementation — 2026-10-02
+# m153 prior shipped implementation — 2026-10-02
 
-This implementation supersedes the alternative archived `implementation.patch`; that patch and `verification.md` remain historical evidence and must not be applied over this change. Production acceptance is still open.
+Historical record for c92ebb526; superseded by the reconciled implementation in [verification](verification.md). Its local Docker gate is now verified, while production acceptance remains open.
+
+This implementation supersedes the alternative archived `implementation.patch`; that patch and `prior-implementation-verification.md` remain historical evidence and must not be applied over this change. Production acceptance is still open.
 
 ## Authority and transition table
 

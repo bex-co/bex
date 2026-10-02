@@ -246,7 +246,7 @@ export function KeyValueDetailPage() {
                 </section>
                 <section id="persistence-mode" className="scroll-mt-6">
                   <KeyValuePersistenceModeSection
-                    key={keyValue.id}
+                    key={keyValueId}
                     id={keyValue.id}
                     name={keyValue.name}
                     onChanged={() => void refetch()}

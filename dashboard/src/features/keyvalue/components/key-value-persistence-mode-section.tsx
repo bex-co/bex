@@ -49,10 +49,11 @@ export function KeyValuePersistenceModeSection({
   } | null>(null);
   const [editRevision, setEditRevision] = useState(0);
   const confirming = useRef(false);
+  const modeKnown = PERSISTENCE_MODES.some((known) => known === mode);
   const confirmationCurrent = pending?.id === id && pending.from === mode;
 
   async function requestSave(next: string) {
-    if (!mode) return false;
+    if (!modeKnown) return false;
     if (next !== mode && (mode === "off" || next === "off")) {
       setPending({ id, from: mode, to: next });
       return false;
@@ -61,7 +62,8 @@ export function KeyValuePersistenceModeSection({
   }
 
   async function confirmSave() {
-    if (!pending || !confirmationCurrent || confirming.current) return;
+    if (!pending || !modeKnown || !confirmationCurrent || confirming.current)
+      return;
     confirming.current = true;
     try {
       if (await save(pending.to)) {
@@ -101,7 +103,7 @@ export function KeyValuePersistenceModeSection({
             value={mode}
             editLabel={t("keyvalue.persistenceEdit")}
             busy={saving}
-            disabled={!mode}
+            disabled={!modeKnown}
             options={options}
             onSave={requestSave}
           />
@@ -113,10 +115,10 @@ export function KeyValuePersistenceModeSection({
         onOpenChange={(open) => {
           if (!open && !saving) setPending(null);
         }}
-        title={t("keyvalue.persistenceDiscardTitle")}
-        description={t("keyvalue.persistenceDiscardBody")}
-        confirmLabel={t("keyvalue.persistenceDiscardConfirm")}
-        phrase={`sudo discard key value ${name}`}
+        title={t("keyvalue.persistenceConfirmTitle")}
+        description={t("keyvalue.persistenceConfirmDescription", { name })}
+        confirmLabel={t("keyvalue.persistenceConfirmAction")}
+        phrase={`sudo clear key value ${name}`}
         pending={saving}
         closeOnConfirm={false}
         onConfirm={() => void confirmSave()}
