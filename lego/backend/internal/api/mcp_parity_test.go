@@ -277,6 +277,33 @@ func TestMCPDivergenceMessage(t *testing.T) {
 	}
 }
 
+// TestMCPParityGitCreateToolsBreakOnlyOnRegion pins the accepted divergence of
+// the two Git-backed create tools to exactly what mcpAcceptedDivergences says:
+// `region`. Upstream bc94f8d (#154) added dockerCommand/dockerContext, which
+// bex implements (w1/118). The accepted-divergence map alone cannot tell "one
+// break" from "two", so if either argument disappears, or upstream adds
+// another, the entry's reason would stop being true silently — this fails.
+func TestMCPParityGitCreateToolsBreakOnlyOnRegion(t *testing.T) {
+	pin, err := loadRenderMCPContract()
+	if err != nil {
+		t.Fatalf("load pin: %v", err)
+	}
+	live := map[string]bexTool{}
+	for _, bt := range enumerateBexTools(t) {
+		live[bt.Name] = bt
+	}
+	for _, name := range []string{"create_web_service", "create_cron_job"} {
+		bt, ok := live[name]
+		if !ok {
+			t.Fatalf("bex no longer registers %s", name)
+		}
+		class, d := classifyMCPTool(bt.Name, bt.Args, bt.Required, pin)
+		if class != mcpParityDivergent || !slices.Equal(d.MissingArgs, []string{"region"}) || len(d.AddedRequired) != 0 {
+			t.Errorf("%s: class=%s divergence=%s; want Divergent on region alone", name, class, d)
+		}
+	}
+}
+
 // listBexTools runs the fully-wired server in process and returns its own
 // tools/list. Shared with the tool-identity guard (w4/113), which needs the
 // descriptions and raw schemas enumerateBexTools deliberately drops.
