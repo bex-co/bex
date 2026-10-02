@@ -1,0 +1,10 @@
+{
+  "cli_commands": 20,
+  "protocol_checks": 122,
+  "external_denials": 48,
+  "internal_checks": 14,
+  "all_expected_outcomes_passed": true,
+  "timeouts": 0,
+  "max_protocol_seconds": 1.994,
+  "records": 195
+}

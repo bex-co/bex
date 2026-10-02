@@ -1,0 +1,24 @@
+{
+  "bex": {
+    "sha256": "ea9e5e2c92a1094030e7537765092b633c7ec8793a076eeb55a136f6157cf8d0",
+    "code": 0,
+    "version": "bex v0.2.1\ncompatible with Render CLI v2.27.0",
+    "stderr": ""
+  },
+  "render": {
+    "sha256": "35950c3439f70fbe05323fbd04ddb7cad0448dd43215ac9b4125e986e08a2e90",
+    "code": 0,
+    "version": "render v2.27.0\n\nA new version is available: v2.28.0                              \n                                                                 \nTo upgrade, see: https://render.com/docs/cli#1-install-or-upgrade",
+    "stderr": ""
+  },
+  "api_harness": {
+    "sha256": "4e548ed949dff8d9dc0a598727c63e51e3a0b5433cf1018611e6fe392ec37161"
+  },
+  "pg_proxy": {
+    "sha256": "328ef0b3d152a06c6002ab1d087b9dccacfe7d2aba7d1e331413ad7a4e631102"
+  },
+  "kv_proxy": {
+    "sha256": "238869b25ec05cf8028c4e1a1e4d846d7cc4d814eebc5a2074fcff894afa57d0"
+  },
+  "source_head": "00c5aeba9ed0e33f8dd0690123ae5979cd759217"
+}

@@ -1,0 +1,320 @@
+{
+  "captured_at": "2026-10-02",
+  "api_origin": "https://api.bex.co",
+  "workspace": "tea-d98210cbbpdc73dcrkvg",
+  "resource": "srv-davnfbude41s73cantkg",
+  "auth": "ordinary human device OAuth; Authorization omitted",
+  "captures": {
+    "s12-level-all": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71"
+      ],
+      "code": 0,
+      "elapsed": 3.246,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166711609Z-5d5d20a2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166711609Z\"\n}{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166747194Z-c90a95c0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"qa_level_72bd71_warn\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166747194Z\"\n}{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166750576Z-2a1b9ec4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"qa_level_72bd71_info\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166750576Z\"\n}",
+      "stderr": ""
+    },
+    "s12-level-error": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71",
+        "--level",
+        "error"
+      ],
+      "code": 0,
+      "elapsed": 2.809,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166711609Z-5d5d20a2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166711609Z\"\n}",
+      "stderr": ""
+    },
+    "s12-level-warning": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71",
+        "--level",
+        "warning"
+      ],
+      "code": 0,
+      "elapsed": 2.987,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166747194Z-c90a95c0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"qa_level_72bd71_warn\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166747194Z\"\n}",
+      "stderr": ""
+    },
+    "s12-level-info": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71",
+        "--level",
+        "info"
+      ],
+      "code": 0,
+      "elapsed": 2.815,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166750576Z-2a1b9ec4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"qa_level_72bd71_info\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166750576Z\"\n}",
+      "stderr": ""
+    },
+    "s12-level-debug-empty": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71",
+        "--level",
+        "debug"
+      ],
+      "code": 0,
+      "elapsed": 2.705,
+      "stdout": "",
+      "stderr": ""
+    },
+    "s12-level-error-warning": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71",
+        "--level",
+        "error,warning"
+      ],
+      "code": 0,
+      "elapsed": 3.063,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166711609Z-5d5d20a2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166711609Z\"\n}{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166747194Z-c90a95c0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"qa_level_72bd71_warn\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166747194Z\"\n}",
+      "stderr": ""
+    },
+    "s12-level-text-error-info": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71_error,qa_level_72bd71_info"
+      ],
+      "code": 0,
+      "elapsed": 3.103,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166711609Z-5d5d20a2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166711609Z\"\n}",
+      "stderr": ""
+    },
+    "s12-level-text-info-error": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71_info,qa_level_72bd71_error"
+      ],
+      "code": 0,
+      "elapsed": 2.893,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166750576Z-2a1b9ec4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"qa_level_72bd71_info\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166750576Z\"\n}",
+      "stderr": ""
+    },
+    "s12-text-repeat": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71_error,qa_level_72bd71_info"
+      ],
+      "code": 0,
+      "elapsed": 5.321,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166711609Z-5d5d20a2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166711609Z\"\n}",
+      "stderr": ""
+    },
+    "s12-text-upstream": {
+      "args": [
+        "logs",
+        "-r",
+        "srv-davnfbude41s73cantkg",
+        "--type",
+        "app",
+        "--limit",
+        "20",
+        "-o",
+        "json",
+        "--text",
+        "qa_level_72bd71_error,qa_level_72bd71_info"
+      ],
+      "code": 0,
+      "elapsed": 4.745,
+      "stdout": "{\n  \"id\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166711609Z-5d5d20a2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-davnfbude41s73cantkg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\n  \"timestamp\": \"2026-10-02T09:30:58.166711609Z\"\n}",
+      "stderr": ""
+    },
+    "s12-text-wire-error-info": {
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-d98210cbbpdc73dcrkvg&resource=srv-davnfbude41s73cantkg&type=app&limit=20&text=qa_level_72bd71_error&text=qa_level_72bd71_info",
+      "request_body": null,
+      "status": 200,
+      "headers": {
+        "Date": "Fri, 02 Oct 2026 09:33:38 GMT",
+        "Content-Type": "application/json",
+        "CF-RAY": "a442b4daea67c132-SJC"
+      },
+      "body": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-02T08:33:38.023624709Z\",\"nextEndTime\":\"2026-10-02T09:30:58.166711608Z\",\"logs\":[{\"id\":\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166711609Z-5d5d20a2\",\"message\":\"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\"timestamp\":\"2026-10-02T09:30:58.166711609Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-davnfbude41s73cantkg\"},{\"name\":\"instance\",\"value\":\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"error\"}]}]}\n",
+      "elapsed": 2.739
+    },
+    "s12-text-wire-info-error": {
+      "method": "GET",
+      "path": "/v1/logs?ownerId=tea-d98210cbbpdc73dcrkvg&resource=srv-davnfbude41s73cantkg&type=app&limit=20&text=qa_level_72bd71_info&text=qa_level_72bd71_error",
+      "request_body": null,
+      "status": 200,
+      "headers": {
+        "Date": "Fri, 02 Oct 2026 09:33:40 GMT",
+        "Content-Type": "application/json",
+        "CF-RAY": "a442b4ea1877fa56-SJC"
+      },
+      "body": "{\"hasMore\":false,\"nextStartTime\":\"2026-10-02T08:33:40.434637285Z\",\"nextEndTime\":\"2026-10-02T09:30:58.166750575Z\",\"logs\":[{\"id\":\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e-2026-10-02T09:30:58.166750576Z-2a1b9ec4\",\"message\":\"{\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"qa_level_72bd71_info\\\"}\",\"timestamp\":\"2026-10-02T09:30:58.166750576Z\",\"labels\":[{\"name\":\"type\",\"value\":\"app\"},{\"name\":\"resource\",\"value\":\"srv-davnfbude41s73cantkg\"},{\"name\":\"instance\",\"value\":\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\"},{\"name\":\"container\",\"value\":\"app\"},{\"name\":\"level\",\"value\":\"info\"}]}]}\n",
+      "elapsed": 2.342
+    },
+    "s12-text-mcp-error-info": {
+      "method": "POST",
+      "path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "list_logs",
+          "arguments": {
+            "resource": [
+              "srv-davnfbude41s73cantkg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "qa_level_72bd71_error",
+              "qa_level_72bd71_info"
+            ],
+            "limit": 20
+          }
+        }
+      },
+      "status": 200,
+      "content_type": "text/event-stream",
+      "body": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"hasMore\\\":false,\\\"logs\\\":[{\\\"labels\\\":{\\\"container\\\":\\\"app\\\",\\\"instance\\\":\\\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\\\",\\\"level\\\":\\\"error\\\",\\\"service\\\":\\\"srv-davnfbude41s73cantkg\\\",\\\"type\\\":\\\"app\\\"},\\\"message\\\":\\\"{\\\\\\\"level\\\\\\\":\\\\\\\"error\\\\\\\",\\\\\\\"msg\\\\\\\":\\\\\\\"qa_level_72bd71_error\\\\\\\"}\\\",\\\"timestamp\\\":\\\"2026-10-02T09:30:58.166711609Z\\\"}],\\\"nextEndTime\\\":\\\"2026-10-02T09:30:58.166711608Z\\\",\\\"nextStartTime\\\":\\\"2026-10-02T08:34:29.748413489Z\\\"}\"}],\"structuredContent\":{\"hasMore\":false,\"logs\":[{\"labels\":{\"container\":\"app\",\"instance\":\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\",\"level\":\"error\",\"service\":\"srv-davnfbude41s73cantkg\",\"type\":\"app\"},\"message\":\"{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}\",\"timestamp\":\"2026-10-02T09:30:58.166711609Z\"}],\"nextEndTime\":\"2026-10-02T09:30:58.166711608Z\",\"nextStartTime\":\"2026-10-02T08:34:29.748413489Z\"}}}\n\n",
+      "elapsed": 3.022
+    },
+    "s12-text-mcp-info-error": {
+      "method": "POST",
+      "path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "list_logs",
+          "arguments": {
+            "resource": [
+              "srv-davnfbude41s73cantkg"
+            ],
+            "type": [
+              "app"
+            ],
+            "text": [
+              "qa_level_72bd71_info",
+              "qa_level_72bd71_error"
+            ],
+            "limit": 20
+          }
+        }
+      },
+      "status": 200,
+      "content_type": "text/event-stream",
+      "body": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"hasMore\\\":false,\\\"logs\\\":[{\\\"labels\\\":{\\\"container\\\":\\\"app\\\",\\\"instance\\\":\\\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\\\",\\\"level\\\":\\\"info\\\",\\\"service\\\":\\\"srv-davnfbude41s73cantkg\\\",\\\"type\\\":\\\"app\\\"},\\\"message\\\":\\\"{\\\\\\\"level\\\\\\\":\\\\\\\"info\\\\\\\",\\\\\\\"msg\\\\\\\":\\\\\\\"qa_level_72bd71_info\\\\\\\"}\\\",\\\"timestamp\\\":\\\"2026-10-02T09:30:58.166750576Z\\\"}],\\\"nextEndTime\\\":\\\"2026-10-02T09:30:58.166750575Z\\\",\\\"nextStartTime\\\":\\\"2026-10-02T08:34:32.650312948Z\\\"}\"}],\"structuredContent\":{\"hasMore\":false,\"logs\":[{\"labels\":{\"container\":\"app\",\"instance\":\"srv-davnfbude41s73cantkg-8mqs58lin8uaf15n284e\",\"level\":\"info\",\"service\":\"srv-davnfbude41s73cantkg\",\"type\":\"app\"},\"message\":\"{\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"qa_level_72bd71_info\\\"}\",\"timestamp\":\"2026-10-02T09:30:58.166750576Z\"}],\"nextEndTime\":\"2026-10-02T09:30:58.166750575Z\",\"nextStartTime\":\"2026-10-02T08:34:32.650312948Z\"}}}\n\n",
+      "elapsed": 2.587
+    },
+    "s12-delete": {
+      "args": [
+        "services",
+        "delete",
+        "srv-davnfbude41s73cantkg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "code": 0,
+      "elapsed": 2.227,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-02T09:21:51Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-davnfbude41s73cantkg\",\n    \"id\": \"srv-davnfbude41s73cantkg\",\n    \"name\": \"qa-20261002-72bd71-health\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-d98210cbbpdc73dcrkvg\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-go\",\n    \"serviceDetails\": {\n      \"env\": \"go\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"go build -o app .\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"printf '%s\\\\n' '{\\\"level\\\":\\\"error\\\",\\\"msg\\\":\\\"qa_level_72bd71_error\\\"}' '{\\\"level\\\":\\\"warn\\\",\\\"msg\\\":\\\"qa_level_72bd71_warn\\\"}' '{\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"qa_level_72bd71_info\\\"}'; exec ./app\"\n      },\n      \"healthCheckPath\": \"healthz\",\n      \"internalAddress\": \"qa-20261002-72bd71-health:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"go\",\n      \"url\": \"https://qa-20261002-72bd71-health.onbex.co\"\n    },\n    \"slug\": \"qa-20261002-72bd71-health\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-02T09:31:04Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "s12-absent": {
+      "method": "GET",
+      "path": "/v1/services/srv-davnfbude41s73cantkg",
+      "request_body": null,
+      "status": 404,
+      "headers": {
+        "Date": "Fri, 02 Oct 2026 09:35:24 GMT",
+        "Content-Type": "application/json",
+        "CF-RAY": "a442b7805e7fd116-SJC"
+      },
+      "body": "{\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\"}\n",
+      "elapsed": 0.326
+    }
+  }
+}
