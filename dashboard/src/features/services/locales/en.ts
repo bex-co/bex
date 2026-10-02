@@ -337,7 +337,13 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "The service scales to zero and stops running. You can resume it at any time.",
     description:
-      "Suspend confirmation dialog body, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
+      "Suspend confirmation dialog body, for private services and background workers — neither has a public URL or certificates to keep",
+  },
+  "services.suspendCronDescription": {
+    message:
+      "Suspending this cron job pauses future scheduled runs. An active run continues. To stop it, select Cancel in Recent Runs.",
+    description:
+      "Cron suspension explanation in Settings and suspend confirmations; suspension does not cancel an active run",
   },
   "services.confirmRestartTitle": {
     message: "Restart {name}?",
@@ -2757,7 +2763,7 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Suspending your service will shut it down and stop it from running. You can resume it at any time.",
     description:
-      "Settings tab suspend section description, for private services, background workers and cron jobs — none of which have a public URL or certificates to keep",
+      "Settings tab suspend section description, for private services and background workers — neither has a public URL or certificates to keep",
   },
   "services.resumeCardTitle": {
     message: "Resume Service",
@@ -2768,6 +2774,10 @@ const enServices: Record<string, TranslationEntry> = {
     message:
       "Resuming your service will bring it back online and start serving traffic again.",
     description: "Settings tab resume section description",
+  },
+  "services.resumeCardDescriptionCron": {
+    message: "Resuming this cron job resumes scheduled runs.",
+    description: "Settings tab resume section description for a cron job",
   },
   "services.dangerZoneTitle": {
     message: "Danger Zone",
