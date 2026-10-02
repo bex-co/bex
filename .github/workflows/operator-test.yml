@@ -29,6 +29,8 @@ jobs:
       # with the workspace off, matching prod. Go version follows
       # lego/operator/go.mod (the 1.26 line); setup-go pins GOTOOLCHAIN=local.
       GOWORK: "off"
+      # Exercise persistence conversion with the pinned Valkey 7/8 images.
+      BEX_TEST_VALKEY: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -40,11 +42,6 @@ jobs:
       - name: make test (operator + envtest)
         working-directory: lego/operator
         run: make test
-      - name: Valkey persistence survives engine restarts
-        working-directory: lego/operator
-        env:
-          BEX_TEST_VALKEY_DOCKER: "1"
-        run: go test ./internal/controller -run '^TestKeyValuePersistenceEngine$' -count=1 -timeout=30m
       # w1/m68: `make test` REGENERATES manifests/deepcopy before running, so a
       # stale committed CRD is silently repaired in the runner and the job stays
       # green — drift ships. That is not hypothetical: `spec.deletedUsers` was

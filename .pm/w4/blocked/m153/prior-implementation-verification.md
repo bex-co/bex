@@ -1,0 +1,55 @@
+# m153 implementation and acceptance evidence — 2026-10-02
+
+**Prepared patch only; not shipped.** The code described below is stored in [implementation.patch](implementation.patch), based on `dab8227fa92af7c23778b7c3553ce69808328044`. Its SHA-256 is `352f47ef9c1c60b2a734f0df1bfdb511f3d117dafcff20cc649eedfc34bf7387`. Reverse application was checked before removing only these session-owned source edits; applying the patch back to that source tree was also checked.
+
+On a healthy Docker host, apply the patch from the repository root, run the full checks including `BEX_TEST_VALKEY=1 go test ./internal/controller -run '^TestValkeyPersistenceEngine$' -count=1 -parallel=1 -timeout=15m` from `lego/operator/`, and ship it only after the complete matrix passes. Rebase the patch against later changes if needed.
+
+## Transition contract
+
+The operator owns one startup handoff for every writer. A desired setting is accepted immediately; it becomes applied only after the replacement revision is Ready. Legacy empty mode means Journal + Snapshot.
+
+| Applied source | Journal + Snapshot desired | Snapshot only desired | Off desired |
+| --- | --- | --- | --- |
+| Journal + Snapshot | Load the current journal. Reject a missing initialized manifest/legacy AOF; malformed engine files fail startup. | Privately replay the current journal, `SAVE`, shut down safely, then commit Snapshot mode and serve its RDB. | Commit Off, remove only known Valkey persistence files, then serve an empty cache. |
+| Snapshot only | Privately load the current RDB, enable AOF, wait for a completed successful rewrite with no scheduled/in-progress work, `SAVE`, shut down safely, then commit Journal mode. An older AOF never becomes the source. | Load the current RDB; preserve the ordinary restart control. | Commit Off and discard the known historical files before serving an empty cache. |
+| Off | Discard historical files, privately initialize an empty durable dataset, commit Journal mode, then serve. | Discard historical files, privately initialize an empty RDB, commit Snapshot mode, then serve. | Discard historical files on every start; Off never reloads an old snapshot. |
+
+The private engine has TCP and TLS ports disabled and a permission-restricted Unix socket. No application writes can enter between loading the authoritative source and committing the target. The private engine authenticates over stdin/socket; no password is logged. Desired eviction limits are not applied during conversion, so they cannot evict keys from the handoff dataset.
+
+The durable marker `/data/.bex-persistence-mode` is written through a temporary file, sync and atomic rename. Before its commit, recovery uses the original source; after commit, it uses the complete target. Off is an explicit irreversible discard point: a desired reversal after Off commits still starts empty. Conversion failure retains recoverable durable source files and keeps the replacement non-serving; it does not keep the old pod available. Startup and rewrite waits and private-child termination are bounded.
+
+Existing unchanged stores retain their previous pod command and do not roll on operator upgrade. On their first actual change, the owned serving pod establishes the frozen bootstrap source, even if a legacy StatefulSet template already contains newer flags. New storage carries `new:<initial-mode>` so a desired change before its first boot can initialize safely. A recreated StatefulSet with retained storage requires a known applied source; unknown storage is refused. A committed PVC marker supersedes the frozen source on retry, reversal or workload recreation.
+
+`status.appliedPersistenceMode` records the last Ready serving revision, while the PVC marker owns crash recovery. Stale cached StatefulSet generations cannot acknowledge the new setting. Suspended changes wait for resume; suspending a never-started, unchanged store remains healthy without fabricating an applied mode. An outdated KeyValue resource version cannot acknowledge a newer desired generation.
+
+## Coverage and limits
+
+- The real-engine regression uses both pinned production majors (Valkey 7.2.14 and 8.1.9), disposable volumes, the actual production pod command/args, and a network-isolated container. It asserts baseline values, non-expiring markers, counters and exact absolute expiration deadlines, not only PING.
+- The old projection demonstrably fails the saved Snapshot → Journal regression: counter 23 reverts to 1 and the snapshot-written marker disappears. The negative control also reproduces Off loading an old RDB. Evidence was captured in `/tmp/bex-m153-engine-regression-before.log`.
+- The engine matrix covers all nine mode pairs, legacy empty mode, first-boot desired reversal, no-prior-AOF conversion, explicit SAVE plus ordinary policy restart, another ordinary restart after conversion, interrupted/retried conversion, unwritable journal creation with reversal/retry, scheduled/running rewrite, asynchronous rewrite failure, and missing/corrupt initialized manifests with recovery. CI explicitly opts into this suite.
+- Controller tests cover ownership, unchanged legacy templates, pending legacy rollout source selection, frozen source across desired reversal, retained/missing storage, stale reads, current-pod readiness, suspension and concurrent spec updates. Removing the serving-pod or generation guard makes its respective regression fail.
+- REST, GraphQL and MCP tests exercise the shared status mapping for accepted/pending/failed/completed/suspended states, both input spellings, and no-write previews. Existing tests cover omitted fields, invalid modes, protected refusals and identity-preserving rename. These are local HTTP/GraphQL/MCP fixtures, not production probes.
+- The two existing-resource writers are `KeyValuePatch.apply` and `ApplyBlueprintKeyValueSpec`; the latter has four callers (two preview probes, one change probe and the live deploy writer). REST/GraphQL/MCP updates converge on the shared service; CLI consumes REST, dashboard consumes GraphQL, and Blueprint/direct CR changes converge on the same operator projection. Web/static/cron/worker/private services and Postgres are outside this mechanism. The throwaway restore runbook remains a separate verified sequence precedent.
+- English and Chinese distinguish durable preservation from Off data loss, remove the fixed-minute interruption promise, and require typed confirmation for Off transitions. Unknown current mode disables editing. Render documentation was checked; its authenticated settings dialog was not replayed. bex keeps its intentional durable Free default. The pre-existing protected-environment editor does not offer the server-issued retry dialog; server enforcement and confirmed API writes are unchanged.
+
+## Validation
+
+The full operator `make test` (including 181 envtest specs) and all-module `make lint` passed after correcting the first-start suspension regression. Three simplify reviewers checked reuse, quality and efficiency; their changes reuse the permitted-version inventory, remove a redundant RDB save and simplify equivalent readiness guards. Focused controller tests passed after those changes. Post-rebase all-module lint and dead-code analysis also passed. Those lint results precede the final test-harness-only timeout/cleanup changes; rerun lint when applying the patch. Backend `go test ./...`, shared-types `go test ./...`, dashboard `yarn lint`, and dashboard `yarn test` passed (457 files, 3,857 tests). Opt-in backend Postgres/OpenFGA/live-cluster integrations were not configured for this local run. After merging current main, the KeyValue/Apps packages, focused controller checks, dashboard typecheck and 21 focused UI/consumer tests also passed. No production fixture or QA session was created during implementation.
+
+Parallel and serial runs hit 45-second Docker command timeouts (`start`, `exec` and cleanup) during high shared-host load, without reporting a wrong value. A timeout while preparing an empty volume occurred before Valkey started. The harness now names initialization helpers, attempts cleanup of each owned resource independently, and uses a bounded 120-second Docker-control budget; production conversion bounds and all data assertions are unchanged. CI runs the engine majors serially.
+
+The final current-code run completed **all 21 Valkey 7 cases**, including all nine mode pairs, first-boot reversal, scheduled/failed/interrupted conversion, missing/corrupt manifests and old-projection controls. **Valkey 8 did not complete:** Docker `start` exceeded 120 seconds during its first case. Its no-prior-journal case then completed, but first-boot reversal stalled in the initialization helper before Valkey launched; the remaining cases were not run. The overall command exited 1 after the 15-minute test timeout (901.637 seconds). An inspected fixture appeared running while inspection/removal acknowledgements stalled. This establishes an orchestration failure; it does not establish an underlying sync cause or prove all Valkey 8 data assertions. No incomplete run counts as a full pass. Earlier runs passed the original saved-data regression and multiple failure cases on Valkey 8, but those do not substitute for the final full matrix. The initial 7/8 nine-pair run passed before the later initialization and failure-boundary additions.
+
+Relevant local logs: `/tmp/bex-m153-engine-verified.log` (latest partial run), `/tmp/bex-m153-engine-final-serial.log` and `/tmp/bex-m153-engine-final-verified.log` (Docker-control failures), `/tmp/bex-m153-operator-test-final.log`, `/tmp/bex-m153-go-lint-rebase.log`, `/tmp/bex-m153-backend-test.log`, and `/tmp/bex-m153-dashboard-test.log`.
+
+All owned test containers and volumes were removed after the stopped runs. A fresh inventory confirmed zero resources under the two session-owned prefixes `bex-kv-persistence-test` and `bex-m153`; the test processes were also gone. No shared daemon restart or other-workstream mutation was performed.
+
+## Remaining production acceptance
+
+After the operator/CRD and dashboard release, the release/QA owner must replay both README Free/public UI sequences against a fresh own fixture through the actual external TLS endpoint. Verify baseline and new keys, counter 23, unchanged expiration deadlines, SAVE/ordinary restart, final runtime `appendonly`, fresh REST/GraphQL/MCP/UI state, rename identity/credentials, and complete deletion/session revocation. Paid production purchases and another tenant's data are outside authorization. No post-push CI or deployment monitoring is part of `/ship`.
+
+The milestone must remain blocked until those deployed observations exist. Passing local tests or accepting a mode PATCH does not close the live data-survival gate.
+
+## Subsequent implementation — 2026-10-02
+
+This record is retained as historical evidence for the archived `implementation.patch`. The active implementation and current validation are documented in [verification.md](verification.md); do not apply the archived patch over that implementation.

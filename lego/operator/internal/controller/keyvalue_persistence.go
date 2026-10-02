@@ -18,209 +18,227 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const keyValueContainerName = "valkey"
+const keyValueSnapshotMode = "snapshot"
+const keyValueOffMode = "off"
+
 const keyValuePersistenceSourceAnnotation = "app.bex.co/persistence-source"
-const kvServerContainerName = "valkey"
+const keyValuePersistenceTokenAnnotation = "app.bex.co/persistence-handoff"
 
-// The on-volume marker, not the desired template or generation, identifies the
-// authoritative disk format. Conversion runs before any network listener can
-// accept writes. A retry or superseding generation therefore resumes from the
-// last committed format, including when an earlier init container failed.
-//
-// journal -> snapshot: load the journal, SAVE, shut down, commit snapshot.
-// snapshot -> journal: load RDB with AOF disabled, enable AOF, await a successful
-// rewrite, shut down (flush), commit journal. Old AOF is never loaded here.
-// durable -> off and off -> durable: commit off, discard engine files, commit target.
-// same durable mode: retain files; empty legacy mode means journal-snapshot.
-const keyValuePersistenceHandoffScript = `set -eu
-cd "${DATA_DIR:-/data}"
-marker=.bex-persistence-mode
-source_mode="$SOURCE_MODE"
-if [ -f "$marker" ]; then source_mode="$(cat "$marker")"; fi
-case "$TARGET_MODE" in journal-snapshot|snapshot|off) ;; *) exit 1 ;; esac
-commit_mode() {
-  # Engine files must reach disk before a format marker can become authoritative.
-  sync
-  printf '%s\n' "$1" > "$marker.tmp"
-  mv "$marker.tmp" "$marker"
-  sync
-}
-if [ "$source_mode" = off ] || [ "$TARGET_MODE" = off ]; then
-  # Commit the destructive boundary first. If interrupted while removing files,
-  # a desired-mode reversal must finish discarding, never load a partial dataset.
-  commit_mode off
-  rm -rf dump.rdb appendonly.aof appendonlydir
-  if [ "$TARGET_MODE" = off ]; then exit 0; fi
-  source_mode=new:off
-fi
-if [ "$source_mode" = unknown ]; then
-  echo "persistence source unavailable: retained storage needs its committed mode marker or operator recovery" >&2
-  exit 1
-fi
-case "$source_mode:$TARGET_MODE" in
-  new:journal-snapshot:*|new:snapshot:*|new:off:*|journal-snapshot:*|snapshot:*|off:*) ;;
-  *) echo "invalid persistence source" >&2; exit 1 ;;
-esac
-initializing=no
-case "$source_mode" in
-  new:*)
-    # Before the first committed marker no client has served this storage.
-    # Retrying a failed initialization may safely replace its incomplete files.
-    rm -rf dump.rdb appendonly.aof appendonlydir
-    initializing=yes
-    source_mode=snapshot
-    ;;
-  journal-snapshot)
-    if [ -e appendonlydir/appendonly.aof.manifest ]; then
-      # Valkey accepts a comment-only manifest as an empty dataset. An
-      # initialized journal must name at least one active base/increment file.
-      grep -Eq '^file[[:space:]].*[[:space:]]type[[:space:]]+[bi]([[:space:]]|$)' appendonlydir/appendonly.aof.manifest || {
-        echo "initialized journal manifest has no active files" >&2; exit 1;
-      }
-    else
-      [ -s appendonly.aof ] || {
-        echo "initialized journal is missing; refusing to start an empty dataset" >&2; exit 1;
-      }
-    fi
-    ;;
-  snapshot)
-    [ -s dump.rdb ] || { echo "initialized snapshot is missing" >&2; exit 1; }
-    ;;
-esac
-if [ "$initializing" = no ] && [ "$source_mode" = "$TARGET_MODE" ]; then
-  if [ ! -f "$marker" ]; then commit_mode "$TARGET_MODE"; fi
-  exit 0
-fi
-socket=/tmp/bex-persistence.sock
-cli() { timeout 5 valkey-cli -e --raw -s "$socket" "$@"; }
-cleanup() { cli SHUTDOWN NOSAVE >/dev/null 2>&1 || true; }
-trap cleanup EXIT
-trap 'exit 1' INT TERM
-appendonly=no
-if [ "$source_mode" = journal-snapshot ]; then appendonly=yes; fi
-# No TCP or TLS listener exists during conversion. No client can acknowledge
-# writes until the authoritative marker has been committed and init exits.
-valkey-server --dir "$PWD" --port 0 --unixsocket "$socket" --unixsocketperm 600 \
-  --appendonly "$appendonly" --save "" \
-  --daemonize yes --pidfile /tmp/bex-persistence.pid --logfile /tmp/bex-persistence.log
-ready=no
-for attempt in $(seq 1 120); do
-  if [ "$(cli PING 2>/dev/null || true)" = PONG ]; then ready=yes; break; fi
-  sleep 1
-done
-[ "$ready" = yes ] || { echo "persistence conversion startup timed out" >&2; exit 1; }
-if [ "$TARGET_MODE" = journal-snapshot ]; then
-  [ "$(cli CONFIG SET appendonly yes)" = OK ] || exit 1
-  complete=no
-  for attempt in $(seq 1 120); do
-    info="$(cli INFO persistence | tr -d '\r')"
-    field() { printf '%s\n' "$info" | sed -n "s/^$1://p"; }
-    if [ "$(field aof_enabled)" = 1 ] &&
-       [ "$(field aof_rewrite_in_progress)" = 0 ] &&
-       [ "$(field aof_rewrite_scheduled)" = 0 ] &&
-       [ "$(field aof_rewrites)" -ge 1 ] &&
-       [ "$(field aof_last_bgrewrite_status)" = ok ] &&
-       [ "$(field aof_last_write_status)" = ok ]; then
-      complete=yes; break
-    fi
-    sleep 1
-  done
-  [ "$complete" = yes ] || { echo "persistence journal rewrite did not complete successfully" >&2; exit 1; }
-fi
-[ "$(cli SAVE)" = OK ] || { echo "persistence snapshot failed" >&2; exit 1; }
-cli SHUTDOWN NOSAVE
-trap - EXIT INT TERM
-commit_mode "$TARGET_MODE"
-`
-
-// Bootstrap from the exact owned running pod, never desired StatefulSet flags:
-// a pending legacy rollout can contain journaling flags while the old serving
-// pod is still snapshot-only. The PVC marker supersedes this frozen seed.
-func (r *KeyValueReconciler) seedKeyValuePersistence(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet) (string, error) {
-	if source := sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation]; source != "" {
-		return source, nil
-	}
-	reader := r.APIReader
-	if reader == nil {
-		reader = r.Client
-	}
-	pod := &corev1.Pod{}
-	// Bootstrap evidence must come from an uncached reader in production.
-	err := reader.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: kv.Name + "-0"}, pod)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return "", err
-	}
-	if err == nil && sts.UID != "" && metav1.IsControlledBy(pod, sts) && pod.DeletionTimestamp == nil {
-		if sts.Status.UpdateRevision != "" && (sts.Status.UpdateRevision != sts.Status.CurrentRevision || pod.Labels[appsv1.ControllerRevisionHashLabelKey] != sts.Status.UpdateRevision) {
-			return "", fmt.Errorf("waiting for legacy Valkey rollout to settle before establishing persistence source")
-		}
-		running := false
-		for _, status := range pod.Status.ContainerStatuses {
-			if status.Name == kvServerContainerName && status.State.Running != nil {
-				running = true
-			}
-		}
-		if running {
-			for _, container := range pod.Spec.Containers {
-				if container.Name == kvServerContainerName {
-					return keyValueContainerPersistence(container), nil
-				}
-			}
-		}
-	}
-	pvc := &corev1.PersistentVolumeClaim{}
-	err = reader.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: keyValuePVCName(kv.Name)}, pvc)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return "", err
-	}
-	if apierrors.IsNotFound(err) && sts.ResourceVersion == "" {
-		return "new:" + normalizedKeyValuePersistence(kv.Spec.PersistenceMode), nil
-	}
-	// A retained claim or missing serving pod has no trustworthy legacy seed.
-	// Startup may recover from its existing marker, otherwise it fails closed.
-	return "unknown", nil
-}
-
-func keyValueContainerPersistence(container corev1.Container) string {
-	mode := "journal-snapshot"
-	for i := 0; i+1 < len(container.Args); i++ {
-		if container.Args[i] == "--appendonly" && container.Args[i+1] == "no" {
-			mode = "snapshot"
-		}
-	}
-	for i := 0; i+1 < len(container.Args); i++ {
-		if container.Args[i] == "--save" && container.Args[i+1] == "" {
-			return "off"
-		}
-	}
-	return mode
-}
-
-func normalizedKeyValuePersistence(mode string) string {
+func keyValuePersistenceMode(mode string) string {
 	if mode == "" {
 		return "journal-snapshot"
 	}
 	return mode
 }
 
+func keyValuePersistenceSource(sts *appsv1.StatefulSet, desired string) string {
+	if source := sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation]; source != "" {
+		return source
+	}
+	return keyValueTemplatePersistenceMode(sts, desired)
+}
+
+func keyValueTemplatePersistenceMode(sts *appsv1.StatefulSet, desired string) string {
+	return keyValueContainersPersistenceMode(sts.Spec.Template.Spec.Containers, desired)
+}
+
+func keyValueContainersPersistenceMode(containers []corev1.Container, desired string) string {
+	for _, c := range containers {
+		if c.Name != keyValueContainerName {
+			continue
+		}
+		mode := "journal-snapshot"
+		for i := 0; i+1 < len(c.Args); i++ {
+			if c.Args[i] == "--appendonly" && c.Args[i+1] == "no" {
+				mode = keyValueSnapshotMode
+			}
+			if c.Args[i] == "--save" && c.Args[i+1] == "" {
+				return keyValueOffMode
+			}
+		}
+		return mode
+	}
+	return keyValuePersistenceMode(desired)
+}
+
 func keyValuePersistenceInit(kv *appv1alpha1.KeyValue, intent keyValueIntent, source string) corev1.Container {
 	return corev1.Container{
 		Name: "persistence-handoff", Image: valkeyImage(kv.Spec.Version),
-		Command: []string{shellBinary, "-c", keyValuePersistenceHandoffScript},
+		Command: []string{shellBinary, "-ceu", keyValuePersistenceScript},
 		Env: []corev1.EnvVar{
-			{Name: "SOURCE_MODE", Value: source},
-			{Name: "TARGET_MODE", Value: normalizedKeyValuePersistence(kv.Spec.PersistenceMode)},
+			{Name: "PERSISTENCE_SOURCE", Value: source},
+			{Name: "PERSISTENCE_TOKEN", Value: intent.persistenceToken},
+			{Name: "PERSISTENCE_TARGET", Value: keyValuePersistenceMode(kv.Spec.PersistenceMode)},
+			{Name: "VALKEY_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: intent.authSecretName}, Key: "password",
+			}}},
 		},
 		Resources: kvResources(intent.plan), SecurityContext: valkeySecCtx(),
 		VolumeMounts: []corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}},
 	}
+}
+
+// The initializer has exclusive access to the PVC after the old server stopped.
+// A PVC marker identifies the authoritative format, independent of generation,
+// controller restarts and suspended template edits. Only commit the new format
+// after Valkey successfully saved it and stopped. Retries use the old format.
+// Off deliberately commits the discard intent BEFORE deleting files, so even
+// an interrupted deletion followed by a mode reversal cannot resurrect data.
+const keyValuePersistenceScript = `
+set -eu
+cd /data
+marker=.bex-persistence-mode
+source=$PERSISTENCE_SOURCE
+target=$PERSISTENCE_TARGET
+token=${PERSISTENCE_TOKEN:-}
+consumed=
+new=no
+if [ -f "$marker" ]; then
+ source=$(sed -n 1p "$marker")
+ consumed=$(sed -n 2p "$marker")
+else
+ # Only the controller's absent-StatefulSet + absent-PVC path mints this.
+ # A lost marker on a later populated volume must never authorize bootstrap.
+ case "$source" in new:*)
+  if [ "$target" != off ] && { [ -e dump.rdb ] || [ -e appendonly.aof ] || [ -e appendonlydir ]; }; then
+   echo "Bootstrap marker missing on populated volume" >&2; exit 1
+  fi
+ ;; esac
+fi
+# A pending bootstrap marker proves no main process has served this volume.
+case "$source" in new:*) new=yes; source=snapshot;; esac
+require_journal() {
+ if [ -f appendonlydir/appendonly.aof.manifest ]; then
+  grep -Eq '^file[[:space:]].*[[:space:]]type[[:space:]]+[bi]([[:space:]]|$)' appendonlydir/appendonly.aof.manifest || {
+   echo "Initialized journal manifest has no active files" >&2; exit 1
+  }
+ else
+  [ -s appendonly.aof ] || { echo "Source journal missing; refusing empty conversion" >&2; exit 1; }
+ fi
+}
+# Explicit Off is a destructive reset; it needs no guess of the old format.
+if [ "$target" = off ]; then source=off; fi
+if [ "$target" != off ] && [ -n "$token" ] && [ "$token" != "$consumed" ]; then
+ source=journal-snapshot
+ new=no
+ require_journal
+fi
+case "$source:$target" in
+  *[!a-z:-]*) echo "Invalid persistence marker" >&2; exit 1;;
+esac
+for mode in "$source" "$target"; do
+ case "$mode" in journal-snapshot|snapshot|off) ;; *) echo "Unknown persistence mode" >&2; exit 1;; esac
+done
+commit_mode() {
+ printf '%s\n%s\n' "$1" "$token" > "$marker.tmp"
+ sync "$marker.tmp"
+ mv "$marker.tmp" "$marker"
+ sync .
+}
+if [ "$new" = yes ] && [ ! -f "$marker" ]; then commit_mode "new:$target"; fi
+if [ "$target" = off ] || [ "$source" = off ]; then
+ commit_mode off
+ # These are the exact managed Valkey defaults, never glob the volume.
+ rm -rf -- dump.rdb appendonly.aof appendonlydir
+ sync .
+ if [ "$target" = off ]; then exit 0; fi
+ # Off's discard intent remains authoritative across interrupted bootstrap.
+ source=snapshot
+ new=yes
+fi
+if [ "$new" = no ]; then
+ if [ "$source" = snapshot ]; then
+  [ -s dump.rdb ] || { echo "Source snapshot missing; refusing empty conversion" >&2; exit 1; }
+ else
+  require_journal
+ fi
+ if [ "$source" = "$target" ]; then
+  if [ -f "$marker" ] && [ "$token" = "$consumed" ]; then exit 0; fi
+  commit_mode "$source"
+  exit 0
+ fi
+ commit_mode "$source"
+fi
+export REDISCLI_AUTH="$VALKEY_PASSWORD"
+socket=/tmp/bex-persistence.sock
+appendonly=no
+if [ "$source" = journal-snapshot ]; then appendonly=yes; fi
+# Valkey quoted config escaping keeps the secret out of argv and logs.
+umask 077
+config=$(mktemp /tmp/bex-persistence.XXXXXX)
+escaped=$(printf '%s' "$VALKEY_PASSWORD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+printf 'requirepass "%s"\n' "$escaped" > "$config"
+valkey-server "$config" --dir /data --port 0 --unixsocket "$socket" --unixsocketperm 600 \
+ --appendonly "$appendonly" --save "" &
+pid=$!
+# No client writes reach this process, so failure kills it without SAVE.
+# SIGTERM can be refused while the first AOF rewrite is running.
+trap 'kill -KILL "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; rm -f "$config" "$socket"' EXIT
+trap 'exit 1' INT TERM
+cli() { timeout 60 valkey-cli -s "$socket" --raw "$@"; }
+ready=no
+deadline=$(($(date +%s) + 120))
+while [ "$(date +%s)" -lt "$deadline" ]; do
+ kill -0 "$pid" 2>/dev/null || { echo "Persistence source failed to load" >&2; exit 1; }
+ if [ "$(timeout 2 valkey-cli -s "$socket" --raw PING 2>/dev/null || true)" = PONG ]; then ready=yes; break; fi
+ sleep 1
+done
+[ "$ready" = yes ] || { echo "Persistence source load timed out" >&2; exit 1; }
+if [ "$target" = journal-snapshot ]; then
+ [ "$(cli CONFIG SET appendonly yes)" = OK ] || { echo "Cannot enable journal" >&2; exit 1; }
+ complete=no
+ deadline=$(($(date +%s) + 300))
+ while [ "$(date +%s)" -lt "$deadline" ]; do
+  state=$(cli INFO persistence)
+  state=$(printf '%s\n' "$state" | tr -d '\r')
+  field() { printf '%s\n' "$state" | awk -F: -v key="$1" '$1 == key {print $2}'; }
+  if [ "$(field aof_enabled)" = 1 ] && [ "$(field aof_rewrite_in_progress)" = 0 ] && \
+     [ "$(field aof_rewrite_scheduled)" = 0 ] && [ "$(field aof_rewrites)" -ge 1 ]; then
+   [ "$(field aof_last_bgrewrite_status)" = ok ] && [ "$(field aof_last_write_status)" = ok ] || \
+    { echo "Journal rewrite failed; source snapshot retained" >&2; exit 1; }
+   complete=yes
+   break
+  fi
+  sleep 1
+ done
+ [ "$complete" = yes ] || { echo "Journal rewrite timed out; source snapshot retained" >&2; exit 1; }
+fi
+# SAVE errors (including full disk) must never advance the marker. The source
+# AOF remains authoritative until a completed SAVE and clean process exit.
+[ "$(cli SAVE)" = OK ] || { echo "Persistence snapshot failed" >&2; exit 1; }
+cli SHUTDOWN NOSAVE
+wait "$pid"
+trap - EXIT INT TERM
+rm -f "$config" "$socket"
+commit_mode "$target"
+`
+
+// keyValuePersistenceProgress surfaces bounded, non-secret initializer state.
+func (r *KeyValueReconciler) keyValuePersistenceProgress(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet) (string, string) {
+	pod := &corev1.Pod{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: kv.Name + "-0"}, pod); err != nil || !metav1.IsControlledBy(pod, sts) {
+		return "", ""
+	}
+	for _, status := range pod.Status.InitContainerStatuses {
+		if status.Name != "persistence-handoff" {
+			continue
+		}
+		if (status.State.Terminated != nil && status.State.Terminated.ExitCode != 0) ||
+			(status.State.Waiting != nil && status.State.Waiting.Reason == "CrashLoopBackOff") {
+			return "PersistenceTransitionFailed", "persistence conversion failed; the source format is retained and initialization will retry"
+		}
+		if status.State.Terminated == nil {
+			return "PersistenceTransition", "converting durable data before starting Valkey"
+		}
+	}
+	return "", ""
 }

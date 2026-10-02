@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { act, render, screen, within } from "@testing-library/react";
 import {
   RouterProvider,
   createRouter,
@@ -102,12 +103,13 @@ vi.mock("@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy", () => ({
   }),
 }));
 
+const savePersistence = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-set-key-value-persistence-mode", () => ({
   useSetKeyValuePersistenceMode: () => ({
     mode: "journal-snapshot",
     loading: false,
     saving: false,
-    save: vi.fn(),
+    save: savePersistence,
   }),
 }));
 
@@ -173,6 +175,7 @@ beforeEach(() => {
   keyValueState.error = undefined;
   lifecycleRun.mockReset();
   reveal.mockReset();
+  savePersistence.mockReset();
   datastoreMetricsCalls.length = 0;
 });
 
@@ -348,4 +351,40 @@ describe("KeyValueDetailPage", () => {
     await screen.findByRole("heading", { name: "sessions-cache" });
     expect(datastoreMetricsCalls).toHaveLength(0);
   });
+});
+
+it("drops an armed persistence confirmation when navigating to another store", async () => {
+  const user = userEvent.setup({ pointerEventsCheck: 0 });
+  keyValueState.keyValue = kv();
+  const router = renderPage("/keyvalue/red-sessions");
+  await user.click(
+    await screen.findByRole("button", { name: "Edit persistence mode" }),
+  );
+  await user.click(screen.getByRole("combobox", { name: "Persistence mode" }));
+  await user.click(screen.getByRole("option", { name: "Off" }));
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  const dialog = screen.getByRole("alertdialog");
+  await user.type(
+    within(dialog).getByRole("textbox"),
+    "sudo clear key value sessions-cache",
+  );
+  expect(
+    within(dialog).getByRole("button", { name: "Delete data and change mode" }),
+  ).toBeEnabled();
+
+  keyValueState.keyValue = kv({ id: "red-other", name: "another-cache" });
+  await act(async () => {
+    await router.navigate({
+      to: "/keyvalue/$keyValueId",
+      params: { keyValueId: "red-other" },
+    });
+  });
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(
+    await screen.findByRole("heading", { name: "another-cache" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("combobox", { name: "Persistence mode" }),
+  ).toBeDisabled();
+  expect(savePersistence).not.toHaveBeenCalled();
 });

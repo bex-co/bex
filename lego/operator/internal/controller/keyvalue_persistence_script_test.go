@@ -30,10 +30,16 @@ import (
 // suite runs on a busy host. One poll exercises the completion predicates;
 // production polling and sync implementations are covered by real-engine tests.
 const keyValuePersistenceSimulationCommands = `
-seq() { printf '1\n'; }
 sleep() { :; }
 sync() { :; }
 timeout() { shift; "$@"; }
+date() {
+ count=0
+ if [ -f "$DATA_DIR/clock" ]; then count=$(cat "$DATA_DIR/clock"); fi
+ count=$((count + 100))
+ printf '%s\n' "$count" > "$DATA_DIR/clock"
+ printf '%s\n' "$count"
+}
 `
 
 // These are fault-injection tests of the executable production shell script,
@@ -62,7 +68,7 @@ func TestKeyValuePersistenceScriptRejectsIncompleteHandoff(t *testing.T) {
 			}
 			write(filepath.Join(data, ".bex-persistence-mode"), "snapshot\n", 0o600)
 			write(filepath.Join(data, "dump.rdb"), "current acknowledged snapshot", 0o600)
-			write(filepath.Join(bin, "valkey-server"), "#!/bin/sh\nexit 0\n", 0o755)
+			write(filepath.Join(bin, "valkey-server"), "#!/bin/sh\nwhile [ ! -f \"$DATA_DIR/shutdown\" ]; do /bin/sleep 0.01; done\n", 0o755)
 			write(filepath.Join(bin, "valkey-cli"), `#!/bin/sh
 while [ "$#" -gt 0 ]; do
  case "$1" in
@@ -76,7 +82,7 @@ case "$1" in
  PING) echo PONG ;;
  CONFIG|SAVE) echo OK ;;
  INFO) cat "$DATA_DIR/info" ;;
- SHUTDOWN) [ ! -f "$DATA_DIR/shutdown-failure" ] ;;
+ SHUTDOWN) [ ! -f "$DATA_DIR/shutdown-failure" ] || exit 1; touch "$DATA_DIR/shutdown" ;;
  *) exit 1 ;;
 esac
 `, 0o755)
@@ -96,11 +102,12 @@ esac
 			}
 			run := func(source, target string) error {
 				t.Helper()
+				_ = os.Remove(filepath.Join(data, "shutdown"))
 				ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 				defer cancel()
-				cmd := exec.CommandContext(ctx, "sh", "-ec", keyValuePersistenceSimulationCommands+keyValuePersistenceHandoffScript)
+				cmd := exec.CommandContext(ctx, "sh", "-ec", keyValuePersistenceSimulationCommands+strings.Replace(keyValuePersistenceScript, "cd /data", `cd "$DATA_DIR"`, 1))
 				cmd.WaitDelay = 5 * time.Second
-				cmd.Env = []string{"PATH=" + bin + ":/usr/bin:/bin", "DATA_DIR=" + data, "SOURCE_MODE=" + source, "TARGET_MODE=" + target}
+				cmd.Env = []string{"PATH=" + bin + ":/usr/bin:/bin", "DATA_DIR=" + data, "PERSISTENCE_SOURCE=" + source, "PERSISTENCE_TARGET=" + target, "VALKEY_PASSWORD=simulation-only"}
 				out, err := cmd.CombinedOutput()
 				if ctx.Err() != nil {
 					t.Fatalf("script exceeded test bound: %s", out)
@@ -118,7 +125,7 @@ esac
 			if err := run("snapshot", "journal-snapshot"); err == nil {
 				t.Fatal("published incomplete journal")
 			}
-			if got := read(".bex-persistence-mode"); got != "snapshot\n" {
+			if got := read(".bex-persistence-mode"); strings.TrimSpace(got) != "snapshot" {
 				t.Fatalf("failure changed authoritative format: %q", got)
 			}
 			if got := read("dump.rdb"); got != "current acknowledged snapshot" {
@@ -144,7 +151,7 @@ esac
 			if err := run("snapshot", "journal-snapshot"); err != nil {
 				t.Fatalf("healthy retry failed: %v", err)
 			}
-			if got := read(".bex-persistence-mode"); got != "journal-snapshot\n" {
+			if got := read(".bex-persistence-mode"); strings.TrimSpace(got) != "journal-snapshot" {
 				t.Fatalf("successful retry failed to commit format: %q", got)
 			}
 		})
@@ -161,9 +168,9 @@ func TestKeyValuePersistenceUnknownSourceRequiresRecoveryOrExplicitOff(t *testin
 	run := func(target string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "sh", "-ec", keyValuePersistenceSimulationCommands+keyValuePersistenceHandoffScript)
+		cmd := exec.CommandContext(ctx, "sh", "-ec", keyValuePersistenceSimulationCommands+strings.Replace(keyValuePersistenceScript, "cd /data", `cd "$DATA_DIR"`, 1))
 		cmd.WaitDelay = 5 * time.Second
-		cmd.Env = []string{"PATH=/usr/bin:/bin", "DATA_DIR=" + data, "SOURCE_MODE=unknown", "TARGET_MODE=" + target}
+		cmd.Env = []string{"PATH=/usr/bin:/bin", "DATA_DIR=" + data, "PERSISTENCE_SOURCE=unknown", "PERSISTENCE_TARGET=" + target, "VALKEY_PASSWORD=simulation-only"}
 		return cmd.Run()
 	}
 	if err := run("snapshot"); err == nil {
@@ -178,7 +185,7 @@ func TestKeyValuePersistenceUnknownSourceRequiresRecoveryOrExplicitOff(t *testin
 	if _, err := os.Stat(filepath.Join(data, "dump.rdb")); !os.IsNotExist(err) {
 		t.Fatalf("reset retained old snapshot: %v", err)
 	}
-	if marker, err := os.ReadFile(filepath.Join(data, ".bex-persistence-mode")); err != nil || string(marker) != "off\n" {
+	if marker, err := os.ReadFile(filepath.Join(data, ".bex-persistence-mode")); err != nil || strings.TrimSpace(string(marker)) != "off" {
 		t.Fatalf("reset marker=%q err=%v", marker, err)
 	}
 	if data, err := os.ReadFile(filepath.Join(data, "unrelated")); err != nil || string(data) != "retain" {

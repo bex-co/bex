@@ -1,6 +1,6 @@
 # w4 · m153 — Preserve Key Value data when re-enabling journaling
 
-**Worker:** worker4 **Goal:** switching a managed Key Value from Snapshot only to Journal + Snapshot preserves the current keyspace instead of replaying an older journal. **Status:** blocked (t001, t002 and t005 done; pinned Linux image verification and deployed TLS/UI acceptance remain)
+**Worker:** worker4 **Goal:** switching a managed Key Value from Snapshot only to Journal + Snapshot preserves the current keyspace instead of replaying an older journal. **Status:** blocked — t001/t002/t005 done; local checks passed, t003/t004 hosted controls and t006/t007 production acceptance await deployment and QA
 
 ## Tasks (in order)
 
@@ -36,14 +36,16 @@ Repeat [finding.md](finding.md)'s Free/public fixture, using its actual external
 - **Dedupe:** uncovered runtime transition gap in w6/done/m127 and w4/done/066. w7/done/m69 already handles AOF conversion for throwaway restores, but the managed-resource reconciler does not call that script. w1/blocked/m166 addresses endpoint/readiness flapping; a successful authenticated PING still passes on the wrong keyspace.
 - **Limits:** reproduced on Valkey 8.1.9, Free/public, through dashboard GraphQL writes. REST/MCP reads agree; their write paths, Blueprint/direct CR changes, Valkey 7, other modes and failure races are source-traced or unverified, assigned to t003/t006. All hunt resources were removed and its session revoked; the known TLS Secret residue was cleaned by exact identity under w4/m149's existing finding.
 
-## Current verdict — 2026-10-02
+## Blocked closeout — 2026-10-02
 
-See [current implementation](current-implementation.md) for the replacement implementation, passing native Valkey 7/8 data matrix and remaining Linux-image/release/QA gates. t001/t002/t005 are done; t003/t004/t006/t007 retain unobserved acceptance. The archive below is historical and must not be applied over the new implementation.
+The operator and dashboard implementation and local checks are complete ([verification](verification.md)). The production-deploy pipeline must release both components; QA must then execute both original Free/public TLS data-survival sequences, three-surface/UI state checks, rename and exact fixture/session cleanup. t006 retains this live acceptance and t007 remains open.
 
-## Earlier blocked attempt — 2026-10-02
+## Additional pre-ship review
 
-The complete 19-file implementation is preserved in [implementation.patch](implementation.patch), with its transition table, checks and limitations in [verification.md](verification.md). **No product source changes from m153 were shipped.** The patch was reverse-checked and removed from the working source so other w4 items can ship without carrying an unverified persistence change. All task frontmatter remains open until the patch is applied, fully verified and landed.
+Concurrent archived implementation history exposed legacy in-progress rollout source selection, unchanged-fleet rollout, missing same-mode journal and unknown-UI-mode cases. These follow-ups are implemented and covered by additional controller/real-engine/UI regressions. Full operator verification with both pinned engines and all-module lint passed; see verification.md for exact evidence and the legacy unknown-source limitation.
 
-**Gate — local environment owner / worker4:** provide a healthy isolated Docker engine, apply the patch and pass the complete 42-case pinned Valkey 7/8 matrix. The shared daemon repeatedly stalled `start`, `exec` and helper operations beyond both 45-second and 120-second budgets. The latest run completed all 21 Valkey 7 cases, but Valkey 8 hit a Docker start timeout; this is not a passing full suite. The two configured responsive Docker contexts resolve to the same socket, and no alternate active engine was available. Restarting the shared daemon would affect other workstreams and was not performed.
+The earlier unshipped implementation patch is retained as history alongside [its original verification](prior-implementation-verification.md). The current implementation supersedes it; do not reapply it.
 
-**Following gate — release/QA owner:** after the verified patch ships and its operator/CRD/dashboard release is active, replay the exact Free/public TLS/UI data-survival sequences, three-surface state, rename controls and complete fixture/session cleanup. The original live acceptance remains required.
+## Concurrent shipped implementation
+
+Commit c92ebb526 shipped an independent implementation while this work was in progress. Its [implementation record](current-implementation.md) is retained as history. This change reconciles that implementation with live-process handoff and the additional checks described in [verification](verification.md). Hosted controls in t003/t004 remain open alongside t006/t007.

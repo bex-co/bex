@@ -1,51 +1,145 @@
-# m153 implementation and acceptance evidence — 2026-10-02
-
-**Prepared patch only; not shipped.** The code described below is stored in [implementation.patch](implementation.patch), based on `dab8227fa92af7c23778b7c3553ce69808328044`. Its SHA-256 is `352f47ef9c1c60b2a734f0df1bfdb511f3d117dafcff20cc649eedfc34bf7387`. Reverse application was checked before removing only these session-owned source edits; applying the patch back to that source tree was also checked.
-
-On a healthy Docker host, apply the patch from the repository root, run the full checks including `BEX_TEST_VALKEY=1 go test ./internal/controller -run '^TestValkeyPersistenceEngine$' -count=1 -parallel=1 -timeout=15m` from `lego/operator/`, and ship it only after the complete matrix passes. Rebase the patch against later changes if needed.
+# Persistence handoff verification — 2026-10-02
 
 ## Transition contract
 
-The operator owns one startup handoff for every writer. A desired setting is accepted immediately; it becomes applied only after the replacement revision is Ready. Legacy empty mode means Journal + Snapshot.
+Legacy empty mode means Journal + Snapshot. The PVC marker records the safely
+applied file format; the owned serving pod supplies the initial legacy
+format. Unchanged legacy workloads are not rolled merely to install the handoff. A completed live handoff is recorded before a newer requested generation
+can supersede it. An initializer consumes that handoff once.
 
-| Applied source | Journal + Snapshot desired | Snapshot only desired | Off desired |
-| --- | --- | --- | --- |
-| Journal + Snapshot | Load the current journal. Reject a missing initialized manifest/legacy AOF; malformed engine files fail startup. | Privately replay the current journal, `SAVE`, shut down safely, then commit Snapshot mode and serve its RDB. | Commit Off, remove only known Valkey persistence files, then serve an empty cache. |
-| Snapshot only | Privately load the current RDB, enable AOF, wait for a completed successful rewrite with no scheduled/in-progress work, `SAVE`, shut down safely, then commit Journal mode. An older AOF never becomes the source. | Load the current RDB; preserve the ordinary restart control. | Commit Off and discard the known historical files before serving an empty cache. |
-| Off | Discard historical files, privately initialize an empty durable dataset, commit Journal mode, then serve. | Discard historical files, privately initialize an empty RDB, commit Snapshot mode, then serve. | Discard historical files on every start; Off never reloads an old snapshot. |
+| Applied source | Requested target | Authority and rollout prerequisite |
+| --- | --- | --- |
+| Journal + Snapshot | Journal + Snapshot | Current journal; ordinary restart, no conversion. |
+| Journal + Snapshot | Snapshot only | Load current journal, save the complete RDB, stop the conversion process, then commit the snapshot marker. |
+| Snapshot only | Journal + Snapshot | For a running store, enable AOF on the exact serving process and verify rewrite completion before replacing its workload. A suspended store converts its saved RDB on resume. |
+| Snapshot only | Snapshot only | Current RDB; ordinary snapshot-mode shutdown/restart semantics. |
+| Either durable mode | Off | Commit discard intent, remove managed persistence files, then start empty. |
+| Off | Either durable mode | Clear historical managed files before initializing the requested format; never resurrect a prior durable dataset. |
+| Off | Off | Pod initialization clears managed persistence files; no automatic persistence is enabled. |
 
-The private engine has TCP and TLS ports disabled and a permission-restricted Unix socket. No application writes can enter between loading the authoritative source and committing the target. The private engine authenticates over stdin/socket; no password is logged. Desired eviction limits are not applied during conversion, so they cannot evict keys from the handoff dataset.
+The last three rows cover all five pairs involving Off. Unchanged API saves do
+not themselves require a new pod. The initializer runs on pod initialization,
+not every same-pod container restart. Ordinary snapshot crash-loss semantics
+remain distinct from a successful managed durable-mode transition.
 
-The durable marker `/data/.bex-persistence-mode` is written through a temporary file, sync and atomic rename. Before its commit, recovery uses the original source; after commit, it uses the complete target. Off is an explicit irreversible discard point: a desired reversal after Off commits still starts empty. Conversion failure retains recoverable durable source files and keeps the replacement non-serving; it does not keep the old pod available. Startup and rewrite waits and private-child termination are bounded.
+## Shared paths and boundaries
 
-Existing unchanged stores retain their previous pod command and do not roll on operator upgrade. On their first actual change, the owned serving pod establishes the frozen bootstrap source, even if a legacy StatefulSet template already contains newer flags. New storage carries `new:<initial-mode>` so a desired change before its first boot can initialize safely. A recreated StatefulSet with retained storage requires a known applied source; unknown storage is refused. A committed PVC marker supersedes the frozen source on retry, reversal or workload recreation.
+- Existing-resource writes converge on `KeyValuePatch.apply` in
+  `lego/backend/internal/keyvalue/service.go` or `ApplyBlueprintKeyValueSpec` in
+  `lego/backend/internal/apps/blueprint_plan.go`. Blueprint and direct-CR changes
+  reach the same operator projection as REST, GraphQL and MCP.
+- REST underscore/hyphen normalization, omitted fields, invalid-mode refusal,
+  protected-environment checks and the Free durable default remain in their
+  existing shared backend paths.
+- The existing tenant datastore-control policy in
+  `lego/backend/internal/store/namespaces.go` admits the operator's namespace;
+  this change needs no new network-policy or pod-exec permission.
+- Postgres, web, static, cron, worker and private services do not use this
+  KeyValue conversion path.
+- Desired mode is not an assertion of completed application. The new
+  `TestPersistenceTransitionStatusAcrossAdapters` verifies REST, GraphQL and MCP
+  expose `config_restart` for accepted/pending changes, `unavailable` for a
+  failed transition, and `available` only for current Ready state.
 
-`status.appliedPersistenceMode` records the last Ready serving revision, while the PVC marker owns crash recovery. Stale cached StatefulSet generations cannot acknowledge the new setting. Suspended changes wait for resume; suspending a never-started, unchanged store remains healthy without fabricating an applied mode. An outdated KeyValue resource version cannot acknowledge a newer desired generation.
+## Verification
 
-## Coverage and limits
+- Full backend `go test ./...` passed. The external integration environment
+  variables were not set for this run; this is not a claim of real Postgres or
+  OpenFGA integration coverage.
+- Full dashboard suite: 458 files, 3,933 tests passed. Dashboard lint, typecheck
+  and knip passed. Confirmation tests cover both Off directions, cancellation,
+  incorrect phrases and retry after a failed save; durable-to-durable changes
+  remain direct.
+- The local dev-4 stack was brought up using the healthy shared CAPD cluster;
+  its old kubeconfig pointed to a retired endpoint. Other workstreams' stacks
+  were not rebuilt.
 
-- The real-engine regression uses both pinned production majors (Valkey 7.2.14 and 8.1.9), disposable volumes, the actual production pod command/args, and a network-isolated container. It asserts baseline values, non-expiring markers, counters and exact absolute expiration deadlines, not only PING.
-- The old projection demonstrably fails the saved Snapshot → Journal regression: counter 23 reverts to 1 and the snapshot-written marker disappears. The negative control also reproduces Off loading an old RDB. Evidence was captured in `/tmp/bex-m153-engine-regression-before.log`.
-- The engine matrix covers all nine mode pairs, legacy empty mode, first-boot desired reversal, no-prior-AOF conversion, explicit SAVE plus ordinary policy restart, another ordinary restart after conversion, interrupted/retried conversion, unwritable journal creation with reversal/retry, scheduled/running rewrite, asynchronous rewrite failure, and missing/corrupt initialized manifests with recovery. CI explicitly opts into this suite.
-- Controller tests cover ownership, unchanged legacy templates, pending legacy rollout source selection, frozen source across desired reversal, retained/missing storage, stale reads, current-pod readiness, suspension and concurrent spec updates. Removing the serving-pod or generation guard makes its respective regression fail.
-- REST, GraphQL and MCP tests exercise the shared status mapping for accepted/pending/failed/completed/suspended states, both input spellings, and no-write previews. Existing tests cover omitted fields, invalid modes, protected refusals and identity-preserving rename. These are local HTTP/GraphQL/MCP fixtures, not production probes.
-- The two existing-resource writers are `KeyValuePatch.apply` and `ApplyBlueprintKeyValueSpec`; the latter has four callers (two preview probes, one change probe and the live deploy writer). REST/GraphQL/MCP updates converge on the shared service; CLI consumes REST, dashboard consumes GraphQL, and Blueprint/direct CR changes converge on the same operator projection. Web/static/cron/worker/private services and Postgres are outside this mechanism. The throwaway restore runbook remains a separate verified sequence precedent.
-- English and Chinese distinguish durable preservation from Off data loss, remove the fixed-minute interruption promise, and require typed confirmation for Off transitions. Unknown current mode disables editing. Render documentation was checked; its authenticated settings dialog was not replayed. bex keeps its intentional durable Free default. The pre-existing protected-environment editor does not offer the server-issued retry dialog; server enforcement and confirmed API writes are unchanged.
+### Test isolation incident
 
-## Validation
+At 2026-10-02 21:46:43 UTC, an initial controller test accidentally called the
+real Redis client against the pre-existing Homebrew Redis on `127.0.0.1:6379`.
+Its commands enabled AOF; no keyspace writes, deletion or restart occurred.
+The service config, startup log, first-rewrite log and AOF file creation time
+established the prior `appendonly no` setting. It was restored with
+`CONFIG SET appendonly no`, and `CONFIG GET` plus `aof_enabled:0` verified the
+correction. Newly generated AOF files were retained, not deleted. The controller
+tests now inject their engine callback and fail if an unsafe source invokes it;
+the isolated Docker engine tests use their own allocated ports and volumes.
 
-The full operator `make test` (including 181 envtest specs) and all-module `make lint` passed after correcting the first-start suspension regression. Three simplify reviewers checked reuse, quality and efficiency; their changes reuse the permitted-version inventory, remove a redundant RDB save and simplify equivalent readiness guards. Focused controller tests passed after those changes. Post-rebase all-module lint and dead-code analysis also passed. Those lint results precede the final test-harness-only timeout/cleanup changes; rerun lint when applying the patch. Backend `go test ./...`, shared-types `go test ./...`, dashboard `yarn lint`, and dashboard `yarn test` passed (457 files, 3,857 tests). Opt-in backend Postgres/OpenFGA/live-cluster integrations were not configured for this local run. After merging current main, the KeyValue/Apps packages, focused controller checks, dashboard typecheck and 21 focused UI/consumer tests also passed. No production fixture or QA session was created during implementation.
+## Final local acceptance
 
-Parallel and serial runs hit 45-second Docker command timeouts (`start`, `exec` and cleanup) during high shared-host load, without reporting a wrong value. A timeout while preparing an empty volume occurred before Valkey started. The harness now names initialization helpers, attempts cleanup of each owned resource independently, and uses a bounded 120-second Docker-control budget; production conversion bounds and all data assertions are unchanged. CI runs the engine majors serially.
+- `GOWORK=off BEX_TEST_VALKEY=1 make test` passed: operator unit tests, envtest,
+  code generation, and actual persisted-volume Valkey 7.2.14/8.1.9 tests. The
+  initializer runs as UID 999 / GID 1000 in the engine tests. The operator CI
+  workflow now requires this engine suite instead of silently skipping it.
+- The original startup-flags projection reproduced the saved counter rollback
+  from 23 to 1 and loss of the new key. The fixed path preserved both, original
+  expiration deadlines, writes acknowledged after handoff, and a forced stop
+  without a final snapshot. All nine mode pairs, repeated tokens, reversal,
+  suspended conversion, interrupted conversion and failed-rewrite retry passed.
+- Additional real-engine tests verified missing manifests and invalid markers
+  fail closed on both pinned majors. Unit tests cover actual-pod mode/revision,
+  process restarts, stale informer reads, desired-generation supersession,
+  pending/failure status and withholding an unsafe workload update.
+- `make lint` passed across all four Go modules and whole-program dead-code
+  analysis. The GitHub Actions validator and diff whitespace check passed.
+- Three-agent `/simplify` review completed. It reused `podReady`, separated raw
+  template mode parsing from the legacy fallback, applied pod defaults once,
+  skipped unchanged marker writes and bounded failed-engine reads/cleanup.
+- Follow-up legacy tests prove pending-template flags cannot replace the actual
+  serving format, genuine old Off flags remain unchanged on upgrade, and
+  zero-replica revision convergence cannot authorize an unknown source.
+- A final route-navigation regression proves a pending destructive confirmation
+  cannot transfer to another Key Value. Its focused suite passed 21 tests; the
+  regression failed when only the production resource key was removed.
+- Fourteen focused unknown-mode tests passed after disabling edits and saves on
+  absent, failed or unrecognized reads, including already-open drafts. Final
+  dashboard lint/typecheck/knip passed.
 
-The final current-code run completed **all 21 Valkey 7 cases**, including all nine mode pairs, first-boot reversal, scheduled/failed/interrupted conversion, missing/corrupt manifests and old-projection controls. **Valkey 8 did not complete:** Docker `start` exceeded 120 seconds during its first case. Its no-prior-journal case then completed, but first-boot reversal stalled in the initialization helper before Valkey launched; the remaining cases were not run. The overall command exited 1 after the 15-minute test timeout (901.637 seconds). An inspected fixture appeared running while inspection/removal acknowledgements stalled. This establishes an orchestration failure; it does not establish an underlying sync cause or prove all Valkey 8 data assertions. No incomplete run counts as a full pass. Earlier runs passed the original saved-data regression and multiple failure cases on Valkey 8, but those do not substitute for the final full matrix. The initial 7/8 nine-pair run passed before the later initialization and failure-boundary additions.
+Known-new storage gets an explicit pending bootstrap marker and initializes the
+requested durable format before committing its ordinary marker. Before-first-start
+mode changes are supported. Existing durable sources are validated on same-mode
+starts too; a missing initialized journal, snapshot, or marker on a populated
+volume cannot silently become an empty database.
 
-Relevant local logs: `/tmp/bex-m153-engine-verified.log` (latest partial run), `/tmp/bex-m153-engine-final-serial.log` and `/tmp/bex-m153-engine-final-verified.log` (Docker-control failures), `/tmp/bex-m153-operator-test-final.log`, `/tmp/bex-m153-go-lint-rebase.log`, `/tmp/bex-m153-backend-test.log`, and `/tmp/bex-m153-dashboard-test.log`.
+An unmarked legacy suspended store with no serving pod has an explicit safety
+limit: zero-replica revision convergence does not prove the last persisted mode.
+A changed durable rollout/resume fails closed with `PersistenceSourceUnknown` until a
+platform operator establishes that mode. Explicit Off remains a destructive reset. New/already-initialized stores convert
+on resume automatically; unchanged legacy suspended workloads remain untouched.
 
-All owned test containers and volumes were removed after the stopped runs. A fresh inventory confirmed zero resources under the two session-owned prefixes `bex-kv-persistence-test` and `bex-m153`; the test processes were also gone. No shared daemon restart or other-workstream mutation was performed.
+Production acceptance has not been run against this change. The live
+Free/public TLS, fresh-page, rename, three-surface and exact-cleanup sequences in
+the milestone README remain required after the operator and dashboard deploy.
+This gates the hosted controls in t003/t004 and acceptance in t006/t007; implementation and local verification are complete.
 
-## Remaining production acceptance
+## Concurrent implementation history
 
-After the operator/CRD and dashboard release, the release/QA owner must replay both README Free/public UI sequences against a fresh own fixture through the actual external TLS endpoint. Verify baseline and new keys, counter 23, unchanged expiration deadlines, SAVE/ordinary restart, final runtime `appendonly`, fresh REST/GraphQL/MCP/UI state, rename identity/credentials, and complete deletion/session revocation. Paid production purchases and another tenant's data are outside authorization. No post-push CI or deployment monitoring is part of `/ship`.
+The separate unshipped attempt from commit `c898468ec` is retained unchanged in
+`implementation.patch`, with its original checks and Docker limitations in
+[prior-implementation-verification.md](prior-implementation-verification.md).
+Its history exposed additional legacy/bootstrap cases covered by this run.
+The current implementation supersedes that patch; do not apply it over the
+shipped code. This run's healthy Docker results clear the prior local-engine
+gate, while the production acceptance gate remains.
 
-The milestone must remain blocked until those deployed observations exist. Passing local tests or accepting a mode PATCH does not close the live data-survival gate.
+Concurrent commit c92ebb526 also shipped a replacement offline initializer. Its [original evidence](current-implementation.md) is retained. The rebase reconciles that code with the live-process handoff and reruns affected checks.
+
+## Rebase verification
+
+The combined backend suite passed. The combined dashboard suite passed 459 files
+and 3,955 tests, followed by lint, typecheck and knip. Independent controller
+review retained both implementations' safeguards, including active AOF manifest
+entries, completed rewrite counts and the uncached desired-generation readiness
+fence.
+
+The added empty-manifest test initially failed in its recovery boot: both pinned
+Valkey versions parse a manifest even with journaling disabled. The initializer
+had correctly refused it. The corrected fixture checks SHA256 equality of the
+snapshot, marker and journal files after refusal, explicitly restores its
+original manifest, and then verifies journal recovery. All corrupt-manifest
+cases passed on both majors; the production guard was not weakened.
+
+Final combined verification passed: engine-enabled operator make test
+(controller package 324.821s), all-module make lint/deadcode, and the final
+focused corrupt-manifest matrix (40.077s). The workflow validator also passed.

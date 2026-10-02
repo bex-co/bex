@@ -458,19 +458,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
       "更改模式会重启存储，数据准备期间连接会中断。在“日志 + 快照”和“仅快照”之间切换会保留数据。切换到或从“关闭”模式切换会丢弃所有数据。",
     description: "Key Value detail persistence-mode card description",
   },
-  "keyvalue.persistenceDiscardTitle": {
-    message: "丢弃键值存储数据？",
-    description: "Persistence Off transition destructive confirmation title",
-  },
-  "keyvalue.persistenceDiscardBody": {
-    message:
-      "切换到或从“关闭”模式切换会重启此存储并丢弃其所有数据。此操作无法撤销。",
-    description: "Persistence Off transition destructive confirmation body",
-  },
-  "keyvalue.persistenceDiscardConfirm": {
-    message: "丢弃数据并更改模式",
-    description: "Persistence Off transition destructive confirmation confirm",
-  },
   "keyvalue.persistenceLabel": {
     message: "持久化模式",
     description: "Accessible label for the persistence-mode select",
@@ -483,6 +470,19 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.persistenceSuccess": {
     message: "正在将持久化模式更新为 {mode}……",
     description: "Toast after a persistence-mode update is accepted",
+  },
+  "keyvalue.persistenceConfirmTitle": {
+    message: "删除所有数据并更改持久化模式？",
+    description: "Destructive persistence-mode confirmation title",
+  },
+  "keyvalue.persistenceConfirmDescription": {
+    message:
+      "切换到“关闭”或从“关闭”切换到其他模式会删除 {name} 中的所有数据并重启存储。此操作无法撤销。",
+    description: "Destructive persistence-mode confirmation description",
+  },
+  "keyvalue.persistenceConfirmAction": {
+    message: "删除数据并更改模式",
+    description: "Destructive persistence-mode confirmation action",
   },
   "keyvalue.persistenceError": {
     message: "无法更新持久化模式，请重试。",
