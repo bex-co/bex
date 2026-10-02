@@ -43,8 +43,9 @@ import (
 
 // --- IP allowlist ---
 
-// GetIPAllowList returns the allowlist gating the external endpoint (empty
-// => open to all source IPs). The internal -rw path is never gated.
+// GetIPAllowList returns the external endpoint's rules. Public intent determines
+// whether an empty list is disabled or explicitly unrestricted. The internal
+// -rw path is never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
 	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
@@ -55,20 +56,11 @@ func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAll
 
 // SetIPAllowList replaces the external-endpoint allowlist — full replace, so
 // entries written without descriptions clear any stored ones. Every entry's
-// CIDR must be valid (a bad one is a 400 before any write); an empty list opens
-// the endpoint to all source IPs. The operator maps the CIDRs (never the
-// descriptions) to a Traefik ipAllowList middleware on the SNI route.
+// CIDR must be valid (a bad one is a 400 before any write). A nonempty list
+// enables external access for its sources; an empty list disables external
+// access. The internal path is unaffected.
 func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
-	if err != nil {
-		return PostgresView{}, err
-	}
-	if err := core.ValidateAllowList(entries); err != nil {
-		return PostgresView{}, err
-	}
-	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
-		d.Spec.IPAllowList = core.AllowListToSpec(entries)
-	})
+	return s.UpdatePostgres(ctx, name, PostgresPatch{IPAllowList: &entries})
 }
 
 // --- Postgres users ---

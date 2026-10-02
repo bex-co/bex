@@ -2469,6 +2469,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 		StorageGB:        d.DiskSizeGB,
 		DiskAutoscaling:  diskAutoscaling,
 		Pooler:           d.ConnectionPool == "pgbouncer",
+		Public:           len(allow) > 0,
 		IPAllowList:      allow,
 		ReadReplicas:     d.ReadReplicas,
 		HighAvailability: ha,
@@ -2519,6 +2520,7 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	return parsedKeyValue{name: k.Name, spec: appv1alpha1.KeyValueSpec{
 		Name:            k.Name,
 		Plan:            k.Plan,
+		Public:          len(allow) > 0,
 		IPAllowList:     allow,
 		MaxmemoryPolicy: k.MaxmemoryPolicy,
 		PersistenceMode: k.PersistenceMode,

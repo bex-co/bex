@@ -491,17 +491,23 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.networkingHint": {
     message:
-      "Only these CIDR ranges can reach the external endpoint. Empty means open to all source IPs. The internal endpoint is never affected.",
+      "Saving CIDR rules enables external access for matching source IPs. Saving an empty list blocks external connections. Internal access is unchanged.",
     description: "Networking IP allowlist helper text",
   },
   "keyvalue.networkingInternalOnly": {
     message:
-      "This store has no external endpoint; the allowlist takes effect once the store is public.",
-    description: "Networking note shown for an internal-only store",
+      "External connections are disabled. Save one or more IP rules to enable access.",
+    description: "External access is disabled; saving rules enables it",
   },
-  "keyvalue.networkingOpen": {
-    message: "Open to all source IPs.",
-    description: "Networking panel shown when the allowlist is empty",
+  "keyvalue.networkingEmpty": {
+    message: "No IP rules. Save an empty list to block external connections.",
+    description: "Empty datastore allowlist draft and the effect of saving it",
+  },
+  "keyvalue.networkingPublicEmpty": {
+    message:
+      "No IP rules. External access remains enabled; save this empty list to disable it.",
+    description:
+      "Existing public datastore with no rules; saving the empty list disables external access",
   },
   "keyvalue.networkingAdd": {
     message: "Add",

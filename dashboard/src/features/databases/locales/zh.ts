@@ -699,12 +699,21 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.accessAllowListHint": {
     message:
-      "仅这些 CIDR 网段可访问外部端点。留空表示对所有来源 IP 开放。内部端点始终不受影响。",
+      "保存 CIDR 规则后，匹配的来源 IP 可从外部连接。保存空列表将禁止外部连接。内部访问不受影响。",
     description: "Access panel IP allowlist helper text",
   },
-  "databases.accessAllowListOpen": {
-    message: "对所有来源 IP 开放。",
-    description: "Access panel shown when the allowlist is empty",
+  "databases.accessAllowListInternalOnly": {
+    message: "外部连接已禁用。保存一条或多条 IP 规则可启用外部访问。",
+    description: "External access is disabled; saving rules enables it",
+  },
+  "databases.accessAllowListEmpty": {
+    message: "暂无 IP 规则。保存空列表将禁止外部连接。",
+    description: "Empty datastore allowlist draft and the effect of saving it",
+  },
+  "databases.accessAllowListPublicEmpty": {
+    message: "暂无 IP 规则，但外部访问仍已启用。保存此空列表可禁用外部访问。",
+    description:
+      "Existing public datastore with no rules; saving the empty list disables external access",
   },
   "databases.accessAllowListAdd": {
     message: "添加",

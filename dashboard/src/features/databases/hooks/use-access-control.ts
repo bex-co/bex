@@ -146,6 +146,7 @@ export function useAccessControl(id: string) {
 
   return {
     allowList,
+    isPublic: allowListQuery.data?.database?.public,
     users,
     loading: allowListQuery.loading || usersQuery.loading,
     savingAllowList,

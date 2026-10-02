@@ -124,8 +124,8 @@ type PostgresView struct {
 	ExternalHost string `json:"externalHost,omitempty"`
 	Public       bool   `json:"public"`
 
-	// IPAllowList is the CIDR allowlist gating the EXTERNAL endpoint (Render's
-	// ipAllowList). Empty => the external route is open to all source IPs.
+	// IPAllowList gates the external endpoint. Public distinguishes disabled
+	// access from explicitly unrestricted or legacy public/empty configurations.
 	// Required in Render's postgres schema — always serialized, as [] when
 	// empty (w6/m109).
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
@@ -940,16 +940,16 @@ type PostgresPatch struct {
 	// Pooler toggles the PgBouncer pooler (the CNPG Pooler mechanism reconciles
 	// both directions). REST's PATCH accepts it directly and via Render's
 	// connectionPool enum alias, already folded by resolvePooler (w2/024).
-	Pooler             *bool
-	IPAllowList        *[]core.IPAllowListEntry // nil = unchanged; non-nil empty slice clears it
-	ParameterOverrides *map[string]string       // nil = unchanged; non-nil empty map clears it
-	// Public is the explicit external-endpoint control (w4/m116): nil = unchanged.
-	// Postgres defaults to public at create, so this is the less urgent half of
-	// the datastore symmetry the KeyValue fix restores — but without it a
-	// deliberately private database could never be published, on any surface.
-	// Unlike KeyValue, an allowlist write here does NOT publish: a private
-	// Postgres is an explicit choice at create (the default is public), so
-	// flipping it from a firewall edit would be a surprise, not a convenience.
+	Pooler *bool
+	// IPAllowList controls external access: nil preserves intent, a nonempty
+	// list publishes for those sources, and an empty list withdraws the public
+	// endpoint (Render's --clear-ip-allow-list). Internal access is unaffected.
+	IPAllowList        *[]core.IPAllowListEntry
+	ParameterOverrides *map[string]string // nil = unchanged; non-nil empty map clears it
+	// Public is a Bex override and wins over IPAllowList when both are present.
+	// Explicit true with an empty list preserves unrestricted external access;
+	// false withdraws the endpoint while retaining any rules. Nil alone leaves
+	// existing intent untouched, including legacy public/empty resources.
 	Public *bool
 }
 
@@ -1050,6 +1050,7 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	}
 	if patch.IPAllowList != nil {
 		d.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)
+		d.Spec.Public = len(*patch.IPAllowList) > 0
 	}
 	if patch.ParameterOverrides != nil {
 		d.Spec.Parameters = normalizeParameterOverrides(*patch.ParameterOverrides)

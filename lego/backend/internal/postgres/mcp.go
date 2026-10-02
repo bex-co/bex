@@ -67,8 +67,8 @@ type createPostgresArgs struct {
 	EnableDiskAutoscaling bool               `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full; requires a paid plan"`
 	ReadReplicas          []ReadReplicaInput `json:"readReplicas,omitempty" jsonschema:"named read replicas; at most five, requiring at least 0.5 CPU and 10 GB storage"`
 	ConnectionPool        string             `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it"`
-	Public                bool               `json:"public,omitempty" jsonschema:"expose an external TLS endpoint"`
-	IPAllowList           []string           `json:"ipAllowList,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty or omitted leaves it open to all source IPs"`
+	Public                bool               `json:"public,omitempty" jsonschema:"expose an external TLS endpoint; defaults to false on this create tool, independently of the allowlist"`
+	IPAllowList           []string           `json:"ipAllowList,omitempty" jsonschema:"CIDR restriction for the external endpoint when public:true; empty or omitted adds no resource-level IP restriction, and the create default remains private"`
 	// IPAllowListEntries is the description-carrying form (w4/m24); when
 	// present it wins over ipAllowList.
 	IPAllowListEntries     []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
@@ -318,13 +318,13 @@ type updatePostgresArgs struct {
 	DiskSizeGB            *int32                   `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB; grow-only, and fixed at 1 GB on free"`
 	ConnectionPool        string                   `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it; omission leaves it unchanged"`
 	EnableDiskAutoscaling *bool                    `json:"enableDiskAutoscaling,omitempty" jsonschema:"paid plans only; automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
-	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
+	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the external-endpoint CIDR allowlist with these {cidrBlock, description} entries; [] disables external connections, a nonempty list enables matching sources, omission preserves intent; an explicit public value wins"`
 	IPAllowListCidrs      *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
 	// Confirm is the protected-environment phrase a rename or a version upgrade
 	// needs on a member of a protected environment (w4/m127).
 	Confirm string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks a rename or version upgrade"`
-	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint. Unlike key-value stores, a Postgres allowlist write never changes this on its own — a private Postgres is an explicit choice at create, so publishing and withdrawing are both named acts"`
+	Public  *bool  `json:"public,omitempty" jsonschema:"expose (true) or withdraw (false) the external TLS endpoint; overrides publication inferred from ipAllowList in the same call. public:true with [] deliberately enables external access without resource-level IP restrictions; environment rules still apply"`
 	DryRun  bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
 }
 
@@ -349,7 +349,7 @@ type usersResult struct {
 func (s *Service) registerAccessMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_ip_allow_list",
-		Description: "Get the CIDR allowlist gating a managed Postgres database's external endpoint (empty => open to all source IPs).",
+		Description: "Get the saved CIDR allowlist for a managed Postgres database's external endpoint. Clearing the list disables external connections unless an explicit public override is supplied. Use get_postgres to read public intent as well: legacy or explicitly public databases can still have an unrestricted empty list.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, allowListResult, error) {
 		list, err := s.GetIPAllowList(ctx, in.PostgresID)
 		if err != nil {
@@ -364,7 +364,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		// The disk-autoscaling cap is interpolated from the shared plan catalog
 		// rather than written out, so the number an agent reads cannot drift from
 		// the number the operator enforces (pinned by the adapter-parity test).
-		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, connection pooling, external access, IP allowlist, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
+		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, connection pooling, external access, IP allowlist, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). An empty ipAllowList disables external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 		if err != nil {
