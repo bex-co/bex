@@ -206,7 +206,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [~] `--from <serviceID>` — clones fine, but needs an explicit `--region` (CLI re-validates the source's `local-capd`)
   - [x] `services update <service>`
     - [x] workload type is intentionally not an update flag — current CLI schema matches Render's immutable-type contract; bex Blueprint and CRD admission reject the same transition
-    - [x] `--name` — rename
+    - [x] `--name` — rename; the shared API rejects controls/line separators, more than 100 Unicode code points after trimming, and registered resource-ID lookalikes (w8/034). The pinned CLI trims before HTTP and cannot express an empty clear; direct REST/GraphQL/MCP preserve the empty-clear contract. The 100-code-point bound is Bex policy; Render's exact limit is unverified.
     - [x] `--plan`
     - [~] `--runtime` — upstream CLI guard; exits before any request (`cannot switch runtimes via the CLI`)
     - [x] `--repo`

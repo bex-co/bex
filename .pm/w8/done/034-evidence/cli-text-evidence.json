@@ -1,0 +1,22 @@
+[
+  {
+    "at": "2026-10-02T20:22:10.460287+00:00",
+    "check": "bex-current-one-line-text-list",
+    "passed": true,
+    "exit": 0,
+    "target_rows": 1,
+    "control_rows": 1,
+    "stdout": "NAME               PROJECT    ENVIRONMENT    TYPE           ID                          \nCustomer API \u540d                              Web Service    srv-db00vpq9086kece8jdm0    \nr034-d438ca0e-c                              Web Service    srv-db00vpq9086kece8jdkg    \n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-02T20:22:10.684291+00:00",
+    "check": "render-current-pin-one-line-text-list",
+    "passed": true,
+    "exit": 0,
+    "target_rows": 1,
+    "control_rows": 1,
+    "stdout": "NAME               PROJECT    ENVIRONMENT    TYPE           ID                          \nCustomer API \u540d                              Web Service    srv-db00vpq9086kece8jdm0    \nr034-d438ca0e-c                              Web Service    srv-db00vpq9086kece8jdkg    \n",
+    "stderr": ""
+  }
+]

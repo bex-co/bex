@@ -157,8 +157,13 @@ func TestSetDisplayNameRejectsNonMemberWithoutMutation(t *testing.T) {
 
 	// Round-7 F8: the by-name denial reports absence (name probes must not
 	// distinguish a foreign App from a missing one).
-	if _, err := svc.SetDisplayName(ctx, "other", "Forbidden rename"); !errors.Is(err, core.ErrNotFound) {
-		t.Fatalf("SetDisplayName by non-member = %v, want ErrNotFound", err)
+	for _, value := range []string{"Forbidden rename", "\ninvalid rename"} {
+		if _, err := svc.SetDisplayName(ctx, "other", value); !errors.Is(err, core.ErrNotFound) {
+			t.Fatalf("SetDisplayName by non-member = %v, want ErrNotFound", err)
+		}
+		if _, err := svc.ApplyServicePatch(ctx, "other", ServicePatch{DisplayName: &value}); !errors.Is(err, core.ErrNotFound) {
+			t.Fatalf("patch by non-member = %v, want ErrNotFound", err)
+		}
 	}
 	if got := getApp(t, cl, "other").Spec.DisplayName; got != "Original label" {
 		t.Fatalf("denied rename mutated displayName to %q", got)
@@ -243,18 +248,8 @@ func TestGraphQLDisplayNameRoundTrip(t *testing.T) {
 
 func TestMCPDisplayNameRoundTrip(t *testing.T) {
 	svc, _ := newService(nil, displayNameApp("web"))
-	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-	svc.RegisterMCP(srv)
 	ctx := context.Background()
-	serverT, clientT := mcp.NewInMemoryTransports()
-	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
-		t.Fatalf("server connect: %v", err)
-	}
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
-	if err != nil {
-		t.Fatalf("client connect: %v", err)
-	}
-	t.Cleanup(func() { _ = cs.Close() })
+	cs := displayNameMCPSession(t, svc)
 	call := func(name string, args map[string]any) map[string]any {
 		t.Helper()
 		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
@@ -324,8 +319,13 @@ func TestLifecycleWritesOnADeletingServiceAre404(t *testing.T) {
 	app.Finalizers = []string{"app.bex.co/finalizer"}
 	svc, _ := newService(rec, app)
 
-	if _, err := svc.SetDisplayName(context.Background(), "immutable-id", "renamed"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("rename a deleting service = %v, want ErrNotFound", err)
+	for _, value := range []string{"renamed", "\ninvalid rename"} {
+		if _, err := svc.SetDisplayName(context.Background(), "immutable-id", value); !errors.Is(err, core.ErrNotFound) {
+			t.Errorf("rename a deleting service = %v, want ErrNotFound", err)
+		}
+		if _, err := svc.ApplyServicePatch(context.Background(), "immutable-id", ServicePatch{DisplayName: &value}); !errors.Is(err, core.ErrNotFound) {
+			t.Errorf("patch a deleting service = %v, want ErrNotFound", err)
+		}
 	}
 	if _, err := svc.Restart(context.Background(), "immutable-id"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("restart a deleting service = %v, want ErrNotFound", err)

@@ -1,0 +1,47 @@
+{
+  "item": "w8/034",
+  "completed_at": "2026-10-02T20:24:01.915070+00:00",
+  "scope": "fresh authenticated local dev-8 workspace and two owned image-web services; final patched API; no production or Render-account mutation",
+  "checks": {
+    "passed": 135,
+    "total": 135,
+    "groups": {
+      "common_refusals_across_rest_graphql_mcp_bex_render": 55,
+      "raw_edge_nul_separator_refusals_direct_adapters": 12,
+      "all_registered_typed_prefixes_plus_legacy_env_via_rest": 34,
+      "accepted_trim_100_cjk_100_emoji_unknown_prefix_across_five_surfaces": 20,
+      "empty_and_unicode_space_clear_direct_adapters": 6,
+      "final_short_name_control": 1,
+      "both_cli_one_line_text_tables": 2,
+      "both_cli_target_control_id_resolution": 4,
+      "immutable_name_rest_route": 1
+    }
+  },
+  "errors": [
+    "DISPLAY_NAME_CONTROL_CHARACTER",
+    "DISPLAY_NAME_TOO_LONG",
+    "DISPLAY_NAME_RESOURCE_ID_RESERVED"
+  ],
+  "length_contract": "100 Unicode code points after ordinary whitespace trim; raw controls and U+2028/U+2029 rejected before trim",
+  "state_invariants": "Every refusal preserved both service names/IDs/routing and target deploy history. Accepted renames preserved immutableName, slug, URL, IDs, control service, and deploy history. Both CLI text tables had exactly one physical row per service.",
+  "api_sha256": "0ac2539a588716dac1f62479b298177e108525f34a6b53341b921d5f1c3c56e5",
+  "cli_pair": {
+    "bex": "dev-w8-m48 launcher; source unchanged",
+    "render": "unmodified 2.27.0",
+    "shared_pin": "github.com/render-oss/cli@v1.1.3-0.20260909214233-a764810a7682",
+    "hashes": "final-api-provenance.json"
+  },
+  "cleanup": {
+    "passed": 8,
+    "total": 8,
+    "all_owned_tenant_fixtures_absence_verified": true,
+    "base_dev_and_test_infrastructure_retained": true
+  },
+  "harness_limit": "The first dense run hit the default 500/minute caller limiter on a read-back GraphQL snapshot after 98 completed checks. Remaining checks resumed with pacing and completed cases skipped. No product assertion failed; API rate settings unchanged. See harness-transients.jsonl.",
+  "limits": [
+    "Pinned CLI trims edge whitespace before HTTP and treats empty --name as no update; raw-edge/control and clear contracts were verified through REST/GraphQL/MCP. CLI interior controls, length/typed-ID refusals, trimming, boundaries and text tables were verified.",
+    "Exact Render display-name length/control/ID rules remain unverified; 100 code points is a Bex boundary, not claimed as an observed Render limit.",
+    "Dashboard hook/mutation/error-toast routing was inspected in source; direct GraphQL mutation was tested live. Visual header/list/breadcrumb rendering was not exercised because the local dashboard was not running."
+  ],
+  "evidence_policy": "Only sanitized whitelist published; private auth state, CLI configs, kubeconfig, test env and raw API logs excluded. Full original request evidence remains in the private temporary working directory."
+}
