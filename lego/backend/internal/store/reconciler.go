@@ -530,6 +530,10 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	seen := make(map[string]bool, len(desired))
 	for _, d := range desired {
 		seen[d.ID] = true
+		if d.CreationPending {
+			r.settleAbandonedDeploys(ctx, d, openByApp[d.ID])
+			continue
+		}
 		open := openByApp[d.ID]
 		cur, ok := byID[d.ID]
 		if !ok {
@@ -608,7 +612,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			index := (start + offset) % len(desired)
 			d := desired[index]
 			r.productObservationCursor = (index + 1) % len(desired)
-			if cur := byID[d.ID]; cur != nil && seen[d.ID] && ownedBy(cur.Labels, r.identity()) {
+			if cur := byID[d.ID]; !d.CreationPending && cur != nil && seen[d.ID] && ownedBy(cur.Labels, r.identity()) {
 				r.ProductObserver(analyticsCtx, d, cur)
 			}
 		}
@@ -621,10 +625,10 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 // gate timeout when this pass could not observe the App CR at all (w6/m95).
 //
 // Every OTHER path to a terminal state runs inside recordDeploy, which
-// ReconcileOnce reaches only after the CR is found, owned, and converged. Three
-// `continue`s skip it: the CR is missing from the List, it belongs to another
-// control plane, or the spec Update failed. Each is normally transient and the
-// next pass observes the row — but none of them is GUARANTEED to clear, and
+// ReconcileOnce reaches only after the CR is found, owned, and converged. Four
+// `continue`s skip it: initial composition is pending, the CR is missing
+// from the List, it belongs to another control plane, or the spec Update failed.
+// Each is normally transient and the next pass observes the row — but none of them is GUARANTEED to clear, and
 // while one persists the deploy row is not merely un-advanced, it is
 // unevaluated: the gate timeout that is supposed to be the last backstop never
 // runs. That is how a build_in_progress row becomes permanent rather than
@@ -641,6 +645,9 @@ func (r *Reconciler) settleAbandonedDeploys(ctx context.Context, d DesiredApp, o
 		}
 		status := timedOutDeployStatus(deploy)
 		reason := abandonedDeployReason(status)
+		if d.CreationPending {
+			reason = "the initial service configuration was not committed within the deployment window"
+		}
 		ok, err := r.Store.TransitionDeploy(ctx, deploy.ID, status, "", reason, "", "", nil)
 		if err != nil {
 			log.Printf("controlplane: settle abandoned deploy %s to %s: %v", deploy.ID, status, err)

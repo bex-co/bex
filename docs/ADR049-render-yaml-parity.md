@@ -272,6 +272,14 @@ Rejected. Parity is honest behavior, not checkbox maximization. Both features co
 
 At closeout, `docs/ADR006-bex-api.md`, `docs/ADR018-render-parity.md`, examples, dashboard copy, MCP descriptions, and the CLI compatibility checklist must be generated from or reconciled with the capability registry. No Blueprint row may use a blanket ✅ without evidence from the corpus.
 
+### Initial environment-group composition (w4/m148)
+
+For a new Blueprint App, group references and authorized membership are prepared before its first CR is published. The first deploy keeps its original identity and generation; it represents the complete initial group configuration. Public create inputs cannot supply arbitrary Kubernetes Secret names. Existing-service link, unlink and group-content updates retain their auto-deploy gate and service-over-group precedence.
+
+A persisted `apps.creation_pending` flag prevents the control-plane projector from reconstructing an incomplete App between identity allocation and initial composition. Completion clears the flag after membership revalidation. Error compensation removes the durable intent before deleting its owned App, including an ambiguous completion response. A process crash can leave an incomplete creation requiring operator recovery; its deploy times out with an initialization failure, and timeout never releases an uncommitted configuration automatically.
+
+Real-Postgres tests cover the initial deploy record, projector interleavings, group Secrets and controlled Kubernetes generation/status transitions. They do not claim real build-job execution or external HTTP acceptance; those remain the milestone's hosted gate. Render documents [group linking and precedence](https://render.com/docs/configure-environment-variables), but authenticated first-deploy timing was not measured. Bex's deterministic group ordering and existing auto-deploy-off update policy remain deliberate choices.
+
 ### Detach notices before and after sync (w4/m133)
 
 A blueprint-scoped preview now adds `detach` plan actions for services, Postgres databases and Key Value stores the blueprint currently claims but the proposed manifest no longer declares. Each action carries the existing `kind`, `name`, `resourceId` and `message` fields. A rename therefore shows both the new resource's action and the old resource's detach action. The comparison is restricted to the authorized blueprint's claims; unrelated workspace resources are never removals.

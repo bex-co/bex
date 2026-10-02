@@ -1126,6 +1126,13 @@ func receiverTypeName(expr ast.Expr) string {
 // declared on recv's named type (not a promoted *core.Base helper), exported,
 // (ctx, ...) -> (..., error).
 func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
+	// This internal Blueprint composition callback accepts an unpublished App,
+	// never a transport request. Its non-nil App authorization and compensation
+	// contracts are exercised in envgroups/initial_blueprint_links_security_test.go;
+	// the zero-argument public-verb sweep cannot construct that owned resource.
+	if recv == reflect.TypeFor[*envgroups.Service]() && m.Name == "WithInitialEnvGroups" {
+		return false
+	}
 	if !declaredMethodsOn(recv)[m.Name] {
 		return false
 	}

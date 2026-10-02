@@ -126,7 +126,9 @@ func (s *Service) mutateMetaCAS(ctx context.Context, gid, workspace string, muta
 		}
 		if current.workspace != "" && current.workspace != secrets.LegacyTenant {
 			if err := s.writeMetaLocator(ctx, gid, current.workspace); err != nil {
-				return meta{}, err
+				// The membership write committed even though its locator did
+				// not. Callers compensating their own additions need that fact.
+				return next, err
 			}
 		}
 		return next, nil

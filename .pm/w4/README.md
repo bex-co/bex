@@ -27,7 +27,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m149** — [Remove Key Value TLS artifacts on deletion](m149/README.md) (7 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweeps 9–10; two public Free deletes leave ownerless TLS Secrets while the private control cleans up, and the existing audit falsely passes.
 
-- [ ] **m148** — [Track the complete first Blueprint deployment with environment groups](m148/README.md) (6 tasks, ~2h 55m) ← live `qa-find-bugs` 2026-10-02 sweep 8; two first `fromGroup` creations serve at rev-2 while their only deploy is Canceled; the literal-value control has one Live deploy.
+- [ ] **m148** — [Track the complete first Blueprint deployment with environment groups](blocked/m148/README.md) — **BLOCKED (release pipeline deploys backend + migration 0137, then QA runs grouped/literal first-create build/HTTP/API/UI probes and cleanup)**; t001/t002/t004/t005 done, t003/t006 remain. Initial composition, durable dispatch barrier, authorization and compensated failure paths verified locally.
 
 - [ ] **m147** — **BLOCKED (release pipeline: deploy dashboard; QA: live deploy/sleep/wake and Metrics/API controls, then fixture/session cleanup)** — [Refresh service activity while the page stays open](blocked/m147/README.md). t001–t005 done; 3,972 dashboard tests and lint/typecheck/knip passed. t006 hosted acceptance remains open.
 

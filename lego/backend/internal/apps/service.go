@@ -1706,6 +1706,8 @@ func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) boo
 // first canonical (spec.host); only a web_service is additionally exposed at the
 // platform hostname <name>.<BEX_BASE_DOMAIN>.
 type CreateRequest struct {
+	// Blueprint-only group names; never decoded from public create input.
+	initialEnvGroups []string
 	// Disk attaches a persistent volume at create time — the Blueprint path's
 	// only way in, since render.yaml declares a disk inline with its service.
 	// nil means no disk is being declared, which on a sync PRESERVES whatever
@@ -2208,6 +2210,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 			// Provenance for the first deploy row CreateApp opens (w9/001):
 			// the branch tip this create will build, resolved best-effort.
 			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, a.Spec.Branch),
+			CreationPending:   len(req.initialEnvGroups) > 0,
 		})
 		if err != nil {
 			if errors.Is(err, store.ErrConflict) {
@@ -2275,17 +2278,20 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 		if createdRowID == "" || s.Store == nil {
 			return cause
 		}
+		rollbackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
 		var err error
 		if rollback, ok := s.Store.(interface {
 			RollbackAppCreation(context.Context, string) error
 		}); ok {
-			err = rollback.RollbackAppCreation(ctx, createdRowID)
+			err = rollback.RollbackAppCreation(rollbackCtx, createdRowID)
 		} else {
-			err = s.Store.DeleteApp(ctx, createdRowID)
+			err = s.Store.DeleteApp(rollbackCtx, createdRowID)
 		}
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
 			return errors.Join(cause, fmt.Errorf("rolling back service record: %w", err))
 		}
+		createdRowID = ""
 		if s.Kick != nil {
 			s.Kick()
 		}
@@ -2339,8 +2345,11 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 	// closed brand-new deploys canceled (w6/m46 t004).
 	stampReleaseGeneration(a, store.FirstDeployGeneration)
 	resourcemeta.Touch(a, s.Now())
-	if err := s.writeNewApp(ctx, req.Name, a, seed); err != nil {
-		return AppView{}, rollbackStoreRow(err)
+	if err := s.writeInitialApp(ctx, req, a, seed, createdRowID, func(cause error) (error, bool) {
+		cause = rollbackStoreRow(cause)
+		return cause, createdRowID == ""
+	}); err != nil {
+		return AppView{}, err
 	}
 	if s.Kick != nil {
 		s.Kick()
@@ -2373,6 +2382,137 @@ func mapServiceCapError(err error) error {
 	}
 	if mapped, ok := core.QuotaCapError(err, store.AppsQuotaCountKey, "service"); ok {
 		return mapped
+	}
+	return err
+}
+
+// writeInitialApp keeps group attachment inside the create compensation
+// boundary. Existing Apps never enter this path; their normal link/rollout
+// policy continues to apply.
+func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, seed createSeed, rowID string, rollbackRow func(error) (error, bool)) error {
+	var operationalSecrets []*corev1.Secret
+	captureOperational := func(cause error) error {
+		captureCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		for _, pair := range [][2]string{
+			{a.Spec.CloneSecret, appv1alpha1.CloneSecretName(a.Name)},
+			{a.Spec.ExternalRegistryPullSecret, appv1alpha1.ExternalRegistryPullSecretName(a.Name)},
+		} {
+			if pair[0] != pair[1] {
+				continue
+			}
+			secret := &corev1.Secret{}
+			if err := s.Client.Get(captureCtx, client.ObjectKey{Namespace: a.Namespace, Name: pair[0]}, secret); err != nil {
+				if !apierrors.IsNotFound(err) {
+					cause = errors.Join(cause, err)
+				}
+				continue
+			}
+			operationalSecrets = append(operationalSecrets, secret)
+		}
+		return cause
+	}
+	cleanupOperational := func(cause error) error {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		for _, secret := range operationalSecrets {
+			// Releasing the durable name allows a replacement to reuse or
+			// update this Secret. Its newer version belongs to that request.
+			err := s.Client.Delete(cleanupCtx, secret, client.Preconditions{UID: &secret.UID, ResourceVersion: &secret.ResourceVersion})
+			if err != nil && !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
+				cause = errors.Join(cause, err)
+			}
+		}
+		return cause
+	}
+	fail := func(cause error) error {
+		if cause != nil && rollbackRow != nil {
+			if rowID != "" && len(req.initialEnvGroups) > 0 {
+				cause = captureOperational(cause)
+			}
+			var removed bool
+			cause, removed = rollbackRow(cause)
+			if removed && rowID != "" && len(req.initialEnvGroups) > 0 {
+				cause = cleanupOperational(cause)
+			}
+		}
+		return cause
+	}
+	if len(req.initialEnvGroups) == 0 {
+		return fail(s.writeNewApp(ctx, req.Name, a, seed))
+	}
+	if s.EnvGroups == nil {
+		return fail(core.ErrSecretsUnavailable)
+	}
+	var complete func() error
+	if rowID != "" {
+		store, ok := s.Store.(interface {
+			CompleteAppCreation(context.Context, string) error
+		})
+		if !ok {
+			return fail(core.ErrSecretsUnavailable)
+		}
+		complete = func() error {
+			if err := requireDeployAuthority(ctx, s); err != nil {
+				return err
+			}
+			return store.CompleteAppCreation(ctx, rowID)
+		}
+	} else {
+		complete = func() error { return requireDeployAuthority(ctx, s) }
+	}
+	created := false
+	err := s.EnvGroups.WithInitialEnvGroups(ctx, req.initialEnvGroups, req.Name, a, func() error {
+		if err := requireDeployAuthority(ctx, s); err != nil {
+			return err
+		}
+		if err := s.writeNewApp(ctx, req.Name, a, seed); err != nil {
+			return err
+		}
+		created = true
+		return nil
+	}, complete)
+	if err == nil {
+		return nil
+	}
+	if rowID != "" || created {
+		err = captureOperational(err)
+	}
+	// Grouped Blueprints currently carry no create seeds. Keep this internal
+	// compensation safe if that changes: erase name-addressed seed paths while
+	// the durable identity still prevents a same-name replacement.
+	if created && !seed.empty() && s.CreateSecrets != nil {
+		seedCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		err = errors.Join(err, s.CreateSecrets.AbortCreateSecrets(seedCtx, req.Name, a))
+		cancel()
+	}
+	// A completion write can commit before its connection fails. Remove the
+	// durable row before the CR so the projector cannot recreate a narrower
+	// fallback spec. If removal fails, retain the CR rather than allow reconstruction.
+	if rollbackRow != nil {
+		var removed bool
+		err, removed = rollbackRow(err)
+		if !removed {
+			return err
+		}
+	}
+	// Only this request's fresh durable identity or successfully created App
+	// authorizes deleting its generated operational credentials. Arbitrary
+	// caller-supplied references and reusable group Secrets are never touched.
+	if rowID != "" || created {
+		err = cleanupOperational(err)
+	}
+	if !created {
+		return err
+	}
+	rollbackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+	var deleteOptions []client.DeleteOption
+	if a.UID != "" {
+		deleteOptions = append(deleteOptions, client.Preconditions{UID: &a.UID})
+	}
+	if deleteErr := s.Client.Delete(rollbackCtx, a, deleteOptions...); deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
+		err = errors.Join(err, fmt.Errorf("rollback initial App: %w", deleteErr))
 	}
 	return err
 }
