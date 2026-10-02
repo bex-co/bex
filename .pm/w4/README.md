@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m152** — [Keep relative hosting times current on open pages](m152/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 14; two fresh cron pages freeze Last run/Next run/Created while exact API times and the deploy-row timer remain correct.
+
 - [ ] **m151** — [Preserve loaded log history across relative-range refreshes](m151/README.md) (6 tasks, ~2h 45m) ← live `qa-find-bugs` 2026-10-02 sweep 12; Last hour drops 40 loaded older rows and resets the reader every 30 seconds with Live off, while the fixed Custom control stays stable.
 
 - [ ] **m150** — [Apply saved static header wildcard patterns](m150/README.md) (6 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweep 11; root-extension and nested wildcard rules persist across API/UI reads but never emit headers, while exact/global/subtree controls work.
