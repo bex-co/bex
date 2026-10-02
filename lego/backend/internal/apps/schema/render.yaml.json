@@ -24,7 +24,102 @@
           "description": "File paths to ignore when determining whether to trigger a build, even if they match a path in 'paths'. Uses glob syntax.",
           "items": { "type": "string" }
         }
-      }
+      },
+      "anyOf": [{ "required": ["paths"] }, { "required": ["ignoredPaths"] }],
+      "additionalProperties": false
+    },
+    "buildSource": {
+      "type": "object",
+      "description": "Shared build source declared in a 'buildSources' collection. Exactly one of 'git' or 'image' must be set.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A unique name for the build source within your workspace. Services can link to your build source with its name by setting 'buildSource'."
+        },
+        "git": {
+          "$ref": "#/definitions/buildSourceGit"
+        },
+        "image": {
+          "$ref": "#/definitions/image"
+        }
+      },
+      "required": ["name"],
+      "oneOf": [{ "required": ["git"] }, { "required": ["image"] }],
+      "additionalProperties": false
+    },
+    "buildSourceGit": {
+      "type": "object",
+      "description": "Build configuration for a Git-backed build source.",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "The URL of the Git repository to build from."
+        },
+        "branch": {
+          "type": "string",
+          "description": "The branch to build. If omitted, uses the repository's default branch."
+        },
+        "runtime": {
+          "$ref": "#/definitions/buildSourceRuntime"
+        },
+        "buildCommand": {
+          "type": "string",
+          "description": "The command Render runs to build the source."
+        },
+        "buildFilter": {
+          "$ref": "#/definitions/buildFilter"
+        },
+        "envVars": {
+          "type": "array",
+          "description": "Build-time environment variables for the build source.",
+          "items": { "$ref": "#/definitions/envVar" }
+        },
+        "rootDir": {
+          "type": "string",
+          "description": "The directory Render treats as the root when building. Useful for monorepos."
+        },
+        "baseDir": {
+          "type": "string",
+          "default": ".",
+          "description": "The Docker build-context directory, relative to rootDir. Defaults to rootDir, or the repository root if rootDir is unset. Only applicable when runtime is 'docker'."
+        },
+        "region": {
+          "$ref": "#/definitions/region",
+          "default": "oregon",
+          "description": "The region where builds run. Defaults to 'oregon' and cannot be changed after the source's first Git build."
+        },
+        "dockerfilePath": {
+          "type": "string",
+          "default": "./Dockerfile",
+          "description": "The path to the Dockerfile, relative to rootDir. Only applicable when runtime is 'docker'."
+        },
+        "registryCredential": {
+          "$ref": "#/definitions/registryCredential"
+        }
+      },
+      "required": ["repo", "runtime"],
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              { "required": ["baseDir"] },
+              { "required": ["dockerfilePath"] },
+              { "required": ["registryCredential"] }
+            ]
+          },
+          "then": {
+            "properties": {
+              "runtime": { "const": "docker" }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "buildSourceRuntime": {
+      "type": "string",
+      "description": "The runtime for a Git-backed build source's builds.",
+      "enum": ["docker", "elixir", "go", "node", "python", "ruby", "rust"]
     },
     "diskSizeGB": {
       "type": "integer",
@@ -55,7 +150,7 @@
     },
     "serviceEnvVarProperty": {
       "type": "string",
-      "enum": ["host", "port", "hostport", "connectionString"],
+      "enum": ["host", "port", "hostport", "slug", "connectionString"],
       "description": "The property of the service to reference."
     },
     "cronService": {
@@ -75,7 +170,7 @@
           "$ref": "#/definitions/region"
         },
         "plan": {
-          "$ref": "#/definitions/plan"
+          "$ref": "#/definitions/cronPlan"
         },
         "runtime": {
           "$ref": "#/definitions/runtime"
@@ -167,7 +262,7 @@
           "$ref": "#/definitions/region"
         },
         "plan": {
-          "$ref": "#/definitions/plan"
+          "$ref": "#/definitions/postgresPlan"
         },
         "diskSizeGB": {
           "$ref": "#/definitions/diskSizeGB"
@@ -179,8 +274,8 @@
           "$ref": "#/definitions/connectionPool"
         },
         "previewPlan": {
-          "$ref": "#/definitions/plan",
-          "description": "The instance type to use for this database in preview environments."
+          "$ref": "#/definitions/postgresPlan",
+          "description": "The compute plan to use for this database in preview environments."
         },
         "previewDiskSizeGB": {
           "$ref": "#/definitions/diskSizeGB",
@@ -479,9 +574,30 @@
       "minimum": 1,
       "description": "For a manually scaled service, the number of instances to scale the service to."
     },
-    "plan": {
+    "cronPlan": {
       "type": "string",
-      "description": "The instance type for the service or database.",
+      "description": "The compute plan for a cron job.",
+      "enum": [
+        "starter",
+        "standard",
+        "pro",
+        "pro plus",
+        "0.5c-512mb",
+        "1c-2g",
+        "2c-4g",
+        "2c-8g",
+        "2c-16g",
+        "4c-8g",
+        "4c-16g",
+        "4c-32g",
+        "8c-16g",
+        "8c-32g",
+        "8c-64g"
+      ]
+    },
+    "keyValuePlan": {
+      "type": "string",
+      "description": "The compute plan for a Key Value instance.",
       "enum": [
         "free",
         "starter",
@@ -490,6 +606,25 @@
         "pro plus",
         "pro max",
         "pro ultra",
+        "256mb",
+        "1g",
+        "3g",
+        "5g",
+        "10g",
+        "20g",
+        "40g",
+        "50g"
+      ]
+    },
+    "postgresPlan": {
+      "type": "string",
+      "description": "The compute plan for a PostgreSQL database.",
+      "enum": [
+        "free",
+        "starter",
+        "standard",
+        "pro",
+        "pro plus",
         "basic-256mb",
         "basic-1gb",
         "basic-4gb",
@@ -511,7 +646,57 @@
         "accelerated-384gb",
         "accelerated-512gb",
         "accelerated-768gb",
-        "accelerated-1024gb"
+        "accelerated-1024gb",
+        "0.1c-256mb",
+        "0.5c-1g",
+        "1c-2g",
+        "1c-4g",
+        "2c-4g",
+        "2c-8g",
+        "2c-16g",
+        "4c-16g",
+        "4c-32g",
+        "8c-32g",
+        "8c-64g",
+        "16c-64g",
+        "16c-128g",
+        "32c-128g",
+        "32c-256g",
+        "48c-192g",
+        "48c-384g",
+        "64c-256g",
+        "64c-512g",
+        "96c-384g",
+        "96c-768g",
+        "128c-512g",
+        "128c-1024g"
+      ]
+    },
+    "serverPlan": {
+      "type": "string",
+      "description": "The compute plan for a web service, private service, or background worker.",
+      "enum": [
+        "free",
+        "starter",
+        "standard",
+        "pro",
+        "pro plus",
+        "pro max",
+        "pro ultra",
+        "0.5c-512mb",
+        "1c-2g",
+        "2c-4g",
+        "2c-8g",
+        "2c-16g",
+        "4c-8g",
+        "4c-16g",
+        "4c-32g",
+        "8c-16g",
+        "8c-32g",
+        "8c-64g",
+        "12c-24g",
+        "12c-48g",
+        "12c-96g"
       ]
     },
     "previewsGeneration": {
@@ -530,9 +715,14 @@
           "type": "array",
           "description": "A list of environments for this project.",
           "items": { "$ref": "#/definitions/environment" }
+        },
+        "buildSources": {
+          "type": "array",
+          "description": "A list of build sources to manage with the Blueprint. Multiple services can share a build source's source and build configuration.",
+          "items": { "$ref": "#/definitions/buildSource" }
         }
       },
-      "required": ["name", "environments"],
+      "required": ["name"],
       "additionalProperties": false
     },
     "servicePreviews": {
@@ -544,8 +734,8 @@
           "description": "The preview generation mode for this service's pull request previews."
         },
         "plan": {
-          "$ref": "#/definitions/plan",
-          "description": "The instance type to use for this service in preview environments."
+          "$ref": "#/definitions/serverPlan",
+          "description": "The compute plan to use for this service in preview environments."
         },
         "numInstances": {
           "$ref": "#/definitions/numInstances",
@@ -601,11 +791,11 @@
           "$ref": "#/definitions/ipAllowList"
         },
         "plan": {
-          "$ref": "#/definitions/plan"
+          "$ref": "#/definitions/keyValuePlan"
         },
         "previewPlan": {
-          "$ref": "#/definitions/plan",
-          "description": "The instance type to use for this Key Value instance in preview environments."
+          "$ref": "#/definitions/keyValuePlan",
+          "description": "The compute plan to use for this Key Value instance in preview environments."
         },
         "maxmemoryPolicy": {
           "type": "string",
@@ -636,6 +826,7 @@
       "enum": ["oregon", "ohio", "frankfurt", "singapore", "virginia"]
     },
     "registryCredential": {
+      "type": "object",
       "description": "Registry credentials for accessing private Docker images.",
       "properties": {
         "fromRegistryCreds": {
@@ -679,7 +870,8 @@
               { "$ref": "#/definitions/redisServer" },
               { "$ref": "#/definitions/cronService" },
               { "$ref": "#/definitions/serverService" },
-              { "$ref": "#/definitions/staticService" }
+              { "$ref": "#/definitions/staticService" },
+              { "$ref": "#/definitions/workflowService" }
             ]
           }
         }
@@ -737,10 +929,14 @@
           "$ref": "#/definitions/region"
         },
         "plan": {
-          "$ref": "#/definitions/plan"
+          "$ref": "#/definitions/serverPlan"
         },
         "runtime": {
           "$ref": "#/definitions/runtime"
+        },
+        "buildSource": {
+          "type": "string",
+          "description": "The name of the build source whose source and build configuration this service uses."
         },
         "repo": {
           "type": "string",
@@ -861,9 +1057,9 @@
           "description": "Whether to enable pull request previews for the service. Deprecated - use previews.generation instead."
         },
         "previewPlan": {
-          "$ref": "#/definitions/plan",
+          "$ref": "#/definitions/serverPlan",
           "deprecated": true,
-          "description": "The instance type to use for previews. Deprecated - use previews.plan instead."
+          "description": "The compute plan to use for previews. Deprecated - use previews.plan instead."
         },
         "maintenanceMode": {
           "type": "object",
@@ -896,7 +1092,32 @@
           "description": "Controls whether the service is reachable at its onrender.com subdomain (e.g., myapp.onrender.com). If 'disabled', the service is reachable exclusively at its custom domain(s). Only applies to web services and static sites."
         }
       },
-      "required": ["type", "name", "runtime"],
+      "required": ["type", "name"],
+      "allOf": [
+        {
+          "if": { "not": { "required": ["buildSource"] } },
+          "then": { "required": ["runtime"] }
+        },
+        {
+          "if": { "required": ["buildSource"] },
+          "then": {
+            "properties": {
+              "runtime": false,
+              "repo": false,
+              "branch": false,
+              "image": false,
+              "registryCredential": false,
+              "buildCommand": false,
+              "buildFilter": false,
+              "dockerContext": false,
+              "dockerfilePath": false,
+              "previews": false,
+              "pullRequestPreviewsEnabled": false,
+              "previewPlan": false
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "serviceType": {
@@ -907,6 +1128,7 @@
         "cron",
         "worker",
         "pserv",
+        "workflow",
         "static",
         "dpg",
         "job",
@@ -1015,6 +1237,64 @@
       },
       "required": ["type", "name", "runtime"],
       "additionalProperties": false
+    },
+    "workflowService": {
+      "type": "object",
+      "description": "A workflow that runs tasks dispatched with the Render Workflows SDK.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "workflow",
+          "description": "The type of service. Must be 'workflow' for workflows."
+        },
+        "name": {
+          "type": "string",
+          "description": "The workflow's name. Must be unique within the Blueprint."
+        },
+        "runtime": {
+          "type": "string",
+          "enum": ["node", "python"],
+          "description": "The workflow's runtime."
+        },
+        "region": {
+          "$ref": "#/definitions/region"
+        },
+        "repo": {
+          "type": "string",
+          "description": "The URL of the GitHub/GitLab repo to use. If omitted, uses the repo containing the render.yaml file."
+        },
+        "branch": {
+          "type": "string",
+          "description": "The branch of the linked repo to use."
+        },
+        "buildCommand": {
+          "type": "string",
+          "description": "The command that Render runs to build your workflow."
+        },
+        "startCommand": {
+          "type": "string",
+          "description": "The command that Render runs to start the process that executes your tasks."
+        },
+        "rootDir": {
+          "type": "string",
+          "description": "The workflow's root directory within its repo. If omitted, uses the repo's root directory."
+        },
+        "buildFilter": {
+          "$ref": "#/definitions/buildFilter"
+        },
+        "autoDeployTrigger": {
+          "$ref": "#/definitions/autoDeployTrigger"
+        },
+        "envVars": {
+          "type": "array",
+          "description": "Environment variables to set for every task run.",
+          "items": {
+            "$ref": "#/definitions/envVar"
+          }
+        }
+      },
+      "required": ["type", "name", "runtime", "region", "startCommand"],
+      "additionalProperties": false
     }
   },
   "allOf": [
@@ -1037,6 +1317,11 @@
           "deprecated": true,
           "description": "Number of days to retain preview environments. Deprecated - use previews.expireAfterDays instead."
         },
+        "buildSources": {
+          "type": "array",
+          "description": "A list of build sources to manage with the Blueprint. Multiple services can share a build source's source and build configuration.",
+          "items": { "$ref": "#/definitions/buildSource" }
+        },
         "projects": {
           "type": "array",
           "description": "A list of projects to manage with the Blueprint.",
@@ -1046,6 +1331,13 @@
           "type": "object",
           "description": "Resources that should not belong to any environment. Anything defined here will be removed from an environment if it already belongs to one.",
           "allOf": [{ "$ref": "#/definitions/resources" }],
+          "properties": {
+            "buildSources": {
+              "type": "array",
+              "description": "Build sources that are not assigned to a project.",
+              "items": { "$ref": "#/definitions/buildSource" }
+            }
+          },
           "unevaluatedProperties": false
         },
         "version": {

@@ -36,17 +36,17 @@ func TestRenderBlueprintCapabilityRegistryExhaustive(t *testing.T) {
 	if got, want := registry.Schema.SHA256, RenderBlueprintSchemaSHA256; got != want {
 		t.Fatalf("registry schema digest = %q, want %q", got, want)
 	}
-	if got, want := len(registry.Fields), 163; got != want {
+	if got, want := len(registry.Fields), 206; got != want {
 		t.Fatalf("registered field count = %d, want %d", got, want)
 	}
-	if got, want := len(registry.EnumValues), 19; got != want {
+	if got, want := len(registry.EnumValues), 24; got != want {
 		t.Fatalf("registered enum count = %d, want %d", got, want)
 	}
 	valueCount := 0
 	for _, values := range registry.EnumValues {
 		valueCount += len(values)
 	}
-	if got, want := valueCount, 106; got != want {
+	if got, want := valueCount, 189; got != want {
 		t.Fatalf("registered enum value count = %d, want %d", got, want)
 	}
 	if !json.Valid(bexBlueprintExtensionSchemaSource) {

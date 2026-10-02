@@ -6,7 +6,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 pinned="$repo_root/lego/backend/internal/apps/schema/render.yaml.json"
-expected_sha256="665539cb0c191856ba38d292b985a963880bb69b030d666e5fe7788e78e7e696"
+expected_sha256="a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163"
 schema_url="${RENDER_BLUEPRINT_SCHEMA_URL:-https://render.com/schema/render.yaml.json}"
 openapi_url="${RENDER_OPENAPI_URL:-https://api-docs.render.com/openapi/render-public-api-1.json}"
 webhook_fixture="$repo_root/docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json"
@@ -89,8 +89,9 @@ else
     cat <<MSG
 
 Action: re-review, do not just re-pin. bex's Blueprint compiler is fail-closed on
-unknown fields (docs/ADR049-render-yaml-parity.md), so every added field above
-needs a decision — accept-and-ignore, implement, or reject with a named error —
+unknown fields (docs/ADR049-render-yaml-parity.md), so every added field and
+enum value above needs a decision — implement it (equivalent/translated) or
+reject it with a named error (unsupported); ADR049 has no "ignored" state —
 recorded in lego/backend/internal/apps/schema/capabilities.json. Then replace
 the pin with the upstream bytes and set the new digest in expected_sha256 (this
 script), RenderBlueprintSchemaSHA256 (lego/backend/internal/apps/blueprint_schema.go)
