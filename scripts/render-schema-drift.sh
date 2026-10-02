@@ -49,9 +49,22 @@ sha256() {
 
 pinned_sha256="$(sha256 "$pinned")"
 if [[ "$pinned_sha256" != "$expected_sha256" ]]; then
-  echo "pinned Render Blueprint schema integrity mismatch: got $pinned_sha256, want $expected_sha256" >&2
+  echo "::error title=Render Blueprint pin integrity::$pinned has sha256 $pinned_sha256, want $expected_sha256" >&2
+  cat >&2 <<MSG
+The reviewed pin was changed without re-review. Restore it from git, or — if the
+change IS a deliberate re-pin — set the new digest in BOTH expected_sha256 (this
+script) and RenderBlueprintSchemaSHA256 (lego/backend/internal/apps/blueprint_schema.go).
+MSG
   exit 1
 fi
+
+# schema_surface lists a Blueprint schema's contractual names — every
+# definition and every declared property path — so a drift report can say WHICH
+# fields moved instead of only that two digests differ.
+schema_surface() {
+  jq -r '(.definitions // {} | keys[] | "definition " + .),
+    (paths | select(length >= 2 and .[-2] == "properties") | map(tostring) | "property " + join("."))' "$1" | sort -u
+}
 
 temporary_schema="$(mktemp -t bex-render-schema.XXXXXX)"
 temporary_openapi="$(mktemp -t bex-render-openapi.XXXXXX)"
@@ -64,20 +77,41 @@ failed=0
 if [[ "$upstream_sha256" == "$pinned_sha256" ]]; then
   echo "Render Blueprint schema matches pinned $pinned_sha256"
 else
-  echo "::error title=Render Blueprint schema drift::pinned=$pinned_sha256 upstream=$upstream_sha256" >&2
+  added="$(comm -13 <(schema_surface "$pinned") <(schema_surface "$temporary_schema"))"
+  removed="$(comm -23 <(schema_surface "$pinned") <(schema_surface "$temporary_schema"))"
+  echo "::error title=Render Blueprint schema drift::$schema_url no longer matches the pin $pinned (pinned=$pinned_sha256 upstream=$upstream_sha256)" >&2
+  {
+    echo
+    echo "Added upstream (${schema_url}):"
+    echo "${added:-  (none — the change is inside existing definitions; see the diff below)}" | sed 's/^/  /'
+    echo "Removed upstream:"
+    echo "${removed:-  (none)}" | sed 's/^/  /'
+    cat <<MSG
+
+Action: re-review, do not just re-pin. bex's Blueprint compiler is fail-closed on
+unknown fields (docs/ADR049-render-yaml-parity.md), so every added field above
+needs a decision — accept-and-ignore, implement, or reject with a named error —
+recorded in lego/backend/internal/apps/schema/capabilities.json. Then replace
+the pin with the upstream bytes and set the new digest in expected_sha256 (this
+script), RenderBlueprintSchemaSHA256 (lego/backend/internal/apps/blueprint_schema.go)
+and capabilities.json's schema.sha256.
+MSG
+  } >&2
   diff -u "$pinned" "$temporary_schema" || true
   failed=1
 fi
 
 if ! jq -e '.paths["/events/{eventId}"].get.responses["200"].content["application/json"].schema.properties.type.enum | type == "array"' "$temporary_openapi" >/dev/null; then
-  echo "::error title=Render webhook schema moved::could not locate GET /events/{eventId} response type enum" >&2
+  echo "::error title=Render webhook schema moved::could not locate GET /events/{eventId} response type enum in $openapi_url" >&2
+  echo "Action: find where Render's OpenAPI now declares the event type enum and update this script's jq path; the fixture $webhook_fixture is not at fault." >&2
   failed=1
 elif diff -u \
   <(jq -r '.renderOpenAPI[]' "$webhook_fixture") \
   <(jq -r '.paths["/events/{eventId}"].get.responses["200"].content["application/json"].schema.properties.type.enum[]' "$temporary_openapi"); then
   echo "Render webhook OpenAPI enum matches pinned 67-value fixture"
 else
-  echo "::error title=Render webhook OpenAPI drift::update the dated API fixture and re-audit the authenticated dashboard picker separately" >&2
+  echo "::error title=Render webhook OpenAPI drift::$openapi_url's event type enum no longer matches .renderOpenAPI in $webhook_fixture (diff above: - pinned, + upstream)" >&2
+  echo "Action: capture a new dated webhook vocabulary fixture, re-disposition every added value in lego/backend/internal/webhooks/vocabulary_test.go, and re-audit the authenticated dashboard picker separately." >&2
   failed=1
 fi
 

@@ -140,6 +140,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -458,20 +459,35 @@ var (
 )
 
 // pushDown translates a caller's event-TYPE filter into the sets the store
-// query takes: the audit verbs that produce that type, the deploy phases that
+// query takes: the audit verbs that produce those types, the deploy phases that
 // do, and (for auto-deploy types) an AutoDeployFilter that discriminates the
 // three sub-types in SQL before the LIMIT. It is what keeps the type filter IN
 // SQL — filtering the result in Go after the store's LIMIT would return short
 // (sometimes empty) pages, which a cursor client reads as the end of the feed
 // and stops on.
 //
-// An empty type asks for everything. An unknown type matches nothing (empty
-// sets), which is an empty feed — not, as a Go-side filter would give, a page
-// of zero items that a client cannot distinguish from the end.
-func pushDown(eventType string) (verbs, phases, factTypes []string, autoDeploy store.AutoDeployFilter) {
-	switch eventType {
-	case "":
+// Several types are the UNION of each type's sets (Render's type filter takes a
+// comma-separated list — w1/m165). No types asks for everything. An unknown type
+// contributes nothing, so a filter of only unknown types is an empty feed — not,
+// as a Go-side filter would give, a page of zero items that a client cannot
+// distinguish from the end.
+func pushDown(types []string) (verbs, phases, factTypes []string, autoDeploy store.AutoDeployFilter) {
+	if len(types) == 0 {
 		return allVerbs, allPhases, allFactTypes, store.AutoDeployFilterNone
+	}
+	for _, t := range types {
+		v, p, f, ad := pushDownOne(t)
+		verbs = appendMissing(verbs, v...)
+		phases = appendMissing(phases, p...)
+		factTypes = appendMissing(factTypes, f...)
+		autoDeploy |= ad
+	}
+	return verbs, phases, factTypes, autoDeploy
+}
+
+// pushDownOne is pushDown for exactly one (non-empty) type.
+func pushDownOne(eventType string) (verbs, phases, factTypes []string, autoDeploy store.AutoDeployFilter) {
+	switch eventType {
 	case TypeDeployStarted:
 		return nil, []string{store.EventPhaseStarted}, nil, store.AutoDeployFilterNone
 	case TypeDeployEnded:
@@ -496,6 +512,16 @@ func pushDown(eventType string) (verbs, phases, factTypes []string, autoDeploy s
 		}
 	}
 	return verbs, nil, nil, store.AutoDeployFilterNone
+}
+
+// appendMissing appends each value not already in dst, keeping first-seen order.
+func appendMissing(dst []string, values ...string) []string {
+	for _, v := range values {
+		if !slices.Contains(dst, v) {
+			dst = append(dst, v)
+		}
+	}
+	return dst
 }
 
 // DefaultWindow is how far back an events query reaches when the caller names no
@@ -639,7 +665,7 @@ type Event struct {
 // Filter narrows List — the neutral shape the REST/GraphQL/MCP adapters translate
 // Render's type/startTime/endTime/cursor/limit query params into.
 type Filter struct {
-	Type   string // one event type; empty ⇒ all
+	Types  []string // event types to include (any of); empty ⇒ all
 	Since  time.Time
 	Until  time.Time
 	Cursor string
@@ -649,8 +675,11 @@ type Filter struct {
 // FilterOf builds a Filter from the five params Render's endpoint takes, in the
 // string form every adapter has them in (a query value, a GraphQL argument, an
 // MCP tool field). One translator for all three, so a REST call and a tool call
-// with the same params cannot page differently. An unparseable timestamp is left
-// zero — the Service then applies Render's default window — rather than 400.
+// with the same params cannot page differently. Each eventTypes entry is read in
+// Render's comma-separated wire form (splitTypes), so REST's `?type=a,b`, GraphQL's
+// `type: "a,b"` and MCP's `eventTypes: ["a","b"]` all mean the same union. An
+// unparseable timestamp is left zero — the Service then applies Render's default
+// window — rather than 400.
 //
 // That is this fragment ALONE, not the house style: every other caller-supplied
 // time filter answers a named 400, and core.ParseTime's own doc states the rule
@@ -658,8 +687,11 @@ type Filter struct {
 // BEX_MAX_QUERY_HOURS. What justifies the permissiveness HERE is the default
 // window below: a dropped bound still yields a defined, bounded result. A list
 // with no default window has nothing to land on and must be strict.
-func FilterOf(eventType, startTime, endTime, cursor string, limit int) Filter {
-	f := Filter{Type: eventType, Cursor: cursor, Limit: pageLimit(limit)}
+func FilterOf(eventTypes []string, startTime, endTime, cursor string, limit int) Filter {
+	f := Filter{Cursor: cursor, Limit: pageLimit(limit)}
+	for _, t := range eventTypes {
+		f.Types = appendMissing(f.Types, splitTypes(t)...)
+	}
 	if t, err := time.Parse(time.RFC3339, startTime); err == nil {
 		f.Since = t
 	}
@@ -667,6 +699,22 @@ func FilterOf(eventType, startTime, endTime, cursor string, limit int) Filter {
 		f.Until = t
 	}
 	return f
+}
+
+// splitTypes reads Render's `type` filter wire form: one type, or several
+// separated by commas. Render's REST parameter declares a single enum value, but
+// the API accepts a comma-joined list — which is exactly how Render's own MCP
+// server drives it (render-oss/render-mcp-server pkg/event/tools.go: list_events
+// sends strings.Join(eventTypes, ",") as one `type` param). Blank entries are
+// dropped, so "" (and a stray trailing comma) means no type constraint.
+func splitTypes(raw string) []string {
+	var out []string
+	for _, t := range strings.Split(raw, ",") {
+		if t = strings.TrimSpace(t); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // pageLimit clamps a caller's limit to Render's bounds — the same clamp
@@ -720,7 +768,7 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if appID == "" {
 		return []Event{}, nil
 	}
-	verbs, phases, factTypes, autoDeploy := pushDown(filter.Type)
+	verbs, phases, factTypes, autoDeploy := pushDown(filter.Types)
 	rows, err := s.Store.ListServiceEvents(ctx, appID, a.Labels[core.LabelTenant], store.ServiceEventFilter{
 		Since:      since,
 		Until:      until,

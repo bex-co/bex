@@ -33,7 +33,8 @@ import (
 //
 // The arguments mirror Render's REST query params 1:1 (type/startTime/endTime/
 // cursor/limit), including the now-1h default window — a dashboard tab that wants
-// yesterday passes startTime, exactly as a REST client must.
+// yesterday passes startTime, exactly as a REST client must — and including
+// `type`'s comma-separated multi-type form ("deploy_ended,server_failed").
 
 var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DeployTrigger",
@@ -187,5 +188,5 @@ func filterFromArgs(args map[string]any) Filter {
 		return v
 	}
 	limit, _ := args["limit"].(int)
-	return FilterOf(str("type"), str("startTime"), str("endTime"), str("cursor"), limit)
+	return FilterOf([]string{str("type")}, str("startTime"), str("endTime"), str("cursor"), limit)
 }

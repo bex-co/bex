@@ -76,6 +76,23 @@ var renderRequiredCompatibility = map[string][]string{
 	"create-webhook":   {"ownerId", "enabled", "eventFilter"},
 }
 
+// renderCommaListQueryCompatibility names query parameters whose pinned schema
+// declares ONE enum value but whose live Render API accepts several,
+// comma-separated. The pinned spec alone does not reveal it; Render's own MCP
+// server does: render-mcp-server pkg/event/tools.go collapses list_events'
+// eventTypes array onto this very parameter as strings.Join(eventTypes, ","),
+// with the comment "The schema declares one `type` value, but the API accepts
+// several separated by commas" (w1/m165). Without this entry the strict gate
+// 400'd `?type=deploy_ended,server_failed` while MCP and GraphQL served it.
+//
+// The parameter is re-declared, for that operation only, as OpenAPI's own
+// encoding of a comma list — style=form, explode=false, an array whose items are
+// the pinned single-value schema — so every element is still checked against
+// Render's enum and a bex-named or misspelled type still answers 400.
+var renderCommaListQueryCompatibility = map[string][]string{
+	"list-events": {"type"},
+}
+
 var renderOptionalParameterCompatibility = map[string][]string{
 	// bex resolves an omitted ownerId from the authenticated caller's selected
 	// or default workspace on all three log reads.
@@ -284,10 +301,17 @@ func applyRenderCompatibility(doc *openapi3.T) {
 		for _, operation := range item.Operations() {
 			optional := renderOptionalParameterCompatibility[operation.OperationID]
 			patterns := renderPathParameterPatternCompatibility[operation.OperationID]
+			commaLists := renderCommaListQueryCompatibility[operation.OperationID]
 			for _, parameters := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
-				for _, ref := range parameters {
+				for i, ref := range parameters {
 					if ref == nil || ref.Value == nil {
 						continue
+					}
+					if ref.Value.In == openapi3.ParameterInQuery && slices.Contains(commaLists, ref.Value.Name) {
+						// A fresh ref, not an edit through the shared one: the
+						// pinned parameter is a component other operations reuse.
+						ref = &openapi3.ParameterRef{Value: commaListParameter(ref.Value)}
+						parameters[i] = ref
 					}
 					if slices.Contains(optional, ref.Value.Name) {
 						ref.Value.Required = false
@@ -315,6 +339,25 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			applyRenderSchemaCompatibility(operation.OperationID, media.Schema.Value)
 		}
 	}
+}
+
+// commaListParameter re-declares a single-value query parameter as a
+// comma-separated list of that value (style=form, explode=false). A one-branch
+// anyOf wrapper is unwrapped so an enum failure still names the allowed values.
+func commaListParameter(p *openapi3.Parameter) *openapi3.Parameter {
+	item := p.Schema
+	if item == nil || item.Value == nil {
+		return p
+	}
+	if len(item.Value.AnyOf) == 1 {
+		item = item.Value.AnyOf[0]
+	}
+	explode := false
+	list := *p
+	list.Style = openapi3.SerializationForm
+	list.Explode = &explode
+	list.Schema = openapi3.NewSchemaRef("", openapi3.NewArraySchema().WithItems(item.Value))
+	return &list
 }
 
 func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema) {

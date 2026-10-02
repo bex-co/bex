@@ -71,11 +71,37 @@ check "removed upstream tool fails and is named" 1 "removed=[list_services]" \
 check "changed argument surface fails" 1 "Render MCP tool drift" \
   run_with "$(jq -c 'map(if .name == "list_services" then .args += ["invented"] else . end)' <<<"$pinned_tools")"
 
+# A shared tool whose arguments moved must be NAMED, not just diffed: before
+# w1/m165 the headline carried only added/removed, so a changed argument surface
+# (upstream's Dockerfile args on create_web_service) rode along unnamed.
+check "changed argument surface names the tool" 1 "changed=[list_services]" \
+  run_with "$(jq -c 'map(if .name == "list_services" then .args += ["invented"] else . end)' <<<"$pinned_tools")"
+
+check "a required-set change alone names the tool" 1 "changed=[list_services]" \
+  run_with "$(jq -c 'map(if .name == "list_services" then .required += ["includePreviews"] else . end)' <<<"$pinned_tools")"
+
+check "an added tool is not also reported as changed" 1 "added=[brand_new_tool] removed=[none] changed=[none]" \
+  run_with "$(jq -c '. + [{"name":"brand_new_tool","args":[],"required":[]}]' <<<"$pinned_tools")"
+
+# Each kind of drift carries its decision, naming where it is recorded.
+check "added drift names the implement-or-decline action" 1 "mcpKnownUpstreamOnly" \
+  run_with "$(jq -c '. + [{"name":"brand_new_tool","args":[],"required":[]}]' <<<"$pinned_tools")"
+
+check "changed drift names the accepted-divergence action" 1 "mcpAcceptedDivergences" \
+  run_with "$(jq -c 'map(if .name == "list_services" then .args += ["invented"] else . end)' <<<"$pinned_tools")"
+
 check "failure message says how to refresh" 1 "render-mcp-capture.py" \
   run_with "$(jq -c 'map(select(.name != "list_services"))' <<<"$pinned_tools")"
 
 check "failure message names the guard test" 1 "TestMCPParity" \
   run_with "$(jq -c 'map(select(.name != "list_services"))' <<<"$pinned_tools")"
+
+# Check, never update: a drifting run must leave the pin byte-identical.
+check_pin_untouched() {
+  run_with "$(jq -c 'map(select(.name != "list_services"))' <<<"$pinned_tools")" >/dev/null 2>&1 || true
+  cmp -s "$pinned" "$sandbox/repo/lego/backend/internal/api/openapi/render-mcp-tools.json"
+}
+check "a drifting run leaves the pin untouched" 0 "" check_pin_untouched
 
 # A hand-edited pin must fail on integrity before any capture runs.
 edited_root="$sandbox/edited"
