@@ -65,6 +65,12 @@ const (
 	// kvPort preserves existing in-cluster redis:// clients while external
 	// rediss:// clients terminate end-to-end TLS inside Valkey.
 	kvTLSPort = 6380
+	// kvReadinessPeriodSeconds / kvReadinessTimeoutSeconds bound how long a
+	// restarted store waits in config_restart after it can serve: the exec probe
+	// forks valkey-cli, so 5s rather than 1s, and 2s headroom over the default
+	// 1s timeout for a busy single-core pod.
+	kvReadinessPeriodSeconds  = 5
+	kvReadinessTimeoutSeconds = 2
 	// kvDataPath is where Valkey writes its AOF data inside the container.
 	kvDataPath = "/data"
 	// The uid/gid baked into the official valkey image. Running directly as this
@@ -237,7 +243,7 @@ func secretDataEqual(left, right map[string][]byte) bool {
 }
 
 // KeyValueReconciler projects a KeyValue into a single-instance Valkey
-// StatefulSet plus a headless Service (internal DNS) plus a credentials Secret,
+// StatefulSet plus a ClusterIP Service (internal DNS) plus a credentials Secret,
 // and optionally a cert-manager certificate for the metered SNI front door. It
 // is a thin executor — the Valkey image does the actual key-value lifecycle.
 type KeyValueReconciler struct {
@@ -536,13 +542,21 @@ func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageG
 	}
 }
 
-// reconcileKeyValueService authors the headless Service, which gives the
-// internal DNS "<name>.<ns>.svc" and is the StatefulSet's serviceName (stable
-// pod identity).
+// reconcileKeyValueService authors the ClusterIP Service behind the internal
+// DNS name "<name>.<ns>.svc", which is also the StatefulSet's serviceName.
+//
+// It is a ClusterIP Service, not a headless one (w1/m166). Measured on
+// production 2026-10-02: through a restart, a headless Service's A record goes
+// pod IP → NXDOMAIN (no ready endpoint) → new pod IP, and CoreDNS (`cache 30`,
+// two replicas) kept serving the old IP and the NXDOMAIN for ~28s after the new
+// pod was Ready — every resolver (kv-sni-proxy, tenant Apps) flapped between the
+// stale and the fresh answer while the API already said available. A ClusterIP's
+// A record never changes for the Service's life; the dataplane re-points the VIP
+// at the new endpoint within about a second of it turning Ready.
 func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *appv1alpha1.KeyValue, intent keyValueIntent) error {
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
-		svc.Spec.ClusterIP = corev1.ClusterIPNone
+	mutate := func() error {
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
 		svc.Spec.Selector = intent.labels
 		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: "valkey"}}
 		if intent.public {
@@ -550,8 +564,44 @@ func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *a
 		}
 		applyServicePortServerDefaults(svc.Spec.Ports)
 		return controllerutil.SetControllerReference(kv, svc, r.Scheme)
-	})
+	}
+	retired, err := r.retireHeadlessKeyValueService(ctx, kv)
+	if err != nil {
+		return err
+	}
+	if retired {
+		// Create straight away rather than through CreateOrUpdate, whose cached
+		// Get may still return the Service just deleted.
+		if err := mutate(); err != nil {
+			return err
+		}
+		return r.Create(ctx, svc)
+	}
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, svc, mutate)
 	return err
+}
+
+// retireHeadlessKeyValueService deletes a pre-w1/m166 headless Service so it
+// can be recreated with a ClusterIP (spec.clusterIP is immutable, so there is
+// no in-place conversion). The UID precondition keeps it from deleting a
+// Service some other actor already replaced.
+func (r *KeyValueReconciler) retireHeadlessKeyValueService(ctx context.Context, kv *appv1alpha1.KeyValue) (bool, error) {
+	existing := &corev1.Service{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: kv.Name}, existing); err != nil {
+		return false, client.IgnoreNotFound(err)
+	}
+	if existing.Spec.ClusterIP != corev1.ClusterIPNone || !metav1.IsControlledBy(existing, kv) {
+		return false, nil
+	}
+	err := r.Delete(ctx, existing, client.Preconditions{UID: &existing.UID})
+	switch {
+	case apierrors.IsNotFound(err) || apierrors.IsConflict(err):
+		// Gone already, or a stale cache entry for a Service since replaced.
+		return false, nil
+	case err != nil:
+		return false, err
+	}
+	return true, nil
 }
 
 // reconcileKeyValueWorkload authors the single-instance Valkey StatefulSet,
@@ -661,9 +711,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		Resources:       kvResources(intent.plan),
 		SecurityContext: valkeySecCtx(),
 		VolumeMounts:    append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
-		ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
-			TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(kvPort)},
-		}},
+		ReadinessProbe:  valkeyReadinessProbe(),
 	}, {
 		// redis_exporter sidecar: exposes Valkey's INFO stats as Prometheus
 		// metrics (redis_memory_used_bytes, redis_connected_clients, …) on
@@ -684,6 +732,22 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 	// the pod-level fields this function leaves to the fetched object stay put.
 	// See server_defaults.go.
 	applyPodSpecServerDefaults(spec)
+}
+
+// valkeyReadinessProbe passes only when an authenticated PING answers PONG
+// (w1/m166). A bare TCP accept on 6379 is not serving: Valkey accepts while it
+// is still loading the dataset (`-LOADING`) and before AUTH works. The password
+// reaches valkey-cli through REDISCLI_AUTH (the backup snapshot step's
+// mechanism), never argv. Both listeners (6379 and the TLS 6380) are bound
+// together before the dataset loads, so the TLS port cannot lag independently.
+func valkeyReadinessProbe() *corev1.Probe {
+	return &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: []string{
+			"sh", "-c", `[ "$(REDISCLI_AUTH="$VALKEY_PASSWORD" valkey-cli -p ` + strconv.Itoa(kvPort) + ` PING)" = PONG ]`,
+		}}},
+		PeriodSeconds:  kvReadinessPeriodSeconds,
+		TimeoutSeconds: kvReadinessTimeoutSeconds,
+	}
 }
 
 func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
