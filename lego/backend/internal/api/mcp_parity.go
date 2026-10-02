@@ -91,14 +91,14 @@ var mcpAcceptedDivergences = map[string]string{
 	// caller to choose, so accepting `region` would be accepting a value bex
 	// must then ignore. Revisit if bex ever runs more than one region.
 	//
-	// The w1/m165 re-pin (upstream d9a8abd) found a SECOND, not-yet-decided
-	// break on the two Git-backed create tools: upstream bc94f8d (#154) added
-	// Dockerfile-based creation — dockerCommand/dockerContext (bex already
-	// takes dockerfilePath) — and made buildCommand/startCommand optional. It is
-	// accepted here only so the pin could be refreshed without building it
-	// (m165 is scoped to list_events); the decision is filed as w1/118.
-	"create_web_service": "no multi-region placement (BEX_REGION is operator-set, not caller-chosen); `region` would be accepted and silently ignored. Also missing upstream's dockerCommand/dockerContext (bc94f8d) — undecided, filed as w1/118",
-	"create_cron_job":    "same as create_web_service — `region` is not a caller-chosen value in bex; dockerCommand/dockerContext undecided, filed as w1/118",
+	// The w1/m165 re-pin (upstream d9a8abd) also found upstream bc94f8d (#154,
+	// Dockerfile-based creation) had added dockerCommand/dockerContext to the
+	// two Git-backed create tools. w1/118 implemented both with upstream's
+	// names and docker-only semantics, mapped onto the fields REST's
+	// envSpecificDetails reaches, so region is again their only break —
+	// TestMCPParityGitCreateToolsBreakOnlyOnRegion holds that to be true.
+	"create_web_service": "no multi-region placement (BEX_REGION is operator-set, not caller-chosen); `region` would be accepted and silently ignored",
+	"create_cron_job":    "same as create_web_service — `region` is not a caller-chosen value in bex",
 	"create_key_value":   "same as create_web_service — `region` is not a caller-chosen value in bex",
 
 	// Same region omission as the other create tools. diskSizeGb was repaired

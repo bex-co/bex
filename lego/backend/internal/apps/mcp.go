@@ -169,8 +169,9 @@ func (a *maintenanceModeArg) toView() *MaintenanceModeView {
 // name/repo/branch/plan/envVars track Render's tool; image/port/replicas are bex
 // extensions (Render's tool is git-only and has no port/replicas). One of
 // repo/image is required. Runtime/buildCommand/startCommand use Render's native
-// contract; builder and image are bex extensions. Region remains a one-region
-// platform concern and is intentionally absent.
+// contract and dockerfilePath/dockerContext/dockerCommand its docker one
+// (upstream bc94f8d, w1/118); builder and image are bex extensions. Region
+// remains a one-region platform concern and is intentionally absent.
 type createWebServiceArgs struct {
 	OwnerID              string          `json:"-"`
 	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
@@ -199,6 +200,8 @@ type createWebServiceArgs struct {
 	BuildCommand            string                  `json:"buildCommand,omitempty" jsonschema:"command used to build a native-runtime service; required for a native runtime, refused for runtime image"`
 	StartCommand            string                  `json:"startCommand,omitempty" jsonschema:"command used to start a native-runtime service; required for a native runtime, refused for runtime image"`
 	DockerfilePath          string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	DockerContext           string                  `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root; applies only when runtime is docker (default the repo root)"`
+	DockerCommand           string                  `json:"dockerCommand,omitempty" jsonschema:"overrides the image's startup command; omitted or empty uses the Dockerfile's ENTRYPOINT and CMD. Applies only when runtime is docker; do not combine with startCommand"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free; a background_worker is paid-only — free is rejected and an omitted plan defaults to starter)"`
 	EnvVars                 []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
@@ -233,6 +236,7 @@ type listCronJobRunsResult struct {
 }
 
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
+	docker := resolveMCPDockerArgs(a.Runtime, a.StartCommand, "", a.DockerCommand, a.DockerContext)
 	return CreateRequest{
 		OwnerID:                 a.OwnerID,
 		EnvironmentID:           a.EnvironmentID,
@@ -246,8 +250,9 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		BuildFilter:             a.BuildFilter.toView(),
 		Runtime:                 a.Runtime,
 		BuildCommand:            a.BuildCommand,
-		StartCommand:            a.StartCommand,
+		StartCommand:            docker.startCommand,
 		DockerfilePath:          a.DockerfilePath,
+		DockerContext:           docker.context,
 		Builder:                 a.Builder,
 		Plan:                    a.Plan,
 		Env:                     toEnvVars(a.EnvVars),
@@ -286,6 +291,8 @@ type createCronJobArgs struct {
 	BuildCommand   string            `json:"buildCommand,omitempty" jsonschema:"command used to build a native-runtime cron job; required for a native runtime, refused for runtime image"`
 	StartCommand   string            `json:"startCommand,omitempty" jsonschema:"command run by the native-runtime cron job; required for a native runtime, refused for runtime image"`
 	DockerfilePath string            `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	DockerContext  string            `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root; applies only when runtime is docker (default the repo root)"`
+	DockerCommand  string            `json:"dockerCommand,omitempty" jsonschema:"overrides the image's command for each run; omitted or empty uses the Dockerfile's ENTRYPOINT and CMD. Applies only when runtime is docker; do not combine with startCommand or command"`
 	Builder        string            `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan           string            `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
 	EnvVars        []envVarInput     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
@@ -296,13 +303,14 @@ type createCronJobArgs struct {
 }
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
+	docker := resolveMCPDockerArgs(a.Runtime, a.StartCommand, a.Command, a.DockerCommand, a.DockerContext)
 	return CreateRequest{
 		OwnerID:              a.OwnerID,
 		EnvironmentID:        a.EnvironmentID,
 		Name:                 a.Name,
 		Type:                 appv1alpha1.TypeCronJob,
 		Schedule:             a.Schedule,
-		Command:              a.Command,
+		Command:              docker.command,
 		Repo:                 a.Repo,
 		Image:                a.Image,
 		RegistryCredentialID: clonePtr(a.RegistryCredentialID),
@@ -310,8 +318,9 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		RootDir:              a.RootDir,
 		Runtime:              a.Runtime,
 		BuildCommand:         a.BuildCommand,
-		StartCommand:         a.StartCommand,
+		StartCommand:         docker.startCommand,
 		DockerfilePath:       a.DockerfilePath,
+		DockerContext:        docker.context,
 		Builder:              a.Builder,
 		Plan:                 a.Plan,
 		Env:                  toEnvVars(a.EnvVars),
@@ -320,6 +329,65 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		NotifyOnFail:         a.NotifyOnFail,
 		DryRun:               a.DryRun,
 	}
+}
+
+// mcpDockerArgs is what upstream's Dockerfile-runtime create arguments
+// (render-mcp-server bc94f8d, #154: dockerCommand/dockerContext) resolve to on
+// the neutral CreateRequest (w1/118). They land on the same fields REST's
+// serviceDetails.envSpecificDetails.dockerCommand/dockerContext reach in
+// createServiceRequest.toCreateRequest, so the two surfaces build identically.
+type mcpDockerArgs struct {
+	startCommand string
+	command      string
+	context      string
+}
+
+// isDockerRuntime reports whether a create selected Render's docker runtime.
+func isDockerRuntime(runtime string) bool {
+	return strings.EqualFold(strings.TrimSpace(runtime), "docker")
+}
+
+// resolveMCPDockerArgs maps dockerCommand/dockerContext the way REST does.
+// Both apply only when runtime is docker — upstream's own "Applies when runtime
+// is 'docker'", and REST reads envSpecificDetails' docker keys only on that
+// runtime — so on any other runtime they are inert and a call that succeeds
+// against Render succeeds here with its native commands untouched. On docker,
+// dockerCommand is the start command (REST's rule), and for a cron it is also
+// the run command when no bex `command` is given (REST's docker cron bridge).
+// checkMCPDockerArgs refuses the ambiguous combinations before this runs, and
+// dockerContext's path is validated by the core (validateCreateSource), exactly
+// as for REST.
+func resolveMCPDockerArgs(runtime, startCommand, command, dockerCommand, dockerContext string) mcpDockerArgs {
+	if !isDockerRuntime(runtime) {
+		return mcpDockerArgs{startCommand: startCommand, command: command}
+	}
+	out := mcpDockerArgs{startCommand: startCommand, command: command, context: dockerContext}
+	if dockerCommand != "" {
+		out.startCommand = dockerCommand
+		if out.command == "" {
+			out.command = dockerCommand
+		}
+	}
+	return out
+}
+
+// checkMCPDockerArgs refuses a docker-runtime dockerCommand sent alongside
+// another spelling of the same command. REST cannot express that collision (its
+// docker branch replaces startCommand), and the Blueprint compiler refuses it
+// outright ("cannot set both dockerCommand and startCommand"); MCP keeps a
+// flat startCommand (and a cron's bex `command`) that bex also honours on the
+// docker runtime, so silently picking one would drop the caller's other value.
+func checkMCPDockerArgs(runtime, startCommand, command, dockerCommand string) error {
+	if !isDockerRuntime(runtime) || strings.TrimSpace(dockerCommand) == "" {
+		return nil
+	}
+	if strings.TrimSpace(startCommand) != "" {
+		return fmt.Errorf("%w: cannot set both dockerCommand and startCommand", core.ErrBadRequest)
+	}
+	if strings.TrimSpace(command) != "" {
+		return fmt.Errorf("%w: cannot set both dockerCommand and command", core.ErrBadRequest)
+	}
+	return nil
 }
 
 // deployArgs is the deploy tool's input: a repo + its render.yaml Blueprint. Deploy-from-chat
@@ -631,6 +699,9 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		if _, err := parseAutoDeploy(in.AutoDeploy, ""); err != nil {
 			return nil, renderService{}, err
 		}
+		if err := checkMCPDockerArgs(in.Runtime, in.StartCommand, "", in.DockerCommand); err != nil {
+			return nil, renderService{}, err
+		}
 		in.OwnerID = core.NamedWorkspace(ctx)
 		return s.createWithAllowList(ctx, in.toCreateRequest(), in.IPAllowListEntries, in.IPAllowList)
 	})
@@ -640,6 +711,9 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back the service. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
 		if _, err := parseAutoDeploy(in.AutoDeploy, ""); err != nil {
+			return nil, renderService{}, err
+		}
+		if err := checkMCPDockerArgs(in.Runtime, in.StartCommand, in.Command, in.DockerCommand); err != nil {
 			return nil, renderService{}, err
 		}
 		in.OwnerID = core.NamedWorkspace(ctx)
