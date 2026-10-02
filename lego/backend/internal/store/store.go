@@ -141,6 +141,9 @@ type App struct {
 	ProjectID            string    `json:"projectId,omitempty"`
 	EnvironmentID        string    `json:"environmentId,omitempty"`
 	CreatedAt            time.Time `json:"createdAt"`
+	// CreationPending prevents the projector from dispatching a Blueprint App
+	// before its initial environment-group composition has committed.
+	CreationPending bool `json:"-"`
 	// InitialDisk is CreateApp input only. Save the disk and its first metering
 	// period in the service transaction, before a projector can observe the row.
 	InitialDisk *appv1alpha1.DiskSpec `json:"-"`
@@ -939,10 +942,10 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 				return err
 			}
 			if err := tx.QueryRow(ctx,
-				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode)
-				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18)
+				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending)
+				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18, $19)
 				 RETURNING created_at`,
-				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID, a.ContainerPolicy, a.PortMode,
+				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID, a.ContainerPolicy, a.PortMode, a.CreationPending,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
@@ -980,13 +983,13 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 
 const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
-	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode`
+	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode, a.creation_pending`
 
 func scanApp(row pgx.Row) (App, error) {
 	var a App
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
 		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
-		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode)
+		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode, &a.CreationPending)
 	return a, err
 }
 
@@ -997,6 +1000,19 @@ func (s *PGStore) GetApp(ctx context.Context, id string) (App, error) {
 		return App{}, classify("app", err)
 	}
 	return a, nil
+}
+
+// CompleteAppCreation releases an explicitly prepared initial configuration.
+// Repeating completion is safe; a concurrently deleted row is never recreated.
+func (s *PGStore) CompleteAppCreation(ctx context.Context, id string) error {
+	tag, err := s.Pool.Exec(ctx, `UPDATE apps SET creation_pending = false WHERE id = $1`, id)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app %s: %w", id, ErrNotFound)
+	}
+	return nil
 }
 
 // GetAppProtectedStatus resolves a store-managed App's protectedStatus via
@@ -1452,7 +1468,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		var envRules []byte
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
-			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.TenantName, &envRules)
+			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.TenantName, &envRules)
 		if err != nil {
 			return nil, err
 		}

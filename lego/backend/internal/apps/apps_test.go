@@ -2047,3 +2047,5 @@ func TestScaleSavedCountOverridesRollbackCountWithoutDeployingSavedConfig(t *tes
 		t.Fatal("scaling replaced the rollback's runtime selection or deployed saved config")
 	}
 }
+
+func (r *recordingStore) CompleteAppCreation(context.Context, string) error { return r.err }

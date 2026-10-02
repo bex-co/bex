@@ -1,16 +1,16 @@
 # w4 · m148 — Track the complete first Blueprint deployment with environment groups
 
-**Worker:** worker4 **Goal:** a new Blueprint service's returned first deploy represents its complete initial configuration and reaches Live when that configuration serves. **Status:** todo
+**Worker:** worker4 **Goal:** a new Blueprint service's returned first deploy represents its complete initial configuration and reaches Live when that configuration serves. **Status:** blocked — t001/t002/t004/t005 done; t003/t006 need the released backend/migration and hosted acceptance
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Compose initial group links before dispatching the first release | 50m | — |
-| t002 | Preserve shared creation, authorization and existing group-update behavior | 40m | t001 |
+| t001 | Compose initial group links before dispatching the first release — **DONE** | 50m | — |
+| t002 | Preserve shared creation, authorization and existing group-update behavior — **DONE** | 40m | t001 |
 | t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Test coverage | 40m | t003 |
+| t004 | Simplify — **DONE** | 10m | t003 |
+| t005 | Test coverage — **DONE** | 40m | t003 |
 | t006 | Closeout | 15m | t004, t005 |
 
 ## Definition of done
@@ -38,3 +38,13 @@ Only native Go web creation was exercised live. Other service types, auto-deploy
 This is a regression of **w6/m46's first-deploy guarantee**, through Blueprint group initialization. Its release-generation stamp is present both in production and on main; the missing case is a later initial-spec patch after the operator has adopted generation 1. The finding walks every original DoD item.
 
 The 37 open/blocked milestone READMEs and open/completed notes were scanned. w8/m46 covers competing user deploy triggers; this has one create request and no replacement deploy row. w4/m146 covers repeated empty-env applies; these are first applies with a nonempty group. w4/m147 covers an open Events page's refresh; fresh pages and all three APIs reproduce this persisted result. w2/m94's intentional gate remains a regression constraint. No matching fix is waiting on deployment. This filing changes no product code.
+
+## Parked gate — 2026-10-02
+
+The release pipeline must deploy the backend and migration 0137. QA must then
+repeat both native Go grouped creates and the literal control, capture one
+complete first build/deploy per grouped service, verify external MESSAGE values
+and the same Live deploy through REST/GraphQL/MCP/dashboard, then delete the
+three services/group and revoke the QA session. No hosted fixtures were created
+in this implementation run. [Verification](verification.md) distinguishes
+local/source coverage from the remaining production and connected-Git probes.
