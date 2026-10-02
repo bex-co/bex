@@ -59,11 +59,13 @@ const setCurrentWorkspaceId = vi.fn();
 
 const scopeState = {
   projects: [],
-  environments: [],
+  environments: [] as Array<{ id: string; name: string }>,
   byId: new Map<string, { id: string; name: string }>(),
   serviceEnvironmentById: new Map<string, string>(),
   loading: false,
   error: undefined as Error | undefined,
+  ready: true,
+  retry: vi.fn(),
 };
 
 vi.mock("@/features/env-groups/hooks/use-env-group-scope-index", () => ({
@@ -124,10 +126,12 @@ const servicesState: {
   services: ServiceView[];
   loading: boolean;
   error: Error | undefined;
+  refetch: () => Promise<ServiceView[]>;
 } = {
   services: [],
   loading: false,
   error: undefined,
+  refetch: vi.fn(async () => []),
 };
 
 vi.mock("@/features/services/hooks/use-services", () => ({
@@ -221,6 +225,9 @@ beforeEach(() => {
   scopeState.serviceEnvironmentById = new Map();
   scopeState.loading = false;
   scopeState.error = undefined;
+  scopeState.ready = true;
+  scopeState.retry.mockReset();
+  vi.mocked(servicesState.refetch).mockClear();
   setCurrentWorkspaceId.mockReset();
   createGroup.mockReset().mockResolvedValue("eg-new");
   for (const mutation of [
@@ -353,6 +360,67 @@ describe("EnvGroupsPage", () => {
       await screen.findByText("Environment group destination"),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/env-groups/eg-new");
+  });
+
+  it.each([null, "env-qa"])(
+    "creates in list scope %s with only a visible compatible service",
+    async (environmentId) => {
+      servicesState.services = [
+        service("srv-ws", "workspace-service"),
+        service("srv-qa", "qa-service"),
+      ];
+      scopeState.environments = [{ id: "env-qa", name: "QA" }];
+      scopeState.serviceEnvironmentById = new Map([["srv-qa", "env-qa"]]);
+      const user = userEvent.setup();
+      renderList();
+      await user.click(
+        await screen.findByRole("button", { name: "New Environment Group" }),
+      );
+      expect(
+        screen.queryByRole("checkbox", { name: /qa-service/ }),
+      ).not.toBeInTheDocument();
+      if (environmentId) {
+        await user.click(screen.getByRole("combobox", { name: "Environment" }));
+        await user.click(screen.getByRole("option", { name: "QA" }));
+        expect(
+          screen.queryByRole("checkbox", { name: /workspace-service/ }),
+        ).not.toBeInTheDocument();
+      }
+      const selectedName = environmentId ? /qa-service/ : /workspace-service/;
+      await user.click(screen.getByRole("checkbox", { name: selectedName }));
+      expect(
+        screen.getByRole("checkbox", { name: selectedName }),
+      ).toBeChecked();
+      await user.type(screen.getByLabelText("Group name"), "list-create");
+      await user.click(
+        screen.getByRole("button", { name: "Create Environment Group" }),
+      );
+      expect(createGroup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          environmentId,
+          serviceIds: [environmentId ? "srv-qa" : "srv-ws"],
+        }),
+      );
+    },
+  );
+
+  it("does not fall back to Workspace when the list scope lookup fails", async () => {
+    scopeState.ready = false;
+    scopeState.error = new Error("unavailable");
+    const user = userEvent.setup();
+    renderList();
+    await user.click(
+      await screen.findByRole("button", { name: "New Environment Group" }),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load");
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(scopeState.retry).toHaveBeenCalledOnce();
+    expect(servicesState.refetch).toHaveBeenCalledOnce();
+    expect(createGroup).not.toHaveBeenCalled();
   });
 
   it("keeps the create dialog and list route in place when create fails", async () => {
