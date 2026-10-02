@@ -96,6 +96,7 @@ func postgresListFilter(q url.Values) (func(PostgresView) bool, error) {
 	for i := range envIDs {
 		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
 	}
+	regions := core.QueryList(q, "region")
 	// suspended= filters by Render's string enum (w2/m53), and Render declares it
 	// an ARRAY — `components.parameters` for GET /postgres gives
 	// `type: array, items: {enum: [suspended, not_suspended]}` — so repeated and
@@ -124,6 +125,7 @@ func postgresListFilter(q url.Values) (func(PostgresView) bool, error) {
 	return func(p PostgresView) bool {
 		return (len(names) == 0 || slices.Contains(names, p.Name) || slices.Contains(names, p.ID)) &&
 			(len(envIDs) == 0 || slices.Contains(envIDs, p.EnvironmentID)) &&
+			(len(regions) == 0 || slices.Contains(regions, p.Region)) &&
 			(len(suspended) == 0 || slices.Contains(suspended, p.Suspended)) &&
 			created.Contains(p.CreatedAt) && updated.Contains(p.UpdatedAt)
 	}, nil
