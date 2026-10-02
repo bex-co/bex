@@ -122,6 +122,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] [039 — Honor instance filters for pre-deploy log reads](039.md) ← w2/m167 consumer audit, 2026-10-02
+
 - [ ] [038 — Align default Postgres create allowlist readback with external access](038.md) ← w2/m166 parity follow-up, 2026-10-02
 
 - [x] **037** — [GitHub claim-selection disposition](done/037.md) — **already fixed in `c82108964`; verified 2026-09-22**. Account cleanup, workspace cascade, census declaration, and ADR086 policy all present; m164 revalidated both schema guards.
