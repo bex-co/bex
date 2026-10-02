@@ -183,7 +183,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 - [ ] **075** — [Honor Render region filters on Postgres and Key Value lists](075.md) (~1h) ← approved Render-only proposal 2026-09-30.
 
-- [ ] **074** — [Live-verify m143/m144 permission UI on dev-6](074.md) (~1h) ← m143/m144 closeout residual (DoD walkthrough needs a running `dev-6` stack), filed 2026-09-10; not in the approved queue
+- [ ] **074** — [Live-verify m143/m144 permission UI on dev-6](blocked/074.md) — **BLOCKED (local cluster/host maintainer: restore stable CAPD API and CNPG webhook so dev-6 can start)**; recovery attempted 2026-10-02, live checks remain unverified.
 - [x] **073** — [Refresh request-validator OpenAPI pin to include outbound-ips](done/073.md) — done 2026-09-11 (pin refreshed to the live 208-op document; `retrieve-service-outbound-ips` enforced through the composed validator; m96 Blueprint-ID guards green).
 - [x] **071** — [Fix mobile GraphQL token-refresh recovery](done/071.md) — done 2026-09-09; see the mobile review handoff above.
 - [x] **072** — [Refresh mobile session details opened directly](done/072.md) — done 2026-09-09; see the mobile review handoff above.

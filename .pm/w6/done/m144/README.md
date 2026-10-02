@@ -49,3 +49,7 @@
 - Workspace empty-membership reconciliation covered by `workspaces/context` tests; capability-policy unit tests cover grants/stale/unavailable.
 - Supersedes permissive-while-unknown UI policy for actions and sensitive reads (ADR018 updated).
 - Limitation: two-session live membership downgrade / focus-reconnect browser evidence on `dev-6` not captured this session (cluster down). Mounted provider tests cover generation invalidation and empty membership routing.
+
+### Live verification retry — 2026-10-02
+
+Still unverified: the authorized local recovery restored a verified kubeconfig and briefly Ready workload nodes, but dev-6 provisioning subsequently failed on the CNPG webhook and recurring API/TLS timeouts. No authenticated browser claims are made and the live DoD checkbox remains open. See [blocked follow-up 074](../../blocked/074.md) for recovery evidence and exact resume prerequisites. No test identities/workspaces were created.
