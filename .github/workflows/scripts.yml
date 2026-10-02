@@ -97,6 +97,11 @@ jobs:
       # own paths are overlay/packer-scoped.
       - name: Build-pool scheduling guard self-test
         run: bash scripts/clusterapi-validate.test.sh
+      # Reads infra/terraform/main.tf and the prod Traefik values, so it runs
+      # here where both trees trigger — infra.yml's PR job is fmt/validate only
+      # and gitops.yml does not trigger on infra/ (w1/m150).
+      - name: Edge PROXY-protocol guard self-test
+        run: bash scripts/edge-proxyprotocol-validate.test.sh
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
       - name: bex CLI installer + formula renderer offline tests
