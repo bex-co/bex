@@ -281,6 +281,45 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy calico-kube-cont
   '{"spec":{"template":{"spec":{"nodeSelector":{"node-role.kubernetes.io/control-plane":""},
    "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"},
    {"key":"CriticalAddonsOnly","operator":"Exists"}]}}}}' >/dev/null
+# Root cause of the "worker pods can't reach the apiserver" quirk above (w1/108,
+# 2026-09-30): Calico's default pool 192.168.0.0/16 CONTAINS the kind docker
+# network (e.g. 192.168.158.0/24), so a pod dialing another node's IP — the
+# apiserver ClusterIP DNATs to the control-plane node's :6443 — is treated as
+# in-pool, skips natOutgoing, and leaves eth0 with its pod source address, which
+# OrbStack's bridge drops. Masquerade pod -> node-subnet traffic on every node
+# (a DaemonSet, so autoscaled/restarted nodes re-acquire it). The control-plane
+# pins above stay as belt-and-braces.
+node_subnet="$(docker network inspect kind -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}' 2>/dev/null |
+  tr ' ' '\n' | grep -E '^[0-9]+\.' | head -1)"
+if [ -n "$node_subnet" ]; then
+  KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f - >/dev/null <<EOF
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: {name: pod-node-snat, namespace: kube-system, labels: {app: pod-node-snat}}
+spec:
+  selector: {matchLabels: {app: pod-node-snat}}
+  template:
+    metadata: {labels: {app: pod-node-snat}}
+    spec:
+      hostNetwork: true
+      hostPID: true
+      priorityClassName: system-node-critical
+      tolerations: [{operator: Exists}]
+      containers:
+        - name: snat
+          image: busybox:1.36
+          securityContext: {privileged: true}
+          resources: {requests: {cpu: 1m, memory: 8Mi}}
+          command: [nsenter, -t, "1", -m, -n, --, sh, -c]
+          args:
+            - |
+              rule="POSTROUTING -s 192.168.0.0/16 -d $node_subnet -o eth0 -j MASQUERADE"
+              while true; do
+                iptables -t nat -C \$rule 2>/dev/null || iptables -t nat -A \$rule
+                sleep 60
+              done
+EOF
+fi
 
 # Storage: CAPD nodes ship no CSI, so PVCs (dev-N CNPG databases + Loki) can
 # never bind on a fresh cluster — install local-path-provisioner and mark it the

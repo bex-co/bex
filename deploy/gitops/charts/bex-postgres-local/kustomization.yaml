@@ -24,3 +24,13 @@ patches:
       kind: ScheduledBackup
       metadata:
         name: bex-db-nightly
+  # CAPD has no hcloud CSI: the base class would leave bex-db-1's PVC Pending
+  # forever (w1/108 bring-up, 2026-09-30). Mirror the auth-dbs local shrink.
+  - target:
+      group: postgresql.cnpg.io
+      version: v1
+      kind: Cluster
+      name: bex-db
+    patch: |-
+      - { op: replace, path: /spec/storage/storageClass, value: local-path }
+      - { op: replace, path: /spec/storage/size, value: 1Gi }
