@@ -15,7 +15,13 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+<<<<<<< Updated upstream
 - [ ] **m153** — [Preserve Key Value data when re-enabling journaling](blocked/m153/README.md) — **BLOCKED (local environment owner: healthy isolated Docker host; worker4: full Valkey 7/8 matrix, then apply and ship the prepared patch; release/QA owner: production TLS/UI data acceptance).** 19-file implementation preserved; Valkey 7 passes all 21 cases, Valkey 8 is blocked by Docker-control timeouts. No m153 product code shipped; 7 tasks remain open.
+=======
+- [ ] **m154** — [Preserve URL path semantics in static edge rules](m154/README.md) (7 tasks, ~3h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 16; encoded wildcard filenames become query/fragment syntax, while accepted query-bearing or encoded rewrite destinations return 404 despite direct-destination and plain-path controls passing.
+
+- [ ] **m153** — [Preserve Key Value data when re-enabling journaling](m153/README.md) (7 tasks, ~3h 50m) ← live `qa-find-bugs` 2026-10-02 sweep 15; two fresh settings changes replay stale AOF data, losing snapshot-written keys and rolling counters back, including after explicit SAVE and a passing ordinary restart.
+>>>>>>> Stashed changes
 
 - [ ] **m152** — [Keep relative hosting times current on open pages](m152/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 14; two fresh cron pages freeze Last run/Next run/Created while exact API times and the deploy-row timer remain correct.
 
