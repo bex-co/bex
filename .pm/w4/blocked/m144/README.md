@@ -1,6 +1,6 @@
 # w4 · m144 — Recover service metrics from Prometheus's OOM during WAL replay
 
-**Worker:** worker4 **Goal:** production service CPU, memory and instance charts read real samples again, with a Prometheus startup budget that can replay its retained data. **Status:** blocked — recovery configuration and automated checks complete; applied release, measured retained-data replay and operational acceptance pending.
+**Worker:** worker4 **Goal:** production service CPU, memory and instance charts read real samples again, with a Prometheus startup budget that can replay its retained data. **Status:** blocked — budget applied and own-web metrics recovered; measured retained-data replay, restart validation and the complete operational acceptance matrix remain pending.
 
 ## Tasks (in order)
 
@@ -31,4 +31,4 @@ The live probes above were exercised in failing form. Other consumers and restar
 
 ## Outcome — 2026-10-02
 
-[Verification](verification.md) records the continuing OOM, node capacity, bounded production memory change, corrected local Helm precedence, shared consumer matrix and automated render evidence. t004 is done; implementation/render work in t001/t002/t005 is complete, but their operational criteria remain open. **BLOCKED:** the production GitOps release operator must apply the budget to the existing PVC; QA/platform must measure successful replay/runtime/query peaks and cardinality, verify a retained-data restart with 15 minutes of stability, and complete the fresh API/UI plus shared-consumer matrix. No outage recovery or historical/billing repair is claimed. t003 live parity and t006 closeout remain open.
+[Verification](verification.md) records the original OOM, node capacity, bounded production memory change, corrected local Helm precedence, shared consumer matrix and automated render evidence. [Sweep 7 recheck](qa-r7-recheck.md) then found the production 1Gi/2Gi budget applied, a Ready endpoint with zero restarts, successful own-web CPU/memory/instance GraphQL samples and working sleep/wake. This is partial recovery evidence; no historical/billing repair or full consumer recovery is claimed. t004 is done; implementation/render work in t001/t002/t005 is complete, but their operational criteria remain open. **BLOCKED:** QA/platform must measure successful replay/runtime/query peaks and cardinality, verify a retained-data restart with 15 minutes of stability, and complete the original API/UI probes plus shared-consumer matrix. t003 live parity and t006 closeout remain open.
