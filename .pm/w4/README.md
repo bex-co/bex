@@ -167,6 +167,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **174** — [Keep first Blueprint cron reapply idempotent](174.md) (~50m) ← local regression found during m146; create and reapply place the same cron command differently, causing an unnecessary deployment.
+
 - [ ] **173** — [Correct the create-form Project-only membership promise](173.md) (~55m) ← live `qa-find-bugs` 2026-10-02 sweep 9; Postgres and Key Value leave Project + No environment ungrouped while the shared hint promises Unassigned. Existing-resource Move works. Regression of w6/m48's copy guarantee.
 
 - [ ] **172** — **BLOCKED (production-deploy pipeline must release the dashboard; QA must repeat cron Settings/list suspension, active-run continuation, skipped scheduled tick and Resume checks, then clean up)** — [Cron suspension copy](blocked/172.md). English/Chinese implementation and focused component verification complete 2026-10-02; runtime behavior unchanged.
