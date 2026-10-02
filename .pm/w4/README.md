@@ -167,6 +167,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **175** — [Persist superseded build-ended event reasons](175.md) (~45m) ← real-Postgres negative control during m148; Go accepts superseded but the SQL fact constraint rejects it.
+
 - [ ] **174** — [Keep first Blueprint cron reapply idempotent](174.md) (~50m) ← local regression found during m146; create and reapply place the same cron command differently, causing an unnecessary deployment.
 
 - [ ] **173** — [Correct the create-form Project-only membership promise](173.md) (~55m) ← live `qa-find-bugs` 2026-10-02 sweep 9; Postgres and Key Value leave Project + No environment ungrouped while the shared hint promises Unassigned. Existing-resource Move works. Regression of w6/m48's copy guarantee.
