@@ -1,0 +1,2012 @@
+diff --git a/.github/workflows/operator-test.yml b/.github/workflows/operator-test.yml
+index 99db9c839..6c745606f 100644
+--- a/.github/workflows/operator-test.yml
++++ b/.github/workflows/operator-test.yml
+@@ -40,6 +40,11 @@ jobs:
+       - name: make test (operator + envtest)
+         working-directory: lego/operator
+         run: make test
++      - name: Valkey persisted-volume transition regressions
++        working-directory: lego/operator
++        env:
++          BEX_TEST_VALKEY: "1"
++        run: go test ./internal/controller -run '^TestValkeyPersistenceEngine$' -count=1 -parallel=1 -timeout=15m
+       # w1/m68: `make test` REGENERATES manifests/deepcopy before running, so a
+       # stale committed CRD is silently repaired in the runner and the job stays
+       # green — drift ships. That is not hypothetical: `spec.deletedUsers` was
+diff --git a/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.test.tsx b/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.test.tsx
+index f3292278f..e07f5a778 100644
+--- a/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.test.tsx
++++ b/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.test.tsx
+@@ -1,4 +1,4 @@
+-import { render, screen } from "@testing-library/react";
++import { render, screen, within } from "@testing-library/react";
+ import userEvent from "@testing-library/user-event";
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ import { KeyValuePersistenceModeSection } from "@/features/keyvalue/components/key-value-persistence-mode-section";
+@@ -29,7 +29,7 @@ beforeEach(() => {
+ describe("KeyValuePersistenceModeSection", () => {
+   it("is read-only until the pencil, then fires the mutation with the new mode", async () => {
+     const user = userEvent.setup({ pointerEventsCheck: 0 });
+-    render(<KeyValuePersistenceModeSection id="red-abc" />);
++    render(<KeyValuePersistenceModeSection id="red-abc" name="cache" />);
+ 
+     const select = screen.getByRole("combobox", { name: "Persistence mode" });
+     expect(select).toBeDisabled();
+@@ -47,5 +47,56 @@ describe("KeyValuePersistenceModeSection", () => {
+     await user.click(screen.getByRole("button", { name: "Save changes" }));
+ 
+     expect(save).toHaveBeenCalledWith("snapshot");
++    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+   });
++
++  it.each([
++    ["journal-snapshot", "off", "Off"],
++    ["snapshot", "off", "Off"],
++    ["off", "journal-snapshot", "Journal + Snapshot"],
++    ["off", "snapshot", "Snapshot only"],
++  ])(
++    "requires a fresh typed phrase for %s → %s",
++    async (current, next, label) => {
++      hookState.mode = current;
++      const user = userEvent.setup({ pointerEventsCheck: 0 });
++      render(<KeyValuePersistenceModeSection id="red-abc" name="cache" />);
++
++      await user.click(
++        screen.getByRole("button", { name: "Edit persistence mode" }),
++      );
++      await user.click(
++        screen.getByRole("combobox", { name: "Persistence mode" }),
++      );
++      await user.click(screen.getByRole("option", { name: label }));
++      await user.click(screen.getByRole("button", { name: "Save changes" }));
++
++      let dialog = screen.getByRole("alertdialog");
++      expect(
++        within(dialog).getByText(/All current data will be lost/),
++      ).toBeInTheDocument();
++      expect(
++        within(dialog).getByRole("button", { name: "Save changes" }),
++      ).toBeDisabled();
++      expect(save).not.toHaveBeenCalled();
++      await user.type(
++        within(dialog).getByRole("textbox"),
++        "sudo change durability of key value cache",
++      );
++      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
++      expect(save).not.toHaveBeenCalled();
++
++      await user.click(screen.getByRole("button", { name: "Save changes" }));
++      dialog = screen.getByRole("alertdialog");
++      expect(within(dialog).getByRole("textbox")).toHaveValue("");
++      await user.type(
++        within(dialog).getByRole("textbox"),
++        "sudo change durability of key value cache",
++      );
++      await user.click(
++        within(dialog).getByRole("button", { name: "Save changes" }),
++      );
++      expect(save).toHaveBeenCalledExactlyOnceWith(next);
++    },
++  );
+ });
+diff --git a/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.wire.test.tsx b/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.wire.test.tsx
+index 226e0b43a..26f64698e 100644
+--- a/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.wire.test.tsx
++++ b/dashboard/src/features/keyvalue/components/__tests__/key-value-persistence-mode-section.wire.test.tsx
+@@ -24,7 +24,7 @@ beforeEach(() => {
+ 
+ describe("KeyValuePersistenceModeSection (real hook, wire shape)", () => {
+   it("shows the saved mode from the underscored API value, not a blank", () => {
+-    render(<KeyValuePersistenceModeSection id="red-x" />);
++    render(<KeyValuePersistenceModeSection id="red-x" name="cache" />);
+     expect(
+       screen.getByRole("combobox", { name: "Persistence mode" }),
+     ).toHaveTextContent("Journal + Snapshot");
+@@ -32,7 +32,7 @@ describe("KeyValuePersistenceModeSection (real hook, wire shape)", () => {
+ 
+   it("treats the mapped mode as the baseline: Save is disabled until it changes", async () => {
+     const user = userEvent.setup({ pointerEventsCheck: 0 });
+-    render(<KeyValuePersistenceModeSection id="red-x" />);
++    render(<KeyValuePersistenceModeSection id="red-x" name="cache" />);
+ 
+     await user.click(
+       screen.getByRole("button", { name: "Edit persistence mode" }),
+@@ -42,9 +42,12 @@ describe("KeyValuePersistenceModeSection (real hook, wire shape)", () => {
+ 
+   it("keeps the selector blank for an absent read rather than guessing", () => {
+     modeData = { keyValue: null };
+-    render(<KeyValuePersistenceModeSection id="red-x" />);
++    render(<KeyValuePersistenceModeSection id="red-x" name="cache" />);
+     expect(
+       screen.getByRole("combobox", { name: "Persistence mode" }),
+     ).toHaveTextContent("");
++    expect(
++      screen.queryByRole("button", { name: "Edit persistence mode" }),
++    ).not.toBeInTheDocument();
+   });
+ });
+diff --git a/dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx b/dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx
+index b3980fd44..a0b642791 100644
+--- a/dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx
++++ b/dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx
+@@ -28,9 +28,11 @@ const PERSISTENCE_LABEL_KEYS: Record<
+  */
+ export function KeyValuePersistenceModeSection({
+   id,
++  name,
+   onChanged,
+ }: {
+   id: string;
++  name: string;
+   /** Fired after a successful save, which restarts the store (w4/m137). */
+   onChanged?: () => void;
+ }) {
+@@ -66,7 +68,16 @@ export function KeyValuePersistenceModeSection({
+             value={mode}
+             editLabel={t("keyvalue.persistenceEdit")}
+             busy={saving}
++            disabled={!PERSISTENCE_MODES.some((value) => value === mode)}
++            disabledReason={t("keyvalue.persistenceUnavailable")}
+             options={options}
++            confirm={{
++              when: (next) => mode === "off" || next === "off",
++              title: () => t("keyvalue.persistenceOffConfirmTitle"),
++              body: t("keyvalue.persistenceOffConfirmBody"),
++              phrase: `sudo change durability of key value ${name}`,
++              destructive: true,
++            }}
+             onSave={save}
+           />
+         )}
+diff --git a/dashboard/src/features/keyvalue/locales/en.ts b/dashboard/src/features/keyvalue/locales/en.ts
+index e628eb736..f910672b9 100644
+--- a/dashboard/src/features/keyvalue/locales/en.ts
++++ b/dashboard/src/features/keyvalue/locales/en.ts
+@@ -460,9 +460,20 @@ const enKeyValue: Record<string, TranslationEntry> = {
+   },
+   "keyvalue.persistenceDescription": {
+     message:
+-      "Change how data is written to disk so it survives a restart. Saving restarts the store with its data kept, so connections drop for up to a minute.",
++      "Changing modes restarts the store and temporarily interrupts connections. Switching between Journal + Snapshot and Snapshot only preserves the current data. Switching to or from Off deletes all data. The saved mode takes effect when the store returns to Available.",
+     description: "Key Value detail persistence-mode card description",
+   },
++  "keyvalue.persistenceOffConfirmTitle": {
++    message: "Change persistence and delete all data?",
++    description:
++      "Confirmation title for a persistence transition involving Off",
++  },
++  "keyvalue.persistenceOffConfirmBody": {
++    message:
++      "Switching to or from Off restarts this store with an empty dataset. All current data will be lost. The store's name, endpoint and connection credentials stay the same.",
++    description:
++      "Data-loss warning before a persistence transition involving Off",
++  },
+   "keyvalue.persistenceLabel": {
+     message: "Persistence mode",
+     description: "Accessible label for the persistence-mode select",
+@@ -480,6 +491,12 @@ const enKeyValue: Record<string, TranslationEntry> = {
+     message: "Couldn't update the persistence mode. Please try again.",
+     description: "Toast when a persistence-mode update fails",
+   },
++  "keyvalue.persistenceUnavailable": {
++    message:
++      "The current persistence mode is unavailable. Reload this page before changing it.",
++    description:
++      "Why persistence editing is disabled without a known current mode",
++  },
+   // --- Networking (external-endpoint IP allowlist) ---
+   "keyvalue.networkingTitle": {
+     message: "Networking",
+diff --git a/dashboard/src/features/keyvalue/locales/zh.ts b/dashboard/src/features/keyvalue/locales/zh.ts
+index 4c7939d4e..f0822e440 100644
+--- a/dashboard/src/features/keyvalue/locales/zh.ts
++++ b/dashboard/src/features/keyvalue/locales/zh.ts
+@@ -455,9 +455,20 @@ const zhKeyValue: Record<string, TranslationEntry> = {
+   },
+   "keyvalue.persistenceDescription": {
+     message:
+-      "更改数据写入磁盘的方式，以便在重启后保留。保存会重启存储并保留数据，连接会中断最多一分钟。",
++      "更改模式会重启存储并暂时中断连接。在“日志 + 快照”和“仅快照”之间切换会保留当前数据。切换到或退出“关闭”模式会删除全部数据。保存的模式会在存储恢复为“可用”后生效。",
+     description: "Key Value detail persistence-mode card description",
+   },
++  "keyvalue.persistenceOffConfirmTitle": {
++    message: "更改持久化模式并删除全部数据？",
++    description:
++      "Confirmation title for a persistence transition involving Off",
++  },
++  "keyvalue.persistenceOffConfirmBody": {
++    message:
++      "切换到或退出“关闭”模式会以空数据集重启此存储，全部当前数据都将丢失。存储的名称、端点和连接凭据保持不变。",
++    description:
++      "Data-loss warning before a persistence transition involving Off",
++  },
+   "keyvalue.persistenceLabel": {
+     message: "持久化模式",
+     description: "Accessible label for the persistence-mode select",
+@@ -475,6 +486,11 @@ const zhKeyValue: Record<string, TranslationEntry> = {
+     message: "无法更新持久化模式，请重试。",
+     description: "Toast when a persistence-mode update fails",
+   },
++  "keyvalue.persistenceUnavailable": {
++    message: "无法读取当前持久化模式。请重新加载此页面后再进行更改。",
++    description:
++      "Why persistence editing is disabled without a known current mode",
++  },
+   // --- Networking (external-endpoint IP allowlist) ---
+   "keyvalue.networkingTitle": {
+     message: "网络",
+diff --git a/dashboard/src/features/services/components/editable-field-row.tsx b/dashboard/src/features/services/components/editable-field-row.tsx
+index 882c579cf..0b5d9546b 100644
+--- a/dashboard/src/features/services/components/editable-field-row.tsx
++++ b/dashboard/src/features/services/components/editable-field-row.tsx
+@@ -28,6 +28,11 @@ export interface EditableFieldConfirm {
+   body: ReactNode;
+   /** Stand-in used in the title when the draft is empty (e.g. "the repository root"). */
+   emptyValue?: string;
++  /** Only prompt for changes matching this predicate; otherwise save directly. */
++  when?: (value: string) => boolean;
++  /** Destructive edits require the shared typed confirmation phrase. */
++  phrase?: string;
++  destructive?: boolean;
+ }
+ 
+ export interface EditableFieldRowProps {
+@@ -151,7 +156,8 @@ export function EditableFieldRow({
+ 
+   const normalized = trim ? draft.trim() : draft;
+   const validationError = editing ? (validate?.(draft) ?? null) : null;
+-  const description = validationError === null ? (describe?.(shown) ?? null) : null;
++  const description =
++    validationError === null ? (describe?.(shown) ?? null) : null;
+   const isDirty = dirty ? dirty(normalized) : normalized !== value;
+   const canSave = isDirty && validationError === null;
+ 
+@@ -173,7 +179,7 @@ export function EditableFieldRow({
+ 
+   function requestSave() {
+     if (!canSave) return;
+-    if (confirm) setConfirming(true);
++    if (confirm && (confirm.when?.(normalized) ?? true)) setConfirming(true);
+     else void persist();
+   }
+ 
+@@ -247,9 +253,7 @@ export function EditableFieldRow({
+             disabled={disabled || !editing || busy}
+             aria-label={label}
+             aria-invalid={validationError !== null || undefined}
+-            aria-describedby={
+-              validationError !== null ? errorId : undefined
+-            }
++            aria-describedby={validationError !== null ? errorId : undefined}
+             placeholder={placeholder}
+             autoComplete="off"
+             className={cn("flex-1", mono && "font-mono text-sm")}
+@@ -310,8 +314,8 @@ export function EditableFieldRow({
+           description={confirm.body}
+           cancelLabel={t("services.editRowCancel")}
+           confirmLabel={t("services.editRowSave")}
+-          // Saving an edit is the primary action, not a destructive one.
+-          destructive={false}
++          destructive={confirm.destructive ?? false}
++          phrase={confirm.phrase}
+           onConfirm={() => void persist()}
+         />
+       )}
+diff --git a/dashboard/src/routes/keyvalue.$keyValueId.tsx b/dashboard/src/routes/keyvalue.$keyValueId.tsx
+index 20d49a582..ccf0e94d5 100644
+--- a/dashboard/src/routes/keyvalue.$keyValueId.tsx
++++ b/dashboard/src/routes/keyvalue.$keyValueId.tsx
+@@ -250,6 +250,7 @@ export function KeyValueDetailPage() {
+                 <section id="persistence-mode" className="scroll-mt-6">
+                   <KeyValuePersistenceModeSection
+                     id={keyValue.id}
++                    name={keyValue.name}
+                     onChanged={() => void refetch()}
+                   />
+                 </section>
+diff --git a/docs/ADR018-render-parity.md b/docs/ADR018-render-parity.md
+index 874d070b1..d2d4fafd0 100644
+--- a/docs/ADR018-render-parity.md
++++ b/docs/ADR018-render-parity.md
+@@ -169,6 +169,8 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
+ | Key Value (Valkey / Redis) | ✅ | ✅ | ✅ | ✅ | REST `keyvalue/rest.go` `/v1/key-value` (list/get/create/delete/`connection-info` + `suspend`/`resume`); **Delete teardown (w7/m12):** the Valkey StatefulSet carries `PersistentVolumeClaimRetentionPolicy{WhenDeleted: Delete}` (k8s 1.23+ feature, GA in 1.30) so PVCs are automatically garbage-collected when the StatefulSet is deleted, rather than being orphaned as they are by default. The StatefulSet and credentials Secret are cascaded via ownerRefs on the KeyValue CR. GraphQL `keyValue*` (`keyValues`/`keyValue`/`keyValueConnectionInfo`/`keyValueInstanceTypes`, `createKeyValue`/`deleteKeyValue`/`suspendKeyValue`/`resumeKeyValue`); MCP retains Render's `list_key_value`/`get_key_value`/`create_key_value` set and adds `suspend_keyvalue`/`resume_keyvalue` as documented bex lifecycle/safety extensions; no datastore delete tool is added. **`status: suspended` (w5/061):** hibernated stores report `status: "suspended"` (same Render `databaseStatus` vocabulary Key Value reuses) alongside `suspended: "suspended"` so `bex keyvalues get` — whose `KeyValueOut` has no Suspended field — prints `Status: suspended` instead of a false `available`. Mechanism (w1/m14): a `KeyValue` CR → single-instance Valkey + internal Service DNS + credentials Secret, optional public end-to-end TLS through the shared metered Key Value SNI proxy; suspend scales the StatefulSet to zero (PVC/Secret kept, data + password survive). Plans `free`/`starter`/`standard` (the web-service vocabulary, **not** Postgres `basic-*`); connection-info 3 keys — `internalConnectionString` (`redis://`), `externalConnectionString` (`rediss://` TLS, when public), `cliCommand` (private `redis-cli -u …`; public `redis-cli --sni <externalHost> -u …`). **Access control (w7/m5):** `ipAllowList` is enforced with the environment layer by that proxy before backend connection: settable at create on all three adapters (`ipAllowList` on the REST body / `createKeyValue` arg / `create_key_value` arg), read back on every get/list, and editable via REST `GET/PUT /v1/key-value/{id}/ip-allow-list`, the REST `PATCH /v1/key-value/{id}` `ipAllowList` field (**w7/m45** — the official CLI's `keyvalues update --ip-allow-list`/`--clear-ip-allow-list` path; a non-nil empty list clears it), GraphQL `keyValueIpAllowList`/`setKeyValueIpAllowList`, and MCP `update_key_value(ipAllowList:)` (**w7/m45**, closing the earlier MCP allowlist-tool gap; folded from `set_key_value_ip_allow_list` in w1/m71). REST uses Render's structured `[{cidrBlock, description}]` entries; the separately named GraphQL/MCP string-list arguments remain supported and are lifted explicitly. **Stable `red-` id + rename (w9/m6):** a store now carries an immutable minted `red-<xid>` id (`metadata.name`) and a separate mutable display name (`spec.name`), the same split Postgres shipped in w9/m3 — so `keyvalues update <name> --name <new>` routes by the opaque id and survives rename. `PATCH /v1/key-value/{id}` accepts a `name` field (Render's all-pointer partial-update semantics; `dryRun` supported); GraphQL adds `renameKeyValue`, MCP adds `update_key_value(name:)` (a bex extension — Render's MCP server has no KV rename tool, same as the Postgres rename; both folded into their patch tools at w1/m74). The w1/m56 fleet gate verified zero missing names/non-typed ids before making `spec.name` required and retiring the fallback plus one-time script. This closes the last name-as-id datastore deviation ([ADR020-identifiers.md](ADR020-identifiers.md) § Known deviations, [ADR021-keyvalue-management.md](ADR021-keyvalue-management.md) §6). **Divergences (conscious):** the internal URL always mints a password (Render leaves it unauthenticated by default — bex is stricter, a safe superset). **Maxmemory Policy / Persistence Mode (w5/011):** now backed by the `KeyValue` CR (`spec.maxmemoryPolicy`/`spec.persistenceMode`) — the operator maps them onto Valkey's `--maxmemory-policy` (plus an `--maxmemory` budget at 80% of the plan RAM) and its AOF/RDB persistence args; settable at create on all three adapters (REST body / `createKeyValue` arg / `create_key_value` arg) and read back on get/list, no longer omitted. **Updatable post-create (w7/m45):** `maxmemoryPolicy` now mutates after create via REST `PATCH /v1/key-value/{id}` (the official CLI's `keyvalues update --memory-policy`), GraphQL `setKeyValueMaxmemoryPolicy`, and MCP `update_key_value(maxmemoryPolicy:)` — all routing through the shared `UpdateKeyValue`, which normalizes the underscore/hyphen forms identically to create; dashboard eviction-policy editing after create is a tracked follow-up. **`persistenceMode` too (w6/m127):** it joins the same PATCH set — REST `PATCH /v1/key-value/{id}` `persistenceMode` (Render's fifth `keyValuePATCHInput` property, closing a create-only divergence), GraphQL `setKeyValuePersistenceMode`, MCP `update_key_value(persistenceMode:)` — through the same `UpdateKeyValue`/`validate`, so a store created on `off` can reach durable `journal_snapshot` without being recreated (the operator's `valkeyArgs` re-derives the AOF/RDB flags and rolls the pod, exactly as a `maxmemoryPolicy` change does). Dashboard persistence editing after create is the same tracked follow-up as eviction policy. **Dashboard (UI ✅, w5/m12):** `/keyvalue` sidebar entry + list (stat cards, status chips, empty state), `/keyvalue/new` full-page create form (name, tier cards from `keyValueInstanceTypes`, Valkey version, public toggle — a single page, matching Render's own `/new/redis` layout captured live rather than m8's dialog pattern, [docs/render-artifacts/key-value.md](render-artifacts/key-value.md)), `/keyvalue/$id` detail (status/plan metadata, on-demand connection-info reveal with internal/external/CLI fields + copy, suspend-with-confirm/resume, typed-name delete confirm). A Networking section on the detail page (w7/m5) reads/edits the IP allowlist (Render's "Networking" section), with the internal-only state called out. **Plan update (m16):** `PATCH /v1/key-value/{id}` (`plan` field) / GraphQL `updateKeyValuePlan` / MCP `update_key_value(plan:)` / dashboard detail-page plan-picker card — patches `KeyValue.spec.plan`; the operator re-reconciles the Valkey StatefulSet resources on the next sync (rolling update, data preserved). Valid plans: `free`/`starter`/`standard` (validated against `tiers.Valkey`; unknown plan returns 400). **w5/011 + w6/m127:** the create form carries the Maxmemory Policy / Persistence Mode dropdowns; **both are selectable on every plan, the Free tier included.** The form once copied Render's "Free plan has no persistent disk, so persistence is forced Off" lock, but that premise is false for bex — `tiers.yaml` gives the free Valkey tier a 1 GB disk (a **conscious divergence**, more generous than Render's 25 MB / no-persistence free tier), so a form-created free store now defaults to durable `journal_snapshot` and matches the API create path instead of being a silent in-memory cache. The detail page's `DatastoreMetricsPanel` (w3/m10) now shows Memory + Connections charts for a Key Value (redis_exporter sidecar → Prometheus `valkey-instances` scrape → the shared `datastoreMetrics` verb's `kv_memory`/`kv_connections`), alongside its disk-usage chart. **REST list filter parity (w2/m53):** `GET /v1/key-value` now supports `?environmentId=` (OR'd) and the four RFC3339 time-window params; `?suspended=suspended`\|`not_suspended` is a **bex extension** (Render's OpenAPI lists it only on `/postgres` — admitted via `renderQueryExtensions`, named 400 on unknown value; w5/060); `?name=` now also matches by the opaque `red-` id (not only by display name). **Readiness truth (w1/m166, 2026-10-02):** `available` is published from an authenticated-PING readiness probe (a `-LOADING`/`NOAUTH` reply fails it), and the internal `<id>` Service is ClusterIP rather than headless, so neither in-cluster clients nor the public `kv-sni-proxy` resolve a CoreDNS-cached stale pod IP or NXDOMAIN after a restart (production measured a ~28s post-`available` flap from exactly that). Status vocabulary is unchanged (`creating` / `config_restart` / `available` / `suspended`); REST, GraphQL, MCP and dashboard all read the one `kvStatus` mapping. |
+ | Persistent disks | ✅ | ✅ | ✅ | ✅ | Render `/disks` + Disks tab. Was a deliberate non-goal (stateless-first); **reversed 2026-08-22 by [ADR082](ADR082-persistent-disks.md)** and shipped in w1/m83–m86. `spec.disk {name,mountPath,sizeGB}` on the App CRD with the trade-offs enforced in CEL rather than documented — an eligible type, a paid tier, ≤1 instance, no autoscaling, grow-only sizing, and Render's mount-path denylist — projected by the operator to a per-App RWO PVC, a `Recreate` Deployment, and an autoscaler eviction guard. REST `GET/POST /v1/disks` + `GET/PATCH/DELETE /v1/disks/{diskId}` + `GET …/snapshots` + `POST …/snapshots/restore` in Render's shapes with `dsk-` ids, mirrored on GraphQL (`disks`/`disk`/`diskSnapshots`, `addDisk`/`updateDisk`/`deleteDisk`/`restoreDiskSnapshot`) and MCP (7 tools, all bex extensions — Render's MCP has none). Dashboard ships Render's **Disk** tab from a live capture of its page ([render-artifacts/disks.md](render-artifacts/disks.md)): empty-state card, five-bullet warning list, mount-path + 1/5/10/50/100 GB chips defaulting to 10, grow control that cannot express a shrink, snapshot list with restore, and Render's database-recovery warning. Blueprint `disk` is a translated handler (create default 10 GB, omission preserves, shrink fails pre-write). **Deliberate divergences:** the size form offers 10/50/100 GB where Render offers 1/5/10/50/100 — Hetzner's minimum Cloud Volume is 10 GB, so the two smaller options provisioned a 10 GB disk while billing for less, costing bex more than it charged (corrected 2026-08-24, `.pm/w1/078.md`); billed at **$0.175/GB-month** (30% off Render's $0.25, same provisioned basis — the one SKU whose estimate equals its invoice); snapshots are **file-level** (`tar`→`gzip`→`age` to object storage, 7-day retention) because Hetzner has no volume snapshots at any level, so a restore is not crash-consistent for a live database — Render's own warning applies to both; a grow may finish on the next restart (the hcloud CSI driver does not claim online expansion); and there is no SCP/SFTP transfer path (ADR035's ban stands). Encryption at rest is **on in production** (w2/m86, 2026-09-02): the prod operator overlay names the `hcloud-volumes-luks` class, so every disk created after the flip is LUKS1/aes-xts-encrypted under a per-disk passphrase Secret — verified live on production (mount, `cryptsetup status`, online 10→11Gi growth through the encrypted mapping, data intact). Both former gating claims resolved favorably: `cryptsetup` ships inside the hcloud-csi-driver image (no node-image change), and the kubelet — not the CSI ServiceAccount — fetches the passphrase Secret under the node authorizer (no RBAC grant). Disks created before the flip stay on the unencrypted default class (a claim's class is immutable; zero existed at flip time, so the plaintext estate is empty). Verified end to end on the mock cluster: write → snapshot → mutate → restore → the pre-snapshot file back, the post-snapshot file gone, service running. |
+ 
++**Key Value persistence qualification (w4/m153, 2026-10-02).** The shared operator projects a private startup handoff for persistence-mode changes, including Snapshot only → Journal + Snapshot with older AOF files present. The replacement exposes no client listener until the conversion succeeds; failure keeps the authoritative stored source and the store remains pending or unavailable. REST/GraphQL/MCP continue to return the saved desired mode; `config_restart`/`unavailable`/`available` describe whether that intent is pending, failed or current-generation Ready. A 200 mode write or successful PING alone is not data-survival evidence. The dashboard's English/Chinese copy separates durable-mode preservation from data loss when entering or leaving Off, and those destructive edits require a displayed typed phrase. Render's [official persistence contract](https://render.com/docs/key-value#data-persistence) likewise documents data loss for Off transitions; bex's durable Free tier remains an intentional divergence. Render's authenticated settings dialog was not replayed. Production acceptance of the repaired keyspace, TTL/counter controls and cleanup remains open after release. [ADR021](ADR021-keyvalue-management.md#safe-persistence-transitions-w4m153) records the source and surface boundaries.
++
+ ## Deployment sources & IaC
+ 
+ **Blueprint wire-shape divergences (2026-08-16).** Bex creates and immediately syncs a Git-connected Blueprint, so the stored Blueprint never rests in Render's `created` status; it transitions through `syncing` to `in_sync` or `error`. This is deliberate immediate feedback, not an unreachable state to emulate. Blueprint `resources[]` emits the canonical current `key_value` type only, never Render's deprecated `redis` alias; the deprecated spelling is intentionally read-compatible but not emitted. Environment groups are included as `environment_group` resources, and current-state plans represent an absent group as `create` and an existing write-only group conservatively as `update` without exposing values.
+diff --git a/docs/ADR021-keyvalue-management.md b/docs/ADR021-keyvalue-management.md
+index 4020433ea..b3d5c5186 100644
+--- a/docs/ADR021-keyvalue-management.md
++++ b/docs/ADR021-keyvalue-management.md
+@@ -34,11 +34,11 @@ flowchart LR
+ 
+ The external hostname becomes routable only when `spec.public: true`, `BEX_KV_DOMAIN` is set, and a `BEX_CLUSTER_ISSUER` can provide its certificate (private by default) — exactly the Postgres pattern with a Valkey-owned TLS endpoint. The controller-owned immutable `<id>-auth` Secret is the only password authority. The immutable `<id>` compatibility Secret projects both URL forms (`uri` internal, `externalUri` external) plus `host`/`port`/`password`; when endpoint metadata changes, the controller replaces that projection rather than mutating it in place.
+ 
+-**IP allowlist** (`spec.ipAllowList`, w7/m5) gates the **external** SNI endpoint only: every metered proxy replica watches the KeyValue CR and checks the original source address from the trusted edge PROXY header (or the socket source on a direct connection) before dialing the store — the same mechanism as Database (ADR009 §IP allowlist). The environment-projected allowlist is an additional AND layer. Empty layers ⇒ open to all source IPs; the internal path is never gated. Entries are `{cidr, description}` pairs (w4/m24): the description is operator-facing metadata that persists on the CR and never affects enforcement. Pre-m24 bare-string CR/store entries were normalized fleet-wide and are rejected by both admission and structured REST decoding; separately named GraphQL/MCP string-list arguments remain supported and are explicitly lifted into entries. Surfaced as Render's `ipAllowList` on the key-value REST/GraphQL/MCP create + REST `GET/PUT /v1/key-value/{id}/ip-allow-list`, the REST `PATCH /v1/key-value/{id}` `ipAllowList` field (w7/m45 — the path the official CLI's `keyvalues update --ip-allow-list`/`--clear-ip-allow-list` uses; a non-nil empty list clears it), GraphQL `keyValueIpAllowList`/`setKeyValueIpAllowList`, MCP `update_key_value(ipAllowList:)` (w7/m45; w1/m71 folded `set_key_value_ip_allow_list` into it), and the dashboard's Networking section. **`maxmemoryPolicy`** is likewise updatable after create (w7/m45): REST `PATCH` (`maxmemoryPolicy` field, the CLI's `update --memory-policy`), GraphQL `setKeyValueMaxmemoryPolicy`, and MCP `update_key_value(maxmemoryPolicy:)` all route through the shared `UpdateKeyValue`, normalizing the underscore/hyphen forms identically to create. The dashboard's detail page carries a Maxmemory Policy section (w7/007) over `setKeyValueMaxmemoryPolicy`, so post-create editing is no longer create-only. **`persistenceMode` is updatable post-create the same way (w6/m127):** REST `PATCH` (`persistenceMode` — Render's fifth `keyValuePATCHInput` property), GraphQL `setKeyValuePersistenceMode`, and MCP `update_key_value(persistenceMode:)`, all through the shared `UpdateKeyValue`/`validate`. The operator's `valkeyArgs` re-derives the AOF/RDB flags from the changed `spec.persistenceMode` and rolls the pod on the next sync — the same convergence a plan or `maxmemoryPolicy` change already triggers.
++**IP allowlist** (`spec.ipAllowList`, w7/m5) gates the **external** SNI endpoint only: every metered proxy replica watches the KeyValue CR and checks the original source address from the trusted edge PROXY header (or the socket source on a direct connection) before dialing the store — the same mechanism as Database (ADR009 §IP allowlist). The environment-projected allowlist is an additional AND layer. Empty layers ⇒ open to all source IPs; the internal path is never gated. Entries are `{cidr, description}` pairs (w4/m24): the description is operator-facing metadata that persists on the CR and never affects enforcement. Pre-m24 bare-string CR/store entries were normalized fleet-wide and are rejected by both admission and structured REST decoding; separately named GraphQL/MCP string-list arguments remain supported and are explicitly lifted into entries. Surfaced as Render's `ipAllowList` on the key-value REST/GraphQL/MCP create + REST `GET/PUT /v1/key-value/{id}/ip-allow-list`, the REST `PATCH /v1/key-value/{id}` `ipAllowList` field (w7/m45 — the path the official CLI's `keyvalues update --ip-allow-list`/`--clear-ip-allow-list` uses; a non-nil empty list clears it), GraphQL `keyValueIpAllowList`/`setKeyValueIpAllowList`, MCP `update_key_value(ipAllowList:)` (w7/m45; w1/m71 folded `set_key_value_ip_allow_list` into it), and the dashboard's Networking section. **`maxmemoryPolicy`** is likewise updatable after create (w7/m45): REST `PATCH` (`maxmemoryPolicy` field, the CLI's `update --memory-policy`), GraphQL `setKeyValueMaxmemoryPolicy`, and MCP `update_key_value(maxmemoryPolicy:)` all route through the shared `UpdateKeyValue`, normalizing the underscore/hyphen forms identically to create. The dashboard's detail page carries a Maxmemory Policy section (w7/007) over `setKeyValueMaxmemoryPolicy`, so post-create editing is no longer create-only. **`persistenceMode` is updatable post-create the same way (w6/m127):** REST `PATCH` (`persistenceMode` — Render's fifth `keyValuePATCHInput` property), GraphQL `setKeyValuePersistenceMode`, and MCP `update_key_value(persistenceMode:)`, all through the shared `UpdateKeyValue`/`validate`. The shared operator projects the required dataset handoff into replacement startup before the desired Valkey server can accept clients; accepting a spec change alone does not prove the new persistence mode is safely active. See the transition contract below.
+ 
+ **Free-tier persistence is available, and the default is durable (w6/m127).** bex's free Valkey tier carries a 1 GB disk (`tiers.yaml storageGB: 1`) — a conscious divergence from Render's non-persistent 25 MB free tier — so persistence is offered on every plan. A regression in the create form had copied Render's "free plan → persistence forced Off, both controls locked" behavior from a premise (no persistent disk) that does not hold for bex, silently making dashboard-created free stores pure in-memory caches while the API path defaulted to `journal_snapshot`. The form no longer special-cases the free plan; both creation paths now default to `journal_snapshot`.
+ 
+-**Stores already created on `off` are not force-migrated.** Making `persistenceMode` updatable is the deliberate remedy: an affected owner (or the operator on their behalf) moves the store to `journal_snapshot` with a single PATCH — no recreation, no lost id/connection details. The platform does **not** silently flip existing stores, because a persistence change rolls the pod and a store's owner may deliberately want an ephemeral cache (`off` is a legitimate paid-plan choice); a forced fleet-wide durability change without consent is the opposite failure mode. New free stores default durable; existing ones self-serve.
++**Stores already created on `off` are not force-migrated.** Making `persistenceMode` updatable is the deliberate remedy: an affected owner (or the operator on their behalf) moves the store to `journal_snapshot` with a single PATCH — no recreation or lost id/connection details, but changing to or from `off` deliberately discards the current dataset. The platform does **not** silently flip existing stores, because a persistence change rolls the pod and a store's owner may deliberately want an ephemeral cache (`off` is a legitimate paid-plan choice); a forced fleet-wide durability change without consent is the opposite failure mode. New free stores default durable; existing ones self-serve.
+ 
+ **Render REST create default.** Render documents new Key Value instances as externally disabled until an inbound IP rule is added, and the official CLI has no bex-only `public` field. On `POST /v1/key-value`, omission therefore stays private unless the request carries a nonempty `ipAllowList` (the exact body produced by the CLI's documented `--ip-allow-list` flag), in which case `spec.public=true`. An omitted or explicit empty list never combines with bex's empty-layer-is-open rule to create accidental world access; explicit `public:false` wins, and explicit `public:true` remains available to bex callers. GraphQL, MCP, Blueprints, dashboard/shared-service calls, direct CR/YAML flows, and existing resources remain private by omission. Public intent without a reconciled `status.externalHost` returns a named 503 from connection-info before exposing a URI, with `BEX_KV_DOMAIN` guidance.
+ 
+@@ -48,6 +48,18 @@ The implicit rule is deliberately **one-way**. Clearing the allowlist does not u
+ 
+ Managed Postgres gained the same explicit `public` control in the same change (`PostgresPatch.Public`, `setDatabasePublic`, `update_postgres(public:)`) — without it a deliberately private database was equally unpublishable. It deliberately does **not** inherit the implicit allowlist rule: Postgres defaults to public at create ([ADR009](ADR009-postgresql-management.md)), so `public:false` there is an explicit choice a firewall edit must not silently reverse.
+ 
++#### Safe persistence transitions (w4/m153)
++
++**Runtime contract.** A mode update is accepted desired configuration, not proof that a new journal contains the current keyspace. Previously, Snapshot only → Journal + Snapshot simply restarted with AOF enabled. Valkey preferred an older journal over the newer RDB, rolling back even a dataset preserved by an explicit `SAVE` and a successful ordinary restart. The operator owns conversion for both application writers (`KeyValuePatch.apply` and `ApplyBlueprintKeyValueSpec`) and direct CR changes; REST, GraphQL, MCP, CLI, dashboard and Blueprints do not each perform their own migration.
++
++The operator projects a private startup conversion wrapper: new stores start with it; an existing store adopts it on its first actual mode change. After the old pod shuts down, the replacement privately loads the authoritative stored dataset without exposing a client listener. Journal enablement completes a successful AOF rewrite, including checks for scheduled/in-progress work, then shuts the private engine down with a saved dataset before atomically recording the applied mode. Only the completed handoff may start the desired client-facing server. Failure preserves the authoritative stored source but leaves the store pending or unavailable; it does not promise continued service from the old process. Suspended changes remain desired intent until resume and do not prematurely stamp an applied mode. Off transitions discard known historical persistence files so a later start cannot resurrect a prior dataset.
++
++The engine-level sequence follows [Valkey's AOF conversion procedure](https://valkey.io/docs/topics/persistence/#how-i-can-switch-to-aof-if-im-currently-using-dumprdb-snapshots), executed privately during startup rather than against a public running workload. The [throwaway restore runbook](../scripts/restore-keyvalue.sh) already uses RDB-first loading, AOF conversion and a verified restart. It is a sequence precedent, not the implementation used by ordinary managed-store updates.
++
++**Read and copy contract.** `persistenceMode` keeps its Render-compatible meaning as the saved desired setting (underscore wire output, underscore or hyphen input). `status` distinguishes pending application (`config_restart` for a store that has served), failure (`unavailable`) and completed current-generation readiness (`available`). Preview/dry-run requests validate without modifying the resource or starting a handoff. Existing tenant checks and protected-environment confirmation still apply. The persistence editor currently shows a protected-environment refusal without offering the server-issued retry dialog; that pre-existing UI limitation remains, while confirmed writes are supported through the API. The dashboard and MCP copy distinguish safe durable-to-durable conversion from a destructive transition involving Off. The dashboard requires its displayed `sudo change durability of key value <name>` phrase before an Off transition; repeated same-mode saves do not introduce a destructive operation. Resource identity, credentials and endpoints do not change with the mode.
++
++**Render comparison, rechecked 2026-10-02.** Render's [persistence documentation](https://render.com/docs/key-value#data-persistence) and [June 11 changelog](https://render.com/changelog/specify-disk-persistence-behavior-for-paid-key-value-instances) describe three modes, a restart on mode changes, and complete data loss when moving to or from Off. Its [update API](https://api-docs.render.com/reference/update-key-value) uses `journal_snapshot`, while [Blueprints](https://render.com/docs/blueprint-spec#key-value-specific-fields) use `journal-snapshot` and preserve omitted settings on existing paid instances. bex retains its intentional durable Free default; Render offers persistence only on paid instances. Render's authenticated edit/confirmation UI was not exercised for this correction, so the bex phrase gate is an explicit local safeguard, not a claim about Render's dialog. Post-release production keyspace survival, exact expiration deadlines, three-surface state and fixture cleanup remain separate acceptance gates; source and local tests do not satisfy them.
++
+ ### 3. End-to-end public TLS
+ 
+ The public wildcard must be **DNS-only (gray-cloud)** — Cloudflare's proxy is HTTP(S) only and cannot carry raw TCP `:6379`. Public Valkey clients use direct TLS (`rediss://`) end to end: cert-manager issues `<name>.<BEX_KV_DOMAIN>`, Valkey listens with that certificate on private port `6380`, and the shared proxy forwards the bounded ClientHello plus the remaining encrypted stream without terminating TLS. The existing internal URL remains plaintext, password-authenticated `redis://` on port `6379`; public TLS does not force in-cluster Apps through encryption or the meter.
+diff --git a/lego/backend/internal/keyvalue/mcp.go b/lego/backend/internal/keyvalue/mcp.go
+index dcf0a1f40..aa94a7cdc 100644
+--- a/lego/backend/internal/keyvalue/mcp.go
++++ b/lego/backend/internal/keyvalue/mcp.go
+@@ -83,7 +83,7 @@ type updateKeyValueArgs struct {
+ 	Name             *string                  `json:"name,omitempty" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters). A rename changes only the label — the id, connection details, and data plane stay put"`
+ 	Plan             *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, starter, standard). The operator reconciles the new resource requests on the next sync, and it CHANGES WHAT THE WORKSPACE IS BILLED"`
+ 	MaxmemoryPolicy  *string                  `json:"maxmemoryPolicy,omitempty" jsonschema:"the eviction policy at the memory budget, e.g. noeviction (job queue) or allkeys-lru (cache); underscore or hyphen forms both accepted"`
+-	PersistenceMode  *string                  `json:"persistenceMode,omitempty" jsonschema:"the durability setting: journal-snapshot (AOF + RDB, durable), snapshot (RDB only), or off (in-memory cache, lost on restart); underscore or hyphen forms both accepted"`
++	PersistenceMode  *string                  `json:"persistenceMode,omitempty" jsonschema:"the desired durability setting: journal-snapshot (AOF + RDB), snapshot (RDB only), or off; changing to or from off discards all data; underscore or hyphen forms both accepted"`
+ 	IPAllowList      *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to clear it (open to all source IPs)"`
+ 	IPAllowListCidrs *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
+ 	// Confirm is the protected-environment phrase a durability, eviction or
+@@ -168,7 +168,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
+ 
+ 	mcputil.AddTool(srv, &mcp.Tool{
+ 		Name:        "update_key_value",
+-		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy), the durability setting (persistenceMode: journal-snapshot | snapshot | off), and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list (pass [] to clear it, opening the endpoint to all source IPs). A nonempty ipAllowList also PUBLISHES a private store — that is Render's enabling event — while clearing the list deliberately leaves it published; pass public:false to withdraw the external endpoint. A persistenceMode change re-derives the AOF/RDB flags and rolls the pod on the next sync. Pass dryRun:true to validate and preview without writes. Also carries the name and the plan — a plan change is billable. This tool replaces the retired set_key_value_maxmemory_policy / set_key_value_ip_allow_list (w1/m71) and rename_key_value / update_key_value_plan (w1/m74); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
++		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy), the durability setting (persistenceMode: journal-snapshot | snapshot | off), and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list (pass [] to clear it, opening the endpoint to all source IPs). A nonempty ipAllowList also PUBLISHES a private store — that is Render's enabling event — while clearing the list deliberately leaves it published; pass public:false to withdraw the external endpoint. A persistenceMode change is accepted desired configuration: the operator completes the handoff and restart before status returns to available. Switching between durable modes preserves current data; changing to or from off discards all data. Pass dryRun:true to validate and preview without writes. Also carries the name and the plan — a plan change is billable. This tool replaces the retired set_key_value_maxmemory_policy / set_key_value_ip_allow_list (w1/m71) and rename_key_value / update_key_value_plan (w1/m74); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
+ 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+ 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
+ 		if err != nil {
+diff --git a/lego/backend/internal/keyvalue/service.go b/lego/backend/internal/keyvalue/service.go
+index d11fa2d4f..aca6d1c7d 100644
+--- a/lego/backend/internal/keyvalue/service.go
++++ b/lego/backend/internal/keyvalue/service.go
+@@ -770,8 +770,8 @@ type KeyValuePatch struct {
+ 	// this closes the create-only gap rather than opening a divergence, and it is
+ 	// what lets a store the dashboard once forced onto `off` reach durable
+ 	// persistence without being recreated. Underscore/hyphen forms both accepted,
+-	// like create; the operator's valkeyArgs re-derives the AOF/RDB flags and rolls
+-	// the pod on the next sync, exactly as a maxmemoryPolicy change already does.
++	// like create. This is accepted intent: the operator's replacement startup
++	// completes the persistence handoff before serving, and status tracks readiness.
+ 	PersistenceMode *string
+ 	// IPAllowList is the external-endpoint allowlist (w7/m45): nil = unchanged;
+ 	// a non-nil empty slice CLEARS it (what `keyvalues update --clear-ip-allow-list`
+@@ -892,8 +892,9 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
+ // recordUpdateEffects records what a successful PATCH actually changed — the
+ // postgres.recordUpdateEffects mirror. A plan change is Render's plan_changed;
+ // an eviction- or persistence-setting change is key_value_config_restart,
+-// because the operator rebuilds the Valkey server args from those two fields
+-// and the StatefulSet rolls its single pod to pick them up. A rename or
++// because the operator safely converts persistence when needed during the
++// replacement pod's startup. The event records accepted intent,
++// not a completed handoff. A rename or
+ // ip-allow-list write keeps the generic KeyValueUpdated row, which is also
+ // what an idempotent PATCH records.
+ func (s *Service) recordUpdateEffects(ctx context.Context, kv *appv1alpha1.KeyValue, before appv1alpha1.KeyValueSpec) {
+diff --git a/lego/operator/config/crd/bases/app.bex.co_keyvalues.yaml b/lego/operator/config/crd/bases/app.bex.co_keyvalues.yaml
+index adfe718db..f0c2165f0 100644
+--- a/lego/operator/config/crd/bases/app.bex.co_keyvalues.yaml
++++ b/lego/operator/config/crd/bases/app.bex.co_keyvalues.yaml
+@@ -186,6 +186,16 @@ spec:
+                   It remains status-only and is not a separate public API surface.
+                 format: int32
+                 type: integer
++              appliedPersistenceMode:
++                description: |-
++                  AppliedPersistenceMode is the mode last observed in a Ready serving
++                  revision. A suspended resource does not complete a pending conversion.
++                  This is status-only; the PVC marker owns crash recovery during conversion.
++                enum:
++                - journal-snapshot
++                - snapshot
++                - "off"
++                type: string
+               conditions:
+                 description: Conditions represent the current state (Ready).
+                 items:
+diff --git a/lego/operator/internal/controller/keyvalue_controller.go b/lego/operator/internal/controller/keyvalue_controller.go
+index 78a032a9a..37c98658e 100644
+--- a/lego/operator/internal/controller/keyvalue_controller.go
++++ b/lego/operator/internal/controller/keyvalue_controller.go
+@@ -180,7 +180,7 @@ func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
+ 	case "off":
+ 		// No AOF and no RDB save points — a pure in-memory cache.
+ 		args = append(args, "--appendonly", "no", "--save", "")
+-	case "snapshot":
++	case keyValuePersistenceSnapshot:
+ 		// RDB snapshots only (the image's default save points); no AOF journal.
+ 		args = append(args, "--appendonly", "no")
+ 	default: // journal-snapshot and "" (the prior default): AOF + RDB.
+@@ -512,8 +512,9 @@ type keyValueIntent struct {
+ 	podLabels map[string]string
+ 	// authSecretName and credentialRevision are filled in after the credential
+ 	// Secrets reconcile, which is the only step that must precede the workload.
+-	authSecretName     string
+-	credentialRevision string
++	authSecretName           string
++	credentialRevision       string
++	persistenceBootstrapMode string
+ }
+ 
+ func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string) keyValueIntent {
+@@ -655,6 +656,9 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
+ 		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+ 		"app.bex.co/credential-revision":                 intent.credentialRevision,
+ 	}
++	if intent.persistenceBootstrapMode != "" {
++		sts.Spec.Template.Annotations[keyValuePersistenceBootstrapAnnotation] = intent.persistenceBootstrapMode
++	}
+ 	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
+ }
+ 
+@@ -728,6 +732,10 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
+ 		Resources:       kvExporterResources(),
+ 		SecurityContext: tenantSecCtx(),
+ 	}}
++	if intent.persistenceBootstrapMode != "" {
++		spec.Containers[0].Command = []string{shellBinary, "-c", valkeyPersistenceStartup, "--"}
++		spec.Containers[0].Args = append([]string{intent.persistenceBootstrapMode, effectiveKeyValuePersistence(kv.Spec.PersistenceMode)}, serverArgs...)
++	}
+ 	// Last, always — both containers are rebuilt whole above. Fill-if-empty, so
+ 	// the pod-level fields this function leaves to the fetched object stay put.
+ 	// See server_defaults.go.
+@@ -782,6 +790,10 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
+ 		return result, err
+ 	}
+ 	intent := keyValueIntentFor(&kv, plan, storageGB, r.KvDomain)
++	intent.persistenceBootstrapMode, err = r.keyValuePersistenceBootstrap(ctx, &kv, sts)
++	if err != nil {
++		return r.kvFail(ctx, &kv, "PersistenceSourceUnavailable", err)
++	}
+ 	// Validate public TLS before updating the workload. A missing issuer must
+ 	// fail closed without publishing a public host.
+ 	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, intent.public, intent.tlsSecretName); err != nil {
+@@ -886,11 +898,35 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
+ 	replicas int32,
+ 	credentialRevision string,
+ ) (ctrl.Result, error) {
+-	_ = r.Get(ctx, client.ObjectKeyFromObject(sts), sts)
+-	rolloutReady := statefulSetRolloutReady(sts, replicas)
+-	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
+-	if kv.Spec.Suspended || (rolloutReady && podsReady) {
++	// A cached read can still contain the previous, fully Ready revision just
++	// after the desired template was written. It cannot certify this handoff.
++	observed := &appsv1.StatefulSet{}
++	readErr := r.Get(ctx, client.ObjectKeyFromObject(sts), observed)
++	rolloutReady := readErr == nil && observed.Generation == sts.Generation && statefulSetRolloutReady(observed, replicas)
++	podsReady := rolloutReady && r.keyValuePodsReady(ctx, kv, observed, replicas)
++	desiredPersistence := effectiveKeyValuePersistence(kv.Spec.PersistenceMode)
++	bootstrapPersistence := sts.Spec.Template.Annotations[keyValuePersistenceBootstrapAnnotation]
++	previousPersistence := kv.Status.AppliedPersistenceMode
++	if previousPersistence == "" {
++		previousPersistence = strings.TrimPrefix(bootstrapPersistence, keyValuePersistenceNewPrefix)
++	}
++	if kv.Spec.Suspended && bootstrapPersistence != "" && previousPersistence != desiredPersistence {
++		kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
++		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
++			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
++			Reason: "PersistenceAwaitingResume", Message: "persistence conversion will complete after resume",
++			ObservedGeneration: kv.Generation,
++		})
++		if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
++			return ctrl.Result{}, err
++		}
++		return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
++	}
++	if kv.Spec.Suspended || podsReady {
+ 		kv.Status.CredentialRevision = credentialRevision
++		if !kv.Spec.Suspended {
++			kv.Status.AppliedPersistenceMode = desiredPersistence
++		}
+ 		reason, message := "Provisioned", "valkey ready"
+ 		if kv.Spec.Suspended {
+ 			reason, message = reasonSuspended, "valkey suspended (scaled to zero)"
+@@ -909,6 +945,9 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
+ 
+ 	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
+ 	reason, message := "Provisioning", "waiting for the current Valkey StatefulSet revision"
++	if bootstrapPersistence != "" && kv.Status.AppliedPersistenceMode != desiredPersistence {
++		reason, message = "PersistenceConverting", "waiting for a safe persistence handoff and the current Valkey StatefulSet revision"
++	}
+ 	if rolloutReady && !podsReady {
+ 		reason, message = "PodUnready", "a current Valkey pod is not Ready"
+ 	}
+diff --git a/lego/types/v1alpha1/keyvalue_types.go b/lego/types/v1alpha1/keyvalue_types.go
+index fe65eb628..fc4086b19 100644
+--- a/lego/types/v1alpha1/keyvalue_types.go
++++ b/lego/types/v1alpha1/keyvalue_types.go
+@@ -157,6 +157,13 @@ type KeyValueStatus struct {
+ 	// +optional
+ 	Phase KeyValuePhase `json:"phase,omitempty"`
+ 
++	// AppliedPersistenceMode is the mode last observed in a Ready serving
++	// revision. A suspended resource does not complete a pending conversion.
++	// This is status-only; the PVC marker owns crash recovery during conversion.
++	// +optional
++	// +kubebuilder:validation:Enum=journal-snapshot;snapshot;off
++	AppliedPersistenceMode string `json:"appliedPersistenceMode,omitempty"`
++
+ 	// AllocatedStorageGB is the grow-only PVC request accepted by the operator.
+ 	// It remains status-only and is not a separate public API surface.
+ 	// +optional
+diff --git a/lego/backend/internal/keyvalue/persistence_status_test.go b/lego/backend/internal/keyvalue/persistence_status_test.go
+new file mode 100644
+index 000000000..db9ffe798
+--- /dev/null
++++ b/lego/backend/internal/keyvalue/persistence_status_test.go
+@@ -0,0 +1,153 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package keyvalue
++
++import (
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"testing"
++
++	"github.com/graphql-go/graphql"
++	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
++
++	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
++)
++
++// Accepted configuration is visible immediately, but only the operator can
++// declare the handoff and replacement workload ready. All adapters preserve
++// that distinction; a successful mode write is not data-survival evidence.
++func TestPersistenceModeReadinessAcrossSurfaces(t *testing.T) {
++	for _, tc := range []struct {
++		name      string
++		phase     appv1alpha1.KeyValuePhase
++		observed  int64
++		ready     metav1.ConditionStatus
++		reason    string
++		want      string
++		applied   string
++		suspended bool
++	}{
++		{"accepted before reconcile", appv1alpha1.KVPhaseReady, 1, metav1.ConditionTrue, "Provisioned", "config_restart", "snapshot", false},
++		{"handoff pending", appv1alpha1.KVPhaseProvisioning, 2, metav1.ConditionFalse, "PersistenceConverting", "config_restart", "snapshot", false},
++		{"handoff failed", appv1alpha1.KVPhaseFailed, 2, metav1.ConditionFalse, "PersistenceSourceUnavailable", "unavailable", "snapshot", false},
++		{"handoff and rollout complete", appv1alpha1.KVPhaseReady, 2, metav1.ConditionTrue, "Provisioned", "available", "journal-snapshot", false},
++		{"suspended awaiting conversion", appv1alpha1.KVPhaseProvisioning, 2, metav1.ConditionFalse, "PersistenceAwaitingResume", "suspended", "snapshot", true},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			kv := &appv1alpha1.KeyValue{
++				ObjectMeta: metav1.ObjectMeta{Name: "red-persistence", Namespace: "default", Generation: 2},
++				Spec:       appv1alpha1.KeyValueSpec{Name: "cache", Plan: "free", PersistenceMode: "journal-snapshot", Suspended: tc.suspended},
++				Status: appv1alpha1.KeyValueStatus{
++					Phase: tc.phase, CredentialRevision: "served-revision", AppliedPersistenceMode: tc.applied,
++					Conditions: []metav1.Condition{{
++						Type: appv1alpha1.ConditionReady, Status: tc.ready, Reason: tc.reason, ObservedGeneration: tc.observed,
++					}},
++				},
++			}
++			svc, _ := newService(kv)
++			check := func(surface, status, mode string) {
++				t.Helper()
++				if status != tc.want || mode != "journal_snapshot" {
++					t.Fatalf("%s: status/mode = %q/%q, want %q/journal_snapshot", surface, status, mode, tc.want)
++				}
++			}
++			rest := serveREST(svc, http.MethodGet, "/v1/key-value/"+kv.Name, "")
++			if rest.Code != http.StatusOK {
++				t.Fatalf("REST: %d %s", rest.Code, rest.Body)
++			}
++			var restView renderKeyValue
++			if err := json.Unmarshal(rest.Body.Bytes(), &restView); err != nil {
++				t.Fatal(err)
++			}
++			check("REST", restView.Status, restView.Options.PersistenceMode)
++
++			schema, err := kvGQLSchema(svc)
++			if err != nil {
++				t.Fatal(err)
++			}
++			gql := graphql.Do(graphql.Params{Schema: schema, Context: ctxAs("user-a"), RequestString: `{ keyValue(id:"red-persistence") { status persistenceMode } }`})
++			if len(gql.Errors) > 0 {
++				t.Fatal(gql.Errors)
++			}
++			gqlView := gql.Data.(map[string]any)["keyValue"].(map[string]any)
++			check("GraphQL", gqlView["status"].(string), gqlView["persistenceMode"].(string))
++
++			call, cleanup := kvMCPClient(t, svc)
++			defer cleanup()
++			mcpView := call("get_key_value", map[string]any{"keyValueId": kv.Name})
++			check("MCP", mcpView["status"].(string), mcpView["persistenceMode"].(string))
++		})
++	}
++}
++
++func TestPersistenceModePreviewsDoNotStartAHandoff(t *testing.T) {
++	for _, surface := range []string{"REST", "GraphQL", "MCP"} {
++		t.Run(surface, func(t *testing.T) {
++			kv := &appv1alpha1.KeyValue{
++				ObjectMeta: metav1.ObjectMeta{Name: "red-persistence", Namespace: "default", Generation: 1},
++				Spec:       appv1alpha1.KeyValueSpec{Name: "cache", Plan: "free", PersistenceMode: "snapshot"},
++				Status:     appv1alpha1.KeyValueStatus{Phase: appv1alpha1.KVPhaseReady},
++			}
++			svc, cl := newService(kv)
++			for _, mode := range []struct{ input, want string }{
++				{"journal_snapshot", "journal_snapshot"},
++				{"journal-snapshot", "journal_snapshot"},
++				{"off", "off"},
++			} {
++				var preview string
++				switch surface {
++				case "REST":
++					res := serveREST(svc, http.MethodPatch, "/v1/key-value/"+kv.Name,
++						fmt.Sprintf(`{"persistenceMode":%q,"dryRun":true}`, mode.input))
++					if res.Code != http.StatusOK {
++						t.Fatalf("REST preview: %d %s", res.Code, res.Body)
++					}
++					var view renderKeyValue
++					if err := json.Unmarshal(res.Body.Bytes(), &view); err != nil {
++						t.Fatal(err)
++					}
++					preview = view.Options.PersistenceMode
++				case "GraphQL":
++					schema, err := kvGQLSchema(svc)
++					if err != nil {
++						t.Fatal(err)
++					}
++					res := graphql.Do(graphql.Params{Schema: schema, Context: ctxAs("user-a"), RequestString: fmt.Sprintf(
++						`mutation { setKeyValuePersistenceMode(id:"red-persistence",persistenceMode:%q,dryRun:true) { persistenceMode } }`, mode.input)})
++					if len(res.Errors) > 0 {
++						t.Fatal(res.Errors)
++					}
++					preview = res.Data.(map[string]any)["setKeyValuePersistenceMode"].(map[string]any)["persistenceMode"].(string)
++				case "MCP":
++					call, cleanup := kvMCPClient(t, svc)
++					defer cleanup()
++					preview = call("update_key_value", map[string]any{
++						"keyValueId": kv.Name, "persistenceMode": mode.input, "dryRun": true,
++					})["persistenceMode"].(string)
++				}
++				if preview != mode.want {
++					t.Fatalf("preview mode = %q, want %q", preview, mode.want)
++				}
++				actual := getKeyValueCR(t, cl, kv.Name)
++				if actual.Spec.PersistenceMode != "snapshot" || actual.Generation != 1 || actual.Status.Phase != appv1alpha1.KVPhaseReady {
++					t.Fatalf("preview changed the stored resource: %+v", actual)
++				}
++			}
++		})
++	}
++}
+diff --git a/lego/operator/internal/controller/keyvalue_persistence.go b/lego/operator/internal/controller/keyvalue_persistence.go
+new file mode 100644
+index 000000000..bb224196b
+--- /dev/null
++++ b/lego/operator/internal/controller/keyvalue_persistence.go
+@@ -0,0 +1,279 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package controller
++
++import (
++	"context"
++	"fmt"
++	"slices"
++	"strings"
++
++	appsv1 "k8s.io/api/apps/v1"
++	corev1 "k8s.io/api/core/v1"
++	apierrors "k8s.io/apimachinery/pkg/api/errors"
++	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
++	"sigs.k8s.io/controller-runtime/pkg/client"
++
++	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
++)
++
++const (
++	keyValuePersistenceBootstrapAnnotation = "app.bex.co/persistence-bootstrap-mode"
++	keyValuePersistenceNewPrefix           = "new:"
++	keyValuePersistenceSnapshot            = "snapshot"
++	valkeyPersistenceModePath              = "/data/.bex-persistence-mode"
++)
++
++func effectiveKeyValuePersistence(mode string) string {
++	if mode == "" {
++		return "journal-snapshot"
++	}
++	return mode
++}
++
++func validKeyValuePersistence(mode string) bool {
++	return slices.Contains([]string{"journal-snapshot", keyValuePersistenceSnapshot, "off"}, mode)
++}
++
++// Freeze the first conversion's source independently of later desired modes.
++// Once adopted, the PVC marker is the authority across pod/controller restarts.
++// Unchanged legacy stores keep their existing command and do not roll merely
++// because the operator was upgraded.
++func (r *KeyValueReconciler) keyValuePersistenceBootstrap(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet) (string, error) {
++	desired := effectiveKeyValuePersistence(kv.Spec.PersistenceMode)
++	if !validKeyValuePersistence(desired) {
++		return "", fmt.Errorf("invalid desired persistence mode")
++	}
++	if sts.UID != "" && !metav1.IsControlledBy(sts, kv) {
++		return "", fmt.Errorf("persistence workload is not owned by this Key Value")
++	}
++	if source := sts.Spec.Template.Annotations[keyValuePersistenceBootstrapAnnotation]; source != "" {
++		if !validKeyValuePersistence(strings.TrimPrefix(source, keyValuePersistenceNewPrefix)) {
++			return "", fmt.Errorf("invalid persistence bootstrap mode")
++		}
++		return source, nil
++	}
++	if sts.UID == "" {
++		var pvc corev1.PersistentVolumeClaim
++		err := r.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: keyValuePVCName(kv.Name)}, &pvc)
++		if err == nil {
++			if !validKeyValuePersistence(kv.Status.AppliedPersistenceMode) {
++				return "", fmt.Errorf("retained persistence storage has no known applied mode")
++			}
++			// A committed PVC marker still supersedes this last observed mode.
++			return kv.Status.AppliedPersistenceMode, nil
++		}
++		if !apierrors.IsNotFound(err) {
++			return "", err
++		}
++		if kv.Status.AppliedPersistenceMode != "" {
++			return "", fmt.Errorf("previous persistence storage is missing")
++		}
++		return keyValuePersistenceNewPrefix + desired, nil
++	}
++	source, err := keyValueLegacyPersistence(sts.Spec.Template.Spec)
++	if err != nil {
++		return "", err
++	}
++	var pod corev1.Pod
++	err = r.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: kv.Name + "-0"}, &pod)
++	if err == nil {
++		if !metav1.IsControlledBy(&pod, sts) {
++			return "", fmt.Errorf("persistence pod is not owned by this StatefulSet")
++		}
++		current, err := keyValueLegacyPersistence(pod.Spec)
++		if err != nil {
++			return "", err
++		}
++		// Stop a legacy rollout from selecting a stale journal: the serving pod
++		// is the authority even if a previous operator already changed the STS.
++		source = current
++	} else if !apierrors.IsNotFound(err) {
++		return "", err
++	} else if sts.Status.CurrentRevision != "" && sts.Status.CurrentRevision != sts.Status.UpdateRevision {
++		return "", fmt.Errorf("waiting for the persistence source pod before conversion")
++	}
++	if source == desired {
++		return "", nil
++	}
++	return source, nil
++}
++
++func keyValueLegacyPersistence(spec corev1.PodSpec) (string, error) {
++	for _, container := range spec.Containers {
++		if container.Name != "valkey" {
++			continue
++		}
++		if len(container.Command) != 0 {
++			return "", fmt.Errorf("unrecognized Valkey startup command")
++		}
++		for i := 0; i+1 < len(container.Args); i++ {
++			if container.Args[i] != "--appendonly" {
++				continue
++			}
++			switch container.Args[i+1] {
++			case "yes":
++				return "journal-snapshot", nil
++			case "no":
++				for j := 0; j+1 < len(container.Args); j++ {
++					if container.Args[j] == "--save" && container.Args[j+1] == "" {
++						return "off", nil
++					}
++				}
++				return keyValuePersistenceSnapshot, nil
++			}
++		}
++	}
++	return "", fmt.Errorf("cannot determine the previous persistence mode")
++}
++
++// Conversion runs without client listeners. Both durable representations are
++// complete before the mode marker is committed, so any interruption can retry
++// from the previous mode without replaying an older dataset. In particular, an
++// online CONFIG SET followed by a later pod rollout would leave a process-
++// restart race between the runtime setting and the old startup arguments.
++const valkeyPersistenceStartup = `
++set -eu
++umask 077
++initial=$1
++desired=$2
++shift 2
++marker="` + valkeyPersistenceModePath + `"
++fail() { echo "Valkey persistence handoff failed: $1" >&2; exit 1; }
++valid_mode() { case "$1" in journal-snapshot|snapshot|off) return 0;; *) return 1;; esac; }
++source=$initial
++initialize=no
++case "$source" in new:*) source=${source#new:}; initialize=yes;; esac
++valid_mode "$source" && valid_mode "$desired" || fail "invalid mode"
++if [ -e "$marker" ]; then
++  source=$(cat "$marker") || fail "cannot read applied mode"
++  initialize=no
++fi
++valid_mode "$source" || fail "invalid applied mode"
++commit_mode() {
++  printf '%s\n' "$1" > "$marker.next" || fail "cannot record applied mode"
++  sync
++  mv "$marker.next" "$marker" || fail "cannot commit applied mode"
++  sync
++}
++
++# Off is an explicit discard, including a reversal after Off was committed but
++# cleanup was interrupted. Disabling save points alone still loads old RDBs.
++if [ "$desired" = off ] || [ "$source" = off ]; then
++  commit_mode off
++  rm -rf /data/dump.rdb /data/appendonly.aof /data/appendonlydir || fail "cannot discard disabled persistence"
++  sync
++  if [ "$desired" = off ]; then
++    exec valkey-server "$@"
++  fi
++  source=$desired
++  initialize=yes
++fi
++
++# Initialize durable files before committing the first mode marker. Thereafter
++# a missing source is corruption, including on same-mode ordinary restarts.
++if [ "$source" = journal-snapshot ]; then
++  if [ ! -f /data/appendonlydir/appendonly.aof.manifest ] && [ ! -f /data/appendonly.aof ]; then
++    [ "$initialize" = yes ] && [ ! -e /data/dump.rdb ] && [ ! -e /data/appendonlydir ] || fail "source journal is missing"
++  fi
++else
++  if [ ! -f /data/dump.rdb ]; then
++    [ "$initialize" = yes ] && [ ! -e /data/appendonly.aof ] && [ ! -e /data/appendonlydir ] || fail "source snapshot is missing"
++  fi
++fi
++if [ "$source" != "$desired" ] || [ "$initialize" = yes ]; then
++  private=/tmp/bex-valkey-persistence
++  mkdir -p "$private"
++  chmod 700 "$private"
++  socket="$private/socket"
++  rm -f "$socket"
++  child=
++  cleanup() {
++	if [ -n "$child" ] && kill -0 "$child" 2>/dev/null; then
++      kill -TERM "$child" 2>/dev/null || true
++      waited=0
++      while kill -0 "$child" 2>/dev/null && [ "$waited" -lt 5 ]; do
++        sleep 1
++        waited=$((waited+1))
++      done
++      kill -KILL "$child" 2>/dev/null || true
++      wait "$child" 2>/dev/null || true
++    fi
++    rm -f "$socket"
++  }
++  trap cleanup EXIT
++  trap 'exit 143' TERM INT
++  aof=no
++  [ "$source" != journal-snapshot ] || aof=yes
++  valkey-server --port 0 --tls-port 0 --unixsocket "$socket" --unixsocketperm 600 --dir /data --save '' --appendonly "$aof" --auto-aof-rewrite-percentage 0 > "$private/server.log" 2>&1 &
++  child=$!
++  tries=0
++  until [ "$(timeout 5 valkey-cli -e --raw -s "$socket" PING 2>/dev/null)" = PONG ]; do
++    kill -0 "$child" 2>/dev/null || fail "source engine did not start"
++    tries=$((tries+1))
++    [ "$tries" -lt 120 ] || fail "source engine did not become ready"
++    sleep 1
++  done
++  # Install authentication over the private socket using stdin, never argv.
++  # AUTH follows CONFIG so valkey-cli's pipe completion check is authenticated.
++  export LC_ALL=C
++  {
++    printf '*4\r\n$6\r\nCONFIG\r\n$3\r\nSET\r\n$11\r\nrequirepass\r\n$%s\r\n%s\r\n' "${#VALKEY_PASSWORD}" "$VALKEY_PASSWORD"
++    printf '*2\r\n$4\r\nAUTH\r\n$%s\r\n%s\r\n' "${#VALKEY_PASSWORD}" "$VALKEY_PASSWORD"
++  } | timeout 10 valkey-cli -e -s "$socket" --pipe > /dev/null 2>&1 || fail "private authentication failed"
++  export REDISCLI_AUTH="$VALKEY_PASSWORD"
++  cli() { timeout 10 valkey-cli -e --raw -s "$socket" "$@" 2>/dev/null; }
++  if [ "$desired" = journal-snapshot ] && [ "$source" != journal-snapshot ]; then
++    reply=$(cli CONFIG SET appendonly yes) || fail "journal could not be enabled"
++    [ "$reply" = OK ] || fail "journal could not be enabled"
++    tries=0
++    while :; do
++      state=$(cli INFO persistence | tr -d '\r') || fail "cannot inspect journal conversion"
++      field() { printf '%s\n' "$state" | awk -F: -v key="$1" '$1 == key {print $2}'; }
++      [ "$(field aof_enabled)" = 1 ] || fail "journal is not enabled"
++      [ "$(field aof_last_bgrewrite_status)" = ok ] || fail "journal rewrite failed"
++      [ "$(field aof_last_write_status)" = ok ] || fail "journal write failed"
++      running=$(field aof_rewrite_in_progress)
++      scheduled=$(field aof_rewrite_scheduled)
++      case "$running:$scheduled" in
++        0:0)
++          rewrites=$(field aof_rewrites)
++          elapsed=$(field aof_last_rewrite_time_sec)
++          case "$rewrites:$elapsed" in *[!0-9:]*|:*|*:) fail "journal completion was not observed";; esac
++          [ "$rewrites" -ge 1 ] || fail "journal rewrite did not complete"
++          break;;
++        0:1|1:0|1:1) ;;
++        *) fail "unknown journal conversion state";;
++      esac
++      tries=$((tries+1))
++      [ "$tries" -lt 120 ] || fail "journal conversion timed out"
++      sleep 1
++    done
++  fi
++  # SAVE must succeed before shutdown, which keeps a journal source enabled.
++  # No client writes can enter between the saved dataset and marker commit.
++  reply=$(timeout 120 valkey-cli -e --raw -s "$socket" SAVE 2>/dev/null) || fail "snapshot handoff failed"
++  [ "$reply" = OK ] || fail "snapshot handoff failed"
++  timeout 120 valkey-cli -e --raw -s "$socket" SHUTDOWN NOSAVE > /dev/null 2>&1 || fail "source engine did not stop safely"
++  wait "$child" || fail "source engine shutdown failed"
++  child=
++  trap - EXIT TERM INT
++  rm -f "$socket"
++fi
++commit_mode "$desired"
++exec valkey-server "$@"
++`
+diff --git a/lego/operator/internal/controller/keyvalue_persistence_engine_test.go b/lego/operator/internal/controller/keyvalue_persistence_engine_test.go
+new file mode 100644
+index 000000000..97af4198a
+--- /dev/null
++++ b/lego/operator/internal/controller/keyvalue_persistence_engine_test.go
+@@ -0,0 +1,576 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package controller
++
++import (
++	"context"
++	"crypto/rand"
++	"encoding/hex"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++
++	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
++	corev1 "k8s.io/api/core/v1"
++	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
++)
++
++// TestValkeyPersistenceEngine exercises the actual pinned engines and persisted
++// files. Run with BEX_TEST_VALKEY=1; each fixture owns one Docker volume and a
++// isolated network namespace, and removes both on success or failure.
++func TestValkeyPersistenceEngine(t *testing.T) {
++	if os.Getenv("BEX_TEST_VALKEY") != "1" {
++		t.Skip("set BEX_TEST_VALKEY=1 to run the persisted-volume Valkey regression")
++	}
++	for _, version := range permittedValkeyVersions(t) {
++		t.Run(version, func(t *testing.T) {
++			t.Parallel()
++			t.Run("saved snapshot survives journal adoption", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("journal-snapshot")
++				expiry := engine.seed()
++				engine.cli("SAVE")
++				engine.restartLegacy("snapshot")
++				engine.cli("SET", "snapshot-marker", "new-snapshot-value")
++				engine.cli("SET", "counter", "23")
++				engine.cli("SAVE")
++				// Keep the finding's ordinary maxmemory-policy restart control.
++				engine.stop()
++				engine.startCommand(append(legacyValkeyCommand("snapshot"), "--maxmemory-policy", "noeviction"))
++				engine.assertData("23", "new-snapshot-value", expiry)
++				engine.stop()
++				engine.start("journal-snapshot")
++				engine.assertData("23", "new-snapshot-value", expiry)
++				engine.assertAOF(true)
++				// Conversion must still be safe after the handoff process and
++				// controller have gone away; exercise another ordinary restart.
++				engine.restart("journal-snapshot")
++				engine.assertData("23", "new-snapshot-value", expiry)
++			})
++			t.Run("snapshot without a prior journal", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("snapshot")
++				expiry := engine.seed()
++				engine.cli("SET", "snapshot-marker", "no-prior-journal")
++				engine.cli("SAVE")
++				engine.stop()
++				engine.start("journal-snapshot")
++				engine.assertData("1", "no-prior-journal", expiry)
++				engine.assertAOF(true)
++			})
++			t.Run("desired mode can change before first boot", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.bootstrapMode = keyValuePersistenceNewPrefix + "journal-snapshot"
++				engine.start("snapshot")
++				engine.assertEmpty()
++				engine.assertAOF(false)
++				expiry := engine.seed()
++				engine.cli("SET", "snapshot-marker", "first-boot-reversal")
++				engine.restart("journal-snapshot")
++				engine.assertData("1", "first-boot-reversal", expiry)
++				engine.assertAOF(true)
++			})
++			t.Run("interrupted handoff retries from the current snapshot", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("snapshot")
++				expiry := engine.seed()
++				engine.cli("SET", "snapshot-marker", "interrupted-conversion")
++				engine.cli("SAVE")
++				engine.stop()
++				engine.launch(engine.projectedCommand("journal-snapshot"), `#!/bin/sh
++set -eu
++/usr/local/bin/valkey-cli "$@"
++case " $* " in
++  *" CONFIG SET appendonly yes "*)
++    touch /data/test-after-aof-enable
++    while :; do sleep 1; done
++    ;;
++esac
++`)
++				engine.waitForFile("/data/test-after-aof-enable")
++				if reply, err := engine.tryCLI("PING"); err == nil && reply == "PONG" {
++					t.Fatal("conversion exposed a serving socket before its handoff completed")
++				}
++				engine.docker("rm", "-f", engine.name)
++				engine.start("journal-snapshot")
++				engine.assertData("1", "interrupted-conversion", expiry)
++				engine.assertAOF(true)
++			})
++			t.Run("failed journal creation preserves the snapshot for retry", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("journal-snapshot")
++				expiry := engine.seed()
++				engine.cli("SAVE")
++				engine.restartLegacy("snapshot")
++				engine.cli("SET", "snapshot-marker", "rewrite-failure-current-value")
++				engine.cli("SET", "counter", "23")
++				engine.cli("SAVE")
++				engine.stop()
++				engine.volumeCommand("chmod", "0500", "/data/appendonlydir")
++				engine.launch(engine.projectedCommand("journal-snapshot"), "")
++				engine.waitFailed()
++				engine.docker("rm", engine.name)
++				engine.volumeCommand("chmod", "0700", "/data/appendonlydir")
++				// A superseding return to Snapshot must still load the current
++				// RDB. Retrying the original request must then succeed too.
++				engine.start("snapshot")
++				engine.assertData("23", "rewrite-failure-current-value", expiry)
++				engine.restart("journal-snapshot")
++				engine.assertData("23", "rewrite-failure-current-value", expiry)
++				engine.assertAOF(true)
++			})
++			t.Run("scheduled and running rewrites finish before serving", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("snapshot")
++				expiry := engine.seed()
++				engine.cli("SET", "snapshot-marker", "scheduled-rewrite")
++				engine.cli("EVAL", "for i=1,20 do redis.call('SET','padding:'..i,'value') end return 20", "0")
++				engine.cli("SAVE")
++				engine.stop()
++				engine.launch(engine.projectedCommand("journal-snapshot"), `#!/bin/sh
++set -eu
++case " $* " in
++  *" CONFIG SET appendonly yes "*)
++    /usr/local/bin/valkey-cli -e -s /tmp/bex-valkey-persistence/socket CONFIG SET rdb-key-save-delay 100000 >/dev/null
++    /usr/local/bin/valkey-cli -e -s /tmp/bex-valkey-persistence/socket BGSAVE >/dev/null
++    ;;
++esac
++reply=$(/usr/local/bin/valkey-cli "$@")
++case " $* " in
++  *" -s /tmp/bex-valkey-persistence/socket "*)
++    case "$reply" in *aof_rewrite_scheduled:1*) touch /data/test-rewrite-scheduled;; esac
++    case "$reply" in *aof_rewrite_in_progress:1*) touch /data/test-rewrite-running;; esac
++    case "$reply" in
++      *aof_rewrite_in_progress:0*)
++        if [ -f /data/test-rewrite-running ]; then
++          /usr/local/bin/valkey-cli -e -s /tmp/bex-valkey-persistence/socket CONFIG SET rdb-key-save-delay 0 >/dev/null
++        fi
++        ;;
++    esac
++    ;;
++esac
++printf '%s\n' "$reply"
++`)
++				engine.waitForFile("/data/test-rewrite-scheduled")
++				if reply, err := engine.tryCLI("PING"); err == nil && reply == "PONG" {
++					t.Fatal("scheduled rewrite exposed a serving socket")
++				}
++				engine.waitReady()
++				engine.docker("exec", engine.name, "test", "-f", "/data/test-rewrite-running")
++				engine.assertData("1", "scheduled-rewrite", expiry)
++				engine.assertAOF(true)
++			})
++			t.Run("asynchronous rewrite failure stays closed and can retry", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("snapshot")
++				expiry := engine.seed()
++				engine.cli("SET", "snapshot-marker", "failed-rewrite")
++				engine.cli("SAVE")
++				engine.stop()
++				engine.launch(engine.projectedCommand("journal-snapshot"), `#!/bin/sh
++set -eu
++case " $* " in
++  *" CONFIG SET appendonly yes "*)
++    /usr/local/bin/valkey-cli -e -s /tmp/bex-valkey-persistence/socket CONFIG SET rdb-key-save-delay 2000000 >/dev/null
++    /usr/local/bin/valkey-cli "$@"
++    pid=$(ps -o pid,args | awk '/[v]alkey-aof-rewrite|[r]edis-aof-rewrite/ {print $1}')
++    [ -n "$pid" ]
++    chmod 0500 /data/appendonlydir
++    kill -KILL "$pid"
++    touch /data/test-rewrite-killed
++    ;;
++  *) exec /usr/local/bin/valkey-cli "$@";;
++esac
++`)
++				engine.waitFailed()
++				engine.volumeCommand("test", "-f", "/data/test-rewrite-killed")
++				engine.docker("rm", engine.name)
++				engine.volumeCommand("chmod", "0700", "/data/appendonlydir")
++				engine.start("journal-snapshot")
++				engine.assertData("1", "failed-rewrite", expiry)
++				engine.assertAOF(true)
++			})
++			for _, corruption := range []string{"missing", "corrupt"} {
++				t.Run(corruption+" initialized journal manifest fails closed", func(t *testing.T) {
++					engine := newPersistenceEngine(t, version)
++					engine.start("journal-snapshot")
++					expiry := engine.seed()
++					engine.cli("SET", "snapshot-marker", "valid-journal")
++					engine.cli("SAVE")
++					engine.stop()
++					const manifest = "/data/appendonlydir/appendonly.aof.manifest"
++					engine.volumeCommand("mv", manifest, "/data/test-original.manifest")
++					if corruption == "corrupt" {
++						engine.volumeCommand("sh", "-ec", "printf 'invalid manifest\\n' > /data/appendonlydir/appendonly.aof.manifest")
++					}
++					engine.launch(engine.projectedCommand("journal-snapshot"), "")
++					engine.waitFailed()
++					engine.docker("rm", engine.name)
++					engine.volumeCommand("mv", "/data/test-original.manifest", manifest)
++					engine.start("journal-snapshot")
++					engine.assertData("1", "valid-journal", expiry)
++				})
++			}
++			for _, source := range []string{"journal-snapshot", "snapshot", "off"} {
++				for _, target := range []string{"journal-snapshot", "snapshot", "off"} {
++					t.Run(source+" to "+target, func(t *testing.T) {
++						engine := newPersistenceEngine(t, version)
++						engine.start(source)
++						expiry := engine.seed()
++						engine.cli("SET", "snapshot-marker", "current-dataset")
++						engine.restart(target)
++						if source == "off" || target == "off" {
++							engine.assertEmpty()
++						} else {
++							engine.assertData("1", "current-dataset", expiry)
++						}
++						engine.assertAOF(target == "journal-snapshot")
++					})
++				}
++			}
++			t.Run("legacy empty mode is journal mode", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.start("")
++				expiry := engine.seed()
++				engine.cli("SET", "snapshot-marker", "legacy-mode")
++				for _, mode := range []string{"snapshot", "", "journal-snapshot"} {
++					engine.restart(mode)
++					engine.assertData("1", "legacy-mode", expiry)
++					engine.assertAOF(mode != "snapshot")
++				}
++			})
++			t.Run("old startup flags replay the stale journal", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("journal-snapshot")
++				expiry := engine.seed()
++				engine.cli("SAVE")
++				engine.restartLegacy("snapshot")
++				engine.cli("SET", "snapshot-marker", "new-snapshot-value")
++				engine.cli("SET", "counter", "23")
++				engine.cli("SAVE")
++				engine.restartLegacy("snapshot")
++				engine.assertData("23", "new-snapshot-value", expiry)
++				engine.restartLegacy("journal-snapshot")
++				// This negative control proves that the fixture contains an old
++				// journal, not just an RDB that any restart happens to preserve.
++				engine.assertData("1", "", expiry)
++			})
++			t.Run("old Off flags reload historical snapshots", func(t *testing.T) {
++				engine := newPersistenceEngine(t, version)
++				engine.startLegacy("snapshot")
++				engine.cli("SET", "historical", "before-off")
++				engine.cli("SAVE")
++				engine.restartLegacy("off")
++				if got := engine.cli("GET", "historical"); got != "before-off" {
++					t.Fatalf("old Off projection did not expose the stale-RDB control: %q", got)
++				}
++			})
++		})
++	}
++}
++
++const persistenceEnginePassword = "isolated-engine-test-password"
++
++type persistenceEngine struct {
++	t             *testing.T
++	image         string
++	name          string
++	initName      string
++	volume        string
++	bootstrapMode string
++}
++
++func newPersistenceEngine(t *testing.T, version string) *persistenceEngine {
++	t.Helper()
++	suffix := make([]byte, 6)
++	if _, err := rand.Read(suffix); err != nil {
++		t.Fatal(err)
++	}
++	name := "bex-kv-persistence-test-" + hex.EncodeToString(suffix)
++	engine := &persistenceEngine{
++		t: t, image: valkeyImage(version), name: name, initName: name + "-init", volume: name + "-data",
++	}
++	t.Cleanup(engine.cleanup)
++	engine.docker("volume", "create", engine.volume)
++	// Match the production pod's non-root identity and fsGroup preparation.
++	engine.docker("run", "--rm", "--name", engine.initName, "--network", "none", "--mount", "type=volume,src="+engine.volume+",dst=/data",
++		engine.image, "chown", "999:1000", "/data")
++	return engine
++}
++
++func (engine *persistenceEngine) cleanup() {
++	engine.t.Helper()
++	// A timed-out Docker client can leave its operation running in the daemon.
++	// Always try every owned resource, even after an earlier removal failed.
++	for _, args := range [][]string{
++		{"rm", "-f", engine.initName},
++		{"rm", "-f", engine.name},
++		{"volume", "rm", engine.volume},
++	} {
++		out, err := engine.tryDocker(args...)
++		detail := strings.ToLower(out)
++		missing := strings.Contains(detail, "no such container") || strings.Contains(detail, "no such volume")
++		if err != nil && !missing {
++			engine.t.Errorf("fixture cleanup %v failed: %v\n%s", args, err, out)
++		}
++	}
++}
++
++func (engine *persistenceEngine) docker(args ...string) string {
++	engine.t.Helper()
++	out, err := engine.tryDocker(args...)
++	if err != nil {
++		engine.t.Fatalf("Docker %s failed: %v\n%s", args[0], err, out)
++	}
++	return out
++}
++
++func (engine *persistenceEngine) tryDocker(args ...string) (string, error) {
++	// Shared Docker hosts can queue create/exec/removal behind unrelated I/O.
++	// This orchestration budget does not change the engine's conversion bounds.
++	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
++	defer cancel()
++	cmd := exec.CommandContext(ctx, "docker", args...)
++	cmd.Env = append(os.Environ(), "VALKEY_PASSWORD="+persistenceEnginePassword, "REDISCLI_AUTH="+persistenceEnginePassword)
++	out, err := cmd.CombinedOutput()
++	return strings.TrimSpace(strings.ReplaceAll(string(out), persistenceEnginePassword, "[test credential]")), err
++}
++
++// start uses the production pod projection, including its persistent startup
++// configuration. Only the Kubernetes Secret and volume plumbing are replaced
++// by the isolated test credential and the fixture's named Docker volume.
++func (engine *persistenceEngine) start(mode string) {
++	engine.t.Helper()
++	engine.startCommand(engine.projectedCommand(mode))
++}
++
++func (engine *persistenceEngine) projectedCommand(mode string) []string {
++	engine.t.Helper()
++	if engine.bootstrapMode == "" {
++		engine.bootstrapMode = keyValuePersistenceNewPrefix + effectiveKeyValuePersistence(mode)
++	}
++	kv := &appv1alpha1.KeyValue{
++		ObjectMeta: metav1.ObjectMeta{Name: "red-engine", Namespace: "engine-test"},
++		Spec:       appv1alpha1.KeyValueSpec{PersistenceMode: mode},
++	}
++	plan, _ := resolveKVPlan(kv.Spec)
++	var pod corev1.PodSpec
++	applyValkeyPodSpec(&pod, kv, keyValueIntent{
++		plan: plan, authSecretName: "red-engine-auth", persistenceBootstrapMode: engine.bootstrapMode,
++	})
++	container := pod.Containers[0]
++	command := container.Command
++	if len(command) == 0 {
++		command = []string{"valkey-server"}
++	}
++	return append(append([]string{}, command...), container.Args...)
++}
++
++func (engine *persistenceEngine) startLegacy(mode string) {
++	engine.t.Helper()
++	engine.bootstrapMode = mode
++	if mode == "" {
++		engine.bootstrapMode = "journal-snapshot"
++	}
++	engine.startCommand(legacyValkeyCommand(mode))
++}
++
++func legacyValkeyCommand(mode string) []string {
++	args := []string{"valkey-server", "--requirepass", "$(VALKEY_PASSWORD)", "--appendonly", "yes"}
++	if mode == "snapshot" || mode == "off" {
++		args[len(args)-1] = "no"
++	}
++	if mode == "off" {
++		args = append(args, "--save", "")
++	}
++	return args
++}
++
++func (engine *persistenceEngine) startCommand(command []string) {
++	engine.t.Helper()
++	engine.launch(command, "")
++	engine.waitReady()
++}
++
++// A CLI interceptor observes or stops an actual engine command at a precise
++// crash boundary. It delegates every protocol exchange to the image's real
++// valkey-cli; production startup logic and persisted files are unchanged.
++func (engine *persistenceEngine) launch(command []string, interceptor string) {
++	engine.t.Helper()
++	for i := range command {
++		// Kubernetes performs this substitution in command/args. The value is
++		// fixture-only; failure output is scrubbed in tryDocker.
++		command[i] = strings.ReplaceAll(command[i], "$(VALKEY_PASSWORD)", persistenceEnginePassword)
++	}
++	args := []string{"create", "--name", engine.name, "--user", "999:1000",
++		"--network", "none", "--env", "VALKEY_PASSWORD",
++		"--mount", "type=volume,src=" + engine.volume + ",dst=/data"}
++	if interceptor != "" {
++		args = append(args, "--env", "PATH=/tmp:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
++	}
++	args = append(args, "--entrypoint", command[0], engine.image)
++	engine.docker(append(args, command[1:]...)...)
++	if interceptor != "" {
++		path := filepath.Join(engine.t.TempDir(), "valkey-cli")
++		if err := os.WriteFile(path, []byte(interceptor), 0o755); err != nil {
++			engine.t.Fatal(err)
++		}
++		engine.docker("cp", path, engine.name+":/tmp/valkey-cli")
++	}
++	engine.docker("start", engine.name)
++}
++
++func (engine *persistenceEngine) waitReady() {
++	engine.t.Helper()
++	deadline := time.Now().Add(15 * time.Second)
++	for time.Now().Before(deadline) {
++		if out, err := engine.tryCLI("PING"); err == nil && out == "PONG" {
++			return
++		}
++		time.Sleep(50 * time.Millisecond)
++	}
++	engine.t.Fatalf("Valkey did not become ready: %s", engine.docker("logs", engine.name))
++}
++
++func (engine *persistenceEngine) waitForFile(path string) {
++	engine.t.Helper()
++	deadline := time.Now().Add(15 * time.Second)
++	for time.Now().Before(deadline) {
++		if _, err := engine.tryDocker("exec", engine.name, "test", "-f", path); err == nil {
++			return
++		}
++		time.Sleep(50 * time.Millisecond)
++	}
++	engine.t.Fatalf("conversion did not reach the injected crash boundary: %s", engine.docker("logs", engine.name))
++}
++
++func (engine *persistenceEngine) waitFailed() {
++	engine.t.Helper()
++	deadline := time.Now().Add(15 * time.Second)
++	for time.Now().Before(deadline) {
++		if reply, err := engine.tryCLI("PING"); err == nil && reply == "PONG" {
++			engine.t.Fatal("failed conversion exposed a serving socket")
++		}
++		if engine.docker("inspect", "--format", "{{.State.Running}}", engine.name) == "false" {
++			if engine.docker("inspect", "--format", "{{.State.ExitCode}}", engine.name) == "0" {
++				engine.t.Fatal("failed conversion exited successfully")
++			}
++			return
++		}
++		time.Sleep(50 * time.Millisecond)
++	}
++	privateLog, _ := engine.tryDocker("exec", engine.name, "cat", "/tmp/bex-valkey-persistence/server.log")
++	engine.t.Fatalf("conversion did not stop after the injected failure: %s\n%s", engine.docker("logs", engine.name), privateLog)
++}
++
++func (engine *persistenceEngine) volumeCommand(command ...string) {
++	engine.t.Helper()
++	args := make([]string, 0, 11+len(command))
++	args = append(args, "run", "--rm", "--name", engine.initName, "--network", "none", "--user", "999:1000",
++		"--mount", "type=volume,src="+engine.volume+",dst=/data", engine.image)
++	engine.docker(append(args, command...)...)
++}
++
++func (engine *persistenceEngine) stop() {
++	engine.t.Helper()
++	engine.docker("stop", "--time", "15", engine.name)
++	engine.docker("rm", engine.name)
++}
++
++func (engine *persistenceEngine) restartLegacy(mode string) {
++	engine.t.Helper()
++	engine.stop()
++	engine.startLegacy(mode)
++}
++
++func (engine *persistenceEngine) restart(mode string) {
++	engine.t.Helper()
++	engine.stop()
++	engine.start(mode)
++}
++
++func (engine *persistenceEngine) cli(args ...string) string {
++	engine.t.Helper()
++	out, err := engine.tryCLI(args...)
++	if err != nil {
++		engine.t.Fatalf("Valkey %s failed: %v\n%s", args[0], err, out)
++	}
++	return out
++}
++
++func (engine *persistenceEngine) tryCLI(args ...string) (string, error) {
++	prefix := make([]string, 0, 8+len(args))
++	prefix = append(prefix, "exec", "--env", "REDISCLI_AUTH", engine.name, "valkey-cli", "--raw", "--no-auth-warning", "-e")
++	return engine.tryDocker(append(prefix, args...)...)
++}
++
++func (engine *persistenceEngine) seed() string {
++	engine.t.Helper()
++	engine.cli("SET", "baseline", "original-value")
++	engine.cli("SET", "expiring", "original-ttl", "PX", "900000")
++	engine.cli("SET", "counter", "1")
++	return engine.cli("PEXPIRETIME", "expiring")
++}
++
++func (engine *persistenceEngine) assertData(counter, marker, expiry string) {
++	engine.t.Helper()
++	for key, want := range map[string]string{
++		"baseline": "original-value", "counter": counter, "snapshot-marker": marker, "expiring": "original-ttl",
++	} {
++		if got := engine.cli("GET", key); got != want {
++			engine.t.Errorf("GET %s = %q, want %q", key, got, want)
++		}
++	}
++	if got := engine.cli("PEXPIRETIME", "expiring"); got != expiry {
++		engine.t.Errorf("expiration deadline = %s, want the original deadline %s", got, expiry)
++	}
++	if got := engine.cli("PTTL", "baseline"); got != "-1" {
++		engine.t.Errorf("non-expiring baseline TTL = %q, want -1", got)
++	}
++}
++
++func (engine *persistenceEngine) persistence() map[string]string {
++	engine.t.Helper()
++	state := make(map[string]string)
++	for line := range strings.SplitSeq(engine.cli("INFO", "persistence"), "\n") {
++		if key, value, ok := strings.Cut(strings.TrimSpace(line), ":"); ok {
++			state[key] = value
++		}
++	}
++	return state
++}
++
++func (engine *persistenceEngine) assertAOF(enabled bool) {
++	engine.t.Helper()
++	want := "0"
++	if enabled {
++		want = "1"
++	}
++	if got := engine.persistence()["aof_enabled"]; got != want {
++		engine.t.Errorf("aof_enabled = %q, want %q", got, want)
++	}
++}
++
++func (engine *persistenceEngine) assertEmpty() {
++	engine.t.Helper()
++	if got := engine.cli("DBSIZE"); got != "0" {
++		engine.t.Errorf("Off transition retained or resurrected %s keys, want an empty store", got)
++	}
++}
+diff --git a/lego/operator/internal/controller/keyvalue_persistence_test.go b/lego/operator/internal/controller/keyvalue_persistence_test.go
+new file mode 100644
+index 000000000..c2ec5c452
+--- /dev/null
++++ b/lego/operator/internal/controller/keyvalue_persistence_test.go
+@@ -0,0 +1,428 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package controller
++
++import (
++	"context"
++	"errors"
++	"reflect"
++	"testing"
++
++	appsv1 "k8s.io/api/apps/v1"
++	corev1 "k8s.io/api/core/v1"
++	apierrors "k8s.io/apimachinery/pkg/api/errors"
++	"k8s.io/apimachinery/pkg/api/meta"
++	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
++	"sigs.k8s.io/controller-runtime/pkg/client"
++	"sigs.k8s.io/controller-runtime/pkg/client/fake"
++	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
++
++	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
++)
++
++func TestKeyValuePersistenceLeavesUnchangedLegacyWorkloadsAlone(t *testing.T) {
++	for _, mode := range []string{"", "journal-snapshot", "snapshot", "off"} {
++		t.Run("mode="+mode, func(t *testing.T) {
++			kv, sts, pod := persistenceControllerObjects(mode, mode)
++			r := persistenceController(t, kv, sts, pod)
++			bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, sts)
++			if err != nil || bootstrap != "" {
++				t.Fatalf("unchanged legacy store adopted conversion: source=%q err=%v", bootstrap, err)
++			}
++			before := sts.Spec.Template.DeepCopy()
++			intent := persistenceControllerIntent(kv)
++			intent.persistenceBootstrapMode = bootstrap
++			applyKeyValueStatefulSet(sts, kv, intent)
++			if !reflect.DeepEqual(*before, sts.Spec.Template) {
++				t.Fatal("operator upgrade changed an unchanged legacy pod template and would roll the store")
++			}
++		})
++	}
++}
++
++func TestKeyValuePersistenceBootstrapUsesTheServingPod(t *testing.T) {
++	kv, sts, pod := persistenceControllerObjects("snapshot", "journal-snapshot")
++	// The old operator already accepted the requested journal flags, but its
++	// Snapshot pod remains the last writer. Following the pending STS template
++	// here would replay the old journal without converting the current RDB.
++	applyKeyValueStatefulSet(sts, kv, persistenceControllerIntent(kv))
++	sts.Generation = 2
++	sts.Status.UpdateRevision = "pending-journal"
++	r := persistenceController(t, kv, sts, pod)
++	bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, sts)
++	if err != nil || bootstrap != "snapshot" {
++		t.Fatalf("pending legacy rollout lost the serving source: source=%q err=%v", bootstrap, err)
++	}
++	intent := persistenceControllerIntent(kv)
++	intent.persistenceBootstrapMode = bootstrap
++	applyKeyValueStatefulSet(sts, kv, intent)
++	server := sts.Spec.Template.Spec.Containers[0]
++	if len(server.Command) == 0 || len(server.Args) < 2 || server.Args[0] != "snapshot" || server.Args[1] != "journal-snapshot" {
++		t.Fatalf("replacement does not hand off Snapshot to Journal before serving: command=%v args prefix=%v", server.Command[:min(2, len(server.Command))], server.Args[:min(2, len(server.Args))])
++	}
++}
++
++func TestKeyValuePersistenceBootstrapSurvivesDesiredReversal(t *testing.T) {
++	kv, sts, pod := persistenceControllerObjects("snapshot", "journal-snapshot")
++	intent := persistenceControllerIntent(kv)
++	intent.persistenceBootstrapMode = "snapshot"
++	applyKeyValueStatefulSet(sts, kv, intent)
++	// The wrapper may or may not have committed its PVC marker. Reverting the
++	// desired mode cannot remove it or change the fallback source on restart.
++	kv.Spec.PersistenceMode = "snapshot"
++	kv.Generation++
++	r := persistenceController(t, kv, sts, pod)
++	bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, sts)
++	if err != nil || bootstrap != "snapshot" {
++		t.Fatalf("reversal discarded the frozen source: source=%q err=%v", bootstrap, err)
++	}
++	intent = persistenceControllerIntent(kv)
++	intent.persistenceBootstrapMode = bootstrap
++	applyKeyValueStatefulSet(sts, kv, intent)
++	server := sts.Spec.Template.Spec.Containers[0]
++	if len(server.Command) == 0 || server.Args[0] != "snapshot" || server.Args[1] != "snapshot" {
++		t.Fatal("reversal bypassed the persistent marker reader")
++	}
++}
++
++func TestKeyValuePersistenceBootstrapRejectsUntrustedOrUnknownSources(t *testing.T) {
++	for _, tc := range []struct {
++		name   string
++		mutate func(*appsv1.StatefulSet, *corev1.Pod)
++		noPod  bool
++	}{
++		{"foreign StatefulSet", func(sts *appsv1.StatefulSet, _ *corev1.Pod) { sts.OwnerReferences[0].UID = "another-keyvalue" }, false},
++		{"foreign annotated StatefulSet", func(sts *appsv1.StatefulSet, _ *corev1.Pod) {
++			sts.OwnerReferences[0].UID = "another-keyvalue"
++			sts.Spec.Template.Annotations[keyValuePersistenceBootstrapAnnotation] = "snapshot"
++		}, false},
++		{"foreign pod", func(_ *appsv1.StatefulSet, pod *corev1.Pod) { pod.OwnerReferences[0].UID = "another-statefulset" }, false},
++		{"invalid frozen mode", func(sts *appsv1.StatefulSet, _ *corev1.Pod) {
++			sts.Spec.Template.Annotations[keyValuePersistenceBootstrapAnnotation] = "unknown"
++		}, false},
++		{"unknown serving command", func(_ *appsv1.StatefulSet, pod *corev1.Pod) {
++			pod.Spec.Containers[0].Command = []string{"unknown-server"}
++		}, false},
++		{"missing source during pending rollout", func(sts *appsv1.StatefulSet, _ *corev1.Pod) {
++			sts.Status.UpdateRevision = "pending-journal"
++		}, true},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			kv, sts, pod := persistenceControllerObjects("snapshot", "journal-snapshot")
++			tc.mutate(sts, pod)
++			objects := []client.Object{kv, sts}
++			if !tc.noPod {
++				objects = append(objects, pod)
++			}
++			r := persistenceController(t, objects...)
++			if bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, sts); err == nil || bootstrap != "" {
++				t.Fatalf("untrusted source accepted: source=%q err=%v", bootstrap, err)
++			}
++		})
++	}
++}
++
++func TestKeyValuePersistenceBootstrapWithoutRunningPod(t *testing.T) {
++	for _, mode := range []string{"", "journal-snapshot", "snapshot", "off"} {
++		t.Run("new mode="+mode, func(t *testing.T) {
++			kv, _, _ := persistenceControllerObjects(mode, mode)
++			kv.Status = appv1alpha1.KeyValueStatus{}
++			r := persistenceController(t, kv)
++			bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, &appsv1.StatefulSet{})
++			want := mode
++			if want == "" {
++				want = "journal-snapshot"
++			}
++			want = "new:" + want
++			if err != nil || bootstrap != want {
++				t.Fatalf("new store source=%q err=%v, want %q", bootstrap, err, want)
++			}
++		})
++	}
++	// A settled, suspended legacy store has no running pod. Its last stable
++	// template still identifies the files to convert when it resumes.
++	kv, sts, _ := persistenceControllerObjects("", "snapshot")
++	kv.Spec.Suspended = true
++	r := persistenceController(t, kv, sts)
++	if bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, sts); err != nil || bootstrap != "journal-snapshot" {
++		t.Fatalf("suspended legacy journal source=%q err=%v", bootstrap, err)
++	}
++}
++
++func TestKeyValuePersistenceRetainedStorageCannotBecomeFreshBootstrap(t *testing.T) {
++	for _, tc := range []struct {
++		name       string
++		applied    string
++		hasPVC     bool
++		readError  bool
++		wantSource string
++	}{
++		{"retained journal", "journal-snapshot", true, false, "journal-snapshot"},
++		{"retained snapshot", "snapshot", true, false, "snapshot"},
++		{"retained Off", "off", true, false, "off"},
++		{"retained unknown mode", "", true, false, ""},
++		{"retained invalid mode", "unknown", true, false, ""},
++		{"previous storage is missing", "snapshot", false, false, ""},
++		{"storage lookup failed", "", false, true, ""},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			kv, _, _ := persistenceControllerObjects("snapshot", "journal-snapshot")
++			kv.Status.AppliedPersistenceMode = tc.applied
++			objects := []client.Object{kv}
++			if tc.hasPVC {
++				objects = append(objects, &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{
++					Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace, UID: "retained-persistence",
++				}})
++			}
++			r := persistenceController(t, objects...)
++			readErr := errors.New("PVC cache unavailable")
++			if tc.readError {
++				r.Client = interceptor.NewClient(r.Client.(client.WithWatch), interceptor.Funcs{
++					Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
++						if _, ok := obj.(*corev1.PersistentVolumeClaim); ok {
++							return readErr
++						}
++						return c.Get(ctx, key, obj, opts...)
++					},
++				})
++			}
++			bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, &appsv1.StatefulSet{})
++			if bootstrap != tc.wantSource || (err != nil) != (tc.wantSource == "") {
++				t.Fatalf("replacement source=%q err=%v, want retained source=%q or a closed gate", bootstrap, err, tc.wantSource)
++			}
++			if tc.readError && !errors.Is(err, readErr) {
++				t.Fatalf("storage lookup failure was hidden as fresh bootstrap: %v", err)
++			}
++		})
++	}
++}
++
++func TestKeyValuePersistenceFreshBootstrapSurvivesDesiredChange(t *testing.T) {
++	kv, sts, _ := persistenceControllerObjects("journal-snapshot", "snapshot")
++	kv.Status = appv1alpha1.KeyValueStatus{}
++	// The user changed modes before the first pod initialized its volume. The
++	// replacement must retain explicit fresh-volume authority, rather than
++	// treating missing Journal files as corruption of a legacy data source.
++	sts.Spec.Template.Annotations[keyValuePersistenceBootstrapAnnotation] = "new:journal-snapshot"
++	r := persistenceController(t, kv, sts)
++	bootstrap, err := r.keyValuePersistenceBootstrap(t.Context(), kv, sts)
++	if err != nil || bootstrap != "new:journal-snapshot" {
++		t.Fatalf("early desired change lost fresh-volume authority: source=%q err=%v", bootstrap, err)
++	}
++	intent := persistenceControllerIntent(kv)
++	intent.persistenceBootstrapMode = bootstrap
++	applyKeyValueStatefulSet(sts, kv, intent)
++	server := sts.Spec.Template.Spec.Containers[0]
++	if len(server.Command) == 0 || len(server.Args) < 2 || server.Args[0] != "new:journal-snapshot" || server.Args[1] != "snapshot" {
++		t.Fatal("replacement did not preserve fresh initialization across the mode change")
++	}
++}
++
++func TestKeyValuePersistenceReadinessRequiresTheWrittenGeneration(t *testing.T) {
++	for _, tc := range []struct {
++		name       string
++		generation int64
++		podReady   bool
++		readError  bool
++		wantReady  bool
++	}{
++		{"cached previous generation is Ready", 1, true, false, false},
++		{"current generation and pod are Ready", 2, true, false, true},
++		{"current pod is not Ready", 2, false, false, false},
++		{"StatefulSet read failed", 2, true, true, false},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			kv, observed, pod := persistenceControllerObjects("snapshot", "journal-snapshot")
++			written := observed.DeepCopy()
++			written.Generation = 2
++			intent := persistenceControllerIntent(kv)
++			intent.persistenceBootstrapMode = "snapshot"
++			applyKeyValueStatefulSet(written, kv, intent)
++			if tc.generation == 2 {
++				observed = written.DeepCopy()
++				observed.Status.ObservedGeneration = 2
++				observed.Status.CurrentRevision = "journal-revision"
++				observed.Status.UpdateRevision = "journal-revision"
++				pod.Spec = *observed.Spec.Template.Spec.DeepCopy()
++				pod.Labels[appsv1.StatefulSetRevisionLabel] = "journal-revision"
++			}
++			if !tc.podReady {
++				pod.Status.Conditions[0].Status = corev1.ConditionFalse
++			}
++			r := persistenceController(t, kv, observed, pod)
++			if tc.readError {
++				r.Client = interceptor.NewClient(r.Client.(client.WithWatch), interceptor.Funcs{
++					Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
++						if _, ok := obj.(*appsv1.StatefulSet); ok {
++							return errors.New("StatefulSet cache unavailable")
++						}
++						return c.Get(ctx, key, obj, opts...)
++					},
++				})
++			}
++			if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++				t.Fatal(err)
++			}
++			if _, err := r.updateKeyValueReadiness(t.Context(), kv, written, 1, "credentials-current"); err != nil {
++				t.Fatal(err)
++			}
++			if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++				t.Fatal(err)
++			}
++			wantMode, wantPhase, wantCondition := "snapshot", appv1alpha1.KVPhaseProvisioning, metav1.ConditionFalse
++			if tc.wantReady {
++				wantMode, wantPhase, wantCondition = "journal-snapshot", appv1alpha1.KVPhaseReady, metav1.ConditionTrue
++			}
++			condition := meta.FindStatusCondition(kv.Status.Conditions, appv1alpha1.ConditionReady)
++			if kv.Status.AppliedPersistenceMode != wantMode || kv.Status.Phase != wantPhase || condition == nil || condition.Status != wantCondition || condition.ObservedGeneration != kv.Generation {
++				t.Fatalf("applied=%q phase=%s Ready=%+v; want applied=%q phase=%s Ready=%s for generation %d", kv.Status.AppliedPersistenceMode, kv.Status.Phase, condition, wantMode, wantPhase, wantCondition, kv.Generation)
++			}
++		})
++	}
++}
++
++func TestKeyValuePersistenceSuspensionDoesNotApplyPendingMode(t *testing.T) {
++	kv, sts, _ := persistenceControllerObjects("snapshot", "journal-snapshot")
++	kv.Spec.Suspended = true
++	intent := persistenceControllerIntent(kv)
++	intent.persistenceBootstrapMode = "snapshot"
++	applyKeyValueStatefulSet(sts, kv, intent)
++	sts.Status.CurrentReplicas, sts.Status.UpdatedReplicas, sts.Status.ReadyReplicas, sts.Status.AvailableReplicas = 0, 0, 0, 0
++	r := persistenceController(t, kv, sts)
++	if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++		t.Fatal(err)
++	}
++	if _, err := r.updateKeyValueReadiness(t.Context(), kv, sts, 0, "credentials-current"); err != nil {
++		t.Fatal(err)
++	}
++	if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++		t.Fatal(err)
++	}
++	condition := meta.FindStatusCondition(kv.Status.Conditions, appv1alpha1.ConditionReady)
++	if kv.Status.AppliedPersistenceMode != "snapshot" || kv.Status.Phase != appv1alpha1.KVPhaseProvisioning || condition == nil || condition.Status != metav1.ConditionFalse || condition.Reason != "PersistenceAwaitingResume" {
++		t.Fatalf("suspended store acknowledged an unexecuted conversion: %+v", kv.Status)
++	}
++}
++
++func TestKeyValuePersistenceSuspensionBeforeFirstStartup(t *testing.T) {
++	for _, tc := range []struct {
++		name       string
++		desired    string
++		wantPhase  appv1alpha1.KeyValuePhase
++		wantReady  metav1.ConditionStatus
++		wantReason string
++	}{
++		{"unchanged initial mode", "journal-snapshot", appv1alpha1.KVPhaseReady, metav1.ConditionTrue, reasonSuspended},
++		{"mode changed before resume", "snapshot", appv1alpha1.KVPhaseProvisioning, metav1.ConditionFalse, "PersistenceAwaitingResume"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			kv, sts, _ := persistenceControllerObjects("journal-snapshot", tc.desired)
++			kv.Status = appv1alpha1.KeyValueStatus{}
++			kv.Spec.Suspended = true
++			intent := persistenceControllerIntent(kv)
++			intent.persistenceBootstrapMode = "new:journal-snapshot"
++			applyKeyValueStatefulSet(sts, kv, intent)
++			sts.Status.CurrentReplicas, sts.Status.UpdatedReplicas, sts.Status.ReadyReplicas, sts.Status.AvailableReplicas = 0, 0, 0, 0
++			r := persistenceController(t, kv, sts)
++			if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++				t.Fatal(err)
++			}
++			if _, err := r.updateKeyValueReadiness(t.Context(), kv, sts, 0, "credentials-current"); err != nil {
++				t.Fatal(err)
++			}
++			if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++				t.Fatal(err)
++			}
++			condition := meta.FindStatusCondition(kv.Status.Conditions, appv1alpha1.ConditionReady)
++			if kv.Status.AppliedPersistenceMode != "" || kv.Status.Phase != tc.wantPhase || condition == nil || condition.Status != tc.wantReady || condition.Reason != tc.wantReason || condition.ObservedGeneration != kv.Generation {
++				t.Fatalf("first-start suspension reported an incorrect applied mode or health: %+v", kv.Status)
++			}
++		})
++	}
++}
++
++func TestKeyValuePersistenceStaleStatusCannotAcknowledgeNewerDesiredMode(t *testing.T) {
++	kv, sts, pod := persistenceControllerObjects("journal-snapshot", "journal-snapshot")
++	kv.Status.AppliedPersistenceMode = "snapshot"
++	r := persistenceController(t, kv, sts, pod)
++	if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++		t.Fatal(err)
++	}
++	stale := kv.DeepCopy()
++	kv.Spec.PersistenceMode = "off"
++	kv.Generation++
++	if err := r.Update(t.Context(), kv); err != nil {
++		t.Fatal(err)
++	}
++	_, err := r.updateKeyValueReadiness(t.Context(), stale, sts, 1, "credentials-current")
++	if !apierrors.IsConflict(err) {
++		t.Fatalf("old Journal acknowledgement must conflict with a newer Off request: %v", err)
++	}
++	if err := r.Get(t.Context(), client.ObjectKeyFromObject(kv), kv); err != nil {
++		t.Fatal(err)
++	}
++	if kv.Spec.PersistenceMode != "off" || kv.Status.AppliedPersistenceMode != "snapshot" {
++		t.Fatalf("stale completion replaced newer intent or applied state: spec=%q applied=%q", kv.Spec.PersistenceMode, kv.Status.AppliedPersistenceMode)
++	}
++}
++
++func persistenceController(t *testing.T, objects ...client.Object) *KeyValueReconciler {
++	t.Helper()
++	scheme := datastoreSecretScheme(t)
++	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).
++		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()
++	return &KeyValueReconciler{Client: cl, Scheme: scheme}
++}
++
++func persistenceControllerIntent(kv *appv1alpha1.KeyValue) keyValueIntent {
++	plan, storageGB := resolveKVPlan(kv.Spec)
++	intent := keyValueIntentFor(kv, plan, storageGB, "")
++	intent.authSecretName = kv.Name + "-auth"
++	intent.credentialRevision = "credentials-current"
++	return intent
++}
++
++func persistenceControllerObjects(source, desired string) (*appv1alpha1.KeyValue, *appsv1.StatefulSet, *corev1.Pod) {
++	kv := &appv1alpha1.KeyValue{
++		ObjectMeta: metav1.ObjectMeta{Name: "red-persistence", Namespace: "default", UID: "keyvalue-owned", Generation: 2},
++		Spec:       appv1alpha1.KeyValueSpec{PersistenceMode: source},
++		Status: appv1alpha1.KeyValueStatus{
++			Phase: appv1alpha1.KVPhaseReady, AppliedPersistenceMode: effectiveKeyValuePersistence(source),
++			CredentialRevision: "credentials-current",
++			Conditions:         []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Provisioned", ObservedGeneration: 1}},
++		},
++	}
++	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace, UID: "statefulset-owned", Generation: 1,
++		OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(kv, appv1alpha1.SchemeGroupVersion.WithKind("KeyValue"))},
++	}}
++	applyKeyValueStatefulSet(sts, kv, persistenceControllerIntent(kv))
++	sts.CreationTimestamp = metav1.Now()
++	sts.Status = appsv1.StatefulSetStatus{
++		ObservedGeneration: 1, CurrentRevision: "source-revision", UpdateRevision: "source-revision",
++		CurrentReplicas: 1, UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1,
++	}
++	pod := &corev1.Pod{
++		ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-0", Namespace: kv.Namespace, UID: "pod-owned",
++			Labels:          map[string]string{labelKeyValue: kv.Name, appsv1.StatefulSetRevisionLabel: "source-revision"},
++			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(sts, appsv1.SchemeGroupVersion.WithKind("StatefulSet"))},
++		},
++		Spec:   *sts.Spec.Template.Spec.DeepCopy(),
++		Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
++	}
++	kv.Spec.PersistenceMode = desired
++	return kv, sts, pod
++}
