@@ -332,6 +332,9 @@ func TestRESTCreatePostgresIPAllowListWireShape(t *testing.T) {
 }
 
 func TestRESTPostgresPublicDefaultIsAdapterSpecific(t *testing.T) {
+	// This fragment-level matrix also pins the decoder's null-as-omission
+	// behavior. The composed Render API rejects null allowlists at its schema
+	// boundary before invoking this adapter.
 	tests := []struct {
 		name, fields string
 		wantPublic   bool

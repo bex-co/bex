@@ -1,0 +1,16 @@
+{
+  "bex": {
+    "path": "/opt/homebrew/bin/bex",
+    "sha256": "ea9e5e2c92a1094030e7537765092b633c7ec8793a076eeb55a136f6157cf8d0",
+    "version": "bex v0.2.1\ncompatible with Render CLI v2.27.0\n",
+    "exit": 0
+  },
+  "render": {
+    "path": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-fj9yijic/render-upstream",
+    "sha256": "35950c3439f70fbe05323fbd04ddb7cad0448dd43215ac9b4125e986e08a2e90",
+    "version": "render v2.27.0\n\nA new version is available: v2.28.0                              \n                                                                 \nTo upgrade, see: https://render.com/docs/cli#1-install-or-upgrade\n",
+    "exit": 0
+  },
+  "render_pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "original_api_binary_sha256": "bf206bcbcbf51fa81cf57c26a8dcb86ad96df01218e48b6c02c2972607bf23e5"
+}
