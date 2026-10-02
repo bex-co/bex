@@ -4202,7 +4202,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	// server_defaults.go.
 	applyPodSpecServerDefaults(&spec)
 	return corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{Labels: labels},
+		ObjectMeta: metav1.ObjectMeta{Labels: appPolicyLabels(app, labels)},
 		Spec:       spec,
 	}
 }
@@ -5181,6 +5181,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		EnvFrom:          envFromSources(release),
 		ImagePullSecrets: pullSecrets,
 		SecurityContext:  appSecCtx(app.Spec),
+		ContainerPolicy:  app.Spec.ContainerPolicy,
 		Resources:        resourcesForTier(app.Spec.Tier),
 		Volumes:          vols,
 		VolumeMounts:     mounts,

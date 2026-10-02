@@ -17,9 +17,28 @@ limitations under the License.
 package controller
 
 import (
+	"maps"
+
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
+
+// appPolicyLabels projects only persisted policy, never an App's arbitrary
+// labels. Keep strict templates byte-identical to avoid rolling legacy Apps.
+func appPolicyLabels(app *appv1alpha1.App, labels map[string]string) map[string]string {
+	if app.Spec.ContainerPolicy != appv1alpha1.ContainerPolicyImageV1 {
+		return labels
+	}
+	labels = maps.Clone(labels)
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[execution.LabelContainerPolicy] = appv1alpha1.ContainerPolicyImageV1
+	labels[execution.LabelApp] = app.Name
+	labels[execution.LabelAppUID] = string(app.UID)
+	return labels
+}
 
 // appSecCtx applies a service's durable policy to every path executing its
 // image: Deployment, CronJob, one-off cron run and pre-deploy Job. Platform
