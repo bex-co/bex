@@ -130,12 +130,10 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 	if builder == build.BuilderNative || builder == build.BuilderBuildpack {
 		artifactInput.StartCommand = spec.StartCommand
 		artifactInput.BuildEnv = buildEnv(builder, spec.Env)
-	}
-	if builder == build.BuilderNative {
 		// Both the service's own Secret and the linked group Secrets enter the
-		// native build's env bundle (w4/m93), so a direct edit to either list
-		// must produce a fresh artifact, exactly like an API link's restartedAt
-		// bump does.
+		// native build's env bundle (w4/m93) and the kpack build's BP_/BPE_
+		// projection (w1/121), so a direct edit to either list must produce a
+		// fresh artifact, exactly like an API link's restartedAt bump does.
 		artifactInput.RuntimeEnvSecret = spec.EnvFromSecret
 		artifactInput.EnvFromSecrets = spec.EnvFromSecrets
 	}
