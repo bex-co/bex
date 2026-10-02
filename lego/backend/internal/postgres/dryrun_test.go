@@ -213,6 +213,24 @@ func TestGraphQLDryRunUpdateDatabasePlan(t *testing.T) {
 
 func pgMCPClient(t *testing.T, svc *Service) (func(string, map[string]any) map[string]any, func()) {
 	t.Helper()
+	cs, cleanup := pgMCPSession(t, svc)
+	call := func(name string, args map[string]any) map[string]any {
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
+		if err != nil || res.IsError {
+			t.Fatalf("%s: err=%v isErr=%v", name, err, res.IsError)
+		}
+		out := map[string]any{}
+		if res.StructuredContent != nil {
+			b, _ := json.Marshal(res.StructuredContent)
+			_ = json.Unmarshal(b, &out)
+		}
+		return out
+	}
+	return call, cleanup
+}
+
+func pgMCPSession(t *testing.T, svc *Service) (*mcp.ClientSession, func()) {
+	t.Helper()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	svc.RegisterMCP(srv)
 	ctx := context.Background()
@@ -224,19 +242,7 @@ func pgMCPClient(t *testing.T, svc *Service) (func(string, map[string]any) map[s
 	if err != nil {
 		t.Fatalf("client connect: %v", err)
 	}
-	call := func(name string, args map[string]any) map[string]any {
-		res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
-		if err != nil || res.IsError {
-			t.Fatalf("%s: err=%v isErr=%v", name, err, res.IsError)
-		}
-		out := map[string]any{}
-		if res.StructuredContent != nil {
-			b, _ := json.Marshal(res.StructuredContent)
-			_ = json.Unmarshal(b, &out)
-		}
-		return out
-	}
-	return call, func() { cs.Close() }
+	return cs, func() { _ = cs.Close() }
 }
 
 func TestMCPDryRunCreatePostgres(t *testing.T) {

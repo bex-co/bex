@@ -94,7 +94,7 @@ describe("toDatabaseDetailView", () => {
       updatedAt: null,
       externalHost: "db1.db.bex.co",
       public: true,
-      poolerEnabled: null,
+      poolerEnabled: true,
       backupsEnabled: null,
       ipAllowList: null,
       region: null,
@@ -104,6 +104,7 @@ describe("toDatabaseDetailView", () => {
     expect(d.databaseUser).toBe("db1_user");
     expect(d.externalHost).toBe("db1.db.bex.co");
     expect(d.highAvailabilityEnabled).toBe(false);
+    expect(d.poolerEnabled).toBe(true);
     expect(d.region).toBeNull();
   });
 

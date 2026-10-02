@@ -646,6 +646,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			ReadReplicas:     crReplicas,
 		},
 	}
+	if err := CheckDatabaseAdmission(nil, d.Spec); err != nil {
+		return PostgresView{}, err
+	}
 	// Stamp both the tenant label (ownerId scoping — pgView/ListPostgres read
 	// this) and the workspace label (so the database controller can propagate
 	// it to CNPG pod metadata for same-workspace NetworkPolicy selectors,
@@ -882,7 +885,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
-	if err := checkHighAvailabilityPatch(d, &plan, nil); err != nil {
+	if err := checkPostgresPatchAdmission(d, PostgresPatch{Plan: &plan}); err != nil {
 		return PostgresView{}, err
 	}
 	if err := s.RequirePlanBilling(ctx, d.Labels[core.LabelTenant], plan); err != nil {
@@ -914,7 +917,7 @@ func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (Postgr
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
-	if err := checkHighAvailabilityPatch(d, &plan, nil); err != nil {
+	if err := checkPostgresPatchAdmission(d, PostgresPatch{Plan: &plan}); err != nil {
 		return PostgresView{}, err
 	}
 	preview := d.DeepCopy()
@@ -1298,10 +1301,7 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 			return PostgresView{}, err
 		}
 	}
-	if err := validateDatabaseStorageResize(d, patch.DiskSizeGB); err != nil {
-		return PostgresView{}, err
-	}
-	if err := checkHighAvailabilityPatch(d, patch.Plan, patch.EnableHighAvailability); err != nil {
+	if err := checkPostgresPatchAdmission(d, patch); err != nil {
 		return PostgresView{}, err
 	}
 	if patch.Name != nil {
@@ -1376,10 +1376,7 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 	if err := patch.validate(); err != nil {
 		return PostgresView{}, err
 	}
-	if err := validateDatabaseStorageResize(d, patch.DiskSizeGB); err != nil {
-		return PostgresView{}, err
-	}
-	if err := checkHighAvailabilityPatch(d, patch.Plan, patch.EnableHighAvailability); err != nil {
+	if err := checkPostgresPatchAdmission(d, patch); err != nil {
 		return PostgresView{}, err
 	}
 	if patch.Name != nil {

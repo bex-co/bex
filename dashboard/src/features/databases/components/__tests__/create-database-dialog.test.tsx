@@ -49,6 +49,10 @@ const FREE: DatabaseInstanceTypeView = {
   cpu: "100m",
   memory: "256Mi",
   storageGB: 1,
+  maxStorageGB: 1,
+  supportsDiskAutoscaling: false,
+  supportsConnectionPooling: false,
+  maxReadReplicas: 0,
   supportsHighAvailability: false,
   monthlyUsd: "0.00",
 };
@@ -58,6 +62,10 @@ const BASIC: DatabaseInstanceTypeView = {
   cpu: "500m",
   memory: "1Gi",
   storageGB: 5,
+  maxStorageGB: 16384,
+  supportsDiskAutoscaling: true,
+  supportsConnectionPooling: true,
+  maxReadReplicas: 5,
   supportsHighAvailability: false,
   monthlyUsd: "14.00",
 };
@@ -156,7 +164,7 @@ describe("CreateDatabaseDialog", () => {
     );
   });
 
-  it("blocks a disk size outside [plan floor, volume cap] but allows a large in-range one", async () => {
+  it("keeps free storage at the API's fixed limit while allowing blank defaults", async () => {
     const user = userEvent.setup();
     render(<CreateDatabaseDialog onCreated={vi.fn()} />);
 
@@ -168,26 +176,57 @@ describe("CreateDatabaseDialog", () => {
     });
     const disk = within(dialog).getByLabelText("Disk size (GB)");
 
-    // Above the 16384 GB volume cap → refused inline, submit disabled.
-    await user.type(disk, "99999");
-    expect(
-      within(dialog).getByText(/between 1 and 16384 GB/i),
-    ).toBeInTheDocument();
+    expect(disk).toHaveAttribute("min", "1");
+    expect(disk).toHaveAttribute("max", "1");
+    await user.type(disk, "2");
+    expect(within(dialog).getByText(/between 1 and 1 GB/i)).toBeInTheDocument();
     expect(submit).toBeDisabled();
-
-    // A large but in-range size (below the cap) is valid — the plan's advertised
-    // storage is a floor, not a ceiling, so this must NOT be blocked.
+    expect(create).not.toHaveBeenCalled();
     await user.clear(disk);
-    await user.type(disk, "9999");
-    expect(
-      within(dialog).queryByText(/between 1 and 16384 GB/i),
-    ).not.toBeInTheDocument();
     expect(submit).toBeEnabled();
-
-    // Below the plan floor (1 GB) → refused.
+    await user.type(disk, "1");
+    expect(submit).toBeEnabled();
     await user.clear(disk);
     await user.type(disk, "0");
     expect(submit).toBeDisabled();
+  });
+
+  it("uses the selected tier's disk bounds and retains the entered size across plan changes", async () => {
+    instanceTypesState.instanceTypes = [FREE, { ...BASIC, maxStorageGB: 25 }];
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    await user.type(screen.getByLabelText("Name"), "shop-db");
+    await user.click(screen.getByRole("combobox", { name: "Instance type" }));
+    await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
+    const disk = screen.getByLabelText("Disk size (GB)");
+    const submit = screen.getByRole("button", { name: "Create database" });
+    expect(disk).toHaveAttribute("min", "5");
+    expect(disk).toHaveAttribute("max", "25");
+    await user.type(disk, "26");
+    expect(screen.getByText(/between 5 and 25 GB/i)).toBeVisible();
+    expect(submit).toBeDisabled();
+    await user.clear(disk);
+    await user.type(disk, "25");
+    expect(submit).toBeEnabled();
+    await user.click(screen.getByRole("combobox", { name: "Instance type" }));
+    await user.click(await screen.findByRole("option", { name: /^Free/ }));
+    expect(disk).toHaveValue(25);
+    expect(submit).toBeDisabled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("waits for the selected tier's storage limit before allowing creation", async () => {
+    instanceTypesState.instanceTypes = [{ ...FREE, maxStorageGB: null }];
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    await user.type(screen.getByLabelText("Name"), "shop-db");
+    expect(screen.getByLabelText("Disk size (GB)")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Create database" }),
+    ).toBeDisabled();
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("submits the selected environment so the backend auto-joins its project", async () => {

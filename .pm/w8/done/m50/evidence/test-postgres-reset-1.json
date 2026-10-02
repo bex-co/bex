@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-02T20:44:31.226882+00:00",
+  "container": "bex-w8-m48-test-postgres",
+  "image": "postgres:17@sha256:e2fddda1fea39c634dccdae58dba5448eb3efb85aaa4054cf45cbed28f35d296",
+  "port": 55280,
+  "database": "bex_w8_m49_test",
+  "public_tables": 0,
+  "old_owned_anonymous_volume_removed": true,
+  "private_env_unchanged": true,
+  "live_dev8_db_port55080_untouched": true,
+  "openfga_openbao_unchanged": true
+}

@@ -349,6 +349,15 @@ const enDatabases: Record<string, TranslationEntry> = {
       "At 90% full, storage grows by 50%, rounded up to 5 GB. Increases are permanent and limited to once every 12 hours.",
     description: "Accessible explanation of Postgres disk autoscaling",
   },
+  "databases.diskAutoscalingCurrentSize": {
+    message: "{current} GB current",
+    description: "Current disk size while plan limits are unavailable",
+  },
+  "databases.diskAutoscalingPlanUnsupported": {
+    message:
+      "This plan does not support disk autoscaling. An existing setting can be turned off.",
+    description: "Plan restriction beside the disk autoscaling switch",
+  },
   "databases.diskAutoscalingEnabled": {
     message: "Disk autoscaling enabled.",
     description: "Toast after enabling Postgres disk autoscaling",
@@ -847,6 +856,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Internal pooled connection",
     description: "Access panel pooled-string label (in-cluster)",
   },
+  "databases.accessPoolerPlanUnsupported": {
+    message:
+      "This plan does not support connection pooling. Choose a plan that supports it before enabling a pooler.",
+    description: "Pooler empty state on an unsupported plan",
+  },
   "databases.accessPoolerExternal": {
     message: "External pooled connection",
     description: "Access panel pooled-string label (public)",
@@ -937,6 +951,26 @@ const enDatabases: Record<string, TranslationEntry> = {
       "{name} does not support high availability (it requires at least 1 CPU). Disable high availability first.",
     description:
       "Plan picker refusal when an HA database selects a plan below 1 CPU; mirrors the API message (w8/m43)",
+  },
+  "databases.planPickerStorageUnsupported": {
+    message:
+      "{name} allows up to {max} GB of storage. This database has {current} GB, which cannot be reduced. Choose a plan with enough storage.",
+    description: "Plan change blocked by the database's existing storage",
+  },
+  "databases.planPickerReplicasUnsupported": {
+    message:
+      "Read replica limit for {name}: {max}. This database has {current}.",
+    description: "Plan change blocked by the database's read replicas",
+  },
+  "databases.planPickerAutoscalingUnsupported": {
+    message:
+      "{name} does not support disk autoscaling. Turn off disk autoscaling first.",
+    description: "Plan change blocked while disk autoscaling is enabled",
+  },
+  "databases.planPickerPoolerUnsupported": {
+    message:
+      "{name} does not support connection pooling. Disable the pooler first.",
+    description: "Plan change blocked while a connection pooler is enabled",
   },
   // --- Plan section (m16) ---
   "databases.planTitle": {

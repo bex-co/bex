@@ -1,0 +1,50 @@
+{
+  "apiVersion": "networking.k8s.io/v1",
+  "kind": "NetworkPolicy",
+  "metadata": {
+    "name": "m50-fixture-cnpg-api-egress",
+    "namespace": "tea-db019si9086liljjeovg",
+    "labels": {
+      "app.kubernetes.io/managed-by": "w8-m50-acceptance"
+    }
+  },
+  "spec": {
+    "podSelector": {
+      "matchExpressions": [
+        {
+          "key": "cnpg.io/cluster",
+          "operator": "Exists"
+        }
+      ]
+    },
+    "policyTypes": [
+      "Egress"
+    ],
+    "egress": [
+      {
+        "to": [
+          {
+            "ipBlock": {
+              "cidr": "10.128.0.1/32"
+            }
+          },
+          {
+            "ipBlock": {
+              "cidr": "192.168.158.6/32"
+            }
+          }
+        ],
+        "ports": [
+          {
+            "protocol": "TCP",
+            "port": 443
+          },
+          {
+            "protocol": "TCP",
+            "port": 6443
+          }
+        ]
+      }
+    ]
+  }
+}

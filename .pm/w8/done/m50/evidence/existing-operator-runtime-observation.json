@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-02T20:53:03.093017+00:00",
+  "database": "dpg-db01isq9086igprsacf0",
+  "declared_read_replicas": [
+    {
+      "name": "reader"
+    }
+  ],
+  "cnpg_desired_instances": 1,
+  "cnpg_ready_instances": 1,
+  "pods": [
+    {
+      "name": "dpg-db01isq9086igprsacf0-1",
+      "phase": "Running",
+      "ready": true
+    }
+  ],
+  "read_only_service_ready_endpoint_count": 0,
+  "primary_sql_pg_is_in_recovery_and_transaction_read_only": "f|off",
+  "shared_operator_updated": false,
+  "interpretation": "The eligible plan accepts and preserves one named read-replica declaration, and its primary is Ready. The existing shared operator publishes that declaration against CNPG -ro but does not increase instance count for ReadReplicas; no second reader pod or functioning reader endpoint is claimed."
+}

@@ -1,0 +1,55 @@
+{
+  "apiVersion": "postgresql.cnpg.io/v1",
+  "kind": "Cluster",
+  "metadata": {
+    "name": "m50-reader-runtime",
+    "namespace": "dev-8"
+  },
+  "spec": {
+    "bootstrap": {
+      "initdb": {
+        "database": "m50_reader_runtime",
+        "owner": "m50_reader_user",
+        "postInitSQL": [
+          "CREATE EXTENSION IF NOT EXISTS pg_stat_statements"
+        ]
+      }
+    },
+    "imageName": "ghcr.io/cloudnative-pg/postgresql:16@sha256:e38d10bb2c7420e62efe9afabf207c005d93cdcf30f19f692d047f7dc660271e",
+    "instances": 2,
+    "managed": {
+      "roles": [
+        {
+          "ensure": "present",
+          "inRoles": [
+            "pg_monitor"
+          ],
+          "login": true,
+          "name": "m50_reader_user"
+        }
+      ]
+    },
+    "postgresql": {
+      "parameters": {
+        "pg_stat_statements.track": "all"
+      },
+      "shared_preload_libraries": [
+        "pg_stat_statements"
+      ]
+    },
+    "resources": {
+      "limits": {
+        "cpu": "500m",
+        "memory": "1Gi"
+      },
+      "requests": {
+        "cpu": "500m",
+        "memory": "1Gi"
+      }
+    },
+    "storage": {
+      "size": "10Gi",
+      "storageClass": "hcloud-volumes"
+    }
+  }
+}

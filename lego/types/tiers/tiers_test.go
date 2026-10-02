@@ -479,3 +479,33 @@ func TestPostgresSupportsHighAvailability(t *testing.T) {
 		}
 	}
 }
+
+func TestPostgresCapacityFeatures(t *testing.T) {
+	for _, tc := range []struct {
+		plan     string
+		paid     bool
+		storage  int32
+		replicas int
+	}{
+		{"free", false, 1, 0},
+		{"basic-256mb", true, 16384, 0},
+		{"basic-1gb", true, 16384, 5},
+	} {
+		tier, ok := Postgres.ByID(tc.plan)
+		if !ok {
+			t.Fatal(tc.plan)
+		}
+		if tier.SupportsDiskAutoscaling() != tc.paid || tier.SupportsConnectionPooling() != tc.paid ||
+			Postgres.MaxStorageGB(tc.plan) != tc.storage || tier.MaxReadReplicas() != tc.replicas {
+			t.Fatalf("capacity features for %s: %+v", tc.plan, tier)
+		}
+	}
+	if Postgres.MaxStorageGB("") != 1 || Postgres.MaxStorageGB("0.5c-1g") != 16384 || PostgresReadReplicaMinStorageGB != 10 {
+		t.Fatal("default/alias storage or replica storage minimum drifted")
+	}
+	for cpu, want := range map[string]int{"": 0, "invalid": 0, "499m": 0, "0.5": 5, "500m": 5, "1": 5} {
+		if got := (PostgresTier{CPU: cpu}).MaxReadReplicas(); got != want {
+			t.Errorf("CPU %q: replica limit=%d, want %d", cpu, got, want)
+		}
+	}
+}

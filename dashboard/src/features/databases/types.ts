@@ -48,6 +48,7 @@ export interface DatabaseDetailView extends DatabaseView {
   highAvailabilityEnabled: boolean;
   /** Render's diskAutoscalingEnabled read field. */
   diskAutoscalingEnabled: boolean;
+  poolerEnabled: boolean;
   /** Named read replicas, each with host-only connection info (no password). */
   readReplicas: ReadReplicaView[];
   /** SNI host for the external endpoint, or null when private. */
@@ -87,6 +88,11 @@ export interface DatabaseInstanceTypeView {
   memory: string;
   /** The plan's bundled storage floor, in GB. */
   storageGB: number;
+  /** Limits and capabilities supplied by the API's tier policy. */
+  maxStorageGB: number | null;
+  supportsDiskAutoscaling: boolean;
+  supportsConnectionPooling: boolean;
+  maxReadReplicas: number;
   /** The plan offers high availability (at least 1 CPU; w8/m43). */
   supportsHighAvailability: boolean;
   /** Always-on monthly price ("14.00"), "" when the sheet lists none (w4/156). */

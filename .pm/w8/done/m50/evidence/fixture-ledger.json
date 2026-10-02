@@ -1,0 +1,40 @@
+{
+  "workspace": "tea-db019si9086liljjeovg",
+  "resources": [
+    [
+      "postgres",
+      "dpg-db019t29086liljjep0g"
+    ],
+    [
+      "postgres",
+      "dpg-db01isq9086igprsacf0"
+    ]
+  ],
+  "tenant_cleanup_complete": true,
+  "temporary_network_policy": "m50-fixture-cnpg-api-egress",
+  "namespace_absence_verified": true,
+  "tenant_owned_persistent_volumes_remaining": 0,
+  "retained_infrastructure": [
+    "dev-8 API/auth/CNPG dependencies",
+    "bex-w8-m48-test-postgres",
+    "bex-w8-m48-test-openfga",
+    "bex-w8-m48-test-openbao"
+  ],
+  "standalone_runtime": {
+    "namespace": "dev-8",
+    "name": "m50-reader-runtime",
+    "cluster_uid": "e387a526-2f03-47f9-9035-b1929239880c",
+    "cleanup_complete": true,
+    "cluster_and_owned_children_absent": true,
+    "pvc_names": [
+      "m50-reader-runtime-1",
+      "m50-reader-runtime-2"
+    ],
+    "deleted_pv_names": [
+      "pvc-1b637e70-ef4b-490e-88f2-07892d21e320",
+      "pvc-c5785143-7321-49cd-bd2a-d1294ccbce94"
+    ],
+    "remaining_owned_pvs": [],
+    "base_namespace_retained": true
+  }
+}

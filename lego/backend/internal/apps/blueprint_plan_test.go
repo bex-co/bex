@@ -194,7 +194,7 @@ func TestApplyBlueprintDatabaseSpecPresenceAndConstraints(t *testing.T) {
 
 	t.Run("omission leaves an existing database unchanged", func(t *testing.T) {
 		got := *initial.DeepCopy()
-		changed, err := ApplyBlueprintDatabaseSpec(&got, appv1alpha1.DatabaseSpec{}, nil)
+		changed, err := applyBlueprintDatabaseSpecForTest(&got, appv1alpha1.DatabaseSpec{}, nil)
 		if err != nil || changed || !reflect.DeepEqual(got, initial) {
 			t.Fatalf("omission = changed %v err %v spec %#v, want unchanged", changed, err, got)
 		}
@@ -202,7 +202,7 @@ func TestApplyBlueprintDatabaseSpecPresenceAndConstraints(t *testing.T) {
 
 	t.Run("declared empty list clears only the allow list", func(t *testing.T) {
 		got := *initial.DeepCopy()
-		changed, err := ApplyBlueprintDatabaseSpec(&got, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{"ipAllowList": {}})
+		changed, err := applyBlueprintDatabaseSpecForTest(&got, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{"ipAllowList": {}})
 		if err != nil || !changed || got.IPAllowList != nil || got.Plan != initial.Plan {
 			t.Fatalf("explicit empty allow list = changed %v err %v spec %#v", changed, err, got)
 		}
@@ -210,7 +210,7 @@ func TestApplyBlueprintDatabaseSpecPresenceAndConstraints(t *testing.T) {
 
 	t.Run("declared false and none disable database features", func(t *testing.T) {
 		got := *initial.DeepCopy()
-		changed, err := ApplyBlueprintDatabaseSpec(&got, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{
+		changed, err := applyBlueprintDatabaseSpecForTest(&got, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{
 			"storageAutoscalingEnabled": {}, "connectionPool": {},
 		})
 		if err != nil || !changed || got.DiskAutoscaling || got.Pooler {
@@ -220,15 +220,15 @@ func TestApplyBlueprintDatabaseSpecPresenceAndConstraints(t *testing.T) {
 
 	t.Run("immutable and shrink transitions name the offending field", func(t *testing.T) {
 		got := *initial.DeepCopy()
-		_, err := ApplyBlueprintDatabaseSpec(&got, appv1alpha1.DatabaseSpec{DatabaseName: "other"}, map[string]BlueprintField{"databaseName": {}})
+		_, err := applyBlueprintDatabaseSpecForTest(&got, appv1alpha1.DatabaseSpec{DatabaseName: "other"}, map[string]BlueprintField{"databaseName": {}})
 		if conflict, ok := err.(*BlueprintFieldConflictError); !ok || conflict.Path != "databaseName" {
 			t.Fatalf("immutable databaseName error = %v", err)
 		}
-		_, err = ApplyBlueprintDatabaseSpec(&got, appv1alpha1.DatabaseSpec{StorageGB: 5}, map[string]BlueprintField{"diskSizeGB": {}})
+		_, err = applyBlueprintDatabaseSpecForTest(&got, appv1alpha1.DatabaseSpec{StorageGB: 5}, map[string]BlueprintField{"diskSizeGB": {}})
 		if conflict, ok := err.(*BlueprintFieldConflictError); !ok || conflict.Path != "diskSizeGB" {
 			t.Fatalf("shrink error = %v", err)
 		}
-		_, err = ApplyBlueprintDatabaseSpec(&got, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{"diskSizeGB": {}})
+		_, err = applyBlueprintDatabaseSpecForTest(&got, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{"diskSizeGB": {}})
 		if conflict, ok := err.(*BlueprintFieldConflictError); !ok || conflict.Path != "diskSizeGB" {
 			t.Fatalf("explicit zero disk error = %v", err)
 		}
@@ -355,4 +355,11 @@ services:
 	if err == nil {
 		t.Fatal("connectionPoolString without pgbouncer was accepted")
 	}
+}
+
+func applyBlueprintDatabaseSpecForTest(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
+	db := &appv1alpha1.Database{Spec: *dst.DeepCopy()}
+	changed, err := ApplyBlueprintDatabaseSpec(db, want, fields)
+	*dst = db.Spec
+	return changed, err
 }

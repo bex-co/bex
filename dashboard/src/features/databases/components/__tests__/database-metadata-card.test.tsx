@@ -46,6 +46,7 @@ function db(overrides: Partial<DatabaseDetailView> = {}): DatabaseDetailView {
     databaseUser: "orders_user",
     highAvailabilityEnabled: false,
     diskAutoscalingEnabled: false,
+    poolerEnabled: false,
     readReplicas: [],
     externalHost: null,
     backupsEnabled: false,
