@@ -92,7 +92,7 @@ Unauthorized and wrong-namespace requests must still fail before admission; forb
 
 ## Dedupe and Render
 
-Open and done board items and targeted history were searched. [w1/m163](../../w1/done/m163/README.md) records this exact cause as an unscheduled residual; its suspend/resume DoD is separate and stays closed. No open item covered admission for image-v1. The current producer/policy code still conflicts, so this is not deploy lag. No anti-goal applies.
+Open and done board items and targeted history were searched. [w1/m163](../../../w1/done/m163/README.md) records this exact cause as an unscheduled residual; its suspend/resume DoD is separate and stays closed. No open item covered admission for image-v1. The current producer/policy code still conflicts, so this is not deploy lag. No anti-goal applies.
 
 [Render Docker documentation](https://render.com/docs/docker) supports Dockerfile and prebuilt-image services. It does not specify this capability set; bex's isolation contract comes from ADR089.
 

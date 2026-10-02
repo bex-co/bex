@@ -12,8 +12,9 @@
 # the isolated execution namespaces every pod MUST run in a user namespace
 # (hostUsers=false — that is what confines BuildKit's mount capabilities and
 # unconfined seccomp to a pod user namespace); outside them (tenant hosting +
-# legacy bootstrap) every container is restricted — no added capabilities, no
-# privilege escalation, RuntimeDefault seccomp. Security round 10 also applies
+# legacy bootstrap) every container is restricted — only bounded App image-v1
+# and disk backup profiles add capabilities, with no privilege escalation and
+# RuntimeDefault seccomp. Security round 10 also applies
 # the canonical namespace boundary to DELETE and PVC mutation: admission must
 # contain every destructive cluster-wide verb, not only authored object bodies.
 apiVersion: admissionregistration.k8s.io/v1
@@ -46,6 +47,11 @@ spec:
         request.resource.resource == 'cronjobs' ?
           variables.target.spec.jobTemplate.spec.template.spec :
           variables.target.spec.template.spec
+    - name: podMetadata
+      expression: >-
+        request.resource.resource == 'cronjobs' ?
+          variables.target.spec.jobTemplate.spec.template.metadata :
+          variables.target.spec.template.metadata
     - name: workspace
       expression: namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')
     - name: untrustedExecutionNamespace
@@ -81,6 +87,28 @@ spec:
          variables.target.metadata.name.startsWith('dskrst-'))
     - name: diskSnapshotCaps
       expression: "['DAC_OVERRIDE', 'CHOWN', 'FOWNER']"
+    # The operator projects the persisted App policy onto its pod template.
+    # Ownership/UID consistency prevents a marker alone from granting this
+    # profile to datastore/platform/backup workloads. CEL cannot read App.spec:
+    # the exact operator identity above remains the trusted policy issuer.
+    # Scheduled Jobs inherit the already-validated CronJob template; manual
+    # runs and co-located predeploy Jobs have their own controlling App owner.
+    - name: imageCompatibilityWorkload
+      expression: >-
+        request.resource.resource in ['deployments', 'cronjobs', 'jobs'] &&
+        variables.podMetadata.?labels['app.bex.co/container-policy'].orValue('') == 'image-v1' &&
+        variables.target.metadata.?ownerReferences.orValue([]).exists(o,
+          o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'App' &&
+          o.?controller.orValue(false) && o.uid != '' &&
+          o.uid == variables.podMetadata.?labels['app.bex.co/app-uid'].orValue('') &&
+          o.name == variables.podMetadata.?labels['app.bex.co/app'].orValue('')) &&
+        variables.pod.containers.size() == 1 &&
+        (variables.pod.containers[0].name == 'app' ||
+          (request.resource.resource == 'jobs' && variables.pod.containers[0].name == 'predeploy' &&
+           variables.target.metadata.name.startsWith('predeploy-') &&
+           variables.podMetadata.?labels['app.bex.co/component'].orValue('') == 'predeploy'))
+    - name: imageCompatibilityCaps
+      expression: "['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID']"
   validations:
     - expression: variables.canonicalNamespace
       reason: Forbidden
@@ -135,28 +163,34 @@ spec:
       message: operator-authored workloads in isolated execution namespaces must run in a pod user namespace (hostUsers=false)
     # Outside the execution boundary (tenant hosting + legacy bootstrap), every
     # container is restricted: no added capabilities, no privilege escalation,
-    # RuntimeDefault seccomp at the container or pod level. Sole exception:
-    # the name-scoped disk snapshot/restore Jobs may add exactly the three
-    # DAC-bypass capabilities their function requires (see
-    # diskSnapshotVolumeWorkload above); everything else about them — no
-    # escalation, seccomp, non-privileged, no host access — stays enforced.
+    # RuntimeDefault seccomp at the container or pod level. Disk snapshots and
+    # restores retain their DAC-bypass set. App image-v1 additionally requires
+    # drop ALL, explicit no-escalation and effective RuntimeDefault seccomp;
+    # init containers never inherit either capability exception.
     - expression: >-
         request.operation == 'DELETE' ||
         variables.untrustedExecutionNamespace ||
         (variables.pod.containers.all(c,
            !c.?securityContext.?allowPrivilegeEscalation.orValue(false) &&
-           (variables.diskSnapshotVolumeWorkload ?
+           (variables.imageCompatibilityWorkload ?
+             (c.?securityContext.?allowPrivilegeEscalation.orValue(true) == false &&
+              c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL'] &&
+              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.imageCompatibilityCaps)) :
+            variables.diskSnapshotVolumeWorkload ?
              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.diskSnapshotCaps) :
              c.?securityContext.?capabilities.?add.orValue([]).size() == 0) &&
-           (c.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault' ||
-            variables.pod.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault')) &&
+           c.?securityContext.?seccompProfile.?type.orValue(
+             variables.pod.?securityContext.?seccompProfile.?type.orValue('')) == 'RuntimeDefault') &&
          (!has(variables.pod.initContainers) || variables.pod.initContainers.all(c,
+           (!variables.imageCompatibilityWorkload ||
+             (c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL'] &&
+              c.?securityContext.?allowPrivilegeEscalation.orValue(true) == false)) &&
            !c.?securityContext.?allowPrivilegeEscalation.orValue(false) &&
            c.?securityContext.?capabilities.?add.orValue([]).size() == 0 &&
-           (c.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault' ||
-            variables.pod.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault'))))
+           c.?securityContext.?seccompProfile.?type.orValue(
+             variables.pod.?securityContext.?seccompProfile.?type.orValue('')) == 'RuntimeDefault')))
       reason: Forbidden
-      message: operator-authored containers outside the execution boundary must be restricted (no added capabilities, no privilege escalation, RuntimeDefault seccomp; disk snapshot/restore Jobs may add only their DAC-bypass set)
+      message: operator-authored containers outside the execution boundary must be restricted (no privilege escalation, RuntimeDefault seccomp; only App-owned image-v1 workloads and disk snapshot/restore Jobs may add their bounded capability sets)
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

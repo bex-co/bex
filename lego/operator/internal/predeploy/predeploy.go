@@ -47,6 +47,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
@@ -111,6 +112,7 @@ type Options struct {
 	EnvFrom          []corev1.EnvFromSource
 	ImagePullSecrets []corev1.LocalObjectReference
 	SecurityContext  *corev1.SecurityContext
+	ContainerPolicy  string // persisted App policy, projected for workload admission
 	Resources        corev1.ResourceRequirements
 	// Volumes/VolumeMounts carry the app pod's /etc/secrets projection so a
 	// migration can read the same secret files; nil when the app has none.
@@ -156,6 +158,18 @@ func Job(o Options) *batchv1.Job {
 	labels[LabelService] = o.Name
 	podLabels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	podLabels[LabelService] = o.Name
+	if o.ContainerPolicy == appv1alpha1.ContainerPolicyImageV1 {
+		podLabels[execution.LabelContainerPolicy] = o.ContainerPolicy
+	}
+	var owners []metav1.OwnerReference
+	// App owner references are valid only for co-located Jobs. They also bind
+	// the image-v1 admission marker to the same App lifetime as the UID label.
+	if o.AppUID != "" && o.AppNamespace == o.Namespace {
+		owners = []metav1.OwnerReference{{
+			APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App",
+			Name: o.Name, UID: types.UID(o.AppUID), Controller: new(true),
+		}}
+	}
 	podSpec := corev1.PodSpec{
 		// No legacy Docker-link env vars (w4/m123) — the pre-deploy command — tenant code.
 		EnableServiceLinks: new(false),
@@ -168,9 +182,10 @@ func Job(o Options) *batchv1.Job {
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      JobName(o.Name, o.Revision),
-			Namespace: o.Namespace,
-			Labels:    labels,
+			Name:            JobName(o.Name, o.Revision),
+			Namespace:       o.Namespace,
+			Labels:          labels,
+			OwnerReferences: owners,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoff,

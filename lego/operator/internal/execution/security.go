@@ -27,6 +27,9 @@ import (
 const (
 	LabelApp    = "app.bex.co/app"
 	LabelAppUID = "app.bex.co/app-uid"
+	// LabelContainerPolicy is operator-authored admission evidence, never a
+	// tenant-selected capability list. Only image-v1 workloads carry it.
+	LabelContainerPolicy = "app.bex.co/container-policy"
 	// LabelDatabaseUID and LabelKeyValueUID are LabelAppUID's siblings for the
 	// two other parent kinds that own cleanup Jobs. All three bind a Job to one
 	// exact parent lifetime, so a recreated parent never adopts the old Job.

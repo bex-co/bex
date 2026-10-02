@@ -193,7 +193,7 @@ func appPodLabels(app *appv1alpha1.App, verifyImage bool) map[string]string {
 	if env := app.Labels[labelNetworkIsolation]; env != "" {
 		labels[labelNetworkIsolation] = env
 	}
-	return labels
+	return appPolicyLabels(app, labels)
 }
 
 // appContainer projects the App onto its single "app" container.
