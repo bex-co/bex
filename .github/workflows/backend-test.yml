@@ -1,28 +1,17 @@
 name: test (backend)
 
-# Run the backend and agent-driver suites on every relevant push/PR, and as a
+# Run the backend and agent-driver suites on relevant PRs, and as a
 # reusable workflow called by deploy.yml to gate the build+push+deploy job.
 # Integration tests run against real ephemeral Postgres, OpenFGA, and OpenBao
 # service containers, all digest-pinned and enforced by scripts/image-pin-validate.sh.
+# Main pushes run once through deploy.yml; avoid duplicate gates competing on
+# the shared Mac host. deploy.yml includes this workflow and all test inputs.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "lego/backend/**"
-      - "lego/agent-image/**"
-      - "lego/types/**"
-      - "lego/agent-image/**"
-      - "scripts/stripe-billing-*.sh"
-      - "scripts/stripe_billing_*.py"
-      - "scripts/test_stripe_billing_*.py"
-      - "scripts/lib/stripe-billing.sh"
-      - ".github/workflows/backend-test.yml"
   pull_request:
     paths:
       - "lego/backend/**"
       - "lego/agent-image/**"
       - "lego/types/**"
-      - "lego/agent-image/**"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe_billing_*.py"
       - "scripts/test_stripe_billing_*.py"

@@ -709,38 +709,55 @@ func TestTriggerImageURLAcceptsImageBacked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("imageUrl for image-backed: want nil, got %v", err)
 	}
-	// The App spec must carry the new image so the operator pulls the override.
-	if got := getApp(t, cl, "svc").Spec.Image; got != "nginx:1.27" {
-		t.Errorf("spec.image after imageUrl trigger = %q, want nginx:1.27", got)
+	got := getApp(t, cl, "svc")
+	selected := got.ActiveReleaseConfig()
+	if got.Spec.Image != "svc:v1" || selected == nil || selected.Image != "nginx:1.27" || selected.SourceGeneration != 0 {
+		t.Fatalf("saved image %q / runtime selection %+v", got.Spec.Image, selected)
 	}
 }
 
-// The projector owns spec.image for store-managed Apps (store.Reconciler
-// projectApp: Spec.Image = row image). An imageUrl trigger that patched only
-// the CR was reverted on the next projection, so every image deploy re-rolled
-// to the old image and closed canceled (w8/022). Write the row, then replay the
-// projection and require the new image to survive it.
-func TestTriggerImageURLWritesRowBeforeProjection(t *testing.T) {
-	ds := newFakeStore()
-	app := sampleApp("svc", "srv-11")
-	app.Spec.Image = "nginx:1.26"
-	svc, cl := newService(ds, app)
-
-	d, err := svc.Trigger(context.Background(), "svc", TriggerParams{ImageURL: "nginx:1.27"})
-	if err != nil {
-		t.Fatalf("Trigger(imageUrl): %v", err)
-	}
-	if d.Image != "nginx:1.27" {
-		t.Errorf("deploy row image = %q, want nginx:1.27", d.Image)
-	}
-	rowImage, wrote := ds.setImage["srv-11"]
-	if !wrote {
-		rowImage = "nginx:1.26" // no write-through: the row still holds the old image
-	}
-	projected := getApp(t, cl, "svc")
-	projected.Spec.Image = rowImage
-	if projected.Spec.Image != "nginx:1.27" {
-		t.Fatalf("spec.image after projection = %q, want nginx:1.27 (row not written before the CR patch)", projected.Spec.Image)
+// The saved row and its projected spec remain unchanged. A release-scoped
+// selection survives projection, but expires for the next standard deploy.
+func TestTriggerImageOverrideSurvivesProjectionWithoutChangingSavedImage(t *testing.T) {
+	for _, status := range []string{store.DeployLive, store.DeployUpdateFailed} {
+		t.Run(status, func(t *testing.T) {
+			ctx := context.Background()
+			ds := newFakeStore()
+			app := sampleApp("svc", "srv-11")
+			app.Spec.Image = "nginx:1.26"
+			svc, cl := newService(ds, app)
+			d, err := svc.Trigger(ctx, "svc", TriggerParams{ImageURL: "nginx:1.27"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d.Image != "nginx:1.27" {
+				t.Fatalf("deploy image = %q", d.Image)
+			}
+			if len(ds.setImage) != 0 {
+				t.Fatal("override changed saved row image")
+			}
+			projected := getApp(t, cl, "svc")
+			projected.Spec.Image = "nginx:1.26"
+			if err := cl.Update(ctx, projected); err != nil {
+				t.Fatal(err)
+			}
+			if got := getApp(t, cl, "svc").ActiveReleaseConfig(); got == nil || got.Image != "nginx:1.27" {
+				t.Fatalf("projection lost override: %+v", got)
+			}
+			if won, err := ds.CloseDeploy(ctx, d.ID, status, "nginx:1.27"); err != nil || !won {
+				t.Fatalf("complete override as %s: changed %v, error %v", status, won, err)
+			}
+			next, err := svc.Trigger(ctx, "svc", TriggerParams{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if next.Image != "nginx:1.26" || getApp(t, cl, "svc").Spec.ReleaseConfig != nil {
+				t.Fatalf("standard deploy did not use saved settings: %+v", next)
+			}
+			if len(ds.setImage) != 0 {
+				t.Fatal("deploy completion changed saved row image")
+			}
+		})
 	}
 }
 

@@ -1,9 +1,11 @@
 package bridge
 
 import (
+	"github.com/render-oss/cli/pkg/config"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"testing"
 )
 
@@ -29,7 +31,7 @@ func TestVersionTransportStampsControlPlaneHost(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := &http.Client{Transport: &versionTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, server.URL)}}
+	client := &http.Client{Transport: &controlPlaneTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, server.URL)}}
 	resp, err := client.Get(server.URL + "/v1/services")
 	if err != nil {
 		t.Fatalf("get: %v", err)
@@ -53,7 +55,7 @@ func TestVersionTransportLeavesThirdPartyHostsAlone(t *testing.T) {
 	}))
 	defer third.Close()
 
-	client := &http.Client{Transport: &versionTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, "https://api.bex.co/v1/")}}
+	client := &http.Client{Transport: &controlPlaneTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, "https://api.bex.co/v1/")}}
 	resp, err := client.Get(third.URL + "/repos/bex-co/bex/releases")
 	if err != nil {
 		t.Fatalf("get: %v", err)
@@ -73,7 +75,7 @@ func TestVersionTransportDoesNotMutateCallerRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}
-	transport := &versionTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, server.URL)}
+	transport := &controlPlaneTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, server.URL)}
 	resp, err := transport.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("round trip: %v", err)
@@ -100,7 +102,7 @@ func TestVersionTransportPreservesExistingHeaders(t *testing.T) {
 	// The compatibility ledger depends on upstream's User-Agent staying exactly
 	// as upstream set it.
 	req.Header.Set("User-Agent", "render-cli/2.27.0 (darwin arm64)")
-	transport := &versionTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, server.URL)}
+	transport := &controlPlaneTransport{base: http.DefaultTransport, version: "1.2.3", hosts: hostSet(t, server.URL)}
 	resp, err := transport.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("round trip: %v", err)
@@ -112,21 +114,21 @@ func TestVersionTransportPreservesExistingHeaders(t *testing.T) {
 	}
 }
 
-func TestInstallVersionHeaderIsIdempotentAndSkipsEmpty(t *testing.T) {
+func TestInstallControlPlaneHeadersIsIdempotentAndSkipsEmpty(t *testing.T) {
 	original := http.DefaultTransport
 	t.Cleanup(func() { http.DefaultTransport = original })
 
-	InstallVersionHeader("")
+	InstallControlPlaneHeaders("")
 	if http.DefaultTransport != original {
 		t.Fatal("empty version installed a wrapper")
 	}
 
-	InstallVersionHeader("1.2.3")
+	InstallControlPlaneHeaders("1.2.3")
 	first := http.DefaultTransport
 	if first == original {
 		t.Fatal("version was not installed")
 	}
-	InstallVersionHeader("4.5.6")
+	InstallControlPlaneHeaders("4.5.6")
 	if http.DefaultTransport != first {
 		t.Fatal("second install replaced the transport; wrapping must happen once")
 	}
@@ -154,5 +156,58 @@ func TestVersionHeaderNameIsPinned(t *testing.T) {
 	if VersionHeader != "X-Bex-CLI-Version" {
 		t.Fatalf("VersionHeader = %q; bex-api reads X-Bex-CLI-Version "+
 			"(lego/backend/internal/clitelemetry). Change both sides or neither.", VersionHeader)
+	}
+}
+
+func TestWorkspaceTransportUsesEnvironmentAndSavedSelection(t *testing.T) {
+	t.Setenv("RENDER_CLI_CONFIG_PATH", filepath.Join(t.TempDir(), "config.yaml"))
+	t.Setenv("RENDER_WORKSPACE", "")
+	cfg := &config.Config{Workspace: "tea-saved"}
+	if err := cfg.Persist(); err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { got = r.Header.Get(WorkspaceHeader) }))
+	defer server.Close()
+	original := http.DefaultTransport
+	t.Cleanup(func() { http.DefaultTransport = original })
+	InstallControlPlaneHeaders("test")
+	transport := http.DefaultTransport.(*controlPlaneTransport)
+	transport.hosts = hostSet(t, server.URL)
+	for _, tc := range []struct{ name, env, want string }{
+		{"saved workspace", "", "tea-saved"},
+		{"environment id overrides saved", "tea-env", "tea-env"},
+		{"environment name", "canary", "canary"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("RENDER_WORKSPACE", tc.env)
+			req, _ := http.NewRequest("GET", server.URL+"/v1/services/web/deploys", nil)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+			if got != tc.want {
+				t.Fatalf("workspace header = %q, want %q", got, tc.want)
+			}
+			if req.Header.Get(WorkspaceHeader) != "" {
+				t.Fatal("mutated caller request")
+			}
+		})
+	}
+	transport.hosts = hostSet(t, "https://api.bex.co/v1/")
+	resp, err := http.Get(server.URL + "/third-party")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if got != "" {
+		t.Fatal("workspace leaked to third party")
+	}
+}
+
+func TestWorkspaceHeaderNameIsPinned(t *testing.T) {
+	if WorkspaceHeader != "X-Bex-Workspace" {
+		t.Fatal("update CLI and backend header together")
 	}
 }

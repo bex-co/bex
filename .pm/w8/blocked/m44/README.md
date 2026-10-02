@@ -8,7 +8,7 @@
 | ---- | ------------------------------------------------------------------------------------------------------- | --- | ---------------- |
 | t001 | Pre-deploy: detect a Waiting `ImagePullBackOff`/`ErrImagePull` on the Job pod, fail fast, and name it — **DONE**  | 45m | —                |
 | t002 | Rollout over a prior release: keep the stuck-pod diagnosis (image pull) as the deploy's failure reason — **DONE**   | 45m | —                |
-| t003 | Decide and implement the configured image after a failed `imageUrl` deploy (row image vs. last live)     | 40m | —                |
+| t003 | Decide and implement the configured image after a failed `imageUrl` deploy (row image vs. last live) — **DONE**     | 40m | —                |
 | t004 | Render parity — **DONE**                                                                                           | 20m | t001, t002, t003 |
 | t005 | Simplify — **DONE**                                                                                                | 15m | t004             |
 | t006 | Test coverage — **DONE**                                                                                           | 30m | t005             |
@@ -66,3 +66,28 @@ t001, t002, t004–t006 are done: the pre-deploy gate fails an unpullable image 
 
 1. **t003: user decision + Render evidence.** What the service's configured image is after a failed `imageUrl` deploy. Render's docs don't say, and restoring the row alone is unsafe (see t003). Pick (a) keep, (b) auto-rollback release, or (c) don't write the row for `imageUrl`.
 2. **t007: live closeout** after deploy (`blocked/m42`) with a logged-in `bex` CLI.
+
+## Live re-verification (2026-09-27, `/qa-find-bugs-cli` sweep 52)
+
+Over a prior release (no pre-deploy command), production `4a0422577`, `bex v0.2.1`, human device login, workspace `bex-canary`, free `mendhak/http-https-echo` fixtures (deleted). `bex deploys create <srv> --image …:qa52-nonexistent-tag --wait`: the open row carried `stallReason: image pull is failing: Back-off pulling image … ErrImagePull … NotFound` from the first minutes, and closed `update_failed` with that same line as `failureReason` (**reason ✔**, no generic health-gate text). The prior release kept serving (200). **Timing is still not prompt:** exit 1 after **922 s** (~15 min, down from ~18). The rollout path waits for the Kubernetes progress deadline, while the pre-deploy path has a 90 s pull-failure grace. The goal's 'fails promptly … on every path' needs the same `PullFailure`-style grace on the rollout branch (a stuck-pod image-pull verdict after ~90 s closes the row without waiting for `ProgressDeadlineExceeded`). The service's `imagePath` stayed on the failed tag (t003, parked).
+
+> Overlap (2026-09-27): `w4/162` (a parallel QA pass 239) independently files the same 15-minute wait for a permanent `NotFound` pull on a service with a live release. Land one fix and close the other against it.
+
+## Live re-verification 2 (2026-09-28 ~09:20Z, production `6b6d99ea8`)
+
+**Timing now holds.** On the over-prior-release path, which includes `87c93899d` "bound permanent rollout image pull failures", `bex deploys create <srv> --image …:qa74-nonexistent-tag --wait` exits 1 after **100 s** (was 922 s), with `failureReason: image pull is failing: … ErrImagePull: rpc error: code = NotFound`. The prior release kept serving (200). Only t003 (the configured image after a failed `imageUrl` deploy) remains for this milestone. `w4/162` is satisfied by the same change.
+
+## Unblocking work (2026-10-02)
+
+The user accepted per-deploy image overrides with saved settings unchanged. [Render's image webhook documentation](https://render.com/docs/deploying-an-image#deploy-via-webhook) explicitly states subsequent deploys use the tag/digest in service settings. The REST reference documents `imageUrl` and its repository restriction but does not explicitly state persistence; applying the webhook policy across REST/GraphQL/MCP is a recorded consistency decision, not an authenticated Render experiment.
+
+The local implementation uses the existing release selection from w5/m107: `imageUrl`/`imgURL` sets `ReleaseConfig` for one release; the saved row and `spec.image` stay unchanged, and the deploy row records that call's image. Projection preserves the selection. Ordinary/configuration deploys return to the saved image; restart retains the actual live release. The prior failure-diagnosis checks remain valid.
+
+**Remaining:** ship, then verify a failed override followed by a configuration change on a disposable live service. The old row-restore alternatives and missing-evidence blocker are superseded by this decision.
+
+
+## Verification and remaining release gate (2026-10-02)
+
+Full backend suite against isolated Postgres/OpenFGA/OpenBao, operator `make test`, full CLI suite, backend/CLI lint, targeted Go race tests, workflow guards and ci-red-streak fixtures passed. The final affected backend packages passed again after review changes. Overlay mutation checks confirmed the image, workspace and rename regressions fail with their fixes removed. Markdown was formatted; QA fixtures and the isolated credentials were cleaned up.
+
+Implementation and review are complete locally. Repository `AGENTS.md` requires an explicit `$ship` before commit/push. After ship, observe CI/production and complete this milestone's remaining live closeout; m45 also needs the updated CLI released. The earlier policy/sign-off/login blockers are resolved.

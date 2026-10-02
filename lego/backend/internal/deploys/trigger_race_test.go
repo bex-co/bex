@@ -18,6 +18,10 @@ package deploys
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"sync"
 	"testing"
@@ -96,8 +100,8 @@ func triggerPair(t *testing.T, a, b TriggerParams) ([2]DeployView, *appv1alpha1.
 
 func TestConcurrentTriggersResolveNewestWins(t *testing.T) {
 	for name, pair := range map[string][2]TriggerParams{
-		"image vs image":   {{ImageURL: "echo:34"}, {ImageURL: "echo:35"}},
-		"image vs restart": {{ImageURL: "echo:34"}, {}},
+		"image vs image":           {{ImageURL: "echo:34"}, {ImageURL: "echo:35"}},
+		"image vs standard deploy": {{ImageURL: "echo:34"}, {}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			for range 10 {
@@ -118,11 +122,98 @@ func TestConcurrentTriggersResolveNewestWins(t *testing.T) {
 				if gen(older) >= gen(newer) || release != gen(newer) {
 					t.Fatalf("releases: older %d, newer %d, CR %d — want older < newer == CR", gen(older), gen(newer), release)
 				}
-				if cr.Spec.Image != newer.Image || rowImage != newer.Image {
-					t.Fatalf("CR image %q / row image %q, want the newest row's %q", cr.Spec.Image, rowImage, newer.Image)
+				runtimeImage := cr.Spec.Image
+				if selected := cr.ActiveReleaseConfig(); selected != nil {
+					runtimeImage = selected.Image
+				}
+				if runtimeImage != newer.Image || cr.Spec.Image != "echo:33" || rowImage != "" {
+					t.Fatalf("runtime %q, saved CR %q, saved row write %q; want runtime %q and saved echo:33", runtimeImage, cr.Spec.Image, rowImage, newer.Image)
 				}
 				if newer.Status == store.DeployCanceled {
 					t.Fatalf("the newest row opened canceled: %+v", newer)
+				}
+			}
+		})
+	}
+}
+
+// Hooks and the real Restart verb must join the same serialization boundary.
+// A restart selects the running artifact even when saved settings differ.
+func TestConcurrentHookAndRestartTriggers(t *testing.T) {
+	for _, scenario := range []string{"hooks", "image and restart"} {
+		t.Run(scenario, func(t *testing.T) {
+			for range 10 {
+				ctx := context.Background()
+				ds := newFakeStore()
+				live, _ := ds.CreateDeploy(ctx, "srv-11", "create", "echo:32", 1, store.CommitInfo{}, "")
+				if _, err := ds.CloseDeploy(ctx, live.ID, store.DeployLive, "echo:32"); err != nil {
+					t.Fatal(err)
+				}
+				app := sampleApp("svc", "srv-11")
+				app.Spec.Image = "echo:33"
+				cl := generationBumpingClient(app)
+				svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: time.Now}, Store: ds}
+				hook, err := svc.GetDeployHook(ctx, "svc")
+				if err != nil {
+					t.Fatal(err)
+				}
+				wanted := [2]string{"echo:34", "echo:35"}
+				if scenario == "image and restart" {
+					wanted[1] = "echo:32"
+				}
+				var rows [2]DeployView
+				var errs [2]error
+				var wg sync.WaitGroup
+				for i := range 2 {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						if scenario == "hooks" {
+							req := httptest.NewRequest("GET", hook.URL+"&imgURL="+url.QueryEscape(wanted[i]), nil)
+							rec := httptest.NewRecorder()
+							svc.DeployHookHandler().ServeHTTP(rec, req)
+							if rec.Code != 200 {
+								errs[i] = fmt.Errorf("hook HTTP %d: %s", rec.Code, rec.Body)
+								return
+							}
+							var response struct{ Deploy struct{ ID string } }
+							if errs[i] = json.Unmarshal(rec.Body.Bytes(), &response); errs[i] != nil {
+								return
+							}
+							rows[i], errs[i] = svc.Get(ctx, "svc", response.Deploy.ID)
+						} else if i == 1 {
+							rows[i], errs[i] = svc.Restart(ctx, "svc")
+						} else {
+							rows[i], errs[i] = svc.Trigger(ctx, "svc", TriggerParams{ImageURL: wanted[i]})
+						}
+					}()
+				}
+				wg.Wait()
+				for i, err := range errs {
+					if err != nil {
+						t.Fatal(err)
+					}
+					if rows[i].Image != wanted[i] {
+						t.Fatalf("row %d image %q, want %q", i, rows[i].Image, wanted[i])
+					}
+				}
+				var newest store.Deploy
+				for _, d := range ds.byApp["srv-11"] {
+					if d.Generation > newest.Generation {
+						newest = d
+					}
+				}
+				got := getApp(t, cl, "svc")
+				selected := got.ActiveReleaseConfig()
+				if selected == nil || selected.Generation != newest.Generation || selected.Image != newest.Image || got.Spec.Image != "echo:33" || len(ds.setImage) != 0 {
+					t.Fatalf("newest %+v, runtime %+v, saved %q, row writes %v", newest, selected, got.Spec.Image, ds.setImage)
+				}
+				generations := map[int64]bool{}
+				for _, d := range ds.byApp["srv-11"] {
+					generations[d.Generation] = true
+				}
+				if len(generations) != 3 {
+					t.Fatalf("triggers reused a release generation: %v", generations)
 				}
 			}
 		})

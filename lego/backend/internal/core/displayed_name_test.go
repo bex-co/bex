@@ -19,6 +19,7 @@ package core
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -104,4 +105,63 @@ func objectsOf(apps []*appv1alpha1.App) []client.Object {
 		out[i] = a
 	}
 	return out
+}
+
+// The account default differs from the workspace selected in the CLI. Renames
+// must work in visible workspaces, and an explicit workspace must never fall
+// through to an app elsewhere (including the legacy creation-name fallback).
+func TestRenamedServiceOutsideDefaultWorkspace(t *testing.T) {
+	bob := WithIdentity(context.Background(), Identity{Subject: "bob", Method: "session"})
+	for _, tc := range []struct {
+		name, selected, target, want string
+		duplicate                    bool
+		wantErr                      error
+	}{
+		{name: "visible renamed service", target: "new", want: "srv-b"},
+		{name: "explicit other workspace", selected: "tea-b", target: "new", want: "srv-b"},
+		{name: "missing from selection", selected: "tea-a", target: "new", wantErr: ErrNotFound},
+		{name: "legacy alias missing from selection", selected: "tea-a", target: "old", wantErr: ErrNotFound},
+		{name: "renamed ambiguity", target: "new", duplicate: true, wantErr: ErrConflict},
+		{name: "selection resolves renamed ambiguity", selected: "tea-b", target: "new", duplicate: true, want: "srv-b"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			apps := []*appv1alpha1.App{shownAs(workspaceApp("tea-b", "old", "srv-b"), "new"), shownAs(workspaceApp("tea-foreign", "foreign", "srv-secret"), "new")}
+			if tc.duplicate {
+				apps = append(apps, shownAs(workspaceApp("tea-a", "other", "srv-a"), "new"))
+			}
+			base := &Base{Client: fakeAppClient(objectsOf(apps)...), Namespace: "default", Workspace: multiWorkspace{"bob": {"tea-a", "tea-b"}}, Authz: &fakeAllowChecker{}}
+			ctx := bob
+			if tc.selected != "" {
+				ctx = WithWorkspace(ctx, tc.selected)
+			}
+			for _, resolve := range []func(context.Context, string, string) (*appv1alpha1.App, error){base.AuthorizeApp, base.GetApp} {
+				got, err := resolve(ctx, RelCanView, tc.target)
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("error = %v, want %v", err, tc.wantErr)
+				}
+				if tc.wantErr == nil && (got == nil || got.Labels[LabelAppID] != tc.want) {
+					t.Fatalf("got %v, want %s", got, tc.want)
+				}
+				if err != nil && strings.Contains(err.Error(), "srv-secret") {
+					t.Fatal("foreign service leaked in error")
+				}
+			}
+		})
+	}
+}
+
+func TestDisplayedNameMembershipEnumerationFailsClosed(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "bob", Method: "session"})
+	base := &Base{
+		Client:    fakeAppClient(shownAs(workspaceApp("tea-a", "old", "srv-a"), "new")),
+		Namespace: "default", Workspace: multiWorkspace{"bob": {"tea-a"}}, Authz: &fakeAllowChecker{},
+		MemberWorkspaceIDs: func(context.Context, Identity) ([]string, error) {
+			return nil, errors.New("membership store unavailable")
+		},
+	}
+	for _, resolve := range []func(context.Context, string, string) (*appv1alpha1.App, error){base.AuthorizeApp, base.GetApp} {
+		if _, err := resolve(ctx, RelCanView, "new"); !errors.Is(err, ErrAuthzUnavailable) {
+			t.Fatalf("membership enumeration failed but lookup returned %v", err)
+		}
+	}
 }

@@ -68,3 +68,18 @@ So `bex restart …-a`, `bex deploys create …-a` and `bex deploys cancel …-a
 ## Blocked (2026-09-27)
 
 t001–t006 are done. Renames follow create's workspace-uniqueness rule (409, race-safe under a shared advisory lock), and by-name resolution matches the name each service is shown as, so the sweep-19 swap now targets the listed service. Production has no duplicate displayed names. Only **t007** remains: the live closeout on production fixtures, which needs the deploy to land (`blocked/m42`) and a logged-in `bex` CLI.
+
+## Live recheck and additional fix (2026-10-02)
+
+Using isolated QA login and two owned free services in `bex-canary`, duplicate rename returned 409 and concurrent renames produced exactly one winner. However, after renaming a service, `deploys list <newName>` and `services instances <newName>` returned **404**: displayed-name lookup searched only the account's default workspace; cross-workspace fallback searched the immutable creation label. Both fixtures were restored to their original names after the check.
+
+The local core resolver now searches current displayed names across visible workspaces when no explicit workspace is supplied, validates access, detects renamed ambiguity without exposing foreign IDs, and restricts explicit selections to their workspace. m45 supplies the CLI selection. Regression tests include a renamed service outside the account default and prevent explicit selection from reaching another workspace through a legacy creation-name alias.
+
+**Remaining:** ship, and repeat the renamed deploys/instances/restart checks live. m47 is not closed on the basis of the earlier partial fix.
+
+
+## Verification and remaining release gate (2026-10-02)
+
+Full backend suite against isolated Postgres/OpenFGA/OpenBao, operator `make test`, full CLI suite, backend/CLI lint, targeted Go race tests, workflow guards and ci-red-streak fixtures passed. The final affected backend packages passed again after review changes. Overlay mutation checks confirmed the image, workspace and rename regressions fail with their fixes removed. Markdown was formatted; QA fixtures and the isolated credentials were cleaned up.
+
+Implementation and review are complete locally. Repository `AGENTS.md` requires an explicit `$ship` before commit/push. After ship, observe CI/production and complete this milestone's remaining live closeout; m45 also needs the updated CLI released. The earlier policy/sign-off/login blockers are resolved.

@@ -622,6 +622,19 @@ func datastoreLogsAdapter(logSvc *logs.Service) func(context.Context, string, da
 // NewServer wires the five feature services over one core.Base + deps. Callers
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
+	if base != nil && d.WorkspaceStore != nil {
+		base.MemberWorkspaceIDs = func(ctx context.Context, identity core.Identity) ([]string, error) {
+			members, err := d.WorkspaceStore.ListTenantsForSubject(ctx, identity.Subject)
+			if err != nil {
+				return nil, err
+			}
+			ids := make([]string, len(members))
+			for i, member := range members {
+				ids[i] = member.ID
+			}
+			return ids, nil
+		}
+	}
 	workspaceSvc := &workspaces.Service{
 		Base:                  base,
 		Store:                 d.WorkspaceStore,
@@ -1235,7 +1248,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// wrappers outside it clone the request, so reading r.Pattern after the
 	// fact would only ever see the outer `/v1/` mount, not the specific route
 	// the telemetry needs (w3/m84).
-	mux.Handle(restMountPattern, auth(rl(s.restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, recordRoutePattern(restMux, rest))))))
+	mux.Handle(restMountPattern, auth(rl(s.restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, rest)))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies).

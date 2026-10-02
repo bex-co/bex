@@ -3,6 +3,7 @@ package bridge
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/render-oss/cli/pkg/cfg"
@@ -19,8 +20,12 @@ import (
 // ignores it. It is a bex extension, never sent to Render.
 const VersionHeader = "X-Bex-CLI-Version"
 
-// InstallVersionHeader stamps VersionHeader on requests the process sends to
-// the configured control plane.
+// WorkspaceHeader preserves the active workspace on upstream service-name paths,
+// which do not otherwise carry ownerId. The server ignores it for typed ids.
+const WorkspaceHeader = "X-Bex-Workspace"
+
+// InstallControlPlaneHeaders adds launcher identity and service workspace scope
+// to requests sent to the configured control plane.
 //
 // It wraps http.DefaultTransport rather than any specific client because the
 // upstream CLI builds its API client as &http.Client{} with a nil Transport
@@ -32,31 +37,33 @@ const VersionHeader = "X-Bex-CLI-Version"
 //
 // Calling it more than once installs a single wrapper; an empty version
 // installs nothing.
-func InstallVersionHeader(version string) {
+func InstallControlPlaneHeaders(version string) {
 	if version == "" {
 		return
 	}
-	if _, already := http.DefaultTransport.(*versionTransport); already {
+	if _, already := http.DefaultTransport.(*controlPlaneTransport); already {
 		return
 	}
-	http.DefaultTransport = &versionTransport{
-		base:    http.DefaultTransport,
-		version: version,
-		hosts:   controlPlaneHosts,
+	http.DefaultTransport = &controlPlaneTransport{
+		base:      http.DefaultTransport,
+		version:   version,
+		hosts:     controlPlaneHosts,
+		workspace: func() string { selected, _ := config.WorkspaceID(); return selected },
 	}
 }
 
-type versionTransport struct {
-	base    http.RoundTripper
-	version string
-	hosts   func() map[string]struct{}
+type controlPlaneTransport struct {
+	base      http.RoundTripper
+	version   string
+	hosts     func() map[string]struct{}
+	workspace func() string
 }
 
 // RoundTrip adds the header only for the control plane. A request to any other
 // host — the GitHub release check in internal/update, a model provider reached
 // by internal/code — is forwarded exactly as the caller built it, so the
 // launcher never announces itself to a third party.
-func (t *versionTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if _, ok := t.hosts()[req.URL.Host]; !ok {
 		return t.base.RoundTrip(req)
 	}
@@ -64,6 +71,13 @@ func (t *versionTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	// a clone (http.RoundTripper contract).
 	clone := req.Clone(req.Context())
 	clone.Header.Set(VersionHeader, t.version)
+	// Read the selection fresh: an interactive command may change workspaces
+	// after an earlier request. Other API paths do not consume this header.
+	if t.workspace != nil && strings.HasPrefix(req.URL.Path, "/v1/services/") {
+		if selected := t.workspace(); selected != "" {
+			clone.Header.Set(WorkspaceHeader, selected)
+		}
+	}
 	return t.base.RoundTrip(clone)
 }
 

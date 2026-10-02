@@ -1,6 +1,6 @@
 # w8 · m43 — Postgres high availability runs on free and sub-1-CPU plans: gate it by plan like Render
 
-**Worker:** worker8 **Goal:** `enableHighAvailability` is honored only on Postgres plans that support it (at least 1 CPU), on every write path, so a free database can never become a replicated multi-instance cluster for $0. **Status:** blocked
+**Worker:** worker8 **Goal:** `enableHighAvailability` is honored only on Postgres plans that support it (at least 1 CPU), on every write path, so a free database can never become a replicated multi-instance cluster for $0. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,12 +13,12 @@
 | t005 | Render parity — **DONE**                                                                                                  | 20m | t002, t003, t004 |
 | t006 | Simplify — **DONE**                                                                                                       | 15m | t005             |
 | t007 | Test coverage — **DONE**                                                                                                  | 30m | t006             |
-| t008 | Closeout                                                                                                       | 15m | t007             |
+| t008 | Closeout — **DONE**                                                                                                       | 15m | t007             |
 
 ## Definition of done
 
 - `bex postgres update <free-dpg> --high-availability` exits non-zero with a 400 naming the plan requirement (at least 1 CPU, e.g. `standard` / `1c-2g` and above). The database keeps `highAvailabilityEnabled: false` and still runs one instance. `bex postgres create --plan free --high-availability` is refused the same way.
-- On a supported plan, HA still enables. A downgrade to an unsupported plan while HA is on is refused with "disable high availability first", never silently switched off.
+- The current catalog has no HA-capable Postgres plan: all published plans refuse enabling HA. Adding a priced ≥1-CPU plan is deferred. Tests with an explicitly supplied supported tier keep the positive predicate path covered; downgrading an existing HA database to an unsupported plan is refused with "disable high availability first", never silently switched off.
 - REST, GraphQL, MCP, Blueprint and the dashboard give the same answer and the same message (one shared predicate from the tier catalog).
 - Any existing databases in production with HA on an unsupported plan are listed, and their handling is decided and recorded, not silently changed.
 
@@ -47,7 +47,7 @@ $ bex postgres get dpg-darlq2q9slkc73beqtr0 -o json   →  plan free · status a
 
 - **Source:** live `/qa-find-bugs-cli` sweep 11 (w8), 2026-09-26.
 - **Goal linkage:** Render-compatible managed Postgres (ADR006, ADR018 "HA · failover · read replicas" row) and the free-tier capacity rule (ADR030 §6).
-- **Expected outcome:** free and sub-1-CPU databases stay single-instance, and HA works exactly where Render offers it.
+- **Expected outcome:** free and sub-1-CPU databases stay single-instance. HA remains unavailable until bex introduces a priced, supported tier.
 - **Why now:** every tenant can currently double their free Postgres capacity with one flag. The cost grows with adoption, and a later clamp on existing databases gets harder (t004).
 - **Render parity included:** the fix changes REST/GraphQL/MCP/Blueprint/UI behavior.
 
@@ -57,9 +57,22 @@ $ bex postgres get dpg-darlq2q9slkc73beqtr0 -o json   →  plan free · status a
 - How metering bills the standby instance-seconds on a free plan.
 - Whether `--read-replica` has the same gap. It was not exercised to avoid creating extra free replicas; t004 should check.
 
-## Blocked (2026-09-26)
+## Historical blockers (2026-09-26; resolved 2026-10-02)
 
 t001–t007 are done (gate in the shared service, Blueprint, dashboard, audit, parity, tests). t008 cannot close:
 
 1. **User decision: there is no ≥1-CPU Postgres plan.** bex ships `free` (100m), `basic-256mb` (100m) and `basic-1gb` (500m), so the DoD line "on a supported plan, HA still enables" has no plan to hold on, and HA is refused everywhere. Either add a ≥1-CPU rung (a `tiers.yaml` postgres entry + a `pricing.yaml` rate + the Stripe catalog, i.e. a pricing call), which re-enables HA with no code change, or accept "no HA until then" and amend this DoD line.
 2. **Live closeout** after this ships to production: `bex postgres update <free-dpg> --high-availability` and `bex postgres create --plan free --high-availability` exit non-zero with the 400. Needs the deploy to land (see `blocked/m42`) and a logged-in CLI (`bex login`).
+
+## Live re-verification (2026-09-27, `/qa-find-bugs-cli` sweep 51)
+
+Holds on production `4a0422577`: a new free Postgres (`dpg-dasglvi1pbgc73a24j5g`, deleted), `bex postgres update <dpg> --high-availability --confirm` → exit 1, `400 (POSTGRES_HA_PLAN_UNSUPPORTED): high availability requires a Postgres plan with at least 1 CPU; plan "free" has 100m CPU`. `postgres get` afterwards shows `highAvailabilityEnabled: false`. The ≥1-CPU positive leg still waits on the plan decision in § Blocked.
+
+## Closeout (2026-10-02)
+
+The user accepted the review's recommended sequence, including enforcement-only scope: **no HA in the current catalog**. No new plan, price, or Stripe product is introduced. A supported-plan launch is deferred product work, not a condition for this enforcement milestone.
+
+Using an isolated `bex v0.2.1` device login in `bex-canary`, free Postgres create with `--high-availability` and update with the same flag both returned `400 POSTGRES_HA_PLAN_UNSUPPORTED`, naming the 1-CPU requirement and `free`'s 100m CPU. The update fixture `dpg-davmjcede41s73canrc0` remained `highAvailabilityEnabled: false` and was deleted. A fresh read-only production audit found **3 databases, 0 configured or observed with HA**. The prior shared-service, Blueprint, dashboard and downgrade tests remain the cross-surface evidence; sibling free-plan flags remain separate in `w8/035`.
+
+
+**Cleanup verified:** both owned web-service fixtures and the free Postgres fixture were deleted; all four baseline services remained. The isolated CLI credential was revoked, and the temporary local test containers were removed.

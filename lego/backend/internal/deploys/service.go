@@ -68,8 +68,8 @@ type DeployStore interface {
 	// (see store.Store.CloseDeploy) — Cancel's write path, and the same method
 	// the reconciler's write-back uses.
 	CloseDeploy(ctx context.Context, id, status, resolvedImage string) (bool, error)
-	// SetAppImage writes the row-owned image field — Rollback's row-first
-	// write, same discipline as apps.Service.writeThroughStore.
+	// SetAppImage clears a legacy row image when deploying from a repository.
+	// Image overrides and rollbacks select a release without changing this row.
 	SetAppImage(ctx context.Context, id string, image string) error
 	// InsertServiceEventFact appends a closed lifecycle fact exactly once
 	// (store.PGStore's idempotent-by-source-key insert) — Cancel's route to the
@@ -709,14 +709,6 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 				return fmt.Errorf("clear rollback image override: %w", err)
 			}
 		}
-		// imageUrl is the same row-owned field: patching only the CR let the
-		// projector restore the row's old image, re-rolling the pods and closing
-		// this deploy canceled (w8/022). Row-first, like Rollback.
-		if p.ImageURL != "" {
-			if err := s.Store.SetAppImage(ctx, appID, p.ImageURL); err != nil {
-				return fmt.Errorf("update source of truth: %w", err)
-			}
-		}
 		return nil
 	}
 	disablesAutoDeploy := p.disableAutoDeploy && a.Spec.AutoDeploy
@@ -748,22 +740,24 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		} else {
 			a.Spec.BuildCommit = p.CommitID
 		}
-		// imageUrl overrides the running image for this deploy; the operator
-		// picks up the new spec.image on its next reconcile.
+		// A deploy override selects runtime input without changing the saved
+		// image that the projector and subsequent config changes use.
 		if p.ImageURL != "" {
-			a.Spec.Image = p.ImageURL
+			a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: release, Image: p.ImageURL}
 		}
 	}, func(release int64) (store.Deploy, error) {
-		// The row records this call's own request: the image just patched
-		// under the lock, never a value another trigger wrote meanwhile.
+		image := a.Spec.Image
+		if p.ImageURL != "" {
+			image = p.ImageURL
+		}
 		if p.rollbackOf != nil {
 			// Provenance is the target's, whether or not the ref resolved again.
 			if commit.Hash == "" {
 				commit = store.CommitInfo{Hash: p.rollbackOf.Commit, Message: p.rollbackOf.CommitMessage}
 			}
-			return s.Store.CreateRollbackDeploy(ctx, appID, a.Spec.Image, p.rollbackOf.ID, release, commit, triggeredBy)
+			return s.Store.CreateRollbackDeploy(ctx, appID, image, p.rollbackOf.ID, release, commit, triggeredBy)
 		}
-		return s.Store.CreateDeploy(ctx, appID, trigger, a.Spec.Image, release, commit, triggeredBy)
+		return s.Store.CreateDeploy(ctx, appID, trigger, image, release, commit, triggeredBy)
 	})
 	if err != nil {
 		return DeployView{}, err
