@@ -405,6 +405,66 @@ describe("EnvironmentsPanel", () => {
     );
   });
 
+  it("does not pin the first Environment into the URL before resources load (w1/m159)", () => {
+    // Cold load of /project/<id>: Environments resolve before the resource
+    // lists. Canonicalizing in that gap wrote env-1 into the URL, which then
+    // stuck, so a moved resource stayed off screen on every fresh load.
+    environmentsState.environments = [
+      {
+        id: "env-1",
+        projectId: "prj-1",
+        name: "qa-e1",
+        ownerId: "tea-1",
+        createdAt: null,
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+        envGroupIds: [],
+        protectedStatus: "unprotected",
+        networkIsolationEnabled: false,
+        ipAllowListEntries: [],
+      },
+    ];
+    const onResourceFilterChange = vi.fn();
+    const props = {
+      projectId: "prj-1",
+      services: [],
+      databases: [],
+      keyValues: [],
+      servicePending: null,
+      onRunServiceAction: vi.fn(),
+      onDatabaseDeleted: vi.fn(),
+      onKeyValueDeleted: vi.fn(),
+      onResourceFilterChange,
+    };
+    const { rerender } = render(
+      <EnvironmentsPanel {...props} projectRows={[]} resourcesLoading />,
+    );
+    expect(onResourceFilterChange).not.toHaveBeenCalled();
+
+    rerender(
+      <EnvironmentsPanel
+        {...props}
+        resourcesLoading={false}
+        projectRows={[
+          {
+            kind: "keyvalue",
+            id: "red-moved",
+            name: "qa-20260930-m159kv",
+            status: "available",
+            href: "/keyvalue/red-moved",
+          } as never,
+        ]}
+      />,
+    );
+    expect(onResourceFilterChange).toHaveBeenCalledTimes(1);
+    expect(onResourceFilterChange).toHaveBeenCalledWith({
+      environmentId: "unassigned",
+      query: "",
+      kind: "all",
+    });
+  });
+
   it("keeps project-only resources reachable through Unassigned", () => {
     environmentsState.environments = [];
     renderPanel({

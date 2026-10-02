@@ -69,9 +69,21 @@ export function ProjectPage() {
     });
   }
 
-  const { services, refetch: refetchServices } = useServices();
-  const { databases, refetch: refetchDatabases } = useDatabases();
-  const { keyValues, refetch: refetchKeyValues } = useKeyValues();
+  const {
+    services,
+    loading: servicesLoading,
+    refetch: refetchServices,
+  } = useServices();
+  const {
+    databases,
+    loading: databasesLoading,
+    refetch: refetchDatabases,
+  } = useDatabases();
+  const {
+    keyValues,
+    loading: keyValuesLoading,
+    refetch: refetchKeyValues,
+  } = useKeyValues();
   const { pending, run } = useServiceLifecycle({ refetch: refetchServices });
   const projectResult = projectRoute.useLoaderData();
   const project =
@@ -155,6 +167,9 @@ export function ProjectPage() {
                 databases={databases}
                 keyValues={keyValues}
                 projectRows={group?.rows ?? []}
+                resourcesLoading={
+                  servicesLoading || databasesLoading || keyValuesLoading
+                }
                 servicePending={pending}
                 onRunServiceAction={run}
                 onDatabaseDeleted={refetchAll}

@@ -74,6 +74,8 @@ export interface EnvironmentsPanelProps {
   keyValues: KeyValueView[];
   /** Every Project member, used to keep legacy project-only resources reachable. */
   projectRows?: ResourceRow[];
+  /** True until the service, database and key value lists have loaded. */
+  resourcesLoading?: boolean;
   servicePending: PendingLifecycle | null;
   onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
@@ -89,6 +91,7 @@ export function EnvironmentsPanel({
   databases,
   keyValues,
   projectRows = [],
+  resourcesLoading = false,
   servicePending,
   onRunServiceAction,
   onDatabaseDeleted,
@@ -127,8 +130,12 @@ export function EnvironmentsPanel({
 
   // Canonicalize missing/deleted ids once data arrives so copied URLs never
   // leave the browser showing a fallback that differs from its address bar.
+  // Wait for the resource lists too: on a cold load the Environments usually
+  // arrive first, and canonicalizing then pins environments[0] into the URL
+  // before the moved resource's Unassigned row exists (w1/m159).
   useEffect(() => {
-    if (loading || error || selectedId === requestedId) return;
+    if (loading || resourcesLoading || error || selectedId === requestedId)
+      return;
     onResourceFilterChange({
       environmentId: selectedId,
       query: resourceFilter.query,
@@ -139,6 +146,7 @@ export function EnvironmentsPanel({
     loading,
     onResourceFilterChange,
     requestedId,
+    resourcesLoading,
     resourceFilter.kind,
     resourceFilter.query,
     selectedId,
