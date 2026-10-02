@@ -29,6 +29,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	pathvalidation "k8s.io/apimachinery/pkg/api/validation/path"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -299,6 +301,10 @@ type Base struct {
 	// control-plane store is wired; nil => every check targets workspace:default
 	// (the legacy store-off mode). See WorkspaceResolver for the ok contract.
 	Workspace WorkspaceResolver
+	// MemberWorkspaceIDs narrows unselected service-name lookup to membership
+	// labels before listing CRs. Membership remains subject to the verb's authz.
+	// Nil keeps compatibility for store-off and standalone resolver adapters.
+	MemberWorkspaceIDs func(context.Context, Identity) ([]string, error)
 	// Audit records write-verb authorization decisions (w4/m10); nil => audit.go's
 	// NoopAuditSink, the store-off degrade every other store-backed feature uses.
 	Audit AuditSink
@@ -1097,9 +1103,12 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	} else if shown != nil {
 		object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, shown.Labels)
 		if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(shown), verb, resolveErr); err != nil {
-			return nil, err
-		}
-		if err := b.refuseAmbiguousName(ctx, name, shown); err != nil {
+			if _, named := WorkspaceFrom(ctx); !named && shown.Labels[LabelTenant] != acting && errors.Is(err, ErrForbidden) {
+				if err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(acting), ServiceTarget(name), verb, nil); err != nil {
+					return nil, err
+				}
+				return nil, ErrNotFound
+			}
 			return nil, err
 		}
 		return shown, nil
@@ -1126,8 +1135,11 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 	}
 	if acting != "" && validLabel {
 		var list appv1alpha1.AppList
-		if err := b.Client.List(ctx, &list,
-			client.MatchingLabels{LabelServiceName: name}); err != nil {
+		opts := []client.ListOption{client.MatchingLabels{LabelServiceName: name}}
+		if _, named := WorkspaceFrom(ctx); named {
+			opts = append(opts, client.InNamespace(b.AppNamespace(acting)), client.MatchingLabels{LabelTenant: acting})
+		}
+		if err := b.Client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
 		// Every colliding candidate is a distinct authorization decision, but
@@ -1208,7 +1220,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 }
 
 // appByDisplayedName resolves a by-NAME argument against the name each
-// service in the acting workspace is SHOWN as (w8/m47): its display name when
+// visible service is SHOWN as (w8/m47): its display name when
 // renamed, else its creation name. Every list, the dashboard and the CLI show
 // that name, but resolution used to match only the hidden creation name, so
 // after two services swapped names `bex deploys list a` answered with the
@@ -1221,14 +1233,64 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 		return nil, nil
 	}
 	var list appv1alpha1.AppList
-	if err := b.Client.List(ctx, &list, client.InNamespace(b.AppNamespace(acting)),
-		client.MatchingLabels{LabelTenant: acting}); err != nil {
+	_, named := WorkspaceFrom(ctx)
+	identity, identified := IdentityFrom(ctx)
+	global := !named && identified && b.Workspace != nil
+	var opts []client.ListOption
+	if !global {
+		opts = []client.ListOption{client.InNamespace(b.AppNamespace(acting)), client.MatchingLabels{LabelTenant: acting}}
+	} else if b.MemberWorkspaceIDs != nil {
+		memberIDs, err := b.MemberWorkspaceIDs(ctx, identity)
+		if err != nil {
+			return nil, ErrAuthzUnavailable
+		}
+		if len(memberIDs) == 0 {
+			return nil, nil
+		}
+		members, err := labels.NewRequirement(LabelTenant, selection.In, memberIDs)
+		if err != nil {
+			return nil, err
+		}
+		opts = []client.ListOption{client.MatchingLabelsSelector{Selector: labels.NewSelector().Add(*members)}}
+	}
+	if err := b.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
+	candidates := list.Items[:0]
+	for _, a := range list.Items {
+		if displayedAppName(&a) == name {
+			candidates = append(candidates, a)
+		}
+	}
+	preferOwnWorkspaceNamespace(candidates)
 	var matches []*appv1alpha1.App
-	for i := range list.Items {
-		if displayedAppName(&list.Items[i]) == name {
-			matches = append(matches, &list.Items[i])
+	visible := map[string]bool{}
+	seen := map[string]bool{}
+	for i := range candidates {
+		a := &candidates[i]
+		tenant := a.Labels[LabelTenant]
+		if global && tenant != acting {
+			if tenant == "" {
+				continue
+			}
+			allowed, checked := visible[tenant]
+			if !checked {
+				err := b.checkWorkspaceAccess(ctx, RelCanView, tenant)
+				if err != nil && !errors.Is(err, ErrForbidden) {
+					return nil, err
+				}
+				allowed = err == nil
+				visible[tenant] = allowed
+			}
+			if !allowed {
+				continue
+			}
+		}
+		// A namespace migration may temporarily leave two CRs for one public id.
+		key := tenant + "/" + appPublicID(a)
+		if !seen[key] {
+			matches = append(matches, a)
+			seen[key] = true
 		}
 	}
 	switch len(matches) {
@@ -1242,7 +1304,7 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 		ids[i] = appPublicID(m)
 	}
 	return nil, NewConflictError("SERVICE_NAME_AMBIGUOUS",
-		fmt.Sprintf("several services in this workspace are named %q (%s); address it by id", name, strings.Join(ids, ", ")),
+		fmt.Sprintf("several visible services are named %q (%s); select a workspace or address it by id", name, strings.Join(ids, ", ")),
 		map[string]any{"name": name, "serviceIds": ids})
 }
 
@@ -1668,9 +1730,9 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		return nil, err
 	} else if shown != nil {
 		if err := b.AuthorizeLabeled(ctx, relation, shown.Labels); err != nil {
-			return nil, err
-		}
-		if err := b.refuseAmbiguousName(ctx, name, shown); err != nil {
+			if _, named := WorkspaceFrom(ctx); !named && shown.Labels[LabelTenant] != acting && errors.Is(err, ErrForbidden) {
+				return nil, ErrNotFound
+			}
 			return nil, err
 		}
 		return shown, nil
@@ -1698,8 +1760,11 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		return nil, ErrNotFound
 	}
 	var list appv1alpha1.AppList
-	if err := b.Client.List(ctx, &list,
-		client.MatchingLabels{LabelServiceName: name}); err != nil {
+	opts := []client.ListOption{client.MatchingLabels{LabelServiceName: name}}
+	if _, named := WorkspaceFrom(ctx); named {
+		opts = append(opts, client.InNamespace(b.AppNamespace(acting)), client.MatchingLabels{LabelTenant: acting})
+	}
+	if err := b.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
 	lastErr := error(ErrNotFound)

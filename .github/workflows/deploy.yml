@@ -31,6 +31,16 @@ on:
       - "deploy/opensandbox/**"
       - "deploy/gitops/**"
       - ".github/workflows/deploy.yml"
+      # Main has one gate owner, including suite/script-only changes. The
+      # reusable suites run directly on PRs, never a second time on main.
+      - ".github/workflows/backend-test.yml"
+      - ".github/workflows/operator-test.yml"
+      - ".github/workflows/dashboard-test.yml"
+      - ".github/workflows/opensandbox-controller-test.yml"
+      - "scripts/stripe-billing-*.sh"
+      - "scripts/stripe_billing_*.py"
+      - "scripts/test_stripe_billing_*.py"
+      - "scripts/lib/stripe-billing.sh"
   workflow_dispatch: {}
 
 permissions:
