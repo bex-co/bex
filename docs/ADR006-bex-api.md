@@ -406,8 +406,8 @@ Every workspace-scoped row below also accepts optional `workspaceId`; it is omit
 | --- | --- | --- | --- |
 | `list_services` | `{workspaceId?}` | `List` | `{services: [service, ...]}` |
 | `get_service` | `{serviceId}` | `Get` | `service` |
-| `create_web_service` | `{name, type?, repo?, image?, branch?, runtime?, buildCommand?, startCommand?, dockerfilePath?, plan?, envVars?, port?, replicas?, maxShutdownDelaySeconds?}` | `Create` | created/updated `service` |
-| `create_cron_job` | `{name, schedule, command?, repo?, image?, branch?, plan?, envVars?}` | `Create` | created/updated `service` |
+| `create_web_service` | `{name, type?, repo?, image?, branch?, runtime?, buildCommand?, startCommand?, dockerfilePath?, dockerContext?, dockerCommand?, plan?, envVars?, port?, replicas?, maxShutdownDelaySeconds?}` | `Create` | created/updated `service` |
+| `create_cron_job` | `{name, schedule, command?, repo?, image?, branch?, runtime?, dockerfilePath?, dockerContext?, dockerCommand?, plan?, envVars?}` | `Create` | created/updated `service` |
 | `create_static_site` (bex extension) | `{name, repo?, image?, branch?, rootDir?, publishPath, envVars?, secretFiles?, domains?, routes?, headers?}` | `Create` | created/updated `service` |
 | `run_cron_job` | `{serviceId}` | `TriggerCronRun` | pending `cronJobRun` |
 | `list_cron_job_runs` | `{serviceId, cursor?, limit?}` | `ListCronRuns` | `{cronJobRuns, cursor}` |
