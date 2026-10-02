@@ -71,7 +71,7 @@ Every surface derives the same `evt-…` id from the same source key:
 
 - REST: Render-compatible bare `[{event,cursor}]` with default one-hour API window.
 - GraphQL: the same ids/types/timestamps plus flattened typed detail fields.
-- MCP `list_service_events`: the REST envelope inside `{events:[…]}`.
+- MCP `list_events` (Render's tool, w1/m165) and its alias `list_service_events`: the REST envelope inside `{events:[…]}`. `list_events` takes Render's `eventTypes` array and defaults to the last 7 days; the alias keeps a `type` string and the one-hour default. A type filter with several types (REST `?type=a,b`, the array, or GraphQL `type: "a,b"`) is one union pushed down to SQL.
 - Events and Metrics: explicit-range consumers of the GraphQL feed.
 - Outbound webhooks: the same fact source and derived id; thin signed payloads remain value-free.
 

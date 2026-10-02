@@ -222,15 +222,17 @@ func TestMCPParityInventory(t *testing.T) {
 	// not ship. w2/m91 repaired get_metrics' arg contract (Divergent 7 → 6,
 	// Superset 2 → 3); create_postgres/create_static_site stay Divergent for
 	// their accepted genuine differences (region / required publishPath).
+	// w1/m165 implemented upstream's list_events (1:1 10 → 11, total 188 →
+	// 189) against the d9a8abd re-pin; list_service_events stays as its alias.
 	// Update this table and ADR018's MCP inventory together — that pairing is
 	// the point.
 	want := map[mcpParityClass]int{
-		mcpParity1to1:      10,
+		mcpParity1to1:      11,  // +list_events (w1/m165)
 		mcpParitySuperset:  3,   // +get_metrics (w2/m91 Render arg names)
 		mcpParityDivergent: 6,   // -get_metrics (w2/m91)
 		mcpParityExtension: 169, // +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
 	}
-	const wantTotal = 188
+	const wantTotal = 189
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

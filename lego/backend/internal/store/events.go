@@ -161,11 +161,17 @@ type ServiceEventLookup struct {
 	ServiceID string
 }
 
-// AutoDeployFilter constrains the auto_deploy_enabled column on the audit arm.
-// It is used when the caller filters by an auto-deploy event type so that the
-// discrimination (enabled vs disabled vs legacy changed) runs in SQL before the
-// LIMIT rather than in Go after it. A Go-side drop after LIMIT would return
-// short (or empty) pages, which a cursor client reads as end-of-feed.
+// AutoDeployFilter constrains the auto_deploy_enabled column of
+// apps.SetAutoDeploy rows on the audit arm. It is used when the caller filters
+// by an auto-deploy event type so that the discrimination (enabled vs disabled
+// vs legacy changed) runs in SQL before the LIMIT rather than in Go after it. A
+// Go-side drop after LIMIT would return short (or empty) pages, which a cursor
+// client reads as end-of-feed.
+//
+// It is a bit set, not an enum (w1/m165): Render's type filter takes several
+// types at once (`type=autodeploy_enabled,autodeploy_disabled`), so the allowed
+// sub-types are OR-ed together. It constrains ONLY SetAutoDeploy rows — every
+// other verb in the same multi-type request passes through untouched.
 type AutoDeployFilter int16
 
 const (
@@ -176,7 +182,7 @@ const (
 	// AutoDeployFilterDisabled selects rows where auto_deploy_enabled = false.
 	AutoDeployFilterDisabled AutoDeployFilter = 2
 	// AutoDeployFilterChanged selects rows where auto_deploy_enabled IS NULL (legacy rows).
-	AutoDeployFilterChanged AutoDeployFilter = 3
+	AutoDeployFilterChanged AutoDeployFilter = 4
 )
 
 // ServiceEventFilter narrows ListServiceEvents.
@@ -206,8 +212,9 @@ type ServiceEventFilter struct {
 	// FactTypes are the closed service_event_facts kinds requested by the caller.
 	FactTypes []string
 	// AutoDeploy pushes down the auto-deploy boolean discrimination into SQL when
-	// the Verbs set includes apps.SetAutoDeploy. AutoDeployFilterNone (zero value)
-	// means no additional constraint on auto_deploy_enabled.
+	// the Verbs set includes apps.SetAutoDeploy: the OR of the sub-types to keep,
+	// applied to SetAutoDeploy rows only. AutoDeployFilterNone (zero value) means
+	// no additional constraint on auto_deploy_enabled.
 	AutoDeploy AutoDeployFilter
 	// Limit caps the page (<1 or >core.MaxPageLimit clamps to core.DefaultPageLimit).
 	Limit int
@@ -375,9 +382,10 @@ WITH feed AS (
       AND a.outcome = 'allowed'
       AND a.verb = ANY($3)
       AND ($10::smallint IS NULL
-           OR ($10 = 1 AND a.auto_deploy_enabled = true)
-           OR ($10 = 2 AND a.auto_deploy_enabled = false)
-           OR ($10 = 3 AND a.auto_deploy_enabled IS NULL))
+           OR a.verb <> '` + core.AuditVerbSetAutoDeploy + `'
+           OR ($10 & 1 <> 0 AND a.auto_deploy_enabled = true)
+           OR ($10 & 2 <> 0 AND a.auto_deploy_enabled = false)
+           OR ($10 & 4 <> 0 AND a.auto_deploy_enabled IS NULL))
   UNION ALL
     SELECT 'fact:' || f.source_key,
            f.at,
@@ -614,7 +622,7 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	return out, nil
 }
 
-// nullAutoDeployFilter maps AutoDeployFilterNone to SQL NULL so the $11
+// nullAutoDeployFilter maps AutoDeployFilterNone to SQL NULL so the $10
 // predicate in serviceEventsQuery is a no-op when no discrimination is needed.
 func nullAutoDeployFilter(f AutoDeployFilter) *int16 {
 	if f == AutoDeployFilterNone {

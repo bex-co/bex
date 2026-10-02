@@ -230,10 +230,12 @@ func toEventList(events []Event) []eventWithCursor {
 
 // filterFromQuery translates Render's type/startTime/endTime/cursor/limit query
 // params into Filter, over the one shared translator (FilterOf) the GraphQL and
-// MCP fragments also use.
+// MCP fragments also use. `type` may name several types comma-separated
+// (Render's wire); the Render request gate has already checked each against the
+// pinned enum (renderCommaListQueryCompatibility in internal/api).
 func filterFromQuery(q url.Values) Filter {
 	cursor, limit := core.PageParams(q)
-	return FilterOf(q.Get("type"), q.Get("startTime"), q.Get("endTime"), cursor, limit)
+	return FilterOf([]string{q.Get("type")}, q.Get("startTime"), q.Get("endTime"), cursor, limit)
 }
 
 // RegisterREST mounts Render's service-scoped list and global retrieve routes.

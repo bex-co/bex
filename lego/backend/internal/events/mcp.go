@@ -18,36 +18,63 @@ package events
 
 import (
 	"context"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
-// mcp.go is the events MCP fragment — a deliberate bex EXTENSION, not a mirror.
+// mcp.go is the events MCP fragment: Render's list_events, bex's older name for
+// the same read, and a bex-only single-event lookup.
 //
-// The official server (render-oss/render-mcp-server @ 2a00be1, checked 2026-07-12)
-// registers 24 tools across owner/service/deploy/postgres/keyvalue/logs/metrics
-// and has NO events tool: its generated REST client carries the events types
-// (pkg/client/events), but nothing wires them to a tool. So there is no name to
-// mirror and no parity gap to close — an events tool is bex going further.
+// History, because the header this replaces was true when written and then
+// wasn't. At 2a00be1 (checked 2026-07-12) render-oss/render-mcp-server had NO
+// events tool, so bex shipped list_service_events as a deliberate extension in
+// Render's tool grammar. Upstream then shipped the same capability as
+// list_events (9d1f2b8, #170; pinned in openapi/render-mcp-tools.json since
+// w1/m165), which turned a bex extension into two names for one tool. So:
 //
-// bex adds it anyway, under a name in Render's own tool grammar
-// (list_<resource>, keyed on serviceId, like list_deploys): an agent asking "what
-// happened to my service overnight?" can otherwise only poll list_deploys, which
-// sees rollouts and nothing else — not the suspend, not the scale, not the env-var
-// change that explains them. Activity, not just current state, is the point
-// (docs/ADR008-vision.md pillar 3), and this is the one tool that carries it.
+//   - list_events is Render's contract, argument for argument: serviceId
+//     (required), eventTypes (an array), startTime, endTime, cursor, limit, plus
+//     the workspaceId every scoped tool gets from the api package's middleware.
+//     Like upstream it defaults the window to the LAST 7 DAYS
+//     (listEventsDefaultLookback) — an agent written against Render's tool
+//     asks "why did this restart last night?" without a startTime.
+//   - list_service_events stays, unchanged, as a working alias (user decision
+//     2026-09-30: retiring a published tool is a breaking change for its
+//     callers). Its `type` string and now-1h default are REST's.
+//   - get_service_event (one event by evt-… id) remains a bex extension;
+//     upstream still has no equivalent.
 //
-// The window default is Render's (now-1h): an agent asking about "overnight"
-// must pass startTime, which the tool description says outright so it does.
+// Both list tools answer from the one Service.List over the one FilterOf
+// translator REST and GraphQL use, so there is no fourth events vocabulary: the
+// same types, ids, details and cursors, and the same multi-type semantics —
+// eventTypes ["a","b"] is REST's `?type=a,b`, exactly the collapse Render's own
+// server performs (pkg/event/tools.go: strings.Join(eventTypes, ",")). An
+// unknown type matches nothing, as it does on GraphQL; only the REST gate
+// validates types against Render's pinned enum.
+
+// listEventsDefaultLookback is upstream list_events' window when the caller
+// names no startTime (render-mcp-server pkg/event/tools.go defaultLookback).
+const listEventsDefaultLookback = 7 * 24 * time.Hour
+
+// listEventsArgs is Render's list_events input, names verbatim from the pin.
+type listEventsArgs struct {
+	ServiceID  string   `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	EventTypes []string `json:"eventTypes,omitempty" jsonschema:"filter to any of these event types, e.g. server_failed and deploy_ended; omit for all types"`
+	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window; DEFAULTS TO 7 DAYS AGO — set it to reach older events"`
+	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window; defaults to now"`
+	Cursor     string   `json:"cursor,omitempty" jsonschema:"resume after this cursor (the cursor of the last event of the previous page)"`
+	Limit      int      `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 20)"`
+}
 
 // listServiceEventsArgs is list_service_events' input — the same five params
 // Render's REST endpoint takes, keyed on serviceId like every other per-service
 // tool.
 type listServiceEventsArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
-	Type      string `json:"type,omitempty" jsonschema:"filter to one event type, e.g. deploy_ended or suspender_added; omit for all"`
+	Type      string `json:"type,omitempty" jsonschema:"filter to one event type (or several, comma-separated), e.g. deploy_ended or suspender_added; omit for all"`
 	StartTime string `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window; DEFAULTS TO ONE HOUR AGO — pass it to look further back"`
 	EndTime   string `json:"endTime,omitempty" jsonschema:"RFC3339 end of the window; defaults to now"`
 	Cursor    string `json:"cursor,omitempty" jsonschema:"resume after this cursor (the cursor of the last event of the previous page)"`
@@ -55,7 +82,8 @@ type listServiceEventsArgs struct {
 }
 
 // listServiceEventsResult wraps the array — MCP tool outputs must be JSON objects.
-// Each item carries its cursor alongside the event, the same envelope REST returns.
+// Each item carries its cursor alongside the event, the same envelope REST
+// returns. Both list tools share it.
 type listServiceEventsResult struct {
 	Events []eventWithCursor `json:"events"`
 }
@@ -68,7 +96,7 @@ type getServiceEventResult struct {
 	Event renderEvent `json:"event"`
 }
 
-// RegisterMCP adds the events tool to the shared MCP server.
+// RegisterMCP adds the events tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "get_service_event",
@@ -83,19 +111,36 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, getServiceEventResult{Event: toRenderEvent(event)}, nil
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
-		Name: "list_service_events",
-		Description: "List what has happened to a service, newest first: deploys started/ended, " +
-			"suspends and resumes, restarts, plan and instance-count changes, env-var and config " +
-			"writes — each with who did it and when. Defaults to the LAST HOUR; pass startTime to " +
-			"look further back. Page with cursor. Env-var VALUES never appear in an event.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listServiceEventsArgs) (*mcp.CallToolResult, listServiceEventsResult, error) {
-		// The same translator REST and GraphQL use, so a tool call and a REST call
-		// with the same params return the same page.
-		filter := FilterOf(in.Type, in.StartTime, in.EndTime, in.Cursor, in.Limit)
-		events, err := s.List(ctx, in.ServiceID, filter)
-		if err != nil {
-			return nil, listServiceEventsResult{}, err
+		Name: "list_events",
+		Description: "List a service's event history, newest first: deploys and builds started/ended, " +
+			"server failures and recoveries, suspends and resumes, restarts, scaling, plan changes, " +
+			"env-var and config writes — each with who did it and when. Defaults to the LAST 7 DAYS; " +
+			"set startTime to reach older events. Page with cursor. Env-var VALUES never appear in an event. " +
+			"Events cover services only, not Postgres or Key Value instances.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEventsArgs) (*mcp.CallToolResult, listServiceEventsResult, error) {
+		filter := FilterOf(in.EventTypes, in.StartTime, in.EndTime, in.Cursor, in.Limit)
+		if filter.Since.IsZero() {
+			filter.Since = s.Now().Add(-listEventsDefaultLookback)
 		}
-		return nil, listServiceEventsResult{Events: toEventList(events)}, nil
+		return s.listTool(ctx, in.ServiceID, filter)
 	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name: "list_service_events",
+		Description: "Alias of list_events kept for existing callers (bex's name for the tool before " +
+			"Render shipped list_events): same events, but filters with a single `type` string and " +
+			"defaults to the LAST HOUR; pass startTime to look further back. Page with cursor.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listServiceEventsArgs) (*mcp.CallToolResult, listServiceEventsResult, error) {
+		return s.listTool(ctx, in.ServiceID, FilterOf([]string{in.Type}, in.StartTime, in.EndTime, in.Cursor, in.Limit))
+	})
+}
+
+// listTool is both list tools' shared body: the same Service.List REST and
+// GraphQL call, so a tool call and a REST call with the same params return the
+// same page.
+func (s *Service) listTool(ctx context.Context, service string, filter Filter) (*mcp.CallToolResult, listServiceEventsResult, error) {
+	events, err := s.List(ctx, service, filter)
+	if err != nil {
+		return nil, listServiceEventsResult{}, err
+	}
+	return nil, listServiceEventsResult{Events: toEventList(events)}, nil
 }

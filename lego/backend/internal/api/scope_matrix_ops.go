@@ -409,6 +409,7 @@ var classifiedOps = map[string]string{
 	"MCP list_env_groups":                                              core.OpClassRead,
 	"MCP list_env_vars":                                                core.OpClassSensitive,
 	"MCP list_environments":                                            core.OpClassRead,
+	"MCP list_events":                                                  core.OpClassRead,
 	"MCP list_git_connections":                                         core.OpClassRead,
 	"MCP list_jobs":                                                    core.OpClassRead,
 	"MCP list_key_value":                                               core.OpClassRead,

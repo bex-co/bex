@@ -1,6 +1,6 @@
 # w1 · m165 — The Render drift watchdog has never once passed, and upstream `list_events` is unacknowledged
 
-**Worker:** worker1 **Goal:** the weekly `Render schema drift` workflow reports real parity drift and nothing else — its REST half can actually compare (today it aborts on its own fixture), its MCP half is clean because `list_events` has been decided and recorded, and a future red run names the tool or fixture at fault and the action it needs. **Status:** todo (t001, t002 done)
+**Worker:** worker1 **Goal:** the weekly `Render schema drift` workflow reports real parity drift and nothing else — its REST half can actually compare (today it aborts on its own fixture), its MCP half is clean because `list_events` has been decided and recorded, and a future red run names the tool or fixture at fault and the action it needs. **Status:** in progress — t001–t007 done 2026-09-30; **t008 (Closeout) is blocked on shipping this work and a `workflow_dispatch` run**, which needs `/ship` (not authorized in this run)
 
 ## Tasks (in order)
 
@@ -8,21 +8,24 @@
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | `render-schema` aborts before comparing anything: the webhook-vocabulary fixture is internally inconsistent — **DONE** | 35m | — |
 | t002 | Decide upstream `list_events`: implement against bex's existing events surface, or acknowledge the divergence — **DONE** | 35m | — |
-| t003 | Land the `list_events` decision — pin refresh plus the tool or the acknowledgment entry                     | 50m | t002       |
-| t004 | A red drift run says what to do: name the tool or fixture at fault and the action it needs                  | 25m | t001, t003 |
-| t005 | Render parity                                                                                               | 20m | t003, t004 |
-| t006 | Simplify                                                                                                    | 15m | t005       |
-| t007 | Test coverage                                                                                               | 35m | t005       |
+| t003 | Land the `list_events` decision — pin refresh plus the tool or the acknowledgment entry — **DONE**                     | 50m | t002       |
+| t004 | A red drift run says what to do: name the tool or fixture at fault and the action it needs — **DONE**                  | 25m | t001, t003 |
+| t005 | Render parity — **DONE**                                                                                               | 20m | t003, t004 |
+| t006 | Simplify — **DONE**                                                                                                    | 15m | t005       |
+| t007 | Test coverage — **DONE**                                                                                               | 35m | t005       |
 | t008 | Closeout                                                                                                    | 10m | t007       |
 
 ## Definition of done
 
-- Both jobs of the `Render schema drift` workflow (`render-schema` and `render-mcp`) pass on a `workflow_dispatch` run — the first passing run the workflow has ever had.
-- `scripts/render-schema-drift.sh` compares Render's published schemas against the reviewed pins instead of aborting on `docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json`; the inconsistency is either repaired in the fixture or the self-check that misreads it is corrected, and which one is stated in this README.
+**Narrowed 2026-09-30 by user decision** (the `buildSources` Blueprint re-pin is split out as `w1/117`, see § Scope discovery):
+
+- The `render-mcp` job of the `Render schema drift` workflow passes on a `workflow_dispatch` run — the first passing run either job has had.
+- The `render-schema` job **fails only on genuine upstream drift and names it**: today exactly the Blueprint-schema drift (`buildSources` and siblings, owned by `w1/117`), with the webhook-OpenAPI half green. It is expected to stay red until `w1/117` lands; that red is the check working, not the check broken.
+- `scripts/render-schema-drift.sh` compares Render's published schemas against the reviewed pins instead of aborting on `docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json`; the inconsistency is either repaired in the fixture or the self-check that misreads it is corrected, and which one is stated in this README. (t001: the self-check was corrected — deleted.)
 - Upstream's `list_events` tool is either implemented on bex's MCP surface or recorded as a deliberate divergence in `docs/ADR018-render-parity.md`, and `TestMCPParityUpstreamToolsAreImplementedOrAcknowledged` passes on that basis rather than by loosening the assertion.
 - `lego/backend/internal/api/openapi/render-mcp-tools.json` carries a pin captured no earlier than this milestone, with its `source.commit` and `pin.capturedAt` refreshed.
 - A deliberately introduced drift (a tool added to or removed from the pin) still fails the check, and the failure message names the tool and the action — proven by running the script against a mutated pin.
-- GitHub issue [#74](https://github.com/bex-co/bex/issues/74) can close its `Render schema drift` half.
+- GitHub issue [#74](https://github.com/bex-co/bex/issues/74) can close its `Render schema drift` half (or be narrowed to the `render-schema`/`w1/117` drift, which is now a legible real-drift red).
 
 ## Root cause
 
@@ -157,6 +160,151 @@ named error. That is its own piece of work and is **not** in this milestone's
 scope. Either file it separately and narrow this DoD to `render-mcp` plus a
 `render-schema` that fails only on true drift, or fold the re-pin in and accept the
 larger scope. Flagged for the user.
+
+**Resolved 2026-09-30 (user):** separate. Filed as **`w1/117`** (evidence, the
+three ADR049 options, and a check of Render's docs — `render.com/docs/blueprint-spec`
+does not yet mention `buildSource(s)`, `render.com/docs/build-sources` is 404). The DoD
+above is narrowed accordingly. The same decision settled t002's open question:
+**`list_service_events` stays as a working alias** (no breaking change);
+`get_service_event` stays a bex extension.
+
+## t003 result — `list_events` implemented to upstream's contract; pin re-captured (2026-09-30)
+
+**Pin.** Re-captured with `scripts/render-mcp-capture.py --ref main` at upstream
+`d9a8abd5366944987d89031ae014cc44cd683420` (commitDate `2026-09-25T16:21:45Z`, still
+upstream `main` on 2026-09-30); `pin.capturedAt` `2026-09-30`. The `tools` array is the
+capture verbatim (`diff` against the capture is empty); only the human `pin` block
+(`capturedAt`, a dated note line) and `source` changed. New digest
+`8c044390d89fc2a2129714ba39e786de201af9d05deccb8f751e204c1c15ed2b` in both
+`renderMCPToolsSHA256` and `scripts/render-mcp-drift.sh`. Real run:
+`Render MCP tool surface matches the pin (23 tools at main)`, exit 0.
+
+**The refresh revealed a second, unreported upstream change** (step 5):
+`bc94f8d` (#154) added `dockerCommand`/`dockerContext`/`dockerfilePath` to
+`create_web_service`/`create_cron_job` and made `buildCommand`/`startCommand` optional.
+bex already takes `dockerfilePath` and leaves build/start optional, so the gap is
+`dockerCommand` + `dockerContext`. Both tools were already `Divergent` (region) — their
+`mcpAcceptedDivergences` reasons now name the new gap, and it is **filed as `w1/118`**,
+not built. The old drift headline had hidden it entirely (`added=[list_events]` only);
+see t004.
+
+**Code.**
+
+- `events.Filter.Type string` → `Types []string`. `FilterOf` reads each entry in
+  Render's comma wire (`splitTypes`: trim, drop blanks, dedupe), so REST `?type=a,b`,
+  GraphQL `type: "a,b"` and MCP `eventTypes: [a, b]` are the same set. `pushDown`
+  returns the **union** of each type's verbs/phases/fact types, still in SQL.
+- `store.AutoDeployFilter` became an OR-able bit set (`Changed` 3 → 4) applied **only to
+  `apps.SetAutoDeploy` rows** — before, it constrained every audit row, so
+  `autodeploy_enabled,plan_changed` would have silently dropped the plan rows.
+- REST gate: `renderCommaListQueryCompatibility` re-declares `list-events`' `type`, on
+  that operation only (fresh ref; the shared `eventTypeParam` component untouched), as
+  `style=form, explode=false` array of the pinned enum. Each element is still
+  enum-checked: `?type=deploy_ended,env_vars_changed` is still a 400 naming the enum.
+  Unknown types on GraphQL/MCP match nothing — the existing single-type behaviour.
+- MCP `list_events`: `serviceId` (required), `eventTypes` array, `startTime`, `endTime`,
+  `cursor`, `limit` + injected `workspaceId` → classified **`Parity1to1`**. Upstream's
+  7-day default lookback. `list_service_events` kept unchanged as an alias (its `type`
+  now also accepts the comma form, like REST). `events/mcp.go` header rewritten.
+- `TestMCPParityInventory`: 188 → 189 tools, `Parity1to1` 10 → 11. The guard assertions
+  in `mcp_parity_test.go` are unchanged (diff touches only the inventory table).
+  Scope matrix: `MCP list_events` = `Read` (same as `list_service_events`).
+- GraphQL schema unchanged (the `type` argument already existed) → no dashboard codegen.
+
+## t004 result — a red run names the fault and the action (2026-09-30)
+
+- **`render-mcp`** headline now carries `changed=[…]` beside `added`/`removed`, and the
+  body gives the decision per kind (implement / `mcpKnownUpstreamOnly` for added; delete
+  the acknowledgment for removed; fix or `mcpAcceptedDivergences` for changed) plus a
+  corrected refresh recipe (the old one, `--out $pinned`, would have overwritten the
+  human `pin` block and never mentioned the script's own digest). Proven against real
+  upstream with the **pre-refresh pin**:
+  `::error title=Render MCP tool drift::upstream ref=main added=[list_events] removed=[none] changed=[create_cron_job create_web_service]`
+  and with a **mutated pin** (list_events dropped, `zz_fake_tool` added):
+  `… added=[list_events] removed=[zz_fake_tool] changed=[none]`, exit 1.
+- **`render-schema`** now names what moved, the file, and the action. Real run today
+  (exit 1, the w1/117 drift):
+  `::error title=Render Blueprint schema drift::https://render.com/schema/render.yaml.json no longer matches the pin …/render.yaml.json (pinned=665539cb… upstream=57aa0a1f…)`,
+  then `Added upstream:` — `definition buildSource`, `buildSourceGit`,
+  `buildSourceRuntime`, `workflowService`, `cronPlan`/`keyValuePlan`/`postgresPlan`/`serverPlan`,
+  `property allOf.1.properties.buildSources`, `definitions.serverService.properties.buildSource`, … —
+  `Removed upstream: definition plan`, and the ADR049 action (accept-and-ignore /
+  implement / reject with a named error, recorded in `capabilities.json`, then move all
+  three digests). Webhook half: `Render webhook OpenAPI enum matches pinned 67-value fixture`.
+  Integrity, webhook-drift and moved-enum failures also name file + action.
+- Check-never-update: both scripts write only to `mktemp` files; asserted by test
+  (pin/fixture byte-identical after a drifting run).
+- **Not done here:** "a `workflow_dispatch` run has both jobs green" — superseded by the
+  narrowed DoD and moved to t008 (needs the change on `main`).
+
+## t005 result — Render parity (implement path) (2026-09-30)
+
+Checked: MCP `list_events`/`list_service_events`, REST `GET /v1/services/{id}/events`,
+GraphQL `serviceEvents` all go through `FilterOf` → `Service.List`: same types, ids,
+details, cursors, same multi-type union (`TestEventsMultiTypeFilterAgreesAcrossSurfaces`),
+same errors (403 non-member, 503 store-less, 400 bad cursor/window — `Service.List`
+owns them). ADR018 (inventory paragraph, events row, "bex ahead" bullet) and ADR006
+(MCP paragraph, inventory, tool table) updated; `docs/render-artifacts/service-events.md` too.
+No `.pm/DO_NOT_DO.md` row reopened. Dashboard unaffected (no schema change).
+
+Recorded differences from upstream's `list_events` (kept, not absorbed — none breaks
+call-compatibility, which is what the pin measures):
+
+- **Output shape:** bex returns structured `{events: [{event, cursor}]}` (the REST
+  envelope, like every bex MCP tool); upstream returns text (a JSON array + `cursor: …`).
+- **Cursor pages:** upstream drops its 7-day default once a cursor is given; bex keeps
+  the default window on every page (paging stays inside the same query), so reaching
+  past 7 days needs an explicit `startTime` — the same advice upstream's description gives.
+- **Bad `startTime`:** upstream returns a tool error; bex ignores an unparseable time and
+  uses the default window, the documented `FilterOf` rule shared with REST/GraphQL.
+- **Item enum:** upstream declares Render's enum on `eventTypes` items; bex does not
+  (unknown types match nothing, as on GraphQL), so bex-named types remain filterable
+  over MCP.
+- A deployment with `BEX_MAX_QUERY_HOURS` < 168 would 400 `list_events`' default window;
+  the default cap is 720h.
+
+## t006 result — simplify (2026-09-30)
+
+Applied: the two MCP list handlers share one `listTool` body; `pushDown` split into a
+union loop over the unchanged single-type `pushDownOne`; one `appendMissing` helper for
+both the type set and the pushed-down sets. The MCP `changed` computation is a single
+jq expression. Declined: a shared "drift report" helper for the two scripts — their
+reports differ in kind (tool names vs schema paths), so there is no second caller of
+the same logic.
+
+## t007 result — test coverage (2026-09-30)
+
+Each new test was run against the pre-fix code and failed:
+
+- `scripts/render-mcp-drift.test.sh` +6 cases (changed tool named; required-only change
+  named; added not also "changed"; added/changed actions name `mcpKnownUpstreamOnly` /
+  `mcpAcceptedDivergences`; pin untouched) — 5 fail on the old script.
+- New `scripts/render-schema-drift.test.sh` (16 cases, network-free via `file://` URLs,
+  wired into `scripts.yml` + its shellcheck list) — 11 fail on the old script.
+- `store.TestPGAutoDeployFilterIsAVerbScopedBitSet` (real Postgres) — 3 of 6 subtests fail
+  on the old SQL (`rows = [enabled], want [scale enabled]`, …).
+- `events.TestMultiTypeFilterIsTheUnionPushedDown`, `TestFilterOfReadsRendersCommaWire`.
+- `api.TestEventsMultiTypeFilterAgreesAcrossSurfaces` (old gate: REST
+  `?type=deploy_ended,server_failed,suspender_added` = 400),
+  `TestEventsMultiTypeRESTStillValidatesEveryType`, `TestListEventsWindowFollowsUpstream`,
+  `TestListEventsCommaListIsOperationScoped`.
+- An unimplemented upstream tool fails `go test ./...`: with `list_events` unregistered,
+  `TestMCPParityUpstreamToolsAreImplementedOrAcknowledged` fails naming it.
+- The fixture-consistency fault is in-suite since t001 (`webhooks/vocabulary_test.go`).
+- No test asserts on tool descriptions or annotations.
+
+Runs (2026-09-30): `cd lego/backend && BEX_TEST_DB_URI=<ephemeral postgres:17> go test -p 1 -count=1 ./...`
+→ 67 packages ok (OpenFGA-gated tests skipped: no local OpenFGA); `cd lego/operator && make lint`
+→ 0 issues ×4; `bash scripts/render-mcp-drift.test.sh`, `bash scripts/render-schema-drift.test.sh`
+→ all pass; `bash scripts/render-mcp-drift.sh` → exit 0; `bash scripts/render-schema-drift.sh`
+→ exit 1 on the w1/117 Blueprint drift only.
+
+## t008 — remaining (blocked on ship)
+
+1. `/ship` this work; 2. `gh workflow run render-schema-drift.yml`, record the run id:
+`render-mcp` green, `render-schema` red **only** with the Blueprint drift above; 3. narrow
+issue #74 to that legible drift (→ `w1/117`); 4. move t008 to `done/`, this milestone to
+`w1/done/m165/`, tick the w1 README box.
 
 ## Source + Goal linkage
 

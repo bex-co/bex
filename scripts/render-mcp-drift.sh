@@ -15,7 +15,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 pinned="$repo_root/lego/backend/internal/api/openapi/render-mcp-tools.json"
 capture="$repo_root/scripts/render-mcp-capture.py"
-expected_sha256="28ac990ade694df68502b9d7e5a79473691b0f2ba2d09cca181d6bcad75fdca1"
+expected_sha256="8c044390d89fc2a2129714ba39e786de201af9d05deccb8f751e204c1c15ed2b"
 ref="${RENDER_MCP_REF:-main}"
 
 if [[ ! -f "$pinned" ]]; then
@@ -35,6 +35,7 @@ pinned_sha256="$(sha256 "$pinned")"
 if [[ "$pinned_sha256" != "$expected_sha256" ]]; then
   echo "pinned Render MCP tool surface integrity mismatch: got $pinned_sha256, want $expected_sha256" >&2
   echo "the pin was edited without updating renderMCPToolsSHA256 in lego/backend/internal/api/render_mcp.go" >&2
+  echo "and expected_sha256 in this script; if it was not a deliberate capture refresh, restore it from git" >&2
   exit 1
 fi
 
@@ -52,26 +53,47 @@ if diff -u \
   exit 0
 fi
 
-added="$(comm -13 \
-  <(jq -r '.tools[].name' "$pinned" | sort) \
-  <(jq -r '.[].name' "$upstream" | sort) | paste -sd' ' -)"
-removed="$(comm -23 \
-  <(jq -r '.tools[].name' "$pinned" | sort) \
-  <(jq -r '.[].name' "$upstream" | sort) | paste -sd' ' -)"
+pinned_names="$(jq -r '.tools[].name' "$pinned" | sort)"
+upstream_names="$(jq -r '.[].name' "$upstream" | sort)"
+added="$(comm -13 <(echo "$pinned_names") <(echo "$upstream_names") | paste -sd' ' -)"
+removed="$(comm -23 <(echo "$pinned_names") <(echo "$upstream_names") | paste -sd' ' -)"
+# A tool present on both sides whose argument or required set moved. Named
+# separately because it is the easiest drift to read past: before w1/m165 the
+# headline listed only added/removed tools, so upstream's Dockerfile arguments
+# on create_web_service/create_cron_job (bc94f8d) rode along unnamed behind
+# `added=[list_events]`.
+changed="$(jq -rn --slurpfile p "$pinned" --slurpfile u "$upstream" '
+  def surface: {args: (.args | sort), required: (.required | sort)};
+  ($p[0].tools | map({key: .name, value: surface}) | from_entries) as $pin
+  | ($u[0] | map({key: .name, value: surface}) | from_entries) as $up
+  | [$pin | keys[] | select($up[.] != null and $pin[.] != $up[.])] | join(" ")')"
 
-echo "::error title=Render MCP tool drift::upstream ref=$ref added=[${added:-none}] removed=[${removed:-none}]" >&2
+echo "::error title=Render MCP tool drift::upstream ref=$ref added=[${added:-none}] removed=[${removed:-none}] changed=[${changed:-none}]" >&2
 cat >&2 <<MSG
 
-Upstream's MCP tool surface moved. To refresh the pin:
+Upstream's MCP tool surface moved away from the reviewed pin
+($pinned). The diff above is exact; what each kind of drift needs:
 
-  scripts/render-mcp-capture.py --ref $ref --out $pinned
-  # then re-add the human 'pin' block, update renderMCPToolsSHA256 in
-  # lego/backend/internal/api/render_mcp.go, and re-run:
-  cd lego/backend && go test ./internal/api/ -run TestMCPParity
+  added=[...]    a tool bex neither implements nor declines. Decide it:
+                 implement it with upstream's argument names, or record why bex
+                 declines it in mcpKnownUpstreamOnly
+                 (lego/backend/internal/api/mcp_parity.go).
+  removed=[...]  upstream dropped a tool. Delete any mcpKnownUpstreamOnly entry
+                 for it; a bex tool of that name becomes an Extension.
+  changed=[...]  an argument or required set moved on a shared tool. The bex
+                 tool may now be Divergent: fix its arguments, or record the
+                 reason in mcpAcceptedDivergences (same file).
 
-A tool bex neither implements nor declines will fail
-TestMCPParityUpstreamToolsAreImplementedOrAcknowledged, and a changed argument
-surface may reclassify a bex tool as Divergent — both are decisions to make
-deliberately, which is why this job never refreshes the pin itself.
+Then refresh the pin — never by hand-editing its tools array:
+
+  scripts/render-mcp-capture.py --ref <upstream commit> --out /tmp/render-mcp.json
+  # copy .source and .tools from /tmp/render-mcp.json into the pin, bump
+  # pin.capturedAt, and set its new sha256 in BOTH renderMCPToolsSHA256
+  # (lego/backend/internal/api/render_mcp.go) and expected_sha256 (this script)
+  cd lego/backend && go test ./internal/api/ -run 'TestMCPParity|TestRenderMCP|TestScopeMatrix'
+
+TestMCPParityUpstreamToolsAreImplementedOrAcknowledged and
+TestMCPParityEveryDivergenceIsAccepted fail until each item above is decided,
+which is why this job never refreshes the pin itself.
 MSG
 exit 1

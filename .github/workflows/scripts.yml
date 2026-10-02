@@ -117,6 +117,8 @@ jobs:
         run: bash scripts/ssh-gateway-db-role.test.sh
       - name: Render MCP tool-pin drift detection unit tests
         run: bash scripts/render-mcp-drift.test.sh
+      - name: Render Blueprint/webhook schema drift reporting unit tests
+        run: bash scripts/render-schema-drift.test.sh
       - name: dev-N harness derivation + isolation unit tests
         run: bash scripts/dev-env.test.sh
       - name: Install ShellCheck
@@ -139,6 +141,7 @@ jobs:
           scripts/agent-session-verify.sh
           scripts/adr-registry-validate.sh scripts/adr-registry-validate.test.sh
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
+          scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
