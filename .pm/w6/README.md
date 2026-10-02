@@ -35,6 +35,8 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
+- [ ] **m146** — **BLOCKED (stable local CAPD API and dev-6 auth databases needed for live acceptance + retained-fixture cleanup)** — [Keep service action permissions current through confirmation](blocked/m146/README.md) (8 tasks; t001–t003, t005–t007 done) ← promoted from 074
+
 - [x] **m145** — [Render list_events and multi-type event filtering](done/m145/README.md) — done 2026-10-02 (7 tasks); completed MCP response/cursor parity and real-Postgres adapter regressions atop the implementation already shipped by w1/m165; legacy alias retained.
 
 - [x] **m143** — [Make dashboard service and deploy actions permission-aware](done/m143/README.md) (8 tasks; ~5h) ← approved brainstorm proposal 1, 2026-09-10
@@ -183,7 +185,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 - [x] **075** — [Honor Render region filters on Postgres and Key Value lists](done/075.md) — done 2026-10-02; literal placement filtering before pagination, repeated-value enum validation, and handler/composed regressions verified.
 
-- [ ] **074** — [Live-verify m143/m144 permission UI on dev-6](blocked/074.md) — **BLOCKED (local cluster/host maintainer: restore stable CAPD API and CNPG webhook so dev-6 can start)**; recovery attempted 2026-10-02, live checks remain unverified.
+- [x] **074** — [Live-verify m143/m144 permission UI on dev-6](done/074.md) — promoted to [m146](blocked/m146/README.md) on 2026-10-02; live verification and reproduced fixes remain tracked there.
 - [x] **073** — [Refresh request-validator OpenAPI pin to include outbound-ips](done/073.md) — done 2026-09-11 (pin refreshed to the live 208-op document; `retrieve-service-outbound-ips` enforced through the composed validator; m96 Blueprint-ID guards green).
 - [x] **071** — [Fix mobile GraphQL token-refresh recovery](done/071.md) — done 2026-09-09; see the mobile review handoff above.
 - [x] **072** — [Refresh mobile session details opened directly](done/072.md) — done 2026-09-09; see the mobile review handoff above.

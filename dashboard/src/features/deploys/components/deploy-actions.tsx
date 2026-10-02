@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { useNavigate } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
@@ -19,7 +19,10 @@ import {
 } from "@/features/deploys/lib/deploy-status";
 import { deployCommitLabel } from "@/features/deploys/lib/deploy-presentation";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
-import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
+import {
+  useDeployActions,
+  type ResourceActionsState,
+} from "@/features/capabilities/hooks/use-resource-actions";
 import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
@@ -54,6 +57,8 @@ export interface DeployActionsProps {
    */
   trigger?: string | null;
   onChanged?: () => void;
+  /** A list shares its service-wide projection across all deploy rows. */
+  projection?: ResourceActionsState;
 }
 
 /**
@@ -71,12 +76,14 @@ export function DeployActions({
   commitMessage,
   trigger,
   onChanged,
+  projection,
 }: DeployActionsProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const base = useServiceBase();
   const { currentWorkspaceId } = useWorkspace();
-  const deployActions = useDeployActions(serviceId);
+  const ownProjection = useDeployActions(projection ? null : serviceId);
+  const deployActions = projection ?? ownProjection;
   const statusCancel = isCancelableDeployStatus(status);
   const statusRollback = isRollbackableDeployStatus(status);
 
@@ -105,12 +112,17 @@ export function DeployActions({
     },
     [statusRollback, statusCancel],
   );
-  const { pending, openConfirm, clearConfirm, recheckBeforeDispatch } =
-    useBoundActionConfirm({
-      resourceId: serviceId,
-      deployId,
-      adjustDecision: rowDecision,
-    });
+  const {
+    pending,
+    openConfirm,
+    clearConfirm,
+    recheckBeforeDispatch,
+    isBindingCurrent,
+  } = useBoundActionConfirm({
+    resourceId: serviceId,
+    deployId,
+    adjustDecision: rowDecision,
+  });
   const [cancelDeploy, { loading: canceling }] = useMutation(
     CancelDeployDocument,
     { refetchQueries: DEPLOY_REFETCH_QUERIES },
@@ -119,7 +131,8 @@ export function DeployActions({
     RollbackServiceDocument,
     { refetchQueries: DEPLOY_REFETCH_QUERIES },
   );
-  const busy = canceling || rollingBack;
+  const [checking, setChecking] = useState(false);
+  const busy = checking || canceling || rollingBack;
 
   function reasonFor(action: "cancel_deploy" | "rollback"): string | undefined {
     if (deployActions.status !== "ready") {
@@ -148,22 +161,29 @@ export function DeployActions({
         : null;
 
   async function handleConfirm() {
-    const { ok, binding } = await recheckBeforeDispatch();
-    if (!ok || !binding) return;
-    const action = binding.action;
+    if (busy || !pending) return;
+    const action = pending.action;
+    setChecking(true);
     try {
+      const { ok, binding } = await recheckBeforeDispatch();
+      if (!ok || !binding) return;
       if (action === "cancel_deploy") {
         await cancelDeploy({
-          variables: { serviceId, deployId: binding.deployId ?? deployId },
+          variables: {
+            serviceId: binding.resourceId,
+            deployId: binding.deployId ?? deployId,
+          },
         });
+        if (!isBindingCurrent(binding)) return;
         toast.success(t("services.cancelDeploySuccess"));
       } else if (action === "rollback") {
         const { data } = await rollbackService({
           variables: {
-            serviceId,
+            serviceId: binding.resourceId,
             deployId: binding.deployId ?? deployId,
           },
         });
+        if (!isBindingCurrent(binding)) return;
         const rollbackId = data?.rollbackService?.id;
         if (!rollbackId)
           throw new Error("rollbackService returned no deploy id");
@@ -185,6 +205,7 @@ export function DeployActions({
       );
     } finally {
       clearConfirm();
+      setChecking(false);
     }
   }
 
@@ -267,6 +288,8 @@ export function DeployActions({
         }
         cancelLabel={t("services.eventsConfirmCancel")}
         confirmLabel={t("services.eventsConfirmProceed")}
+        pending={busy}
+        closeOnConfirm={false}
         onConfirm={() => void handleConfirm()}
       />
     </>

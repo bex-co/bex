@@ -59,6 +59,34 @@ describe("useCapabilities (fail-closed + freshness)", () => {
     expect(result.current.canViewSensitive).toBe(false);
     expect(result.current.loaded).toBe(false);
     expect(result.current.loading).toBe(true);
+    expect(result.current.checkedAt).toBeNull();
+  });
+
+  it("publishes a receipt only for successful fresh capability data", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    mockQuery.mockResolvedValue({
+      data: { viewerCapabilities: { role: "ADMIN", grants: allowedGrants } },
+    });
+    const { result, rerender } = renderHook(() => useCapabilities(), {
+      wrapper,
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.checkedAt).toBe(1000);
+    vi.setSystemTime(2000);
+    rerender();
+    expect(result.current.checkedAt).toBe(1000);
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.checkedAt).toBe(2000);
+    mockQuery.mockRejectedValue(new Error("permission service unavailable"));
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.checkedAt).toBeNull();
   });
 
   it("reflects grants only when ready and fresh", async () => {

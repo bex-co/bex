@@ -3,6 +3,10 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import type { ServiceView } from "@/features/services/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
+import { mockCapabilities } from "@/test/mocks/capabilities";
+import { ViewerCapabilitiesDocument } from "@/graphql/definitions";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -20,16 +24,27 @@ vi.mock("@/features/services/hooks/use-auto-deploy", () => ({
   useAutoDeploy: () => ({ setAutoDeploy, busy: false }),
 }));
 
-vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } =
-    await import("@/test/mocks/resource-actions");
-  return mockAllowedResourceActions("web");
-});
+const apolloQuery = vi.fn();
+vi.mock("@apollo/client/react", () => ({
+  useApolloClient: () => ({ query: apolloQuery }),
+}));
 
-vi.mock("@/features/workspaces/context/hooks", async () => {
-  const { mockWorkspaceContext } = await import("@/test/mocks/workspace");
-  return mockWorkspaceContext();
-});
+const refresh = vi.fn();
+const allowedDeploy = [
+  { action: "deploy", outcome: "allowed", reason: null, precondition: null },
+];
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useDeployActions: () => ({
+    status: "ready",
+    snapshot: toResourceSnapshot(workspaceId, "web", allowedDeploy),
+    refresh,
+  }),
+}));
+
+let workspaceId = "tea-test";
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: workspaceId }),
+}));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
@@ -79,10 +94,215 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
 }
 
 beforeEach(() => {
+  workspaceId = "tea-test";
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
+  refresh.mockReset().mockResolvedValue(undefined);
+  apolloQuery.mockReset().mockResolvedValue({
+    data: {
+      deployActions: allowedDeploy,
+      viewerCapabilities: {
+        ...mockCapabilities(),
+        fresh: true,
+        grants: [{ action: "can_create", outcome: "allowed", reason: null }],
+      },
+    },
+  });
   mockNavigate.mockReset();
   trigger.mockReset();
   restart.mockReset();
   setAutoDeploy.mockReset().mockResolvedValue(true);
+});
+
+describe("ManualDeployButton permission freshness", () => {
+  const repo = { repo: "https://github.com/bex-co/bex", autoDeploy: true };
+
+  describe.each([
+    ["Deploy latest commit", null],
+    ["Clear build cache & deploy", null],
+    ["Restart service", "Restart"],
+    ["Deploy a specific commit", "Deploy commit"],
+  ] as const)("%s", (menuItem, confirm) => {
+    it.each(["denied", "unavailable"])(
+      "dispatches nothing when the fresh decision is %s",
+      async (outcome) => {
+        if (outcome === "unavailable") {
+          apolloQuery.mockRejectedValue(new Error("permission request failed"));
+        } else {
+          apolloQuery.mockResolvedValue({
+            data: {
+              deployActions: [
+                {
+                  action: "deploy",
+                  outcome: "denied",
+                  reason: "insufficient_permission",
+                  precondition: null,
+                },
+              ],
+            },
+          });
+        }
+        const user = userEvent.setup();
+        render(<ManualDeployButton service={svc(repo)} pending={false} />);
+        await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+        await user.click(screen.getByRole("menuitem", { name: menuItem }));
+        if (confirm === "Deploy commit") {
+          await user.type(screen.getByLabelText("Commit SHA"), "abcdef1");
+        }
+        if (confirm) {
+          await user.click(screen.getByRole("button", { name: confirm }));
+        }
+        expect(trigger, menuItem).not.toHaveBeenCalled();
+        expect(restart, menuItem).not.toHaveBeenCalled();
+        expect(setAutoDeploy, menuItem).not.toHaveBeenCalled();
+        expect(mockNavigate, menuItem).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it.each(["workspace", "resource", "generation"])(
+    "discards a restart confirmation after the %s changes",
+    async (change) => {
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <ManualDeployButton service={svc()} pending={false} />,
+      );
+      await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+      await user.click(
+        screen.getByRole("menuitem", { name: "Restart service" }),
+      );
+      expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+      if (change === "workspace") workspaceId = "tea-second";
+      if (change === "generation") {
+        vi.mocked(useCapabilities).mockReturnValue(
+          mockCapabilities({ generation: 2 }),
+        );
+      }
+      rerender(
+        <ManualDeployButton
+          service={svc(
+            change === "resource" ? { id: "other", name: "other" } : {},
+          )}
+          pending={false}
+        />,
+      );
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      expect(restart).not.toHaveBeenCalled();
+    },
+  );
+
+  it("discards the commit draft after access changes", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ManualDeployButton service={svc(repo)} pending={false} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
+    );
+    await user.type(screen.getByLabelText("Commit SHA"), "abcdef1");
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ generation: 2 }),
+    );
+    rerender(<ManualDeployButton service={svc(repo)} pending={false} />);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
+    );
+    expect(screen.getByLabelText("Commit SHA")).toHaveValue("");
+    expect(trigger).not.toHaveBeenCalled();
+  });
+
+  it("allows a Contributor to deploy latest but disables choosing executable content", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: "CONTRIBUTOR",
+        canCreate: false,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(repo)} pending={false} />);
+    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+    expect(
+      screen.getByRole("menuitem", { name: "Deploy latest commit" }),
+    ).not.toHaveAttribute("aria-disabled", "true");
+    const pin = screen.getByRole("menuitem", {
+      name: "Deploy a specific commit",
+    });
+    expect(pin).toHaveAttribute("aria-disabled", "true");
+    await user.click(pin);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(trigger).not.toHaveBeenCalled();
+    expect(setAutoDeploy).not.toHaveBeenCalled();
+  });
+
+  it("rechecks create permission before deploying a specific commit", async () => {
+    apolloQuery.mockResolvedValue({
+      data: {
+        deployActions: allowedDeploy,
+        viewerCapabilities: {
+          ...mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+          fresh: true,
+          grants: [
+            {
+              action: "can_create",
+              outcome: "denied",
+              reason: "insufficient_permission",
+            },
+          ],
+        },
+      },
+    });
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(repo)} pending={false} />);
+    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
+    );
+    await user.type(screen.getByLabelText("Commit SHA"), "abcdef1");
+    await user.click(screen.getByRole("button", { name: "Deploy commit" }));
+    expect(trigger).not.toHaveBeenCalled();
+    expect(setAutoDeploy).not.toHaveBeenCalled();
+  });
+
+  it("does not change auto-deploy when create permission is revoked during the deploy", async () => {
+    let createChecks = 0;
+    apolloQuery.mockImplementation(async ({ query }) => {
+      if (query !== ViewerCapabilitiesDocument) {
+        return { data: { deployActions: allowedDeploy } };
+      }
+      const allowed = ++createChecks === 1;
+      return {
+        data: {
+          viewerCapabilities: {
+            ...mockCapabilities({ canCreate: allowed }),
+            fresh: true,
+            grants: [
+              {
+                action: "can_create",
+                outcome: allowed ? "allowed" : "denied",
+                reason: allowed ? null : "insufficient_permission",
+              },
+            ],
+          },
+        },
+      };
+    });
+    trigger.mockResolvedValue("dep-pinned");
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc(repo)} pending={false} />);
+    await user.click(screen.getByRole("button", { name: "Manual Deploy" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Deploy a specific commit" }),
+    );
+    await user.type(screen.getByLabelText("Commit SHA"), "abcdef1");
+    await user.click(screen.getByRole("button", { name: "Deploy commit" }));
+    await waitFor(() => expect(createChecks).toBe(2));
+    expect(trigger).toHaveBeenCalledExactlyOnceWith("web", {
+      commitId: "abcdef1",
+    });
+    expect(setAutoDeploy).not.toHaveBeenCalled();
+  });
 });
 
 describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)", () => {

@@ -64,6 +64,8 @@ export interface Capabilities {
   unavailable: boolean;
   /** Identity/workspace/access generation; obsolete responses must ignore. */
   generation: number;
+  /** Receipt of the current successful evaluation; never renewed by rendering. */
+  checkedAt: number | null;
   allows: (action: CapabilityAction) => boolean;
   denied: (action: CapabilityAction) => boolean;
   /** Locale key for disable-with-reason / recovery copy, or undefined. */
@@ -333,6 +335,10 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
       stale,
       unavailable,
       generation,
+      checkedAt:
+        loaded && resolved.status === "ready"
+          ? resolved.snapshot.receivedAt
+          : null,
       allows: (action) =>
         eligibility.current.generation === getAccessGeneration() &&
         allowsAction(eligibility.current.state, workspaceId, action),
@@ -377,6 +383,7 @@ const FALLBACK: Capabilities = {
   stale: false,
   unavailable: false,
   generation: 0,
+  checkedAt: null,
   allows: () => false,
   denied: () => false,
   reasonKey: () => undefined,

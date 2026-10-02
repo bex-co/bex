@@ -36,7 +36,7 @@ export type CapabilitySnapshot = {
 export const CAPABILITY_FRESHNESS_MS = 30_000;
 
 export function snapshotIsFresh(
-  snapshot: CapabilitySnapshot,
+  snapshot: Pick<CapabilitySnapshot, "receivedAt">,
   now = Date.now(),
 ): boolean {
   return (

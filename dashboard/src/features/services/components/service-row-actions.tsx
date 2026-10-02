@@ -19,7 +19,10 @@ import {
   useDeployActions,
   useServerActions,
 } from "@/features/capabilities/hooks/use-resource-actions";
-import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
+import {
+  useBoundActionConfirm,
+  type ActionConfirmBinding,
+} from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   gateAction,
@@ -38,6 +41,11 @@ const ACTION_LABEL: Record<LifecycleAction, keyof typeof en> = {
 // authorization as triggerDeploy — gate on the deploy verb.
 function decisionActionFor(action: LifecycleAction): ResourceActionId {
   return action === "restart" ? "deploy" : action;
+}
+
+function lifecycleActionFor(action: ResourceActionId): LifecycleAction | null {
+  if (action === "deploy") return "restart";
+  return action === "suspend" || action === "resume" ? action : null;
 }
 
 const CONFIRM: Partial<
@@ -114,12 +122,18 @@ export function ServiceRowActions({
     openConfirm,
     clearConfirm,
     recheckBeforeDispatch,
+    isBindingCurrent,
   } = useBoundActionConfirm({ resourceId: service.id });
-  const [protectedConfirm, setProtectedConfirm] = useState<{
-    action: LifecycleAction;
+  const [storedProtectedConfirm, setProtectedConfirm] = useState<{
+    binding: ActionConfirmBinding;
     confirmation: string;
   } | null>(null);
-  const busy = pending !== null;
+  const protectedConfirm =
+    storedProtectedConfirm?.binding === confirmBinding
+      ? storedProtectedConfirm
+      : null;
+  const [checking, setChecking] = useState(false);
+  const busy = pending !== null || checking;
 
   const actions: LifecycleAction[] = hideSuspend
     ? hideRestart
@@ -131,12 +145,13 @@ export function ServiceRowActions({
         ? ["suspend"]
         : ["suspend", "restart"];
 
-  const confirmAction: LifecycleAction | null =
-    confirmBinding === null
-      ? null
-      : confirmBinding.action === "deploy"
-        ? "restart"
-        : (confirmBinding.action as LifecycleAction);
+  const boundAction = confirmBinding
+    ? lifecycleActionFor(confirmBinding.action)
+    : null;
+  const confirmAction =
+    !protectedConfirm && boundAction && CONFIRM[boundAction]
+      ? boundAction
+      : null;
 
   function reasonFor(action: LifecycleAction): string | undefined {
     const decisionId = decisionActionFor(action);
@@ -158,34 +173,41 @@ export function ServiceRowActions({
   }
 
   function handleSelect(action: LifecycleAction) {
-    if (reasonFor(action)) return;
+    if (busy || reasonFor(action)) return;
     if (CONFIRM[action]) {
       openConfirm(decisionActionFor(action));
     } else {
-      void runAction(action);
+      void runAction(openConfirm(decisionActionFor(action)));
     }
   }
 
-  async function runAction(action: LifecycleAction, confirmation?: string) {
-    if (reasonFor(action) && !confirmation) return;
-    const result = confirmation
-      ? await onRun(action, service, confirmation)
-      : await onRun(action, service);
-    if (result.status === "confirmation_required") {
-      setProtectedConfirm({
-        action,
-        confirmation: result.confirmation,
-      });
-    } else if (result.status === "success") {
-      setProtectedConfirm(null);
-    }
-  }
-
-  async function handleConfirm() {
-    const { ok } = await recheckBeforeDispatch();
-    if (!ok || !confirmAction) return;
-    await runAction(confirmAction);
+  function closeConfirm() {
     clearConfirm();
+    setProtectedConfirm(null);
+  }
+
+  async function runAction(
+    binding: ActionConfirmBinding | null,
+    confirmation?: string,
+  ) {
+    const action = binding ? lifecycleActionFor(binding.action) : null;
+    if (!binding || !action || busy) return;
+    setChecking(true);
+    try {
+      const { ok } = await recheckBeforeDispatch(binding);
+      if (!ok) return;
+      const result = confirmation
+        ? await onRun(action, service, confirmation)
+        : await onRun(action, service);
+      if (!isBindingCurrent(binding)) return;
+      if (result.status === "confirmation_required") {
+        setProtectedConfirm({ binding, confirmation: result.confirmation });
+      } else if (result.status === "success" || !confirmation) {
+        closeConfirm();
+      }
+    } finally {
+      setChecking(false);
+    }
   }
 
   return (
@@ -227,7 +249,7 @@ export function ServiceRowActions({
 
       <ConfirmDialog
         open={confirmAction !== null}
-        onOpenChange={(open) => !open && clearConfirm()}
+        onOpenChange={(open) => !open && closeConfirm()}
         title={
           confirmAction
             ? t(CONFIRM[confirmAction]!.title, { name: service.name })
@@ -242,8 +264,10 @@ export function ServiceRowActions({
         }
         cancelLabel={t("services.confirmCancel")}
         confirmLabel={confirmAction ? t(ACTION_LABEL[confirmAction]) : ""}
+        pending={busy}
+        closeOnConfirm={false}
         onConfirm={() => {
-          void handleConfirm();
+          void runAction(confirmBinding);
         }}
       />
 
@@ -255,13 +279,13 @@ export function ServiceRowActions({
         resourceName={service.name}
         requiredConfirmation={protectedConfirm?.confirmation ?? ""}
         actionLabel={
-          protectedConfirm ? t(ACTION_LABEL[protectedConfirm.action]) : ""
+          protectedConfirm && boundAction ? t(ACTION_LABEL[boundAction]) : ""
         }
         busy={busy}
-        onOpenChange={(open) => !open && setProtectedConfirm(null)}
+        onOpenChange={(open) => !open && closeConfirm()}
         onConfirm={(confirmation) =>
           protectedConfirm
-            ? runAction(protectedConfirm.action, confirmation)
+            ? runAction(protectedConfirm.binding, confirmation)
             : Promise.resolve()
         }
       />

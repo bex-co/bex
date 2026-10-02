@@ -24,6 +24,7 @@ export function mockCapabilities(
     stale: false,
     unavailable: false,
     generation: 1,
+    checkedAt: 1,
     allows: (action: CapabilityAction) => {
       const map: Record<CapabilityAction, boolean> = {
         can_view: true,
