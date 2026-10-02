@@ -15,6 +15,10 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m167** — [Preserve every requested log text filter](m167/README.md) (6 tasks) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major silent omission across CLI, REST and MCP.
+
+- [ ] **m166** — [Clearing a datastore allowlist must block external access](m166/README.md) (6 tasks) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major Key Value/Postgres network-intent mismatch.
+
 - [x] **m165** — [Environment IDs must round-trip through the pinned Render CLI](done/m165/README.md) (6 tasks) — **DONE 2026-10-02**. Canonical `evm-*` discovery works in unchanged Render clients while durable `env-*` identities and legacy API links remain valid. Local acceptance: 113 CLI commands, ten expected refusals, all fixtures removed; backend, dashboard, CLI, and lint passed. ← live `$qa-find-bugs-cli` finding; implementation authorized by `$loopx w2`.
 
 - [x] **m163** — [Credential offboarding: a removed member's machine credentials](done/m163/README.md) (8 tasks) — **DONE 2026-09-21**. Admin removal, self-leave, and account deletion revoke cached and fresh API-key tokens across replicas. Strict live acceptance passed with real PostgreSQL, Hydra, Kratos, and enforced OpenFGA; remaining-member and other-workspace controls passed. Full backend suite and all-module lint green.
@@ -117,6 +121,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m62** — Git-connected Blueprints: Render dashboard + API parity (13 tasks; DONE 2026-08-01 — POST /v1/blueprints create, PATCH update, DELETE disconnect, GET syncs, auto-sync on push, status lifecycle, resources[], all surfaces + dashboard create dialog + detail parity) ← user-directed research 2026-08-01 (live `dashboard.render.com/blueprints` walk + Render OpenAPI vs code map): bex Blueprints are stored-manifest re-apply records, Render's are Git-connected instances — dashboard create-from-repo flow, auto-sync on push, sync history (`GET /v1/blueprints/{id}/syncs`), `PATCH`/`DELETE` disconnect, status lifecycle (`in_sync`/`syncing`/`error`/`paused`), and `resources[]` are all missing; rides m8/m9's GitHub App + the `/v1/webhooks/git` intake
 
 ## Inbox
+
+- [ ] [038 — Align default Postgres create allowlist readback with external access](038.md) ← w2/m166 parity follow-up, 2026-10-02
 
 - [x] **037** — [GitHub claim-selection disposition](done/037.md) — **already fixed in `c82108964`; verified 2026-09-22**. Account cleanup, workspace cascade, census declaration, and ADR086 policy all present; m164 revalidated both schema guards.
 
