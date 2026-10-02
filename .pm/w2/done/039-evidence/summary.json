@@ -1,0 +1,17 @@
+{
+  "result": "pass",
+  "privateCases": 15,
+  "originalDiagnosticCurrent": "pass",
+  "originalDiagnosticBaseline": "expected failure: two rows returned for nonexistent instance",
+  "noUnrelatedPodLogsReads": true,
+  "podListsPerQuery": 1,
+  "allPodLists": "only authorized App namespace and predeploy App label",
+  "allLogReadersClosed": true,
+  "callerSelectorSlicesUnchanged": true,
+  "historicalDiscoveryCalls": 0,
+  "historicalReadCalls": 0,
+  "liveInfrastructure": false,
+  "repositoryEdits": false,
+  "testedServiceStillMatchesWorktree": true,
+  "sourceSha256": "a2394434ef6753704133dccedd43baf8d609b23a900ac16dcb8c320f90e75334"
+}

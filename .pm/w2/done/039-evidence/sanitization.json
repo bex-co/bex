@@ -1,0 +1,15 @@
+{
+  "method": "Parent verified JSON and checked bearer-token, database-URI credential and private-key patterns; no credentials or external resources were created by this fixture.",
+  "sensitive_pattern_matches": 0,
+  "files": {
+    "original-result.json": "5749ad32c32a95954f026c7120365cec504b90ddc681cffdb2b99b43320bfda3",
+    "source-manifest.json": "09d856e131708f48571665cb53d3ded23c0576d1d114c92e07529aaff2e0a2df",
+    "current.log": "97dde9557fc1bf53ae26de6bfbe52ae449cea347b3cca8b7dc4bb35258bea372",
+    "summary.json": "a657cae64bff0ad887686d15e6d81c97aa3a2d2a22cf1ae64283088d4309561a",
+    "current-result.json": "d455922771e97e9766db1eea06980f9457e73e336851746e09de4d1dc902c809",
+    "validation.md": "06111116523e2dc877e2b93cc2b1008c2513b741daf0f06d9756d557eeea8394",
+    "cases.jsonl": "82ef4ffd0427d3eadd51e28f24f96dbc8d8cbc0532f09d12db5b1718a885d55f",
+    "cleanup.json": "6efed0d10766360a720fc9fdc0810f179a8c9a157b14094fef2a8695a4b9fabc",
+    "original.log": "698fabce256d3f608c12fa5a7d23bfc2f0f12460e9e5a947de07261b89a33a44"
+  }
+}

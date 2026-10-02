@@ -1,0 +1,14 @@
+{
+  "createdContainers": [],
+  "createdNetworkResources": [],
+  "createdKubernetesResources": [],
+  "startedServers": [],
+  "createdCredentials": [],
+  "ownedGoTestRuns": {
+    "current": "exited, go test exit 0",
+    "original": "exited, go test expected exit 1"
+  },
+  "logReaders": "every opened fake PodLogs reader closed exactly once",
+  "retainedFiles": "private overlay sources, command captures, sanitized evidence under this temp directory only",
+  "repositoryEdits": []
+}

@@ -1,0 +1,19 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-w2-039-regression-ln_lrpap/current-overlay.json",
+    "./internal/logs",
+    "-run",
+    "Test(DiagnosticPreDeployInstanceSelector|W2039PrivateLegacyUIDAndNamespaceScope)$",
+    "-count=1",
+    "-v"
+  ],
+  "env": {
+    "GOWORK": "off",
+    "GOMAXPROCS": "2"
+  },
+  "exitCode": 0,
+  "elapsedSeconds": 6.11
+}
