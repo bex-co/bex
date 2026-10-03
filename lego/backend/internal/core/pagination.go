@@ -91,6 +91,19 @@ func QueryTime(q url.Values, key string) (time.Time, error) {
 	return ParseTime(key, q.Get(key))
 }
 
+// TimestampLess orders two RFC3339Nano stamps chronologically. String order is
+// wrong for them: RFC3339Nano trims trailing zeros, so "…:28Z" sorts after
+// "…:28.5Z" and "…:28.92Z" after "…:28.922Z" (w8/044). An unparseable stamp
+// falls back to string order so a malformed line still sorts deterministically.
+func TimestampLess(a, b string) bool {
+	ta, errA := time.Parse(time.RFC3339Nano, a)
+	tb, errB := time.Parse(time.RFC3339Nano, b)
+	if errA != nil || errB != nil {
+		return a < b
+	}
+	return ta.Before(tb)
+}
+
 // ValidateQueryRange rejects an empty or inverted explicit time range. Zero
 // bounds stay open so callers can apply their own history/tail defaults.
 func ValidateQueryRange(start, end time.Time) error {

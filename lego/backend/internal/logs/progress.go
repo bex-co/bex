@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // Platform progress lines (w1/m48): Render's deploy feed is never silent — the
@@ -401,7 +403,7 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 	if len(merged) == len(entries) {
 		return entries
 	}
-	sort.SliceStable(merged, func(i, j int) bool { return merged[i].Timestamp < merged[j].Timestamp })
+	sort.SliceStable(merged, func(i, j int) bool { return core.TimestampLess(merged[i].Timestamp, merged[j].Timestamp) })
 	return q.capToLimit(merged)
 }
 

@@ -124,7 +124,7 @@ func Collect(ctx context.Context, in Instance, q Query) ([]Entry, error) {
 		}
 	}
 
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	if lim := q.Limit; int64(len(out)) > lim {
 		if q.Direction == core.DirectionForward {
 			out = out[:lim]

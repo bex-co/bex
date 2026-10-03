@@ -584,7 +584,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		}
 		out = append(out, entries...)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	return setLogResource(q.filterAndCap(out), resource), nil
 }
 
@@ -1434,7 +1434,7 @@ func (s *Service) collectPodLogs(ctx context.Context, namespace string, q LogQue
 		}
 		out = append(out, entries...)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	return out, nil
 }
 
@@ -1463,7 +1463,7 @@ func (s *Service) collectDatastorePodLogs(ctx context.Context, namespace string,
 		}
 		out = append(out, entries...)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	return out, nil
 }
 
@@ -1559,7 +1559,7 @@ func (s *Service) collectPreDeployLogs(ctx context.Context, appNS, resource stri
 		}
 		out = append(out, entries...)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	return q.filterAndCap(out), nil
 }
 
