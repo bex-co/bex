@@ -21,7 +21,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m161** — [Bind environment-group revisions to editing drafts](m161/README.md) (6 tasks) ← QA sweep 49
 
-- [ ] **m160** — [Revalidate static files across deployments](m160/README.md) (6 tasks) ← QA sweep 43
+- [ ] **m160** — [Revalidate static files across deployments](blocked/m160/README.md) — **BLOCKED (release pipeline deploys operator/static-server; QA replays two root-directory republishes on a fresh-cache Free static site, the explicit header override across UI/REST/GraphQL/MCP, then cleans up and revokes the session)**. t001/t002/t004/t005 done 2026-10-03: every success path defaults to `public, max-age=0, must-revalidate`; operator `make test` + lint green.
 
 - [ ] **m159** — [Keep confirmations open through permission refresh](m159/README.md) (6 tasks) ← QA sweep 41
 
