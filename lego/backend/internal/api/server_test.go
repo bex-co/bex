@@ -322,36 +322,45 @@ func TestRenderCLIDeviceRateLimitPrecedesBodyLimit(t *testing.T) {
 }
 
 func TestRenderCLILogoutImmediatelyInvalidatesCachedAccessToken(t *testing.T) {
-	revoked := false
+	// Two devices of one human: grant A holds testToken plus the access token
+	// it rotated from ("previous-token"); grant B is another machine. Hydra's
+	// RFC 7009 revoke kills a whole grant by request ID, never another one.
+	grantOf := map[string]string{testToken: "a", "previous-token": "a", "other-device": "b"}
+	revokedGrants := map[string]bool{}
 	admin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/admin/oauth2/introspect":
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"active": !revoked,
-				"sub":    "human-a", "client_id": cliauth.RenderCLIClientID,
-				"scope": "openid offline_access bex.read bex.write bex.sensitive",
-			})
-		case r.Method == http.MethodDelete && r.URL.Path == "/admin/oauth2/auth/sessions/consent":
-			if r.URL.Query().Get("subject") != "human-a" || r.URL.Query().Get("client") != cliauth.RenderCLIClientID {
-				t.Fatalf("wrong revoke scope: %s", r.URL.RawQuery)
-			}
-			revoked = true
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			http.NotFound(w, r)
+		if r.Method != http.MethodPost || r.URL.Path != "/admin/oauth2/introspect" {
+			t.Fatalf("unexpected admin request %s %s (logout must not delete consent sessions)", r.Method, r.URL.Path)
 		}
+		_ = r.ParseForm()
+		grant, known := grantOf[r.PostForm.Get("token")]
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"active": known && !revokedGrants[grant],
+			"sub":    "human-a", "client_id": cliauth.RenderCLIClientID,
+			"scope": "openid offline_access bex.read bex.write bex.sensitive",
+		})
 	}))
 	defer admin.Close()
+	public := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.Method != http.MethodPost || r.URL.Path != "/oauth2/revoke" || r.PostForm.Get("client_id") != cliauth.RenderCLIClientID {
+			t.Fatalf("unexpected public request %s %s %v", r.Method, r.URL.Path, r.PostForm)
+		}
+		revokedGrants[grantOf[r.PostForm.Get("token")]] = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer public.Close()
 
 	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
 	srv.HydraAdminURL = admin.URL
-	srv.OAuthIssuer = "https://oauth.bex.co"
+	srv.OAuthIssuer = public.URL
 	h := buildHandler(t, srv)
 	// The CLI refreshes in SetupCommands before executing logout. Seed the
-	// immediately previous access token in bex's positive cache; consent-chain
-	// revocation must evict it as well as the bearer used for logout.
-	if got := do(t, h, http.MethodGet, "/v1/services", "previous-token", ""); got.Code != http.StatusOK {
-		t.Fatalf("pre-cache previous token = %d %s", got.Code, got.Body.String())
+	// immediately previous access token in bex's positive cache; logout must
+	// evict it as well as the bearer used for logout.
+	for _, token := range []string{"previous-token", "other-device"} {
+		if got := do(t, h, http.MethodGet, "/v1/services", token, ""); got.Code != http.StatusOK {
+			t.Fatalf("pre-cache %q = %d %s", token, got.Code, got.Body.String())
+		}
 	}
 	if got := do(t, h, http.MethodPost, "/v1/oauth/revoke", testToken, ""); got.Code != http.StatusNoContent {
 		t.Fatalf("logout = %d %s", got.Code, got.Body.String())
@@ -360,6 +369,9 @@ func TestRenderCLILogoutImmediatelyInvalidatesCachedAccessToken(t *testing.T) {
 		if got := do(t, h, http.MethodGet, "/v1/services", token, ""); got.Code != http.StatusUnauthorized {
 			t.Fatalf("revoked cached token %q = %d, want 401; body=%s", token, got.Code, got.Body.String())
 		}
+	}
+	if got := do(t, h, http.MethodGet, "/v1/services", "other-device", ""); got.Code != http.StatusOK {
+		t.Fatalf("other device after logout = %d, want 200 (w8/037); body=%s", got.Code, got.Body.String())
 	}
 }
 

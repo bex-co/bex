@@ -245,11 +245,13 @@ func (a *oryAuth) IsPlatformClientFresh(ctx context.Context, clientID string) (b
 }
 
 // invalidate evicts a token whose upstream state changed. A human CLI logout
-// revokes the whole subject+client consent chain in Hydra, so evict every
-// positively cached access token in that chain too. The official CLI refreshes
-// before logout when its token expires within 24h; deleting only the bearer on
-// the revoke request would leave the immediately previous token usable until
-// PositiveTTL.
+// revokes one grant in Hydra (the presented token's request ID, w8/037), and
+// the official CLI refreshes before logout when its token expires within 24h,
+// so deleting only the bearer would leave the immediately previous token of
+// that grant usable until PositiveTTL. bex cannot map a cached token to its
+// grant, so it evicts every positively cached token for the subject+client:
+// the revoked grant's tokens then fail fresh introspection, while the user's
+// other devices simply re-introspect as active.
 func (a *oryAuth) invalidate(token string, identity core.Identity) {
 	if identity.Method == "oauth2" && a.revocations != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

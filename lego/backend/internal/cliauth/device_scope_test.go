@@ -39,7 +39,7 @@ func TestDeviceAuthRequestsGranularCapabilities(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc := New(upstream.URL, "", nil, nil)
+	svc := New(upstream.URL, nil, nil)
 	mux := http.NewServeMux()
 	svc.RegisterPublic(mux, noMiddleware)
 
