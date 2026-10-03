@@ -19,6 +19,7 @@ import {
 } from "@/features/deploys/lib/deploy-status";
 import { deployCommitLabel } from "@/features/deploys/lib/deploy-presentation";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { ConfirmGateStatus } from "@/features/capabilities/components/confirm-gate-status";
 import {
   useDeployActions,
   type ResourceActionsState,
@@ -114,10 +115,11 @@ export function DeployActions({
   );
   const {
     pending,
+    blockedReason,
     openConfirm,
     clearConfirm,
     recheckBeforeDispatch,
-    isBindingCurrent,
+    isIntentCurrent,
   } = useBoundActionConfirm({
     resourceId: serviceId,
     deployId,
@@ -159,14 +161,25 @@ export function DeployActions({
       : pending?.action === "rollback"
         ? "rollback"
         : null;
+  // An open confirmation survives a routine permission refresh but cannot
+  // dispatch until access is fresh again (w4/m159).
+  const confirmBlocked =
+    blockedReason ??
+    (confirm === "cancel"
+      ? cancelReason
+      : confirm === "rollback"
+        ? rollbackReason
+        : undefined);
 
   async function handleConfirm() {
-    if (busy || !pending) return;
+    if (busy || !pending || confirmBlocked) return;
     const action = pending.action;
     setChecking(true);
+    let dispatched = false;
     try {
       const { ok, binding } = await recheckBeforeDispatch();
       if (!ok || !binding) return;
+      dispatched = true;
       if (action === "cancel_deploy") {
         await cancelDeploy({
           variables: {
@@ -174,7 +187,9 @@ export function DeployActions({
             deployId: binding.deployId ?? deployId,
           },
         });
-        if (!isBindingCurrent(binding)) return;
+        // The mutation already ran; only a context change (not a routine
+        // permission refresh) makes its result obsolete.
+        if (!isIntentCurrent(binding)) return;
         toast.success(t("services.cancelDeploySuccess"));
       } else if (action === "rollback") {
         const { data } = await rollbackService({
@@ -183,7 +198,7 @@ export function DeployActions({
             deployId: binding.deployId ?? deployId,
           },
         });
-        if (!isBindingCurrent(binding)) return;
+        if (!isIntentCurrent(binding)) return;
         const rollbackId = data?.rollbackService?.id;
         if (!rollbackId)
           throw new Error("rollbackService returned no deploy id");
@@ -204,7 +219,9 @@ export function DeployActions({
         ),
       );
     } finally {
-      clearConfirm();
+      // An access lapse mid-check keeps the same-context dialog for a new
+      // click; a refusal has already closed it.
+      if (dispatched) clearConfirm();
       setChecking(false);
     }
   }
@@ -290,8 +307,11 @@ export function DeployActions({
         confirmLabel={t("services.eventsConfirmProceed")}
         pending={busy}
         closeOnConfirm={false}
+        confirmDisabled={!!confirmBlocked}
         onConfirm={() => void handleConfirm()}
-      />
+      >
+        <ConfirmGateStatus reason={confirmBlocked} />
+      </ConfirmDialog>
     </>
   );
 }

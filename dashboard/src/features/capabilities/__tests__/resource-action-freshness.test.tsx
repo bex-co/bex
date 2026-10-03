@@ -489,6 +489,44 @@ describe("confirmation recheck leases", () => {
     expect(result.current.pending).toBe(binding);
     expect(result.current.isBindingCurrent(binding)).toBe(true);
   });
+
+  it.each(["stale", "unavailable", "checking"] as const)(
+    "keeps same-context intent but refuses dispatch while access is %s",
+    async (gap) => {
+      const { result, rerender } = renderHook(
+        () => useBoundActionConfirm({ resourceId: "srv-first" }),
+        { wrapper: Wrapper },
+      );
+      act(() => result.current.openConfirm("suspend"));
+      const binding = result.current.pending;
+      capabilityOverrides = {
+        loaded: false,
+        checkedAt: null,
+        ...(gap === "checking" ? { loading: true } : { [gap]: true }),
+      };
+      rerender();
+      expect(result.current.pending).toBe(binding);
+      expect(result.current.isIntentCurrent(binding)).toBe(true);
+      expect(result.current.isBindingCurrent(binding)).toBe(false);
+      expect(result.current.blockedReason).toBe(
+        gap === "unavailable"
+          ? "Permissions could not be refreshed. Try again — this is not a role change."
+          : "Checking whether you can perform this action…",
+      );
+      let allowed = true;
+      await act(async () => {
+        allowed = (await result.current.recheckBeforeDispatch(binding)).ok;
+      });
+      expect(allowed).toBe(false);
+      expect(requests).toEqual([]);
+      expect(result.current.pending).toBe(binding);
+
+      capabilityOverrides = {};
+      rerender();
+      expect(result.current.blockedReason).toBeUndefined();
+      expect(result.current.isBindingCurrent(binding)).toBe(true);
+    },
+  );
   it.each(["workspace", "generation", "resource", "deploy"])(
     "refuses dispatch if the %s changes while the recheck is pending",
     async (change) => {

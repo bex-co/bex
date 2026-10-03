@@ -15,6 +15,7 @@ import type { ProtectedActionResult } from "@/features/services/lib/protected-co
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { isCron, publiclyRoutable } from "@/features/services/lib/service-type";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { ConfirmGateStatus } from "@/features/capabilities/components/confirm-gate-status";
 import {
   useDeployActions,
   useServerActions,
@@ -119,10 +120,11 @@ export function ServiceRowActions({
   const deployActions = useDeployActions(service.id);
   const {
     pending: confirmBinding,
+    blockedReason,
     openConfirm,
     clearConfirm,
     recheckBeforeDispatch,
-    isBindingCurrent,
+    isIntentCurrent,
   } = useBoundActionConfirm({ resourceId: service.id });
   const [storedProtectedConfirm, setProtectedConfirm] = useState<{
     binding: ActionConfirmBinding;
@@ -174,6 +176,11 @@ export function ServiceRowActions({
     return gateReason(gate, t);
   }
 
+  // An open confirmation survives a routine permission refresh but cannot
+  // dispatch until access is fresh again (w4/m159).
+  const confirmBlocked =
+    blockedReason ?? (confirmAction ? reasonFor(confirmAction) : undefined);
+
   function handleSelect(action: LifecycleAction) {
     if (busy || reasonFor(action)) return;
     if (CONFIRM[action]) {
@@ -201,7 +208,9 @@ export function ServiceRowActions({
       const result = confirmation
         ? await onRun(action, service, confirmation)
         : await onRun(action, service);
-      if (!isBindingCurrent(binding)) return;
+      // The mutation already ran: follow its result unless the context
+      // changed. A protected re-prompt still rechecks before it dispatches.
+      if (!isIntentCurrent(binding)) return;
       if (result.status === "confirmation_required") {
         setProtectedConfirm({ binding, confirmation: result.confirmation });
       } else if (result.status === "success" || !confirmation) {
@@ -268,10 +277,13 @@ export function ServiceRowActions({
         confirmLabel={confirmAction ? t(ACTION_LABEL[confirmAction]) : ""}
         pending={busy}
         closeOnConfirm={false}
+        confirmDisabled={!!confirmBlocked}
         onConfirm={() => {
           void runAction(confirmBinding);
         }}
-      />
+      >
+        <ConfirmGateStatus reason={confirmBlocked} />
+      </ConfirmDialog>
 
       <ProtectedConfirmationDialog
         key={
@@ -284,13 +296,16 @@ export function ServiceRowActions({
           protectedConfirm && boundAction ? t(ACTION_LABEL[boundAction]) : ""
         }
         busy={busy}
+        confirmDisabled={!!blockedReason}
         onOpenChange={(open) => !open && closeConfirm()}
         onConfirm={(confirmation) =>
           protectedConfirm
             ? runAction(protectedConfirm.binding, confirmation)
             : Promise.resolve()
         }
-      />
+      >
+        <ConfirmGateStatus reason={blockedReason} />
+      </ProtectedConfirmationDialog>
     </>
   );
 }
