@@ -1,0 +1,564 @@
+{
+  "observedAt": "2026-10-03 UTC; source command at 00:17:08Z; explicit control command at 00:23:18Z",
+  "apiOrigin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "human device OAuth; Authorization and config deliberately excluded",
+  "versions": {
+    "installed": "/opt/homebrew/bin/bex v0.2.1",
+    "checkout": "f296747d9",
+    "render": "v2.27.0 a764810a768202704e7206eb7b87a47211fcd98e",
+    "deployedRevision": "unknown"
+  },
+  "redactions": [
+    "owner.email replaced with [QA_EMAIL]; no other body fields removed",
+    "Authorization header not captured"
+  ],
+  "fixtures": [
+    {
+      "id": "srv-db04j0c5o9vs73dt7ts0",
+      "name": "qa-20261003-500f75-presrc",
+      "command": [
+        "services",
+        "create",
+        "--name",
+        "qa-20261003-500f75-presrc",
+        "--type",
+        "web_service",
+        "--runtime",
+        "image",
+        "--image",
+        "docker.io/mendhak/http-https-echo:35",
+        "--pre-deploy-command",
+        "echo QA_PREDEPLOY_CLONE_500f75",
+        "--env-var",
+        "HTTP_PORT=3000",
+        "--plan",
+        "free",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "status": "deleted",
+      "marker": "QA_PREDEPLOY_CLONE_500f75"
+    },
+    {
+      "id": "srv-db04jnk5o9vs73dt7ttg",
+      "name": "qa-20261003-500f75-prerelease",
+      "command": [
+        "services",
+        "create",
+        "--from",
+        "srv-db04j0c5o9vs73dt7ts0",
+        "--name",
+        "qa-20261003-500f75-prerelease",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--env-var",
+        "HTTP_PORT=3000",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "status": "deleted",
+      "marker": "QA_PREDEPLOY_CLONE_500f75"
+    },
+    {
+      "id": "srv-db04jpc5o9vs73dt7tv0",
+      "name": "qa-20261003-500f75-prehead",
+      "command": [
+        "services",
+        "create",
+        "--from",
+        "srv-db04j0c5o9vs73dt7ts0",
+        "--name",
+        "qa-20261003-500f75-prehead",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--env-var",
+        "HTTP_PORT=3000",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "status": "deleted",
+      "marker": "QA_PREDEPLOY_CLONE_500f75"
+    }
+  ],
+  "cli": {
+    "source": {
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"createdAt\": \"2026-10-03T00:17:05Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db04j0c5o9vs73dt7ts0\",\n  \"id\": \"srv-db04j0c5o9vs73dt7ts0\",\n  \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n  \"name\": \"qa-20261003-500f75-presrc\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"env\": \"image\",\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261003-500f75-presrc:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"preDeployCommand\": \"echo QA_PREDEPLOY_CLONE_500f75\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"image\",\n    \"url\": \"https://qa-20261003-500f75-presrc.onbex.co\"\n  },\n  \"slug\": \"qa-20261003-500f75-presrc\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-03T00:17:05.803643042Z\"\n}",
+      "stderr": "",
+      "exit": 0,
+      "seconds": 0.73
+    },
+    "release": {
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"createdAt\": \"2026-10-03T00:18:38Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db04jnk5o9vs73dt7ttg\",\n  \"id\": \"srv-db04jnk5o9vs73dt7ttg\",\n  \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n  \"name\": \"qa-20261003-500f75-prerelease\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"env\": \"image\",\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261003-500f75-prerelease:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"image\",\n    \"url\": \"https://qa-20261003-500f75-prerelease.onbex.co\"\n  },\n  \"slug\": \"qa-20261003-500f75-prerelease\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-03T00:18:38.521088496Z\"\n}",
+      "stderr": "",
+      "exit": 0,
+      "seconds": 1.84
+    },
+    "head": {
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"createdAt\": \"2026-10-03T00:18:45Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db04jpc5o9vs73dt7tv0\",\n  \"id\": \"srv-db04jpc5o9vs73dt7tv0\",\n  \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n  \"name\": \"qa-20261003-500f75-prehead\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"env\": \"image\",\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261003-500f75-prehead:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"image\",\n    \"url\": \"https://qa-20261003-500f75-prehead.onbex.co\"\n  },\n  \"slug\": \"qa-20261003-500f75-prehead\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-03T00:18:45.070961987Z\"\n}",
+      "stderr": "",
+      "exit": 0,
+      "seconds": 3.69
+    }
+  },
+  "diagnosticReads": [
+    {
+      "body": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "createdAt": "2026-10-03T00:17:05Z",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-db04j0c5o9vs73dt7ts0",
+        "displayName": "",
+        "healthCheckPath": "/",
+        "id": "srv-db04j0c5o9vs73dt7ts0",
+        "idleTTLSeconds": 0,
+        "imagePath": "docker.io/mendhak/http-https-echo:35",
+        "immutableName": "qa-20261003-500f75-presrc",
+        "name": "qa-20261003-500f75-presrc",
+        "notificationsToSend": "default",
+        "notifyOnFail": "default",
+        "owner": {
+          "email": "[QA_EMAIL]",
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "type": "team"
+        },
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "phase": "Running",
+        "pushDeliveryMethod": "none",
+        "replicas": 1,
+        "revision": "rev-1",
+        "serviceDetails": {
+          "env": "image",
+          "healthCheckPath": "/",
+          "internalAddress": "qa-20261003-500f75-presrc:3000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "plan": "free",
+          "port": 3000,
+          "preDeployCommand": "echo QA_PREDEPLOY_CLONE_500f75",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261003-500f75-presrc.onbex.co"
+        },
+        "slug": "qa-20261003-500f75-presrc",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "web_service",
+        "updatedAt": "2026-10-03T00:17:32Z",
+        "urls": [
+          "https://qa-20261003-500f75-presrc.onbex.co"
+        ]
+      },
+      "contentType": "application/json",
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.bex.co/v1/services/srv-db04j0c5o9vs73dt7ts0",
+      "userAgent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    },
+    {
+      "body": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "createdAt": "2026-10-03T00:18:38Z",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-db04jnk5o9vs73dt7ttg",
+        "displayName": "",
+        "healthCheckPath": "/",
+        "id": "srv-db04jnk5o9vs73dt7ttg",
+        "idleTTLSeconds": 0,
+        "imagePath": "docker.io/mendhak/http-https-echo:35",
+        "immutableName": "qa-20261003-500f75-prerelease",
+        "name": "qa-20261003-500f75-prerelease",
+        "notificationsToSend": "default",
+        "notifyOnFail": "default",
+        "owner": {
+          "email": "[QA_EMAIL]",
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "type": "team"
+        },
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "phase": "Running",
+        "pushDeliveryMethod": "none",
+        "replicas": 1,
+        "revision": "rev-1",
+        "serviceDetails": {
+          "env": "image",
+          "healthCheckPath": "/",
+          "internalAddress": "qa-20261003-500f75-prerelease:3000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "plan": "free",
+          "port": 3000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261003-500f75-prerelease.onbex.co"
+        },
+        "slug": "qa-20261003-500f75-prerelease",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "web_service",
+        "updatedAt": "2026-10-03T00:18:59Z",
+        "urls": [
+          "https://qa-20261003-500f75-prerelease.onbex.co"
+        ]
+      },
+      "contentType": "application/json",
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.bex.co/v1/services/srv-db04jnk5o9vs73dt7ttg",
+      "userAgent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    },
+    {
+      "body": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "createdAt": "2026-10-03T00:18:45Z",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-db04jpc5o9vs73dt7tv0",
+        "displayName": "",
+        "healthCheckPath": "/",
+        "id": "srv-db04jpc5o9vs73dt7tv0",
+        "idleTTLSeconds": 0,
+        "imagePath": "docker.io/mendhak/http-https-echo:35",
+        "immutableName": "qa-20261003-500f75-prehead",
+        "name": "qa-20261003-500f75-prehead",
+        "notificationsToSend": "default",
+        "notifyOnFail": "default",
+        "owner": {
+          "email": "[QA_EMAIL]",
+          "id": "tea-daif693dqjvc73e7as3g",
+          "name": "bex-canary",
+          "type": "team"
+        },
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "phase": "Running",
+        "pushDeliveryMethod": "none",
+        "replicas": 1,
+        "revision": "rev-1",
+        "serviceDetails": {
+          "env": "image",
+          "healthCheckPath": "/",
+          "internalAddress": "qa-20261003-500f75-prehead:3000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "plan": "free",
+          "port": 3000,
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "image",
+          "url": "https://qa-20261003-500f75-prehead.onbex.co"
+        },
+        "slug": "qa-20261003-500f75-prehead",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "web_service",
+        "updatedAt": "2026-10-03T00:19:06Z",
+        "urls": [
+          "https://qa-20261003-500f75-prehead.onbex.co"
+        ]
+      },
+      "contentType": "application/json",
+      "method": "GET",
+      "status": 200,
+      "url": "https://api.bex.co/v1/services/srv-db04jpc5o9vs73dt7tv0",
+      "userAgent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    }
+  ],
+  "diagnosticReadMethod": "read-only same-pin client RetrieveServiceWithResponse, same isolated QA config; not intercepted CLI traffic",
+  "runtimeBeforeControl": [
+    {
+      "id": "srv-db04j0c5o9vs73dt7ts0",
+      "deploys": [
+        {
+          "createdAt": "2026-10-03T00:17:05.768861Z",
+          "finishedAt": "2026-10-03T00:17:37.497011Z",
+          "id": "dep-db04j0c5o9vs73dt7tsg",
+          "image": {
+            "ref": "docker.io/mendhak/http-https-echo:35"
+          },
+          "startedAt": "2026-10-03T00:17:07.619556Z",
+          "status": "live",
+          "trigger": "create",
+          "updatedAt": "2026-10-03T00:17:37.497012Z"
+        }
+      ],
+      "logs": "{\n  \"id\": \"srv-db04j0c5o9vs73dt7ts0-0sn791dk2rsfcmff4pg9-2026-10-03T00:17:08.352851857Z-760d3982\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db04j0c5o9vs73dt7ts0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db04j0c5o9vs73dt7ts0-0sn791dk2rsfcmff4pg9\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"QA_PREDEPLOY_CLONE_500f75\",\n  \"timestamp\": \"2026-10-03T00:17:08.352851857Z\"\n}",
+      "logsExit": 0,
+      "logsStderr": "",
+      "httpStatus": "200"
+    },
+    {
+      "id": "srv-db04jnk5o9vs73dt7ttg",
+      "deploys": [
+        {
+          "createdAt": "2026-10-03T00:18:38.462049Z",
+          "finishedAt": "2026-10-03T00:19:07.606516Z",
+          "id": "dep-db04jnk5o9vs73dt7tu0",
+          "image": {
+            "ref": "docker.io/mendhak/http-https-echo:35"
+          },
+          "startedAt": "2026-10-03T00:18:45.67219Z",
+          "status": "live",
+          "trigger": "create",
+          "updatedAt": "2026-10-03T00:19:07.606538Z"
+        }
+      ],
+      "logs": "",
+      "logsExit": 0,
+      "logsStderr": "",
+      "httpStatus": "200"
+    },
+    {
+      "id": "srv-db04jpc5o9vs73dt7tv0",
+      "deploys": [
+        {
+          "createdAt": "2026-10-03T00:18:45.031847Z",
+          "finishedAt": "2026-10-03T00:19:07.696075Z",
+          "id": "dep-db04jpc5o9vs73dt7tvg",
+          "image": {
+            "ref": "docker.io/mendhak/http-https-echo:35"
+          },
+          "startedAt": "2026-10-03T00:18:56.221053Z",
+          "status": "live",
+          "trigger": "create",
+          "updatedAt": "2026-10-03T00:19:07.696076Z"
+        }
+      ],
+      "logs": "",
+      "logsExit": 0,
+      "logsStderr": "",
+      "httpStatus": "200"
+    }
+  ],
+  "explicitControl": {
+    "command": [
+      "bex",
+      "services",
+      "update",
+      "srv-db04jnk5o9vs73dt7ttg",
+      "--pre-deploy-command",
+      "echo QA_PREDEPLOY_CLONE_500f75",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "result": {
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"createdAt\": \"2026-10-03T00:18:38Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db04jnk5o9vs73dt7ttg\",\n    \"id\": \"srv-db04jnk5o9vs73dt7ttg\",\n    \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n    \"name\": \"qa-20261003-500f75-prerelease\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"env\": \"image\",\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261003-500f75-prerelease:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"preDeployCommand\": \"echo QA_PREDEPLOY_CLONE_500f75\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"image\",\n      \"url\": \"https://qa-20261003-500f75-prerelease.onbex.co\"\n    },\n    \"slug\": \"qa-20261003-500f75-prerelease\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-03T00:23:15.116270703Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": "",
+      "exit": 0,
+      "seconds": 2.33
+    },
+    "runtime": {
+      "deploys": {
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-03T00:23:15.151283Z\",\n    \"finishedAt\": \"2026-10-03T00:23:56.024641Z\",\n    \"id\": \"dep-db04lss5o9vs73dt7u0g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-03T00:23:26.339836Z\",\n    \"status\": \"live\",\n    \"trigger\": \"config_change\",\n    \"updatedAt\": \"2026-10-03T00:23:56.024642Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-03T00:18:38.462049Z\",\n    \"finishedAt\": \"2026-10-03T00:19:07.606516Z\",\n    \"id\": \"dep-db04jnk5o9vs73dt7tu0\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-03T00:18:45.67219Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"create\",\n    \"updatedAt\": \"2026-10-03T00:23:56.027174Z\"\n  }\n]",
+        "stderr": "",
+        "exit": 0
+      },
+      "marker": {
+        "stdout": "{\n  \"id\": \"srv-db04jnk5o9vs73dt7ttg-83u7ttfkqp83p6s1366e-2026-10-03T00:23:18.765773166Z-760d3982\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db04jnk5o9vs73dt7ttg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db04jnk5o9vs73dt7ttg-83u7ttfkqp83p6s1366e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"QA_PREDEPLOY_CLONE_500f75\",\n  \"timestamp\": \"2026-10-03T00:23:18.765773166Z\"\n}",
+        "stderr": "",
+        "exit": 0
+      }
+    }
+  },
+  "offlineConsumer": {
+    "method": "pinned NormalizeServiceCreateCLIInput -> ServiceFromAPI -> NormalizeAndValidateCreateInput -> BuildCreateRequest; no HTTP writes; changing only nested preDeployCommand in source, separate synthetic type controls; starter plan in all offline bodies only",
+    "cases": [
+      {
+        "kind": "web_service",
+        "proposedNestedField": false,
+        "requestBody": {
+          "autoDeploy": "no",
+          "image": {
+            "imagePath": "docker.io/mendhak/http-https-echo:35",
+            "ownerId": ""
+          },
+          "name": "qa-offline-preclone",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "serviceDetails": {
+            "healthCheckPath": "/",
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            },
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "starter",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        }
+      },
+      {
+        "kind": "web_service",
+        "proposedNestedField": true,
+        "requestBody": {
+          "autoDeploy": "no",
+          "image": {
+            "imagePath": "docker.io/mendhak/http-https-echo:35",
+            "ownerId": ""
+          },
+          "name": "qa-offline-preclone",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "serviceDetails": {
+            "healthCheckPath": "/",
+            "maintenanceMode": {
+              "enabled": false,
+              "uri": ""
+            },
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "starter",
+            "preDeployCommand": "echo QA_PREDEPLOY_CLONE_500f75",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "web_service"
+        }
+      },
+      {
+        "kind": "private_service",
+        "proposedNestedField": false,
+        "requestBody": {
+          "autoDeploy": "no",
+          "image": {
+            "imagePath": "docker.io/mendhak/http-https-echo:35",
+            "ownerId": ""
+          },
+          "name": "qa-offline-preclone",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "serviceDetails": {
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "starter",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "private_service"
+        }
+      },
+      {
+        "kind": "private_service",
+        "proposedNestedField": true,
+        "requestBody": {
+          "autoDeploy": "no",
+          "image": {
+            "imagePath": "docker.io/mendhak/http-https-echo:35",
+            "ownerId": ""
+          },
+          "name": "qa-offline-preclone",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "serviceDetails": {
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "starter",
+            "preDeployCommand": "echo QA_PREDEPLOY_CLONE_500f75",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "private_service"
+        }
+      },
+      {
+        "kind": "background_worker",
+        "proposedNestedField": false,
+        "requestBody": {
+          "autoDeploy": "no",
+          "image": {
+            "imagePath": "docker.io/mendhak/http-https-echo:35",
+            "ownerId": ""
+          },
+          "name": "qa-offline-preclone",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "serviceDetails": {
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "starter",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "background_worker"
+        }
+      },
+      {
+        "kind": "background_worker",
+        "proposedNestedField": true,
+        "requestBody": {
+          "autoDeploy": "no",
+          "image": {
+            "imagePath": "docker.io/mendhak/http-https-echo:35",
+            "ownerId": ""
+          },
+          "name": "qa-offline-preclone",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "serviceDetails": {
+            "maxShutdownDelaySeconds": 30,
+            "numInstances": 1,
+            "plan": "starter",
+            "preDeployCommand": "echo QA_PREDEPLOY_CLONE_500f75",
+            "region": "frankfurt",
+            "runtime": "image"
+          },
+          "type": "background_worker"
+        }
+      }
+    ],
+    "probeSource": "package main\nimport(\"encoding/json\";\"fmt\";\"os\";\"bytes\";\"github.com/render-oss/cli/pkg/client\";\"github.com/render-oss/cli/pkg/service\";\"github.com/render-oss/cli/pkg/types\";st \"github.com/render-oss/cli/pkg/types/service\")\nfunc main(){raw,e:=os.ReadFile(os.Args[1]);if e!=nil{panic(e)};line:=bytes.Split(raw,[]byte(\"\\n\"))[0];var record struct{Body json.RawMessage `json:\"body\"`};if e=json.Unmarshal(line,&record);e!=nil{panic(e)};for _,kind:=range []string{\"web_service\",\"private_service\",\"background_worker\"}{for _,fixed:=range []bool{false,true}{var m map[string]any;json.Unmarshal(record.Body,&m);m[\"type\"]=kind;details:=m[\"serviceDetails\"].(map[string]any);if fixed{details[\"envSpecificDetails\"]=map[string]any{\"preDeployCommand\":details[\"preDeployCommand\"]}};v,_:=json.Marshal(m);var source client.Service;if e=json.Unmarshal(v,&source);e!=nil{panic(e)};from,region,plan:=source.Id,types.RegionFrankfurt,\"starter\";in:=st.NormalizeServiceCreateCLIInput(st.ServiceCreateInput{Name:\"qa-offline-preclone\",From:&from,Region:&region,Plan:&plan});service.ServiceFromAPI(&in,&source);in,e=st.NormalizeAndValidateCreateInput(in,false);if e!=nil{panic(e)};body,e:=service.BuildCreateRequest(in,\"tea-daif693dqjvc73e7as3g\");if e!=nil{panic(e)};b,_:=json.Marshal(map[string]any{\"kind\":kind,\"proposedNestedField\":fixed,\"requestBody\":body});fmt.Println(string(b))}}}\n"
+  },
+  "cleanup": [
+    {
+      "id": "srv-db04jpc5o9vs73dt7tv0",
+      "deleteExit": 0,
+      "deployIDs": [
+        "dep-db04jpc5o9vs73dt7tvg"
+      ],
+      "jobs": [],
+      "httpAfterDelete": "404"
+    },
+    {
+      "id": "srv-db04jnk5o9vs73dt7ttg",
+      "deleteExit": 0,
+      "deployIDs": [
+        "dep-db04lss5o9vs73dt7u0g",
+        "dep-db04jnk5o9vs73dt7tu0"
+      ],
+      "jobs": [],
+      "httpAfterDelete": "404"
+    },
+    {
+      "id": "srv-db04j0c5o9vs73dt7ts0",
+      "deleteExit": 0,
+      "deployIDs": [
+        "dep-db04j0c5o9vs73dt7tsg"
+      ],
+      "jobs": [],
+      "httpAfterDelete": "404"
+    }
+  ],
+  "diagnosticReadProbeSource": "package main\nimport(\"context\";\"encoding/json\";\"fmt\";\"os\";\"time\";\"github.com/render-oss/cli/pkg/client\";\"github.com/render-oss/cli/pkg/config\";\"github.com/render-oss/cli/pkg/cfg\")\nfunc main(){cfg.Version=\"2.27.0\"; a,e:=config.DefaultAPIConfig();if e!=nil{panic(\"config unavailable\")};if a.Host!=\"https://api.bex.co/v1/\"{panic(\"unexpected API host\")};c,e:=client.NewDefaultClient();if e!=nil{panic(\"client unavailable\")};for _,id:=range os.Args[1:]{ctx,cancel:=context.WithTimeout(context.Background(),20*time.Second);r,e:=c.RetrieveServiceWithResponse(ctx,id);cancel();if e!=nil{panic(\"read failed\")};b:=map[string]any{};if json.Unmarshal(r.Body,&b)!=nil||b[\"ownerId\"]!=\"tea-daif693dqjvc73e7as3g\"{panic(\"unexpected response workspace\")};x:=map[string]any{\"method\":\"GET\",\"url\":r.HTTPResponse.Request.URL.String(),\"status\":r.StatusCode(),\"contentType\":r.HTTPResponse.Header.Get(\"Content-Type\"),\"userAgent\":r.HTTPResponse.Request.Header.Get(\"User-Agent\"),\"body\":b};v,_:=json.Marshal(x);fmt.Println(string(v))}}\n"
+}
