@@ -51,14 +51,16 @@ func keyValueTLSName(kv *appv1alpha1.KeyValue) string { return kv.Name + "-kv-tl
 // public flag was already withdrawn. This never grants a backup purge duty.
 func (r *KeyValueReconciler) ensureKeyValueTLSFinalizer(ctx context.Context, kv *appv1alpha1.KeyValue) error {
 	changed := controllerutil.AddFinalizer(kv, kvTLSFinalizer)
+	// Configuration is only an initial fallback. Replacing a recorded issuance
+	// identity here would lose proof of a legacy Secret during a domain/issuer
+	// migration, before cert-manager has reconciled the new Certificate spec.
 	if kv.Spec.Public && r.KvDomain != "" && r.ClusterIssuer != "" {
 		identity, err := r.keyValueTLSIdentity(kv)
 		if err != nil {
 			return err
 		}
-		identity.Host, identity.Issuer = kv.Name+"."+r.KvDomain, r.ClusterIssuer
-		raw, _ := json.Marshal(identity)
-		if kv.Annotations[annotKVTLSIdentity] != string(raw) {
+		if kv.Annotations[annotKVTLSIdentity] == "" {
+			raw, _ := json.Marshal(identity)
 			if kv.Annotations == nil {
 				kv.Annotations = map[string]string{}
 			}

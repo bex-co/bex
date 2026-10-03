@@ -26,7 +26,7 @@
 #   KV:
 #     - KeyValue CR, StatefulSet, PVC, both immutable Secrets, backup CronJob,
 #       backup/purge Jobs and Pods, exact <name>-kv-tls Certificate and issued
-#       TLS Secret, and S3 prefix are absent
+#       TLS Secret, related CertificateRequests, and S3 prefix are absent
 #
 # Usage:
 #   bash scripts/delete-audit.sh [--app NAME] [--static NAME] [--db NAME] [--kv NAME]
@@ -95,13 +95,37 @@ skip() { echo "  SKIP  $1 (prerequisite not configured)"; }
 
 # k8s_count: number of k8s resources matching a label selector in a namespace.
 k8s_count() {
-  local ns="$1" kind="$2" selector="$3"
-  kubectl get "$kind" -n "$ns" -l "$selector" \
-    --ignore-not-found -o jsonpath='{.items}' 2>/dev/null | python3 -c "
-import sys, json
-items = json.load(sys.stdin)
-print(len(items))
-" 2>/dev/null || echo 0
+  local ns="$1" kind="$2" selector="$3" count
+  if ! count=$(kubectl get "$kind" -n "$ns" -l "$selector" \
+    --ignore-not-found -o name 2>/dev/null | wc -l | tr -d ' '); then
+    echo "Cannot inspect $kind in $ns" >&2
+    return 1
+  fi
+  printf '%s\n' "$count"
+}
+
+# Request names include a revision. Match exact issuance metadata instead of a
+# prefix, without requesting CSR or Secret data in output.
+kv_certificate_request_count() {
+  local ns="$1" certificate="$2"
+  kubectl get certificaterequests.cert-manager.io -n "$ns" \
+    -o jsonpath='{range .items[*]}{.metadata}{"\n"}{end}' 2>/dev/null |
+    python3 -c '
+import json, sys
+certificate = sys.argv[1]
+count = 0
+for line in sys.stdin:
+    metadata = json.loads(line)
+    annotations = metadata.get("annotations") or {}
+    owners = metadata.get("ownerReferences") or []
+    if annotations.get("cert-manager.io/certificate-name") == certificate or any(
+        owner.get("apiVersion", "").startswith("cert-manager.io/")
+        and owner.get("kind") == "Certificate" and owner.get("name") == certificate
+        for owner in owners
+    ):
+        count += 1
+print(count)
+' "$certificate" 2>/dev/null
 }
 
 # bao_secret_exists: exit 0 if OpenBao path has data, 1 if 404.
@@ -332,6 +356,13 @@ audit_kv() {
       ok "KeyValue TLS $tls_kind ${name}-kv-tls is absent from $APPS_NS"
     fi
   done
+  if ! cnt=$(kv_certificate_request_count "$APPS_NS" "${name}-kv-tls"); then
+    fail "cannot inspect CertificateRequests for ${name}-kv-tls in $APPS_NS"
+  elif [ "$cnt" = "0" ]; then
+    ok "no CertificateRequests for KeyValue $name in $APPS_NS"
+  else
+    fail "$cnt CertificateRequest(s) still exist for KeyValue $name in $APPS_NS"
+  fi
 
   local component kind
   for component in keyvalue-backup keyvalue-backup-purge; do

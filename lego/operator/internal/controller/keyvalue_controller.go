@@ -369,15 +369,28 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 		}
 		existing := certificate.DeepCopy()
 		if readErr := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(existing), existing); readErr == nil {
-			if !metav1.IsControlledBy(existing, kv) {
-				return reasonKVCertificateFailed, fmt.Errorf("refusing foreign KeyValue TLS Certificate")
+			if _, err := r.rememberKeyValueTLSCertificate(ctx, kv, existing); err != nil {
+				return reasonKVCertificateFailed, err
 			}
-			identity.CertificateUID = string(existing.GetUID())
+			identity, identityErr = r.keyValueTLSIdentity(kv)
+			if identityErr != nil {
+				return reasonKVCertificateFailed, identityErr
+			}
 		} else if !apierrors.IsNotFound(readErr) {
 			return reasonKVCertificateFailed, readErr
 		}
 		if err := validateKeyValueTLSSecret(kv, secret, identity); err != nil {
 			return reasonKVCertificateFailed, err
+		}
+		// Bind verified legacy issuance before changing the producer. Deletion
+		// can then recognize its old output even before cert-manager has copied
+		// the new secretTemplate labels or issued for the new domain/issuer.
+		if secret.Labels[execution.LabelKeyValueUID] == "" {
+			patch := client.MergeFromWithOptions(secret.DeepCopy(), client.MergeFromWithOptimisticLock{})
+			metav1.SetMetaDataLabel(&secret.ObjectMeta, execution.LabelKeyValueUID, string(kv.UID))
+			if err := r.secretClient().Patch(ctx, secret, patch); err != nil {
+				return reasonKVCertificateFailed, err
+			}
 		}
 	} else if !apierrors.IsNotFound(err) {
 		return reasonKVCertificateFailed, err
