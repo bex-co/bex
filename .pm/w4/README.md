@@ -23,7 +23,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m160** — [Revalidate static files across deployments](blocked/m160/README.md) — **BLOCKED (release pipeline deploys operator/static-server; QA replays two root-directory republishes on a fresh-cache Free static site, the explicit header override across UI/REST/GraphQL/MCP, then cleans up and revokes the session)**. t001/t002/t004/t005 done 2026-10-03: every success path defaults to `public, max-age=0, must-revalidate`; operator `make test` + lint green.
 
-- [ ] **m159** — [Keep confirmations open through permission refresh](m159/README.md) (6 tasks) ← QA sweep 41
+- [ ] **m159** — [Keep confirmations open through permission refresh](blocked/m159/README.md) — **BLOCKED (release pipeline deploys dashboard; QA holds Restart/Suspend/specific-commit dialogs open across three 30s refresh cycles on an owned Free service, checks immediate Restart and rollback sequence, desktop vs narrow-mobile status-line geometry, then cleans up)**. t001/t002/t004/t005 done 2026-10-03: context vs eligibility split, fail-closed dispatch with no replay; 4076 dashboard tests green.
 
 - [ ] **m157** — [Preserve typed Postgres query values](m157/README.md) (9 tasks) ← QA sweeps 37, 39, 40 and 44
 - [ ] **m158** — [Preserve exact SQL numbers in MCP responses](m158/README.md) (6 tasks) ← QA sweep 40
