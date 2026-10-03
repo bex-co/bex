@@ -510,10 +510,18 @@ func matchPattern(pattern, reqPath string) (string, bool) {
 	return "", pattern == reqPath
 }
 
+const (
+	maxRouteDestinationBytes  = 2048     // Matches the configured destination limit.
+	maxExpandedRoutePathBytes = 8 * 1024 // Bounds capture amplification before allocating.
+)
+
 // expandDest separates URL syntax before substituting decoded path data. Never
 // parse the expanded path again: a captured ?/#/% is a filename character, not
 // a new query, fragment, or escape. Configured query/fragment values stay literal.
 func expandDest(dest, splat string) (*url.URL, error) {
+	if len(dest) > maxRouteDestinationBytes {
+		return nil, errors.New("destination exceeds size limit")
+	}
 	if !safeRedirectTarget(dest) {
 		return nil, errors.New("destination must be local")
 	}
@@ -527,9 +535,16 @@ func expandDest(dest, splat string) (*url.URL, error) {
 	if target.Host != "" || target.Scheme != "" || !safeRedirectTarget(target.Path) {
 		return nil, errors.New("destination must be local")
 	}
-	if strings.Contains(target.Path, ":splat") {
+	if count := strings.Count(target.Path, ":splat"); count > 0 {
+		literalBytes := len(target.Path) - count*len(":splat")
+		if len(splat) > (maxExpandedRoutePathBytes-literalBytes)/count {
+			return nil, errors.New("expanded destination exceeds size limit")
+		}
 		target.Path = strings.ReplaceAll(target.Path, ":splat", splat)
 	} else if strings.HasSuffix(target.Path, "/*") {
+		if len(splat) > maxExpandedRoutePathBytes-(len(target.Path)-1) {
+			return nil, errors.New("expanded destination exceeds size limit")
+		}
 		target.Path = strings.TrimSuffix(target.Path, "*") + splat
 	}
 	if !safeRedirectTarget(target.Path) {

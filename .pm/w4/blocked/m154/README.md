@@ -39,3 +39,7 @@ Repeat the Free static-site fixture and saved rows in [finding.md](finding.md), 
 ## Drain verdict — 2026-10-02
 
 Implementation complete with [local verification](verification.md). **Blocked:** release pipeline must deploy static-server, bex-api and dashboard; QA must replay the owned Free fixture GET/HEAD/browser and API/UI checks, then delete the fixture and revoke its session. t006 retains deployed acceptance; t007 retains closeout. No hosted fixture or session was created by this implementation run.
+
+## Independent supplemental verification
+
+The parallel drain retained URL implementation `703068251` and added pre-allocation expansion bounds, real-wire and existing-App Blueprint regressions. [Supplemental evidence](supplemental-verification.md) includes the local Chrome navigation proof and merged checks.
