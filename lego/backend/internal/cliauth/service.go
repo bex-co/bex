@@ -90,7 +90,6 @@ type OAuthRevocationStore interface {
 // authenticated logout endpoint.
 type Service struct {
 	publicURL string
-	adminURL  string
 	client    *http.Client
 	apiKeys   APIKeyRevoker
 	// invalidate evicts the just-revoked access token from bex's positive
@@ -110,13 +109,12 @@ type Service struct {
 	RateLimiter *DeviceRateLimiter
 }
 
-// New returns a Render CLI authentication adapter. Empty URLs leave the routes
+// New returns a Render CLI authentication adapter. An empty URL leaves the routes
 // mounted but honestly unavailable (503), which keeps server composition stable
 // in partial local environments. invalidate may be nil (no cache to evict).
-func New(publicURL, adminURL string, apiKeys APIKeyRevoker, invalidate func(string, core.Identity)) *Service {
+func New(publicURL string, apiKeys APIKeyRevoker, invalidate func(string, core.Identity)) *Service {
 	return &Service{
 		publicURL:  strings.TrimSuffix(publicURL, "/"),
-		adminURL:   strings.TrimSuffix(adminURL, "/"),
 		client:     &http.Client{Timeout: 10 * time.Second, Transport: core.OryTransport},
 		apiKeys:    apiKeys,
 		invalidate: invalidate,
@@ -198,23 +196,30 @@ func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	switch {
 	case isPlatformHumanClient(id.ClientID) && id.Human:
 		// /v1/oauth/revoke is a Render-shaped REST endpoint, not a token
 		// endpoint — every failure branch speaks the one Render error dialect
 		// via core.WriteErr (w9/m38, w9/008), not the OAuth {"error"} body the
 		// RFC 8628 device endpoints use.
-		if s.adminURL == "" {
-			core.WriteErr(w, core.ErrLogoutUnavailable)
+		//
+		// Logout revokes only the presented grant, like Render's per-token CLI
+		// logout (w8/037). Hydra's RFC 7009 endpoint revokes by request ID, so
+		// this access token and the refresh chain rotated from the same device
+		// grant die together while the user's other devices — separate grants —
+		// keep working. Deleting the subject+client consent session here used
+		// to sign every machine out; that wipe belongs to the dashboard's
+		// connected-apps revoke, not `bex logout`.
+		if token == "" {
+			core.WriteErr(w, fmt.Errorf("%w: no OAuth2 credential to revoke", core.ErrBadRequest))
 			return
 		}
-		q := url.Values{
-			"subject": {id.Subject},
-			"client":  {id.ClientID},
-		}
-		if err := core.DoJSON(r.Context(), s.client, http.MethodDelete,
-			s.adminURL+"/admin/oauth2/auth/sessions/consent?"+q.Encode(), "", nil,
-			http.StatusNoContent, nil); err != nil {
+		_, status, err := s.postForm(r.Context(), "/oauth2/revoke", url.Values{
+			"token":     {token},
+			"client_id": {id.ClientID},
+		})
+		if err != nil || status != http.StatusOK {
 			core.WriteErr(w, core.ErrLogoutUnavailable)
 			return
 		}
@@ -232,7 +237,7 @@ func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok && token != "" && s.invalidate != nil {
+	if token != "" && s.invalidate != nil {
 		s.invalidate(token, id)
 	}
 	w.WriteHeader(http.StatusNoContent)

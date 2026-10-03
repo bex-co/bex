@@ -75,7 +75,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **037** — [`bex logout` on one machine signs the user out of every CLI session](037.md) (~50m, major) ← `/qa-find-bugs-cli` w8 loop sweep 1, 2026-10-03; consent-session wipe instead of per-grant revoke.
+- [x] **037** — [`bex logout` revokes only the presented grant](done/037.md) — **DONE 2026-10-03**: per-token Hydra RFC 7009 revoke replaces the consent-session wipe; proven against Hydra v26.2.0 (other device keeps access + refresh).
 - [ ] **038** — [`BEX_WORKSPACE=<name>` is documented but every list/get answers "not allowed"](038.md) (~40m, minor) ← same sweep; launcher passes the name as `ownerId`.
 - [ ] **039** — [Health-check-stalled first deploy loses its probe diagnosis to a 900 s restart race](039.md) (~45m, minor) ← same sweep; startup-probe kill lands seconds before settle.
 - [ ] **040** — [Restart is accepted for cron jobs; Render refuses it](040.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 2, 2026-10-03.

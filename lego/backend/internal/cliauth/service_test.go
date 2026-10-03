@@ -81,7 +81,7 @@ func TestRenderProtocolAdapters(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc := New(upstream.URL, "", nil, nil)
+	svc := New(upstream.URL, nil, nil)
 	mux := http.NewServeMux()
 	svc.RegisterPublic(mux, noMiddleware)
 
@@ -147,7 +147,7 @@ type refreshResult struct {
 }
 
 func refreshMux(publicURL string, refreshes RefreshIdempotencyStore) *http.ServeMux {
-	svc := New(publicURL, "", nil, nil)
+	svc := New(publicURL, nil, nil)
 	svc.Refreshes = refreshes
 	mux := http.NewServeMux()
 	svc.RegisterPublic(mux, noMiddleware)
@@ -391,7 +391,7 @@ func TestRenderProtocolRejectsWrongClientBeforeHydra(t *testing.T) {
 	called := false
 	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
 	defer upstream.Close()
-	svc := New(upstream.URL, "", nil, nil)
+	svc := New(upstream.URL, nil, nil)
 	mux := http.NewServeMux()
 	svc.RegisterPublic(mux, noMiddleware)
 	rec := httptest.NewRecorder()
@@ -411,46 +411,76 @@ func (f *fakeRevoker) RevokeAPIKey(_ context.Context, _ string, id string) error
 	return f.err
 }
 
-func TestLogoutRevokesPlatformHumanConsentChainAndKeepsSharedClient(t *testing.T) {
+// TestLogoutRevokesOnlyThePresentedGrant pins w8/037: `bex logout` on one
+// machine must not sign the same user's other CLI/mobile sessions out. The
+// adapter revokes the presented token at Hydra's public RFC 7009 endpoint
+// (per grant) and never deletes the subject+client consent session.
+func TestLogoutRevokesOnlyThePresentedGrant(t *testing.T) {
 	for _, clientID := range []string{RenderCLIClientID, MobileClientID} {
 		t.Run(clientID, func(t *testing.T) {
-			var subject, client string
-			admin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodDelete || r.URL.Path != "/admin/oauth2/auth/sessions/consent" {
-					t.Fatalf("unexpected admin request %s %s", r.Method, r.URL.Path)
+			var form url.Values
+			hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != "/oauth2/revoke" {
+					t.Fatalf("unexpected Hydra request %s %s (logout must never touch sessions/consent)", r.Method, r.URL.Path)
 				}
-				subject, client = r.URL.Query().Get("subject"), r.URL.Query().Get("client")
-				w.WriteHeader(http.StatusNoContent)
+				if got := r.Header.Get("Content-Type"); got != "application/x-www-form-urlencoded" {
+					t.Fatalf("content type = %q", got)
+				}
+				if err := r.ParseForm(); err != nil {
+					t.Fatal(err)
+				}
+				form = r.PostForm
+				w.WriteHeader(http.StatusOK)
 			}))
-			defer admin.Close()
+			defer hydra.Close()
 
 			invalidated := ""
 			var invalidatedIdentity core.Identity
-			svc := New("", admin.URL, nil, func(token string, identity core.Identity) {
+			svc := New(hydra.URL, nil, func(token string, identity core.Identity) {
 				invalidated = token
 				invalidatedIdentity = identity
 			})
-			h := http.HandlerFunc(svc.revoke)
 			id := core.Identity{Subject: "kratos-user-a", Method: "oauth2", ClientID: clientID, Human: true}
 			req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
 			req.Header.Set("Authorization", "Bearer access-a")
 			req = req.WithContext(core.WithIdentity(req.Context(), id))
 			rec := httptest.NewRecorder()
-			h.ServeHTTP(rec, req)
+			http.HandlerFunc(svc.revoke).ServeHTTP(rec, req)
 
 			if rec.Code != http.StatusNoContent {
 				t.Fatalf("revoke => %d %s", rec.Code, rec.Body.String())
 			}
-			if subject != "kratos-user-a" || client != clientID || invalidated != "access-a" || invalidatedIdentity != id {
-				t.Fatalf("subject=%q client=%q invalidated=%q identity=%+v", subject, client, invalidated, invalidatedIdentity)
+			if form.Get("token") != "access-a" || form.Get("client_id") != clientID || len(form) != 2 {
+				t.Fatalf("revoke form = %v", form)
+			}
+			if invalidated != "access-a" || invalidatedIdentity != id {
+				t.Fatalf("invalidated=%q identity=%+v", invalidated, invalidatedIdentity)
 			}
 		})
 	}
 }
 
+func TestLogoutHydraRefusalFailsClosed(t *testing.T) {
+	hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":"invalid_client"}`))
+	}))
+	defer hydra.Close()
+	invalidated := false
+	svc := New(hydra.URL, nil, func(string, core.Identity) { invalidated = true })
+	req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
+	req.Header.Set("Authorization", "Bearer access-a")
+	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "u", Method: "oauth2", ClientID: RenderCLIClientID, Human: true}))
+	rec := httptest.NewRecorder()
+	http.HandlerFunc(svc.revoke).ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable || invalidated {
+		t.Fatalf("status = %d invalidated=%v body=%s", rec.Code, invalidated, rec.Body.String())
+	}
+}
+
 func TestLogoutRetainsAPIKeySelfRevoke(t *testing.T) {
 	revoker := &fakeRevoker{}
-	svc := New("", "", revoker, nil)
+	svc := New("", revoker, nil)
 	h := http.HandlerFunc(svc.revoke)
 	id := core.Identity{Subject: "api-key-1", Method: "oauth2", ClientID: "api-key-1"}
 	req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
@@ -465,17 +495,18 @@ func TestLogoutRetainsAPIKeySelfRevoke(t *testing.T) {
 func TestLogoutFailsClosed(t *testing.T) {
 	t.Run("no identity", func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		http.HandlerFunc(New("", "", nil, nil).revoke).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil))
+		http.HandlerFunc(New("", nil, nil).revoke).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil))
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("status = %d", rec.Code)
 		}
 	})
-	t.Run("admin unavailable", func(t *testing.T) {
+	t.Run("hydra unavailable", func(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
+		req.Header.Set("Authorization", "Bearer access-a")
 		id := core.Identity{Subject: "user", Method: "oauth2", ClientID: RenderCLIClientID, Human: true}
 		req = req.WithContext(core.WithIdentity(req.Context(), id))
-		http.HandlerFunc(New("", "", nil, nil).revoke).ServeHTTP(rec, req)
+		http.HandlerFunc(New("", nil, nil).revoke).ServeHTTP(rec, req)
 		if rec.Code != http.StatusServiceUnavailable {
 			t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
 		}
@@ -494,7 +525,7 @@ func TestLogoutFailsClosed(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/v1/oauth/revoke", nil)
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "key", Method: "oauth2", ClientID: "key"}))
-		http.HandlerFunc(New("", "", &fakeRevoker{err: errors.New("boom")}, nil).revoke).ServeHTTP(rec, req)
+		http.HandlerFunc(New("", &fakeRevoker{err: errors.New("boom")}, nil).revoke).ServeHTTP(rec, req)
 		if rec.Code == http.StatusNoContent {
 			t.Fatal("unexpected success")
 		}
@@ -506,7 +537,7 @@ func TestLogoutFailsClosed(t *testing.T) {
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{
 			Subject: "human", Method: "oauth2", ClientID: "other-public-client", Human: true,
 		}))
-		http.HandlerFunc(New("", "", revoker, nil).revoke).ServeHTTP(rec, req)
+		http.HandlerFunc(New("", revoker, nil).revoke).ServeHTTP(rec, req)
 		if rec.Code != http.StatusBadRequest || revoker.id != "" {
 			t.Fatalf("status = %d revoked=%q body=%s", rec.Code, revoker.id, rec.Body.String())
 		}
@@ -549,7 +580,7 @@ func newDeviceLimitedMux(t *testing.T, rpm float64, burst int) (*http.ServeMux, 
 	t.Helper()
 	var calls atomic.Int32
 	upstream := countingUpstream(t, &calls)
-	svc := New(upstream.URL, "", nil, nil)
+	svc := New(upstream.URL, nil, nil)
 	svc.RateLimiter = NewDeviceRateLimiter(rpm, burst)
 	mux := http.NewServeMux()
 	svc.RegisterPublic(mux, noMiddleware)
