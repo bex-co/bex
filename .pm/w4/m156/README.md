@@ -17,7 +17,7 @@
 
 - Fresh image creation and restart that skip observed progress never report the completion observation as their execution start. If no owned start evidence exists, REST/MCP omit it, GraphQL retains its established empty missing-value encoding, and dashboard detail/history show unknown duration with no invented start timeline step.
 - Generation-attributed build evidence can preserve a true start; existing evidenced starts remain byte-for-byte unchanged. Created and queued skips, stale build windows, image/reuse and native-build cases have behavioral coverage.
-- Synthetic start narration is omitted without evidence or precedes the actual work it describes when evidence is available; queued/terminal and actual application logs remain. Build facts, Events and future analytics durations agree on known versus unknown execution time.
+- For newly handled terminal skips, synthetic start narration is omitted without evidence or uses the recorded build-window start; existing in-progress sampling timestamps are preserved, not promised to predate every app log. Queued/terminal and actual application logs remain. Build facts, Events and future analytics durations agree on known versus unknown execution time.
 - Failure/cancel/supersede/deactivation contracts, eleven statuses, queue exclusion and resource authorization remain unchanged. The five App families are dispositioned explicitly; Database lifecycles remain out of scope.
 - PG and memory implementations, API adapters and dashboard consumers are verified; appropriate backend/dashboard checks pass. Live image and native controls are captured, fixtures deleted, and session revoked.
 
