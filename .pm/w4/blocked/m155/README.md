@@ -1,16 +1,16 @@
 # w4 · m155 — Keep serving static sites Running after a failed publish
 
-**Worker:** worker4 **Goal:** report the serving static release separately from a failed replacement publish **Status:** todo
+**Worker:** worker4 **Goal:** report the serving static release separately from a failed replacement publish **Status:** blocked — t001/t002/t004/t005 implemented and locally verified; t003/t006 require deployed acceptance
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Bound the publish-failure change and audit shared consumers | 25m | — |
-| t002 | Preserve prior static release status and durable failed-deploy verdict | 50m | t001 |
+| t001 — **DONE** | Bound the publish-failure change and audit shared consumers | 25m | — |
+| t002 — **DONE** | Preserve prior static release status and durable failed-deploy verdict | 50m | t001 |
 | t003 | Verify REST, GraphQL, MCP and dashboard Render parity | 25m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 35m | t003 |
+| t004 — **DONE** | Simplify | 15m | t003 |
+| t005 — **DONE** | Test coverage | 35m | t003 |
 | t006 | Closeout with live replay and cleanup | 20m | t004, t005 |
 
 ## Definition of done

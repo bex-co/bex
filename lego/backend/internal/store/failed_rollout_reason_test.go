@@ -79,3 +79,34 @@ func TestRolloutVerdictForAnotherReleaseIsIgnored(t *testing.T) {
 		t.Errorf("reason = %q, want none from release 3's verdict", got)
 	}
 }
+
+// w4/m155: a static site's failed replacement publish is the same shape — the
+// operator keeps the prior revision Running and records ConditionRollout with
+// Reason PublishFailed. The row closes update_failed with the exact clone
+// message, also after suspend/resume moved metadata.generation past the
+// failed release (w6/m100), and a later recovered release reads live.
+func TestStaticPublishFailureOverServedReleaseClosesUpdateFailed(t *testing.T) {
+	const missing = `clone: the publish directory "examples/static-site/qa-r23-missing-again" does not exist in the repository at "main" (exit 2)`
+	app := servingAppWithFailedRollout(4, "PublishFailed", missing)
+	app.Status.ActiveRevision = "rev-3"
+	app.Generation = 6 // suspend + resume after the failure
+	open := Deploy{Generation: 4, Status: DeployUpdateInProgress}
+	if got := observedDeployStatus(open, app, false); got != DeployUpdateFailed {
+		t.Fatalf("status = %q, want %q", got, DeployUpdateFailed)
+	}
+	if got, code := deployCloseFailureReason(app, open, DeployUpdateFailed, false); got != missing || code != "" {
+		t.Errorf("reason = (%q, %q), want (%q, \"\")", got, code, missing)
+	}
+
+	// Recovery: release 5 published and is active; release 4's verdict stays in
+	// its slot but cannot fail the recovered row.
+	app.Status.ReleaseGeneration = 5
+	app.Status.ActiveRevision = "rev-5"
+	app.Generation = 7
+	app.Status.Conditions[0] = metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue,
+		Reason: "Published", ObservedGeneration: 7}
+	recovered := Deploy{Generation: 5, Status: DeployUpdateInProgress}
+	if got := observedDeployStatus(recovered, app, false); got != DeployLive {
+		t.Errorf("recovered status = %q, want %q", got, DeployLive)
+	}
+}

@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m155** — [Keep serving static sites Running after a failed publish](m155/README.md) (6 tasks, ~2h50m) ← continuous live `$qa-find-bugs` sweep 23, 2026-10-02; two failed replacement publishes report Service Failed while prior immutable content serves HTTP 200.
+- [ ] **m155** — [Keep serving static sites Running after a failed publish](blocked/m155/README.md) — **BLOCKED (release pipeline deploys operator; QA replays the owned Free static publish-fail/recover/suspend/resume journey across REST/GraphQL/MCP/dashboard aliases, then deletes the fixture and revokes the session)**. t001/t002/t004/t005 done; operator envtest, backend and all-module lint green. t003 hosted parity and t006 closeout remain.
 
 - [ ] **m154** — [Preserve URL path semantics in static edge rules](blocked/m154/README.md) — **BLOCKED (release pipeline deploys static-server/API/dashboard; QA replays owned Free-site GET/HEAD/browser/API acceptance and cleanup)**. t001–t005 done; t006/t007 retain hosted verification and closeout.
 
