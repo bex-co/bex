@@ -80,12 +80,12 @@ unchanged. This verifies persistence, not an immediately refreshed public URL.
 
 | Path | Evidence | Scope |
 | --- | --- | --- |
-| REST collection | `TestStaticHeaderPatternsAcrossAdapters/REST` | PUT and GET `/v1/services/site/headers`, exact ordered fields |
-| GraphQL | `TestStaticHeaderPatternsAcrossAdapters/GraphQL` | `setStaticHeaders`, both `service` and legacy `server` read aliases |
-| MCP | `TestStaticHeaderPatternsAcrossAdapters/MCP` | In-memory real protocol `update_static_headers` and `list_static_headers` |
-| Create | `TestStaticHeaderPatternsCreateAndBlueprint/create` | Shared `Service.Create` writes wildcard headers into App spec; not a separate transport create test |
-| Blueprint | `TestStaticHeaderPatternsCreateAndBlueprint/blueprint` | `DeployStack` compiles a static manifest and persists its wildcard headers |
-| Authorization/deletion/type refusals | `TestStaticHeaderRefusalsPreserveRules` | Both Set/List refuse denied auth, terminating static resources and web/private/worker/cron types, preserving existing rules |
+| REST collection | `TestStaticHeaderLiteralOrderedContractAcrossAdapters/REST` | PUT and GET `/v1/services/site/headers`, exact ordered fields |
+| GraphQL | `TestStaticHeaderLiteralOrderedContractAcrossAdapters/GraphQL` | `setStaticHeaders`, both `service` and legacy `server` read aliases |
+| MCP | `TestStaticHeaderLiteralOrderedContractAcrossAdapters/MCP` | In-memory real protocol `update_static_headers` and `list_static_headers` |
+| Create | `TestStaticHeaderWildcardPersistenceAcrossAdapters` | Shared `Service.Create` writes wildcard headers into App spec; not a separate transport create test |
+| Blueprint | `TestStaticHeaderWildcardPersistenceAcrossAdapters` | `DeployStack` compiles a static manifest and persists its wildcard headers |
+| Authorization/deletion/type refusals | `TestStaticHeaderAuthorizationAndDeletionPreserveRules` and upstream `TestStaticHeaderOperationsRejectOtherAppTypes` | Both Set/List refuse denied auth, terminating static resources and web/private/worker/cron types, preserving existing rules |
 | Dashboard | Existing `static-site-section`, `use-static-site`, `static-rule-validation`, `non-static-route` suites | 4 files/17 tests pass (2.84s); editor persistence/read-back, validation and non-static UI restrictions. No new UI logic or snapshots |
 
 Current source census: the old three `matchPattern` call sites become one
@@ -146,6 +146,8 @@ as `/assets/*.css`; these do not cross another slash. The earlier local grammar
 kept that form literal, so its boundary test was updated to protect the already
 shipped behavior. Existing upstream scope/route/refresh and create/Blueprint
 regressions remain; supplemental tests avoid duplicating those broad matrices.
-Final merged-package and lint results are recorded after reconciliation. The
+After reconciliation, the complete static-server and Apps packages passed with both upstream and supplemental tests present. The
 initial independent runs above remain historical evidence, not a claim that
 all test files retained their pre-merge names or layout.
+
+Final merged verification: static-server 1.099s, Apps 7.175s; all-module `make lint` completed successfully with zero issues and dead-code analysis.
