@@ -81,18 +81,21 @@ func TestDeployStatusVocabularyAndTransitionTable(t *testing.T) {
 	}
 }
 
-// TestDeployStatusStampingSplit is w6/m123: a terminal failure can be reached
-// by a forward skip straight from queued, so its transition time is not the
-// moment work began — only in-progress (and live) transitions may stamp
-// started_at from the clock. DeployStatusStartsExecution keeps answering the
-// separate question "did work begin at all", which the build facts rely on.
+// TestDeployStatusStampingSplit is w6/m123 + w4/m156: a terminal status can be
+// reached by a forward skip straight from created/queued, so its transition
+// time is not the moment work began — only in-progress transitions may stamp
+// started_at from the clock. Live is terminal too: a first observation at live
+// used to stamp the live observation as the start of an image rollout whose
+// container had been serving for 13 seconds. DeployStatusStartsExecution keeps
+// answering the separate question "did work begin at all", which the build
+// facts rely on.
 func TestDeployStatusStampingSplit(t *testing.T) {
-	for _, s := range []string{DeployBuildInProgress, DeployPreDeployInProgress, DeployUpdateInProgress, DeployLive} {
+	for _, s := range []string{DeployBuildInProgress, DeployPreDeployInProgress, DeployUpdateInProgress} {
 		if !DeployStatusStampsDispatch(s) {
 			t.Errorf("%s must stamp started_at from the clock", s)
 		}
 	}
-	for _, s := range []string{DeployQueued, DeployCanceled, DeployDeactivated,
+	for _, s := range []string{DeployCreated, DeployQueued, DeployLive, DeployCanceled, DeployDeactivated,
 		DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed} {
 		if DeployStatusStampsDispatch(s) {
 			t.Errorf("%s must not stamp started_at from the clock", s)
@@ -105,5 +108,8 @@ func TestDeployStatusStampingSplit(t *testing.T) {
 	}
 	if DeployFailureStatus(DeployCanceled) || DeployFailureStatus(DeployLive) {
 		t.Error("canceled/live are not failure statuses")
+	}
+	if !DeployStatusStartsExecution(DeployLive) {
+		t.Error("live still means work happened, even when its start is unknown")
 	}
 }

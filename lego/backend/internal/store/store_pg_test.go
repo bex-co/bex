@@ -1037,8 +1037,10 @@ func assertDeployLifecycle(ctx context.Context, t *testing.T, s *PGStore, app Ap
 		t.Fatalf("prior deploy after second live = %+v (err %v), want deactivated with original finished_at and newer updated_at", prior, err)
 	}
 	current, err := s.GetDeploy(ctx, app.ID, second.ID)
-	if err != nil || current.Status != DeployLive || current.StartedAt == nil || current.FinishedAt == nil || !current.UpdatedAt.After(second.UpdatedAt) {
-		t.Fatalf("current deploy = %+v (err %v), want live with transition timestamps", current, err)
+	// A deploy closed straight to live was never observed executing, so its
+	// start stays unknown rather than equal to the live observation (w4/m156).
+	if err != nil || current.Status != DeployLive || current.StartedAt != nil || current.FinishedAt == nil || !current.UpdatedAt.After(second.UpdatedAt) {
+		t.Fatalf("current deploy = %+v (err %v), want live with an unknown start and transition timestamps", current, err)
 	}
 	if got, err := s.ListDeploys(ctx, app.ID, DeployFilter{UpdatedAfter: second.UpdatedAt}); err != nil || len(got) != 2 {
 		t.Fatalf("updatedAfter = %+v (err %v), want both rows changed by the live/deactivate transaction", got, err)

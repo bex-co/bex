@@ -590,8 +590,9 @@ type Store interface {
 	// with the same transition when non-empty — pass it only alongside a
 	// failure status. startedAt is observed execution-start evidence (the
 	// operator's recorded build window, w6/m123), applied only when the row
-	// carries none — a terminal-failure skip otherwise leaves started_at
-	// honestly null rather than fabricating one; pass nil without evidence.
+	// carries none — a terminal skip (failure, or live first observed at live,
+	// w4/m156) otherwise leaves started_at honestly null rather than
+	// fabricating one; pass nil without evidence.
 	// A stale/repeated/invalid transition returns false without changing data.
 	// cancelReason (w4/089) is stored with the same transition when non-empty —
 	// pass it only alongside DeployCanceled from the reconciler supersede path;
@@ -2301,10 +2302,11 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			return nil
 		}
 
-		// started_at: an in-progress/live transition IS the dispatch moment, so
-		// it may stamp the clock; a terminal-failure skip may only apply the
-		// caller's observed evidence ($9) or leave the column null (w6/m123 —
-		// stamping the clock there collapsed a real build into a microsecond).
+		// started_at: an in-progress transition IS the dispatch moment, so it
+		// may stamp the clock; a terminal close (failure w6/m123, live w4/m156)
+		// may only apply the caller's observed evidence ($9) or leave the
+		// column null — stamping the clock there reported the close's
+		// observation time as the moment work began.
 		stampNow := DeployStatusStampsDispatch(status)
 		terminal := IsTerminalDeployStatus(status)
 		if _, err := tx.Exec(ctx,

@@ -1314,8 +1314,23 @@ func TestReconcileRollbackDeployEmitsNoBuildFacts(t *testing.T) {
 	}
 	buildDeployID := deploys[0].ID
 
-	// The repo build converges live (generation 1).
+	// The repo build is observed running (its start is evidenced: w4/m156
+	// withholds build facts from a build first seen already live with no
+	// recorded window), then converges live (generation 1).
 	app := getApp(t, cl)
+	app.Status = buildingApp(app.Generation, appv1alpha1.ReasonBuilding, "Building image").Status
+	app.Status.ReleaseGeneration = 1
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe building: %v", err)
+	}
+	if building := onlyDeploy(t, st, row.ID); building.Status != DeployBuildInProgress || building.StartedAt == nil {
+		t.Fatalf("repo build = %+v, want build_in_progress with a stamped start", building)
+	}
+	app = getApp(t, cl)
+	app.Status.Conditions = nil
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ReleaseGeneration = 1
 	app.Status.ActiveRevision = "rev-1"
@@ -2364,6 +2379,172 @@ func TestBuildFactsForTerminalSkip(t *testing.T) {
 	}
 	if facts[1].Type != EventFactBuildEnded || facts[1].Status != EventStatusFailed {
 		t.Fatalf("facts = %+v, want build_ended(failed)", facts)
+	}
+}
+
+// TestBuildFactsForSuccessfulSkip (w4/m156): a build first observed already
+// live was never seen executing, so neither the row's creation nor the live
+// observation dates it — only the operator's recorded build window does, and
+// without one the build facts stay silent exactly as the row's start stays
+// unknown. An observed start and the never-queued failure path (w6/035,
+// w6/m123) are unchanged.
+func TestBuildFactsForSuccessfulSkip(t *testing.T) {
+	created := time.Date(2026, 10, 3, 3, 32, 38, 0, time.UTC)
+	window := time.Date(2026, 10, 3, 3, 33, 54, 0, time.UTC)
+	for _, status := range []string{DeployCreated, DeployQueued} {
+		open := Deploy{ID: "dep-1", AppID: "srv-1", Status: status, CreatedAt: created}
+		if facts := buildLifecycleFacts(open, DeployLive, nil); facts != nil {
+			t.Errorf("%s→live without evidence emitted %+v, want none", status, facts)
+		}
+		facts := buildLifecycleFacts(open, DeployLive, &window)
+		if len(facts) != 2 || facts[0].Type != EventFactBuildStarted || !facts[0].At.Equal(window) ||
+			facts[1].Type != EventFactBuildEnded || facts[1].Status != EventStatusSucceeded {
+			t.Errorf("%s→live with evidence = %+v, want build_started at %v + build_ended(succeeded)", status, facts, window)
+		}
+	}
+
+	// An in-progress observation already dated the build: live keeps it.
+	observed := time.Date(2026, 10, 3, 3, 33, 50, 0, time.UTC)
+	started := Deploy{ID: "dep-2", AppID: "srv-1", Status: DeployBuildInProgress, CreatedAt: created, StartedAt: &observed}
+	if facts := buildLifecycleFacts(started, DeployLive, &window); len(facts) != 2 || !facts[0].At.Equal(observed) {
+		t.Errorf("observed build → live = %+v, want build_started at the observed %v", facts, observed)
+	}
+
+	// Unchanged: a never-queued build that failed between passes still rides
+	// its creation time (w6/035's dispatched-as-the-row-opens contract).
+	open := Deploy{ID: "dep-3", AppID: "srv-1", Status: DeployCreated, CreatedAt: created}
+	if facts := buildLifecycleFacts(open, DeployBuildFailed, nil); len(facts) != 2 || !facts[0].At.Equal(created) {
+		t.Errorf("created→build_failed = %+v, want build_started at created_at", facts)
+	}
+}
+
+// liveStatus is the operator reporting generation gen as the active, serving
+// release — what a fast rollout looks like when the very first pass to see it
+// already finds it live.
+func liveStatus(app *appv1alpha1.App, gen int64, image string) {
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.ReleaseGeneration = gen
+	app.Status.ActiveRevision = fmt.Sprintf("rev-%d", gen)
+	app.Status.Image = image
+}
+
+// TestReconcileImageDeployFirstSeenLiveHasUnknownStart is the w4/m156 repro
+// through the reconciler: an image web service's create deploy and its
+// Restart both converged between two passes. Each used to record the live
+// observation as its start — a 0s duration whose "Deploying image" banner
+// trailed the app's own startup log by 13 seconds. With no owned evidence the
+// start is now unknown; the finish, status and deactivation are unchanged.
+func TestReconcileImageDeployFirstSeenLiveHasUnknownStart(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	const image = "traefik/whoami:v1.10.1"
+	row, _ := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Image: image, Port: 8080, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+	first := onlyDeploy(t, st, row.ID)
+	app := getApp(t, cl)
+	liveStatus(app, first.Generation, image)
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe live: %v", err)
+	}
+	created, _ := st.GetDeploy(ctx, row.ID, first.ID)
+	if created.Status != DeployLive || created.StartedAt != nil || created.FinishedAt == nil {
+		t.Fatalf("create deploy = %+v, want live with an unknown start and a finish", created)
+	}
+
+	restart, err := st.CreateDeploy(ctx, row.ID, TriggerAPI, image, first.Generation+1, CommitInfo{}, "")
+	if err != nil {
+		t.Fatalf("restart deploy: %v", err)
+	}
+	app = getApp(t, cl)
+	liveStatus(app, restart.Generation, image)
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe restart live: %v", err)
+	}
+	restarted, _ := st.GetDeploy(ctx, row.ID, restart.ID)
+	if restarted.Status != DeployLive || restarted.StartedAt != nil || restarted.FinishedAt == nil {
+		t.Fatalf("restart deploy = %+v, want live with an unknown start and a finish", restarted)
+	}
+	prior, _ := st.GetDeploy(ctx, row.ID, first.ID)
+	if prior.Status != DeployDeactivated || prior.StartedAt != nil || !prior.FinishedAt.Equal(*created.FinishedAt) {
+		t.Fatalf("prior deploy = %+v, want deactivated with its unknown start and live finish kept", prior)
+	}
+}
+
+// TestReconcileBuildFirstSeenLiveUsesOwnBuildWindow: a repo build first seen
+// already live takes its start from the operator's recorded build window when
+// that window is attributed to the deploy's own release generation — on both
+// the row and the build_started fact — and a window left over from another
+// generation is not evidence for it.
+func TestReconcileBuildFirstSeenLiveUsesOwnBuildWindow(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		windowGen int64 // offset from the deploy's own generation
+		owned     bool
+	}{
+		{name: "own generation", windowGen: 0, owned: true},
+		{name: "stale generation", windowGen: -1, owned: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec, st, cl := newTestReconciler(t)
+			ten, _ := st.CreateTenant(ctx, "acme", "free")
+			row, _ := st.CreateApp(ctx, App{
+				TenantID: ten.ID, Name: "web", Repo: "https://example.com/acme/web.git",
+				Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+			})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("create projection: %v", err)
+			}
+			open := onlyDeploy(t, st, row.ID)
+			app := getApp(t, cl)
+			liveStatus(app, open.Generation, "reg/web:gen-1@sha256:c0dd")
+			app.Status.BuildRun = &appv1alpha1.BuildRunStatus{
+				Generation: open.Generation + tc.windowGen,
+				StartedAt:  "2026-10-03T03:33:54Z",
+				FinishedAt: "2026-10-03T03:35:10Z",
+			}
+			if err := cl.Status().Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("observe live: %v", err)
+			}
+			got := onlyDeploy(t, st, row.ID)
+			if got.Status != DeployLive || got.FinishedAt == nil {
+				t.Fatalf("deploy = %+v, want live with a finish", got)
+			}
+			window := time.Date(2026, 10, 3, 3, 33, 54, 0, time.UTC)
+			st.mu.Lock()
+			defer st.mu.Unlock()
+			started, hasStarted := st.eventFacts["deploy:"+got.ID+":build_started"]
+			ended, hasEnded := st.eventFacts["deploy:"+got.ID+":build_ended"]
+			if tc.owned {
+				if got.StartedAt == nil || !got.StartedAt.Equal(window) {
+					t.Errorf("started_at = %v, want the owned window's %v", got.StartedAt, window)
+				}
+				if !hasStarted || !started.At.Equal(window) || !hasEnded || ended.Status != EventStatusSucceeded {
+					t.Errorf("build facts = %+v / %+v, want build_started at %v + build_ended(succeeded)", started, ended, window)
+				}
+				return
+			}
+			if got.StartedAt != nil {
+				t.Errorf("started_at = %v from another generation's window, want unknown", got.StartedAt)
+			}
+			if hasStarted || hasEnded {
+				t.Errorf("stale window produced build facts %+v / %+v, want none", started, ended)
+			}
+		})
 	}
 }
 
