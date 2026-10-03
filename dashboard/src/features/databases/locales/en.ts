@@ -1307,6 +1307,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Press Ctrl+Enter or ⌘+Enter to run",
     description: "SQL console keyboard shortcut hint",
   },
+  "databases.sqlSuspended": {
+    message:
+      "This database is suspended. Resume it to run SQL; your query and history are kept.",
+    description: "SQL console notice while the database is suspended",
+  },
   "databases.sqlRun": {
     message: "Run query",
     description: "SQL console run button",

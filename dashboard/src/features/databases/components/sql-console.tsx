@@ -28,7 +28,20 @@ import { isReadOnlySQL } from "@/features/databases/lib/sql";
 
 const RESULT_PAGE_SIZE = 50;
 const HISTORY_LIMIT = 20;
-export function SQLConsole({ id }: { id: string }) {
+/**
+ * `suspended` comes from the detail page's database state. A suspended
+ * database has no compute, so Run, the keyboard shortcut and an already-open
+ * write confirmation are all held until it resumes; the draft and history
+ * stay. The server refuses with the same reason if a stale cache slips by
+ * (w4/177).
+ */
+export function SQLConsole({
+  id,
+  suspended = false,
+}: {
+  id: string;
+  suspended?: boolean;
+}) {
   const { t } = useTranslations();
   const { execute, loading } = useExecuteDatabaseQuery(id);
   const [sql, setSQL] = useState("SELECT version();");
@@ -81,7 +94,7 @@ export function SQLConsole({ id }: { id: string }) {
   }
 
   function requestRun() {
-    if (loading) return;
+    if (loading || suspended) return;
     const statement = sql.trim();
     if (!statement) return;
     if (isReadOnlySQL(statement)) void run(statement, false);
@@ -121,11 +134,20 @@ export function SQLConsole({ id }: { id: string }) {
             <p className="text-xs text-muted-foreground">
               {t("databases.sqlShortcut")}
             </p>
-            <Button onClick={requestRun} disabled={!sql.trim() || loading}>
+            <Button
+              onClick={requestRun}
+              disabled={!sql.trim() || loading || suspended}
+            >
               <Play className="size-4" aria-hidden="true" />
               {loading ? t("databases.sqlRunning") : t("databases.sqlRun")}
             </Button>
           </div>
+
+          {suspended ? (
+            <Alert role="status">
+              <AlertDescription>{t("databases.sqlSuspended")}</AlertDescription>
+            </Alert>
+          ) : null}
 
           {error ? (
             <Alert variant="destructive" role="alert">
@@ -274,7 +296,7 @@ export function SQLConsole({ id }: { id: string }) {
         onConfirm={() => {
           const statement = pendingWrite;
           setPendingWrite(null);
-          if (statement) void run(statement, true);
+          if (statement && !suspended) void run(statement, true);
         }}
       />
     </>
