@@ -28,3 +28,11 @@
 - **Expected outcome:** Multi-term searches return the requested union instead of a plausible, incomplete success determined by argument order.
 - **Why now:** Installed Bex, unmodified same-pin Render, raw REST and MCP all reproduce silent omission in production; the first-only reductions remain on current main. Existing multi-resource, log-level and timeout fixes cover different boundaries.
 - **Scope:** One shared text-filter defect. About three hours including a dedicated blast-radius audit and standing closing tasks. Render parity is required because REST/MCP arrays and scalar GraphQL/dashboard consumers share the same query model. Full regex support, new logging transports and expanding tail capabilities are outside this repair.
+
+## Production CLI follow-up — 2026-10-03
+
+After successful build/deploy [run 37085557852](https://github.com/bex-co/bex/actions/runs/37085557852), installed Bex v0.2.1 / Render CLI v2.27.0 passed the previously failing multi-term text journey against `https://api.bex.co/v1/`. Complete commands and CLI captures are in [cli-production-log-or-20261003.json](evidence/cli-production-log-or-20261003.json).
+
+Owned Free image cron `srv-db06r63ajv7s73eg1dl0` (`qa-20261003-7125e6-logs-or`) emitted `QA_LOG_OR_A_7125e6` and `QA_LOG_OR_B_7125e6` on its scheduled run. `bex logs --resources <id> --type app --text <terms> --start <creation-intent-time> --limit 30 -o json` returned only A for A, only B for B, and both markers for both `A,B` and `B,A`. All four commands exited 0 with empty stderr. This closes this QA loop's earlier production lag observation; it is not a new implementation finding.
+
+Cleanup enumerated the single owned creation deploy, the empty one-off-job list, and observed log instance identities; deleted the ledger-owned parent, verified absence from the CLI service list, and confirmed all four baseline service IDs remain. No fixture survives. A cron has no public HTTP endpoint. This retest covers text OR and argument order, not all log filters or other API surfaces.

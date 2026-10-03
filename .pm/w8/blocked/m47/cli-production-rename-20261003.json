@@ -1,0 +1,112 @@
+{
+  "binary": "/opt/homebrew/bin/bex v0.2.1",
+  "upstream": "v2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+  "apiOrigin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "deploymentRun": 37085557852,
+  "captures": {
+    "rename-retest-create.json": {
+      "command": [
+        "services",
+        "create",
+        "--name",
+        "qa-20261003-689a09-rename",
+        "--type",
+        "web_service",
+        "--runtime",
+        "image",
+        "--image",
+        "docker.io/mendhak/http-https-echo:35",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--env-var",
+        "HTTP_PORT=3000",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"createdAt\": \"2026-10-03T02:56:30Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db06tn85od3c73dqi5l0\",\n  \"id\": \"srv-db06tn85od3c73dqi5l0\",\n  \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n  \"name\": \"qa-20261003-689a09-rename\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"env\": \"image\",\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261003-689a09-rename:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"image\",\n    \"url\": \"https://qa-20261003-689a09-rename.onbex.co\"\n  },\n  \"slug\": \"qa-20261003-689a09-rename\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-03T02:56:30Z\"\n}",
+      "stderr": "",
+      "seconds": 1.24
+    },
+    "rename-retest-update.json": {
+      "command": [
+        "services",
+        "update",
+        "srv-db06tn85od3c73dqi5l0",
+        "--name",
+        "qa-20261003-689a09-renamed",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"createdAt\": \"2026-10-03T02:56:30Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db06tn85od3c73dqi5l0\",\n    \"id\": \"srv-db06tn85od3c73dqi5l0\",\n    \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n    \"name\": \"qa-20261003-689a09-renamed\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"env\": \"image\",\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261003-689a09-rename:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"image\",\n      \"url\": \"https://qa-20261003-689a09-rename.onbex.co\"\n    },\n    \"slug\": \"qa-20261003-689a09-rename\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-03T02:57:29.216274643Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": ""
+    },
+    "rename-retest-selectors.json": [
+      {
+        "command": [
+          "deploys",
+          "list",
+          "qa-20261003-689a09-renamed",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-03T02:56:29.632283Z\",\n    \"finishedAt\": \"2026-10-03T02:57:08.763905Z\",\n    \"id\": \"dep-db06tn85od3c73dqi5lg\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-03T02:56:38.830978Z\",\n    \"status\": \"live\",\n    \"trigger\": \"create\",\n    \"updatedAt\": \"2026-10-03T02:57:08.763906Z\"\n  }\n]",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "services",
+          "instances",
+          "qa-20261003-689a09-renamed",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-03T02:56:30Z\",\n    \"id\": \"srv-db06tn85od3c73dqi5l0-agefpjts75fv5k6jlvre\"\n  }\n]",
+        "stderr": ""
+      }
+    ],
+    "rename-retest-restart.json": {
+      "command": [
+        "restart",
+        "qa-20261003-689a09-renamed",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Error: failed to restart resource: unknown resource type\n"
+    },
+    "rename-retest-deploy-create.json": {
+      "command": [
+        "deploys",
+        "create",
+        "qa-20261003-689a09-renamed",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"createdAt\": \"2026-10-03T02:59:27.995336Z\",\n  \"id\": \"dep-db06v3o5od3c73dqi5n0\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n  },\n  \"status\": \"created\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-03T02:59:27.995336Z\"\n}",
+      "stderr": ""
+    },
+    "rename-retest-deploys-after.json": {
+      "exit": 0,
+      "stdout": "[\n  {\n    \"createdAt\": \"2026-10-03T02:59:27.995336Z\",\n    \"finishedAt\": \"2026-10-03T02:59:50.360392Z\",\n    \"id\": \"dep-db06v3o5od3c73dqi5n0\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-03T02:59:29.543925Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-03T02:59:50.360393Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-03T02:56:29.632283Z\",\n    \"finishedAt\": \"2026-10-03T02:57:08.763905Z\",\n    \"id\": \"dep-db06tn85od3c73dqi5lg\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-03T02:56:38.830978Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"create\",\n    \"updatedAt\": \"2026-10-03T02:59:50.377357Z\"\n  }\n]",
+      "stderr": ""
+    }
+  },
+  "runtime": "HTTP 200 before rename and after name-based deployment; HTTP 404 after deletion",
+  "cleanup": "Owned creation and API deploys enumerated; one-off jobs empty; parent deleted, list absent, four baseline IDs preserved."
+}
