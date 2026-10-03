@@ -294,3 +294,52 @@ describe("LogLineList text selection tradeoff (w9/m83)", () => {
     expect(screen.queryByText("line 999")).not.toBeInTheDocument();
   });
 });
+
+describe("LogLineList reader anchor during refresh", () => {
+  setupVirtualGeometry();
+
+  it("retains the same row through head appends, older prepends, and expiry", async () => {
+    const rows = buffer(140);
+    const { container, rerender } = render(<LogLineList lines={rows} />);
+    const viewport = viewportOf(container);
+    act(() =>
+      scrollViewport(viewport, {
+        scrollTop: 12 + 50 * 24 + 7,
+        scrollHeight: 140 * 24 + 24,
+        clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
+      }),
+    );
+    const before = viewport.scrollTop;
+    Object.defineProperty(viewport, "scrollHeight", {
+      configurable: true,
+      value: 150 * 24 + 24,
+    });
+    const appended = [
+      ...rows,
+      ...buffer(10).map((row) => ({ ...row, key: `new-${row.key}` })),
+    ];
+    rerender(<LogLineList lines={appended} />);
+    expect(viewportOf(container)).toBe(viewport);
+    expect(viewport.scrollTop).toBe(before);
+    const older = buffer(20).map((row) => ({
+      ...row,
+      key: `older-${row.key}`,
+    }));
+    Object.defineProperty(viewport, "scrollHeight", {
+      configurable: true,
+      value: 170 * 24 + 24,
+    });
+    rerender(<LogLineList lines={[...older, ...appended]} />);
+    expect(viewport.scrollTop).toBe(before + 20 * 24);
+    Object.defineProperty(viewport, "scrollHeight", {
+      configurable: true,
+      value: 130 * 24 + 24,
+    });
+    rerender(<LogLineList lines={appended.slice(20)} />);
+    expect(viewport.scrollTop).toBe(before - 20 * 24);
+    expect(
+      screen.getByRole("button", { name: /jump to latest/i }),
+    ).toBeInTheDocument();
+    await settleVirtualScroll();
+  });
+});

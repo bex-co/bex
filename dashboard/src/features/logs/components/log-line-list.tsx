@@ -1,4 +1,11 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { ArrowDown } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/common/components/ui/button.tsx";
@@ -34,7 +41,6 @@ const PIN_THRESHOLD = 24;
 // How close to the top (px) counts as "load older" — large enough that a fast
 // flick to the top still fires before the user stares at empty overscan.
 const LOAD_OLDER_THRESHOLD = 64;
-
 
 // Height of the scroll viewport; the list fills it and scrolls internally.
 const VIEWPORT_HEIGHT = 520;
@@ -107,8 +113,8 @@ export function LogLineList({
   const { t } = useTranslations();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
-  const prevScrollHeightRef = useRef(0);
-  const prevLineCountRef = useRef(lines.length);
+  const anchorRef = useRef<{ key: string; offset: number } | null>(null);
+  const previousLines = useRef(lines);
   const loadOlderRef = useRef(onLoadOlder);
   const loadingOlderRef = useRef(loadingOlder);
   const hasMoreRef = useRef(hasMore);
@@ -147,6 +153,15 @@ export function LogLineList({
   const onScroll = () => {
     const el = viewportRef.current;
     if (!el) return;
+    const anchor = virtualizer
+      .getVirtualItems()
+      .find((row) => row.end > el.scrollTop);
+    if (anchor) {
+      anchorRef.current = {
+        key: String(anchor.key),
+        offset: el.scrollTop - anchor.start,
+      };
+    }
     const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
     setPinned(distance <= PIN_THRESHOLD);
     if (
@@ -158,20 +173,32 @@ export function LogLineList({
     }
   };
 
-  // Preserve the viewport when older lines are prepended — without this the
-  // virtualizer's growing content pushes the user away from what they were
-  // reading. Live appends (pinned) still scroll to bottom below.
+  // Keep the visible row anchored when pages prepend or old rows expire.
+  // Total-height deltas also include new head/SSE rows, so they shift an
+  // unpinned reader even when nothing changed above the viewport.
   useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
-    const prepended = lines.length > prevLineCountRef.current && !pinned;
-    if (prepended) {
-      const delta = el.scrollHeight - prevScrollHeightRef.current;
-      if (delta > 0) el.scrollTop += delta;
+    const anchor = anchorRef.current;
+    if (!pinned && anchor && previousLines.current !== lines) {
+      const index = lines.findIndex((line) => line.key === anchor.key);
+      const position =
+        index >= 0 ? virtualizer.getOffsetForIndex(index, "start") : undefined;
+      el.scrollTop = position ? Math.max(0, position[0] + anchor.offset) : 0;
+    } else {
+      // The virtualizer may publish its new visible range after onScroll.
+      const visible = virtualizer
+        .getVirtualItems()
+        .find((row) => row.end > el.scrollTop);
+      if (visible) {
+        anchorRef.current = {
+          key: String(visible.key),
+          offset: el.scrollTop - visible.start,
+        };
+      }
     }
-    prevLineCountRef.current = lines.length;
-    prevScrollHeightRef.current = el.scrollHeight;
-  }, [lines, pinned]);
+    previousLines.current = lines;
+  });
 
   // useLayoutEffect so the scroll lands before paint — no visible jump as new
   // lines append.
