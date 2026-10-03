@@ -128,6 +128,10 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [x] [038 — Align default Postgres create allowlist readback with external access](done/038.md) — **DONE 2026-10-02** ← w2/m166 parity follow-up, 2026-10-02
 
+- [ ] **041** — [Reject invalid health-check paths during Blueprint validation and shared service creation](041.md) (55m) ← live CLI QA, 2026-10-02.
+
+- [ ] **042** — [Preserve image-service pre-deploy commands when the CLI clones a service](042.md) (55m) ← live CLI QA, 2026-10-03 UTC.
+
 - [x] **037** — [GitHub claim-selection disposition](done/037.md) — **already fixed in `c82108964`; verified 2026-09-22**. Account cleanup, workspace cascade, census declaration, and ADR086 policy all present; m164 revalidated both schema guards.
 
 - [BLOCKED] **035** — [Phase 4: drop dual-read + delete legacy registry/static blobs](blocked/035.md) (ADR055 F2/F3 close) — **BLOCKED (destructive; needs an evidenced 14-day clean window AND an explicit change-window authorization from the operator)**. Live readiness re-run 2026-09-15 reports `insufficient_evidence`, now with a second gate: `tea-daif693dqjvc73e7as3g-hello-go` is labeled but untombstoned. ← from w2/m92 t005
