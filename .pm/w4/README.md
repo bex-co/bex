@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m163** — [Make saved secret files available to native builds](m163/README.md) (7 tasks) ← QA sweep 59
+
 - [ ] **m162** — [Keep platform health checks off tenant HTTP paths](m162/README.md) (7 tasks, ~2h 50m) ← QA sweep 52
 
 - [ ] **m161** — [Bind environment-group revisions to editing drafts](m161/README.md) (6 tasks) ← QA sweep 49
