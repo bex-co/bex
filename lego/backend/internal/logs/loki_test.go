@@ -464,8 +464,9 @@ func TestLokiSourceRequestAndDecode(t *testing.T) {
 	if s, _ := strconv.ParseInt(got.Get("start"), 10, 64); s != since.UnixNano() {
 		t.Errorf("start = %q, want %d", got.Get("start"), since.UnixNano())
 	}
-	if e, _ := strconv.ParseInt(got.Get("end"), 10, 64); e != end.UnixNano() {
-		t.Errorf("end = %q, want %d", got.Get("end"), end.UnixNano())
+	// Loki's end is exclusive; a caller's End is inclusive (w8/043).
+	if e, _ := strconv.ParseInt(got.Get("end"), 10, 64); e != end.UnixNano()+1 {
+		t.Errorf("end = %q, want %d", got.Get("end"), end.UnixNano()+1)
 	}
 }
 

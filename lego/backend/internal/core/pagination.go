@@ -109,6 +109,29 @@ func CheckQueryWindow(maxHours int, now func() time.Time, start, end time.Time) 
 	if err := ValidateQueryRange(start, end); err != nil {
 		return err
 	}
+	return checkWindowCap(maxHours, now, start, end)
+}
+
+// ValidateInclusiveQueryRange is ValidateQueryRange for an inclusive
+// [start, end] window — log reads, where the CLI documents --end as "at or
+// before" and a single-instant window [t, t] names exactly the lines stamped
+// t (w8/043). Only an inverted range is refused.
+func ValidateInclusiveQueryRange(start, end time.Time) error {
+	if !start.IsZero() && !end.IsZero() && start.After(end) {
+		return fmt.Errorf("%w: startTime must be before or equal to endTime", ErrBadRequest)
+	}
+	return nil
+}
+
+// CheckInclusiveQueryWindow is CheckQueryWindow over an inclusive window.
+func CheckInclusiveQueryWindow(maxHours int, now func() time.Time, start, end time.Time) error {
+	if err := ValidateInclusiveQueryRange(start, end); err != nil {
+		return err
+	}
+	return checkWindowCap(maxHours, now, start, end)
+}
+
+func checkWindowCap(maxHours int, now func() time.Time, start, end time.Time) error {
 	if maxHours <= 0 || start.IsZero() {
 		return nil
 	}

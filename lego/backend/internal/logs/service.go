@@ -283,7 +283,7 @@ type LogQuery struct {
 // cannot forget it, and all three surfaces refuse identically. core.ErrBadRequest
 // maps to 400 (adapters name the offending value in the message).
 func (q LogQuery) validate() error {
-	if err := core.ValidateQueryRange(q.Since, q.End); err != nil {
+	if err := core.ValidateInclusiveQueryRange(q.Since, q.End); err != nil {
 		return err
 	}
 	if _, err := core.ParseDirection(q.Direction); err != nil {
