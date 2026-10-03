@@ -404,7 +404,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "Linking or unlinking redeploys linked services that have auto-deploy on. A repo-backed service with auto-deploy off keeps serving its current release and picks the change up on its next deploy.",
+      "Linking or unlinking changes service configuration and can restart services even when auto-deploy is off.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -482,6 +482,11 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message:
       "Linked services with auto-deploy on are redeploying to apply the change.",
     description: "Env-group write rollout toast detail",
+  },
+  "envGroups.linkChangeNote": {
+    message:
+      "The service's configuration changed and it may restart, even with auto-deploy off.",
+    description: "Env-group link/unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "Created {name}",

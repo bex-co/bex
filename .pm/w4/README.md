@@ -169,7 +169,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **176** — [Correct environment-group link/unlink retention promises](176.md) — minor copy regression of w1/113 and w2/m94; live auto-deploy-off links changed serving revisions while the page promised retention. Preserve accepted reconciliation and distinguish content-update gating. Estimate 50m.
+- [ ] **176** — [Correct environment-group link/unlink retention promises](blocked/176.md) — **BLOCKED (release pipeline must deploy dashboard; QA must replay link/unlink/content-control steps on a fresh group page in en/zh and clean up)**. Steps 1–2 done (link copy + toast corrected, content toasts preserved, en/zh semantic tests); step 3 hosted acceptance remains.
 
 - [x] **175** — [Persist superseded build-ended event reasons](done/175.md) — done 2026-10-02: migration 0138, real-Postgres producer and migration regressions, full store/backend checks.
 
