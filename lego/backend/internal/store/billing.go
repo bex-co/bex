@@ -57,12 +57,11 @@ func (s *PGStore) SetPaymentMethodBound(ctx context.Context, workspaceID string,
 }
 
 // MarkCheckoutStarted records that a hosted Checkout session was created for the
-// workspace. This is intent, NOT payment state: EnsureContract mints the Stripe
-// Customer and Subscription before the payment page renders, so without this
-// column the only trace of "reached checkout" is a subscription_id that reads
-// indistinguishably from a bound customer. Monotonic like the bind marker — the
-// first attempt is the one worth keeping — and silent for an absent mapping,
-// since a checkout that never got far enough to create one records nothing.
+// workspace. This is intent, NOT payment state. Monotonic like the bind marker
+// — the first attempt is the one worth keeping — and silent for an absent
+// mapping: a workspace without a Customer opens Checkout without one (Stripe
+// creates it on submit), so only workspaces that already own a Customer, and
+// rows minted back when Checkout pre-created it, carry the stamp.
 func (s *PGStore) MarkCheckoutStarted(ctx context.Context, workspaceID string, at time.Time) error {
 	_, err := s.Pool.Exec(ctx, `
 		UPDATE billing_provider_mappings

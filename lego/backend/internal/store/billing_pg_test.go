@@ -870,3 +870,87 @@ func TestPGStoreNewWorkspacesAreClassifiedForAnalytics(t *testing.T) {
 		t.Fatalf("%d workspaces have no audience row, want 0", unclassified)
 	}
 }
+
+// The abandoned-checkout reclaimer may only ever claim unbound,
+// non-comped, same-mode mappings outside the Checkout horizon; a claim hides
+// the row for a day; and the delete re-checks the binding so a card bound
+// between claim and delete keeps its mapping.
+func TestPGStoreClaimUnboundBillingCustomers(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	mk := func(name string, customer string, livemode bool) string {
+		t.Helper()
+		tenant, err := s.CreateTenant(ctx, name, "hobby")
+		if err != nil {
+			t.Fatalf("create tenant %s: %v", name, err)
+		}
+		if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{WorkspaceID: tenant.ID, CustomerID: customer, Livemode: livemode}); err != nil {
+			t.Fatalf("upsert mapping %s: %v", name, err)
+		}
+		return tenant.ID
+	}
+	abandoned := mk("abandoned", "cus_abandoned", false)
+	bound := mk("bound", "cus_bound", false)
+	comped := mk("comped", "cus_comped", false)
+	recent := mk("recent", "cus_recent", false)
+	otherMode := mk("live", "cus_live", true)
+	staleCheckout := mk("stale-checkout", "cus_stale", false)
+
+	if err := s.SetPaymentMethodBound(ctx, bound, time.Now()); err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE tenants SET billing_comped=true WHERE id=$1`, comped); err != nil {
+		t.Fatalf("comp: %v", err)
+	}
+	if err := s.MarkCheckoutStarted(ctx, recent, time.Now().Add(-time.Hour)); err != nil {
+		t.Fatalf("recent checkout: %v", err)
+	}
+	if err := s.MarkCheckoutStarted(ctx, staleCheckout, time.Now().Add(-48*time.Hour)); err != nil {
+		t.Fatalf("stale checkout: %v", err)
+	}
+
+	got, err := s.ClaimUnboundBillingCustomers(ctx, false, 24*time.Hour, 10)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	claimed := map[string]string{}
+	for _, m := range got {
+		claimed[m.WorkspaceID] = m.CustomerID
+	}
+	if len(claimed) != 2 || claimed[abandoned] != "cus_abandoned" || claimed[staleCheckout] != "cus_stale" {
+		t.Fatalf("claimed = %v, want only abandoned + stale-checkout (bound=%s comped=%s recent=%s live=%s excluded)", claimed, bound, comped, recent, otherMode)
+	}
+	again, err := s.ClaimUnboundBillingCustomers(ctx, false, 24*time.Hour, 10)
+	if err != nil || len(again) != 0 {
+		t.Fatalf("re-claim within a day = %v (err %v), want none", again, err)
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE billing_provider_mappings SET reclaim_checked_at = now() - interval '25 hours' WHERE workspace_id=$1`, abandoned); err != nil {
+		t.Fatal(err)
+	}
+	if again, err = s.ClaimUnboundBillingCustomers(ctx, false, 24*time.Hour, 10); err != nil || len(again) != 1 || again[0].WorkspaceID != abandoned {
+		t.Fatalf("re-claim after a day = %v (err %v), want abandoned", again, err)
+	}
+
+	// A card bound after the claim survives the reclaimer's delete.
+	if err := s.SetPaymentMethodBound(ctx, staleCheckout, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteUnboundBillingProviderMapping(ctx, staleCheckout, "cus_stale"); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := s.BillingCustomerID(ctx, staleCheckout, false); err != nil || !found {
+		t.Fatalf("bound mapping deleted (found=%t err=%v)", found, err)
+	}
+	if err := s.DeleteUnboundBillingProviderMapping(ctx, abandoned, "cus_abandoned"); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := s.BillingCustomerID(ctx, abandoned, false); err != nil || found {
+		t.Fatalf("reclaimed mapping survived (found=%t err=%v)", found, err)
+	}
+	// Mode-scoped read: the live mapping is invisible to a test-mode client.
+	if _, found, err := s.BillingCustomerID(ctx, otherMode, false); err != nil || found {
+		t.Fatalf("cross-mode BillingCustomerID found=%t err=%v", found, err)
+	}
+	if id, found, err := s.BillingCustomerID(ctx, otherMode, true); err != nil || !found || id != "cus_live" {
+		t.Fatalf("same-mode BillingCustomerID = %q/%t err=%v", id, found, err)
+	}
+}

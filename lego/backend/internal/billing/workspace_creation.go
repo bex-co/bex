@@ -228,25 +228,24 @@ func (c *StripeClient) PrepareWorkspaceContract(ctx context.Context, attemptID, 
 }
 
 // CleanupWorkspaceSetup is safe only for an expired/cancelled, unfinalized
-// attempt. Cancellation/deletion are individually idempotent at Stripe.
-func (c *StripeClient) CleanupWorkspaceSetup(ctx context.Context, workspaceID, customerID, setupIntentID string) error {
+// attempt. Cancellation/deletion are individually idempotent at Stripe. When
+// the attempt never persisted its Customer id — Stripe created the Customer but
+// the SetupIntent create or the local write failed — the Customer is found by
+// its attempt metadata instead, so a failed setup cannot leak it.
+func (c *StripeClient) CleanupWorkspaceSetup(ctx context.Context, attemptID, workspaceID, customerID, setupIntentID string) error {
+	var customerIDs []string
 	if customerID != "" {
-		params := &stripe.SubscriptionListParams{ListParams: stripe.ListParams{Limit: stripe.Int64(100)}, Customer: stripe.String(customerID), Status: stripe.String("all")}
-		params.Context = ctx
-		iter := c.sc.Subscriptions.List(params)
-		for iter.Next() {
-			sub := iter.Subscription()
-			if sub.Metadata[workspaceMetadataKey] != workspaceID || sub.Status == stripe.SubscriptionStatusCanceled {
-				continue
-			}
-			cancel := &stripe.SubscriptionCancelParams{}
-			cancel.Context = ctx
-			if _, err := c.sc.Subscriptions.Cancel(sub.ID, cancel); err != nil && !resourceMissing(err) {
-				return fmt.Errorf("stripe: cancel abandoned Subscription: %w", err)
-			}
+		customerIDs = []string{customerID}
+	} else {
+		found, err := c.workspaceCreationCustomers(ctx, attemptID, workspaceID)
+		if err != nil {
+			return err
 		}
-		if err := iter.Err(); err != nil {
-			return fmt.Errorf("stripe: list abandoned Subscriptions: %w", err)
+		customerIDs = found
+	}
+	for _, id := range customerIDs {
+		if err := c.cancelWorkspaceSubscriptions(ctx, workspaceID, id); err != nil {
+			return err
 		}
 	}
 	if setupIntentID != "" {
@@ -264,12 +263,57 @@ func (c *StripeClient) CleanupWorkspaceSetup(ctx context.Context, workspaceID, c
 			}
 		}
 	}
-	if customerID != "" {
-		params := &stripe.CustomerParams{}
-		params.Context = ctx
-		if _, err := c.sc.Customers.Del(customerID, params); err != nil && !resourceMissing(err) {
-			return fmt.Errorf("stripe: delete abandoned Customer: %w", err)
+	for _, id := range customerIDs {
+		if err := c.deleteCustomer(ctx, id); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// workspaceCreationCustomers finds the Customers an attempt created without
+// recording them. Only Customers tagged with both this attempt and its
+// reserved workspace, in this client's mode, qualify.
+func (c *StripeClient) workspaceCreationCustomers(ctx context.Context, attemptID, workspaceID string) ([]string, error) {
+	if attemptID == "" {
+		return nil, nil
+	}
+	params := &stripe.CustomerSearchParams{}
+	params.Context = ctx
+	params.Query = fmt.Sprintf("metadata['%s']:'%s'", workspaceCreationAttemptMetadataKey, attemptID)
+	iter := c.sc.Customers.Search(params)
+	var out []string
+	for iter.Next() {
+		customer := iter.Customer()
+		if customer.Metadata[workspaceMetadataKey] == workspaceID && c.expectedLivemode(customer.Livemode) {
+			out = append(out, customer.ID)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return nil, fmt.Errorf("stripe: search abandoned workspace-create Customers: %w", err)
+	}
+	return out, nil
+}
+
+// cancelWorkspaceSubscriptions cancels every live Subscription a Customer holds
+// for the workspace, without a final invoice.
+func (c *StripeClient) cancelWorkspaceSubscriptions(ctx context.Context, workspaceID, customerID string) error {
+	params := &stripe.SubscriptionListParams{ListParams: stripe.ListParams{Limit: stripe.Int64(100)}, Customer: stripe.String(customerID), Status: stripe.String("all")}
+	params.Context = ctx
+	iter := c.sc.Subscriptions.List(params)
+	for iter.Next() {
+		sub := iter.Subscription()
+		if sub.Metadata[workspaceMetadataKey] != workspaceID || sub.Status == stripe.SubscriptionStatusCanceled {
+			continue
+		}
+		cancel := &stripe.SubscriptionCancelParams{}
+		cancel.Context = ctx
+		if _, err := c.sc.Subscriptions.Cancel(sub.ID, cancel); err != nil && !resourceMissing(err) {
+			return fmt.Errorf("stripe: cancel abandoned Subscription: %w", err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("stripe: list abandoned Subscriptions: %w", err)
 	}
 	return nil
 }
@@ -318,7 +362,7 @@ func (w *WorkspaceCreationCleaner) runOnce(ctx context.Context) {
 		return
 	}
 	for _, attempt := range attempts {
-		if err := w.Provider.CleanupWorkspaceSetup(ctx, attempt.WorkspaceID, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID); err != nil {
+		if err := w.Provider.CleanupWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID); err != nil {
 			log.Printf("billing: workspace-create cleanup failed attempt=%s: %v", attempt.ID, err)
 			w.Metrics.Operation("workspace_create_cleanup", "error")
 			_ = w.Store.FinishWorkspaceCreationCleanup(ctx, attempt.ID, false)

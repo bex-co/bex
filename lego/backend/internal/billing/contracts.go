@@ -63,15 +63,18 @@ func (c *StripeClient) EnsureContract(ctx context.Context, tenantID string) erro
 		Metadata: map[string]string{
 			workspaceMetadataKey:    tenantID,
 			subscriptionMetadataKey: "true",
-			// Minted before the payment page, so it carries no card yet. Cleared by
-			// the checkout completion that actually binds one — without this a live
-			// subscription reads exactly like a paying customer, which is how twelve
-			// cardless workspaces came to look bound on 2026-09-16.
+			// Created without a card (admin provision, comp, the gate-off emitter, or
+			// a Checkout completion just before it binds one). Cleared by the binding —
+			// without this a live subscription reads exactly like a paying customer,
+			// which is how twelve cardless workspaces came to look bound on 2026-09-16.
 			pendingSetupMetadataKey: "true",
 		},
 	}
 	params.Context = ctx
-	params.SetIdempotencyKey("bex-subscription-" + tenantID)
+	// Keyed by Customer too: a reclaimed workspace that later gets a new
+	// Customer must not replay the old Customer's create within Stripe's 24h
+	// idempotency window.
+	params.SetIdempotencyKey("bex-subscription-" + tenantID + "-" + customerID)
 	if !c.billingEpoch.IsZero() && c.billingEpoch.Before(time.Now()) {
 		params.BackdateStartDate = stripe.Int64(c.billingEpoch.Unix())
 	}
