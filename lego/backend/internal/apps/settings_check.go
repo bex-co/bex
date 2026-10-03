@@ -44,6 +44,12 @@ func checkHealthCheckPath(a *appv1alpha1.App, path string) (string, error) {
 	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeBackgroundWorker {
 		return "", fmt.Errorf("%w: health check path is not applicable to a %s", core.ErrBadRequest, a.Spec.Type)
 	}
+	return normalizeHealthCheckPath(path)
+}
+
+// normalizeHealthCheckPath is the one path rule create and update share
+// (w2/041): trimmed, and either empty (TCP probe) or rooted at "/".
+func normalizeHealthCheckPath(path string) (string, error) {
 	trimmed := strings.TrimSpace(path)
 	if trimmed != "" && !strings.HasPrefix(trimmed, "/") {
 		return "", fmt.Errorf("%w: health check path must start with /", core.ErrBadRequest)
