@@ -377,6 +377,25 @@ describe("ServiceRowActions", () => {
     await user.click(restart);
     expect(onRun).not.toHaveBeenCalled();
   });
+
+  it("offers no Restart for a cron job (Render: not supported, w8/040)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServiceRowActions
+        service={{ ...service, type: "cron_job" }}
+        pending={null}
+        onRun={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    expect(
+      screen.getByRole("menuitem", { name: "Suspend" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Restart" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe.each([

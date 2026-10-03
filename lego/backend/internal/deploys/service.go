@@ -541,6 +541,12 @@ func (s *Service) Restart(ctx context.Context, service string) (DeployView, erro
 	if err := core.NotFoundIfDeleting(a); err != nil {
 		return DeployView{}, err
 	}
+	// Render: "Restart the service with the provided ID. Not supported for
+	// cron jobs." A cron job has no running instance to restart; this used to
+	// answer 200 and open a live deploy row while nothing ran (w8/040).
+	if a.Spec.Type == appv1alpha1.TypeCronJob {
+		return DeployView{}, fmt.Errorf("%w: restart is not supported for cron jobs; trigger a run instead", core.ErrBadRequest)
+	}
 	if selected, err := s.restartSelectedRelease(ctx, a); selected != nil || err != nil {
 		if err != nil {
 			return DeployView{}, err

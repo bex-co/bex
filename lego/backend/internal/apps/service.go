@@ -3318,6 +3318,13 @@ func (s *Service) Restart(ctx context.Context, name string) (AppView, error) {
 		}
 		return s.Get(ctx, name)
 	}
+	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	if a.Spec.Type == appv1alpha1.TypeCronJob {
+		return AppView{}, fmt.Errorf("%w: restart is not supported for cron jobs; trigger a run instead", core.ErrBadRequest)
+	}
 	return s.patch(ctx, core.RelCanOperate, name, func(a *appv1alpha1.App) {
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})
