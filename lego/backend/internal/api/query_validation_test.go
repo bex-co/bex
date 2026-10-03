@@ -99,16 +99,22 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 			window := `start: "` + start + `", end: "` + end + `"`
 			assertQueryError(t, h, `{ metrics(query: {name: "MEMORY", filters: [{field: "RESOURCE", values: ["web"]}], `+window+`}) { unit } }`, message)
 			assertQueryError(t, h, `{ datastoreMetrics(query: {resource: "pg", name: "DISK", `+window+`}) { unit } }`, message)
-			assertQueryError(t, h, `{ logs(resource: "web", startTime: "`+start+`", endTime: "`+end+`") { logs { timestamp } } }`, message)
-			// w4/056: logLabelValues (+ datastore log siblings) share LogQuery.validate —
-			// an inverted range must never reach Loki as "internal error".
-			assertQueryError(t, h, `{ logLabelValues(resource: "web", label: "level", startTime: "`+start+`", endTime: "`+end+`") }`, message)
-			assertQueryError(t, h, `{ databaseLogs(id: "dpg-c185th5c2rvvnhbfiltg", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
-			assertQueryError(t, h, `{ keyValueLogs(id: "red-c185th5c2rvvnhbfiltg", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
-			for _, path := range []string{
-				"/v1/metrics/memory?resource=web", "/v1/metrics/disk?resource=pg",
-				"/v1/logs?resource=web", "/v1/logs/values?resource=web&label=level", "/v1/logs/subscribe?resource=web",
-			} {
+			// Log windows are inclusive (w8/043): only the inverted range is
+			// refused there; [t, t] is TestEqualLogRangeIsAcceptedAcrossSurfaces.
+			inverted := end != start
+			if inverted {
+				assertQueryError(t, h, `{ logs(resource: "web", startTime: "`+start+`", endTime: "`+end+`") { logs { timestamp } } }`, message)
+				// w4/056: logLabelValues (+ datastore log siblings) share LogQuery.validate —
+				// an inverted range must never reach Loki as "internal error".
+				assertQueryError(t, h, `{ logLabelValues(resource: "web", label: "level", startTime: "`+start+`", endTime: "`+end+`") }`, message)
+				assertQueryError(t, h, `{ databaseLogs(id: "dpg-c185th5c2rvvnhbfiltg", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
+				assertQueryError(t, h, `{ keyValueLogs(id: "red-c185th5c2rvvnhbfiltg", startTime: "`+start+`", endTime: "`+end+`") { timestamp } }`, message)
+			}
+			paths := []string{"/v1/metrics/memory?resource=web", "/v1/metrics/disk?resource=pg"}
+			if inverted {
+				paths = append(paths, "/v1/logs?resource=web", "/v1/logs/values?resource=web&label=level", "/v1/logs/subscribe?resource=web")
+			}
+			for _, path := range paths {
 				rec := do(t, h, http.MethodGet, path+"&startTime="+start+"&endTime="+end, testToken, "")
 				if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), message) {
 					t.Errorf("%s = %d %s, want bad request with range message", path, rec.Code, rec.Body)
@@ -117,12 +123,16 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 			for _, tc := range []struct {
 				tool string
 				args map[string]any
+				logs bool
 			}{
-				{"get_metrics", map[string]any{"resource": []string{"web"}, "metricTypes": []string{"memory"}}},
-				{"get_datastore_metrics", map[string]any{"resource": "pg", "metricTypes": []string{"disk"}}},
-				{"list_logs", map[string]any{"resource": []string{"web"}}},
-				{"list_log_label_values", map[string]any{"resource": []string{"web"}, "label": "level"}},
+				{"get_metrics", map[string]any{"resource": []string{"web"}, "metricTypes": []string{"memory"}}, false},
+				{"get_datastore_metrics", map[string]any{"resource": "pg", "metricTypes": []string{"disk"}}, false},
+				{"list_logs", map[string]any{"resource": []string{"web"}}, true},
+				{"list_log_label_values", map[string]any{"resource": []string{"web"}, "label": "level"}, true},
 			} {
+				if tc.logs && !inverted {
+					continue
+				}
 				tc.args["startTime"], tc.args["endTime"] = start, end
 				result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: tc.tool, Arguments: tc.args})
 				if err != nil {
@@ -139,6 +149,9 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 			from, _ := time.Parse(time.RFC3339, start)
 			to, _ := time.Parse(time.RFC3339, end)
 			for _, resource := range []string{"web", "dpg-c185th5c2rvvnhbfiltg", "red-c185th5c2rvvnhbfiltg"} {
+				if !inverted {
+					break
+				}
 				if _, err := srv.Logs.QueryLogs(context.Background(), logs.LogQuery{App: resource, Since: from, End: to}); !errors.Is(err, core.ErrBadRequest) {
 					t.Errorf("QueryLogs(%s) = %v, want bad request", resource, err)
 				}
@@ -147,6 +160,42 @@ func TestInvalidQueryRangesAcrossSurfaces(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// w8/043: a log window is inclusive, so [t, t] is a valid single-instant read
+// on every surface (metrics keep refusing it, above).
+func TestEqualLogRangeIsAcceptedAcrossSurfaces(t *testing.T) {
+	const instant = "2026-09-07T06:00:00Z"
+	var reads int
+	h, srv := serverWith(t, &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{
+		LogHistory: func(_ context.Context, _ string, q logs.LogQuery) ([]logs.LogEntry, error) {
+			reads++
+			if !q.Since.Equal(q.End) {
+				t.Errorf("window = [%s, %s], want one instant", q.Since, q.End)
+			}
+			return nil, nil
+		},
+		LogLabelValues: func(context.Context, string, string, logs.LogQuery) ([]string, error) { return nil, nil },
+	})
+	if rec := do(t, h, http.MethodGet, "/v1/logs?resource=web&startTime="+instant+"&endTime="+instant, testToken, ""); rec.Code != http.StatusOK {
+		t.Fatalf("REST = %d %s", rec.Code, rec.Body)
+	}
+	if rec := do(t, h, http.MethodGet, "/v1/logs/values?resource=web&label=level&startTime="+instant+"&endTime="+instant, testToken, ""); rec.Code != http.StatusOK {
+		t.Fatalf("REST values = %d %s", rec.Code, rec.Body)
+	}
+	body, _ := json.Marshal(map[string]string{"query": `{ logs(resource: "web", startTime: "` + instant + `", endTime: "` + instant + `") { logs { timestamp } } }`})
+	if rec := do(t, h, http.MethodPost, "/graphql", testToken, string(body)); rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), `"errors"`) {
+		t.Fatalf("GraphQL = %d %s", rec.Code, rec.Body)
+	}
+	result, err := mcpSession(t, srv).CallTool(context.Background(), &mcp.CallToolParams{Name: "list_logs",
+		Arguments: map[string]any{"resource": []string{"web"}, "startTime": instant, "endTime": instant}})
+	if err != nil || result.IsError {
+		payload, _ := json.Marshal(result)
+		t.Fatalf("MCP list_logs = %v %s", err, payload)
+	}
+	if reads != 3 {
+		t.Fatalf("log history reads = %d, want 3 (REST, GraphQL, MCP)", reads)
 	}
 }
 

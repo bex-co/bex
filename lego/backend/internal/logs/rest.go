@@ -57,7 +57,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // `list_logs`/`list_log_label_values` (mcp.go, w9/004) — all accept the same
 // startTime/endTime and would otherwise let a caller scan the store unbounded.
 func (s *Service) checkWindow(q LogQuery) error {
-	return core.CheckQueryWindow(s.MaxQueryHours, time.Now, q.Since, q.End)
+	return core.CheckInclusiveQueryWindow(s.MaxQueryHours, time.Now, q.Since, q.End)
 }
 
 // logsValues serves GET /v1/logs/values — Render's filter-value discovery: the
