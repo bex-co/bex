@@ -1,0 +1,141 @@
+{
+  "dateUTC": "2026-10-03T02:54:20.674281+00:00",
+  "binary": "/opt/homebrew/bin/bex",
+  "bexVersion": "0.2.1",
+  "upstreamRelease": "2.27.0",
+  "upstreamCommit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "apiOrigin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "isolated human QA device session",
+  "deploymentRun": 37085557852,
+  "fixture": {
+    "id": "srv-db06r63ajv7s73eg1dl0",
+    "name": "qa-20261003-7125e6-logs-or",
+    "markers": [
+      "QA_LOG_OR_A_7125e6",
+      "QA_LOG_OR_B_7125e6"
+    ],
+    "createCommand": [
+      "services",
+      "create",
+      "--name",
+      "qa-20261003-7125e6-logs-or",
+      "--type",
+      "cron_job",
+      "--runtime",
+      "image",
+      "--image",
+      "docker.io/library/busybox:1.37",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--cron-command",
+      "echo QA_LOG_OR_A_7125e6; echo QA_LOG_OR_B_7125e6",
+      "--cron-schedule",
+      "* * * * *",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "ownedDeploys": [
+      "dep-db06r63ajv7s73eg1dlg"
+    ],
+    "observedLogInstances": [
+      "srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e"
+    ]
+  },
+  "queries": [
+    {
+      "command": [
+        "logs",
+        "--resources",
+        "srv-db06r63ajv7s73eg1dl0",
+        "--type",
+        "app",
+        "--text",
+        "QA_LOG_OR_A_7125e6",
+        "--start",
+        "2026-10-03T02:51:04.232146+00:00",
+        "--limit",
+        "30",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e-2026-10-03T02:52:04.21622599Z-d0366f35\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA_LOG_OR_A_7125e6\",\n  \"timestamp\": \"2026-10-03T02:52:04.21622599Z\"\n}",
+      "stderr": "",
+      "seconds": 0.48
+    },
+    {
+      "command": [
+        "logs",
+        "--resources",
+        "srv-db06r63ajv7s73eg1dl0",
+        "--type",
+        "app",
+        "--text",
+        "QA_LOG_OR_B_7125e6",
+        "--start",
+        "2026-10-03T02:51:04.232146+00:00",
+        "--limit",
+        "30",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e-2026-10-03T02:52:04.216838626Z-c3ae46d6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA_LOG_OR_B_7125e6\",\n  \"timestamp\": \"2026-10-03T02:52:04.216838626Z\"\n}",
+      "stderr": "",
+      "seconds": 0.43
+    },
+    {
+      "command": [
+        "logs",
+        "--resources",
+        "srv-db06r63ajv7s73eg1dl0",
+        "--type",
+        "app",
+        "--text",
+        "QA_LOG_OR_A_7125e6,QA_LOG_OR_B_7125e6",
+        "--start",
+        "2026-10-03T02:51:04.232146+00:00",
+        "--limit",
+        "30",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e-2026-10-03T02:52:04.21622599Z-d0366f35\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA_LOG_OR_A_7125e6\",\n  \"timestamp\": \"2026-10-03T02:52:04.21622599Z\"\n}{\n  \"id\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e-2026-10-03T02:52:04.216838626Z-c3ae46d6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA_LOG_OR_B_7125e6\",\n  \"timestamp\": \"2026-10-03T02:52:04.216838626Z\"\n}",
+      "stderr": "",
+      "seconds": 0.72
+    },
+    {
+      "command": [
+        "logs",
+        "--resources",
+        "srv-db06r63ajv7s73eg1dl0",
+        "--type",
+        "app",
+        "--text",
+        "QA_LOG_OR_B_7125e6,QA_LOG_OR_A_7125e6",
+        "--start",
+        "2026-10-03T02:51:04.232146+00:00",
+        "--limit",
+        "30",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"id\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e-2026-10-03T02:52:04.21622599Z-d0366f35\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA_LOG_OR_A_7125e6\",\n  \"timestamp\": \"2026-10-03T02:52:04.21622599Z\"\n}{\n  \"id\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e-2026-10-03T02:52:04.216838626Z-c3ae46d6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db06r63ajv7s73eg1dl0-pt0caqa840srnafgrt7e\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"QA_LOG_OR_B_7125e6\",\n  \"timestamp\": \"2026-10-03T02:52:04.216838626Z\"\n}",
+      "stderr": "",
+      "seconds": 0.35
+    }
+  ],
+  "cleanup": {
+    "listAbsent": true,
+    "baselineIntact": true,
+    "http": "not applicable: cron has no public endpoint"
+  },
+  "wireEvidence": "No raw HTTP trace; complete CLI command/stdout/stderr/exit captures above."
+}

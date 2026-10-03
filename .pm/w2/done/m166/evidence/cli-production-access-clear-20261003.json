@@ -1,0 +1,397 @@
+{
+  "date": "2026-10-03T04:37:17.131600+00:00",
+  "origin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "isolated QA human device session",
+  "installedCLI": "0.2.1",
+  "checkoutCLI": "dev-f296747d9",
+  "upstream": "v2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+  "productionReference": "Latest completed deploy workflow 37088251794, head 1263d12ae3fa1083900657bf3eb75275dc73f59b; runtime revision not independently queried",
+  "fixtures": [
+    {
+      "id": "red-db0881gehcmc739j10ig",
+      "name": "qa-20261003-7919d5-kvclear",
+      "type": "keyvalue",
+      "commands": [
+        {
+          "step": "create",
+          "command": [
+            "bex",
+            "keyvalues",
+            "create",
+            "--name",
+            "qa-20261003-7919d5-kvclear",
+            "--plan",
+            "free",
+            "--memory-policy",
+            "cache",
+            "--ip-allow-list",
+            "cidr=162.224.81.143/32,description=qa-source-0",
+            "--ip-allow-list",
+            "cidr=2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128,description=qa-source-1",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "red-db0881gehcmc739j10ig",
+            "name": "qa-20261003-7919d5-kvclear",
+            "status": "creating",
+            "plan": "free",
+            "ipAllowList": [
+              {
+                "cidrBlock": "162.224.81.143/32",
+                "description": "qa-source-0"
+              },
+              {
+                "cidrBlock": "2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128",
+                "description": "qa-source-1"
+              }
+            ]
+          }
+        },
+        {
+          "step": "update",
+          "command": [
+            "bex",
+            "keyvalues",
+            "update",
+            "red-db0881gehcmc739j10ig",
+            "--clear-ip-allow-list",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "red-db0881gehcmc739j10ig",
+            "name": "qa-20261003-7919d5-kvclear",
+            "status": "config_restart",
+            "plan": "free",
+            "ipAllowList": []
+          }
+        },
+        {
+          "step": "restore",
+          "command": [
+            "bex",
+            "keyvalues",
+            "update",
+            "red-db0881gehcmc739j10ig",
+            "--ip-allow-list",
+            "cidr=162.224.81.143/32,description=qa-source-0",
+            "--ip-allow-list",
+            "cidr=2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128,description=qa-source-1",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "red-db0881gehcmc739j10ig",
+            "name": "qa-20261003-7919d5-kvclear",
+            "status": "config_restart",
+            "plan": "free",
+            "ipAllowList": [
+              {
+                "cidrBlock": "162.224.81.143/32",
+                "description": "qa-source-0"
+              },
+              {
+                "cidrBlock": "2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128",
+                "description": "qa-source-1"
+              }
+            ]
+          }
+        },
+        {
+          "step": "delete",
+          "command": [
+            "bex",
+            "keyvalues",
+            "delete",
+            "red-db0881gehcmc739j10ig",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "red-db0881gehcmc739j10ig",
+            "name": "qa-20261003-7919d5-kvclear",
+            "status": "available",
+            "plan": "free",
+            "ipAllowList": [
+              {
+                "cidrBlock": "162.224.81.143/32",
+                "description": "qa-source-0"
+              },
+              {
+                "cidrBlock": "2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128",
+                "description": "qa-source-1"
+              }
+            ]
+          }
+        },
+        {
+          "step": "list-after",
+          "command": [
+            "bex",
+            "keyvalues",
+            "list",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": []
+        },
+        {
+          "step": "get-after",
+          "command": [
+            "bex",
+            "keyvalues",
+            "get",
+            "red-db0881gehcmc739j10ig",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "stderr": "Error: No Key Value with ID 'red-db0881gehcmc739j10ig'.\n",
+          "stdout": ""
+        }
+      ],
+      "directConnections": {
+        "allowed": {
+          "authenticated": true,
+          "pong": true,
+          "seconds": 0.94
+        },
+        "cleared": {
+          "errorType": "SSLEOFError",
+          "pong": false,
+          "seconds": 0.35
+        },
+        "restored": {
+          "authenticated": true,
+          "pong": true,
+          "seconds": 0.88
+        },
+        "deleted": {
+          "errorType": "SSLEOFError",
+          "pong": false,
+          "seconds": 0.37
+        }
+      },
+      "cleanup": {
+        "listAbsent": true,
+        "getNotFound": true,
+        "baselineIntact": true,
+        "externalConnection": {
+          "errorType": "SSLEOFError",
+          "pong": false,
+          "seconds": 0.37
+        }
+      }
+    },
+    {
+      "id": "dpg-db08ak0ehcmc739j10l0",
+      "name": "qa-20261003-71072c-pgclear",
+      "type": "postgres",
+      "commands": [
+        {
+          "step": "create",
+          "command": [
+            "bex",
+            "postgres",
+            "create",
+            "--name",
+            "qa-20261003-71072c-pgclear",
+            "--plan",
+            "free",
+            "--version",
+            "18",
+            "--ip-allow-list",
+            "cidr=162.224.81.143/32,description=qa-source-0",
+            "--ip-allow-list",
+            "cidr=2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128,description=qa-source-1",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "dpg-db08ak0ehcmc739j10l0",
+            "name": "qa-20261003-71072c-pgclear",
+            "status": "creating",
+            "plan": "free",
+            "ipAllowList": [
+              {
+                "cidrBlock": "162.224.81.143/32",
+                "description": "qa-source-0"
+              },
+              {
+                "cidrBlock": "2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128",
+                "description": "qa-source-1"
+              }
+            ]
+          }
+        },
+        {
+          "step": "update",
+          "command": [
+            "bex",
+            "postgres",
+            "update",
+            "dpg-db08ak0ehcmc739j10l0",
+            "--clear-ip-allow-list",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "dpg-db08ak0ehcmc739j10l0",
+            "name": "qa-20261003-71072c-pgclear",
+            "status": "config_restart",
+            "plan": "free",
+            "ipAllowList": []
+          }
+        },
+        {
+          "step": "restore",
+          "command": [
+            "bex",
+            "postgres",
+            "update",
+            "dpg-db08ak0ehcmc739j10l0",
+            "--ip-allow-list",
+            "cidr=162.224.81.143/32,description=qa-source-0",
+            "--ip-allow-list",
+            "cidr=2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128,description=qa-source-1",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "dpg-db08ak0ehcmc739j10l0",
+            "name": "qa-20261003-71072c-pgclear",
+            "status": "config_restart",
+            "plan": "free",
+            "ipAllowList": [
+              {
+                "cidrBlock": "162.224.81.143/32",
+                "description": "qa-source-0"
+              },
+              {
+                "cidrBlock": "2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128",
+                "description": "qa-source-1"
+              }
+            ]
+          }
+        },
+        {
+          "step": "delete",
+          "command": [
+            "bex",
+            "postgres",
+            "delete",
+            "dpg-db08ak0ehcmc739j10l0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": {
+            "id": "dpg-db08ak0ehcmc739j10l0",
+            "name": "qa-20261003-71072c-pgclear",
+            "status": "available",
+            "plan": "free",
+            "ipAllowList": [
+              {
+                "cidrBlock": "162.224.81.143/32",
+                "description": "qa-source-0"
+              },
+              {
+                "cidrBlock": "2600:1700:45f0:963f:10d8:d08a:9f49:ca73/128",
+                "description": "qa-source-1"
+              }
+            ]
+          }
+        },
+        {
+          "step": "list-after",
+          "command": [
+            "bex",
+            "postgres",
+            "list",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "stderr": "",
+          "responseProjection": []
+        },
+        {
+          "step": "get-after",
+          "command": [
+            "bex",
+            "postgres",
+            "get",
+            "dpg-db08ak0ehcmc739j10l0",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "stderr": "Error: No Postgres database with ID 'dpg-db08ak0ehcmc739j10l0'.\n",
+          "stdout": ""
+        }
+      ],
+      "directConnections": {
+        "allowed": {
+          "exit": 0,
+          "querySucceeded": true,
+          "seconds": 1.23
+        },
+        "cleared": {
+          "exit": 2,
+          "querySucceeded": false,
+          "seconds": 0.52
+        },
+        "restored": {
+          "exit": 0,
+          "querySucceeded": true,
+          "seconds": 1.29
+        },
+        "deleted": {
+          "exit": 2,
+          "querySucceeded": false,
+          "seconds": 0.53
+        }
+      },
+      "cleanup": {
+        "listAbsent": true,
+        "getNotFound": true,
+        "externalConnectionRejected": true
+      }
+    }
+  ],
+  "limits": [
+    "External primary connections only; internal access, poolers, replicas and other writers not repeated.",
+    "Direct clients reuse privately saved pre-clear credentials and endpoint. All connection strings/passwords/CA captures excluded.",
+    "KV direct probe authenticates then PING over verified TLS; Postgres direct psql uses supplied CA with sslmode=verify-full and SELECT 1.",
+    "Early startup connection failures were excluded from access-control assertions; tested only after successful baseline.",
+    "Installed Postgres CLI still exhibits existing CA-trust issue; checkout baseline succeeds.",
+    "API captures below project safe response fields; they are not full wire captures."
+  ]
+}
