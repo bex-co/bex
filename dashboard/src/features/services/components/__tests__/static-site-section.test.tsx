@@ -232,3 +232,27 @@ describe("edge-rule row validation (w4/145)", () => {
     ).toBeInTheDocument();
   });
 });
+
+it("blocks malformed URL destinations without saving and preserves a corrected encoded URL", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn(async () => ({ ok: true }));
+  render(
+    <RoutesEditor
+      routes={[{ type: "rewrite", source: "/old", destination: "/index.html" }]}
+      onSave={onSave}
+      busy={false}
+    />,
+  );
+  const destination = screen.getByRole("textbox", { name: "Destination" });
+  await user.clear(destination);
+  await user.type(destination, "/render.yaml?source=%zz");
+  expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();
+  expect(onSave).not.toHaveBeenCalled();
+  const corrected = "/%72ender.yaml?source=rule#section";
+  await user.clear(destination);
+  await user.type(destination, corrected);
+  await user.click(screen.getByRole("button", { name: "Save routes" }));
+  expect(onSave).toHaveBeenCalledWith([
+    { type: "rewrite", source: "/old", destination: corrected },
+  ]);
+});

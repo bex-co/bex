@@ -22,6 +22,27 @@ function pathError(raw: string): keyof typeof en | undefined {
   return undefined;
 }
 
+// Check the configured path before browser URL normalization can erase dot
+// segments or backslashes. Decode percent bytes once, matching Go's URL.Path;
+// query/fragment escapes are validated but remain data, not path selectors.
+function unsafeDestination(value: string): boolean {
+  if (/%(?![0-9a-f]{2})/i.test(value)) return true;
+  const path = value
+    .split(/[?#]/, 1)[0]
+    .replace(/%([0-9a-f]{2})/gi, (_, byte: string) =>
+      String.fromCharCode(Number.parseInt(byte, 16)),
+    );
+  const unsafe = (input: string) => {
+    if (input.startsWith("//") || input.includes("\\")) return true;
+    for (const character of input) {
+      const code = character.charCodeAt(0);
+      if (code < 0x20 || code === 0x7f) return true;
+    }
+    return false;
+  };
+  return unsafe(value) || unsafe(path);
+}
+
 export function routeErrors(
   route: StaticRouteView,
 ): RuleFieldErrors<StaticRouteView> {
@@ -31,7 +52,7 @@ export function routeErrors(
   const destination = pathError(route.destination);
   if (destination) {
     errors.destination = destination;
-  } else if (route.destination.trim().startsWith("//")) {
+  } else if (unsafeDestination(route.destination.trim())) {
     // A network-path reference would leave the site (the open-redirect guard,
     // ADR029).
     errors.destination = "services.staticRuleLocalPath";
