@@ -167,7 +167,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **175** — [Persist superseded build-ended event reasons](175.md) (~45m) ← real-Postgres negative control during m148; Go accepts superseded but the SQL fact constraint rejects it.
+- [x] **175** — [Persist superseded build-ended event reasons](done/175.md) — done 2026-10-02: migration 0138, real-Postgres producer and migration regressions, full store/backend checks.
 
 - [x] **174** — [Keep first Blueprint cron reapply idempotent](done/174.md) — done 2026-10-02; create/reapply command representation agrees, explicit clearing removes the legacy fallback, serialized regression and full backend/lint pass.
 
