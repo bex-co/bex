@@ -1,6 +1,6 @@
 # w2 · m96 — Charges and webhook deliveries name their resource, even after deletion
 
-**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** waiting on `w1/112` and the existing live acceptance; prior completed tasks remain done.
+**Worker:** worker2 **Goal:** a charge line and a webhook delivery row keep the display name their resource had while the usage accrued or the event fired, and say when that resource no longer exists. A bare `srv-…` or sandbox UUID appears only for rows recorded before the fix, never for a resource bex once knew the name of. **Status:** waiting on the remaining live acceptance; the transferred `w1/112` dependency is satisfied. Prior completed tasks remain done.
 
 ## Scope transfer — 2026-09-28
 
@@ -90,3 +90,8 @@ Production, workspace `bex`, deployed `726042a28`, `muse.env` QA credentials. Th
 - **A delivery for a deleted service keeps its name — PASS.** After `DELETE /v1/services/<srv>` (204), the same rows read `qa-20260926-whk(deleted)`, with the service link removed and the id tooltip kept. REST `serviceName` and GraphQL `webhookDeliveries(endpointId:) { serviceName }` both still returned `qa-20260926-whk`.
 - **Workspace deletion purges retained names — NOT RUN.** It needs a throwaway workspace. The cascade is proven only by `TestResourceDisplayNamesPG`.
 - **Backfill decision recorded — PASS** (see the discrepancy under bullet 1).
+
+
+## Dependency refresh — 2026-10-02
+
+The completed record at [w1/done/112](../../../w1/done/112.md) satisfies the transferred sandbox-label implementation dependency: `de9ac4d1c` shipped and its session-less sandbox was created, terminated and read back with an identifiable label through REST/GraphQL on 2026-09-29. That record explicitly leaves the browser walk and live repo-less-session check unprobed. This milestone retains its own remaining production rename, purge, fresh usage-rollup and live acceptance obligations in t008; it is not closed by the transferred note.

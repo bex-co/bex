@@ -28,7 +28,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [x] **m94** — [Linked environment groups: precedence, auto-deploy, and quota parity](done/m94/README.md) — **DONE 2026-09-28** (t001–t008 2026-09-15; t010 copy fix `fced75a43` verified live on deploy `6b6d99ea8`, `/qa-find-bugs` pass 252) ← `/pm-brainstorm for w1` 2026-09-15 #1, absorbing w1/091, w1/092, w1/095, w1/100.
 - [x] **m95** — [Environment values mean what the user typed: round-trip escapes, multi-line values, and `PORT`](done/m95/README.md) — **DONE 2026-09-26** (t001–t006 2026-09-15; closeout after the live Definition-of-done re-probe in `/qa-find-bugs` pass 218, all bullets passing) ← `/pm-brainstorm for w1` 2026-09-15 #2, absorbing w1/099, w1/096; `PORT` decided as option (a).
-- [ ] **m96** — [sandbox label residual transferred; rename/purge/live acceptance still open](blocked/m96/README.md). Depends on `w1/112` (transferred 2026-09-28); completed history retained.
+- [ ] **m96** — [rename/purge/live acceptance still open](blocked/m96/README.md). Transferred sandbox-label dependency `w1/done/112` is satisfied (verified 2026-10-02); remaining production acceptance and completed history retained.
 - [x] **m97** — [Blueprint preview names the reason a fetch failed](done/m97/README.md) — **DONE 2026-09-26** (t001–t006 2026-09-15; closeout after the live Definition-of-done re-probe in `/qa-find-bugs` pass 220, all rows passing) ← `/pm-brainstorm for w1` 2026-09-15 #4, absorbing w1/097.
 - [x] **m98** — [A suspended web service answers with a bex response](done/m98/README.md) — **DONE 2026-09-27** (t001–t006 2026-09-15; closeout after the live Definition-of-done re-probe in `/qa-find-bugs` passes 221–222) ← `/pm-brainstorm for w1` 2026-09-15 #5, absorbing w1/094.
 - [x] **m99** — [ ](done/m99/README.md) — **DONE 2026-09-27** (t001–t006 2026-09-15; closeout after the live Definition-of-done re-probe in `/qa-find-bugs` pass 223) ← `/pm-brainstorm for w1` 2026-09-15 #6, absorbing w1/087.
@@ -121,6 +121,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m62** — Git-connected Blueprints: Render dashboard + API parity (13 tasks; DONE 2026-08-01 — POST /v1/blueprints create, PATCH update, DELETE disconnect, GET syncs, auto-sync on push, status lifecycle, resources[], all surfaces + dashboard create dialog + detail parity) ← user-directed research 2026-08-01 (live `dashboard.render.com/blueprints` walk + Render OpenAPI vs code map): bex Blueprints are stored-manifest re-apply records, Render's are Git-connected instances — dashboard create-from-repo flow, auto-sync on push, sync history (`GET /v1/blueprints/{id}/syncs`), `PATCH`/`DELETE` disconnect, status lifecycle (`in_sync`/`syncing`/`error`/`paused`), and `resources[]` are all missing; rides m8/m9's GitHub App + the `/v1/webhooks/git` intake
 
 ## Inbox
+
+- [ ] [040 — Keep the product analytics sampling test inside its intended UTC day](040.md) ← fresh integration validation, 2026-10-02
 
 - [x] [039 — Honor instance filters for pre-deploy log reads](done/039.md) — **DONE 2026-10-02** ← w2/m167 consumer audit, 2026-10-02
 
