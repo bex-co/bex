@@ -1,16 +1,16 @@
 # w4 · m162 — Keep platform health checks off tenant HTTP paths
 
-**Worker:** worker4 **Goal:** `/healthz` on a tenant hostname follows the same hosting contract as other application paths: suspended services report suspension, sleeping services wake, and running static sites apply their content and rules. Platform readiness remains independent of tenant HTTP paths. **Status:** todo
+**Worker:** worker4 **Goal:** `/healthz` on a tenant hostname follows the same hosting contract as other application paths: suspended services report suspension, sleeping services wake, and running static sites apply their content and rules. Platform readiness remains independent of tenant HTTP paths. **Status:** blocked — overrides removed and TCP readiness landed 2026-10-03; in-cluster rollout and live DoD replays (t002/t003/t004 live halves, t007) remain
 
 ## Tasks (in order)
 
 | id | title | est | depends_on | status |
 | --- | --- | --- | --- | --- |
-| t001 | Audit the two public responders and readiness consumers | 20m | — | todo |
+| t001 — **DONE** | Audit the two public responders and readiness consumers | 20m | — | todo |
 | t002 | Remove the activator health-path bypass and preserve platform readiness | 30m | t001 | todo |
 | t003 | Remove the static-server health-path override and preserve platform readiness | 30m | t001 | todo |
 | t004 | Render parity | 15m | t002, t003 | todo |
-| t005 | Simplify | 10m | t004 | todo |
+| t005 — **DONE** | Simplify | 10m | t004 | todo |
 | t006 | Test coverage | 45m | t004, t005 | todo |
 | t007 | Closeout | 20m | t006 | todo |
 
