@@ -169,7 +169,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **175** — [Persist superseded build-ended event reasons](175.md) (~45m) ← real-Postgres negative control during m148; Go accepts superseded but the SQL fact constraint rejects it.
 
-- [x] **174** — [Keep first Blueprint cron reapply idempotent](done/174.md) — done 2026-10-02: canonical cron command creation, serialized no-op and genuine-change regressions; backend suite/lint pass.
+- [x] **174** — [Keep first Blueprint cron reapply idempotent](done/174.md) — done 2026-10-02; create/reapply command representation agrees, explicit clearing removes the legacy fallback, serialized regression and full backend/lint pass.
 
 - [ ] **173** — [Correct the create-form Project-only membership promise](blocked/173.md) — **BLOCKED (release pipeline deploys dashboard; QA repeats Postgres/Key Value creation, Move, locale/API controls and cleanup)**. English/Chinese copy and local regressions complete.
 
