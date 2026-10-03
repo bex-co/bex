@@ -269,7 +269,7 @@ describe("useEnvGroupMutations", () => {
     expect(toastError).toHaveBeenCalledWith("Couldn't create shared");
   });
 
-  it("links a service and explains that linked services roll out", async () => {
+  it("links a service without promising auto-deploy-off services keep their release", async () => {
     const mutate = vi.fn().mockResolvedValue({});
     mockUseMutation.mockImplementation(() => [mutate]);
 
@@ -287,7 +287,27 @@ describe("useEnvGroupMutations", () => {
       "Service linked",
       expect.objectContaining({
         description:
-          "Linked services with auto-deploy on are redeploying to apply the change.",
+          "The service's configuration changed and it may restart, even with auto-deploy off.",
+      }),
+    );
+  });
+
+  it("unlinks a service with the same link-change warning", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockImplementation(() => [mutate]);
+
+    const { result } = renderHook(() =>
+      useEnvGroupMutations(vi.fn().mockResolvedValue([])),
+    );
+    await act(async () => {
+      await result.current.unlinkGroup("eg1", "web");
+    });
+
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Service unlinked",
+      expect.objectContaining({
+        description:
+          "The service's configuration changed and it may restart, even with auto-deploy off.",
       }),
     );
   });
