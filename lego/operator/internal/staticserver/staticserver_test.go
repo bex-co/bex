@@ -124,8 +124,8 @@ func TestServesNestedAsset(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); ct == "" {
 		t.Errorf("content-type not set; want inferred from .js")
 	}
-	if cc := rec.Header().Get("Cache-Control"); cc != "public, max-age=31536000, immutable" {
-		t.Errorf("cache-control = %q, want immutable for a hashed asset", cc)
+	if cc := rec.Header().Get("Cache-Control"); cc != revalidate {
+		t.Errorf("cache-control = %q, want %q (w4/m160: no extension-based immutability)", cc, revalidate)
 	}
 }
 
@@ -384,8 +384,8 @@ func TestExistingObjectWinsOverCatchAllRewrite(t *testing.T) {
 		if ct := rec.Header().Get("Content-Type"); ct != "binary/octet-stream" {
 			t.Errorf("%s content-type = %q, want the object's own", method, ct)
 		}
-		if cc := rec.Header().Get("Cache-Control"); cc != "public, max-age=31536000, immutable" {
-			t.Errorf("%s cache-control = %q, want the asset policy", method, cc)
+		if cc := rec.Header().Get("Cache-Control"); cc != revalidate {
+			t.Errorf("%s cache-control = %q, want the default %q", method, cc, revalidate)
 		}
 		if method == http.MethodGet && rec.Body.String() != yaml {
 			t.Errorf("body = %q, want the original object bytes", rec.Body.String())
