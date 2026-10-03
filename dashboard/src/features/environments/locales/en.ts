@@ -333,7 +333,7 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.assignmentHint": {
     message:
-      "Selecting a Project alone narrows the Environment list below. Choose an Environment to place this resource in it, or leave it on No environment — the resource then sits in the Project under Unassigned. If the Project has no Environment yet, create one from the Project's page first.",
+      "When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.",
     description: "Shared create-form Environment-assignment hint",
   },
 };

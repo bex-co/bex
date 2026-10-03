@@ -70,6 +70,26 @@ describe("ProjectEnvironmentSelector", () => {
     ).toBeInTheDocument();
   });
 
+  it("explains that Project-only creation remains outside any Project", () => {
+    renderSelector();
+    expect(screen.getByRole("combobox", { name: "Project" })).toHaveTextContent(
+      "Empty Project",
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Environment" }),
+    ).toHaveTextContent("No environment");
+    expect(
+      screen.getByText(
+        /Leaving No environment selected creates the resource outside any Project/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Choose an Environment to add the resource to that Project/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("offers no phantom create affordance in the Environment option list (w6/042)", async () => {
     const user = userEvent.setup();
     renderSelector();
