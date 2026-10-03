@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m157** — [Preserve Postgres special numeric query values](m157/README.md) (6 tasks) ← QA sweep 37
+
 - [ ] **m156** — [Report honest start times for successful deploys](m156/README.md) (6 tasks) ← QA sweep 34
 
 - [ ] **m155** — [Keep serving static sites Running after a failed publish](blocked/m155/README.md) — **BLOCKED (release pipeline deploys operator; QA replays the owned Free static publish-fail/recover/suspend/resume journey across REST/GraphQL/MCP/dashboard aliases, then deletes the fixture and revokes the session)**. t001/t002/t004/t005 done; operator envtest, backend and all-module lint green. t003 hosted parity and t006 closeout remain.
