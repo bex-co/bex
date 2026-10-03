@@ -1,6 +1,6 @@
 # w3 · m172 — Stop leaking cardless Stripe Customers
 
-**Worker:** worker3 **Goal:** a bex Stripe Customer exists only for a workspace that bound a payment method, is comped, or is mid-way through a still-live setup flow — every abandoned flow is either never minted or reclaimed **Status:** blocked (t001–t005, t007–t009 done; t006 live audit run needs the operator's Stripe key; t010 closeout follows it)
+**Worker:** worker3 **Goal:** a bex Stripe Customer exists only for a workspace that bound a payment method, is comped, or is mid-way through a still-live setup flow — every abandoned flow is either never minted or reclaimed **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Stop minting Customer + Subscription before Checkout completes — **DONE** | 1h30m | t002             |
 | t004 | Reclaim abandoned-checkout Customers with a bounded cleaner — **DONE** | 1h    | t002             |
 | t005 | Close the workspace-create leak when the Customer id is never persisted — **DONE** | 45m   | —                |
-| t006 | Remediate the existing orphaned Customers (dry-run-first script) — **BLOCKED (operator live audit run)** | 45m   | t001, t004       |
+| t006 | Remediate the existing orphaned Customers (dry-run-first script) — **DONE** | 45m   | t001, t004       |
 | t007 | Render parity: billing readiness/checkout across REST, GraphQL, MCP, and dashboard — **DONE** | 30m   | t003, t004, t005 |
 | t008 | Simplify — **DONE** | 30m   | t007             |
 | t009 | Test coverage — **DONE** | 1h    | t007             |
-| t010 | Closeout                                                                           | 15m   | t006, t009       |
+| t010 | Closeout — **DONE** | 15m   | t006, t009       |
 
 ## Definition of done
 
