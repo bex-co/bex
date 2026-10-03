@@ -1,6 +1,12 @@
 import { formatInstantDetails } from "@/common/lib/format";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -121,6 +127,33 @@ afterEach(() => {
 });
 
 describe("DeploysListPage", () => {
+  it("advances a fixed deploy timestamp without new query data", async () => {
+    vi.restoreAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    state.deploys = [
+      row({ status: "live", finishedAt: "2026-07-16T02:55:00Z" }),
+    ];
+    const view = renderPage();
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      const time = screen.getByText("Deployed 5 minutes ago");
+      const rows = state.deploys;
+      expect(time).toHaveAttribute("dateTime", "2026-07-16T02:55:00Z");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(120_000);
+      });
+      expect(screen.getByText("Deployed 7 minutes ago")).toBe(time);
+      expect(time).toHaveAttribute("dateTime", "2026-07-16T02:55:00Z");
+      expect(state.deploys).toBe(rows);
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it("renders the Deploy/Trigger/Duration/action column headers", async () => {
     state.deploys = [row()];
 

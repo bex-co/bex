@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useNow } from "@/common/hooks/use-now";
 
 import {
   formatRelativeAge,
@@ -29,7 +30,8 @@ function RelativeTime({
   className,
   title,
   as = "time",
-}: RelativeTimeProps & { format: (iso: string) => string }) {
+}: RelativeTimeProps & { format: (iso: string, now: number) => string }) {
+  const now = useNow();
   // No usable instant: render the caller's fallback bare, so `dateTime` never
   // carries an empty or unparseable value.
   if (!value || Number.isNaN(Date.parse(value))) return <>{fallback}</>;
@@ -42,7 +44,7 @@ function RelativeTime({
   // timezone divergence, a different mechanism under the same error code). The
   // machine-readable instant in `dateTime` stays exact; only the human
   // rendering is allowed to differ.
-  const text = format(value);
+  const text = format(value, now);
   return as === "span" ? (
     <span className={className} title={title} suppressHydrationWarning>
       {text}
