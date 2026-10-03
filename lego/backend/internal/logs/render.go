@@ -24,6 +24,8 @@ import (
 	"slices"
 	"sort"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // render.go maps LogEntry onto Render's public-API log object: a required id,
@@ -165,7 +167,7 @@ func (s *Service) queryLogPage(ctx context.Context, resources []string, q LogQue
 			return t.Before(*edge)
 		})
 	}
-	sort.SliceStable(all, func(i, j int) bool { return all[i].Timestamp < all[j].Timestamp })
+	sort.SliceStable(all, func(i, j int) bool { return core.TimestampLess(all[i].Timestamp, all[j].Timestamp) })
 	all = n.capToLimit(all) // the limit is a total across resources, not per resource
 	page := logPage{Entries: all}
 	page.HasMore, page.NextStartTime, page.NextEndTime = pageCursors(all, n.Limit, n.Since, n.End, n.Direction)

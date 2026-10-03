@@ -347,3 +347,24 @@ func TestPageLimitOrAbsentTreatsAnyNonPositiveAsAbsent(t *testing.T) {
 			"the distinction the two helpers exist for is gone")
 	}
 }
+
+func TestTimestampLessIsChronological(t *testing.T) {
+	ordered := []string{
+		"2026-10-03T11:34:27.999999999Z",
+		"2026-10-03T11:34:28Z",
+		"2026-10-03T11:34:28.5Z",
+		"2026-10-03T11:34:28.92Z",
+		"2026-10-03T11:34:28.922Z",
+		"2026-10-03T11:34:29Z",
+	}
+	for i := range ordered {
+		for j := range ordered {
+			if got := TimestampLess(ordered[i], ordered[j]); got != (i < j) {
+				t.Errorf("TimestampLess(%s, %s) = %v, want %v", ordered[i], ordered[j], got, i < j)
+			}
+		}
+	}
+	if !TimestampLess("garbage-a", "garbage-b") || TimestampLess("garbage-b", "garbage-a") {
+		t.Error("unparseable stamps must fall back to string order")
+	}
+}

@@ -61,7 +61,7 @@ func exclusiveEndLoki(t *testing.T, stamps []time.Time) *httptest.Server {
 }
 
 func TestLokiEndIsInclusiveAndPagesStayGapFree(t *testing.T) {
-	t0 := time.Date(2026, 10, 3, 11, 34, 28, 100000001, time.UTC) // no trimmed trailing zeros: see w8/044
+	t0 := time.Date(2026, 10, 3, 11, 34, 28, 0, time.UTC) // whole second: trimmed-zero stamps must still order (w8/044)
 	stamps := make([]time.Time, 150)
 	for i := range stamps {
 		stamps[i] = t0.Add(time.Duration(i)*7*time.Millisecond + time.Duration(i*13)) // sub-ms precision
