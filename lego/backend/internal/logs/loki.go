@@ -203,7 +203,7 @@ var errLogSearchTimeout = core.NewUnavailableError(core.CodeQueryTimeout,
 	"log search timed out before it covered any of the time range; narrow the range or search a more specific term", nil)
 
 func sortedEntries(entries []LogEntry) []LogEntry {
-	sort.SliceStable(entries, func(i, j int) bool { return entries[i].Timestamp < entries[j].Timestamp })
+	sort.SliceStable(entries, func(i, j int) bool { return core.TimestampLess(entries[i].Timestamp, entries[j].Timestamp) })
 	return entries
 }
 
@@ -578,7 +578,7 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 			})
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp < out[j].Timestamp })
+	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	return q.capToLimit(out), nil
 }
 
