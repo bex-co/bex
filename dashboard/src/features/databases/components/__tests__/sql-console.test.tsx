@@ -18,6 +18,49 @@ beforeEach(() => {
 });
 
 describe("SQLConsole", () => {
+  it("holds execution while suspended and keeps the draft for after resume (w4/177)", async () => {
+    mocks.execute.mockResolvedValue({
+      columns: ["marker"],
+      rows: [["29"]],
+      rowCount: 1,
+      truncated: false,
+    });
+    const user = userEvent.setup();
+    const { rerender } = render(<SQLConsole id="sleepy-db" suspended />);
+    const editor = screen.getByRole("textbox", { name: "SQL query" });
+    await user.clear(editor);
+    await user.type(editor, "SELECT 29 AS marker");
+
+    expect(
+      screen.getByText(/This database is suspended\. Resume it to run SQL/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run query" })).toBeDisabled();
+    await user.type(editor, "{Control>}{Enter}{/Control}");
+    expect(mocks.execute).not.toHaveBeenCalled();
+
+    rerender(<SQLConsole id="sleepy-db" suspended={false} />);
+    expect(editor).toHaveValue("SELECT 29 AS marker");
+    expect(screen.queryByText(/This database is suspended/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Run query" }));
+    await waitFor(() =>
+      expect(mocks.execute).toHaveBeenCalledWith("SELECT 29 AS marker", false),
+    );
+  });
+
+  it("does not run an open write confirmation once the database is suspended", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SQLConsole id="sleepy-db" />);
+    const editor = screen.getByRole("textbox", { name: "SQL query" });
+    await user.clear(editor);
+    await user.type(editor, "DELETE FROM t");
+    await user.click(screen.getByRole("button", { name: "Run query" }));
+    const dialog = await screen.findByRole("alertdialog");
+
+    rerender(<SQLConsole id="sleepy-db" suspended />);
+    await user.click(within(dialog).getByRole("button", { name: /run/i }));
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
   it("runs read-only SQL, renders paginated rows, and recalls session history", async () => {
     const rows = Array.from({ length: 55 }, (_, index) => [
       String(index),

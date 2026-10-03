@@ -182,7 +182,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **177** — [Report suspended Postgres SQL execution as unavailable](177.md) (55m) ← live QA sweep 29: suspended SQL returns internal error across UI/REST/GraphQL/MCP; Top Queries already returns an actionable 503.
+- [ ] **177** — [Report suspended Postgres SQL execution as unavailable](blocked/177.md) — **BLOCKED (release pipeline deploys backend + dashboard; QA replays owned Free suspend/SQL/resume across UI/REST/GraphQL/MCP, then cleans up)**. Server 503 guard, console suspension state (en/zh) and regressions done 2026-10-03.
 
 - [ ] **176** — [Correct environment-group link/unlink retention promises](blocked/176.md) — **BLOCKED (release pipeline must deploy dashboard; QA must replay link/unlink/content-control steps on a fresh group page in en/zh and clean up)**. Steps 1–2 done (link copy + toast corrected, content toasts preserved, en/zh semantic tests); step 3 hosted acceptance remains.
 

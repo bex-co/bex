@@ -192,6 +192,12 @@ func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Da
 	if strings.TrimSpace(sql) == "" {
 		return QueryResult{}, fmt.Errorf("%w: sql is required", core.ErrBadRequest)
 	}
+	// A suspended database has no compute to run SQL; its retained Secret
+	// would only produce a redacted dial failure ("internal error"). Answer
+	// with the lifecycle reason TopQueries already gives (w4/177).
+	if db.Spec.Suspended {
+		return QueryResult{}, fmt.Errorf("%w: database is suspended; resume it to run SQL", core.ErrUnavailable)
+	}
 	sec, err := s.databaseSecret(ctx, db)
 	if err != nil {
 		return QueryResult{}, err
