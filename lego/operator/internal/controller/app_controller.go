@@ -122,6 +122,10 @@ const (
 	reasonAutoHibernated      = appv1alpha1.ReasonAutoHibernated
 	reasonRolloutSettling     = appv1alpha1.ReasonRolloutSettling
 	reasonPriorReleaseServing = appv1alpha1.ReasonPriorReleaseServing
+
+	// reasonPublishFailed is a static site's publication failure: on Ready for a
+	// first publish, on ConditionRollout over a served release (w4/m155).
+	reasonPublishFailed = "PublishFailed"
 )
 
 // generationOrDeletionPredicate adds App's explicit registry-credential rotation
@@ -3369,13 +3373,13 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 		// same seam the build plane uses).
 		if app.Spec.CloneSecret != "" && opts.Namespace != app.Namespace {
 			if err := r.copyCloneSecret(ctx, app, app.Namespace, opts.Namespace, app.Spec.CloneSecret); err != nil {
-				return r.fail(ctx, app, "PublishFailed", fmt.Errorf("relocating clone secret to %s: %w", opts.Namespace, err))
+				return r.fail(ctx, app, reasonPublishFailed, fmt.Errorf("relocating clone secret to %s: %w", opts.Namespace, err))
 			}
 		}
 	}
 	obs, err := publish.Ensure(ctx, opts)
 	if err != nil {
-		return r.fail(ctx, app, "PublishFailed", err)
+		return r.fail(ctx, app, reasonPublishFailed, err)
 	}
 	switch obs.Phase {
 	case publish.PhasePublishing:
@@ -3384,9 +3388,42 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
 		return ctrl.Result{RequeueAfter: publish.ObserveInterval}, nil
 	case publish.PhaseFailed:
-		return r.fail(ctx, app, "PublishFailed", errors.New(obs.Message))
+		return r.failPublish(ctx, app, errors.New(obs.Message))
 	}
 	return ctrl.Result{}, nil
+}
+
+// failPublish records a terminal publication failure (w4/m155). Over a static
+// release that already served it is a deploy fact, not an outage: the failed
+// revision never replaced the immutable prefix, so the site keeps serving the
+// prior release (or stays suspended), and the phase says so. The diagnosis
+// rides ConditionRollout, release-scoped and in the same status write, so
+// bex-api still closes the deploy row update_failed with the exact reason —
+// publication is a rollout of the static release, not a build. A first publish
+// has nothing serving and stays a plain failure. Setup and infrastructure
+// exits (credentials, clone-secret relocation, Job creation) keep r.fail.
+func (r *AppReconciler) failPublish(ctx context.Context, app *appv1alpha1.App, err error) (ctrl.Result, error) {
+	if !releaseHasServed(app) {
+		return r.fail(ctx, app, reasonPublishFailed, err)
+	}
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reasonPublishFailed,
+		Message: err.Error(), ObservedGeneration: releaseGeneration(app),
+	})
+	// No Deployment to probe: a static site is parked only by suspension, and
+	// the static-server's resolver keeps a suspended site out of serving.
+	r.settlePriorRelease(ctx, app, "the latest publish failed", app.Spec.Suspended)
+	return ctrl.Result{}, err
+}
+
+// clearPublishVerdict drops a publication verdict for the release that just
+// published, e.g. after a retried publish Job succeeded for the same
+// generation; left behind it would read as this live release's failure.
+func clearPublishVerdict(app *appv1alpha1.App) {
+	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); c != nil &&
+		c.Reason == reasonPublishFailed && c.ObservedGeneration == releaseGeneration(app) {
+		meta.RemoveStatusCondition(&app.Status.Conditions, appv1alpha1.ConditionRollout)
+	}
 }
 
 // reconcileStaticSite materializes a static_site: build → object store (the
@@ -3474,6 +3511,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		app.Status.ActiveRevision = rev
 		if published {
 			app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
+			clearPublishVerdict(app)
 		}
 		return r.hibernated(ctx, app, image, hosts, reasonSuspended,
 			"static site suspended (published content kept; host and certificate retained)")
@@ -3495,6 +3533,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	app.Status.ActiveRevision = rev
 	if published {
 		app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
+		clearPublishVerdict(app)
 	}
 	app.Status.ObservedGeneration = app.Generation
 	setStatusURLs(app, hosts)

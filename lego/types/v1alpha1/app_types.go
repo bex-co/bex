@@ -175,6 +175,10 @@ const ConditionBuild = "Build"
 // CrashLoopBackOff, CreateContainerConfigError, HealthCheckFailing,
 // RolloutBlockedByQuota, or ProgressDeadlineExceeded when nothing was found)
 // and its user-facing text as Message. Bounded to one slot like ConditionBuild.
+//
+// A static site's rollout is its publication (w4/m155): a terminal publish
+// failure over a served revision is recorded here with Reason PublishFailed,
+// and a later successful publish of the same generation removes it.
 const ConditionRollout = "Rollout"
 
 // Build-failure condition reasons. These are part of the CR contract, not an
