@@ -1,6 +1,6 @@
 # w8 · m45 — A service name given to the CLI resolves in the caller's default workspace, not the selected one, so name-based verbs can act on another workspace's service
 
-**Worker:** worker8 **Goal:** a service addressed by **name** resolves only within the workspace the caller selected. When no workspace is selected and the name is ambiguous across the caller's workspaces, it is refused with the candidate ids instead of silently picking one. `bex restart <name>` / `bex deploys create <name>` can never act on a service in a workspace other than the one `bex workspace current` shows. **Status:** blocked
+**Worker:** worker8 **Goal:** a service addressed by **name** resolves only within the workspace the caller selected. When no workspace is selected and the name is ambiguous across the caller's workspaces, it is refused with the candidate ids instead of silently picking one. `bex deploys create <name>` can never act on a service in a workspace other than the one `bex workspace current` shows. **Status:** blocked
 
 ## Tasks (in order)
 
@@ -17,7 +17,7 @@
 
 ## Definition of done
 
-- With a service named `N` in workspace A (selected via `bex workspace set A` or `BEX_WORKSPACE=A`) and another service named `N` in workspace B that the same user belongs to, `bex deploys list N`, `bex services instances N` and `bex restart N` all act on **A's** service.
+- With a service named `N` in workspace A (selected via `bex workspace set A` or `BEX_WORKSPACE=A`) and another service named `N` in workspace B that the same user belongs to, `bex deploys list N`, `bex services instances N` and `bex deploys create N` all act on **A's** service.
 - With no selected workspace, the same name either resolves in the single workspace that has it, or is refused with `409` naming both ids. It never silently picks one.
 - Addressing by `srv-` id is unchanged: ids are global, and cross-workspace by-id reads for a member keep working, as they do on Render.
 
@@ -81,3 +81,7 @@ Tests cover ID and name selections, saved/environment precedence, renamed servic
 Full backend suite against isolated Postgres/OpenFGA/OpenBao, operator `make test`, full CLI suite, backend/CLI lint, targeted Go race tests, workflow guards and ci-red-streak fixtures passed. The final affected backend packages passed again after review changes. Overlay mutation checks confirmed the image, workspace and rename regressions fail with their fixes removed. Markdown was formatted; QA fixtures and the isolated credentials were cleaned up.
 
 Implementation and review are complete locally. Repository `AGENTS.md` requires an explicit `$ship` before commit/push. After ship, observe CI/production and complete this milestone's remaining live closeout; m45 also needs the updated CLI released. The earlier policy/sign-off/login blockers are resolved.
+
+## Pinned CLI acceptance correction — 2026-10-03
+
+The CLI's `restart` command is ID-only: upstream v2.27.0 `cmd/restart.go:18` and `pkg/resource/service.go:223–244` reject an ordinary service name with `unknown resource type` before a restart request. This was reproduced on an owned renamed service after rollout; see [m47's full CLI evidence](../m47/cli-production-rename-20261003.json). Earlier restart-by-name CLI examples in this record describe an unsupported invocation; they are not evidence of a server failure and do not justify changing the pinned client. The goal/DoD now use `deploys create <name>` for the supported CLI mutation. Direct REST restart-by-name remains a separate server resolver test. The one-workspace rename retest passed; it does **not** establish this milestone's two-workspace isolation acceptance or close this milestone.

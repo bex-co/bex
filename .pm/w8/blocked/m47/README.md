@@ -1,6 +1,6 @@
 # w8 · m47 — A renamed service keeps answering to its old name: rename skips the uniqueness rule, and name lookup ignores the name you see
 
-**Worker:** worker8 **Goal:** the name a user sees for a service (`bex services`, the dashboard) is the name every by-name verb acts on, and it stays unique within the workspace, so `bex restart <name shown in the list>` always acts on the service shown with that name. **Status:** blocked
+**Worker:** worker8 **Goal:** the name a user sees for a service (`bex services`, the dashboard) is the name every by-name verb acts on, and it stays unique within the workspace, so `bex deploys create <name shown in the list>` always acts on the service shown with that name. **Status:** blocked
 
 ## Tasks (in order)
 
@@ -17,7 +17,7 @@
 ## Definition of done
 
 - `bex services update <srv-B> --name <name shown for another service in the same workspace>` → `409 (CONFLICT): name "…" is already in use`, the same answer as `services create`. Concurrent renames of two services to one new name: exactly one succeeds.
-- After renaming A from `x` to `y`: `bex deploys list y`, `bex services instances y`, and `bex restart y` act on A. `x` no longer resolves to A once another service is displayed as `x`, and never silently targets a different service than the one listed under that name.
+- After renaming A from `x` to `y`: `bex deploys list y`, `bex services instances y`, and `bex deploys create y` act on A. `x` no longer resolves to A once another service is displayed as `x`, and never silently targets a different service than the one listed under that name.
 - Existing duplicates in production are listed and resolved by decision (t003).
 
 ## Evidence (2026-09-26, `/qa-find-bugs-cli` sweep 19, production `726042a28`)
@@ -83,3 +83,11 @@ The local core resolver now searches current displayed names across visible work
 Full backend suite against isolated Postgres/OpenFGA/OpenBao, operator `make test`, full CLI suite, backend/CLI lint, targeted Go race tests, workflow guards and ci-red-streak fixtures passed. The final affected backend packages passed again after review changes. Overlay mutation checks confirmed the image, workspace and rename regressions fail with their fixes removed. Markdown was formatted; QA fixtures and the isolated credentials were cleaned up.
 
 Implementation and review are complete locally. Repository `AGENTS.md` requires an explicit `$ship` before commit/push. After ship, observe CI/production and complete this milestone's remaining live closeout; m45 also needs the updated CLI released. The earlier policy/sign-off/login blockers are resolved.
+
+## Production follow-up and CLI contract correction — 2026-10-03
+
+**The previously failing renamed-name reads now pass.** After successful deploy run `37085557852` (`18958459c`), installed Bex v0.2.1 / pinned Render CLI v2.27.0 created owned Free image service `srv-db06tn85od3c73dqi5l0`, renamed `qa-20261003-689a09-rename` → `qa-20261003-689a09-renamed`, and successfully ran `deploys list <newName>`, `services instances <newName>`, and `deploys create <newName> --confirm -o json`. The mutation returned `dep-db06v3o5od3c73dqi5n0`, which reached Live; the same service's public URL remained HTTP 200. Full CLI captures: [cli-production-rename-20261003.json](cli-production-rename-20261003.json).
+
+**Correction to earlier restart-by-name wording:** `bex restart <ordinary-name>` is not a valid pinned CLI acceptance command. It exited 1, empty stdout, stderr `Error: failed to restart resource: unknown resource type`. Upstream `cmd/restart.go:18` documents `restart <resourceID>`; `pkg/resource/service.go:223–244` dispatches only known ID prefixes and rejects this name before sending a restart request. The earlier inference that this CLI command passes an arbitrary typed name through to Bex was incorrect. No launcher workaround or upstream fork is required. The DoD now uses the demonstrated supported CLI mutation `deploys create <name>`; the server's restart-by-name endpoint can be tested separately through an authenticated API diagnostic and must be labeled API coverage.
+
+Cleanup verified: empty one-off-job list, two deploy IDs matched creation/API mutation evidence, parent deleted by ledger-owned ID, service list absent, former URL HTTP 404, and all four baseline IDs retained. This follow-up did not repeat the duplicate-name race, reassigned-old-name case, two-workspace isolation, or direct API restart. The milestone remains blocked pending its complete acceptance coverage.
