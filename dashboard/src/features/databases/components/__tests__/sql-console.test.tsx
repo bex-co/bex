@@ -129,6 +129,38 @@ describe("SQLConsole", () => {
     expect(await screen.findByText("3 rows affected")).toBeInTheDocument();
   });
 
+  it("renders typed-value cells verbatim and only null as NULL (w4/m157)", async () => {
+    // The GraphQL cells bex-api returns for special numerics, temporal
+    // infinities, UUIDs, a native matrix and an exact numeric.
+    const cells = [
+      "NaN",
+      "-Infinity",
+      "infinity",
+      "550e8400-e29b-41d4-a716-446655440000",
+      "[[1,2],[3,4]]",
+      '[["a",null],["NULL","b"]]',
+      "12345678901234567890.123456789",
+      null,
+    ];
+    mocks.execute.mockResolvedValue({
+      columns: cells.map((_, index) => `c${index}`),
+      rows: [cells],
+      rowCount: 1,
+      truncated: false,
+    });
+    const user = userEvent.setup();
+    render(<SQLConsole id="orders-db" />);
+
+    await user.click(screen.getByRole("button", { name: "Run query" }));
+
+    const row = (await screen.findByText("NaN")).closest("tr");
+    expect(row).not.toBeNull();
+    const rendered = within(row as HTMLElement)
+      .getAllByRole("cell")
+      .map((cell) => cell.textContent);
+    expect(rendered).toEqual([...cells.slice(0, -1), "NULL"]);
+  });
+
   it("shows execution errors without swallowing them", async () => {
     mocks.execute.mockRejectedValue(new Error("bad request: SQLSTATE 42601"));
     const user = userEvent.setup();

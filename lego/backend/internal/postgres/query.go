@@ -261,10 +261,15 @@ func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimi
 // collectQueryRows streams the result set into out, enforcing the per-cell,
 // per-row, whole-result and encoded-size budgets as it goes. Reading stops at
 // the row cap (marking the result truncated) so an unbounded result set is never
-// materialized.
+// materialized. Each row passes through the shared value policy
+// (query_values.go) after its raw budget and before the encoded one, so the
+// encoded cap measures exactly what the surfaces will emit.
 func collectQueryRows(rows pgx.Rows, lim queryLimits, out *QueryResult) error {
 	rawResult := budget{cap: queryRawResultByteCap}
 	jsonResult := budget{cap: queryJSONResultCap}
+	typeMap := rows.Conn().TypeMap()
+	fields := rows.FieldDescriptions()
+	arrays := queryArrayColumns(typeMap, fields)
 	for rows.Next() {
 		if len(out.Rows) >= lim.rowCap {
 			out.Truncated = true // a row beyond the cap exists; stop reading
@@ -286,6 +291,18 @@ func collectQueryRows(rows pgx.Rows, lim queryLimits, out *QueryResult) error {
 		vals, err := rows.Values()
 		if err != nil {
 			return mapPGError(err)
+		}
+		for i, raw := range rows.RawValues() {
+			if arrays[i] && raw != nil {
+				// Values flattened this array; decode it again from the raw
+				// bytes, keeping its dimensions.
+				if vals[i], err = decodeQueryArray(typeMap, fields[i], raw); err != nil {
+					return err
+				}
+			}
+			if vals[i], err = normalizeQueryValue(vals[i]); err != nil {
+				return err
+			}
 		}
 		out.Rows = append(out.Rows, vals)
 	}
