@@ -38,6 +38,32 @@ function form(overrides: Partial<NewServiceForm> = {}): NewServiceForm {
 }
 
 describe("buildCreateServiceInput", () => {
+  it.each([
+    "web_service",
+    "static_site",
+    "cron_job",
+    "background_worker",
+    "private_service",
+  ] as const)(
+    "submits Environment assignment but not the Project filter for %s",
+    (serviceType) => {
+      const ungrouped = buildCreateServiceInput(
+        form({ serviceType, projectId: "prj-selected" }),
+      );
+      expect(ungrouped.environmentId).toBeUndefined();
+      expect(ungrouped).not.toHaveProperty("projectId");
+      const assigned = buildCreateServiceInput(
+        form({
+          serviceType,
+          projectId: "prj-selected",
+          environmentId: "evm-selected",
+        }),
+      );
+      expect(assigned.environmentId).toBe("evm-selected");
+      expect(assigned).not.toHaveProperty("projectId");
+    },
+  );
+
   it("omits every field the current build shape does not own", () => {
     // A static site builds from git but has no runtime, dockerfile, or plan —
     // the regression the four shapes exist to prevent.
