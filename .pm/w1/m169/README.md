@@ -1,6 +1,6 @@
 # w1 · m169 — Buildpack Node services start on current Node: a run image with libatomic
 
-**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** blocked (t001, t002 done; t003 needs the first `cnb-run-image.yml` publish after ship)
+**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** open — t001, t002 done; unblocked 2026-10-02: `cnb-run-image.yml` published (run 36979529487) and `ghcr.io/bex-co/bex-cnb-run` is public, so t003 (pin the digest in `deploy/gitops/charts/kpack/platform.yaml`) is ready
 
 ## Tasks (in order)
 

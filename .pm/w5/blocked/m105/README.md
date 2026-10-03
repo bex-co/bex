@@ -32,7 +32,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [w4/m110/t001](../../../w4/blocked/m110/t001.md); approved by the user on 2026-09-30 following the w5 brainstorm and parity correction.
+- **Source:** [w4/m110/t001](../../../w4/done/m110/t001.md); approved by the user on 2026-09-30 following the w5 brainstorm and parity correction.
 - **Goal linkage:** ADR008 dependable, deterministic hosting and agent operation.
 - **Expected outcome:** A Settings command edit deploys the requested behavior instead of silently retaining an old baked command.
 - **Why now:** The central edit-to-deploy contract has an unresolved observed failure; static identity tests already pass and runtime diagnosis is the next useful step.

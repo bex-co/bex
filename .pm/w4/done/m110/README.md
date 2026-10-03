@@ -1,6 +1,6 @@
 # w4 · m110 — Settings config changes roll the stale image; instance counts, rollback dialog, and build narration mislead
 
-**Worker:** worker4 **Goal:** a build/start command edit in Settings rebuilds instead of re-rolling the old image; Total Instances counts live pods, not terminated ones; the rollback dialog names the commit it restores; the deploy log stops narrating builds that never ran. **Status:** blocked — transferred to w5/m105; retained acceptance/history only
+**Worker:** worker4 **Goal:** a build/start command edit in Settings rebuilds instead of re-rolling the old image; Total Instances counts live pods, not terminated ones; the rollback dialog names the commit it restores; the deploy log stops narrating builds that never ran. **Status:** done — closed 2026-10-02 in blocked-item triage: t002–t004 done; the t001 residual is owned solely by w5/m105 (blocked); retained history only
 
 ## Transfer — 2026-09-30
 

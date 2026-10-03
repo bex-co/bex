@@ -1,6 +1,6 @@
 # w7 · m149 — Correct cold deep-link initialization
 
-**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** blocked — transferred to w5/m104; retained acceptance/history only
+**Worker:** worker7 **Goal:** Direct service and agents URLs settle from initial workspace and capability results instead of waiting for the periodic poll. **Status:** done — closed 2026-10-02 in blocked-item triage: execution completed as w5/m104 (DONE 2026-09-30); retained history only
 
 ## Transfer — 2026-09-30
 
