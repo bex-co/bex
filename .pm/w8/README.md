@@ -80,7 +80,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **039** — [Health-check-stalled first deploy loses its probe diagnosis to a 900 s restart race](039.md) (~45m, minor) ← same sweep; startup-probe kill lands seconds before settle.
 - [ ] **040** — [Restart is accepted for cron jobs; Render refuses it](040.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 2, 2026-10-03.
 - [ ] **041** — [`blueprints validate` on a zero-byte file answers a bare 400](041.md) (~25m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 4, 2026-10-03.
-- [ ] **042** — [`imageUrl` / deploy-hook `imgURL` deploy an image from any repository](042.md) (~50m, major) ← `/qa-find-bugs-cli` w8 loop sweep 6, 2026-10-03; Render requires the configured repository.
+- [x] **042** — [`imageUrl` / deploy-hook `imgURL` must keep the configured repository](done/042.md) — **DONE 2026-10-03**: Render's host/repository/name rule enforced in the shared trigger validator; named 400 on REST, GraphQL, MCP and the hook; production had no cross-repository overrides.
 - [ ] **043** — [`logs --end <t>` drops the line stamped exactly `t` on the log-store path](043.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 7, 2026-10-03.
 - [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.
 - [x] **033** — [Promoted to m49](done/033.md) (2026-10-02); original production findings retained.

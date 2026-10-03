@@ -42,6 +42,8 @@ func TestTriggerInputRefusalsAcrossAdapters(t *testing.T) {
 		{"short digest", "imageUrl", "nginx@sha256:deadbeef", "image digest is invalid"},
 		{"private registry", "imageUrl", "127.0.0.1:5000/web:v1", "private or reserved"},
 		{"untrusted registry", "imageUrl", "registry.example.com/web:v1", "not trusted"},
+		{"other repository", "imageUrl", "docker.io/library/nginx:1.27", "configured image docker.io/library/web (got docker.io/library/nginx)"},
+		{"other registry", "imageUrl", "ghcr.io/library/web:v1", "configured image docker.io/library/web (got ghcr.io/library/web)"},
 	} {
 		for _, adapter := range []string{"REST", "GraphQL", "MCP", "deploy hook"} {
 			t.Run(tc.name+"/"+adapter, func(t *testing.T) {
@@ -134,7 +136,9 @@ func TestTriggerInputRefusalsAcrossAdapters(t *testing.T) {
 
 func TestTriggerAcceptsImageDigestWithoutChangingSavedImage(t *testing.T) {
 	ds := newFakeStore()
-	svc, cl := newService(ds, sampleApp("web", "srv-1"))
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = "ghcr.io/acme/web:v1"
+	svc, cl := newService(ds, app)
 	image := "ghcr.io/acme/web:v2@sha256:" + strings.Repeat("a", 64)
 	deploy, err := svc.Trigger(context.Background(), "web", TriggerParams{ImageURL: image})
 	if err != nil {
@@ -143,7 +147,7 @@ func TestTriggerAcceptsImageDigestWithoutChangingSavedImage(t *testing.T) {
 	if deploy.Image != image || ds.nextID != 1 {
 		t.Fatalf("deploy image = %q, new deploys = %d", deploy.Image, ds.nextID)
 	}
-	if got := getApp(t, cl, "web").Spec.Image; got != "web:v1" || len(ds.setImage) != 0 {
+	if got := getApp(t, cl, "web").Spec.Image; got != "ghcr.io/acme/web:v1" || len(ds.setImage) != 0 {
 		t.Fatalf("override changed saved image: spec = %q, store writes = %v", got, ds.setImage)
 	}
 }

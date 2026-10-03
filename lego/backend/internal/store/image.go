@@ -72,6 +72,19 @@ func ValidateImage(v string) error {
 	return nil
 }
 
+// ImageRepository returns the registry host + repository of an image reference
+// with Docker Hub's short forms normalized (`nginx` and
+// `docker.io/library/nginx` are one repository) and the tag/digest dropped.
+// Render's imageUrl contract compares exactly this: a per-deploy image must
+// keep the service's configured host, repository and image name.
+func ImageRepository(v string) (string, error) {
+	named, err := reference.ParseNormalizedNamed(v)
+	if err != nil {
+		return "", fmt.Errorf("image reference is malformed: %w", err)
+	}
+	return strings.ToLower(reference.Domain(named)) + "/" + reference.Path(named), nil
+}
+
 func trustedImageRegistry(host string) bool {
 	host = strings.ToLower(strings.TrimSuffix(host, "."))
 	switch host {
