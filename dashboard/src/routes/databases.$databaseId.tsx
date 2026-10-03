@@ -24,6 +24,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
+import { isSuspended } from "@/features/databases/lib/status";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
 import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
@@ -261,7 +262,11 @@ function DatabaseDetailPage() {
                 <section id="sql-console" className="scroll-mt-6">
                   <DeferredMount hashId="sql-console" minHeight={280}>
                     <Suspense fallback={<CardSkeleton rows={4} />}>
-                      <SQLConsole key={`sql-${database.id}`} id={database.id} />
+                      <SQLConsole
+                        key={`sql-${database.id}`}
+                        id={database.id}
+                        suspended={isSuspended(database)}
+                      />
                     </Suspense>
                   </DeferredMount>
                 </section>

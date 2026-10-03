@@ -39,6 +39,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -549,5 +550,60 @@ func TestQueryIntegration(t *testing.T) {
 	}
 	if verify.RowCount != 1 || fmt.Sprint(verify.Rows[0][0]) != "1" {
 		t.Fatalf("committed insert verification = %+v", verify)
+	}
+}
+
+// w4/177: a suspended database refuses SQL with the lifecycle reason (503
+// unavailable), not a redacted dial failure, on every entry point and in both
+// modes — after authorization, before any credential is read or SQL runs.
+func TestExecuteQueryOnSuspendedDatabaseIsUnavailable(t *testing.T) {
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "sleepy-db", "postgres://resolved/uri")
+	ctx := context.Background()
+	var db appv1alpha1.Database
+	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "sleepy-db"}, &db); err != nil {
+		t.Fatal(err)
+	}
+	db.Spec.Suspended = true
+	if err := svc.Client.Update(ctx, &db); err != nil {
+		t.Fatal(err)
+	}
+	svc.queryExecutor = func(context.Context, string, string, queryLimits, bool) (QueryResult, error) {
+		t.Fatal("SQL ran against a suspended database")
+		return QueryResult{}, nil
+	}
+
+	for _, writable := range []bool{false, true} {
+		if _, err := svc.ExecuteQuery(ctx, "sleepy-db", "SELECT 29 AS marker", writable); !errors.Is(err, core.ErrUnavailable) || !strings.Contains(err.Error(), "database is suspended") {
+			t.Fatalf("ExecuteQuery(allowWrites=%v) = %v, want unavailable: database is suspended", writable, err)
+		}
+	}
+	if _, err := svc.Query(ctx, "sleepy-db", "SELECT 29 AS marker"); !errors.Is(err, core.ErrUnavailable) {
+		t.Fatalf("Query (MCP query_render_postgres) = %v, want unavailable", err)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/postgres/sleepy-db/query", strings.NewReader(`{"sql":"SELECT 29 AS marker"}`)).WithContext(ctx))
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "database is suspended") || !strings.Contains(rec.Body.String(), `"id":"unavailable"`) {
+		t.Fatalf("REST suspended query => %d %s", rec.Code, rec.Body)
+	}
+	schema, err := pgGQLSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+		RequestString: `mutation { executeDatabaseQuery(id:"sleepy-db", sql:"SELECT 29 AS marker", allowWrites:true) { rowCount } }`})
+	if len(res.Errors) != 1 || !strings.Contains(res.Errors[0].Message, "database is suspended") {
+		t.Fatalf("GraphQL suspended query errors = %v", res.Errors)
+	}
+
+	// Authorization still answers first: a denied caller learns nothing about
+	// the lifecycle state.
+	svc.Authz = &queryAuthzChecker{allow: false}
+	idCtx := core.WithIdentity(ctx, core.Identity{Subject: "user-1", Method: "session"})
+	if _, err := svc.ExecuteQuery(idCtx, "sleepy-db", "SELECT 1", false); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("denied suspended query = %v, want ErrForbidden", err)
 	}
 }

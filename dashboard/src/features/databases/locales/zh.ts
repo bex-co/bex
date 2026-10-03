@@ -1268,6 +1268,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "按 Ctrl+Enter 或 ⌘+Enter 运行",
     description: "SQL console keyboard shortcut hint",
   },
+  "databases.sqlSuspended": {
+    message: "此数据库已暂停。请恢复后再运行 SQL；您的查询和历史记录会保留。",
+    description: "SQL console notice while the database is suspended",
+  },
   "databases.sqlRun": {
     message: "运行查询",
     description: "SQL console run button",
