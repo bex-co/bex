@@ -169,6 +169,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **177** — [Report suspended Postgres SQL execution as unavailable](177.md) (55m) ← live QA sweep 29: suspended SQL returns internal error across UI/REST/GraphQL/MCP; Top Queries already returns an actionable 503.
+
 - [ ] **176** — [Correct environment-group link/unlink retention promises](blocked/176.md) — **BLOCKED (release pipeline must deploy dashboard; QA must replay link/unlink/content-control steps on a fresh group page in en/zh and clean up)**. Steps 1–2 done (link copy + toast corrected, content toasts preserved, en/zh semantic tests); step 3 hosted acceptance remains.
 
 - [x] **175** — [Persist superseded build-ended event reasons](done/175.md) — done 2026-10-02: migration 0138, real-Postgres producer and migration regressions, full store/backend checks.
