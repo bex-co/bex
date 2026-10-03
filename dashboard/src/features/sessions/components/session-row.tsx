@@ -1,8 +1,9 @@
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
-import { useNow } from "@/common/hooks/use-now";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
+import { useNow } from "@/common/hooks/use-now";
 import { RelativeAge } from "@/common/components/relative-time";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import type { SessionView } from "@/features/sessions/types";
@@ -17,10 +18,16 @@ export interface SessionRowProps {
 /** One Active Sessions row: device/location, last active, and revoke (never for the current session). */
 export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
   const { t } = useTranslations();
+  const now = useNow();
+  const hydrated = useIsHydrated();
   const device = session.userAgent ?? t("activeSessions.unknownDevice");
   const location = session.location ?? session.ipAddress ?? "—";
-  const now = useNow();
-  const lastActive = formatRelativeAge(session.authenticatedAt, now);
+  const lastActive = hydrated
+    ? formatRelativeAge(session.authenticatedAt, now)
+    : session.authenticatedAt &&
+        !Number.isNaN(Date.parse(session.authenticatedAt))
+      ? session.authenticatedAt
+      : "—";
 
   return (
     <TableRow>
@@ -36,7 +43,8 @@ export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
         {session.location ?? session.ipAddress ?? "—"}
       </TableCell>
       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        <RelativeAge value={session.authenticatedAt} />
+        {/* Replace suppressed SSR text at commit so it agrees with the label. */}
+        <RelativeAge key={String(hydrated)} value={session.authenticatedAt} />
       </TableCell>
       <TableCell className="text-right whitespace-nowrap">
         {session.current ? null : (
