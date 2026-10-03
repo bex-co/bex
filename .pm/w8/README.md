@@ -76,7 +76,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [x] **037** — [`bex logout` revokes only the presented grant](done/037.md) — **DONE 2026-10-03**: per-token Hydra RFC 7009 revoke replaces the consent-session wipe; proven against Hydra v26.2.0 (other device keeps access + refresh).
-- [ ] **038** — [`BEX_WORKSPACE=<name>` is documented but every list/get answers "not allowed"](038.md) (~40m, minor) ← same sweep; launcher passes the name as `ownerId`.
+- [x] **038** — [`BEX_WORKSPACE=<name>` resolves to the workspace id](done/038.md) — **DONE 2026-10-03**: launcher resolves a name once via `GET /v1/owners?name=` (unknown/duplicate names exit 1 with named errors); ships to users with the next `bex-cli/v*` release.
 - [ ] **039** — [Health-check-stalled first deploy loses its probe diagnosis to a 900 s restart race](039.md) (~45m, minor) ← same sweep; startup-probe kill lands seconds before settle.
 - [ ] **040** — [Restart is accepted for cron jobs; Render refuses it](040.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 2, 2026-10-03.
 - [ ] **041** — [`blueprints validate` on a zero-byte file answers a bare 400](041.md) (~25m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 4, 2026-10-03.

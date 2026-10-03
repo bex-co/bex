@@ -41,6 +41,10 @@ func main() {
 	// against. It covers the detached analytics sender too: that subprocess
 	// re-executes this binary, so it runs main and installs the same wrapper.
 	bridge.InstallControlPlaneHeaders(bexVersion)
+	if err := bridge.ResolveWorkspaceName(); err != nil {
+		fmt.Fprintf(os.Stderr, "bex: %v\n", err)
+		os.Exit(1)
+	}
 	// The Bex-native coding commands (`bex code`, `bex glm`, …) and the
 	// self-update command are additions to the imported command tree; the
 	// upstream commands remain untouched.

@@ -50,6 +50,7 @@ const (
 // sets RENDER_CLI_CONFIG_PATH for an exact-file override. An explicit
 // RENDER_CLI_CONFIG_{PATH,DIR} is left untouched (w8/017).
 func Apply() error {
+	workspaceFromBex = !isSet(os.LookupEnv, renderWorkspace) && isSet(os.LookupEnv, bexWorkspace)
 	return apply(os.LookupEnv, os.Setenv, os.UserHomeDir)
 }
 
