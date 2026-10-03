@@ -141,12 +141,23 @@ describe("DeploysListPage", () => {
       });
       const time = screen.getByText("Deployed 5 minutes ago");
       const rows = state.deploys;
+      const originalRow = time.closest("tr");
       expect(time).toHaveAttribute("dateTime", "2026-07-16T02:55:00Z");
+      act(() => time.focus());
+      const tooltip = screen.getByRole("tooltip");
+      const exactText = tooltip.textContent;
+      const details = formatInstantDetails("2026-07-16T02:55:00Z")!;
+      expect(tooltip).toHaveTextContent(`Local${details.local}`);
+      expect(tooltip).toHaveTextContent(`UTC${details.utc}`);
+      expect(tooltip).toHaveTextContent(`Timestamp${details.unix}`);
       await act(async () => {
         await vi.advanceTimersByTimeAsync(120_000);
       });
       expect(screen.getByText("Deployed 7 minutes ago")).toBe(time);
       expect(time).toHaveAttribute("dateTime", "2026-07-16T02:55:00Z");
+      expect(time.closest("tr")).toBe(originalRow);
+      expect(screen.getByRole("tooltip").textContent).toBe(exactText);
+      expect(time).toHaveFocus();
       expect(state.deploys).toBe(rows);
     } finally {
       view.unmount();

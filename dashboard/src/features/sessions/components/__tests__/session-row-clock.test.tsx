@@ -35,6 +35,7 @@ it("advances the unchanged session's visible age and accessible revoke label tog
   expect(time).toHaveTextContent("5m");
   expect(time).toHaveAttribute("datetime", session.authenticatedAt);
   expect(button).toBeEnabled();
+  button.focus();
 
   act(() => vi.advanceTimersByTime(120_000));
 
@@ -46,5 +47,6 @@ it("advances the unchanged session's visible age and accessible revoke label tog
     }),
   ).toBe(button);
   expect(button).toBeEnabled();
+  expect(button).toHaveFocus();
   expect(revoke).not.toHaveBeenCalled();
 });

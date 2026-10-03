@@ -111,3 +111,67 @@ describe("useNow shared clock lifecycle", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("useNow resumed active clock", () => {
+  it("does not rerender an existing reader when fresh readers join", () => {
+    const rendered = vi.fn();
+    const existing = renderHook(() => {
+      rendered();
+      return useNow();
+    });
+    const initialRenders = rendered.mock.calls.length;
+    for (let elapsed = 1; elapsed <= 10; elapsed++) {
+      vi.setSystemTime(START + elapsed);
+      const joined = renderHook(() => useNow());
+      expect(joined.result.current).toBe(existing.result.current);
+      joined.unmount();
+    }
+    expect(rendered).toHaveBeenCalledTimes(initialRenders);
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it("gives a newly mounted reader a fresh sample while an older reader remains mounted", () => {
+    const existing = renderHook(() => useNow());
+    // A suspended browser has advanced its clock without delivering callbacks.
+    vi.setSystemTime(START + 5 * 60_000);
+    const joined = renderHook(() => useNow());
+    expect(joined.result.current).toBe(START + 5 * 60_000);
+    expect(existing.result.current).toBe(joined.result.current);
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(existing.result.current).toBe(START + 6 * 60_000);
+    expect(joined.result.current).toBe(existing.result.current);
+    vi.setSystemTime(START - 1_000);
+    const afterReversal = renderHook(() => useNow());
+    expect(afterReversal.result.current).toBe(START - 1_000);
+    expect(existing.result.current).toBe(afterReversal.result.current);
+  });
+
+  it("refreshes on focus with one listener until the last reader unmounts", () => {
+    const added = vi.spyOn(window, "addEventListener");
+    const removed = vi.spyOn(window, "removeEventListener");
+    const first = renderHook(() => useNow());
+    const second = renderHook(() => useNow());
+    vi.setSystemTime(START + 5 * 60_000);
+    act(() => window.dispatchEvent(new Event("focus")));
+    expect(first.result.current).toBe(START + 5 * 60_000);
+    expect(second.result.current).toBe(first.result.current);
+    expect(
+      added.mock.calls.filter(([event]) => event === "focus"),
+    ).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(1);
+
+    first.unmount();
+    expect(
+      removed.mock.calls.filter(([event]) => event === "focus"),
+    ).toHaveLength(0);
+    vi.setSystemTime(START + 10 * 60_000);
+    act(() => window.dispatchEvent(new Event("focus")));
+    expect(second.result.current).toBe(START + 10 * 60_000);
+    second.unmount();
+    expect(
+      removed.mock.calls.filter(([event]) => event === "focus"),
+    ).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
