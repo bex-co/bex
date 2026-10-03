@@ -18,6 +18,7 @@ package staticserver
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -158,5 +159,63 @@ func TestIsLegacyStaticPrefix(t *testing.T) {
 		if got := isLegacyStaticPrefix(tc.site); got != tc.want {
 			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
 		}
+	}
+}
+
+// Header snapshots change independently of the immutable publication and its cache.
+func TestHeaderSnapshotRefreshPreservesPublicationAcrossHosts(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: appID, Namespace: "apps"},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Host: testHost,
+			Hosts: []string{"custom.example.test"}, Headers: []appv1alpha1.StaticHeader{{Path: "/*.css", Name: "X-Policy", Value: "before"}}},
+		Status: appv1alpha1.AppStatus{ActiveRevision: rev, StaticPrefix: appID + "/" + rev + "/"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithStatusSubresource(app).Build()
+	resolver := NewCachedResolver(cl, app.Namespace, "onbex.co")
+	origin := newFakeOrigin(map[string]Object{key("theme.css"): {Body: []byte("original"), ContentType: "text/css"}})
+	h := New(resolver, origin, 1<<20)
+	assertPolicy := func(want string) {
+		t.Helper()
+		for _, host := range []string{testHost, "custom.example.test"} {
+			for _, method := range []string{http.MethodGet, http.MethodHead} {
+				rec := httptest.NewRecorder()
+				h.ServeHTTP(rec, httptest.NewRequest(method, "https://"+host+"/theme.css", nil))
+				if rec.Code != 200 || rec.Header().Get("X-Policy") != want || rec.Header().Get("Content-Type") != "text/css" {
+					t.Fatalf("%s %s: %d %v", method, host, rec.Code, rec.Header())
+				}
+				if method == http.MethodGet && rec.Body.String() != "original" {
+					t.Fatal("publication changed")
+				}
+			}
+		}
+	}
+	if err := resolver.Refresh(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	assertPolicy("before")
+	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(app), app); err != nil {
+		t.Fatal(err)
+	}
+	app.Spec.Headers[0].Value = "after"
+	if err := cl.Update(t.Context(), app); err != nil {
+		t.Fatal(err)
+	}
+	assertPolicy("before")
+	if err := resolver.Refresh(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	assertPolicy("after")
+	if origin.gets[key("theme.css")] != 1 {
+		t.Fatal("configuration change refetched published object")
+	}
+	if err := cl.Get(t.Context(), client.ObjectKeyFromObject(app), app); err != nil {
+		t.Fatal(err)
+	}
+	if app.Status.ActiveRevision != rev || app.Status.StaticPrefix != appID+"/"+rev+"/" {
+		t.Fatal("header save changed publication identity")
 	}
 }
