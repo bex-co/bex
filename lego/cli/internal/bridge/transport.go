@@ -62,8 +62,12 @@ type controlPlaneTransport struct {
 // RoundTrip adds the header only for the control plane. A request to any other
 // host — the GitHub release check in internal/update, a model provider reached
 // by internal/code — is forwarded exactly as the caller built it, so the
-// launcher never announces itself to a third party.
+// launcher never announces itself to a third party. The one exception is the
+// imported CLI's own release check, answered locally (isUpstreamReleaseCheck).
 func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if isUpstreamReleaseCheck(req.URL) {
+		return upstreamReleaseCheckRefusal(req), nil
+	}
 	if _, ok := t.hosts()[req.URL.Host]; !ok {
 		return t.base.RoundTrip(req)
 	}
@@ -79,6 +83,41 @@ func (t *controlPlaneTransport) RoundTrip(req *http.Request) (*http.Response, er
 		}
 	}
 	return t.base.RoundTrip(clone)
+}
+
+// upstreamLatestRelease is the URL the imported CLI's version client polls
+// (render-oss/cli pkg/client/version: cfg.RepoURL + "/releases/latest").
+var upstreamLatestRelease = func() *url.URL {
+	parsed, _ := url.Parse(strings.TrimSuffix(cfg.RepoURL, "/") + "/releases/latest")
+	return parsed
+}()
+
+// isUpstreamReleaseCheck reports whether u is the imported CLI's own release
+// check. After `bex login` upstream compares the pinned Render CLI version
+// against render-oss/cli releases and, whenever upstream has moved on, tells a
+// bex user to install Render's CLI from render.com. Bex's own release channel
+// (internal/update) already owns update hints, so that check is answered
+// locally instead of reaching GitHub.
+func isUpstreamReleaseCheck(u *url.URL) bool {
+	return upstreamLatestRelease != nil &&
+		strings.EqualFold(u.Host, upstreamLatestRelease.Host) &&
+		strings.TrimSuffix(u.Path, "/") == upstreamLatestRelease.Path
+}
+
+// upstreamReleaseCheckRefusal is a non-200 reply: the upstream version client
+// treats it as an error, and every caller drops the banner on error.
+func upstreamReleaseCheckRefusal(req *http.Request) *http.Response {
+	return &http.Response{
+		Status:        "404 Not Found",
+		StatusCode:    http.StatusNotFound,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        http.Header{},
+		Body:          http.NoBody,
+		ContentLength: 0,
+		Request:       req,
+	}
 }
 
 // controlPlaneHosts is the set of hosts that belong to the configured control

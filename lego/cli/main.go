@@ -21,6 +21,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/upgrade"
 	"github.com/render-oss/cli/cmd"
 	"github.com/render-oss/cli/pkg/cfg"
+	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
@@ -70,11 +71,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	notice := startUpdateCheck()
+	// `bex login` gets the explicit check, the way upstream's login ended with
+	// its own release banner — which the bridge suppresses because it
+	// advertised render-oss/cli releases. Every other command keeps the
+	// passive, TTY-only notice.
+	login := loginCommand(os.Args[1:])
+	ttyGate := stderrIsTTY
+	if login != nil {
+		ttyGate = nil
+	}
+	notice := startUpdateCheck(ttyGate)
 	exitCode := cmd.Execute()
 	releaseTrust()
-	printUpdateNotice(os.Stderr, notice)
+	if login == nil || loginCompleted(login, exitCode) {
+		printUpdateNotice(os.Stderr, notice)
+	}
 	os.Exit(exitCode)
+}
+
+// loginCommand returns the upstream `login` command when args invoke it.
+func loginCommand(args []string) *cobra.Command {
+	target, _, err := cmd.RootCmd.Find(args)
+	if err != nil || target == nil || target.Name() != "login" || target.Parent() != cmd.RootCmd {
+		return nil
+	}
+	return target
+}
+
+// loginCompleted reports whether the login run ended authenticated, as
+// opposed to failing or only printing its help.
+func loginCompleted(login *cobra.Command, exitCode int) bool {
+	if exitCode != 0 {
+		return false
+	}
+	help := login.Flags().Lookup("help")
+	return help == nil || !help.Changed
 }
 
 // provisionPostgresTrust points a `psql`/`pgcli` invocation at its database's
@@ -126,11 +157,11 @@ func printVersion(w io.Writer) {
 	}
 }
 
-// startUpdateCheck begins the gh-style passive check concurrently with the
-// command so most invocations never wait on the network; nil means fully
-// gated off.
-func startUpdateCheck() <-chan *update.Release {
-	if !update.Allowed(bexVersion, os.LookupEnv, stderrIsTTY) {
+// startUpdateCheck begins the gh-style check concurrently with the command so
+// most invocations never wait on the network; nil means fully gated off. A
+// nil isTTY drops the interactive gate (see update.Allowed).
+func startUpdateCheck(isTTY func() bool) <-chan *update.Release {
+	if !update.Allowed(bexVersion, os.LookupEnv, isTTY) {
 		return nil
 	}
 	ch := make(chan *update.Release, 1)
@@ -162,7 +193,8 @@ func printUpdateNotice(w io.Writer, ch <-chan *update.Release) {
 }
 
 func printUpgradeHint(w io.Writer, release update.Release) {
-	_, _ = fmt.Fprintf(w, "\nA new release of bex is available: v%s → v%s\n%s\n", bexVersion, release.Version, release.URL)
+	_, _ = fmt.Fprintf(w, "\nA new release of bex is available: v%s → v%s\n%s\nTo upgrade, run: %s\n",
+		bexVersion, release.Version, release.URL, upgrade.InstructionCommand())
 }
 
 // latestRelease resolves the newest bex-cli release; ok is false when the

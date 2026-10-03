@@ -1,6 +1,8 @@
 package bridge
 
 import (
+	"github.com/render-oss/cli/pkg/cfg"
+	"github.com/render-oss/cli/pkg/client/version"
 	"github.com/render-oss/cli/pkg/config"
 	"net/http"
 	"net/http/httptest"
@@ -209,5 +211,59 @@ func TestWorkspaceTransportUsesEnvironmentAndSavedSelection(t *testing.T) {
 func TestWorkspaceHeaderNameIsPinned(t *testing.T) {
 	if WorkspaceHeader != "X-Bex-Workspace" {
 		t.Fatal("update CLI and backend header together")
+	}
+}
+
+// roundTripFunc lets a test observe whether a request reached the network.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestUpstreamReleaseCheckNeverAdvertisesRenderCLI(t *testing.T) {
+	// `bex login` ends with upstream's version check, which would otherwise
+	// print "render vX is available … render.com/docs/cli" whenever Render
+	// ships a release newer than the pin.
+	// Release builds inject the pinned upstream version; "dev" skips the check.
+	originalVersion := cfg.Version
+	cfg.Version = "2.27.0"
+	original := http.DefaultTransport
+	t.Cleanup(func() { http.DefaultTransport, cfg.Version = original, originalVersion })
+	http.DefaultTransport = &controlPlaneTransport{
+		base: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			t.Fatalf("release check reached the network: %s", r.URL)
+			return nil, nil
+		}),
+		version: "1.2.3",
+		hosts:   hostSet(t, "https://api.bex.co/v1/"),
+	}
+
+	newer, err := version.NewClient(cfg.RepoURL).NewVersionAvailable()
+	if err == nil || newer != "" {
+		t.Fatalf("NewVersionAvailable = %q, %v; want an error so the banner is skipped", newer, err)
+	}
+}
+
+func TestOtherReleaseLookupsAreForwarded(t *testing.T) {
+	var reached []string
+	client := &http.Client{Transport: &controlPlaneTransport{
+		base: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			reached = append(reached, r.URL.String())
+			return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Request: r}, nil
+		}),
+		version: "1.2.3",
+		hosts:   hostSet(t, "https://api.bex.co/v1/"),
+	}}
+	for _, u := range []string{
+		"https://api.github.com/repos/bex-co/bex/releases",
+		"https://api.github.com/repos/render-oss/cli/releases/tags/v2.27.0",
+	} {
+		resp, err := client.Get(u)
+		if err != nil {
+			t.Fatalf("get %s: %v", u, err)
+		}
+		_ = resp.Body.Close()
+	}
+	if len(reached) != 2 {
+		t.Fatalf("forwarded %v; only upstream's latest-release check may be answered locally", reached)
 	}
 }

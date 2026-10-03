@@ -55,9 +55,9 @@ BEX_HOST=http://localhost:8090/v1/ bex workspaces -o json
 
 ## Update
 
-`bex -v` prints bex's release identity (`bex vX.Y.Z` plus `compatible with Render CLI v2.27.0`) and reports when a newer [`bex-cli/v*` release](https://github.com/bex-co/bex/releases) exists; after normal commands the same hint appears passively (at most once per 24h, TTY only, never in CI, disable with `BEX_NO_UPDATE_NOTIFIER=1`).
+`bex -v` prints bex's release identity (`bex vX.Y.Z` plus `compatible with Render CLI v2.27.0`) and reports when a newer [`bex-cli/v*` release](https://github.com/bex-co/bex/releases) exists; a successful `bex login` ends with the same hint (in place of upstream's Render CLI banner), and after normal commands it appears passively (at most once per 24h, TTY only, never in CI, disable with `BEX_NO_UPDATE_NOTIFIER=1`).
 
-To update, replace the binary with the newer release:
+Every hint names the command for your install channel — `bex upgrade` for install-script binaries, `brew upgrade bex` for Homebrew. To update, replace the binary with the newer release:
 
 - **Install script:** re-run the one-liner above — it always installs the newest release.
 - **Homebrew:** `brew update && brew upgrade bex`.
