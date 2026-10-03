@@ -135,13 +135,15 @@ export function ServiceRowActions({
   const [checking, setChecking] = useState(false);
   const busy = pending !== null || checking;
 
+  // Render: restart is "Not supported for cron jobs" (w8/040).
+  const noRestart = hideRestart || isCron(service);
   const actions: LifecycleAction[] = hideSuspend
-    ? hideRestart
+    ? noRestart
       ? []
       : ["restart"]
     : service.suspended
       ? ["resume"]
-      : hideRestart
+      : noRestart
         ? ["suspend"]
         : ["suspend", "restart"];
 

@@ -221,14 +221,20 @@ export function ManualDeployButton({
               {t("services.deployMenuClearCache")}
             </PermissionMenuItem>
           )}
-          <DropdownMenuSeparator />
-          <PermissionMenuItem
-            disabled={busy}
-            permissionReason={permissionReason}
-            onSelect={() => openDialog("restart")}
-          >
-            {t("services.deployMenuRestart")}
-          </PermissionMenuItem>
+          {/* Render: restart is "Not supported for cron jobs" — there is
+              no running instance to restart (w8/040). */}
+          {!isCron(service) && (
+            <>
+              <DropdownMenuSeparator />
+              <PermissionMenuItem
+                disabled={busy}
+                permissionReason={permissionReason}
+                onSelect={() => openDialog("restart")}
+              >
+                {t("services.deployMenuRestart")}
+              </PermissionMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

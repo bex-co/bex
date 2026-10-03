@@ -19,6 +19,7 @@ package deploys
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -171,20 +172,38 @@ func TestRestartImageBackedKeepsItsImage(t *testing.T) {
 	}
 }
 
-// commitId is refused for a cron job as caller input, but a restart's commit is
-// the running one, so a repo-backed cron job restarts on it too.
-func TestRestartCronJobKeepsTheLiveCommit(t *testing.T) {
+// Render: restart is "Not supported for cron jobs" (w8/040). The refusal is a
+// named 400 before any mutation, on the verb every surface shares. Caller
+// commitId stays refused for a cron job as well.
+func TestRestartCronJobIsRefused(t *testing.T) {
 	ds := newFakeStore()
 	seedDeploys(ds, store.Deploy{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit})
 	app := repoApp("nightly", "srv-1", "main")
 	app.Spec.Type = appv1alpha1.TypeCronJob
 	svc, cl := newService(ds, app)
+	before := getApp(t, cl, "nightly")
 
-	if _, err := svc.Restart(context.Background(), "nightly"); err != nil {
-		t.Fatalf("Restart cron job: %v", err)
+	_, err := svc.Restart(context.Background(), "nightly")
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "restart is not supported for cron jobs") {
+		t.Fatalf("Restart cron job: want named 400, got %v", err)
 	}
-	if got := getApp(t, cl, "nightly").Spec.BuildCommit; got != runningCommit {
-		t.Errorf("spec.buildCommit = %q, want %q", got, runningCommit)
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(),
+		RequestString: `mutation { restartServer(serviceId: "nightly") { id } }`})
+	if len(res.Errors) != 1 || !strings.Contains(res.Errors[0].Message, "not supported for cron jobs") {
+		t.Fatalf("restartServer on a cron job: errors = %v", res.Errors)
+	}
+	if after := getApp(t, cl, "nightly"); after.Spec.RestartedAt != before.Spec.RestartedAt || after.Spec.BuildCommit != before.Spec.BuildCommit {
+		t.Fatalf("refused restart changed the App: %+v", after.Spec)
+	}
+	if ds.nextID != 0 {
+		t.Fatal("refused restart opened a deploy row")
 	}
 	if _, err := svc.Trigger(context.Background(), "nightly", TriggerParams{CommitID: runningCommit}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("caller commitId on a cron job: want core.ErrBadRequest, got %v", err)
