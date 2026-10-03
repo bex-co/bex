@@ -130,7 +130,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [x] **041** — [Reject invalid health-check paths during Blueprint validation and shared service creation](done/041.md) — **DONE 2026-10-02** ← live CLI QA, 2026-10-02.
 
-- [ ] **042** — [Preserve image-service pre-deploy commands when the CLI clones a service](042.md) (55m) ← live CLI QA, 2026-10-03 UTC.
+- [x] **042** — [Preserve image-service pre-deploy commands when the CLI clones a service](done/042.md) — **DONE 2026-10-02** ← live CLI QA, 2026-10-03 UTC.
 
 - [x] **037** — [GitHub claim-selection disposition](done/037.md) — **already fixed in `c82108964`; verified 2026-09-22**. Account cleanup, workspace cascade, census declaration, and ADR086 policy all present; m164 revalidated both schema guards.
 

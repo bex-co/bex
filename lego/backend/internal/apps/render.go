@@ -515,6 +515,17 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 		if a.Runtime == "image" && svcType == appv1alpha1.TypeCronJob && a.Command != "" {
 			return map[string]any{"startCommand": a.Command}, true
 		}
+		// The same client reads a web/private/worker pre-deploy command only
+		// from envSpecificDetails.preDeployCommand (pkg/service/clone.go:156-159,
+		// 335-346), never the sibling serviceDetails field, so an image clone
+		// silently dropped its migration step (w2/042). Only that command: no
+		// invented build/start fields, and absent when empty.
+		if a.Runtime == "image" && a.PreDeployCommand != "" {
+			switch svcType {
+			case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
+				return map[string]any{"preDeployCommand": a.PreDeployCommand}, true
+			}
+		}
 		return nil, false
 	}
 	if a.Runtime == "docker" {
