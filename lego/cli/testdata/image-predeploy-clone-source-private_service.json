@@ -1,0 +1,33 @@
+{
+  "id": "qa-image-predeploy",
+  "name": "qa-image-predeploy",
+  "immutableName": "qa-image-predeploy",
+  "slug": "qa-image-predeploy",
+  "displayName": "",
+  "type": "private_service",
+  "suspended": "not_suspended",
+  "serviceDetails": {
+    "env": "image",
+    "envSpecificDetails": {
+      "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
+    },
+    "internalAddress": "qa-image-predeploy:3000",
+    "maxShutdownDelaySeconds": 30,
+    "numInstances": 1,
+    "plan": "starter",
+    "port": 3000,
+    "preDeployCommand": "echo QA_PREDEPLOY_MARKER",
+    "runtime": "image"
+  },
+  "imagePath": "docker.io/mendhak/http-https-echo:35",
+  "suspenders": [],
+  "phase": "Running",
+  "replicas": 1,
+  "idleTTLSeconds": 0,
+  "autoDeploy": "no",
+  "autoDeployTrigger": "off",
+  "pushDeliveryMethod": "none",
+  "notifyOnFail": "default",
+  "notificationsToSend": "default"
+}
+
