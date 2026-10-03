@@ -91,9 +91,11 @@ spec:
                 optional: true
             - secretRef:
                 name: bex-static-read-s3
+          # TCP, not an HTTP path: every path on this listener belongs to a
+          # tenant site (w4/m162), so a platform /healthz would shadow theirs.
+          # The listener opens only after the origin credential check passes.
           readinessProbe:
-            httpGet:
-              path: /healthz
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 2
             periodSeconds: 5

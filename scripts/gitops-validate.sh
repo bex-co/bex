@@ -2505,6 +2505,21 @@ if yq -e 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config")
   fail=1
 fi
 
+# Tenant-frontend readiness (w4/m162): every HTTP path on the activator and
+# static-server listeners belongs to a tenant host, so their readiness must be a
+# TCP check on the serving port — an HTTP probe path would need a platform
+# reserved path that shadows the tenant's own /healthz.
+echo "==> tenant frontends probe readiness over TCP, not a tenant HTTP path"
+for render in "$tmp/bex-operator-prod.yaml" "$tmp/bex-operator-default.yaml"; do
+  for want in bex-activator:8888 bex-static-server:8080; do
+    probe="$(yq -N -o=json -I=0 "select(.kind == \"Deployment\" and .metadata.name == \"${want%%:*}\") | .spec.template.spec.containers[0].readinessProbe" "$render" | jq -cS .)"
+    [ "$probe" = "$(jq -cnS --argjson p "${want##*:}" '{tcpSocket:{port:$p},initialDelaySeconds:2,periodSeconds:5}')" ] || {
+      echo "FAIL: ${want%%:*} readinessProbe in $(basename "$render") is $probe, want tcpSocket on ${want##*:}" >&2
+      fail=1
+    }
+  done
+done
+
 # Static publish pull-secret custody (w1/m57, w9/012 chain #3): the publish Job's
 # extract initContainer pulls the built tenant image with bex-registry-pull in
 # the BUILD namespace, minted out-of-band by registry-secrets.sh as the
