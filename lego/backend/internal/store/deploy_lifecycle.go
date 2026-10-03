@@ -78,13 +78,19 @@ func DeployFailureStatus(status string) bool {
 
 // DeployStatusStampsDispatch reports whether TransitionDeploy may stamp
 // started_at from its own clock on reaching status: entering an in-progress
-// (or live) status IS the dispatch moment being observed, while a terminal
-// failure arrived at by a skip is not — stamping it collapsed a 68-second
-// failed build into a one-microsecond duration (w6/m123). Failure closes
+// status IS the dispatch moment being observed. Every terminal status is not:
+// a failure arrived at by a skip collapsed a 68-second failed build into a
+// one-microsecond duration (w6/m123), and a first observation already at live
+// reported an image rollout whose container had been up for 13 seconds as a
+// zero-second deploy that began when it finished (w4/m156). Terminal closes
 // stamp only observed evidence (the operator's recorded build window), or
 // honestly nothing.
 func DeployStatusStampsDispatch(status string) bool {
-	return DeployStatusStartsExecution(status) && !DeployFailureStatus(status)
+	switch status {
+	case DeployBuildInProgress, DeployPreDeployInProgress, DeployUpdateInProgress:
+		return true
+	}
+	return false
 }
 
 // IsTerminalDeployStatus reports whether status is a known terminal state.

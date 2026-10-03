@@ -158,6 +158,19 @@ describe("DeployHeader", () => {
     expect(screen.queryByText("—")).not.toBeInTheDocument();
   });
 
+  // w4/m156: a live deploy whose start was never observed arrives with
+  // GraphQL's empty-string encoding. The header shows no Started fact and no
+  // Duration — not a 0s span ending at the finish — while keeping the facts
+  // that are known.
+  it("shows no start or duration for a finished deploy with an unknown start", () => {
+    render(<DeployHeader deploy={deploy({ startedAt: "" })} />);
+
+    expect(screen.queryByText("Started:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Duration:")).not.toBeInTheDocument();
+    expect(screen.queryByText("0s")).not.toBeInTheDocument();
+    expect(screen.getByText("Finished:")).toBeInTheDocument();
+  });
+
   // w4/m112: a rollout gated on a failing health check used to show a bare
   // "In Progress" for the full 900s budget — the page named no probe, and a
   // user could not tell it from a slow image pull. Live on 2026-09-17 with
@@ -191,7 +204,8 @@ describe("DeployHeader", () => {
       <DeployHeader
         deploy={deploy({
           status: "update_failed",
-          failureReason: "the deploy did not become healthy within the health-gate window",
+          failureReason:
+            "the deploy did not become healthy within the health-gate window",
           stallReason: "",
         })}
       />,
