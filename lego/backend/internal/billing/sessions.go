@@ -103,10 +103,14 @@ func (c *StripeClient) Readiness(ctx context.Context, workspaceID string) (Readi
 	return out, nil
 }
 
-// CreateCheckoutSession creates setup-mode Checkout for the existing Customer
-// and complete metered Subscription. It deliberately sends no line_items and
-// no payment_method_types, so no duplicate Subscription can be created and
-// Stripe's dynamic payment-method selection remains active.
+// CreateCheckoutSession creates setup-mode Checkout without minting anything
+// in Stripe first. A workspace that already owns a Customer reuses
+// it; one that does not gets customer_creation=always, so Stripe creates the
+// Customer only when the user actually submits the form, and completion adopts
+// it and attaches the metered Subscription. Opening the page and walking away
+// therefore leaves no Customer and no cardless Subscription behind. It
+// deliberately sends no line_items and no payment_method_types, so Stripe's
+// dynamic payment-method selection remains active.
 func (c *StripeClient) CreateCheckoutSession(ctx context.Context, workspaceID string, req CheckoutRequest) (HostedSession, error) {
 	if err := c.validateReturnURL(req.SuccessURL); err != nil {
 		return HostedSession{}, fmt.Errorf("successUrl: %w", err)
@@ -114,33 +118,25 @@ func (c *StripeClient) CreateCheckoutSession(ctx context.Context, workspaceID st
 	if err := c.validateReturnURL(req.CancelURL); err != nil {
 		return HostedSession{}, fmt.Errorf("cancelUrl: %w", err)
 	}
-	if err := c.EnsureContract(ctx, workspaceID); err != nil {
-		return HostedSession{}, err
-	}
-	customerID, ok := c.lookupCustomer(workspaceID)
-	if !ok {
-		return HostedSession{}, &stateError{message: "Stripe Customer is not ready"}
-	}
-	subscription, err := c.findSubscriptionObject(ctx, workspaceID, customerID)
+	customerID, found, err := c.findCustomer(ctx, workspaceID)
 	if err != nil {
 		return HostedSession{}, err
 	}
-	if subscription == nil {
-		return HostedSession{}, &stateError{message: "Stripe Subscription is not ready"}
+	var subscription *stripe.Subscription
+	if found {
+		if subscription, err = c.findSubscriptionObject(ctx, workspaceID, customerID); err != nil {
+			return HostedSession{}, err
+		}
 	}
 
 	suffix, err := randomLetters(8)
 	if err != nil {
 		return HostedSession{}, fmt.Errorf("stripe: create Checkout request id: %w", err)
 	}
-	metadata := map[string]string{
-		workspaceMetadataKey:            workspaceID,
-		checkoutSubscriptionMetadataKey: subscription.ID,
-	}
+	metadata := map[string]string{workspaceMetadataKey: workspaceID}
 	params := &stripe.CheckoutSessionParams{
 		Mode:                  stripe.String(string(stripe.CheckoutSessionModeSetup)),
 		Currency:              stripe.String(string(stripe.CurrencyUSD)),
-		Customer:              stripe.String(customerID),
 		ClientReferenceID:     stripe.String(workspaceID),
 		SuccessURL:            stripe.String(req.SuccessURL),
 		CancelURL:             stripe.String(req.CancelURL),
@@ -149,14 +145,23 @@ func (c *StripeClient) CreateCheckoutSession(ctx context.Context, workspaceID st
 		Metadata:              metadata,
 		SetupIntentData:       &stripe.CheckoutSessionSetupIntentDataParams{Metadata: metadata},
 	}
+	if found {
+		params.Customer = stripe.String(customerID)
+	} else {
+		params.CustomerCreation = stripe.String(string(stripe.CheckoutSessionCustomerCreationAlways))
+	}
 	// A setup session has no taxable transaction. Once the operator tax gate is
 	// valid, Checkout collects and saves the location/tax-id inputs that the
-	// existing Subscription's future automatic-tax invoices need.
+	// Subscription's future automatic-tax invoices need. customer_update is only
+	// valid for an existing Customer; a Checkout-created one gets its tax id
+	// from the session and its address from the bound card at adoption.
 	if tax := c.taxReadiness(ctx, subscription); tax.Configured {
 		params.BillingAddressCollection = stripe.String("required")
-		params.CustomerUpdate = &stripe.CheckoutSessionCustomerUpdateParams{
-			Address: stripe.String("auto"),
-			Name:    stripe.String("auto"),
+		if found {
+			params.CustomerUpdate = &stripe.CheckoutSessionCustomerUpdateParams{
+				Address: stripe.String("auto"),
+				Name:    stripe.String("auto"),
+			}
 		}
 		params.TaxIDCollection = &stripe.CheckoutSessionTaxIDCollectionParams{Enabled: stripe.Bool(true)}
 	}
@@ -220,14 +225,17 @@ func (c *StripeClient) CreatePortalSession(ctx context.Context, workspaceID stri
 // or reordered webhooks converge on the same Customer and Subscription state.
 func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession *stripe.CheckoutSession) error {
 	checkout, err := c.verifiedCheckout(ctx, eventSession)
+	if errors.Is(err, errSupersededCheckout) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
-	paymentMethodID, err := c.verifiedSetupPaymentMethod(ctx, checkout)
+	paymentMethod, err := c.verifiedSetupPaymentMethod(ctx, checkout)
 	if err != nil {
 		return err
 	}
-	if err := c.bindDefaultPaymentMethod(ctx, checkout, paymentMethodID); err != nil {
+	if err := c.bindDefaultPaymentMethod(ctx, checkout, paymentMethod); err != nil {
 		return err
 	}
 	// The verified webhook is the sole enforcement-snapshot writer. A failed
@@ -251,11 +259,26 @@ type verifiedCheckout struct {
 	workspaceID   string
 	customerID    string
 	subscription  *stripe.Subscription
+	// checkoutCreatedCustomer is true when the session itself created the
+	// Customer; binding then also seeds its billing address. It derives from
+	// the session, not from whether this delivery adopted it, so a retried
+	// webhook sends a byte-identical bind under the same idempotency key.
+	checkoutCreatedCustomer bool
 }
 
+// errSupersededCheckout reports a completed session whose Checkout-created
+// Customer lost to another Customer the workspace acquired meanwhile (two
+// tabs, both completed). The loser is deleted and the event acknowledged:
+// retrying could never succeed, and the workspace keeps the winner's card.
+var errSupersededCheckout = errors.New("checkout superseded by another workspace Customer")
+
 // verifiedCheckout re-reads the event's session from Stripe and proves the
-// workspace actually owns the Customer and Subscription it names; the event's
-// own metadata is never trusted on its own.
+// workspace owns the Customer it names; the event's own metadata is never
+// trusted on its own. Only bex creates sessions (with its secret key), so the
+// re-read session's metadata is authoritative. A Customer the session itself
+// created (customer_creation=always) and that no workspace has claimed is
+// adopted here; the Subscription is then ensured, so it never exists before a
+// card does.
 func (c *StripeClient) verifiedCheckout(ctx context.Context, eventSession *stripe.CheckoutSession) (verifiedCheckout, error) {
 	if eventSession == nil || eventSession.ID == "" {
 		return verifiedCheckout{}, &inputError{message: "checkout session is missing"}
@@ -270,64 +293,131 @@ func (c *StripeClient) verifiedCheckout(ctx context.Context, eventSession *strip
 		return verifiedCheckout{}, &inputError{message: "checkout session is not a completed setup session in the billing environment"}
 	}
 	workspaceID := session.Metadata[workspaceMetadataKey]
-	claimedSubscriptionID := session.Metadata[checkoutSubscriptionMetadataKey]
-	if workspaceID == "" || claimedSubscriptionID == "" || session.Customer == nil || session.SetupIntent == nil {
+	if workspaceID == "" || session.Customer == nil || session.Customer.ID == "" || session.SetupIntent == nil {
 		return verifiedCheckout{}, &inputError{message: "checkout session ownership metadata is incomplete"}
 	}
+	createdBySession := session.CustomerCreation == stripe.CheckoutSessionCustomerCreationAlways
 	customerID, found, err := c.findCustomer(ctx, workspaceID)
 	if err != nil {
 		return verifiedCheckout{}, err
 	}
-	if !found || customerID != session.Customer.ID {
+	switch {
+	case found && customerID == session.Customer.ID:
+	case !found && createdBySession:
+		if err := c.adoptCheckoutCustomer(ctx, workspaceID, session.ID, session.Customer.ID); err != nil {
+			return verifiedCheckout{}, err
+		}
+		customerID = session.Customer.ID
+	case found && createdBySession:
+		c.discardCheckoutCustomer(ctx, workspaceID, session.Customer.ID)
+		return verifiedCheckout{}, errSupersededCheckout
+	default:
 		return verifiedCheckout{}, &inputError{message: "checkout session Customer does not belong to the workspace"}
 	}
 	subscription, err := c.findSubscriptionObject(ctx, workspaceID, customerID)
 	if err != nil {
 		return verifiedCheckout{}, err
 	}
-	if subscription == nil || subscription.ID != claimedSubscriptionID {
+	// Sessions opened while Checkout still pre-minted the Subscription name it;
+	// such a claim must still match.
+	if claimed := session.Metadata[checkoutSubscriptionMetadataKey]; claimed != "" && (subscription == nil || subscription.ID != claimed) {
 		return verifiedCheckout{}, &inputError{message: "checkout session Subscription does not belong to the workspace"}
 	}
+	if subscription == nil {
+		if err := c.EnsureContract(ctx, workspaceID); err != nil {
+			return verifiedCheckout{}, err
+		}
+		if subscription, err = c.findSubscriptionObject(ctx, workspaceID, customerID); err != nil {
+			return verifiedCheckout{}, err
+		}
+		if subscription == nil {
+			return verifiedCheckout{}, fmt.Errorf("stripe: subscription missing after ensure for workspace %s", workspaceID)
+		}
+	}
 	return verifiedCheckout{
-		sessionID:     session.ID,
-		setupIntentID: session.SetupIntent.ID,
-		workspaceID:   workspaceID,
-		customerID:    customerID,
-		subscription:  subscription,
+		sessionID:               session.ID,
+		setupIntentID:           session.SetupIntent.ID,
+		workspaceID:             workspaceID,
+		customerID:              customerID,
+		subscription:            subscription,
+		checkoutCreatedCustomer: createdBySession,
 	}, nil
+}
+
+// adoptCheckoutCustomer tags a Checkout-created Customer with its workspace and
+// records the mapping. A Customer already tagged for another workspace is
+// refused; one already tagged for this workspace is a replayed adoption.
+func (c *StripeClient) adoptCheckoutCustomer(ctx context.Context, workspaceID, sessionID, customerID string) error {
+	customer, gone, err := c.liveCustomer(ctx, customerID)
+	if err != nil {
+		return err
+	}
+	if gone || !c.expectedLivemode(customer.Livemode) {
+		return &inputError{message: "checkout session Customer is not adoptable"}
+	}
+	if owner := customer.Metadata[workspaceMetadataKey]; owner != "" && owner != workspaceID {
+		return &inputError{message: "checkout session Customer does not belong to the workspace"}
+	}
+	update := &stripe.CustomerParams{}
+	update.Context = ctx
+	update.AddMetadata(workspaceMetadataKey, workspaceID)
+	update.SetIdempotencyKey("bex-adopt-customer-" + sessionID)
+	if _, err := c.sc.Customers.Update(customerID, update); err != nil {
+		return fmt.Errorf("stripe: adopt Checkout Customer for %s: %w", workspaceID, err)
+	}
+	return c.rememberCustomer(ctx, workspaceID, customerID)
+}
+
+// discardCheckoutCustomer deletes a Checkout-created Customer that lost the
+// race to another workspace Customer. Best-effort: the abandoned-checkout
+// reclaimer retries anything left behind.
+func (c *StripeClient) discardCheckoutCustomer(ctx context.Context, workspaceID, customerID string) {
+	c.metrics.Operation("checkout_superseded_customer", "success")
+	if err := c.deleteCustomer(ctx, customerID); err != nil {
+		log.Printf("billing: discard superseded Checkout Customer for %s: %v", workspaceID, err)
+	}
 }
 
 // verifiedSetupPaymentMethod returns the payment method the session's
 // SetupIntent succeeded on, once both the intent and the method are re-read and
 // proven to belong to the verified Customer.
-func (c *StripeClient) verifiedSetupPaymentMethod(ctx context.Context, checkout verifiedCheckout) (string, error) {
+func (c *StripeClient) verifiedSetupPaymentMethod(ctx context.Context, checkout verifiedCheckout) (*stripe.PaymentMethod, error) {
 	setupParams := &stripe.SetupIntentParams{}
 	setupParams.Context = ctx
 	setup, err := c.sc.SetupIntents.Get(checkout.setupIntentID, setupParams)
 	if err != nil {
-		return "", fmt.Errorf("stripe: retrieve SetupIntent %s: %w", checkout.setupIntentID, err)
+		return nil, fmt.Errorf("stripe: retrieve SetupIntent %s: %w", checkout.setupIntentID, err)
 	}
-	if setup.Status != stripe.SetupIntentStatusSucceeded || setup.PaymentMethod == nil || setup.Customer == nil || setup.Customer.ID != checkout.customerID || setup.Metadata[workspaceMetadataKey] != checkout.workspaceID || setup.Metadata[checkoutSubscriptionMetadataKey] != checkout.subscription.ID {
-		return "", &inputError{message: "SetupIntent does not prove the workspace payment setup"}
+	claimed := setup.Metadata[checkoutSubscriptionMetadataKey]
+	if setup.Status != stripe.SetupIntentStatusSucceeded || setup.PaymentMethod == nil || setup.Customer == nil || setup.Customer.ID != checkout.customerID || setup.Metadata[workspaceMetadataKey] != checkout.workspaceID || (claimed != "" && claimed != checkout.subscription.ID) {
+		return nil, &inputError{message: "SetupIntent does not prove the workspace payment setup"}
 	}
 	paymentMethodID := setup.PaymentMethod.ID
 	pmParams := &stripe.PaymentMethodParams{}
 	pmParams.Context = ctx
 	paymentMethod, err := c.sc.PaymentMethods.Get(paymentMethodID, pmParams)
 	if err != nil {
-		return "", fmt.Errorf("stripe: retrieve PaymentMethod %s: %w", paymentMethodID, err)
+		return nil, fmt.Errorf("stripe: retrieve PaymentMethod %s: %w", paymentMethodID, err)
 	}
 	if paymentMethod.Customer == nil || paymentMethod.Customer.ID != checkout.customerID {
-		return "", &inputError{message: "payment method is not attached to the workspace Customer"}
+		return nil, &inputError{message: "payment method is not attached to the workspace Customer"}
 	}
-	return paymentMethodID, nil
+	return paymentMethod, nil
 }
 
 // bindDefaultPaymentMethod makes the proven method the default on both the
 // Customer and the Subscription. Both idempotency keys derive from the session
 // id, so a replayed or reordered webhook converges on the same state.
-func (c *StripeClient) bindDefaultPaymentMethod(ctx context.Context, checkout verifiedCheckout, paymentMethodID string) error {
+func (c *StripeClient) bindDefaultPaymentMethod(ctx context.Context, checkout verifiedCheckout, paymentMethod *stripe.PaymentMethod) error {
+	paymentMethodID := paymentMethod.ID
 	customerUpdate := &stripe.CustomerParams{InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{DefaultPaymentMethod: stripe.String(paymentMethodID)}}
+	// A Checkout-created Customer carries no address in setup mode (Stripe only
+	// writes it back through customer_update, which needs a pre-existing
+	// Customer). Seed it from the card's billing details so tax location reads
+	// the same as it did for pre-minted Customers.
+	if checkout.checkoutCreatedCustomer {
+		customerUpdate.Address = addressParams(paymentMethod)
+	}
 	customerUpdate.Context = ctx
 	customerUpdate.SetIdempotencyKey("bex-payment-customer-" + checkout.sessionID)
 	if _, err := c.sc.Customers.Update(checkout.customerID, customerUpdate); err != nil {
@@ -516,4 +606,19 @@ func randomLetters(n int) (string, error) {
 		b[i] = alphabet[int(b[i])%len(alphabet)]
 	}
 	return string(b), nil
+}
+
+func addressParams(pm *stripe.PaymentMethod) *stripe.AddressParams {
+	if pm == nil || pm.BillingDetails == nil || pm.BillingDetails.Address == nil {
+		return nil
+	}
+	a := pm.BillingDetails.Address
+	if a.Country == "" {
+		return nil
+	}
+	return &stripe.AddressParams{
+		City: stripe.String(a.City), Country: stripe.String(a.Country),
+		Line1: stripe.String(a.Line1), Line2: stripe.String(a.Line2),
+		PostalCode: stripe.String(a.PostalCode), State: stripe.String(a.State),
+	}
 }

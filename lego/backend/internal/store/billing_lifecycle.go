@@ -185,6 +185,75 @@ func (s *PGStore) ListBillingProviderMappings(ctx context.Context, livemode bool
 	return out, rows.Err()
 }
 
+// BillingCustomerID returns the persisted same-mode Customer for a workspace.
+// A mapping from the other Stripe mode is invisible: its Customer cannot be
+// retrieved with the current key.
+func (s *PGStore) BillingCustomerID(ctx context.Context, workspaceID string, livemode bool) (string, bool, error) {
+	var customerID string
+	err := s.Pool.QueryRow(ctx, `
+		SELECT customer_id FROM billing_provider_mappings
+		WHERE workspace_id = $1 AND livemode = $2`, workspaceID, livemode).Scan(&customerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return customerID, true, nil
+}
+
+// ClaimUnboundBillingCustomers claims a bounded batch of same-mode mappings
+// that never bound a payment method, are not comped, have not opened Checkout
+// within the horizon, and were not examined in the last day. The claim stamps
+// reclaim_checked_at, so a kept mapping waits a day before it is re-read.
+func (s *PGStore) ClaimUnboundBillingCustomers(ctx context.Context, livemode bool, horizon time.Duration, limit int) ([]BillingProviderMapping, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+	rows, err := s.Pool.Query(ctx, `
+		WITH due AS (
+			SELECT m.workspace_id
+			FROM billing_provider_mappings m
+			JOIN tenants t ON t.id = m.workspace_id
+			WHERE m.livemode = $1
+			  AND m.payment_method_bound_at IS NULL
+			  AND NOT t.billing_comped
+			  AND (m.checkout_started_at IS NULL OR m.checkout_started_at < now() - $2 * interval '1 second')
+			  AND (m.reclaim_checked_at IS NULL OR m.reclaim_checked_at < now() - interval '1 day')
+			ORDER BY m.reclaim_checked_at NULLS FIRST, m.workspace_id
+			FOR UPDATE OF m SKIP LOCKED
+			LIMIT $3
+		)
+		UPDATE billing_provider_mappings m SET reclaim_checked_at = now()
+		FROM due WHERE m.workspace_id = due.workspace_id
+		RETURNING m.workspace_id, m.customer_id, COALESCE(m.subscription_id, ''), m.livemode, m.updated_at`,
+		livemode, horizon.Seconds(), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []BillingProviderMapping
+	for rows.Next() {
+		var m BillingProviderMapping
+		if err := rows.Scan(&m.WorkspaceID, &m.CustomerID, &m.SubscriptionID, &m.Livemode, &m.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// DeleteUnboundBillingProviderMapping drops a reclaimed workspace's mapping so
+// the next Checkout starts clean. The predicate re-checks the binding: a card
+// bound between claim and delete keeps its row.
+func (s *PGStore) DeleteUnboundBillingProviderMapping(ctx context.Context, workspaceID, customerID string) error {
+	_, err := s.Pool.Exec(ctx, `
+		DELETE FROM billing_provider_mappings
+		WHERE workspace_id = $1 AND customer_id = $2 AND payment_method_bound_at IS NULL`,
+		workspaceID, customerID)
+	return err
+}
+
 // TouchBillingProviderMapping rotates a mapping to the back of the bounded
 // reconciliation queue after every attempt. That prevents the oldest 500
 // workspaces (including a permanently failing one) from starving the rest.

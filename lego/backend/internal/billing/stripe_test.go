@@ -115,6 +115,7 @@ type billingStateStoreFake struct {
 	boundAt            []time.Time
 	checkoutsStarted   []string
 	checkoutStartedErr error
+	mappings           []store.BillingProviderMapping
 }
 
 func (f *billingStateStoreFake) MarkCheckoutStarted(_ context.Context, workspaceID string, _ time.Time) error {
@@ -122,8 +123,18 @@ func (f *billingStateStoreFake) MarkCheckoutStarted(_ context.Context, workspace
 	return f.checkoutStartedErr
 }
 
-func (f *billingStateStoreFake) UpsertBillingProviderMapping(context.Context, store.BillingProviderMapping) error {
+func (f *billingStateStoreFake) UpsertBillingProviderMapping(_ context.Context, m store.BillingProviderMapping) error {
+	f.mappings = append(f.mappings, m)
 	return nil
+}
+
+func (f *billingStateStoreFake) BillingCustomerID(_ context.Context, workspaceID string, _ bool) (string, bool, error) {
+	for i := len(f.mappings) - 1; i >= 0; i-- {
+		if f.mappings[i].WorkspaceID == workspaceID {
+			return f.mappings[i].CustomerID, true, nil
+		}
+	}
+	return "", false, nil
 }
 
 func (f *billingStateStoreFake) EnsureBillingLifecycle(_ context.Context, workspaceID string) (store.BillingLifecycle, error) {
@@ -764,12 +775,12 @@ func TestStripeCreateCheckoutSessionUsesExistingContractAndDynamicPaymentMethods
 		t.Fatalf("Checkout create calls = %d, want 1", len(requests))
 	}
 	body := requests[0].body
-	for _, want := range []string{"mode=setup", "currency=usd", "customer=cus_1", "client_reference_id=tea-a", "metadata[bex_workspace]=tea-a", "metadata[bex_subscription]=sub_1", "setup_intent_data[metadata][bex_workspace]=tea-a"} {
+	for _, want := range []string{"mode=setup", "currency=usd", "customer=cus_1", "client_reference_id=tea-a", "metadata[bex_workspace]=tea-a", "setup_intent_data[metadata][bex_workspace]=tea-a"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Checkout body missing %q: %s", want, body)
 		}
 	}
-	for _, forbidden := range []string{"payment_method_types", "line_items", "subscription_data"} {
+	for _, forbidden := range []string{"payment_method_types", "line_items", "subscription_data", "customer_creation"} {
 		if strings.Contains(body, forbidden) {
 			t.Errorf("Checkout body unexpectedly contains %q: %s", forbidden, body)
 		}
@@ -854,8 +865,8 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
 		}
 	})
-	c.storeCustomer("tea-a", "cus_1")
 	state := &billingStateStoreFake{}
+	_ = state.UpsertBillingProviderMapping(context.Background(), store.BillingProviderMapping{WorkspaceID: "tea-a", CustomerID: "cus_1"})
 	c.state = state
 	c.taxCode = "txcd_confirmed"
 	c.taxBehavior = "exclusive"

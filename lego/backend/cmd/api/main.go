@@ -859,6 +859,10 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			base.Payment = &billing.PaymentGate{Store: st}
 			// ADR075 D7: "all" widens RequirePlanBilling to the free tier too.
 			base.PaymentAllPlans = requirePaymentMethod == paymentMethodAllPlans
+			// Reclaim Customers that never bound a card. Gate-on only —
+			// with the gate off the emitter provisions cardless Customers on
+			// purpose and would immediately re-mint them.
+			go (&billing.CheckoutReclaimer{Store: st, Provider: stripeClient, Metrics: billingMetrics}).Run(ctx)
 		}
 		stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
 		// Workspace-delete Stripe teardown (w1/m61): cancel the workspace's

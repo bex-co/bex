@@ -121,6 +121,11 @@ type BillingStateStore interface {
 	EnsureBillingLifecycle(context.Context, string) (store.BillingLifecycle, error)
 	SetPaymentMethodBound(context.Context, string, time.Time) error
 	MarkCheckoutStarted(context.Context, string, time.Time) error
+	// BillingCustomerID reads the persisted same-mode mapping. findCustomer
+	// consults it before Customer Search, whose index lags writes — a Customer
+	// adopted at Checkout completion is invisible to Search for up to a minute,
+	// and a second replica must not mint a duplicate in that window.
+	BillingCustomerID(ctx context.Context, workspaceID string, livemode bool) (string, bool, error)
 }
 
 // compile-time check: the Stripe sink satisfies the emitter's Ingester seam,
@@ -226,7 +231,21 @@ func (c *StripeClient) EnsureCustomer(ctx context.Context, tenantID string) erro
 // this path so a billing_excluded workspace can never gain a Stripe Customer
 // merely because somebody opened its usage page.
 func (c *StripeClient) findCustomer(ctx context.Context, tenantID string) (string, bool, error) {
-	if id, ok := c.lookupCustomer(tenantID); ok {
+	// With persistence wired, the mapping — not this replica's cache — is the
+	// authority: another replica may have reclaimed the Customer and dropped
+	// the row, and a stale cached id would be passed to Checkout or mistaken
+	// for the workspace's winning Customer at completion.
+	if c.state != nil {
+		id, found, err := c.state.BillingCustomerID(ctx, tenantID, c.ExpectedLivemode())
+		if err != nil {
+			return "", false, fmt.Errorf("stripe: read customer mapping for %s: %w", tenantID, err)
+		}
+		if found {
+			c.storeCustomer(tenantID, id)
+			return id, true, nil
+		}
+		c.forgetCustomer(tenantID)
+	} else if id, ok := c.lookupCustomer(tenantID); ok {
 		return id, true, nil
 	}
 	sp := &stripe.CustomerSearchParams{}
@@ -474,5 +493,36 @@ func (c *StripeClient) lookupCustomer(tenantID string) (string, bool) {
 func (c *StripeClient) storeCustomer(tenantID, customerID string) {
 	c.mu.Lock()
 	c.customers[tenantID] = customerID
+	c.mu.Unlock()
+}
+
+// liveCustomer retrieves a Customer; gone reports one that is deleted or
+// missing, which callers treat as already reclaimed.
+func (c *StripeClient) liveCustomer(ctx context.Context, customerID string) (customer *stripe.Customer, gone bool, err error) {
+	params := &stripe.CustomerParams{}
+	params.Context = ctx
+	customer, err = c.sc.Customers.Get(customerID, params)
+	if resourceMissing(err) || (err == nil && customer.Deleted) {
+		return nil, true, nil
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("stripe: retrieve Customer %s: %w", customerID, err)
+	}
+	return customer, false, nil
+}
+
+// deleteCustomer deletes a Customer; one already gone is not an error.
+func (c *StripeClient) deleteCustomer(ctx context.Context, customerID string) error {
+	params := &stripe.CustomerParams{}
+	params.Context = ctx
+	if _, err := c.sc.Customers.Del(customerID, params); err != nil && !resourceMissing(err) {
+		return fmt.Errorf("stripe: delete Customer %s: %w", customerID, err)
+	}
+	return nil
+}
+
+func (c *StripeClient) forgetCustomer(tenantID string) {
+	c.mu.Lock()
+	delete(c.customers, tenantID)
 	c.mu.Unlock()
 }

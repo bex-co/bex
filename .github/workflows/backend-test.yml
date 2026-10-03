@@ -134,6 +134,7 @@ jobs:
           scripts/test_stripe_billing_secret.py
           scripts/test_stripe_billing_operations.py
           scripts/test_stripe_billing_reconcile.py
+          scripts/test_stripe_orphan_audit.py
       - name: stop test OpenBao
         if: always()
         run: docker rm -f backend-test-openbao
