@@ -391,6 +391,19 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
     expect(dialog).not.toHaveTextContent(/instances/);
   });
 
+  it("offers no Restart service for a cron job (Render: not supported, w8/040)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ManualDeployButton
+        service={svc({ type: "cron_job" })}
+        pending={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    expect(screen.queryByText("Restart service")).not.toBeInTheDocument();
+  });
+
   it("Restart service confirms, then restarts on the running release and opens its deploy (w1/m148)", async () => {
     restart.mockResolvedValue("dep-restart-1");
     const user = userEvent.setup();
