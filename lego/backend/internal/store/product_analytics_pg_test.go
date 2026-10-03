@@ -36,7 +36,9 @@ func TestPGProductAnalyticsLifecyclePrivacyAndSampling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	at := time.Now().UTC().Truncate(time.Second)
+	// This sampling sequence exercises one daily record. Keep its two-minute
+	// window away from UTC midnight, when was_live correctly starts over.
+	at := time.Now().UTC().Truncate(24 * time.Hour).Add(12 * time.Hour)
 	event := core.ProductActivity{WorkspaceID: tenant.ID, ResourceID: app.ID, ResourceType: "static_site", EventType: "created", At: at, ActorID: subject, ActorType: "human"}
 	for range 2 {
 		if err := st.RecordProductActivity(ctx, event); err != nil {
