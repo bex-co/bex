@@ -273,3 +273,46 @@ Authenticated browser requests; authentication headers/cookies intentionally exc
   }
 ]
 ```
+
+## Sweep 35 stronger control and precision limit
+
+A subsequent owned native Go fixture (`qa-20261002-files-r35`) supplied complete raw timestamp controls below. Its initial build and image-reuse Restart both have distinct start/finish timestamps; the Restart served the previous secret-file marker as expected. This confirms the fix must preserve existing starts and must not null every successful image/reuse deploy.
+
+There is a separate, expected sampling limit: the Restart application logged startup at 03:36:50 while its observed in-progress start was 03:36:54.304286. Therefore an existing in-progress observation is not an exact process-start measurement. **This milestone does not repair that four-second sampling delay or promise every existing start banner predates every app log.** It removes newly invented terminal-observation starts and uses recorded build-window evidence where available; existing observed starts remain unchanged. The initial 0s image examples have no such distinct in-progress window. This observation narrows the original chronology acceptance rather than expanding the fix into an operator timestamp redesign.
+
+```json
+{
+  "request": {
+    "query": "query($s:String!,$a:String!,$b:String!){first:deploy(serviceId:$s,deployId:$a){id status createdAt startedAt finishedAt} restart:deploy(serviceId:$s,deployId:$b){id status createdAt startedAt finishedAt} server(id:$s){id revision undeployedChanges}}",
+    "variables": {
+      "s": "srv-db07elitm2ss7389qkng",
+      "a": "dep-db07elitm2ss7389qko0",
+      "b": "dep-db07gjoehcmc739j1070"
+    }
+  },
+  "status": 200,
+  "response": {
+    "data": {
+      "first": {
+        "createdAt": "2026-10-03T03:32:38.819208Z",
+        "finishedAt": "2026-10-03T03:35:24.489559Z",
+        "id": "dep-db07elitm2ss7389qko0",
+        "startedAt": "2026-10-03T03:33:54.427336Z",
+        "status": "deactivated"
+      },
+      "restart": {
+        "createdAt": "2026-10-03T03:36:47.0583Z",
+        "finishedAt": "2026-10-03T03:37:06.401953Z",
+        "id": "dep-db07gjoehcmc739j1070",
+        "startedAt": "2026-10-03T03:36:54.304286Z",
+        "status": "live"
+      },
+      "server": {
+        "id": "srv-db07elitm2ss7389qkng",
+        "revision": "rev-2",
+        "undeployedChanges": true
+      }
+    }
+  }
+}
+```
