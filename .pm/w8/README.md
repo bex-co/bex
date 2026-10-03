@@ -75,6 +75,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **037** — [`bex logout` on one machine signs the user out of every CLI session](037.md) (~50m, major) ← `/qa-find-bugs-cli` w8 loop sweep 1, 2026-10-03; consent-session wipe instead of per-grant revoke.
+- [ ] **038** — [`BEX_WORKSPACE=<name>` is documented but every list/get answers "not allowed"](038.md) (~40m, minor) ← same sweep; launcher passes the name as `ownerId`.
+- [ ] **039** — [Health-check-stalled first deploy loses its probe diagnosis to a 900 s restart race](039.md) (~45m, minor) ← same sweep; startup-probe kill lands seconds before settle.
+- [ ] **040** — [Restart is accepted for cron jobs; Render refuses it](040.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 2, 2026-10-03.
+- [ ] **041** — [`blueprints validate` on a zero-byte file answers a bare 400](041.md) (~25m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 4, 2026-10-03.
+- [ ] **042** — [`imageUrl` / deploy-hook `imgURL` deploy an image from any repository](042.md) (~50m, major) ← `/qa-find-bugs-cli` w8 loop sweep 6, 2026-10-03; Render requires the configured repository.
+- [ ] **043** — [`logs --end <t>` drops the line stamped exactly `t` on the log-store path](043.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 7, 2026-10-03.
 - [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.
 - [x] **033** — [Promoted to m49](done/033.md) (2026-10-02); original production findings retained.
 - [x] **034** — [Validate service display names](done/034.md) — **DONE 2026-10-02**: shared named refusals, Unicode/identity controls, full backend/lint checks, 135 live checks and fixture cleanup passed.
