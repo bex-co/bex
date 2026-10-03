@@ -196,7 +196,8 @@ func TestProductInventoryProjectsAppsAndKeyValue(t *testing.T) {
 func TestPGProductInventoryCompleteSnapshots(t *testing.T) {
 	st, pool, tenant := openDatastoreTestStore(t)
 	ctx := context.Background()
-	at := time.Now().UTC().Add(-time.Hour).Truncate(5 * time.Minute)
+	// Keep this same-day readiness sequence away from a UTC day boundary.
+	at := time.Now().UTC().Truncate(24 * time.Hour).Add(-time.Hour)
 	t.Cleanup(func() { _, _ = pool.Exec(ctx, "DELETE FROM product_inventory_batches WHERE bucket>=$1", at) })
 	resource := ids.New(ids.Postgres)
 	item := productInventoryResource{ID: resource, Workspace: tenant.ID, Kind: "postgres", State: "failed", CreatedAt: at.Add(-time.Minute)}
