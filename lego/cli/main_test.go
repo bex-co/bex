@@ -914,12 +914,13 @@ func TestBexNestedHelp(t *testing.T) {
 		{"workspace set", []string{"$HOME/.bex/cli.yaml", "$HOME/.bex/state", "BEX_CLI_CONFIG_DIR", "BEX_CLI_CONFIG_PATH", "RENDER_CLI_CONFIG_PATH", "RENDER_CLI_CONFIG_DIR"}, []string{"$HOME/.render"}},
 		{"blueprints validate", []string{"render.yaml", "bex blueprints validate"}, []string{"bex.yaml"}},
 		// w7/045: double-quoted command references and "your Render workspace"
-		// in the ea sandbox family, and the render.com job-plan link.
+		// in the ea sandbox family, and the render.com job-plan link (whose
+		// replacement must not cite a nonexistent `services get`, w2/044).
 		{"ea sandboxes", []string{"your Bex workspace", "\"bex ea sandbox-groups\"", "\"bex ea sandboxes snapshots create\"", "\"bex ea sandboxes create --snapshot-id\""}, []string{"Render workspace", "\"render "}},
 		{"ea sandboxes snapshots", []string{"your Bex workspace", "\"bex ea sandboxes create --snapshot-id\""}, []string{"Render workspace", "\"render "}},
 		{"ea sandboxes snapshots create", []string{"\"bex ea sandboxes snapshots get\""}, []string{"\"render "}},
 		{"ea sandbox-groups", []string{"your Bex workspace"}, []string{"Render workspace", "\"render "}},
-		{"jobs create", []string{"bex jobs create srv-abc123", "--plan-id plan-srv-006"}, []string{"render.com/docs", "render jobs create"}},
+		{"jobs create", []string{"bex jobs create srv-abc123", "--plan-id plan-srv-006"}, []string{"render.com/docs", "render jobs create", "services get"}},
 	}
 	for _, resource := range []string{"postgres", "pg", "keyvalues", "kv"} {
 		for _, action := range []string{"create", "get", "update", "delete", "suspend", "resume"} {

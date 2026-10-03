@@ -102,12 +102,11 @@ treated as unset.`
 		}
 		// `jobs create` cites render.com's one-off-job plan list; Bex has no
 		// such page and hostnames are deliberately never rewritten globally, so
-		// the comment is replaced narrowly (w7/045). The example commands below
-		// it still go through RewriteText.
+		// the comment is dropped narrowly (w7/045, w2/044). The example commands
+		// below it still go through RewriteText.
 		if c.Name() == "create" && c.Parent() != nil && c.Parent().Name() == "jobs" && c.Parent().Parent() == root {
 			c.Example = strings.ReplaceAll(c.Example,
-				"  # See https://render.com/docs/one-off-jobs for available job plans\n",
-				"  # Plan IDs match the service plans listed by `bex services get`\n")
+				"  # See https://render.com/docs/one-off-jobs for available job plans\n", "")
 		}
 		c.Flags().VisitAll(rewriteFlag)
 		c.PersistentFlags().VisitAll(rewriteFlag)
