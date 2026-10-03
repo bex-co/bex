@@ -82,7 +82,8 @@ var (
 )
 
 // QueryResult is the columns/rows shape the query_render_postgres tool serializes.
-// Rows carry pgx's decoded Go values (JSON-marshalled by the MCP layer); Truncated
+// Rows carry pgx's decoded Go values, encoded once by encoding/json on REST and
+// MCP (mcputil.AddExactJSONTool keeps that exact on MCP); Truncated
 // signals the row cap was hit and more rows exist.
 type QueryResult struct {
 	Columns   []string `json:"columns"`

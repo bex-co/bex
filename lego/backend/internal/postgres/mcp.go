@@ -150,15 +150,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, nil
 	})
 
-	mcputil.AddTool(srv, &mcp.Tool{
+	// Exact-JSON registration: a typed output would round bigints above 2^53
+	// and exact numerics through the SDK's float64 re-encoding, so an agent
+	// would read different values than REST and the console (w4/m158).
+	mcputil.AddExactJSONTool(srv, &mcp.Tool{
 		Name:        "query_render_postgres",
 		Description: "Run a read-only SQL query against a managed Postgres database and return the resulting columns and rows. The statement runs inside a read-only transaction with a server-side timeout; writes, DDL and long-running queries are rejected, and large result sets are truncated.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryPostgresArgs) (*mcp.CallToolResult, QueryResult, error) {
-		res, err := s.Query(ctx, in.PostgresID, in.SQL)
-		if err != nil {
-			return nil, QueryResult{}, err
-		}
-		return nil, res, nil
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryPostgresArgs) (QueryResult, error) {
+		return s.Query(ctx, in.PostgresID, in.SQL)
 	})
 
 	s.registerLifecycleMCP(srv)
