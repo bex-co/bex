@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m157** — [Preserve Postgres special numeric query values](m157/README.md) (6 tasks) ← QA sweep 37
+- [ ] **m157** — [Preserve non-finite Postgres query values](m157/README.md) (7 tasks) ← QA sweeps 37 and 39
 
 - [ ] **m156** — [Report honest start times for successful deploys](m156/README.md) (6 tasks) ← QA sweep 34
 

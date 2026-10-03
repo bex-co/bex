@@ -48,7 +48,7 @@ No global driver fork or broad dependency upgrade is necessary to define this lo
 - Consumer `dashboard/src/features/databases/hooks/use-execute-database-query.ts:39-45` preserves the returned string cells. `components/sql-console.tsx:170-185` renders the value directly, mapping only null/undefined to NULL. Existing per-query loading/error handling is retained before settlement; do not optimistically fabricate rows or label an error an empty result.
 - Resource census: Postgres only owns this SQL executor. Web/static/cron/worker/private are App services and Key Value uses Valkey, with no entry into this Postgres result collector. No other resource family needs a special-number patch.
 - Security/error neighbors stay unchanged: missing/foreign IDs and auth checks, protected-environment confirmation for writable execution, statement timeout, bad SQL and SQLSTATE-safe errors, oversized result rejection, readonly write refusal. Do not expose internal driver details, row values, or connection secrets via logs/errors. Suspended-database connection failure remains separately tracked by **w4/177**.
-- Unverified live: writable INSERT/UPDATE RETURNING special values (all probes were SELECT read-only), multidimensional array presentation, composite/extension types, special dates/timestamps, bytea/time controls, and authenticated Render output for these values. Those are not claimed observed defects. Cover the relevant write-result and nested-array behavior in local tests; unrelated date/composite API redesign is out of scope.
+- Unverified live: writable INSERT/UPDATE RETURNING special values (all probes were SELECT read-only), multidimensional array presentation, composite/extension types, special dates/timestamps (subsequently verified in temporal-finding.md), bytea/time controls, and authenticated Render output for these values. Those are not claimed observed defects. Cover the relevant write-result and nested-array behavior in local tests; unrelated date/composite API redesign is out of scope.
 
 ## Dedupe and contract
 
@@ -411,3 +411,7 @@ GraphQL is POST https://api.bex.co/graphql with application/json and authenticat
   "responseRaw": "{\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\"}\n"
 }
 ```
+
+## Additional verified scope
+
+Sweep 39 independently confirmed temporal infinity markers becoming integers. See [temporal-finding.md](temporal-finding.md); t007 owns that additional mechanism before parity and closeout. Ordinary finite time representation remains unchanged.
