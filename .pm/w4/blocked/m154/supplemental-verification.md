@@ -110,3 +110,5 @@ Postgres, hosted API or deployment claim is made.
 ## Concurrent implementation reconciliation
 
 Commit `703068251` independently shipped the same URL component fix during our verification. Its runtime/API/UI implementation and stronger all-control-character guards are retained. Our addition bounds configured and expanded runtime path allocations; duplicate adapter/Recorder tests were consolidated while retaining real-wire/cache and existing-App Blueprint evidence. Prior full-suite results above describe the independently verified implementation; final merged checks follow.
+
+Final merged verification passed with both upstream and supplemental tests: complete static-server package 0.931s, complete Apps package 8.173s, and all-module lint/dead-code analysis with zero issues. Handler-level expansion tests prove both redirect and rewrite refuse amplified paths before any destination or SPA fallback fetch.
