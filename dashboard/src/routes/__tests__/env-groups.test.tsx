@@ -490,6 +490,7 @@ describe("EnvGroupDetailPage", () => {
         secretFiles: [],
       },
       "deploy",
+      "egr1_test",
     );
   });
 

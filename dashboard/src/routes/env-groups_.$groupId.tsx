@@ -206,7 +206,11 @@ export function EnvGroupDetailPage() {
                   />
                 </CardContent>
               </Card>
+              {/* Keyed by group: a draft, its base revision, and a pending
+                  rollout retry belong to one group and never carry across a
+                  route-param switch to another (w4/m161). */}
               <EnvGroupEditors
+                key={group.id}
                 group={group}
                 loading={loading}
                 error={error}
