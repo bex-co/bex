@@ -167,6 +167,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **176** — [Correct environment-group link/unlink retention promises](176.md) — minor copy regression of w1/113 and w2/m94; live auto-deploy-off links changed serving revisions while the page promised retention. Preserve accepted reconciliation and distinguish content-update gating. Estimate 50m.
+
 - [x] **175** — [Persist superseded build-ended event reasons](done/175.md) — done 2026-10-02: migration 0138, real-Postgres producer and migration regressions, full store/backend checks.
 
 - [x] **174** — [Keep first Blueprint cron reapply idempotent](done/174.md) — done 2026-10-02; unchanged reapply preserves initial startup semantics, explicit clearing removes the legacy fallback, native/whitespace serialized regressions and full backend/lint pass.
