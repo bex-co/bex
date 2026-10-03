@@ -25,10 +25,12 @@ function createClock(intervalMs: number) {
     },
     subscribe: (listener: () => void) => {
       listeners.add(listener);
+      const age = Date.now() - now;
+      if (listeners.size === 1 || age >= intervalMs || age < 0) refresh();
       if (listeners.size === 1) {
-        refresh();
         timer = setInterval(refresh, intervalMs);
         document.addEventListener("visibilitychange", onVisibility);
+        window.addEventListener("focus", refresh);
       }
       return () => {
         listeners.delete(listener);
@@ -36,6 +38,7 @@ function createClock(intervalMs: number) {
           clearInterval(timer);
           timer = undefined;
           document.removeEventListener("visibilitychange", onVisibility);
+          window.removeEventListener("focus", refresh);
         }
       };
     },
@@ -43,7 +46,7 @@ function createClock(intervalMs: number) {
 }
 
 /** Current epoch ms from one shared clock per cadence (one minute by default).
- * Visible-tab resume refreshes immediately after browser timer throttling.
+ * Visible-tab resume and focus refresh immediately after timer throttling.
  * Server/client text can cross a bucket boundary; callers retain their existing
  * suppressHydrationWarning on clock-derived text, as RelativeAge does. */
 export function useNow(intervalMs = 60_000): number {

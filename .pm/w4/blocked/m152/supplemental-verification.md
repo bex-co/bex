@@ -82,3 +82,17 @@ The API subset asserts core/REST last-success and next-run fields and omission. 
 Commit `79910e98c` independently shipped this milestone during verification. Its clock implementation, custom-cadence compatibility, common/deploy regressions, docs and board evidence are retained. Earlier local checks above include a single-cadence hidden-pause implementation that was not shipped; those lifecycle details are historical, not claims about the retained implementation. Additional tests retain only unique cron-header, clock-lifecycle and SessionRow hydration coverage. Final merged checks are recorded below.
 
 Final merged result: seven shared-clock, lifecycle, compact-time, cron-header, deploy-row and session suites passed 73 tests (3.38s), with upstream regressions and the supplemental tests present together. Final merged `yarn lint` passed typecheck, ESLint and unused-code checks.
+
+## Additional freshness and focus verification — 2026-10-02
+
+A second drain retained `79910e98c` and `f3ec97720` after comparing concurrent implementations. Equivalent local SessionRow hydration source/tests and board drafts were archived outside the repository and discarded; the shipped ISO-label/one-time-leaf hydration fix remains authoritative.
+
+Additional changes refresh an overdue active clock when a new reader joins and refresh on window focus. Matching readers retain one interval and one focus/visibility listener pair per cadence; the final unsubscribe removes all of them. Fresh joins keep the existing sample within its cadence, avoiding unnecessary broadcasts; first subscribers, stale samples and clock reversals refresh immediately. No API request, schedule write or loading-policy change was added.
+
+Both stale-active-reader and focus regressions failed against `79910e98c` before the correction. A separate negative control observed eleven renders of an existing reader across ten fresh joins before the freshness guard, versus one afterward. Hook/compact-time controls passed 19 tests. Existing caller regressions also retain the session button's focus, deployment row/timestamp identity, and open exact Local/UTC/Unix tooltip across ticks. The retained upstream hydration and real cron-header controls remain present.
+
+Final merged dashboard validation on `279c04c7f` plus these additions: **466 files / 4,020 tests passed** (118.61 seconds); `yarn lint` passed route generation, both typechecks, ESLint and knip. Three parallel simplify reviews of the final four-file code/test scope found no remaining actionable issue after the freshness guard. Markdown formatting, skill-layout validation and `git diff --check` passed. Existing selected backend cron timestamp/schedule/REST/GraphQL/MCP controls also passed (1.947 seconds), using local fixtures.
+
+The 27-site/18-file source census and route/family coverage remain unchanged. These are local contract/component checks. Dashboard release, the two fresh hosted clock samples, API/scheduler/log controls, desktop/mobile inspection, exact fixture removal and session revocation still gate t003/t006. No production fixture or session was created by this additional verification.
+
+After the final pre-ship pull to `6c27fa5ed` (unrelated static/path/settings changes), all seven clock, lifecycle, compact-time, cron-header, deployment and session suites passed **76 tests** (11.62 seconds). The full-suite result above records its earlier base explicitly.
