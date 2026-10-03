@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import { LogsDocument } from "@/graphql/definitions";
 import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 import { dedupeLogLines, toLogLines } from "../lib/map";
-import { useOlderLogPages } from "./use-older-log-pages";
+import { logReadAccessDenied, useOlderLogPages } from "./use-older-log-pages";
 import {
   LOG_PAGE_SIZE,
   LOG_TYPE_ALL,
@@ -72,6 +72,7 @@ export function useLogHistory(
   resource: string,
   filters: LogFilters,
   window?: { startTime: string; endTime: string },
+  readerSelection?: string,
 ): UseLogHistoryResult {
   const variables = useMemo(
     () => ({
@@ -107,25 +108,76 @@ export function useLogHistory(
     errorPolicy: "all",
   });
 
-  const pages = useOlderLogPages(variables, data?.logs);
-
+  const readerKey = JSON.stringify([
+    resource,
+    filters.type,
+    filters.text,
+    filters.level,
+    filters.instance,
+    filters.statusCode,
+    filters.method,
+    filters.path,
+    readerSelection ?? window,
+  ]);
+  const denied = !data?.logs && logReadAccessDenied(error);
+  const pages = useOlderLogPages(variables, data?.logs, {
+    readerKey,
+    blocked: denied,
+  });
+  const readError = error ?? pages.error;
+  const blocked = denied || logReadAccessDenied(pages.error);
   const firstPage = useMemo(
     () => toLogLines(data?.logs?.logs),
     [data?.logs?.logs],
   );
+  const headKey = JSON.stringify([readerKey, blocked]);
+  const [head, setHead] = useState({
+    key: headKey,
+    firstPage,
+    lower: window?.startTime,
+    lines: blocked ? [] : firstPage,
+  });
+  if (
+    head.key !== headKey ||
+    head.firstPage !== firstPage ||
+    head.lower !== window?.startTime
+  ) {
+    const retained =
+      !blocked &&
+      head.key === headKey &&
+      (readerSelection !== undefined || !data?.logs)
+        ? head.lines
+        : [];
+    const lower = Date.parse(window?.startTime ?? "");
+    setHead({
+      key: headKey,
+      firstPage,
+      lower: window?.startTime,
+      lines: blocked
+        ? []
+        : dedupeLogLines([...retained, ...firstPage]).filter(
+            (line) => !(Date.parse(line.timestamp) < lower),
+          ),
+    });
+  }
   const lines = useMemo(
-    () => dedupeLogLines([...pages.older, ...firstPage]),
-    [pages.older, firstPage],
+    () =>
+      blocked
+        ? []
+        : dedupeLogLines([...pages.older, ...head.lines]).sort(
+            (a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp),
+          ),
+    [blocked, pages.older, head.lines],
   );
 
   const storeUnavailable =
-    !!error && error.message.includes(STORE_UNAVAILABLE_MARKER);
-  const timedOut = hasGraphQLErrorCode(error, QUERY_TIMEOUT);
+    !!readError && readError.message.includes(STORE_UNAVAILABLE_MARKER);
+  const timedOut = hasGraphQLErrorCode(readError, QUERY_TIMEOUT);
 
   return {
     lines,
     loading: loading && lines.length === 0,
-    error,
+    error: readError,
     storeUnavailable,
     timedOut,
     hasMore: pages.hasMore,

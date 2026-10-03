@@ -384,3 +384,38 @@ describe("LogViewer zero-result empty state (w6/m47, w6/m111)", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("LogViewer populated background failures", () => {
+  it.each(["transport", "timeout", "no-store"])(
+    "keeps the reader mounted with an honest %s alert",
+    (failure) => {
+      historyState.lines = [
+        {
+          key: "reader-row",
+          timestamp: new Date(Date.now() - 60_000).toISOString(),
+          time: "12:00:00",
+          instance: "pod",
+          message: "retained investigation row",
+          type: "app",
+          level: "",
+          method: "",
+          statusCode: "",
+          spans: null,
+        },
+      ];
+      const { container, rerender } = render(
+        <LogViewer resource="web" initialLive={false} />,
+      );
+      const viewport = container.querySelector("[data-log-viewport]");
+      historyState.error = new Error("background request failed");
+      historyState.timedOut = failure === "timeout";
+      historyState.storeUnavailable = failure === "no-store";
+      rerender(<LogViewer resource="web" initialLive={false} />);
+      expect(container.querySelector("[data-log-viewport]")).toBe(viewport);
+      expect(
+        screen.getByText("retained investigation row"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+    },
+  );
+});
