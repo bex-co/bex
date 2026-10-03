@@ -79,7 +79,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **038** — [`BEX_WORKSPACE=<name>` resolves to the workspace id](done/038.md) — **DONE 2026-10-03**: launcher resolves a name once via `GET /v1/owners?name=` (unknown/duplicate names exit 1 with named errors); ships to users with the next `bex-cli/v*` release.
 - [x] **039** — [A first deploy stalled on its health check keeps the probe diagnosis at the deadline](done/039.md) — **DONE 2026-10-03**: settle falls back to the current-generation Ready stall diagnosis when the late restart hides it from the pod scan.
 - [x] **040** — [Restart is refused for cron jobs, like Render](done/040.md) — **DONE 2026-10-03**: named 400 on every surface before any mutation; dashboard offers no Restart on a cron job.
-- [ ] **041** — [`blueprints validate` on a zero-byte file answers a bare 400](041.md) (~25m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 4, 2026-10-03.
+- [x] **041** — [`blueprints validate` on a zero-byte file returns a validation result](done/041.md) — **DONE 2026-10-03**: empty manifests get `valid:false` "one YAML document"; malformed requests name the missing field.
 - [x] **042** — [`imageUrl` / deploy-hook `imgURL` must keep the configured repository](done/042.md) — **DONE 2026-10-03**: Render's host/repository/name rule enforced in the shared trigger validator; named 400 on REST, GraphQL, MCP and the hook; production had no cross-repository overrides.
 - [ ] **043** — [`logs --end <t>` drops the line stamped exactly `t` on the log-store path](043.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 7, 2026-10-03.
 - [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.

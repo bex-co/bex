@@ -2941,23 +2941,17 @@ func TestRESTValidateBlueprintRenderCLIMultipartInvalidReturnsValidationResult(t
 	}
 }
 
-func TestRESTValidateBlueprintRenderCLIMultipartRequiresOwnerAndFile(t *testing.T) {
+// A missing ownerId is a 400; a zero-byte file is a Blueprint to validate
+// (w8/041 — see TestValidateBlueprintEmptyManifestAndNamedRefusals).
+func TestRESTValidateBlueprintRenderCLIMultipartRequiresOwner(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	for _, tc := range []struct {
-		name     string
-		ownerID  string
-		manifest string
-	}{{"missing owner", "", stackManifest}, {"empty file", "tea-workspace", ""}} {
-		t.Run(tc.name, func(t *testing.T) {
-			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, multipartBlueprintRequest(t, tc.ownerID, "render.yaml", tc.manifest))
-			if rec.Code != http.StatusBadRequest {
-				t.Errorf("got %d (%s), want 400", rec.Code, rec.Body)
-			}
-		})
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, multipartBlueprintRequest(t, "", "render.yaml", stackManifest))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "ownerId is required") {
+		t.Errorf("got %d (%s), want 400 naming ownerId", rec.Code, rec.Body)
 	}
 }
 
