@@ -122,7 +122,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] [040 — Keep the product analytics sampling test inside its intended UTC day](040.md) ← fresh integration validation, 2026-10-02
+- [x] [040 — Keep the product analytics sampling test inside its intended UTC day](done/040.md) — **DONE 2026-10-02** ← fresh integration validation, 2026-10-02
 
 - [x] [039 — Honor instance filters for pre-deploy log reads](done/039.md) — **DONE 2026-10-02** ← w2/m167 consumer audit, 2026-10-02
 
