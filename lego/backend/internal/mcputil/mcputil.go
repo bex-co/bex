@@ -23,9 +23,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"runtime/debug"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -61,6 +63,46 @@ func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, O
 		}()
 		res, out, err = h(ctx, req, in)
 		return res, out, core.MCPError(err)
+	})
+}
+
+// AddExactJSONTool registers a tool whose successful output must reach the
+// client byte-for-byte as encoding/json writes it. A typed AddTool output is
+// marshaled, then decoded into map[string]any by the SDK's output-schema step
+// and re-encoded: every JSON number passes through float64 on the way, so an
+// int64 above 2^53 or an exact pgtype.Numeric loses digits in BOTH
+// structuredContent and the generated text block (w4/m158). This seam marshals
+// Out once, puts that RawMessage in structuredContent and the same bytes in the
+// text block, and returns a nil output so the SDK skips its re-encoding.
+//
+// Everything else is the AddTool contract: the SDK still validates the typed In
+// arguments, errors keep their code and redaction, a panic is isolated, and
+// tools/list advertises the output schema derived from Out exactly as a typed
+// registration would. The shape guarantee comes from Out being a concrete Go
+// type, not from re-validating the bytes (which would reintroduce the float64
+// decode). Opt in only where exact numbers matter; ordinary tools stay typed.
+func AddExactJSONTool[In, Out any](s *mcp.Server, t *mcp.Tool, h func(context.Context, *mcp.CallToolRequest, In) (Out, error)) {
+	tool := *t
+	if tool.OutputSchema == nil {
+		schema, err := jsonschema.For[Out](&jsonschema.ForOptions{})
+		if err != nil {
+			panic(fmt.Errorf("AddExactJSONTool %q: output schema: %w", t.Name, err))
+		}
+		tool.OutputSchema = schema
+	}
+	AddTool(s, &tool, func(ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {
+		out, err := h(ctx, req, in)
+		if err != nil {
+			return nil, nil, err
+		}
+		body, err := json.Marshal(out)
+		if err != nil {
+			return nil, nil, err // unclassified: AddTool redacts it to "internal error"
+		}
+		return &mcp.CallToolResult{
+			StructuredContent: json.RawMessage(body),
+			Content:           []mcp.Content{&mcp.TextContent{Text: string(body)}},
+		}, nil, nil
 	})
 }
 
