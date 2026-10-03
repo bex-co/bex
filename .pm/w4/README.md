@@ -169,7 +169,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [x] **175** — [Persist superseded build-ended event reasons](done/175.md) — done 2026-10-02: migration 0138, real-Postgres producer and migration regressions, full store/backend checks.
 
-- [x] **174** — [Keep first Blueprint cron reapply idempotent](done/174.md) — done 2026-10-02; create/reapply command representation agrees, explicit clearing removes the legacy fallback, serialized regression and full backend/lint pass.
+- [x] **174** — [Keep first Blueprint cron reapply idempotent](done/174.md) — done 2026-10-02; unchanged reapply preserves initial startup semantics, explicit clearing removes the legacy fallback, native/whitespace serialized regressions and full backend/lint pass.
 
 - [ ] **173** — [Correct the create-form Project-only membership promise](blocked/173.md) — **BLOCKED (release pipeline deploys dashboard; QA repeats Postgres/Key Value creation, Move, locale/API controls and cleanup)**. English/Chinese copy and local regressions complete.
 
