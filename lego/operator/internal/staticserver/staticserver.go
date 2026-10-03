@@ -216,7 +216,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// requestPath is the visitor's normalized path and stays immutable: custom
 	// headers match against it on every response (Render's request-path
 	// contract, w4/m94), while the (possibly rewritten) served path drives
-	// origin keys, content type, and the default cache policy.
+	// origin keys and content type.
 	requestPath := normalizePath(r.URL.Path)
 
 	// w2/m93: evidence line when this host still dual-reads the legacy
@@ -328,8 +328,8 @@ func serveOriginError(w http.ResponseWriter, site Site, requestPath string, err 
 }
 
 // serveObject writes a successful object response. servedPath (the resolved
-// object) drives content type and cache policy; requestPath (the visitor's
-// path) drives custom header matching.
+// object) drives content type; requestPath (the visitor's path) drives custom
+// header matching.
 func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site, obj Object, servedPath, requestPath string) {
 	// Hold a live-body lease for the whole write: the body stays allocated
 	// until the response reaches the client, so slow clients must count
@@ -348,7 +348,7 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 
 	hdr := w.Header()
 	hdr.Set("Content-Type", contentType(servedPath, obj.ContentType))
-	hdr.Set("Cache-Control", cacheControl(servedPath))
+	hdr.Set("Cache-Control", defaultCacheControl)
 	// Custom headers win over the defaults above (last-write for a given key).
 	applyHeaders(hdr, site.Headers, requestPath)
 
@@ -659,17 +659,15 @@ func contentType(servedPath, originType string) string {
 	return "application/octet-stream"
 }
 
-// cacheControl returns a client/CDN caching policy: HTML is revalidated often (a
-// deploy swaps it), other assets are treated as immutable (build tooling
-// content-hashes them, and each revision lives under its own prefix anyway).
-func cacheControl(servedPath string) string {
-	switch path.Ext(servedPath) {
-	case ".html", ".htm", "":
-		return "public, max-age=0, must-revalidate"
-	default:
-		return "public, max-age=31536000, immutable"
-	}
-}
+// defaultCacheControl is the browser/CDN policy for every successful response
+// without a matching custom Cache-Control rule (w4/m160). Revision prefixes
+// keep origin objects immutable, but browsers key responses by public URL,
+// which survives a republish — so any filename must revalidate, hashed-looking
+// or not. Owners with content-addressed assets opt into long freshness through
+// a header rule. Responses already cached under the pre-m160 one-year
+// immutable policy are not recalled: they stay until eviction, a forced reload,
+// or a new asset URL.
+const defaultCacheControl = "public, max-age=0, must-revalidate"
 
 // drain fully reads and closes an origin body (used by the S3 origin), bounded by
 // maxOriginObjectBytes so a tenant object can't force an unbounded allocation.
