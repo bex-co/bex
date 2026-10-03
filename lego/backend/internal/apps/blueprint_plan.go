@@ -131,6 +131,9 @@ func canonicalSlice[T any](values []T) []T {
 func applyBlueprintCommand(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	if dst.Type == appv1alpha1.TypeCronJob {
 		dst.Command = blueprintDeclaredCommand(want)
+		if dst.Command == "" {
+			dst.StartCommand = "" // Clear the legacy runtime fallback as well.
+		}
 		return
 	}
 	dst.StartCommand = blueprintDeclaredCommand(want)
