@@ -61,7 +61,7 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 			u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
 				"query": {query},
 				"start": {strconv.FormatInt(from.UnixNano(), 10)},
-				"end":   {strconv.FormatInt(to.UnixNano(), 10)},
+				"end":   {lokiEndParam(q, to)},
 				"limit": {strconv.FormatInt(lokiLimit(q), 10)},
 				// Render's direction decides which end of the window `limit` keeps:
 				// backward (default) the newest lines, forward the oldest.
@@ -223,7 +223,7 @@ func NewLokiLabelValuesSource(base string, hc *http.Client) LogLabelValuesSource
 		u := fmt.Sprintf("%s/loki/api/v1/label/%s/values?%s", base, url.PathEscape(lokiLabelFor(label)), url.Values{
 			"query": {lokiSelectorFor(namespace, q)},
 			"start": {strconv.FormatInt(start.UnixNano(), 10)},
-			"end":   {strconv.FormatInt(end.UnixNano(), 10)},
+			"end":   {lokiEndParam(q, end)},
 		}.Encode())
 
 		var lv lokiLabelValuesResponse
@@ -289,6 +289,21 @@ func lokiRange(q LogQuery, now time.Time) (start, end time.Time) {
 		start = end.Add(-lokiLookback)
 	}
 	return start, end
+}
+
+// lokiEndParam is the `end` sent to Loki for a request whose upper bound is to.
+// Loki's query_range and label-values `end` are exclusive, but a caller's End
+// is inclusive: the pod-log path keeps a line stamped exactly End, and the CLI
+// documents --end as "at or before". So when to is the caller-supplied End it
+// goes out one nanosecond later and both sources return the line at End
+// (w8/043). Interior slice boundaries and the defaulted end=now stay as they
+// are, and the paging cursors already sit strictly before their boundary
+// (pageCursors), so pages still neither repeat nor skip a line.
+func lokiEndParam(q LogQuery, to time.Time) string {
+	if !q.End.IsZero() && to.Equal(q.End) {
+		to = to.Add(time.Nanosecond)
+	}
+	return strconv.FormatInt(to.UnixNano(), 10)
 }
 
 // lokiLimit is the query_range line cap. q.Limit is already clamped to Render's

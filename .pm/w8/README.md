@@ -81,7 +81,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **040** — [Restart is refused for cron jobs, like Render](done/040.md) — **DONE 2026-10-03**: named 400 on every surface before any mutation; dashboard offers no Restart on a cron job.
 - [x] **041** — [`blueprints validate` on a zero-byte file returns a validation result](done/041.md) — **DONE 2026-10-03**: empty manifests get `valid:false` "one YAML document"; malformed requests name the missing field.
 - [x] **042** — [`imageUrl` / deploy-hook `imgURL` must keep the configured repository](done/042.md) — **DONE 2026-10-03**: Render's host/repository/name rule enforced in the shared trigger validator; named 400 on REST, GraphQL, MCP and the hook; production had no cross-repository overrides.
-- [ ] **043** — [`logs --end <t>` drops the line stamped exactly `t` on the log-store path](043.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 7, 2026-10-03.
+- [x] **043** — [`logs --end <t>` includes the line stamped exactly `t`](done/043.md) — **DONE 2026-10-03**: Loki receives the caller's End + 1 ns; log windows accept `start == end`; 150-line paging verified gap-free both directions.
+- [ ] **044** — [Log lines are ordered by their timestamp string, so whole-second stamps sort out of place](044.md) (~30m, minor) ← found while fixing 043, 2026-10-03.
 - [x] **032** — [Promoted to m48](done/032.md) (2026-10-02); original evidence retained, implementation tracked in the milestone.
 - [x] **033** — [Promoted to m49](done/033.md) (2026-10-02); original production findings retained.
 - [x] **034** — [Validate service display names](done/034.md) — **DONE 2026-10-02**: shared named refusals, Unicode/identity controls, full backend/lint checks, 135 live checks and fixture cleanup passed.
