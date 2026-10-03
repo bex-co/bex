@@ -124,19 +124,22 @@ func canonicalSlice[T any](values []T) []T {
 	return slices.Clone(values)
 }
 
-// applyBlueprintCommand routes a manifest's startCommand/dockerCommand to the
-// field that service type actually stores it in. specFromCreate has already
-// made the same split on `want` (a cron's Command, everything else's
-// StartCommand), so this reads whichever one carries a value.
+// applyBlueprintCommand retains an unchanged cron StartCommand fallback.
+// Promoting it to Command would replace a native image's baked-in command
+// with a runtime shell override, even when the command text is identical.
 func applyBlueprintCommand(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+	declared := blueprintDeclaredCommand(want)
 	if dst.Type == appv1alpha1.TypeCronJob {
-		dst.Command = blueprintDeclaredCommand(want)
+		if dst.Command == "" && dst.StartCommand == declared {
+			return
+		}
+		dst.Command = declared
 		if dst.Command == "" {
 			dst.StartCommand = "" // Clear the legacy runtime fallback as well.
 		}
 		return
 	}
-	dst.StartCommand = blueprintDeclaredCommand(want)
+	dst.StartCommand = declared
 }
 
 // blueprintDeclaredCommand is the command a compiled manifest declared,
