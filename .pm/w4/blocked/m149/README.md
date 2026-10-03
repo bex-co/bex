@@ -45,3 +45,7 @@ three API read shapes, and run the corrected audit. Optional S3 prerequisites
 remain explicit skips. Clean up the owned fixtures and revoke the session.
 [Verification](verification.md) separates local/fake-controller coverage from
 real cert-manager, garbage collection and hosted acceptance.
+
+[Supplemental verification](supplemental-verification.md) records legacy
+domain/issuer migration, pending-cleanup deletion contracts and the complete
+audit inventory/read-error controls. t004/t007 still require hosted acceptance.
