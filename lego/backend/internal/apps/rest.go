@@ -1313,7 +1313,12 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			return
 		}
 		if err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
+			// Name what is wrong (a missing ownerId or file part, an
+			// unsupported content type) instead of a bare "bad request".
+			if !errors.Is(err, core.ErrBadRequest) {
+				err = fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+			}
+			core.WriteErr(w, err)
 			return
 		}
 		v, err := s.ValidateBlueprint(r.Context(), ownerID, bexYAML, blueprintID)
@@ -1557,20 +1562,22 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 			return "", "", "", fmt.Errorf("unsupported content type %q", mediaType)
 		}
 		var body struct {
-			BexYAML     string `json:"bexYaml"`
-			OwnerID     string `json:"ownerId"`
-			BlueprintID string `json:"blueprintId"`
+			BexYAML     *string `json:"bexYaml"`
+			OwnerID     string  `json:"ownerId"`
+			BlueprintID string  `json:"blueprintId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return "", "", "", err
 		}
-		if body.BexYAML == "" {
-			return "", "", "", core.ErrBadRequest
+		// An absent manifest is a malformed request; an empty one is a
+		// Blueprint to validate like any other (w8/041).
+		if body.BexYAML == nil {
+			return "", "", "", fmt.Errorf("bexYaml is required")
 		}
-		if len(body.BexYAML) > blueprintMaxManifestBytes {
+		if len(*body.BexYAML) > blueprintMaxManifestBytes {
 			return "", "", "", ErrBlueprintTooLarge
 		}
-		return body.OwnerID, body.BexYAML, body.BlueprintID, nil
+		return body.OwnerID, *body.BexYAML, body.BlueprintID, nil
 	}
 
 	if err := r.ParseMultipartForm(MaxBlueprintValidationBodyBytes); err != nil {
@@ -1584,13 +1591,19 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 		return "", "", "", fmt.Errorf("ownerId is required")
 	}
 	file, _, err := r.FormFile("file")
+	if errors.Is(err, http.ErrMissingFile) {
+		return "", "", "", fmt.Errorf("file is required")
+	}
 	if err != nil {
 		return "", "", "", err
 	}
 	defer file.Close() //nolint:errcheck // read-only multipart file
+	// A zero-byte file (touch, a truncating merge) is validated, not refused:
+	// it gets the same valid:false "one YAML document" result as a file
+	// holding only a newline (w8/041).
 	content, err := io.ReadAll(io.LimitReader(file, int64(blueprintMaxManifestBytes)+1))
-	if err != nil || len(content) == 0 {
-		return "", "", "", core.ErrBadRequest
+	if err != nil {
+		return "", "", "", fmt.Errorf("read file: %w", err)
 	}
 	if len(content) > blueprintMaxManifestBytes {
 		return "", "", "", ErrBlueprintTooLarge

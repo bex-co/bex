@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -193,5 +194,59 @@ envVarGroups:
 	}
 	if e := v.Errors[0]; e.Line == nil {
 		t.Errorf("first entry %+v has no location", e)
+	}
+}
+
+// w8/041: a zero-byte render.yaml is validated like a whitespace-only one
+// (valid:false, one-document error) on both REST encodings, and a malformed
+// request names what is missing instead of a bare "bad request".
+func TestValidateBlueprintEmptyManifestAndNamedRefusals(t *testing.T) {
+	svc, _ := connectionService(t)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	serve := func(req *http.Request) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req.WithContext(ownershipCtx()))
+		return rec
+	}
+	for _, format := range []string{"json", "multipart"} {
+		for _, manifest := range []string{"", "\n", "# just a comment\n"} {
+			t.Run(fmt.Sprintf("%s/%q", format, manifest), func(t *testing.T) {
+				rec := serve(blueprintValidationRequest(t, format, manifest))
+				var v BlueprintValidation
+				if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &v) != nil || v.Valid ||
+					len(v.Errors) != 1 || v.Errors[0].Error != "Blueprint must contain one YAML document" {
+					t.Fatalf("got %d %s; want 200 valid:false one-document error", rec.Code, rec.Body.String())
+				}
+			})
+		}
+	}
+
+	var noFile bytes.Buffer
+	writer := multipart.NewWriter(&noFile)
+	_ = writer.WriteField("ownerId", connOwner)
+	_ = writer.Close()
+	noFileReq := httptest.NewRequest(http.MethodPost, BlueprintValidationPath, &noFile)
+	noFileReq.Header.Set("Content-Type", writer.FormDataContentType())
+	noOwnerReq := multipartBlueprintRequest(t, "", "render.yaml", "services: []\n")
+	noYAMLReq := httptest.NewRequest(http.MethodPost, BlueprintValidationPath, strings.NewReader(`{"ownerId":"`+connOwner+`"}`))
+	noYAMLReq.Header.Set("Content-Type", "application/json")
+	textReq := httptest.NewRequest(http.MethodPost, BlueprintValidationPath, strings.NewReader("services: []"))
+	textReq.Header.Set("Content-Type", "text/plain")
+	for name, tc := range map[string]struct {
+		req  *http.Request
+		want string
+	}{
+		"missing file part":   {noFileReq, "file is required"},
+		"missing ownerId":     {noOwnerReq, "ownerId is required"},
+		"missing bexYaml":     {noYAMLReq, "bexYaml is required"},
+		"unsupported content": {textReq, `unsupported content type \"text/plain\"`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			rec := serve(tc.req)
+			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), tc.want) {
+				t.Fatalf("got %d %s; want 400 naming %q", rec.Code, rec.Body.String(), tc.want)
+			}
+		})
 	}
 }
