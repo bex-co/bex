@@ -66,3 +66,33 @@ describe("static-site rule validation", () => {
     );
   });
 });
+
+it.each([
+  "/bad%",
+  "/ok?x=%zz",
+  "/ok#bad%2",
+  "/%2fhost",
+  "/%5chost",
+  "/nested/%5cfile",
+  "/%00file",
+  "/%1ffile",
+  "/%7ffile",
+  "/bad\tfile",
+])("refuses unsafe or malformed destination %s", (destination) => {
+  expect(routeErrors({ type: "rewrite", source: "/old", destination })).toEqual(
+    { destination: "services.staticRuleLocalPath" },
+  );
+});
+
+it.each([
+  "/%72ender.yaml?from=rule#section",
+  "/files/:splat?q=:splat#/*",
+  "/files/*",
+  "/a%252fb",
+  "/ok?x=%00#%1f",
+  "/nested/../file",
+])("preserves valid configured destination %s", (destination) => {
+  expect(
+    routeErrors({ type: "rewrite", source: "/old/*", destination }),
+  ).toEqual({});
+});

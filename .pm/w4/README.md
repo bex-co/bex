@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m154** — [Preserve URL path semantics in static edge rules](m154/README.md) (7 tasks, ~3h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 16; encoded wildcard filenames become query/fragment syntax, while accepted query-bearing or encoded rewrite destinations return 404 despite direct-destination and plain-path controls passing.
+- [ ] **m154** — [Preserve URL path semantics in static edge rules](blocked/m154/README.md) — **BLOCKED (release pipeline deploys static-server/API/dashboard; QA replays owned Free-site GET/HEAD/browser/API acceptance and cleanup)**. t001–t005 done; t006/t007 retain hosted verification and closeout.
 
 - [ ] **m153** — **BLOCKED (production-deploy pipeline must release operator and dashboard; QA must then verify both live TLS data-survival sequences, API/UI state, rename and cleanup)** — [Preserve Key Value data when re-enabling journaling](blocked/m153/README.md). t001/t002/t005 done; full operator/backend/dashboard checks, real Valkey 7/8 transition/failure tests and lint passed. t003/t004 hosted controls, t006 live acceptance and t007 closeout remain open.
 

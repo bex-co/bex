@@ -36,6 +36,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 
@@ -256,14 +257,23 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Miss: edge rules run in order, first match wins.
-	act, target := matchRoutes(site.Routes, requestPath)
+	act, target, routeErr := matchRoutes(site.Routes, requestPath)
+	if routeErr != nil {
+		message := "invalid rewrite target"
+		if act == actRedirect {
+			message = "invalid redirect target"
+		}
+		serveSiteError(w, site, requestPath, http.StatusBadRequest, message)
+		return
+	}
 	if act == actRedirect {
-		if !safeRedirectTarget(target) {
+		location := target.String()
+		if !safeRedirectTarget(location) {
 			serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid redirect target")
 			return
 		}
 		applyHeaders(w.Header(), site.Headers, requestPath)
-		http.Redirect(w, r, target, http.StatusMovedPermanently)
+		http.Redirect(w, r, location, http.StatusMovedPermanently)
 		return
 	}
 
@@ -276,7 +286,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	fallbackPath := requestPath
 	if act == actRewrite {
-		fallbackPath = normalizePath(target)
+		fallbackPath = normalizePath(target.Path)
 		if overlongKey(site, fallbackPath) {
 			serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
 			return
@@ -356,7 +366,8 @@ func safeRedirectTarget(target string) bool {
 	return strings.HasPrefix(target, "/") &&
 		!strings.HasPrefix(target, "//") &&
 		!strings.HasPrefix(target, `/\`) &&
-		!strings.ContainsAny(target, "\\\r\n\x00")
+		!strings.Contains(target, "\\") &&
+		strings.IndexFunc(target, func(r rune) bool { return r < 0x20 || r == 0x7f }) < 0
 }
 
 // fetch resolves reqPath to an object, applying index.html defaulting for "/"
@@ -458,21 +469,25 @@ const (
 // returning the action and the expanded destination. Source patterns support a
 // trailing "/*" wildcard; the captured remainder (the "splat") substitutes a
 // trailing "/*" or a ":splat" token in the destination.
-func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction, string) {
+func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction, *url.URL, error) {
 	for _, rt := range routes {
 		splat, ok := matchPattern(rt.Source, reqPath)
 		if !ok {
 			continue
 		}
-		dest := expandDest(rt.Destination, splat)
+		var action routeAction
 		switch rt.Type {
 		case "redirect":
-			return actRedirect, dest
+			action = actRedirect
 		case "rewrite":
-			return actRewrite, dest
+			action = actRewrite
+		default:
+			continue
 		}
+		dest, err := expandDest(rt.Destination, splat)
+		return action, dest, err
 	}
-	return actNone, ""
+	return actNone, nil, nil
 }
 
 // matchPattern reports whether reqPath matches pattern and returns the splat (the
@@ -495,16 +510,33 @@ func matchPattern(pattern, reqPath string) (string, bool) {
 	return "", pattern == reqPath
 }
 
-// expandDest substitutes the splat into dest: a trailing "/*" or a ":splat"
-// token is replaced with the captured remainder.
-func expandDest(dest, splat string) string {
-	if strings.Contains(dest, ":splat") {
-		return strings.ReplaceAll(dest, ":splat", splat)
+// expandDest separates URL syntax before substituting decoded path data. Never
+// parse the expanded path again: a captured ?/#/% is a filename character, not
+// a new query, fragment, or escape. Configured query/fragment values stay literal.
+func expandDest(dest, splat string) (*url.URL, error) {
+	if !safeRedirectTarget(dest) {
+		return nil, errors.New("destination must be local")
 	}
-	if strings.HasSuffix(dest, "/*") {
-		return strings.TrimSuffix(dest, "*") + splat // ".../*" -> ".../" + splat
+	target, err := url.Parse(dest)
+	if err != nil {
+		return nil, err
 	}
-	return dest
+	if _, err := url.QueryUnescape(target.RawQuery); err != nil {
+		return nil, err
+	}
+	if target.Host != "" || target.Scheme != "" || !safeRedirectTarget(target.Path) {
+		return nil, errors.New("destination must be local")
+	}
+	if strings.Contains(target.Path, ":splat") {
+		target.Path = strings.ReplaceAll(target.Path, ":splat", splat)
+	} else if strings.HasSuffix(target.Path, "/*") {
+		target.Path = strings.TrimSuffix(target.Path, "*") + splat
+	}
+	if !safeRedirectTarget(target.Path) {
+		return nil, errors.New("expanded destination must be local")
+	}
+	target.RawPath = ""
+	return target, nil
 }
 
 // matchHeaderPattern keeps file selectors separate from route splat captures.

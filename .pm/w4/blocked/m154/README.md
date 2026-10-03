@@ -1,16 +1,16 @@
 # w4 · m154 — Preserve URL path semantics in static edge rules
 
-**Worker:** worker4 **Goal:** static redirects preserve captured filenames, and local rewrites serve the object identified by an accepted destination URL. **Status:** todo
+**Worker:** worker4 **Goal:** static redirects preserve captured filenames, and local rewrites serve the object identified by an accepted destination URL. **Status:** blocked — t001–t005 implemented and locally verified; t006/t007 require deployed acceptance
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Escape captured paths in redirect destinations | 45m | — |
-| t002 | Resolve rewrite URLs to the intended local object | 35m | w4/m154/t001 |
-| t003 | Cover shared callers, aliases and existing controls | 30m | w4/m154/t001, w4/m154/t002 |
-| t004 | Verify Render parity and document destination semantics | 15m | w4/m154/t003 |
-| t005 | Simplify the URL boundary changes | 15m | w4/m154/t004 |
+| t001 — **DONE** | Escape captured paths in redirect destinations | 45m | — |
+| t002 — **DONE** | Resolve rewrite URLs to the intended local object | 35m | w4/m154/t001 |
+| t003 — **DONE** | Cover shared callers, aliases and existing controls | 30m | w4/m154/t001, w4/m154/t002 |
+| t004 — **DONE** | Verify Render parity and document destination semantics | 15m | w4/m154/t003 |
+| t005 — **DONE** | Simplify the URL boundary changes | 15m | w4/m154/t004 |
 | t006 | Test real HTTP path and redirect behavior | 35m | w4/m154/t004, w4/m154/t005 |
 | t007 | Closeout after live URL acceptance | 10m | w4/m154/t006 |
 
@@ -35,3 +35,7 @@ Repeat the Free static-site fixture and saved rows in [finding.md](finding.md), 
 - **Render parity included:** tenant-facing public HTTP behavior changes; compare the documented destination/wildcard contract while retaining bex's local-only and implicit-SPA decisions.
 - **Dedupe:** uncovered URL-boundary gap from w1/m21, not a recurrence of w4/m94 file precedence, w4/m101 error headers, or w4/m150 header-pattern grammar. No matching open item or pending-main static-server fix was found.
 - **Limits:** Free/public platform host, one no-build static fixture, dashboard writes plus three-surface reads. Actual special-character destination files, custom domains, Blueprint/REST/MCP writes and malformed/hostile URL combinations were not exercised live; t003/t006 own them. All own resources and both interrupted/resumed sessions were cleaned up.
+
+## Drain verdict — 2026-10-02
+
+Implementation complete with [local verification](verification.md). **Blocked:** release pipeline must deploy static-server, bex-api and dashboard; QA must replay the owned Free fixture GET/HEAD/browser and API/UI checks, then delete the fixture and revoke its session. t006 retains deployed acceptance; t007 retains closeout. No hosted fixture or session was created by this implementation run.

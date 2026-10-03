@@ -4698,7 +4698,15 @@ func validateRoutes(routes []StaticRouteView) error {
 		// relative) and "/\host" (browsers normalize backslash to slash) are
 		// network-path references the static server's http.Redirect turns into an
 		// off-site open redirect. Require a genuine local path.
-		if isNetworkPathReference(dest) {
+		parsed, parseErr := url.Parse(dest)
+		if parseErr != nil {
+			return fmt.Errorf("%w: routes[%d].destination must be a valid local URL", core.ErrBadRequest, i)
+		}
+		// Parse validates path/fragment escapes but leaves RawQuery untouched.
+		if _, err := url.QueryUnescape(parsed.RawQuery); err != nil {
+			return fmt.Errorf("%w: routes[%d].destination must be a valid local URL", core.ErrBadRequest, i)
+		}
+		if parsed.Host != "" || parsed.Scheme != "" || isNetworkPathReference(dest) || isNetworkPathReference(parsed.Path) {
 			return fmt.Errorf("%w: routes[%d].destination must be a local path, not a network-path reference", core.ErrBadRequest, i)
 		}
 	}
@@ -4713,7 +4721,7 @@ func isNetworkPathReference(p string) bool {
 	if strings.HasPrefix(p, "//") || strings.HasPrefix(p, `/\`) {
 		return true
 	}
-	return strings.ContainsAny(p, "\\\r\n\x00")
+	return strings.ContainsRune(p, '\\') || strings.IndexFunc(p, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0
 }
 
 // validateHeaders rejects a malformed custom-header list: each rule needs a
