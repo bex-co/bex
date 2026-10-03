@@ -1,7 +1,10 @@
 import type { ReactElement } from "react";
-import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import { act, cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RelativeAge, RelativeUntil } from "@/common/components/relative-time";
+import { useNow } from "@/common/hooks/use-now";
 import { hydrateAcrossBoundary } from "@/test/hydration";
 import {
   formatRelativeAge,
@@ -87,6 +90,36 @@ describe("RelativeAge / RelativeUntil", () => {
     ).toEqual([]);
   });
 
+  it("caches the hydration snapshot even when the clock advances between reads", () => {
+    let now = SERVER_NOW;
+    vi.spyOn(Date, "now").mockImplementation(() => now++);
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const node = <RelativeAge value={INSTANT} />;
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(node);
+    document.body.appendChild(container);
+    const recovered: unknown[] = [];
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    now = CLIENT_NOW;
+    try {
+      act(() => {
+        root = hydrateRoot(container, node, {
+          onRecoverableError: (error) => recovered.push(error),
+        });
+      });
+      expect(container.querySelector("time")).toHaveAttribute(
+        "dateTime",
+        INSTANT,
+      );
+      expect(container.querySelector("time")).not.toBeEmptyDOMElement();
+      expect(recovered).toEqual([]);
+      expect(errors.mock.calls).toEqual([]);
+    } finally {
+      act(() => root?.unmount());
+      container.remove();
+    }
+  });
+
   it("is the guard: the same boundary crossed by a bare formatter does mismatch", () => {
     // Negative control — proves the test above would actually catch a
     // regression that dropped suppressHydrationWarning from the wrapper. The
@@ -95,5 +128,68 @@ describe("RelativeAge / RelativeUntil", () => {
       <time dateTime={INSTANT}>{formatRelativeAge(INSTANT)}</time>
     );
     expect(recoverableErrors(<BareAge />).length).toBeGreaterThan(0);
+  });
+});
+
+describe("RelativeTime mounted clock", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.parse(INSTANT));
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("advances unchanged ages and countdowns while preserving exact metadata and span rendering", () => {
+    const future = new Date(Date.parse(INSTANT) + 5 * 60_000).toISOString();
+    const { container } = render(
+      <>
+        <RelativeAge value={INSTANT} title="exact source instant" />
+        <RelativeUntil value={future} as="span" title="exact next instant" />
+        <RelativeAge value={null} fallback="Never" />
+      </>,
+    );
+    const age = container.querySelector("time")!;
+    const until = container.querySelector("span")!;
+    expect(age).toHaveTextContent("now");
+    expect(until).toHaveTextContent("in 5m");
+    for (let minute = 1; minute <= 3; minute++) {
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(age).toHaveTextContent(`${minute}m`);
+      expect(until).toHaveTextContent(`in ${5 - minute}m`);
+      expect(age).toHaveAttribute("dateTime", INSTANT);
+      expect(age).toHaveAttribute("title", "exact source instant");
+      expect(until).toHaveAttribute("title", "exact next instant");
+      expect(container.querySelectorAll("time")).toHaveLength(1);
+      expect(screen.getByText("Never")).toBeInTheDocument();
+    }
+  });
+
+  it("shares a bounded timer across many labels and the deploy elapsed-time hook", () => {
+    function DeployClock() {
+      const now = useNow();
+      return <output data-testid="deploy-clock">{now}</output>;
+    }
+    const { unmount } = render(
+      <>
+        <DeployClock />
+        {Array.from({ length: 40 }, (_, i) => (
+          <RelativeAge key={i} value={INSTANT} />
+        ))}
+      </>,
+    );
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => {
+      vi.advanceTimersByTime(120_000);
+    });
+    expect(screen.getAllByText("2m")).toHaveLength(40);
+    expect(screen.getByTestId("deploy-clock").textContent).toBe(
+      String(Date.parse(INSTANT) + 120_000),
+    );
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

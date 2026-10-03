@@ -1,21 +1,70 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
-/**
- * The current clock in epoch ms, re-read every `intervalMs` (default one
- * minute) so elapsed-time text ("Deployed 2 minutes ago") keeps moving on a
- * page left open instead of freezing at its first render. Meant to be called
- * once per page and passed down: twenty rows sharing one timer is one
- * re-render a minute, not twenty timers drifting apart.
- *
- * The initial value is read once per pass — on the server and again during
- * hydration — so any text derived from it must sit under
- * `suppressHydrationWarning`, exactly as `RelativeAge` does (w6/m102).
- */
+// Cadences share a store so a table has one timer, not one timer per cell.
+// Retaining the store while idle also makes StrictMode's unsubscribe/subscribe
+// replay reuse the same clock. Only active stores own timers or listeners.
+const clocks = new Map<number, ReturnType<typeof createClock>>();
+
+function createClock(intervalMs: number) {
+  let now = Date.now();
+  let timer: ReturnType<typeof setInterval> | undefined;
+  const listeners = new Set<() => void>();
+  const refresh = () => {
+    const next = Date.now();
+    if (next === now) return;
+    now = next;
+    listeners.forEach((listener) => listener());
+  };
+  const onVisibility = () => {
+    if (document.visibilityState === "visible") refresh();
+  };
+  return {
+    getSnapshot: () => now,
+    refreshIfIdle: () => {
+      if (listeners.size === 0) refresh();
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      if (listeners.size === 1) {
+        refresh();
+        timer = setInterval(refresh, intervalMs);
+        document.addEventListener("visibilitychange", onVisibility);
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) {
+          clearInterval(timer);
+          timer = undefined;
+          document.removeEventListener("visibilitychange", onVisibility);
+        }
+      };
+    },
+  };
+}
+
+/** Current epoch ms from one shared clock per cadence (one minute by default).
+ * Visible-tab resume refreshes immediately after browser timer throttling.
+ * Server/client text can cross a bucket boundary; callers retain their existing
+ * suppressHydrationWarning on clock-derived text, as RelativeAge does. */
 export function useNow(intervalMs = 60_000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
+  const clock = useMemo(() => {
+    let shared = clocks.get(intervalMs);
+    if (!shared) {
+      shared = createClock(intervalMs);
+      clocks.set(intervalMs, shared);
+    }
+    shared.refreshIfIdle();
+    return shared;
   }, [intervalMs]);
-  return now;
+  // React can read the hydration snapshot repeatedly within one render.
+  // Cache that pass's sample rather than returning a different millisecond.
+  const [serverSnapshot] = useState(() => {
+    const initial = Date.now();
+    return () => initial;
+  });
+  return useSyncExternalStore(
+    clock.subscribe,
+    clock.getSnapshot,
+    serverSnapshot,
+  );
 }
