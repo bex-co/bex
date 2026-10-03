@@ -35,9 +35,10 @@ spec:
           env:
             - name: BEX_ACTIVATOR_ADDR
               value: ":8888"
+          # TCP, not an HTTP path: every path on this listener belongs to a
+          # tenant host (w4/m162), so a platform /healthz would shadow theirs.
           readinessProbe:
-            httpGet:
-              path: /healthz
+            tcpSocket:
               port: 8888
             initialDelaySeconds: 2
             periodSeconds: 5

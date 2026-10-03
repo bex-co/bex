@@ -66,11 +66,16 @@ func envOr(k, def string) string {
 }
 
 // newServer builds the static-server HTTP server with the bounding timeouts set
-// (finding 12). Extracted so the timeout wiring is unit-tested.
-func newServer(addr string, handler http.Handler) *http.Server {
+// (finding 12) and its routing, the one construction startup uses. Every path —
+// /healthz included — reaches site, so a tenant's objects, rules and fallback
+// own it; platform readiness is a TCP probe on this port, not a reserved path
+// (w4/m162). The ServeMux stays for its path cleaning ahead of site.
+func newServer(addr string, site http.Handler) *http.Server {
+	mux := http.NewServeMux()
+	mux.Handle("/", site)
 	return &http.Server{
 		Addr:              addr,
-		Handler:           handler,
+		Handler:           mux,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
@@ -128,17 +133,14 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-
+	var site http.Handler
 	if !configured {
-		// Degraded mode: stay Ready (so the platform can deploy the static-server
-		// unconditionally) but answer content requests with 503 until the object
-		// store is configured (BEX_STATIC_S3_ENDPOINT/BUCKET + the creds Secret).
+		// Degraded mode: stay Ready (the TCP readiness probe needs only the
+		// listener, so the platform can deploy the static-server unconditionally)
+		// but answer every request with 503 until the object store is configured
+		// (BEX_STATIC_S3_ENDPOINT/BUCKET + the creds Secret).
 		setupLog.Info("static origin not configured; serving 503 until BEX_STATIC_S3_ENDPOINT/BUCKET are set")
-		mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "static origin not configured", http.StatusServiceUnavailable)
-		})
+		site = http.HandlerFunc(originNotConfigured)
 	} else {
 		cfg, err := ctrl.GetConfig()
 		if err != nil {
@@ -163,10 +165,10 @@ func main() {
 		go resolver.Run(ctx, resync, func(err error) {
 			setupLog.Error(err, "refresh static-site snapshot")
 		})
-		mux.Handle("/", staticserver.New(resolver, origin, cacheBytes))
+		site = staticserver.New(resolver, origin, cacheBytes)
 	}
 
-	srv := newServer(addr, mux)
+	srv := newServer(addr, site)
 	go func() {
 		<-ctx.Done()
 		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -179,4 +181,10 @@ func main() {
 		setupLog.Error(err, "serve")
 		os.Exit(1)
 	}
+}
+
+// originNotConfigured is the degraded-mode site: every path is 503 until the
+// object store is configured.
+func originNotConfigured(w http.ResponseWriter, _ *http.Request) {
+	http.Error(w, "static origin not configured", http.StatusServiceUnavailable)
 }

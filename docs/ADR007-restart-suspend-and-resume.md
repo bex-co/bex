@@ -74,6 +74,8 @@ Valid API state does not normally combine maintenance and auto-sleep because mai
 
 The maintenance and wake defaults share one HTML response seam (`writeHTMLPage`) for 503 status, content type, `Cache-Control: no-store`, and `HEAD` behavior. Maintenance never wakes the workload. The wake path always updates last-active and restores one replica before selecting its response: an explicit acceptable `text/html` range gets the polling page; JSON, a missing `Accept`, or only `*/*` gets the retryable JSON error. Render instead holds a non-browser request through the cold start; bex keeps the bounded response as a deliberate agent/API reliability divergence.
 
+**No path is reserved from the tenant (w4/m162).** The activator used to answer `/healthz` (and anything decoding to it, such as `/health%7a` or `/healthz?x`) with an empty 200 before host resolution, so a suspended service passed a status-only monitor and a sleeping one never woke on health-path traffic. That platform readiness path is retired: every path on every routed host now reaches the maintenance → suspended → wake decision above, and the activator's own readiness probe is a TCP check on its serving port 8888 (`config/activator/deployment.yaml`). That probe was only ever a listener check, and the host cache is primed before the listener opens, so nothing about readiness changed but the transport.
+
 ### Who writes the fields
 
 Two ways, same field write:
