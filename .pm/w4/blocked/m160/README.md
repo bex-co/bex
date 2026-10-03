@@ -1,16 +1,16 @@
 # w4 · m160 — Revalidate static files across deployments
 
-**Worker:** worker4 **Goal:** returning visitors receive republished files at unchanged URLs **Status:** todo
+**Worker:** worker4 **Goal:** returning visitors receive republished files at unchanged URLs **Status:** blocked — t001/t002/t004/t005 done 2026-10-03; t003 hosted parity and t006 closeout await deploy + QA
 
 ## Tasks (in order)
 
 | id   | title                                            | est | depends_on |
 | ---- | ------------------------------------------------ | --- | ---------- |
-| t001 | Audit static response caching and rollout limits | 20m | —          |
-| t002 | Default static responses to revalidation         | 30m | t001       |
+| t001 — **DONE** | Audit static response caching and rollout limits | 20m | — |
+| t002 — **DONE** | Default static responses to revalidation         | 30m | t001 |
 | t003 | Render parity                                    | 20m | t002       |
-| t004 | Simplify                                         | 10m | t003       |
-| t005 | Test coverage                                    | 30m | t003       |
+| t004 — **DONE** | Simplify                                         | 10m | t003 |
+| t005 — **DONE** | Test coverage                                    | 30m | t003 |
 | t006 | Closeout                                         | 15m | t004, t005 |
 
 ## Definition of done
