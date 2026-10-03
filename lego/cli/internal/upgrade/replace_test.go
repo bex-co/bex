@@ -104,3 +104,17 @@ func TestPackageManagerHint(t *testing.T) {
 		}
 	}
 }
+
+func TestInstructionCommandMatchesInstallChannel(t *testing.T) {
+	for path, want := range map[string]string{
+		"/opt/homebrew/Cellar/bex/1.2.0/bin/bex": "brew upgrade bex",
+		"/usr/local/Cellar/bex/1.2.0/bin/bex":    "brew upgrade bex",
+		"/home/linuxbrew/.linuxbrew/bin/bex":     "brew upgrade bex",
+		"/home/alice/.local/bin/bex":             "bex upgrade",
+		"/usr/local/bin/bex":                     "bex upgrade",
+	} {
+		if got := instructionCommandFor(path); got != want {
+			t.Errorf("instructionCommandFor(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
