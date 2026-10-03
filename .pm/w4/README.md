@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m162** — [Keep platform health checks off tenant HTTP paths](m162/README.md) (7 tasks, ~2h 50m) ← QA sweep 52
+
 - [ ] **m161** — [Bind environment-group revisions to editing drafts](m161/README.md) (6 tasks) ← QA sweep 49
 
 - [ ] **m160** — [Revalidate static files across deployments](m160/README.md) (6 tasks) ← QA sweep 43
