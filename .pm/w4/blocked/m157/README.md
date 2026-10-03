@@ -1,19 +1,19 @@
 # w4 · m157 — Preserve typed Postgres query values
 
-**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values, UUIDs and array shape across query surfaces **Status:** todo
+**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values, UUIDs and array shape across query surfaces **Status:** blocked — t001/t002/t004/t005/t007/t008/t009 done 2026-10-03; t003 live result verification and t006 closeout remain
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Audit SQL value conversion and bound the shared contract | 25m | — |
-| t002 | Normalize special numeric results before JSON budgeting | 45m | t001 |
-| t007 | Preserve temporal infinity markers without changing integer values | 30m | t001, t002 |
-| t008 | Render decoded UUIDs as canonical strings | 25m | t001, t002 |
-| t009 | Preserve native array dimensions before value normalization | 45m | t001, t002 |
+| t001 — **DONE** | Audit SQL value conversion and bound the shared contract | 25m | — |
+| t002 — **DONE** | Normalize special numeric results before JSON budgeting | 45m | t001 |
+| t007 — **DONE** | Preserve temporal infinity markers without changing integer values | 30m | t001, t002 |
+| t008 — **DONE** | Render decoded UUIDs as canonical strings | 25m | t001, t002 |
+| t009 — **DONE** | Preserve native array dimensions before value normalization | 45m | t001, t002 |
 | t003 | Render parity and live result verification | 25m | t002, t007, t008, t009, w4/m158/t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 40m | t003 |
+| t004 — **DONE** | Simplify | 15m | t003 |
+| t005 — **DONE** | Test coverage | 40m | t003 |
 | t006 | Closeout | 15m | t004, t005 |
 
 ## Definition of done

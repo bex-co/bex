@@ -25,8 +25,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m159** — [Keep confirmations open through permission refresh](blocked/m159/README.md) — **BLOCKED (release pipeline deploys dashboard; QA holds Restart/Suspend/specific-commit dialogs open across three 30s refresh cycles on an owned Free service, checks immediate Restart and rollback sequence, desktop vs narrow-mobile status-line geometry, then cleans up)**. t001/t002/t004/t005 done 2026-10-03: context vs eligibility split, fail-closed dispatch with no replay; 4076 dashboard tests green.
 
-- [ ] **m157** — [Preserve typed Postgres query values](m157/README.md) (9 tasks) ← QA sweeps 37, 39, 40 and 44
-- [ ] **m158** — [Preserve exact SQL numbers in MCP responses](m158/README.md) (6 tasks) ← QA sweep 40
+- [ ] **m157** — [Preserve typed Postgres query values](blocked/m157/README.md) — **BLOCKED (release pipeline deploys backend after m158; QA re-runs the NaN/Infinity, numeric/temporal infinity, UUID and 2D/3D/null-array SELECTs plus controls on REST/GraphQL/MCP/console, then cleans up)**. t001/t002/t004/t005/t007/t008/t009 done 2026-10-03: one normalization step after raw caps (special numbers, temporal infinity, canonical UUIDs, array dimensions); real-Postgres integration across surfaces green.
+- [ ] **m158** — [Preserve exact SQL numbers in MCP responses](blocked/m158/README.md) — **BLOCKED (release pipeline deploys backend; QA re-runs the captured bigint/fraction scalar and array SELECTs through REST, the console and MCP on a Free fixture, compares raw bytes incl. both MCP result forms, then cleans up)**. t001/t002/t004/t005 done 2026-10-03: `mcputil.AddExactJSONTool` sends identical exact bytes as structuredContent and text; real-Postgres and composed MCP tests green.
 
 - [ ] **m156** — [Report honest start times for successful deploys](m156/README.md) (6 tasks) ← QA sweep 34
 
