@@ -1,6 +1,6 @@
 # w4 · m157 — Preserve typed Postgres query values
 
-**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values and UUIDs across query surfaces **Status:** todo
+**Worker:** worker4 **Goal:** SQL results preserve special numeric and temporal values, UUIDs and array shape across query surfaces **Status:** todo
 
 ## Tasks (in order)
 
@@ -10,12 +10,15 @@
 | t002 | Normalize special numeric results before JSON budgeting | 45m | t001 |
 | t007 | Preserve temporal infinity markers without changing integer values | 30m | t001, t002 |
 | t008 | Render decoded UUIDs as canonical strings | 25m | t001, t002 |
-| t003 | Render parity and live result verification | 25m | t002, t007, t008, w4/m158/t002 |
+| t009 | Preserve native array dimensions before value normalization | 45m | t001, t002 |
+| t003 | Render parity and live result verification | 25m | t002, t007, t008, t009, w4/m158/t002 |
 | t004 | Simplify | 15m | t003 |
 | t005 | Test coverage | 40m | t003 |
 | t006 | Closeout | 15m | t004, t005 |
 
 ## Definition of done
+
+- The 2D integer, 3D integer and 2D text/null SELECTs in [array evidence](array-finding.md) retain nested JSON shape on REST/MCP and the equivalent nested JSON cell text in GraphQL/dashboard. Native matrices match PostgreSQL to_json controls; one-dimensional arrays, empty arrays, SQL NULL arrays and bytea controls retain their current representation. No custom-lower-bound metadata contract is asserted.
 
 - Native UUIDs and UUID array elements are canonical lowercase hyphenated strings; NULL, bytea base64 and ordinary integer-array controls remain unchanged. See [UUID evidence](uuid-finding.md).
 
@@ -29,9 +32,9 @@
 
 ## Source + Goal linkage
 
-- **Source:** user-requested continuous QA sweeps 37, 39 and 40 with muse.env, filing to w4; [full evidence and researched fix](finding.md).
+- **Source:** user-requested continuous QA sweeps 37, 39, 40 and 44 with muse.env, filing to w4; [full evidence and researched fix](finding.md).
 - **Goal linkage:** ADR009 managed databases and ADR006 shared API/MCP core; reliable data reads for humans and agents.
-- **Expected outcome:** supported PostgreSQL numeric and temporal values remain truthful and queryable through the product.
-- **Why now:** live probes show both an outright valid-query failure and silent successful-result corruption through shared code. The four independently traced mechanisms need one explicit conversion contract before independent adapter fixes drift.
+- **Expected outcome:** supported PostgreSQL typed values and native array shapes remain truthful and queryable through the product.
+- **Why now:** live probes show both an outright valid-query failure and silent successful-result corruption through shared code. The five independently traced mechanisms need one explicit conversion contract before independent adapter fixes drift.
 - **Render parity:** included for REST/GraphQL/MCP/UI consistency; vendor special-number encoding remains unverified and is not invented.
-- **Estimate:** 220m across eight tasks, including consumer audit and required closing tasks.
+- **Estimate:** 265m across nine tasks, including consumer audit and required closing tasks.
