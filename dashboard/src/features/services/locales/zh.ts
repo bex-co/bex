@@ -4361,6 +4361,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法保存环境。草稿仍保留。",
     description: "Batch environment save failure",
   },
+  "services.environmentDraftStale": {
+    message:
+      "此环境组在您开始编辑后可能已被更改，因此草稿未保存。请复制需要保留的内容，放弃草稿后重新编辑，以基于最新版本修改。",
+    description:
+      "Refusal when a group draft's base revision is no longer current (ENV_GROUP_REVISION_CONFLICT) or predates revision tracking (w4/m161)",
+  },
   "services.environmentSavedDeployFailedTitle": {
     message: "配置已保存，但发布未完成",
     description: "Partial rebuild failure heading",

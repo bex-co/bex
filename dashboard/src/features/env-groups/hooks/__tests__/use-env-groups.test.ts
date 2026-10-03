@@ -498,7 +498,7 @@ describe("useEnvGroupVarMutations", () => {
 });
 
 describe("useEnvGroupEnvironmentPatch", () => {
-  it("pins the opaque revision and retries rollout with an empty patch", async () => {
+  it("sends the draft's base revision and retries rollout with an empty patch", async () => {
     const mutate = vi
       .fn()
       .mockResolvedValueOnce({
@@ -522,7 +522,7 @@ describe("useEnvGroupEnvironmentPatch", () => {
     mockUseMutation.mockImplementation(() => [mutate, { loading: false }]);
     const refetch = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useEnvGroupEnvironmentPatch("eg1", "egr1_initial", refetch),
+      useEnvGroupEnvironmentPatch("eg1", refetch),
     );
 
     await act(async () => {
@@ -532,6 +532,7 @@ describe("useEnvGroupEnvironmentPatch", () => {
           secretFiles: [{ name: "old.pem", delete: true }],
         },
         "rebuild",
+        "egr1_initial",
       );
     });
     expect(mutate).toHaveBeenNthCalledWith(1, {
@@ -555,6 +556,85 @@ describe("useEnvGroupEnvironmentPatch", () => {
         saveMode: "rebuild",
         expectedRevision: "egr1_next",
       },
+    });
+  });
+
+  // w4/m161: bex-api treats an omitted expectedRevision as an unchecked write,
+  // so a draft without a base must never reach the wire as null.
+  it("refuses a save without a base revision instead of sending an unchecked write", async () => {
+    const mutate = vi.fn();
+    mockUseMutation.mockImplementation(() => [mutate, { loading: false }]);
+    const refetch = vi.fn();
+    const { result } = renderHook(() =>
+      useEnvGroupEnvironmentPatch("eg1", refetch),
+    );
+
+    await act(async () => {
+      await expect(
+        result.current.save(
+          { envVars: [{ key: "TOKEN", value: "x" }], secretFiles: [] },
+          "save_only",
+          undefined,
+        ),
+      ).rejects.toThrow("no base revision");
+      // Nor can a retry fabricate one before any write was accepted.
+      await expect(result.current.retryRollout("deploy")).rejects.toThrow(
+        "no base revision",
+      );
+    });
+    expect(mutate).not.toHaveBeenCalled();
+    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the committed revision for retry when a save is refused", async () => {
+    const conflict = new Error("the environment group changed");
+    const mutate = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          patchEnvGroupEnvironment: {
+            revision: "egr1_committed",
+            affectedServiceIds: ["web"],
+            failedServiceIds: ["web"],
+          },
+        },
+      })
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce({
+        data: {
+          patchEnvGroupEnvironment: {
+            revision: "egr1_retried",
+            affectedServiceIds: ["web"],
+            failedServiceIds: [],
+          },
+        },
+      });
+    mockUseMutation.mockImplementation(() => [mutate, { loading: false }]);
+    const { result } = renderHook(() =>
+      useEnvGroupEnvironmentPatch("eg1", vi.fn().mockResolvedValue(undefined)),
+    );
+
+    await act(async () => {
+      await result.current.save(
+        { envVars: [{ key: "A", value: "1" }], secretFiles: [] },
+        "deploy",
+        "egr1_base",
+      );
+      await expect(
+        result.current.save(
+          { envVars: [{ key: "A", value: "2" }], secretFiles: [] },
+          "deploy",
+          "egr1_stale",
+        ),
+      ).rejects.toBe(conflict);
+      await result.current.retryRollout("deploy");
+    });
+    expect(
+      mutate.mock.calls.map(([call]) => call.variables.expectedRevision),
+    ).toEqual(["egr1_base", "egr1_stale", "egr1_committed"]);
+    expect(mutate.mock.calls[2]![0].variables).toMatchObject({
+      envVars: [],
+      secretFiles: [],
     });
   });
 });

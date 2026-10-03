@@ -4466,6 +4466,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't save the environment. Your draft is still here.",
     description: "Batch environment save failure",
   },
+  "services.environmentDraftStale": {
+    message:
+      "This environment group may have changed since your draft began, so the draft wasn't saved. Copy anything you need, discard the draft, and edit again to start from the latest version.",
+    description:
+      "Refusal when a group draft's base revision is no longer current (ENV_GROUP_REVISION_CONFLICT) or predates revision tracking (w4/m161)",
+  },
   "services.environmentSavedDeployFailedTitle": {
     message: "Configuration saved; rollout incomplete",
     description: "Partial rebuild failure heading",

@@ -62,6 +62,16 @@ export interface SecretFileDraftRow {
 export interface EnvironmentDraft {
   envVars: EnvDraftRow[];
   secretFiles: SecretFileDraftRow[];
+  /**
+   * The opaque revision the draft was opened from, for a revision-aware
+   * resource (an environment group, w4/m161). It is captured once at Edit and
+   * is what the save sends as `expectedRevision`: a poll that brings a newer
+   * revision must never become this draft's base, or a concurrent editor's
+   * saved value is silently overwritten. Absent for a service draft and for a
+   * group draft stored before this field existed — the group save refuses the
+   * latter rather than attaching today's revision to yesterday's edits.
+   */
+  baseRevision?: string;
 }
 
 /** True for a row added in this draft — one with no counterpart on the server. */
@@ -110,7 +120,8 @@ export interface DraftValidation {
  *
  * Every non-id field is carried through untouched: `originalKey`/`originalName`
  * (which decide new-vs-existing), values and content, the changed and deleted
- * flags, generation intent, and manifest read-only ownership. For an
+ * flags, generation intent, manifest read-only ownership, and the draft's
+ * `baseRevision` (w4/m161). For an
  * already-corrupted stored draft this gives the collided rows distinct
  * identities so ordinary validation can guide correction; it cannot recover
  * text that was overwritten before the draft was stored.
@@ -120,6 +131,7 @@ export function reidentifyDraft(
   allocate: () => number,
 ): EnvironmentDraft {
   return {
+    ...draft,
     envVars: draft.envVars.map((row) => ({
       ...row,
       id: `restored-env:${allocate()}`,

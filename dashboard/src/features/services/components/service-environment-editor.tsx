@@ -46,7 +46,10 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 import { useReauthDraft } from "@/common/hooks/use-reauth-draft";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -189,9 +192,19 @@ export interface EnvironmentEditorProps {
   errorKind: EnvVarErrorKind | null;
   revealEnv: (key: string) => Promise<string>;
   revealFile: (name: string) => Promise<string>;
+  /**
+   * The resource's latest read revision, for a revision-aware resource (an
+   * environment group, w4/m161). Edit captures it into the draft as
+   * `baseRevision`, and only that captured value reaches `save` — later polls
+   * update this prop without moving an open draft's base. `null` means the
+   * revision has not been read, so Edit stays unavailable. Leave unset for a
+   * service, whose save carries no revision.
+   */
+  revision?: string | null;
   save: (
     patch: EnvironmentPatchInput,
     choice: SaveChoice,
+    baseRevision: string | undefined,
   ) => Promise<{
     affectedServiceIds?: readonly string[];
     failedServiceIds?: readonly string[];
@@ -227,6 +240,7 @@ export function EnvironmentEditor({
   errorKind,
   revealEnv,
   revealFile,
+  revision,
   save,
   retryRollout,
   saving,
@@ -353,15 +367,19 @@ export function EnvironmentEditor({
     else clearPersistedDraft();
   }, [draft, dirty, persistDraft, clearPersistedDraft]);
 
+  const editUnavailable =
+    loading || Boolean(errorKind) || createDenied || revision === null;
+
   function beginEdit() {
-    if (createDenied) return;
-    setDraft(
-      createEnvironmentDraft(
-        envKeys.map((entry) => entry.key),
-        secretFileNames.map((entry) => entry.name),
-        readOnlyEnvKeys,
-      ),
+    if (editUnavailable) return;
+    const fresh = createEnvironmentDraft(
+      envKeys.map((entry) => entry.key),
+      secretFileNames.map((entry) => entry.name),
+      readOnlyEnvKeys,
     );
+    // Captured with the names snapshot, in the same click: the draft's base is
+    // the state the user saw when they chose Edit, never a later poll (w4/m161).
+    setDraft(revision ? { ...fresh, baseRevision: revision } : fresh);
     setSaveError(false);
     setUploadError(null);
     setRestoredDraft(false); // a fresh edit, not one recovered from a redirect
@@ -556,13 +574,26 @@ export function EnvironmentEditor({
   async function commit(choice: SaveChoice) {
     if (createDenied || !draft || !dirty || !isDraftValid(validation)) return;
     setSaveError(false);
+    // A revision-aware draft with no base was stored before drafts carried one.
+    // Sending it with today's revision would overwrite whatever changed since,
+    // and sending none would be an unchecked write — so it stays visible but
+    // cannot save until the user discards it and edits afresh (w4/m161).
+    if (revision !== undefined && !draft.baseRevision) {
+      setSaveError(true);
+      toast.error(t("services.environmentDraftStale"));
+      return;
+    }
     let result: Awaited<ReturnType<EnvironmentEditorProps["save"]>>;
     try {
-      result = await save(patch, choice);
+      result = await save(patch, choice, draft.baseRevision);
     } catch (err) {
+      // The draft and its base survive a refusal. A revision conflict is never
+      // retried with a fresher token: the user decides what to keep.
       setSaveError(true);
       toast.error(
-        mutationErrorMessage(err, t("services.environmentSaveError")),
+        hasGraphQLErrorCode(err, "ENV_GROUP_REVISION_CONFLICT")
+          ? t("services.environmentDraftStale")
+          : mutationErrorMessage(err, t("services.environmentSaveError")),
       );
       return;
     }
@@ -732,7 +763,7 @@ export function EnvironmentEditor({
               <PermissionTooltip reason={createReason}>
                 <Button
                   size="sm"
-                  disabled={loading || Boolean(errorKind) || createDenied}
+                  disabled={editUnavailable}
                   onClick={beginEdit}
                 >
                   <Pencil /> {t("services.environmentEdit")}
@@ -797,7 +828,7 @@ export function EnvironmentEditor({
               <Button
                 size="sm"
                 variant="outline"
-                disabled={loading || Boolean(errorKind) || createDenied}
+                disabled={editUnavailable}
                 onClick={() => {
                   beginEdit();
                   addSecretFile();
