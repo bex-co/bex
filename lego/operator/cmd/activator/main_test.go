@@ -837,3 +837,138 @@ func TestMaintenanceWinsOverSuspended(t *testing.T) {
 		t.Fatalf("maintenance request issued %d patches, want 0", n)
 	}
 }
+
+// healthPaths are the tenant-path spellings the activator once answered with
+// an empty 200 before any routing decision (w4/m162): exact, with a query,
+// percent-encoded (it decodes to /healthz), and the trailing-slash control
+// that was always routed. None is reserved: platform readiness is a TCP probe.
+var healthPaths = []string{"/healthz", "/healthz?qa=r52", "/health%7a", "/healthz/"}
+
+// TestHealthPathsFollowTheSuspendedContract: a suspended web service or static
+// site answers its health paths exactly as it answers "/" — 503, an hour's
+// Retry-After, no-store, no body on HEAD — and nothing is woken.
+func TestHealthPathsFollowTheSuspendedContract(t *testing.T) {
+	static := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "site", Namespace: "bex-system"},
+		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Suspended: true},
+		Status:     appv1alpha1.AppStatus{URL: "https://site.onbex.co"},
+	}
+	web, dep := suspendedApp()
+	cache, base := primedHostCache(t, web, dep, static)
+	cl := &countingClient{Client: base}
+	handler := newHandler(cl, cache, logr.Discard())
+
+	for _, host := range []string{"suspended.onbex.co", "site.onbex.co"} {
+		for _, path := range healthPaths {
+			for _, method := range []string{http.MethodGet, http.MethodHead} {
+				t.Run(method+" "+host+path, func(t *testing.T) {
+					req := httptest.NewRequest(method, "https://"+host+path, nil)
+					req.Header.Set("Accept", "application/json")
+					rr := httptest.NewRecorder()
+					handler.ServeHTTP(rr, req)
+
+					if rr.Code != http.StatusServiceUnavailable {
+						t.Fatalf("status = %d, want 503", rr.Code)
+					}
+					if got := rr.Header().Get("Retry-After"); got != suspendedRetryAfter {
+						t.Fatalf("Retry-After = %q, want %q", got, suspendedRetryAfter)
+					}
+					if got := rr.Header().Get("Cache-Control"); got != "no-store" {
+						t.Fatalf("Cache-Control = %q, want no-store", got)
+					}
+					want := suspendedJSON
+					if method == http.MethodHead {
+						want = ""
+					}
+					if got := rr.Body.String(); got != want {
+						t.Fatalf("body = %q, want %q", got, want)
+					}
+				})
+			}
+		}
+	}
+
+	if n := cl.patches.Load(); n != 0 {
+		t.Fatalf("suspended health requests issued %d patches, want 0", n)
+	}
+	var gotDep appsv1.Deployment
+	if err := base.Get(context.Background(), clientKey("suspended"), &gotDep); err != nil {
+		t.Fatal(err)
+	}
+	if gotDep.Spec.Replicas == nil || *gotDep.Spec.Replicas != 0 {
+		t.Fatalf("suspended health request scaled the Deployment: replicas=%v", gotDep.Spec.Replicas)
+	}
+}
+
+// TestHealthPathsWakeASleepingApp: a request to only a health path, on the
+// platform or a custom host, starts the ordinary wake — bounded retryable 503,
+// last-active stamped, Deployment scaled to one — instead of an empty 200 that
+// leaves the service at zero.
+func TestHealthPathsWakeASleepingApp(t *testing.T) {
+	for _, host := range []string{"sleeping.onbex.co", "a.onbex.co"} {
+		for _, path := range healthPaths {
+			t.Run(host+path, func(t *testing.T) {
+				app, dep := sleepingApp()
+				cache, cl := primedHostCache(t, app, dep)
+
+				req := httptest.NewRequest(http.MethodGet, "https://"+host+path, nil)
+				req.Header.Set("Accept", "application/json")
+				rr := httptest.NewRecorder()
+				newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+
+				if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != "5" {
+					t.Fatalf("response = %d, Retry-After %q; want 503 with 5", rr.Code, rr.Header().Get("Retry-After"))
+				}
+				if got := rr.Body.String(); got != `{"error":"service hibernated","retryAfter":5}` {
+					t.Fatalf("body = %q", got)
+				}
+				var gotDep appsv1.Deployment
+				if err := cl.Get(context.Background(), clientKey("sleeping"), &gotDep); err != nil {
+					t.Fatal(err)
+				}
+				if gotDep.Spec.Replicas == nil || *gotDep.Spec.Replicas != 1 {
+					t.Fatalf("wake replicas = %v, want 1", gotDep.Spec.Replicas)
+				}
+				var gotApp appv1alpha1.App
+				if err := cl.Get(context.Background(), clientKey("sleeping"), &gotApp); err != nil {
+					t.Fatal(err)
+				}
+				if gotApp.Annotations[annotLastActive] == "" {
+					t.Fatalf("wake did not stamp %s", annotLastActive)
+				}
+			})
+		}
+	}
+}
+
+// TestHealthPathsOnMaintenanceAndUnknownHosts: maintenance still wins without
+// a wake on platform and custom hosts, and an unknown host keeps the generic
+// unavailable answer — no health path short-circuits either.
+func TestHealthPathsOnMaintenanceAndUnknownHosts(t *testing.T) {
+	app := maintenanceApp("")
+	cache, base := primedHostCache(t, app)
+	cl := &countingClient{Client: base}
+	handler := newHandler(cl, cache, logr.Discard())
+
+	for _, path := range healthPaths {
+		for _, host := range []string{"web.onbex.co", "custom.example.com"} {
+			t.Run("maintenance "+host+path, func(t *testing.T) {
+				rr := httptest.NewRecorder()
+				handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://"+host+path, nil))
+				if rr.Code != http.StatusServiceUnavailable || !strings.Contains(rr.Body.String(), "currently under maintenance") {
+					t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
+				}
+			})
+		}
+		t.Run("unknown host"+path, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://nobody.onbex.co"+path, nil))
+			if rr.Code != http.StatusServiceUnavailable || rr.Body.String() != "service unavailable\n" {
+				t.Fatalf("response = %d %q", rr.Code, rr.Body.String())
+			}
+		})
+	}
+	if n := cl.patches.Load(); n != 0 {
+		t.Fatalf("maintenance health requests issued %d patches, want 0", n)
+	}
+}

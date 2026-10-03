@@ -133,12 +133,10 @@ func main() {
 
 func newHandler(c client.Client, cache *hostCache, log logr.Logger) http.Handler {
 	var wakeGroup singleflight.Group
+	// Every path — /healthz included — belongs to the tenant: no path is
+	// answered before host resolution, maintenance, suspension, or wake. The
+	// platform readiness probe is a TCP check on this port (w4/m162).
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
 		host := requestHost(r.Host)
 		ctx := r.Context()
 		app, ok := cache.lookup(host)
