@@ -38,3 +38,10 @@ Replay the disposable no-build static site recipe and complete requests in [find
 ## Implementation verdict — 2026-10-02
 
 Header matching, local response and adapter regressions, simplify, and required checks are complete. [Verification and remaining release/QA gate](verification.md). No live fixture was created.
+
+## Independent supplemental verification
+
+The parallel drain retained implementation `ccf6478f7` and merged additional
+allocation/literal-boundary, wire-level error, encoded-path, non-static isolation
+and API value/authorization regressions. [Supplemental evidence](supplemental-verification.md)
+records the independent before/after run and its initial metrics-test EOF.
