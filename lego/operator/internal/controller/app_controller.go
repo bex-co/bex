@@ -2993,12 +2993,34 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 	if msg == "" {
 		if qr, qm := r.rolloutQuotaBlockMessage(ctx, dep); qm != "" {
 			reason, msg = qr, qm
+		} else if lr, lm := lastStallDiagnosis(app); lm != "" {
+			reason, msg = lr, lm
 		} else {
 			reason = "ProgressDeadlineExceeded"
 			msg = "rollout did not become healthy within the progress deadline"
 		}
 	}
 	return r.settleFailedRolloutMessage(ctx, app, reason, msg)
+}
+
+// lastStallDiagnosis keeps the previous reconcile's stall diagnosis until the
+// terminal (w8/039). The startupProbe budget and progressDeadlineSeconds are
+// both 900s, but the probe counts from container start, so kubelet routinely
+// restarts a never-healthy container a few seconds before the deadline lands.
+// The settle-time pod scan then sees a fresh container that has not had a
+// probe period to fail and reports nothing, and the deploy closed with the
+// generic deadline line although Ready had named the failing probe for
+// fifteen minutes. Only a stall reason stamped for this generation counts.
+func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
+	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	if c == nil || c.Status != metav1.ConditionFalse || c.ObservedGeneration != app.Generation {
+		return "", ""
+	}
+	switch c.Reason {
+	case reasonHealthCheckFailing, "CrashLoopBackOff", "ImagePullBackOff", reasonInvalidImageName, createContainerConfigError:
+		return c.Reason, c.Message
+	}
+	return "", ""
 }
 
 func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *appv1alpha1.App, reason, msg string) (ctrl.Result, error) {
@@ -3040,8 +3062,8 @@ func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *ap
 		}
 		for _, cs := range pod.Status.ContainerStatuses {
 			if cs.Name == appContainerName && predeploy.PermanentPullFailure(cs.State.Waiting, pod.CreationTimestamp.Time, now) {
-				if cs.State.Waiting.Reason == "InvalidImageName" {
-					return "InvalidImageName", fmt.Sprintf("image reference is invalid: %s: %s", cs.Image, cs.State.Waiting.Message)
+				if cs.State.Waiting.Reason == reasonInvalidImageName {
+					return reasonInvalidImageName, fmt.Sprintf("image reference is invalid: %s: %s", cs.Image, cs.State.Waiting.Message)
 				}
 				return "ImagePullBackOff", fmt.Sprintf("image pull is failing: %s: %s", cs.Image, cs.State.Waiting.Message)
 			}
@@ -4625,12 +4647,12 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 				return "CrashLoopBackOff", msg
 			case "ImagePullBackOff", "ErrImagePull":
 				return "ImagePullBackOff", "image pull is failing: " + w.Message
-			case "InvalidImageName":
+			case reasonInvalidImageName:
 				if cs.Name != appContainerName || p.DeletionTimestamp != nil || dep.Spec.Template.Labels[labelRevision] == "" ||
 					p.Labels[labelRevision] != dep.Spec.Template.Labels[labelRevision] {
 					continue
 				}
-				return "InvalidImageName", "image reference is invalid: " + w.Message
+				return reasonInvalidImageName, "image reference is invalid: " + w.Message
 			case createContainerConfigError:
 				// The pod's configuration cannot be resolved — almost always an
 				// env var or file whose Secret/ConfigMap is absent from the
@@ -4728,6 +4750,10 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 // is also the wire value the control plane projects and the dashboard renders,
 // so it is a contract, not a log string.
 const reasonHealthCheckFailing = "HealthCheckFailing"
+
+// reasonInvalidImageName is kubelet's Waiting reason for an unparseable image
+// reference, passed through as the Ready-condition reason.
+const reasonInvalidImageName = "InvalidImageName"
 
 // stallingProbe picks which of the container's probes is the one currently
 // gating readiness, and what to call it. kubelet suspends readiness (and

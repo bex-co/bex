@@ -77,7 +77,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **037** — [`bex logout` revokes only the presented grant](done/037.md) — **DONE 2026-10-03**: per-token Hydra RFC 7009 revoke replaces the consent-session wipe; proven against Hydra v26.2.0 (other device keeps access + refresh).
 - [x] **038** — [`BEX_WORKSPACE=<name>` resolves to the workspace id](done/038.md) — **DONE 2026-10-03**: launcher resolves a name once via `GET /v1/owners?name=` (unknown/duplicate names exit 1 with named errors); ships to users with the next `bex-cli/v*` release.
-- [ ] **039** — [Health-check-stalled first deploy loses its probe diagnosis to a 900 s restart race](039.md) (~45m, minor) ← same sweep; startup-probe kill lands seconds before settle.
+- [x] **039** — [A first deploy stalled on its health check keeps the probe diagnosis at the deadline](done/039.md) — **DONE 2026-10-03**: settle falls back to the current-generation Ready stall diagnosis when the late restart hides it from the pod scan.
 - [ ] **040** — [Restart is accepted for cron jobs; Render refuses it](040.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 2, 2026-10-03.
 - [ ] **041** — [`blueprints validate` on a zero-byte file answers a bare 400](041.md) (~25m, minor) ← `/qa-find-bugs-cli` w8 loop sweep 4, 2026-10-03.
 - [x] **042** — [`imageUrl` / deploy-hook `imgURL` must keep the configured repository](done/042.md) — **DONE 2026-10-03**: Render's host/repository/name rule enforced in the shared trigger validator; named 400 on REST, GraphQL, MCP and the hook; production had no cross-repository overrides.
