@@ -37,10 +37,10 @@ MAPPINGS_SQL = """SELECT COALESCE(json_agg(json_build_object(
 FROM billing_provider_mappings m JOIN tenants t ON t.id = m.workspace_id"""
 
 BUCKETS = (
-    "bound",                  # has a default or attached payment method
+    "not_bex",                # no bex tag at all — another product on the shared account
+    "bound",                  # bex Customer with a default or attached payment method
     "tombstone",              # deleted workspace, retired on purpose
     "workspace_create",       # provisional workspace-create Customer
-    "untagged",               # no bex_workspace tag (Checkout-created, unadopted, or not bex)
     "comped",                 # intended cardless owner
     "unbound_checkout",       # opened Checkout, never bound — reclaim target
     "unbound_no_checkout",    # minted without Checkout (pre-0123 checkout, emitter, admin)
@@ -52,6 +52,11 @@ BUCKETS = (
 def classify(customer: dict, has_attached_pm: bool, mappings: dict[str, dict] | None) -> str:
     """Pure bucket assignment for one Stripe Customer."""
     meta = customer.get("metadata") or {}
+    workspace = meta.get(WORKSPACE_KEY, "")
+    if not workspace and not meta.get(DELETED_KEY):
+        # An unadopted Checkout-created Customer is untagged too; the reclaimer's
+        # expired-session sweep owns those, keyed by the session, not by this.
+        return "not_bex"
     default_pm = ((customer.get("invoice_settings") or {}).get("default_payment_method"))
     if default_pm or has_attached_pm:
         return "bound"
@@ -59,9 +64,6 @@ def classify(customer: dict, has_attached_pm: bool, mappings: dict[str, dict] | 
         return "tombstone"
     if meta.get(ATTEMPT_KEY):
         return "workspace_create"
-    workspace = meta.get(WORKSPACE_KEY, "")
-    if not workspace:
-        return "untagged"
     if mappings is None:
         return "unbound_unknown"
     mapping = mappings.get(workspace)
@@ -112,8 +114,9 @@ def main() -> int:
             continue
         meta = customer.get("metadata") or {}
         default_pm = (customer.get("invoice_settings") or {}).get("default_payment_method")
-        # A default method already decides "bound"; only then is the extra read skipped.
-        attached = False if default_pm else has_attached_pm(customer["id"])
+        bex = meta.get(WORKSPACE_KEY) or meta.get(DELETED_KEY)
+        # Only a bex Customer without a default method needs the extra read.
+        attached = has_attached_pm(customer["id"]) if bex and not default_pm else False
         bucket = classify(customer, attached, mappings)
         counts[bucket] += 1
         members[bucket].append(f"{customer['id']} {meta.get(WORKSPACE_KEY, '-')}")
@@ -122,7 +125,7 @@ def main() -> int:
         "total": sum(counts.values()),
         # Ids only for the buckets an operator acts on; bound/tombstone stay counts.
         "reclaimTargets": members["unbound_checkout"] + members["unbound_no_checkout"],
-        "needsReview": members["unbound_unmapped"] + members["unbound_unknown"] + members["untagged"],
+        "needsReview": members["unbound_unmapped"] + members["unbound_unknown"],
     }
     json.dump(report, sys.stdout, indent=2)
     print()

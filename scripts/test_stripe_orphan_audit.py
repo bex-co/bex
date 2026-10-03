@@ -35,8 +35,11 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(classify(customer(cid="cus_2"), False, self.mapping()), "unbound_unmapped")
         self.assertEqual(classify(customer(), False, None), "unbound_unknown")
 
-    def test_untagged_customers_are_flagged_for_review(self):
-        self.assertEqual(classify(customer(workspace=""), False, self.mapping()), "untagged")
+    def test_customers_without_a_bex_tag_are_not_bex(self):
+        # Even with a card: another product on the shared Stripe account.
+        self.assertEqual(classify(customer(workspace=""), True, self.mapping()), "not_bex")
+        # A retired tombstone has its tag blanked but is still bex's.
+        self.assertEqual(classify(customer(workspace="", bex_deleted_at="x"), False, None), "tombstone")
 
 
 if __name__ == "__main__":
