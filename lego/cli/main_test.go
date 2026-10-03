@@ -459,6 +459,9 @@ func TestBexVersionOwnsTheVersionPath(t *testing.T) {
 	if !strings.Contains(output, "v"+testBexVersion+" → v9.9.9") || !strings.Contains(output, "https://example.test/releases/bex-cli-v9.9.9") {
 		t.Errorf("missing bex upgrade hint:\n%s", output)
 	}
+	if !strings.HasSuffix(output, "\nTo upgrade, run: bex upgrade\n") {
+		t.Errorf("version hint does not say how to upgrade:\n%s", output)
+	}
 	if strings.Contains(output, "render v") {
 		t.Errorf("upstream version handler ran:\n%s", output)
 	}
@@ -962,5 +965,70 @@ func TestBexNestedHelp(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestBexLoginReportsBexReleaseNotRenderCLI pins the banner upstream prints
+// after a successful login: it advertised render-oss/cli releases and
+// render.com install docs; bex reports its own bex-cli release instead, even
+// off a TTY, and only once login actually authenticated.
+func TestBexLoginReportsBexReleaseNotRenderCLI(t *testing.T) {
+	deviceAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/device-grant":
+			_, _ = w.Write([]byte(`{"device_code":"device","user_code":"BEX-123","verification_uri":"https://dashboard.example.test/auth/device","verification_uri_complete":"https://dashboard.example.test/auth/device?user_code=BEX-123","expires_in":30,"interval":1}`))
+		case "/v1/device-token":
+			_, _ = w.Write([]byte(`{"access_token":"access","token_type":"Bearer","expires_in":3600,"refresh_token":"refresh"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(deviceAPI.Close)
+	openerDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(openerDir, "open"), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(gate string, args ...string) (string, int32) {
+		var requests atomic.Int32
+		releases := releasesServer(t, &requests)
+		command := exec.Command(buildBex(), args...)
+		command.Env = append(updateTestEnv(t.TempDir()),
+			"BEX_UPDATE_API_URL="+releases.URL,
+			"BEX_HOST="+deviceAPI.URL+"/v1/",
+			"PATH="+openerDir+":"+os.Getenv("PATH"))
+		if gate != "" {
+			command.Env = append(command.Env, gate)
+		}
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("bex %v: %v\n%s", args, err, output)
+		}
+		return string(output), requests.Load()
+	}
+
+	output, _ := run("", "login")
+	if !strings.Contains(output, "Login successful!") {
+		t.Fatalf("login did not complete:\n%s", output)
+	}
+	if !strings.Contains(output, "v"+testBexVersion+" → v9.9.9") || !strings.Contains(output, "https://example.test/releases/bex-cli-v9.9.9") {
+		t.Errorf("login did not report the newest bex release:\n%s", output)
+	}
+	// The test binary lives in a temp dir, i.e. an install-script-style path.
+	if !strings.HasSuffix(output, "\nTo upgrade, run: bex upgrade\n") {
+		t.Errorf("login did not say how to upgrade:\n%s", output)
+	}
+	if strings.Contains(output, "render v") || strings.Contains(output, "render.com/docs/cli") {
+		t.Errorf("login advertised the Render CLI:\n%s", output)
+	}
+
+	if output, _ = run("", "login", "--help"); strings.Contains(output, "9.9.9") {
+		t.Errorf("login --help printed an update hint:\n%s", output)
+	}
+
+	output, requests := run("CI=1", "login")
+	if strings.Contains(output, "9.9.9") || requests != 0 {
+		t.Errorf("CI login checked for updates (requests=%d):\n%s", requests, output)
 	}
 }

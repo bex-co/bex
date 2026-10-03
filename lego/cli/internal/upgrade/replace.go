@@ -74,13 +74,44 @@ var packageManagerMarkers = []string{
 	"/home/linuxbrew/.linuxbrew/", // Linuxbrew
 }
 
+const (
+	selfUpgradeCommand     = "bex upgrade"
+	homebrewUpgradeCommand = "brew upgrade bex"
+)
+
 // packageManagerHint reports whether execPath is owned by a package manager
 // and, if so, the upgrade instruction to print instead of self-replacing.
 func packageManagerHint(execPath string) (string, bool) {
+	if !isPackageManaged(execPath) {
+		return "", false
+	}
+	return "bex was installed with Homebrew — upgrade it with:\n\n    " + homebrewUpgradeCommand + "\n", true
+}
+
+func isPackageManaged(execPath string) bool {
 	for _, marker := range packageManagerMarkers {
 		if strings.Contains(execPath, marker) {
-			return "bex was installed with Homebrew — upgrade it with:\n\n    brew upgrade bex\n", true
+			return true
 		}
 	}
-	return "", false
+	return false
+}
+
+// InstructionCommand is the command that upgrades the running binary for the
+// channel that installed it: Homebrew owns its binary, every other install
+// self-replaces through `bex upgrade`. Update notices print it so the user can
+// upgrade in one step instead of reading release notes to find out how.
+func InstructionCommand() string {
+	execPath, err := runningBinaryPath()
+	if err != nil {
+		return selfUpgradeCommand
+	}
+	return instructionCommandFor(execPath)
+}
+
+func instructionCommandFor(execPath string) string {
+	if isPackageManaged(execPath) {
+		return homebrewUpgradeCommand
+	}
+	return selfUpgradeCommand
 }
