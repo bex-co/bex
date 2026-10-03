@@ -134,7 +134,12 @@ export function LogViewer({
   );
 
   const historyWindow = useLiveRange(range);
-  const history = useLogHistory(resource, queryFilters, historyWindow);
+  const history = useLogHistory(
+    resource,
+    queryFilters,
+    historyWindow,
+    JSON.stringify(range),
+  );
   const stream = useLiveLogs({
     resource,
     enabled: live && liveSupported,
@@ -150,17 +155,19 @@ export function LogViewer({
   });
 
   // Live lines append after the historical page, deduped against it.
-  const lines = useMemo(
-    () => mergeLogLines(history.lines, stream.lines),
-    [history.lines, stream.lines],
-  );
+  const lines = useMemo(() => {
+    const lower = Date.parse(historyWindow.startTime);
+    return mergeLogLines(history.lines, stream.lines).filter(
+      (line) => !(Date.parse(line.timestamp) < lower),
+    );
+  }, [history.lines, stream.lines, historyWindow.startTime]);
 
   const filtered = hasActiveLogFilters(queryFilters);
 
   // One body per state (store-unavailable / error / loading-first / empty /
   // list) — resolved to a single node so the render stays flat.
   let body: ReactNode;
-  if (history.storeUnavailable) {
+  if (history.storeUnavailable && history.lines.length === 0) {
     // Request logs / structured filters need the durable store, which isn't
     // wired here (local dev). An explanatory state, not a generic error.
     body = (
@@ -170,7 +177,7 @@ export function LogViewer({
         description={t("logs.storeRequiredBody")}
       />
     );
-  } else if (history.timedOut) {
+  } else if (history.timedOut && history.lines.length === 0) {
     // The search could not cover any of the range in the server's budget;
     // the same search would time out again (w4/m140).
     body = (
@@ -180,7 +187,7 @@ export function LogViewer({
         description={t("logs.timeoutBody")}
       />
     );
-  } else if (history.error) {
+  } else if (history.error && history.lines.length === 0) {
     body = (
       <EmptyState
         iconName="AlertCircle"
@@ -217,6 +224,14 @@ export function LogViewer({
   } else {
     body = (
       <div className="space-y-2">
+        {history.error ? (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/30 px-3 py-2 text-sm text-destructive"
+          >
+            {t("logs.errorTitle")}: {history.error.message}
+          </div>
+        ) : null}
         {history.hasMore ? (
           <LogTruncationNotice
             partial={history.lines.length < LOG_PAGE_SIZE}
