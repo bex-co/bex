@@ -143,6 +143,21 @@ describe("buildDeployTimeline", () => {
     ]);
   });
 
+  // w4/m156: GraphQL encodes an unknown start as "" — a live deploy first
+  // observed already live gets no invented start step at its finish time.
+  it.each(["live", "deactivated"])(
+    "renders a %s deploy with an unknown start without a started step",
+    (status) => {
+      const steps = buildDeployTimeline(
+        deploy({ status, startedAt: "", updatedAt: "2026-07-14T01:00:00Z" }),
+        [],
+      );
+
+      expect(steps.some((step) => step.kind === "started")).toBe(false);
+      expect(steps.at(-1)?.status).toBe(status);
+    },
+  );
+
   it("shows started only when the deploy row has a real startedAt", () => {
     const steps = buildDeployTimeline(
       deploy({

@@ -286,6 +286,27 @@ describe("DeploysListPage", () => {
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
+  // w4/m156: an image rollout first observed already live has no recorded
+  // start. GraphQL keeps its empty-string encoding for that, and the row must
+  // read as an unknown duration — never a fabricated 0s, never "In progress".
+  it("shows an unknown duration for a live deploy whose start was never observed", async () => {
+    state.deploys = [
+      row({
+        id: "dep-restart",
+        status: "live",
+        startedAt: "",
+        preDeployStatus: "",
+      }),
+    ];
+
+    renderPage();
+
+    expect(await screen.findByText("Deployed 3 hours ago")).toBeInTheDocument();
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
+    expect(screen.queryByText("0s")).not.toBeInTheDocument();
+    expect(screen.queryByText("In progress")).not.toBeInTheDocument();
+  });
+
   it("labels rows by terminal state with elapsed time — Canceled/Failed rows never read 'Deployed' (w6/051)", async () => {
     state.deploys = [
       // createdAt 00:00, finishedAt 00:01:30 from the row() defaults.

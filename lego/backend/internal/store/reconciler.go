@@ -756,12 +756,13 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if status == DeployCanceled {
 		cancelReason = r.supersededCancelReason(ctx, open, cur)
 	}
-	// w6/m123: a build_failed close reached by a phase skip stamps started_at
-	// from the operator's recorded build window (generation-attributed, so it
-	// is this row's own even when the release has moved past it) — never from
-	// this transition's clock, which is the failure's observation time.
+	// w6/m123, w4/m156: a build_failed or live close reached by a phase skip
+	// stamps started_at from the operator's recorded build window
+	// (generation-attributed, so it is this row's own even when the release
+	// has moved past it) — never from this transition's clock, which is the
+	// close's observation time. Without that evidence the start stays unknown.
 	var startedAt *time.Time
-	if status == DeployBuildFailed {
+	if status == DeployBuildFailed || status == DeployLive {
 		startedAt = buildRunStart(cur, open)
 	}
 	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode, cancelReason, startedAt)
@@ -957,10 +958,11 @@ func CanceledBuildLifecycleFacts(open Deploy) []ServiceEventFact {
 // phase, which IS the dispatch point, so it wins whenever the row already
 // carries one. A never-queued deploy keeps riding CreatedAt: it is dispatched
 // as the row opens, and that path must keep emitting the fact even when a fast
-// build reaches a terminal status before any pass observes it mid-build. A
-// queued row observed straight at a terminal failure (w6/m123) reports the
-// operator's recorded build window when there is one — observedStart — and
-// otherwise reports no build at all, matching the row's own null started_at.
+// build fails before any pass observes it mid-build. A queued row observed
+// straight at a terminal failure (w6/m123), and any row first observed already
+// live (w4/m156), reports the operator's recorded build window when there is
+// one — observedStart — and otherwise reports no build start at all, matching
+// the row's own null started_at.
 func buildStartedAt(open Deploy, newStatus string, observedStart *time.Time) (time.Time, bool) {
 	if open.StartedAt != nil {
 		return *open.StartedAt, true
@@ -975,25 +977,37 @@ func buildStartedAt(open Deploy, newStatus string, observedStart *time.Time) (ti
 		if !DeployStatusStartsExecution(eff) {
 			return time.Time{}, false
 		}
-		// Leaving the queue on THIS pass into an in-progress/live status.
+		// Leaving the queue on THIS pass into an in-progress status.
 		// recordLifecycleFacts runs before the TransitionDeploy that stamps
 		// started_at from clock_timestamp(), so now is that same instant —
 		// CreatedAt is the stale queued-at time.
 		if DeployStatusStampsDispatch(eff) {
 			return time.Now().UTC(), true
 		}
-		// A terminal failure reached straight from queued: the dispatch was
+		// A terminal close reached straight from queued: the dispatch was
 		// never observed, so the only honest start is the operator's recorded
 		// build window.
-		if observedStart != nil {
-			return observedStart.UTC(), true
-		}
-		return time.Time{}, false
+		return evidencedStart(observedStart)
 	}
 	if eff == DeployQueued {
 		return time.Time{}, false
 	}
+	// Live without a stamped start was never seen executing; the row's
+	// creation is no more evidence of its build start than the live
+	// observation is (w4/m156).
+	if eff == DeployLive {
+		return evidencedStart(observedStart)
+	}
 	return open.CreatedAt, true
+}
+
+// evidencedStart is buildStartedAt's answer when only the operator's recorded
+// build window can date the build: that start, or no build start at all.
+func evidencedStart(observedStart *time.Time) (time.Time, bool) {
+	if observedStart == nil {
+		return time.Time{}, false
+	}
+	return observedStart.UTC(), true
 }
 
 // buildEndedStatus reports the outcome to stamp on a repo-backed deploy's

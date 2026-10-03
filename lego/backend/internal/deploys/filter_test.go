@@ -228,6 +228,97 @@ func TestDeployTimestampFormattingPreservesSubsecondTransitionOrder(t *testing.T
 	}
 }
 
+// TestUnknownStartIsMissingOnEverySurface (w4/m156): a live deploy whose start
+// was never observed keeps its established missing-value encoding on every
+// read alias — REST and MCP omit startedAt, GraphQL returns its empty string —
+// and no adapter substitutes the finish or creation time. The evidenced
+// control serializes its real start unchanged.
+func TestUnknownStartIsMissingOnEverySurface(t *testing.T) {
+	created := time.Date(2026, 10, 3, 3, 14, 52, 339929000, time.UTC)
+	finished := time.Date(2026, 10, 3, 3, 15, 8, 748639000, time.UTC)
+	started := time.Date(2026, 10, 3, 3, 36, 54, 304286000, time.UTC)
+	ds := newFakeStore()
+	ds.byApp["srv-1"] = []store.Deploy{
+		{ID: "dep-known", AppID: "srv-1", Trigger: store.TriggerAPI, Status: store.DeployDeactivated,
+			Image: "traefik/whoami:v1.10.1", CreatedAt: created.Add(-time.Hour), UpdatedAt: finished,
+			StartedAt: &started, FinishedAt: &finished},
+		{ID: "dep-unknown", AppID: "srv-1", Trigger: store.TriggerAPI, Status: store.DeployLive,
+			Image: "traefik/whoami:v1.10.1", CreatedAt: created, UpdatedAt: finished, FinishedAt: &finished},
+	}
+	svc, _ := newService(ds, sampleApp("web", "srv-1"))
+	wantFinished := "2026-10-03T03:15:08.748639Z"
+	wantStarted := "2026-10-03T03:36:54.304286Z"
+
+	do := newRESTHarness(t, svc)
+	var raw map[string]any
+	if err := json.Unmarshal(do("GET", "/v1/services/web/deploys/dep-unknown").Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := raw["startedAt"]; ok || raw["finishedAt"] != wantFinished {
+		t.Errorf("REST get = %v, want startedAt omitted and finishedAt %s", raw, wantFinished)
+	}
+	restList := decodeList(t, do("GET", "/v1/services/web/deploys"))
+	if len(restList) != 2 {
+		t.Fatalf("REST list = %+v, want both deploys", restList)
+	}
+	for _, d := range restList {
+		want := map[string]string{"dep-known": wantStarted, "dep-unknown": ""}[d.Deploy.ID]
+		if d.Deploy.StartedAt != want {
+			t.Errorf("REST list %s startedAt = %q, want %q", d.Deploy.ID, d.Deploy.StartedAt, want)
+		}
+	}
+
+	schema := testSchema(t, svc)
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{
+		unknown: deploy(serviceId: "web", deployId: "dep-unknown") { startedAt finishedAt }
+		known: deploy(serviceId: "web", deployId: "dep-known") { startedAt }
+		deploys(serviceId: "web") { id startedAt }
+	}`})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL: %v", res.Errors)
+	}
+	data := res.Data.(map[string]any)
+	if u := data["unknown"].(map[string]any); u["startedAt"] != "" || u["finishedAt"] != wantFinished {
+		t.Errorf("GraphQL deploy = %v, want empty startedAt and finishedAt %s", u, wantFinished)
+	}
+	if k := data["known"].(map[string]any); k["startedAt"] != wantStarted {
+		t.Errorf("GraphQL evidenced deploy = %v, want startedAt %s", k, wantStarted)
+	}
+	gqlList := data["deploys"].([]any)
+	if len(gqlList) != 2 {
+		t.Fatalf("GraphQL list = %v, want both deploys", gqlList)
+	}
+	for _, d := range gqlList {
+		row := d.(map[string]any)
+		if row["id"] == "dep-unknown" && row["startedAt"] != "" {
+			t.Errorf("GraphQL list unknown startedAt = %v, want empty", row["startedAt"])
+		}
+	}
+
+	cs := newMCPSession(t, svc)
+	one, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "get_deploy",
+		Arguments: map[string]any{"serviceId": "web", "deployId": "dep-unknown"}})
+	if err != nil || one.IsError {
+		t.Fatalf("get_deploy: %v isErr=%v", err, one.IsError)
+	}
+	var mcpRaw map[string]any
+	if err := decodeStructured(one.StructuredContent, &mcpRaw); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := mcpRaw["startedAt"]; ok || mcpRaw["finishedAt"] != wantFinished {
+		t.Errorf("MCP get_deploy = %v, want startedAt omitted and finishedAt %s", mcpRaw, wantFinished)
+	}
+	mcpList := callListDeploys(t, cs, map[string]any{"serviceId": "web"}).Deploys
+	if len(mcpList) != 2 {
+		t.Fatalf("MCP list = %+v, want both deploys", mcpList)
+	}
+	for _, d := range mcpList {
+		if d.ID == "dep-unknown" && d.StartedAt != "" {
+			t.Errorf("MCP list_deploys unknown startedAt = %q, want omitted", d.StartedAt)
+		}
+	}
+}
+
 func TestEveryDeployStatusFilterMatchesEverySurface(t *testing.T) {
 	ds := newFakeStore()
 	base := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
