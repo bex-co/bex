@@ -128,7 +128,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 - [x] [038 — Align default Postgres create allowlist readback with external access](done/038.md) — **DONE 2026-10-02** ← w2/m166 parity follow-up, 2026-10-02
 
-- [ ] **041** — [Reject invalid health-check paths during Blueprint validation and shared service creation](041.md) (55m) ← live CLI QA, 2026-10-02.
+- [x] **041** — [Reject invalid health-check paths during Blueprint validation and shared service creation](done/041.md) — **DONE 2026-10-02** ← live CLI QA, 2026-10-02.
 
 - [ ] **042** — [Preserve image-service pre-deploy commands when the CLI clones a service](042.md) (55m) ← live CLI QA, 2026-10-03 UTC.
 

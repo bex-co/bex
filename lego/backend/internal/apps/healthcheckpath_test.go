@@ -28,6 +28,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // healthcheckpath_test.go covers spec.healthCheckPath (Render's health check
@@ -268,5 +269,66 @@ func TestMCPSetHealthCheckPathUpdatesSpec(t *testing.T) {
 	}
 	if got := getApp(t, cl, "web").Spec.HealthCheckPath; got != "/ready" {
 		t.Errorf("spec.healthCheckPath = %q, want /ready", got)
+	}
+}
+
+// Create used to copy the raw path into the spec, so a Blueprint validated a
+// value update refuses and a create persisted it (w2/041).
+func TestCreateRejectsNonSlashHealthCheckPathBeforePersisting(t *testing.T) {
+	svc, cl := newService(nil)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"healthCheckPath":"missing-slash"}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "health check path must start with /") {
+		t.Fatalf("create => 400 naming the path rule, got %d: %s", rec.Code, rec.Body)
+	}
+	var apps appv1alpha1.AppList
+	if err := cl.List(context.Background(), &apps); err != nil {
+		t.Fatal(err)
+	}
+	if len(apps.Items) != 0 {
+		t.Fatalf("refused create persisted %d App(s)", len(apps.Items))
+	}
+
+	for _, tc := range []struct{ in, want string }{{"/health", "/health"}, {"  /health  ", "/health"}, {"   ", ""}, {"", ""}} {
+		spec, err := specFromCreate(CreateRequest{Name: "web", Image: "nginx:v1", HealthCheckPath: tc.in})
+		if err != nil {
+			t.Fatalf("specFromCreate(%q): %v", tc.in, err)
+		}
+		if spec.HealthCheckPath != tc.want {
+			t.Errorf("specFromCreate(%q).HealthCheckPath = %q, want %q", tc.in, spec.HealthCheckPath, tc.want)
+		}
+	}
+}
+
+func TestValidateBlueprintLocatesNonSlashHealthCheckPath(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	v, err := svc.ValidateBlueprint(context.Background(), "", `services:
+  - type: web
+    name: qa-validation-only
+    runtime: image
+    image:
+      url: docker.io/mendhak/http-https-echo:35
+    plan: free
+    healthCheckPath: missing-slash
+`, "")
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if v.Valid || len(v.Errors) != 1 {
+		t.Fatalf("want one error, got %+v", v)
+	}
+	e := v.Errors[0]
+	if e.Path == nil || *e.Path != "services[0].healthCheckPath" {
+		t.Errorf("path = %v, want services[0].healthCheckPath", e.Path)
+	}
+	if e.Line == nil || *e.Line != 8 || e.Column == nil || *e.Column != 22 {
+		t.Errorf("location = %v:%v, want 8:22", e.Line, e.Column)
+	}
+	if !strings.Contains(e.Error, "health check path must start with /") || strings.Contains(e.Error, "bad request") {
+		t.Errorf("error = %q", e.Error)
 	}
 }

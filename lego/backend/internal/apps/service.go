@@ -2630,6 +2630,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err := validateTypeSpecificCreate(svcType, req); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	healthCheckPath, err := normalizeHealthCheckPath(req.HealthCheckPath)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
+	}
 	tier, err := normalizeTierForType(svcType, req.Plan)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -2704,7 +2708,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Port:            port,
 		Replicas:        replicas,
 		Tier:            tier,
-		HealthCheckPath: req.HealthCheckPath,
+		HealthCheckPath: healthCheckPath,
 		Disk:            disk,
 		MaxShutdownDelaySeconds: clonePtr(
 			req.MaxShutdownDelaySeconds,
