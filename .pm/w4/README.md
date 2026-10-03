@@ -19,7 +19,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m159** — [Keep confirmations open through permission refresh](m159/README.md) (6 tasks) ← QA sweep 41
 
-- [ ] **m157** — [Preserve typed Postgres query values](m157/README.md) (8 tasks) ← QA sweeps 37, 39 and 40
+- [ ] **m157** — [Preserve typed Postgres query values](m157/README.md) (9 tasks) ← QA sweeps 37, 39, 40 and 44
 - [ ] **m158** — [Preserve exact SQL numbers in MCP responses](m158/README.md) (6 tasks) ← QA sweep 40
 
 - [ ] **m156** — [Report honest start times for successful deploys](m156/README.md) (6 tasks) ← QA sweep 34
