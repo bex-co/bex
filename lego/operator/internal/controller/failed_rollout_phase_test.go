@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -370,4 +371,91 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 			}
 		})
 	}
+}
+
+// w8/039: kubelet's startup-probe kill lands seconds before the progress
+// deadline, so the settle-time scan sees a freshly restarted container that
+// has not had a probe period to fail. The diagnosis Ready already carried for
+// this generation must survive to the terminal, not the generic line.
+func TestRolloutDeadlineKeepsProbeDiagnosisAcrossLateRestart(t *testing.T) {
+	const probeMsg = "the container is running but its startup health check has not succeeded, so the rollout is waiting: a TCP connect to port 3000."
+	restartedPod := func() *corev1.Pod {
+		notStarted := false
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "web-0", Namespace: "default",
+				Labels: map[string]string{"app": "web", labelRevision: "rev-1"},
+			},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{
+				Name: "app",
+				StartupProbe: &corev1.Probe{
+					ProbeHandler:  corev1.ProbeHandler{TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt32(3000)}},
+					PeriodSeconds: 10, TimeoutSeconds: 1, FailureThreshold: 90,
+				},
+			}}},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "app", Started: &notStarted, RestartCount: 1,
+				State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{
+					StartedAt: metav1.NewTime(time.Now().Add(-3 * time.Second)),
+				}},
+				LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 137}},
+			}}},
+		}
+	}
+	settle := func(t *testing.T, app *appv1alpha1.App) appv1alpha1.App {
+		t.Helper()
+		ctx := context.Background()
+		cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).
+			WithObjects(app, progressDeadlineDep(app.Name), restartedPod()).WithStatusSubresource(&appv1alpha1.App{}).Build()
+		r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+		if _, err := r.reportRolloutProgress(ctx, app, progressDeadlineDep(app.Name), 1, 3000, "waiting"); err != nil {
+			t.Fatalf("reportRolloutProgress: %v", err)
+		}
+		var stored appv1alpha1.App
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+			t.Fatal(err)
+		}
+		return stored
+	}
+	diagnosed := func(gen int64) []metav1.Condition {
+		return []metav1.Condition{{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonHealthCheckFailing,
+			Message: probeMsg, ObservedGeneration: gen, LastTransitionTime: metav1.Now(),
+		}}
+	}
+
+	t.Run("first release", func(t *testing.T) {
+		stored := settle(t, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 1},
+			Spec:       appv1alpha1.AppSpec{Image: "docker.io/traefik/whoami:v1.10"},
+			Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, Conditions: diagnosed(1)},
+		})
+		ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
+		if stored.Status.Phase != appv1alpha1.PhaseFailed || ready == nil || ready.Reason != reasonHealthCheckFailing || ready.Message != probeMsg {
+			t.Fatalf("phase = %q, Ready = %+v; want Failed with the probe diagnosis", stored.Status.Phase, ready)
+		}
+	})
+	t.Run("over prior release", func(t *testing.T) {
+		stored := settle(t, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
+			Spec:       appv1alpha1.AppSpec{Image: "docker.io/traefik/whoami:v1.10"},
+			Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "rev-0",
+				ObservedGeneration: 2, Conditions: diagnosed(3)},
+		})
+		rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout)
+		if rollout == nil || rollout.Reason != reasonHealthCheckFailing || rollout.Message != probeMsg {
+			t.Fatalf("Rollout = %+v; want the probe diagnosis carried to the failed deploy", rollout)
+		}
+	})
+	t.Run("stale generation diagnosis is not reused", func(t *testing.T) {
+		stored := settle(t, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 2},
+			Spec:       appv1alpha1.AppSpec{Image: "docker.io/traefik/whoami:v1.10"},
+			Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, Conditions: diagnosed(1)},
+		})
+		ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
+		if ready == nil || ready.Reason != "ProgressDeadlineExceeded" {
+			t.Fatalf("Ready = %+v; want the generic deadline line", ready)
+		}
+	})
 }
