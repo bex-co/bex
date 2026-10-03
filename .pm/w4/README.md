@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m161** — [Bind environment-group revisions to editing drafts](m161/README.md) (6 tasks) ← QA sweep 49
+
 - [ ] **m160** — [Revalidate static files across deployments](m160/README.md) (6 tasks) ← QA sweep 43
 
 - [ ] **m159** — [Keep confirmations open through permission refresh](m159/README.md) (6 tasks) ← QA sweep 41
