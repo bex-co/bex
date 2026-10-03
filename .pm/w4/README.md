@@ -19,7 +19,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m162** — [Keep platform health checks off tenant HTTP paths](blocked/m162/README.md) — **BLOCKED (release pipeline deploys operator image + activator/static-server manifests together; QA confirms both pods Ready on TCP probes, suspended/sleeping `/healthz` behaves like `/`, static `/healthz` fallback and rewrite, then cleans up)**. t001/t005 done and t002/t003/t006 code halves landed 2026-10-03: both `/healthz` overrides removed, readiness moved to TCP, gitops-validate pins it; operator `make test`, lint and gitops-validate green.
 
-- [ ] **m161** — [Bind environment-group revisions to editing drafts](m161/README.md) (6 tasks) ← QA sweep 49
+- [ ] **m161** — [Bind environment-group revisions to editing drafts](blocked/m161/README.md) — **BLOCKED (release pipeline deploys dashboard; QA runs the live two-tab stale-draft conflict, fresh-page repeat, re-edit success and REST/GraphQL/MCP stale-token checks, then cleans up)**. t001–t005 done 2026-10-03: Save sends the revision the draft began from (never the latest poll), conflicts keep the draft with an en/zh notice; 4047 dashboard tests + backend suite green.
 
 - [ ] **m160** — [Revalidate static files across deployments](blocked/m160/README.md) — **BLOCKED (release pipeline deploys operator/static-server; QA replays two root-directory republishes on a fresh-cache Free static site, the explicit header override across UI/REST/GraphQL/MCP, then cleans up and revokes the session)**. t001/t002/t004/t005 done 2026-10-03: every success path defaults to `public, max-age=0, must-revalidate`; operator `make test` + lint green.
 
