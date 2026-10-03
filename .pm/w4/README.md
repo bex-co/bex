@@ -19,7 +19,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m153** — **BLOCKED (production-deploy pipeline must release operator and dashboard; QA must then verify both live TLS data-survival sequences, API/UI state, rename and cleanup)** — [Preserve Key Value data when re-enabling journaling](blocked/m153/README.md). t001/t002/t005 done; full operator/backend/dashboard checks, real Valkey 7/8 transition/failure tests and lint passed. t003/t004 hosted controls, t006 live acceptance and t007 closeout remain open.
 
-- [ ] **m152** — [Keep relative hosting times current on open pages](m152/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` 2026-10-02 sweep 14; two fresh cron pages freeze Last run/Next run/Created while exact API times and the deploy-row timer remain correct.
+- [ ] **m152** — [Keep relative hosting times current on open pages](blocked/m152/README.md) — **BLOCKED (release pipeline must deploy dashboard; QA must run two stable cron-page samples and verify controls/cleanup)**. t001/t002/t004/t005 done; t003/t006 retain deployed acceptance.
 
 - [ ] **m151** — [Preserve loaded log history across relative-range refreshes](blocked/m151/README.md) — **BLOCKED (release pipeline must deploy dashboard; QA must replay reader/API/live/sibling/browser controls and clean up)**. t001/t002/t004/t005 done; t003/t006 retain deployed acceptance.
 

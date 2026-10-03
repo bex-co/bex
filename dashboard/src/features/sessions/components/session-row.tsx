@@ -1,6 +1,7 @@
 import { TableRow, TableCell } from "@/common/components/ui/table";
 import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
+import { useNow } from "@/common/hooks/use-now";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
 import { formatRelativeAge } from "@/features/services/lib/format";
@@ -18,7 +19,8 @@ export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
   const { t } = useTranslations();
   const device = session.userAgent ?? t("activeSessions.unknownDevice");
   const location = session.location ?? session.ipAddress ?? "—";
-  const lastActive = formatRelativeAge(session.authenticatedAt);
+  const now = useNow();
+  const lastActive = formatRelativeAge(session.authenticatedAt, now);
 
   return (
     <TableRow>
