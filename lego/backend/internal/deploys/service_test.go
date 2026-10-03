@@ -703,6 +703,7 @@ func TestTriggerImageURLRejectsRepoBacked(t *testing.T) {
 func TestTriggerImageURLAcceptsImageBacked(t *testing.T) {
 	ds := newFakeStore()
 	app := sampleApp("svc", "srv-11")
+	app.Spec.Image = "docker.io/library/nginx:1.26"
 	svc, cl := newService(ds, app)
 
 	_, err := svc.Trigger(context.Background(), "svc", TriggerParams{ImageURL: "nginx:1.27"})
@@ -711,8 +712,47 @@ func TestTriggerImageURLAcceptsImageBacked(t *testing.T) {
 	}
 	got := getApp(t, cl, "svc")
 	selected := got.ActiveReleaseConfig()
-	if got.Spec.Image != "svc:v1" || selected == nil || selected.Image != "nginx:1.27" || selected.SourceGeneration != 0 {
+	if got.Spec.Image != "docker.io/library/nginx:1.26" || selected == nil || selected.Image != "nginx:1.27" || selected.SourceGeneration != 0 {
 		t.Fatalf("saved image %q / runtime selection %+v", got.Spec.Image, selected)
+	}
+}
+
+// TestTriggerImageURLMustKeepConfiguredRepository pins Render's imageUrl
+// contract (w8/042): host, repository and image name must match the saved
+// image; only the tag or digest may change. The refusal opens no deploy.
+func TestTriggerImageURLMustKeepConfiguredRepository(t *testing.T) {
+	for _, tc := range []struct {
+		saved, requested string
+		ok               bool
+	}{
+		{"docker.io/traefik/whoami:v1.10", "docker.io/traefik/whoami:v1.11.0", true},
+		{"docker.io/traefik/whoami:v1.10", "traefik/whoami@sha256:" + strings.Repeat("b", 64), true},
+		{"nginx:1.26", "docker.io/library/nginx:1.27", true},
+		{"ghcr.io/acme/web", "ghcr.io/acme/web:v2", true},
+		{"docker.io/traefik/whoami:v1.10", "docker.io/library/nginx:1.27", false},
+		{"docker.io/traefik/whoami:v1.10", "ghcr.io/traefik/whoami:v1.10", false},
+		{"ghcr.io/acme/web:v1", "ghcr.io/acme/api:v1", false},
+		{"ghcr.io/acme/web:v1", "ghcr.io/other/web:v1", false},
+	} {
+		t.Run(tc.saved+" -> "+tc.requested, func(t *testing.T) {
+			ds := newFakeStore()
+			app := sampleApp("svc", "srv-12")
+			app.Spec.Image = tc.saved
+			svc, _ := newService(ds, app)
+			_, err := svc.Trigger(context.Background(), "svc", TriggerParams{ImageURL: tc.requested})
+			if tc.ok {
+				if err != nil {
+					t.Fatalf("same-repository deploy refused: %v", err)
+				}
+				return
+			}
+			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "configured image") {
+				t.Fatalf("cross-repository deploy = %v, want named 400", err)
+			}
+			if ds.nextID != 0 {
+				t.Fatal("refused trigger opened a deploy row")
+			}
+		})
 	}
 }
 

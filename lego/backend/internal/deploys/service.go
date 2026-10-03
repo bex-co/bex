@@ -463,8 +463,9 @@ type TriggerParams struct {
 	// repo-backed ones (the origin-safety rule: a git-sourced service must be
 	// rebuilt from source — swapping its image at trigger time would silently
 	// divorce the running container from the committed source and is always a
-	// mistake, not an oversight). Any valid image reference is accepted for an
-	// image-backed service (the authenticated caller chooses the image).
+	// mistake, not an oversight). For an image-backed service it must keep the
+	// configured registry host, repository and image name — only the tag or
+	// digest changes (Render's contract, w8/042).
 	ImageURL string
 	// ClearCache is Render's "clear" | "do_not_clear" string enum (its
 	// dashboard's "Clear build cache and deploy"). When per-App registry
@@ -605,13 +606,8 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	}
 	// imageUrl is rejected for repo-backed services: bex rebuilds from source on
 	// every trigger; swapping the image would silently divorce the running
-	// container from the committed code. Image-backed services can deploy any
-	// valid image ref the caller supplies (origin-safety rule: gate on service
-	// kind, not registry domain — the caller is authenticated and chooses the
-	// image; that is the point of the verb). NOTE: for an image-backed service the
-	// deploy-hook URL (an unguessable token, minted behind RelCanViewSensitive) is
-	// therefore effectively an arbitrary-image deploy credential — treat it like a
-	// secret (docs/ADR006-bex-api.md § Deploy hooks).
+	// container from the committed code. For an image-backed service it may only
+	// pick another tag or digest of the configured image (below).
 	if p.ImageURL != "" && a.Spec.Repo != "" {
 		return fmt.Errorf("%w: imageUrl is not supported for repo-backed services — "+
 			"bex rebuilds from source on every trigger; use commitId to pin a ref instead", core.ErrBadRequest)
@@ -625,6 +621,9 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	if p.ImageURL != "" {
 		if err := store.ValidateImage(p.ImageURL); err != nil {
 			return fmt.Errorf("%w: imageUrl: %v", core.ErrBadRequest, err)
+		}
+		if err := sameImageRepository(a.Spec.Image, p.ImageURL); err != nil {
+			return err
 		}
 	}
 	// commitId is the second caller field that becomes a git ref: when commit
@@ -650,6 +649,35 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	// generation (w7/m88).
 	if p.ClearCache != "" && p.ClearCache != "clear" && p.ClearCache != "do_not_clear" {
 		return fmt.Errorf("%w: unknown clearCache %q (valid: clear, do_not_clear)", core.ErrBadRequest, p.ClearCache)
+	}
+	return nil
+}
+
+// sameImageRepository is Render's imageUrl origin rule (w8/042): "host,
+// repository, and image name all must match the currently configured image
+// for the service". A deploy may change only the tag or digest; switching
+// repositories is a saved-settings change (PATCH image.imagePath), which is
+// authenticated and audited. This also bounds the unauthenticated deploy hook
+// to new versions of the user's own image instead of any public image run
+// with the service's environment and secret files.
+func sameImageRepository(configured, requested string) error {
+	if configured == "" {
+		return nil
+	}
+	want, err := store.ImageRepository(configured)
+	if err != nil {
+		// A saved image the parser rejects predates validation; refuse rather
+		// than let it disable the rule.
+		return fmt.Errorf("%w: imageUrl cannot be checked against the service's configured image; fix the image in settings first", core.ErrBadRequest)
+	}
+	got, err := store.ImageRepository(requested)
+	if err != nil {
+		return fmt.Errorf("%w: imageUrl: %v", core.ErrBadRequest, err)
+	}
+	if got != want {
+		return fmt.Errorf("%w: imageUrl must use the service's configured image %s (got %s); "+
+			"only the tag or digest can change per deploy — change the image in settings to switch repositories",
+			core.ErrBadRequest, want, got)
 	}
 	return nil
 }
