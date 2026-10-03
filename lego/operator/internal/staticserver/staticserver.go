@@ -507,11 +507,29 @@ func expandDest(dest, splat string) string {
 	return dest
 }
 
+// matchHeaderPattern keeps file selectors separate from route splat captures.
+// A globstar requires at least one directory: Render distinguishes /*.css from
+// /**/*.css, and /**/* also matches a trailing directory slash. Unsupported
+// metacharacters retain their literal meaning; matching is bounded by path size.
+func matchHeaderPattern(pattern, reqPath string) bool {
+	if suffix, ok := strings.CutPrefix(pattern, "/**/*"); ok && !strings.ContainsAny(suffix, "/*") {
+		slash := strings.LastIndexByte(reqPath, '/')
+		return slash > 0 && strings.HasSuffix(reqPath[slash+1:], suffix)
+	}
+	if prefix, suffix, ok := strings.Cut(pattern, "*"); ok && suffix != "" &&
+		strings.HasSuffix(prefix, "/") && !strings.ContainsAny(suffix, "/*") {
+		file, underPrefix := strings.CutPrefix(reqPath, prefix)
+		return underPrefix && !strings.Contains(file, "/") && strings.HasSuffix(file, suffix)
+	}
+	_, ok := matchPattern(pattern, reqPath)
+	return ok
+}
+
 // applyHeaders adds every custom header whose path pattern matches reqPath. Set
 // (not Add) so a repeated header name resolves to the last matching rule.
 func applyHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPath string) {
 	for _, rule := range headers {
-		if _, ok := matchPattern(rule.Path, reqPath); ok {
+		if matchHeaderPattern(rule.Path, reqPath) {
 			h.Set(rule.Name, rule.Value)
 		}
 	}
@@ -534,7 +552,7 @@ func applyErrorHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPat
 		if _, blocked := errorBodyHeaderNames[http.CanonicalHeaderKey(rule.Name)]; blocked {
 			continue
 		}
-		if _, ok := matchPattern(rule.Path, reqPath); ok {
+		if matchHeaderPattern(rule.Path, reqPath) {
 			h.Set(rule.Name, rule.Value)
 		}
 	}

@@ -23,7 +23,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m151** — [Preserve loaded log history across relative-range refreshes](m151/README.md) (6 tasks, ~2h 45m) ← live `qa-find-bugs` 2026-10-02 sweep 12; Last hour drops 40 loaded older rows and resets the reader every 30 seconds with Live off, while the fixed Custom control stays stable.
 
-- [ ] **m150** — [Apply saved static header wildcard patterns](m150/README.md) (6 tasks, ~3h) ← live `qa-find-bugs` 2026-10-02 sweep 11; root-extension and nested wildcard rules persist across API/UI reads but never emit headers, while exact/global/subtree controls work.
+- [ ] **m150** — [Apply saved static header wildcard patterns](blocked/m150/README.md) — **BLOCKED (release pipeline must deploy static-server; QA must replay saved headers/GET/HEAD/routes, verify cleanup and revoke session)**. t001/t002/t004/t005 done; t003/t006 retain deployed acceptance.
 
 - [ ] **m149** — [Remove Key Value TLS artifacts on deletion](blocked/m149/README.md) — **BLOCKED (release pipeline deploys operator, then QA proves public/private TLS inventory reaches zero, API/UI reads and audit agree, and cleans up fixtures/session)**; t001/t002/t003/t005/t006 done, t004/t007 remain. Independent TLS finalization, conservative ownership, ordered retries and audit regressions verified locally.
 
