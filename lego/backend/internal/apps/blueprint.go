@@ -1859,6 +1859,9 @@ func blueprintErrorPath(ir BlueprintIR, message string) string {
 }
 
 func blueprintErrorField(message string) string {
+	if strings.Contains(message, "health check path") {
+		return ".healthCheckPath"
+	}
 	for _, field := range []string{"maintenanceMode", "highAvailability", "readReplicas", "diskSizeGB", "storageAutoscalingEnabled", "connectionPool", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
 			return "." + field
