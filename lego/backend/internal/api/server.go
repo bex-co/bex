@@ -1177,7 +1177,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// reach a bex resource without completing Hydra's browser authorization.
 	// Its authenticated revoke route registers into the one REST router below;
 	// authGate.invalidate lets logout evict this pod's introspection cache.
-	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys, authGate.invalidate)
+	cliAuth := cliauth.New(s.OAuthIssuer, s.APIKeys, authGate.invalidate)
 	cliAuth.RateLimiter = s.DeviceRateLimiter
 	cliAuth.Refreshes = s.CLIRefreshes
 	cliAuth.Revocations = s.OAuthRevocations
