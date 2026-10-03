@@ -38,3 +38,7 @@ Repeat the free cron fixture and timestamp sampler in [finding.md](finding.md). 
 ## Implementation verdict — 2026-10-02
 
 Shared clock, accessible-label synchronization, hydration/lifecycle regressions and local caller checks are complete. [Verification and remaining release/QA gate](verification.md). No live fixtures or sessions were created.
+
+## Independent supplemental verification
+
+The parallel drain retained shared-clock implementation `79910e98c` and added real cron-header and SessionRow hydration regressions. [Supplemental evidence](supplemental-verification.md) distinguishes the independent runs from merged verification.

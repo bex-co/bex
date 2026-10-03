@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -444,6 +444,56 @@ describe("ServiceDetailHeader", () => {
     expect(await screen.findByText("Last run:")).toBeInTheDocument();
     expect(screen.getByText("Next run:")).toBeInTheDocument();
     expect(screen.getByText(/^in \d+m$/)).toBeInTheDocument();
+  });
+
+  it("advances cron and creation ages for two minutes with unchanged service facts", async () => {
+    const now = Date.parse("2026-10-02T12:00:00Z");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const createdAt = new Date(now - 4 * 60_000).toISOString();
+    const lastSuccessfulRunAt = new Date(now - 10_000).toISOString();
+    const nextRunAt = new Date(now + 4 * 60_000).toISOString();
+    const service = svc({
+      type: "cron_job",
+      url: null,
+      plan: null,
+      schedule: "*/5 * * * *",
+      createdAt,
+      lastSuccessfulRunAt,
+      nextRunAt,
+    });
+    const view = renderHeader(service);
+    try {
+      await screen.findByText("Last run:");
+      const created = view.container.querySelector(
+        `time[datetime="${createdAt}"]`,
+      );
+      const last = view.container.querySelector(
+        `time[datetime="${lastSuccessfulRunAt}"]`,
+      );
+      const next = view.container.querySelector(
+        `time[datetime="${nextRunAt}"]`,
+      );
+      expect(created).toHaveTextContent("4m");
+      expect(last).toHaveTextContent("now");
+      expect(next).toHaveTextContent("in 4m");
+      for (const minutes of [1, 2]) {
+        clock.mockReturnValue(now + minutes * 60_000);
+        act(() => vi.advanceTimersByTime(60_000));
+        expect(created).toHaveTextContent(`${4 + minutes}m`);
+        expect(last).toHaveTextContent(`${minutes}m`);
+        expect(next).toHaveTextContent(`in ${4 - minutes}m`);
+        expect(created).toHaveAttribute("dateTime", createdAt);
+        expect(last).toHaveAttribute("dateTime", lastSuccessfulRunAt);
+        expect(next).toHaveAttribute("dateTime", nextRunAt);
+      }
+      expect(triggerDeploy).not.toHaveBeenCalled();
+      expect(restartServer).not.toHaveBeenCalled();
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+      clock.mockRestore();
+    }
   });
 
   // w6/m102: the cron header's ages go through RelativeAge/RelativeUntil, whose
