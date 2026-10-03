@@ -1,4 +1,11 @@
 // Recheck a confirmation against its original context immediately before dispatch.
+//
+// Two predicates, kept apart on purpose (w4/m159). *Intent* — the open dialog,
+// its target and any draft — belongs to an exact workspace/resource/deploy/
+// access-generation context and survives a routine permission refresh.
+// *Dispatch* additionally needs current, fresh, affirmative eligibility. A
+// checking/stale/unavailable gap disables confirm and aborts any in-flight
+// recheck, but never closes the dialog; recovery needs a new click.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApolloClient } from "@apollo/client/react";
@@ -58,6 +65,8 @@ export function useBoundActionConfirm(opts: {
   const { currentWorkspaceId } = useWorkspace();
   const capabilities = useCapabilities();
   const { generation } = capabilities;
+  const eligible =
+    capabilities.loaded && !capabilities.stale && !capabilities.unavailable;
   const client = useApolloClient();
   const [pending, setPending] = useState<ActionConfirmBinding | null>(null);
   const pendingRef = useRef<ActionConfirmBinding | null>(null);
@@ -68,14 +77,14 @@ export function useBoundActionConfirm(opts: {
     workspaceId: currentWorkspaceId,
     ...opts,
     generation,
-    eligible:
-      capabilities.loaded && !capabilities.stale && !capabilities.unavailable,
+    eligible,
     accessGeneration: getAccessGeneration(),
   };
   const latest = useRef(currentContext);
   latest.current = currentContext;
 
-  const isBindingCurrent = useCallback(
+  /** Same-context intent: the dialog may stay open (presentation only). */
+  const isIntentCurrent = useCallback(
     (binding: ActionConfirmBinding | null) => {
       const current = latest.current;
       return (
@@ -83,7 +92,6 @@ export function useBoundActionConfirm(opts: {
         mounted.current &&
         pendingRef.current === binding &&
         pendingAccessGeneration.current === getAccessGeneration() &&
-        current.eligible &&
         current.workspaceId === binding.workspaceId &&
         current.resourceId === binding.resourceId &&
         current.deployId === binding.deployId &&
@@ -95,16 +103,28 @@ export function useBoundActionConfirm(opts: {
     [],
   );
 
+  /** Intent plus fresh eligibility: the only predicate that may dispatch. */
+  const isBindingCurrent = useCallback(
+    (binding: ActionConfirmBinding | null) =>
+      isIntentCurrent(binding) && latest.current.eligible,
+    [isIntentCurrent],
+  );
+
   const clearConfirm = useCallback(() => {
     pendingRef.current = null;
     inFlight.current?.abort();
     setPending(null);
   }, []);
 
-  const binding = isBindingCurrent(pending) ? pending : null;
+  const binding = isIntentCurrent(pending) ? pending : null;
   useEffect(() => {
     if (pending && !binding && pendingRef.current === pending) clearConfirm();
   }, [pending, binding, clearConfirm]);
+  // A lapse invalidates an in-flight authorization attempt, so a check that
+  // straddles it cannot resume after recovery; the dialog itself stays.
+  useEffect(() => {
+    if (!eligible) inFlight.current?.abort();
+  }, [eligible]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -273,9 +293,19 @@ export function useBoundActionConfirm(opts: {
 
   return {
     pending: binding,
+    /** Why an open confirmation cannot dispatch right now, if it cannot. */
+    blockedReason:
+      binding && !eligible
+        ? t(
+            capabilities.unavailable
+              ? "capabilities.grantUnavailable"
+              : "capabilities.actionChecking",
+          )
+        : undefined,
     openConfirm,
     clearConfirm,
     recheckBeforeDispatch,
     isBindingCurrent,
+    isIntentCurrent,
   };
 }

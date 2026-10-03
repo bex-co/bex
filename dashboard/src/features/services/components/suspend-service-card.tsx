@@ -13,6 +13,7 @@ import { isCron, publiclyRoutable } from "@/features/services/lib/service-type";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { ConfirmGateStatus } from "@/features/capabilities/components/confirm-gate-status";
 import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
 import {
   useBoundActionConfirm,
@@ -59,10 +60,11 @@ export function SuspendServiceCard({
   const serverActions = useServerActions(service.id);
   const {
     pending: confirmBinding,
+    blockedReason,
     openConfirm,
     clearConfirm,
     recheckBeforeDispatch,
-    isBindingCurrent,
+    isIntentCurrent,
   } = useBoundActionConfirm({ resourceId: service.id });
   const [storedProtectedConfirm, setProtectedConfirm] = useState<{
     binding: ActionConfirmBinding;
@@ -93,6 +95,9 @@ export function SuspendServiceCard({
     serverActions.status === "ready" ? "ready" : serverActions.status,
   );
   const permissionReason = gateReason(gate, t);
+  // An open confirmation survives a routine permission refresh but cannot
+  // dispatch until access is fresh again (w4/m159).
+  const confirmBlocked = blockedReason ?? permissionReason;
   const confirmOpen = confirmBinding?.action === "suspend" && !protectedConfirm;
 
   function closeConfirm() {
@@ -117,7 +122,9 @@ export function SuspendServiceCard({
       const result = confirmation
         ? await onRun(binding.action, service, confirmation)
         : await onRun(binding.action, service);
-      if (!isBindingCurrent(binding)) return;
+      // The mutation already ran: follow its result unless the context
+      // changed. A protected re-prompt still rechecks before it dispatches.
+      if (!isIntentCurrent(binding)) return;
       if (result.status === "confirmation_required") {
         setProtectedConfirm({ binding, confirmation: result.confirmation });
       } else if (result.status === "success" || !confirmation) {
@@ -205,8 +212,11 @@ export function SuspendServiceCard({
         confirmLabel={t("services.actionSuspend")}
         pending={busy}
         closeOnConfirm={false}
+        confirmDisabled={!!confirmBlocked}
         onConfirm={() => void runAction(confirmBinding)}
-      />
+      >
+        <ConfirmGateStatus reason={confirmBlocked} />
+      </ConfirmDialog>
 
       <ProtectedConfirmationDialog
         key={
@@ -223,13 +233,16 @@ export function SuspendServiceCard({
             : ""
         }
         busy={busy}
+        confirmDisabled={!!blockedReason}
         onOpenChange={(open) => !open && closeConfirm()}
         onConfirm={(confirmation) =>
           protectedConfirm
             ? runAction(protectedConfirm.binding, confirmation)
             : Promise.resolve()
         }
-      />
+      >
+        <ConfirmGateStatus reason={blockedReason} />
+      </ProtectedConfirmationDialog>
     </Card>
   );
 }

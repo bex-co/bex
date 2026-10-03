@@ -17,6 +17,7 @@ import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { isCron } from "@/features/services/lib/service-type";
 import type { ServiceView } from "@/features/services/types";
 import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import { ConfirmGateStatus } from "@/features/capabilities/components/confirm-gate-status";
 import { useDeployActions } from "@/features/capabilities/hooks/use-resource-actions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
@@ -115,6 +116,10 @@ export function ManualDeployButton({
       : t(
           capabilities.reasonKey("can_create") ?? "capabilities.actionChecking",
         ));
+  // A routine permission refresh keeps an open dialog (and its typed SHA) but
+  // blocks confirm, with the reason shown, until access is fresh (w4/m159).
+  const restartBlocked = actionConfirm.blockedReason ?? permissionReason;
+  const commitBlocked = commitConfirm.blockedReason ?? commitReason;
 
   function openDeploy(deployId: string | null) {
     if (!deployId) return;
@@ -144,13 +149,20 @@ export function ManualDeployButton({
   ) {
     if (busy || !binding) return;
     setChecking(true);
+    let dispatched = false;
     try {
       const { ok } = await confirmation.recheckBeforeDispatch(binding);
       if (!ok) return;
+      dispatched = true;
       const deployId = await run();
-      if (confirmation.isBindingCurrent(binding)) openDeploy(deployId);
+      // The mutation already ran; landing on it is presentation, so only a
+      // context change (not a routine refresh) suppresses it.
+      if (confirmation.isIntentCurrent(binding)) openDeploy(deployId);
     } finally {
-      confirmation.clearConfirm();
+      // An access lapse mid-check leaves an open same-context dialog for a
+      // new click; a refusal has already closed it.
+      if (dispatched || dialog?.binding !== binding)
+        confirmation.clearConfirm();
       setChecking(false);
     }
   }
@@ -165,12 +177,12 @@ export function ManualDeployButton({
   }
 
   async function handleRestart() {
-    if (permissionReason || dialog?.kind !== "restart") return;
+    if (restartBlocked || dialog?.kind !== "restart") return;
     await runDeploy(actionConfirm, dialog.binding, () => restart(service.id));
   }
 
   async function handleDeployCommit() {
-    if (commitReason || !shaValid || dialog?.kind !== "commit") return;
+    if (commitBlocked || !shaValid || dialog?.kind !== "commit") return;
     const { binding } = dialog;
     await runDeploy(commitConfirm, binding, async () => {
       const deployId = await trigger(service.id, { commitId: sha });
@@ -253,9 +265,11 @@ export function ManualDeployButton({
         destructive={false}
         pending={busy}
         closeOnConfirm={false}
-        confirmDisabled={!!permissionReason}
+        confirmDisabled={!!restartBlocked}
         onConfirm={() => void handleRestart()}
-      />
+      >
+        <ConfirmGateStatus reason={restartBlocked} />
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={dialog?.kind === "commit"}
@@ -267,7 +281,7 @@ export function ManualDeployButton({
         destructive={false}
         pending={busy}
         closeOnConfirm={false}
-        confirmDisabled={!shaValid || !!commitReason}
+        confirmDisabled={!shaValid || !!commitBlocked}
         onConfirm={() => void handleDeployCommit()}
       >
         <TextField
@@ -279,6 +293,7 @@ export function ManualDeployButton({
           }}
           error={shaError ? t("services.deployCommitInvalid") : undefined}
         />
+        <ConfirmGateStatus reason={commitBlocked} />
       </ConfirmDialog>
     </>
   );

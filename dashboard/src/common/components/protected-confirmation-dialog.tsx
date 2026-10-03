@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -20,6 +20,10 @@ export interface ProtectedConfirmationDialogProps {
   busy: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (confirmation: string) => Promise<void>;
+  /** Gates confirm on the caller's own condition, as ConfirmDialog does. */
+  confirmDisabled?: boolean;
+  /** Extra content between the phrase field and the footer. */
+  children?: ReactNode;
 }
 
 /** Typed retry dialog driven by the exact phrase returned by bex-api. */
@@ -31,6 +35,8 @@ export function ProtectedConfirmationDialog({
   busy,
   onOpenChange,
   onConfirm,
+  confirmDisabled = false,
+  children,
 }: ProtectedConfirmationDialogProps) {
   const { t } = useTranslations();
   const [confirmation, setConfirmation] = useState("");
@@ -57,6 +63,7 @@ export function ProtectedConfirmationDialog({
           value={confirmation}
           onValueChange={setConfirmation}
         />
+        {children}
         <DialogFooter>
           <Button
             variant="outline"
@@ -68,7 +75,7 @@ export function ProtectedConfirmationDialog({
           <Button
             variant="destructive"
             onClick={() => void onConfirm(confirmation)}
-            disabled={!matches || busy}
+            disabled={!matches || busy || confirmDisabled}
           >
             {busy ? <Loader2 className="animate-spin" /> : null}
             {actionLabel}
