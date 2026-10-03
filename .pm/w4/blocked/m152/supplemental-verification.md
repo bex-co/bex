@@ -80,3 +80,5 @@ The API subset asserts core/REST last-success and next-run fields and omission. 
 ## Concurrent implementation reconciliation
 
 Commit `79910e98c` independently shipped this milestone during verification. Its clock implementation, custom-cadence compatibility, common/deploy regressions, docs and board evidence are retained. Earlier local checks above include a single-cadence hidden-pause implementation that was not shipped; those lifecycle details are historical, not claims about the retained implementation. Additional tests retain only unique cron-header, clock-lifecycle and SessionRow hydration coverage. Final merged checks are recorded below.
+
+Final merged result: seven shared-clock, lifecycle, compact-time, cron-header, deploy-row and session suites passed 73 tests (3.38s), with upstream regressions and the supplemental tests present together. Final merged `yarn lint` passed typecheck, ESLint and unused-code checks.
