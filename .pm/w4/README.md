@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m156** — [Report honest start times for successful deploys](m156/README.md) (6 tasks) ← QA sweep 34
+
 - [ ] **m155** — [Keep serving static sites Running after a failed publish](blocked/m155/README.md) — **BLOCKED (release pipeline deploys operator; QA replays the owned Free static publish-fail/recover/suspend/resume journey across REST/GraphQL/MCP/dashboard aliases, then deletes the fixture and revokes the session)**. t001/t002/t004/t005 done; operator envtest, backend and all-module lint green. t003 hosted parity and t006 closeout remain.
 
 - [ ] **m154** — [Preserve URL path semantics in static edge rules](blocked/m154/README.md) — **BLOCKED (release pipeline deploys static-server/API/dashboard; QA replays owned Free-site GET/HEAD/browser/API acceptance and cleanup)**. t001–t005 done; t006/t007 retain hosted verification and closeout.
