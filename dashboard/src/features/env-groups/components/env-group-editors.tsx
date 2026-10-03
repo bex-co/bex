@@ -24,7 +24,7 @@ export function EnvGroupEditors({
   const { t } = useTranslations();
   const revealEnv = useRevealEnvGroupVar(group.id);
   const revealFile = useRevealEnvGroupSecretFile(group.id);
-  const patch = useEnvGroupEnvironmentPatch(group.id, group.revision, refetch);
+  const patch = useEnvGroupEnvironmentPatch(group.id, refetch);
 
   return (
     <EnvironmentEditor
@@ -35,6 +35,7 @@ export function EnvGroupEditors({
       errorKind={classifyEnvGroupError(error)}
       revealEnv={revealEnv}
       revealFile={revealFile}
+      revision={group.revision}
       saving={patch.saving}
       generateOnServer
       copy={{
@@ -47,8 +48,12 @@ export function EnvGroupEditors({
         secretFilesEmptyTitle: t("envGroups.filesEmptyTitle"),
         secretFilesEmptyBody: t("envGroups.filesEmptyBody"),
       }}
-      save={(environmentPatch, choice) =>
-        patch.save(environmentPatch, choice === "only" ? "save_only" : choice)
+      save={(environmentPatch, choice, baseRevision) =>
+        patch.save(
+          environmentPatch,
+          choice === "only" ? "save_only" : choice,
+          baseRevision,
+        )
       }
       retryRollout={patch.retryRollout}
     />

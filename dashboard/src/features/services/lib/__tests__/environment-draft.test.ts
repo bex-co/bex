@@ -5,6 +5,7 @@ import {
   createEnvironmentDraft,
   environmentDraftPatch,
   isDraftValid,
+  reidentifyDraft,
   validateEnvironmentDraft,
   type EnvironmentDraft,
 } from "../environment-draft";
@@ -250,5 +251,32 @@ describe("environment draft", () => {
         "new:bad name": "invalid",
       });
     });
+  });
+});
+
+// w4/m161: an environment-group draft's base revision is state, not identity.
+// Re-keying a restored draft must keep it — dropping it would leave the save
+// with no base, and the old code borrowed whatever revision the page polled.
+describe("reidentifyDraft", () => {
+  it("re-keys rows but keeps the draft's base revision", () => {
+    const draft: EnvironmentDraft = {
+      ...createEnvironmentDraft(["TOKEN"], ["cert.pem"]),
+      baseRevision: "egr1_base",
+    };
+    let next = 0;
+    const restored = reidentifyDraft(draft, () => next++);
+    expect(restored.baseRevision).toBe("egr1_base");
+    expect(restored.envVars.map((row) => row.id)).toEqual(["restored-env:0"]);
+    expect(restored.secretFiles.map((row) => row.id)).toEqual([
+      "restored-file:1",
+    ]);
+  });
+
+  it("does not invent a base for a draft stored without one", () => {
+    const restored = reidentifyDraft(
+      createEnvironmentDraft(["TOKEN"], []),
+      () => 0,
+    );
+    expect(restored).not.toHaveProperty("baseRevision");
   });
 });

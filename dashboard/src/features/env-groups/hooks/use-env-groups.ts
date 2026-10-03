@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
@@ -409,31 +409,42 @@ export function useEnvGroupMutations(
 
 export type EnvGroupSaveMode = "save_only" | "deploy" | "rebuild";
 
-export function useEnvGroupEnvironmentPatch(
-  groupId: string,
-  revision: string | null,
-  refetch: Refetch,
-) {
+/**
+ * The group's staged-contents write. Three revisions stay distinct (w4/m161):
+ * the latest *read* one lives on the polled EnvGroup and seeds future drafts;
+ * the *base* one belongs to the open draft and is passed in here by the editor;
+ * the *committed* one is what this hook's own last accepted write produced, and
+ * only a rollout-only retry — an empty patch — reuses it. No poll or refetch
+ * ever substitutes for the base: that substitution let an old draft overwrite
+ * another editor's newer save.
+ */
+export function useEnvGroupEnvironmentPatch(groupId: string, refetch: Refetch) {
   const [mutate, { loading }] = useMutation(PatchEnvGroupEnvironmentDocument);
-  const revisionRef = useRef(revision);
-  useEffect(() => {
-    revisionRef.current = revision;
-  }, [groupId, revision]);
+  const committedRevision = useRef<string | null>(null);
 
   const save = useCallback(
-    async (patch: EnvironmentPatchInput, saveMode: EnvGroupSaveMode) => {
+    async (
+      patch: EnvironmentPatchInput,
+      saveMode: EnvGroupSaveMode,
+      expectedRevision: string | undefined,
+    ) => {
+      // bex-api treats an omitted token as an unchecked write, so a missing
+      // base fails closed here instead of being sent as null.
+      if (!expectedRevision) {
+        throw new Error("environment group draft has no base revision");
+      }
       const variables: PatchEnvGroupEnvironmentMutationVariables = {
         id: groupId,
         ...patch,
         saveMode,
-        expectedRevision: revisionRef.current,
+        expectedRevision,
       };
       const result = await mutate({ variables });
       const saved = result.data?.patchEnvGroupEnvironment;
       if (!saved?.revision) {
         throw new Error("environment group patch returned no revision");
       }
-      revisionRef.current = saved.revision;
+      committedRevision.current = saved.revision;
       await bestEffortRefetch(refetch);
       return {
         ...saved,
@@ -450,7 +461,11 @@ export function useEnvGroupEnvironmentPatch(
 
   const retryRollout = useCallback(
     async (saveMode: Exclude<EnvGroupSaveMode, "save_only">) => {
-      const result = await save({ envVars: [], secretFiles: [] }, saveMode);
+      const result = await save(
+        { envVars: [], secretFiles: [] },
+        saveMode,
+        committedRevision.current ?? undefined,
+      );
       return result.failedServiceIds.length === 0;
     },
     [save],
