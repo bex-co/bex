@@ -2180,12 +2180,6 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if err != nil {
 		return CreateRequest{}, serviceEnv{}, err
 	}
-	command := ""
-	if svcType == appv1alpha1.TypeCronJob {
-		// Reapply owns Command for cron; seed it on creation too. StartCommand
-		// still feeds native-runtime admission and build configuration.
-		command = startCommand
-	}
 
 	literal, se, err := classifyServiceEnv(overrides, a)
 	if err != nil {
@@ -2200,7 +2194,6 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Name:                    a.Name,
 		Type:                    svcType,
 		Schedule:                a.Schedule,
-		Command:                 command,
 		Repo:                    repo,
 		Image:                   image,
 		Branch:                  branch,
