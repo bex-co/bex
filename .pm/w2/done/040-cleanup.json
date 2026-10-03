@@ -1,0 +1,36 @@
+{
+  "completed_at": "2026-10-03T00:04:01.215535+00:00",
+  "owner": "w2-m166-0e1yg45e",
+  "containers": [
+    {
+      "name": "bex-w2-m166-0e1yg45e-pg",
+      "owner_verified": true,
+      "removed_with_anonymous_volumes": true,
+      "absence_verified": true
+    },
+    {
+      "name": "bex-w2-m166-0e1yg45e-fga",
+      "owner_verified": true,
+      "removed_with_anonymous_volumes": true,
+      "absence_verified": true
+    },
+    {
+      "name": "bex-w2-m166-0e1yg45e-bao",
+      "owner_verified": true,
+      "removed_with_anonymous_volumes": true,
+      "absence_verified": true
+    },
+    {
+      "name": "bex-w2-m167-1b51b70d-pg",
+      "owner_verified": true,
+      "removed_with_anonymous_volumes": true,
+      "absence_verified": true
+    }
+  ],
+  "private_environment_files_removed": [
+    "backend-test-env.json",
+    "m167-backend-test-env.json",
+    "m167-isolated-test-env.json"
+  ],
+  "scope": "Only the owned backend integration fixtures were removed. CLI/runtime acceptance fixtures have their own cleanup records."
+}
