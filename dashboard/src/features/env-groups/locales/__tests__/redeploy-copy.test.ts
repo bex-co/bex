@@ -10,8 +10,8 @@ import zh from "../zh";
  * `autoDeployGated` in lego/backend/internal/envgroups/service.go:1163 is
  * `Repo != "" && !AutoDeploy`. So a group write redeploys linked services
  * EXCEPT a repo-backed one whose owner turned Auto-Deploy off: for that service
- * the group's Secret refs still land, but `spec.restartedAt` is untouched and no
- * deploy row opens, so it keeps serving its current release. Image-backed
+ * a group content write still lands, but `spec.restartedAt` is untouched and no
+ * deploy row opens, so it keeps serving its current values. Image-backed
  * services are deliberately NOT gated — their `autoDeploy: false` is a default
  * (no branch to watch), not an opt-out.
  *
@@ -20,14 +20,25 @@ import zh from "../zh";
  * service with auto-deploy off, no deploy row opened, and the copy was wrong in
  * exactly the case the gate exists for. Nothing pinned the copy, so it drifted
  * from the behavior for as long as the gate had existed.
+ *
+ * w4/176: linking and unlinking are not content writes. They add or remove the
+ * group's Secret refs, and the operator folds refs into release identity, so a
+ * gated service still rolls to a new revision (without a history row). "No
+ * restartedAt, no deploy row" therefore does not mean "unchanged release" for
+ * links; their copy lives in LINK_KEYS and must warn of a restart instead.
  */
 const REDEPLOY_KEYS = [
   "envGroups.varDeleteConfirmBody",
   "envGroups.fileDeleteConfirmBody",
-  "envGroups.servicesDescription",
   // Not named by w1/113, but the census below caught it and it is the same
   // overpromise in the present tense: only non-gated services are redeploying.
   "envGroups.rolloutNote",
+] as const;
+
+// Link/unlink copy: the card description and the success-toast detail.
+const LINK_KEYS = [
+  "envGroups.servicesDescription",
+  "envGroups.linkChangeNote",
 ] as const;
 
 const CATALOGS = [
@@ -94,6 +105,39 @@ describe("env-group redeploy copy names the auto-deploy gate", () => {
           overpromises,
           `${name} ${key} claims auto-deploy off prevents the change`,
         ).toBe(false);
+      },
+    );
+  });
+});
+
+describe("env-group link copy warns that auto-deploy off can still restart", () => {
+  describe.each(CATALOGS)("$name", ({ name, catalog }) => {
+    it.each(LINK_KEYS)("%s permits a restart with auto-deploy off", (key) => {
+      const message = catalog[key]?.message;
+      expect(message, `${name} is missing ${key}`).toBeTruthy();
+      const warns =
+        name === "en"
+          ? /restart/i.test(message!) &&
+            /even (when|with) auto-deploy (is )?off/i.test(message!)
+          : /重启/.test(message!) && /即使已关闭自动部署/.test(message!);
+      expect(warns, `${name} ${key} does not warn of a gated restart`).toBe(
+        true,
+      );
+    });
+
+    it.each(LINK_KEYS)(
+      "%s does not promise the current release is kept",
+      (key) => {
+        const message = catalog[key]!.message;
+        const retains =
+          name === "en"
+            ? /keeps? (serving|running)|current release|next deploy|only .*auto-deploy on/i.test(
+                message,
+              )
+            : /继续运行|当前版本|下次部署/.test(message);
+        expect(retains, `${name} ${key} promises release retention`).toBe(
+          false,
+        );
       },
     );
   });

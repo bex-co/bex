@@ -391,7 +391,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "关联或取消关联会重新部署已开启自动部署的关联服务。基于代码仓库且已关闭自动部署的服务会继续运行当前版本，并在下次部署时应用此更改。",
+      "关联或取消关联会更改服务配置，即使已关闭自动部署，也可能重启服务。",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -466,6 +466,10 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.rolloutNote": {
     message: "已开启自动部署的关联服务正在重新部署以应用更改。",
     description: "Env-group write rollout toast detail",
+  },
+  "envGroups.linkChangeNote": {
+    message: "服务配置已更改，即使已关闭自动部署，服务也可能重启。",
+    description: "Env-group link/unlink success toast detail",
   },
   "envGroups.createSuccess": {
     message: "已创建 {name}",
