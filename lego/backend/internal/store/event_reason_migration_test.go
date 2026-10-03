@@ -1,0 +1,111 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package store
+
+import (
+	"errors"
+	"os"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func TestSupersededReasonMigrationPreservesVocabularyAndFacts(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := t.Context()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	exec := func(sql string) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, sql); err != nil {
+			t.Fatal(err)
+		}
+	}
+	migration := func(path string) {
+		t.Helper()
+		sql, err := migrationsFS.ReadFile("migrations/" + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		exec(string(sql))
+	}
+	exec(`CREATE SCHEMA migration_0138_event_reason;
+ SET LOCAL search_path TO migration_0138_event_reason;
+ CREATE TABLE apps (id TEXT PRIMARY KEY);
+ INSERT INTO apps(id) VALUES ('app');`)
+	migration("0043_service_event_facts.up.sql")
+	insert := func(source, reason string) error {
+		_, err := tx.Exec(ctx, `INSERT INTO service_event_facts(source_key,app_id,fact_type,at,reason_code) VALUES ($1,'app','server_failed',now(),$2)`, source, reason)
+		return err
+	}
+	rejected := func(reason string) {
+		t.Helper()
+		exec("SAVEPOINT rejected_reason")
+		err := insert("rejected", reason)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23514" || pgErr.ConstraintName != "service_event_facts_reason_code_check" {
+			t.Fatalf("reason %q rejection=%v, want reason CHECK", reason, err)
+		}
+		exec("ROLLBACK TO SAVEPOINT rejected_reason")
+	}
+	for reason := range serviceEventReasonCodes {
+		if reason == EventReasonSuperseded {
+			continue
+		}
+		if err := insert("old-"+reason, reason); err != nil {
+			t.Fatalf("old vocabulary %q: %v", reason, err)
+		}
+	}
+	rejected(EventReasonSuperseded)
+	migration("0138_service_event_superseded_reason.up.sql")
+	for reason := range serviceEventReasonCodes {
+		if err := insert("new-"+reason, reason); err != nil {
+			t.Fatalf("migrated vocabulary %q: %v", reason, err)
+		}
+	}
+	rejected("untyped-reason")
+	migration("0138_service_event_superseded_reason.down.sql")
+	var count int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM service_event_facts`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if want := 2*len(serviceEventReasonCodes) - 1; count != want {
+		t.Fatalf("rollback retained %d facts, want %d", count, want)
+	}
+	var reason string
+	if err := tx.QueryRow(ctx, `SELECT reason_code FROM service_event_facts WHERE source_key=$1`, "new-"+EventReasonSuperseded).Scan(&reason); err != nil || reason != EventReasonSuperseded {
+		t.Fatalf("rollback erased superseded attribution: %q %v", reason, err)
+	}
+	if err := insert("old-binary-after-down", EventReasonSuperseded); err != nil {
+		t.Fatalf("rollback rejected existing producer vocabulary: %v", err)
+	}
+	rejected("untyped-reason")
+	// Re-upgrading after the non-lossy rollback remains safe with retained rows.
+	migration("0138_service_event_superseded_reason.up.sql")
+}
