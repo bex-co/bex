@@ -35,7 +35,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [w7/m149 retained diagnosis](../../../w7/blocked/m149/README.md) and its preserved regression patch; approved by the user on 2026-09-30 following the w5 brainstorm and parity correction.
+- **Source:** [w7/m149 retained diagnosis](../../../w7/done/m149/README.md) and its preserved regression patch; approved by the user on 2026-09-30 following the w5 brainstorm and parity correction.
 - **Goal linkage:** ADR008 dependable, deterministic hosting and agent operation.
 - **Expected outcome:** Cold service and agent links retain their destination and settle truthful permissions without waiting for a poll.
 - **Why now:** Permission refresh shipped in w6/m144; measured startup residuals remain and w5 has capacity.
