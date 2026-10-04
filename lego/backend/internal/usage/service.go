@@ -318,7 +318,14 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 				if app.TenantID == tenantID {
 					key := store.ResourceDisplayNameKey(store.ResourceKindService, app.ID)
 					live[key] = true
+					// The displayed name, not the immutable creation name: a
+					// renamed service bills under its current label, and
+					// recapturing app.Name here would overwrite the name
+					// SetAppDisplayName retained (w2/m96 t008 live finding).
 					names[key] = app.Name
+					if app.DisplayName != "" {
+						names[key] = app.DisplayName
+					}
 				}
 			}
 		}
