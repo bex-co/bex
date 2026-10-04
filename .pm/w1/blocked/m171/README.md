@@ -1,6 +1,6 @@
 # w1 · m171 — Warn when an inbound IP allowlist sits behind a Cloudflare-proxied custom domain
 
-**Worker:** worker1 **Goal:** a tenant who saves an inbound IP allowlist on a service, or on an environment, whose custom domain is proxied by Cloudflare is told on every surface that the allowlist sees Cloudflare's address there, not the client's. The save still succeeds. **Status:** blocked on deploy + live verify. t001–t007 are done; only t008 (Closeout) remains, and it needs the change running in production and probed there.
+**Worker:** worker1 **Goal:** a tenant who saves an inbound IP allowlist on a service, or on an environment, whose custom domain is proxied by Cloudflare is told on every surface that the allowlist sees Cloudflare's address there, not the client's. The save still succeeds. **Status:** blocked on a user-owned DNS fixture. t001–t007 are done. The change has been deployed since 2026-10-02 (`1263d12ae`), and the negative path (no custom domain, restricting or `/0` list) is verified live on REST and GraphQL. t008 still needs a verified Cloudflare-proxied custom domain; see t008 § 2026-10-02 attempt.
 
 ## Tasks (in order)
 
