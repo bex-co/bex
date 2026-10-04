@@ -1,6 +1,6 @@
 # w1 · m172 — A free service that sleeps through a failed rollout wakes onto the broken release: `503 service hibernated` while the API reads Running
 
-**Worker:** worker1 **Goal:** a free service whose newest rollout failed over a prior release wakes on, and keeps serving, the release that last succeeded; its phase never reads Running while its URL can only answer the activator's 503. **Status:** in progress (t001, t002, t005, t006 done; t003 live round 1 found a second path, fixed in part 2, re-verification waits on its deploy)
+**Worker:** worker1 **Goal:** a free service whose newest rollout failed over a prior release wakes on, and keeps serving, the release that last succeeded; its phase never reads Running while its URL can only answer the activator's 503. **Status:** done (2026-10-04, verified live on pin `e13afdd59e73`)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | ---- | ------------------------------------------------------------------------------------------------------------------------------ | --- | ---------- |
 | t001 | Failed rollout over a prior release: restore the served release's pod template so wake, resume and scale run the prior release — **DONE** | 1h  | —          |
 | t002 | Phase truth: never report Running from desired scale while no replica of the serving template can become ready — **DONE** | 30m | t001       |
-| t003 | Live: reproduce on production, then verify wake after a failed rollout (both orderings)                                        | 40m | t002       |
-| t004 | Render parity                                                                                                                  | 20m | t003       |
+| t003 | Live: reproduce on production, then verify wake after a failed rollout (both orderings) — **DONE** | 40m | t002       |
+| t004 | Render parity — **DONE** | 20m | t003       |
 | t005 | Simplify — **DONE** | 15m | t004       |
 | t006 | Test coverage — **DONE** | 40m | t004       |
-| t007 | Closeout                                                                                                                       | 10m | t006       |
+| t007 | Closeout — **DONE** | 10m | t006       |
 
 ## Definition of done
 
@@ -62,6 +62,17 @@ Driven through the dashboard's GraphQL API with the QA browser session (`scripts
 - `holdUnservedRelease` (`app_controller.go`): while parked, a release that has not served stays off the pod template (a mid-rollout park puts the served template back); a wake starts the served release's pod first, behind the activator, phase Deploying; once it is ready the normal path rolls the newer release over it as a real rolling update, which can fail into t001's restore. After `servedWakeBudget` (5 minutes of pod age) the newer release rolls anyway, so a served release that can no longer start does not block its fix. `holdNewerRelease` runs the three holds in order.
 - Tests: the parked ordering rewritten to this flow, plus a mid-rollout park and the budget escape. All three fail with the hold disabled.
 - **Overlap with w6/m147 t002** (settle or defer the park of an unsettled rollout): this takes the unsettled release off the parked template and re-rolls it on wake. It does not settle a verdict at park time or change the deploy row's reason; those stay m147's.
+
+## Live round 2 (2026-10-04, pin `e13afdd59e73`) — DONE
+
+Same fixtures, same GraphQL route. Both deleted afterwards (`service(id)` answers not found); the QA Kratos session was revoked with `scripts/qa-login.sh --logout`.
+
+- **Deploy while asleep, then a request (the observed ordering): holds.** `srv-db0vhumkrnec73b0q0t0` hibernated; `dep-db13llnhb1uc73ebif7g` (memcached) created 11:39:02Z, phase still Hibernated 20 s later. Requests every second from 11:39:31Z: 7 x `503`, `200` at 11:39:42Z (11 s) with the echo image's body. The release then rolled over the live pod and closed `update_failed` at 11:54:50Z with the operator's TCP-probe line (not the backend gate). Phase Running; dashboard header "Service Running · Latest deploy Failed · Revision rev-1".
+- **After that verdict, sleep and wake: holds.** `service_hibernated` 12:02:50Z; requests every second from 12:04:23Z: 7 x `503`, `200` at 12:04:34Z (11 s). No new deploy row.
+- **The service round 1 left stuck recovers.** `srv-db0vi0em0lvc73av9r9g` had answered `503` from 09:22:48Z to 11:38:51Z on the pre-fix template (it never auto-hibernated in that time, cause not established: see `w1/124`). Suspend 11:39:50Z, resume 11:40:16Z: `200` at 11:40:37Z (21 s). Its release then rolled over the live pod and settled at 11:55:50Z, phase Running. Sleep and wake again: `503` from 12:04:35Z, `200` at 12:04:56Z (21 s).
+- **Traffic during the two rollouts.** 51 of 57 samples `200` on the first fixture and 50 of 54 on the second. Both timed out together (curl `000`) from 11:53:03Z to 11:55:04Z, four to five consecutive samples each, and the first then answered one `503` at 11:55:34Z. The window starts before either settle and hits both hosts on the same sample, which points at something shared (ingress, node, or the probing machine's network), not at the hold; without cluster access the cause is unverified. Round 1's rollout had 57 of 57.
+- **t004, parity.** GraphQL and the dashboard agree (above). REST and MCP were not exercised live (no CLI or API-key auth this run); all three project the CR phase verbatim (`lego/backend/internal/apps/service.go`) and bex-api's deploy close reads the unchanged `ConditionRollout`. Render keeps the last successful deploy serving after a failed one and wakes a spun-down free service on request; both now hold here. No drift filed.
+- **Not done here.** `bex deploys create --image` (the DoD's exact verb) was replaced by `setImage` + `triggerDeploy`, the same operator path with a saved rather than per-deploy image. w1/m156 and w1/m157's wakes were not re-run live; their fake-client suites pass unchanged.
 
 ## Related
 
