@@ -123,6 +123,11 @@ var (
 	// workspace has completed hosted payment-method setup. It is distinct from
 	// dunning enforcement: free-tier and non-plan mutations remain available.
 	ErrPaymentRequired = errors.New("payment method required")
+	// ErrGone is returned by a verb bex deliberately does not serve: the route
+	// stays registered so a Render client gets a named refusal instead of a bare
+	// 404, but the operation itself is off-roadmap and retrying cannot succeed
+	// (adapters map it to 410). Use NewGoneError so the refusal carries a code.
+	ErrGone = errors.New("gone")
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).
@@ -353,6 +358,15 @@ func NewOpsWorkspaceProtectedError() *CodedError {
 // card did on production, 2026-08-24).
 func NewUnavailableError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrUnavailable, msg: msg}
+}
+
+// NewGoneError returns a machine-readable 410 for a Render verb bex has
+// deliberately retired or never serves (e.g. one-off job creation, w4/m116):
+// the request is well-formed and authorized, but no deployment of bex will
+// ever perform it, so neither 503 (retry later) nor 400 (fix your input) is
+// honest.
+func NewGoneError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrGone, msg: msg}
 }
 
 // Agent-session availability codes deliberately distinguish a platform that

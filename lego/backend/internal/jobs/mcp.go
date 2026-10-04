@@ -27,14 +27,12 @@ import (
 // mcp.go is the MCP fragment: list_jobs, create_job, get_job, cancel_job.
 // Upstream ships no job tools, so the parity pin classifies all four as
 // Extension (internal/api/mcp_parity.go asserts this rather than this comment
-// claiming it). They mirror Render's REST shape so agents can trigger one-off
-// commands in a service's container without dropping to the REST API.
+// claiming it). They mirror Render's REST shape.
 //
-// NOTE (w1/m70): one-off jobs are listed as a deliberate non-goal in
-// .pm/DO_NOT_DO.md and marked `—` on all four surfaces in ADR018, yet this
-// package ships a full Service plus REST, GraphQL, and these four MCP tools.
-// Either the ledger row is stale or this surface should not be here; flagged
-// for a decision rather than silently resolved in a parity-pin milestone.
+// Scope (w4/m116/t003, resolving the w1/m70 flag): one-off jobs are a
+// deliberate non-goal (.pm/DO_NOT_DO.md), so create_job always refuses with
+// ONE_OFF_JOBS_UNSUPPORTED; list_jobs/get_job/cancel_job serve the history of
+// jobs created before that gate.
 
 type listJobsArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
@@ -85,7 +83,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_job",
-		Description: "bex extension: run a one-off command in the service's current container image (like `render jobs create`). The job is pending until the cluster schedules the pod; poll get_job until status is succeeded, failed, or canceled.",
+		Description: "bex extension: Render's `jobs create`. One-off jobs are not supported on bex — this tool always refuses with ONE_OFF_JOBS_UNSUPPORTED; run the command over SSH, as a pre-deploy command, or as a cron job instead. list_jobs/get_job/cancel_job still serve existing jobs.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createJobArgs) (*mcp.CallToolResult, renderJob, error) {
 		v, err := s.Create(ctx, in.ServiceID, in.StartCommand, in.PlanID)
 		if err != nil {
@@ -96,7 +94,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_job",
-		Description: "bex extension: get a one-off job's current status — poll this after create_job until status is succeeded, failed, or canceled.",
+		Description: "bex extension: get an existing one-off job's current status (succeeded, failed, canceled, or still pending/running).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in jobIDArgs) (*mcp.CallToolResult, renderJob, error) {
 		v, err := s.Get(ctx, in.ServiceID, in.JobID)
 		if err != nil {

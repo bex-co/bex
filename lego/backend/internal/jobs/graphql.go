@@ -26,7 +26,9 @@ import (
 
 // graphql.go is the one-off jobs GraphQL fragment: jobs(serviceId) query and
 // createJob/cancelJob mutations, mirroring the REST surface so the three
-// surfaces cannot diverge. All delegates to the same Service verbs REST uses.
+// surfaces cannot diverge. All delegates to the same Service verbs REST uses;
+// createJob therefore always refuses with ONE_OFF_JOBS_UNSUPPORTED in
+// extensions.code (one-off jobs are off-roadmap, w4/m116/t003).
 
 var jobGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Job",
