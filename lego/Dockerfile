@@ -18,8 +18,10 @@ WORKDIR /workspace
 COPY operator/go.mod operator/go.sum ./operator/
 COPY backend/go.mod  backend/go.sum  ./backend/
 COPY types/ ./types/
-RUN cd operator && go mod download
-RUN cd backend  && go mod download
+# go mod download retries (3 attempts, backoff): a single proxy.golang.org TLS
+# handshake timeout failed a whole deploy build on 2026-10-04.
+RUN cd operator && n=0; until go mod download; do n=$((n+1)); [ "$n" -ge 3 ] && exit 1; sleep $((n*15)); done
+RUN cd backend  && n=0; until go mod download; do n=$((n+1)); [ "$n" -ge 3 ] && exit 1; sleep $((n*15)); done
 
 # Source (relies on .dockerignore to filter to *.go + go.mod/go.sum)
 COPY operator/ ./operator/
