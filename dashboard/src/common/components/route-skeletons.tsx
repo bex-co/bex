@@ -1551,6 +1551,9 @@ export function ServiceSettingsSkeleton({
   sourceKind?: "repo" | "image";
 }) {
   const { t } = useTranslations();
+  // An Existing Image service has no build; its ready page shows a one-row
+  // Deploy card (Docker Command) where a repo service shows Build & Deploy.
+  const imageSource = !staticSite && sourceKind === "image";
   const sections = staticSite
     ? [
         "general",
@@ -1565,7 +1568,7 @@ export function ServiceSettingsSkeleton({
     : [
         "general",
         "source",
-        "build",
+        imageSource ? "deploy" : "build",
         "domains",
         "networking",
         "registry-credential",
@@ -1628,13 +1631,19 @@ export function ServiceSettingsSkeleton({
             </Card>
           </Region>
         ) : null}
-        <Region
-          name="build"
-          className={`space-y-6 ${staticSite ? "" : "min-h-[2018px] sm:min-h-0"}`}
-        >
-          <SettingsFormCardSkeleton fields={staticSite ? 7 : 8} />
-          <SettingsFormCardSkeleton fields={staticSite ? 3 : 6} />
-        </Region>
+        {imageSource ? (
+          <Region name="deploy">
+            <SettingsFormCardSkeleton fields={1} />
+          </Region>
+        ) : (
+          <Region
+            name="build"
+            className={`space-y-6 ${staticSite ? "" : "min-h-[2018px] sm:min-h-0"}`}
+          >
+            <SettingsFormCardSkeleton fields={staticSite ? 7 : 8} />
+            <SettingsFormCardSkeleton fields={staticSite ? 3 : 6} />
+          </Region>
+        )}
         {staticSite ? (
           <Region name="static-site">
             <SettingsFormCardSkeleton fields={2} />

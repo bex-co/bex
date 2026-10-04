@@ -1,16 +1,16 @@
 # w4 · m166 — Loop2: Docker Command for image-source services
 
-**Worker:** worker4 **Goal:** an image-source web/worker service can set its container command from the dashboard, unblocking images whose default CMD does not serve **Status:** todo
+**Worker:** worker4 **Goal:** an image-source web/worker service can set its container command from the dashboard, unblocking images whose default CMD does not serve **Status:** blocked — t001–t005 done 2026-10-04; t006 live closeout remains
 
 ## Tasks (in order)
 
 | id   | title                                                        | est | depends_on |
 | ---- | ------------------------------------------------------------ | --- | ---------- |
-| t001 | Create wizard: Docker Command field for the image source     | 1h  | —          |
-| t002 | Settings: Docker Command editor for image-backed services    | 1h  | w4/m166/t001 |
-| t003 | Render parity across create/settings/API surfaces            | 30m | w4/m166/t002 |
-| t004 | Simplify the touched dashboard code                          | 30m | w4/m166/t003 |
-| t005 | Test coverage for image-service commands                     | 1h  | w4/m166/t003 |
+| t001 — **DONE** | Create wizard: Docker Command field for the image source     | 1h  | —          |
+| t002 — **DONE** | Settings: Docker Command editor for image-backed services    | 1h  | w4/m166/t001 |
+| t003 — **DONE** | Render parity across create/settings/API surfaces            | 30m | w4/m166/t002 |
+| t004 — **DONE** | Simplify the touched dashboard code                          | 30m | w4/m166/t003 |
+| t005 — **DONE** | Test coverage for image-service commands                     | 1h  | w4/m166/t003 |
 | t006 | Closeout                                                     | 15m | w4/m166/t005 |
 
 ## Definition of done

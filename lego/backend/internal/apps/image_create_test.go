@@ -110,3 +110,22 @@ func TestM114_NativeRuntimeStillFailsClosed(t *testing.T) {
 		t.Fatalf("a complete native create: %v", err)
 	}
 }
+
+// TestImageRuntimeAcceptsADockerCommand pins the contract the dashboard's
+// Existing Image wizard relies on (w4/m166): a prebuilt image may override its
+// CMD with startCommand alone — only a build command is meaningless for it —
+// and the override lands on spec.startCommand for every long-running type.
+func TestImageRuntimeAcceptsADockerCommand(t *testing.T) {
+	for _, svcType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker} {
+		spec, err := specFromCreate(CreateRequest{
+			Name: "qa-image", Type: svcType, Runtime: "image", Image: "hashicorp/http-echo:0.2.3",
+			StartCommand: "/http-echo -text=hello",
+		})
+		if err != nil {
+			t.Fatalf("%s image with a Docker Command: %v", svcType, err)
+		}
+		if spec.StartCommand != "/http-echo -text=hello" || spec.Image != "hashicorp/http-echo:0.2.3" {
+			t.Fatalf("%s spec = startCommand %q image %q", svcType, spec.StartCommand, spec.Image)
+		}
+	}
+}
