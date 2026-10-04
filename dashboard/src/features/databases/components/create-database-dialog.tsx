@@ -182,7 +182,10 @@ export function CreateDatabaseDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent>
+      {/* The plan label (tier, specs, monthly price) is long. A bounded column
+          keeps its intrinsic width from widening the grid past a narrow
+          viewport; the trigger and menu wrap it instead of clipping it. */}
+      <DialogContent className="grid-cols-[minmax(0,1fr)]">
         <DialogHeader>
           <DialogTitle>{t("databases.createTitle")}</DialogTitle>
           <DialogDescription>
@@ -260,12 +263,15 @@ export function CreateDatabaseDialog({
           <div className="space-y-2">
             <Label htmlFor="db-plan">{t("databases.fieldPlan")}</Label>
             <Select value={plan} onValueChange={setPlanOverride}>
-              <SelectTrigger id="db-plan" className="w-full">
+              <SelectTrigger
+                id="db-plan"
+                className="w-full min-h-9 whitespace-normal text-left data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:min-w-0"
+              >
                 <SelectValue
                   placeholder={t("databases.fieldPlanPlaceholder")}
                 />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-w-(--radix-select-content-available-width)">
                 {instanceTypes.map((it) => (
                   <SelectItem key={it.id} value={it.id}>
                     {it.name} — {formatInstanceMemory(it.memory)} RAM,{" "}
