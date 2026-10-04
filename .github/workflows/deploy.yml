@@ -297,10 +297,24 @@ jobs:
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}
             ${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}
         run: |
+          # --oidc-provider=github-actions: never fall back to the interactive
+          # device flow. On 2026-10-04 one transient OIDC fetch error made
+          # cosign print a sigstore device code and wait 300 s for a browser
+          # nobody can open, failing an otherwise green hour-long run. Fail
+          # fast and retry instead; re-signing a digest only adds a signature.
+          retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              echo "::warning::attempt $attempt failed: $*"
+              [ "$attempt" -lt 3 ] && sleep $((attempt * 15))
+            done
+            return 1
+          }
           for ref in $REFS; do
-            cosign sign --yes "$ref"
+            retry cosign sign --yes --oidc-provider=github-actions "$ref"
             syft "$ref" -o spdx-json > /tmp/sbom.spdx.json
-            cosign attest --yes --type spdxjson --predicate /tmp/sbom.spdx.json "$ref"
+            retry cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate /tmp/sbom.spdx.json "$ref"
           done
 
       # --- 1f. CVE scan: CRITICAL fails CI, HIGH warns (w7/m10 t001) ---
