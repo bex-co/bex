@@ -28,8 +28,10 @@
 #          2 = error        (could not determine — callers treat as "not skipped":
 #                            the pre-build check proceeds and the write-back guard,
 #                            the real correctness gate, re-checks before pinning)
-#          3 = newer source (only image source moved: a newer run is queued, so the
-#                            pre-build check may skip, but a finished build pins)
+#          3 = newer source (only image source moved: a newer run is queued, but
+#                            both the pre-build check and the write-back guard
+#                            build and pin this commit — skipping here starved
+#                            production under steady pushes)
 set -uo pipefail
 
 SHA="${1:?usage: deploy-superseded.sh <git-sha>}"

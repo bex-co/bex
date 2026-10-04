@@ -124,8 +124,8 @@ jobs:
           fi
           gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .
 
-  # --- supersession pre-check (w1/m59): if a newer deploy-triggering commit has
-  # already landed on main (this run was queued behind it), skip build + deploy
+  # --- supersession pre-check (w1/m59): if newer production MANIFESTS have
+  # already landed on main (this run was queued behind them), skip build + deploy
   # BEFORE it wastes an image build — the jobs are then reported skipped (neutral),
   # not failed. Optimization only: the write-back guard below stays the
   # correctness gate (never pin stale images), so scripts/deploy-superseded.sh
@@ -141,13 +141,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: check
         run: |
-          # 0 = newer manifests, 3 = newer image source: either way a newer run
-          # is queued behind this one, so this not-yet-built run may be skipped.
+          # Only 0 (newer MANIFESTS) skips: these images must never meet them.
+          # 3 (newer image SOURCE only) builds and pins, exactly as the
+          # write-back guard allows. Skipping on 3 re-created the w1/116
+          # starvation one step earlier: tests take ~30 min on the shared
+          # runners, any push in that window skipped the build, and under steady
+          # pushes no run deployed (06:05Z → 00:14Z on 2026-10-03/04). Runs are
+          # serialized with one pending slot, so this costs at most one extra
+          # build per burst.
           set +e
           bash scripts/deploy-superseded.sh "$GITHUB_SHA"
           rc=$?
           set -e
-          if [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ]; then
+          if [ "$rc" -eq 0 ]; then
             echo "superseded=true" >> "$GITHUB_OUTPUT"
           else
             echo "superseded=false" >> "$GITHUB_OUTPUT"
