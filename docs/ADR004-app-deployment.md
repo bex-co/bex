@@ -301,6 +301,11 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
 - **Once that pod is ready** the normal path rolls the newer release over it as a rolling update: the served pod keeps serving until the new one is ready, and a failure reaches the progress deadline and the restore above.
 - **A served release that can no longer start** does not block the release that might fix it: after `servedWakeBudget` (5 minutes of pod age) the newer release rolls anyway.
 
+**A rollout in flight is not idle (w6/m147).** The free idle window equals the rollout budget (15 minutes), and a deploy is not traffic, so with no requests a park used to land before the progress deadline. It overwrote Ready with `AutoHibernated` and nothing settled the rollout, so the deploy closed with the generic health-gate line although the operator had named the crash (`exit code 127`) or the failing probe.
+
+- **Deferred park.** `rolloutAwaitingVerdict` keeps an idle App awake while the current release, newer than the served one, is on its awake Deployment without a `Rollout` verdict. The rollout goes live, or `settleFailedRollout` records the diagnosis on `Rollout` and the served template returns before the App parks. Bounded by the progress deadline plus `rolloutVerdictGrace` (2 minutes). A manual suspend still parks immediately and puts the served template back.
+- **The deploy row keeps its diagnosis.** bex-api does not clear an open row's `stallReason` while Ready carries a park reason (`AutoHibernated`, `Suspended`). An `update_failed` close reads the `Rollout` verdict, then a current Ready diagnosis, then the row's last `stallReason`, and only then the generic line.
+
 **Background workers are held the same way (w1/m158).** A worker has no Service, Ingress or auto-sleep, but its replicas follow resume, manual scale and autoscale.
 
 - **Both holds now apply.** The pre-deploy hold and the build hold below both move a held worker's replicas on the prior release's template.

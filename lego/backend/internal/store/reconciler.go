@@ -703,8 +703,13 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		// stall must not page anyone, fire a server_failed webhook, or push a
 		// notification. It is an observation on the row, cleared by
 		// TransitionDeploy the moment the row goes terminal.
-		if err := r.Store.SetDeployStallReason(ctx, open.ID, deployStallReason(cur)); err != nil {
-			log.Printf("controlplane: set stall reason %s: %v", open.ID, err)
+		// A park (auto-hibernate, suspend) says nothing about the rollout, so it
+		// keeps the last diagnosis rather than clearing it: that diagnosis is
+		// what the row closes with when no verdict follows (w6/m147).
+		if stall, ok := deployStallObservation(cur); ok {
+			if err := r.Store.SetDeployStallReason(ctx, open.ID, stall); err != nil {
+				log.Printf("controlplane: set stall reason %s: %v", open.ID, err)
+			}
 		}
 		if fact, ok := observedImagePullFailure(open, cur); ok {
 			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
@@ -830,7 +835,17 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 			return msg, ""
 		}
 		if matchesObservedRelease {
-			return failureReasonFor(cur, status)
+			if msg, code, ok := currentFailureReason(cur); ok {
+				return msg, code
+			}
+		}
+		// A park reads Ready=AutoHibernated, which names nothing; the row's last
+		// stall diagnosis still does (w6/m147).
+		if open.StallReason != "" {
+			return open.StallReason, ""
+		}
+		if matchesObservedRelease {
+			return timedOutDeployReason(status), ""
 		}
 	}
 	return "", ""
@@ -1421,6 +1436,15 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 // with the health-gate line, which is wrong twice over: no health gate ran, and
 // it points at service logs that do not exist because the service never built.
 func failureReasonFor(app *appv1alpha1.App, status string) (string, string) {
+	if msg, code, ok := currentFailureReason(app); ok {
+		return msg, code
+	}
+	return timedOutDeployReason(status), ""
+}
+
+// currentFailureReason is failureReasonFor without the generic fallback: the
+// current generation's Ready diagnosis, if it names one.
+func currentFailureReason(app *appv1alpha1.App) (string, string, bool) {
 	for i := range app.Status.Conditions {
 		c := &app.Status.Conditions[i]
 		if c.Type != appv1alpha1.ConditionReady || c.ObservedGeneration != app.Generation {
@@ -1428,24 +1452,24 @@ func failureReasonFor(app *appv1alpha1.App, status string) (string, string) {
 		}
 		switch c.Reason {
 		case "ImagePullBackOff":
-			return c.Message, EventReasonImagePullBackoff
+			return c.Message, EventReasonImagePullBackoff, true
 		case "CrashLoopBackOff", "CreateContainerConfigError", "RolloutBlockedByQuota",
 			"HealthCheckFailing", appv1alpha1.ReasonPreDeployFailed:
-			return c.Message, ""
+			return c.Message, "", true
 		case appv1alpha1.ReasonBuildQueued, appv1alpha1.ReasonRegistryCredsPending:
 			if c.Message != "" {
-				return "the build never started: " + c.Message, ""
+				return "the build never started: " + c.Message, "", true
 			}
 		default:
 			if appv1alpha1.IsBuildFailureReason(c.Reason) {
-				return c.Message, ""
+				return c.Message, "", true
 			}
 		}
 		if app.Status.Phase == appv1alpha1.PhaseFailed && c.Message != "" {
-			return c.Message, ""
+			return c.Message, "", true
 		}
 	}
-	return timedOutDeployReason(status), ""
+	return "", "", false
 }
 
 // deployStallReason is the in-flight half of failureReasonFor: what the
@@ -1471,6 +1495,22 @@ func deployStallReason(app *appv1alpha1.App) string {
 		return c.Message
 	}
 	return ""
+}
+
+// deployStallObservation is deployStallReason for the open row's write: ok=false
+// while Ready parks the App, which describes the service, not the rollout, and
+// must not clear a diagnosis.
+func deployStallObservation(app *appv1alpha1.App) (string, bool) {
+	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady); c != nil &&
+		c.ObservedGeneration == app.Generation && parkReason(c.Reason) {
+		return "", false
+	}
+	return deployStallReason(app), true
+}
+
+// parkReason reports a Ready reason for an App parked at zero on purpose.
+func parkReason(reason string) bool {
+	return reason == appv1alpha1.ReasonSuspended || reason == appv1alpha1.ReasonAutoHibernated
 }
 
 // stallDiagnosis lists the Ready=False reasons that explain a rollout rather
@@ -1609,8 +1649,8 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			// status bookkeeping lags (old-pod reap, KCM catch-up) — the
 			// service is serving, so it is excluded from availability like
 			// Suspended/AutoHibernated (w3/m78 live-leg finding).
-			if app.Status.ActiveRevision != "" && condition.Reason != appv1alpha1.ReasonSuspended &&
-				condition.Reason != appv1alpha1.ReasonAutoHibernated && condition.Reason != appv1alpha1.ReasonRolloutSettling {
+			if app.Status.ActiveRevision != "" && !parkReason(condition.Reason) &&
+				condition.Reason != appv1alpha1.ReasonRolloutSettling {
 				obs.Availability = "unhealthy"
 				obs.AvailabilityObserved = true
 				obs.ReasonCode = EventReasonReadinessFailed

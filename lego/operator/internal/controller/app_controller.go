@@ -2670,7 +2670,8 @@ func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1
 func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App) (replicas int32, autoscaleRequeue, autoHibernating bool) {
 	// The stamp is the cheap gate; traffic is read only once it says the window
 	// has elapsed (w1/m151).
-	autoHibernating = r.ActivatorService != "" && shouldAutoHibernate(app) && !r.recentlyActive(ctx, app)
+	autoHibernating = r.ActivatorService != "" && shouldAutoHibernate(app) &&
+		!r.rolloutAwaitingVerdict(ctx, app) && !r.recentlyActive(ctx, app)
 
 	replicas = effectiveReplicas(app)
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
@@ -2691,6 +2692,39 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 	}
 	return clampReplicas(app, replicas), autoscaleRequeue, autoHibernating
 }
+
+// rolloutAwaitingVerdict reports whether the current release, newer than the
+// served one, is rolling out on an awake Deployment with no verdict yet. Such an
+// App is not idle (w6/m147): the idle window equals the rollout budget, and a
+// park before the verdict overwrites Ready with AutoHibernated, so the rollout
+// never settles and its crash or probe diagnosis never reaches the deploy row.
+// Once settleFailedRollout records ConditionRollout the App may park; a settle
+// that keeps failing stops deferring rolloutVerdictGrace past the deadline.
+func (r *AppReconciler) rolloutAwaitingVerdict(ctx context.Context, app *appv1alpha1.App) bool {
+	rev := releaseRevision(app)
+	if !releaseHasServed(app) || rev == app.Status.ActiveRevision {
+		return false
+	}
+	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); c != nil &&
+		c.ObservedGeneration == releaseGeneration(app) {
+		return false
+	}
+	var dep appsv1.Deployment
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &dep); err != nil {
+		return false
+	}
+	if dep.Spec.Template.Labels[labelRevision] != rev || dep.Spec.Replicas == nil || *dep.Spec.Replicas == 0 {
+		return false
+	}
+	if c := progressDeadlineExceeded(&dep); c != nil {
+		return time.Since(c.LastTransitionTime.Time) < rolloutVerdictGrace
+	}
+	return true
+}
+
+// rolloutVerdictGrace is how long past ProgressDeadlineExceeded a park still
+// waits for settleFailedRollout's verdict, which normally lands the same pass.
+const rolloutVerdictGrace = 2 * time.Minute
 
 // ingressBackend picks the Service/port the public Ingress routes to, in a
 // fixed precedence: maintenance → suspended → sleep → the App's own Service.
@@ -3080,21 +3114,30 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
-// deploymentProgressDeadlineExceeded reports Kubernetes' Progressing=False
-// ProgressDeadlineExceeded verdict — the operator's own rolloutBudgetSeconds
-// projected onto Deployment.spec.progressDeadlineSeconds.
-func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
+// reasonProgressDeadlineExceeded is Kubernetes' Progressing=False reason for a
+// rollout past Deployment.spec.progressDeadlineSeconds.
+const reasonProgressDeadlineExceeded = "ProgressDeadlineExceeded"
+
+// progressDeadlineExceeded returns Kubernetes' Progressing=False
+// ProgressDeadlineExceeded verdict, or nil — the operator's own
+// rolloutBudgetSeconds projected onto Deployment.spec.progressDeadlineSeconds.
+func progressDeadlineExceeded(dep *appsv1.Deployment) *appsv1.DeploymentCondition {
 	if dep == nil {
-		return false
+		return nil
 	}
-	for _, c := range dep.Status.Conditions {
-		if c.Type == appsv1.DeploymentProgressing &&
-			c.Status == corev1.ConditionFalse &&
-			c.Reason == "ProgressDeadlineExceeded" {
-			return true
+	for i := range dep.Status.Conditions {
+		c := &dep.Status.Conditions[i]
+		if c.Type == appsv1.DeploymentProgressing && c.Status == corev1.ConditionFalse &&
+			c.Reason == reasonProgressDeadlineExceeded {
+			return c
 		}
 	}
-	return false
+	return nil
+}
+
+// deploymentProgressDeadlineExceeded reports whether dep carries that verdict.
+func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
+	return progressDeadlineExceeded(dep) != nil
 }
 
 // settleFailedRollout is the ProgressDeadlineExceeded terminal for a rollout
@@ -3109,7 +3152,7 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 		} else if lr, lm := lastStallDiagnosis(app); lm != "" {
 			reason, msg = lr, lm
 		} else {
-			reason = "ProgressDeadlineExceeded"
+			reason = reasonProgressDeadlineExceeded
 			msg = "rollout did not become healthy within the progress deadline"
 		}
 	}
