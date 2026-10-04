@@ -2326,6 +2326,9 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, plan); held {
 		return res, err
 	}
+	if held, res, err := r.holdFailedRollout(ctx, app, plan); held {
+		return res, err
+	}
 	if !app.Spec.Suspended && !autoHibernating {
 		if res, halt, err := r.reconcilePreDeploy(ctx, app, image, port); halt || err != nil {
 			return res, err
@@ -3049,7 +3052,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		return r.settleFailedRollout(ctx, app, dep, port)
 	}
 	if reason, msg := r.permanentRolloutPullFailure(ctx, dep, time.Now()); msg != "" {
-		return r.settleFailedRolloutMessage(ctx, app, reason, msg)
+		return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := "RolloutProgressing"
@@ -3113,7 +3116,7 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 			msg = "rollout did not become healthy within the progress deadline"
 		}
 	}
-	return r.settleFailedRolloutMessage(ctx, app, reason, msg)
+	return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 }
 
 // lastStallDiagnosis keeps the previous reconcile's stall diagnosis until the
@@ -3136,7 +3139,11 @@ func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
 	return "", ""
 }
 
-func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *appv1alpha1.App, reason, msg string) (ctrl.Result, error) {
+// settleFailedRolloutMessage stamps a failed rollout's terminal status. Over a
+// release that served it also puts the Deployment back on that release's pod
+// template (w1/m172), so the phase it settles describes pods that can serve; with
+// nothing to restore from it settles Failed rather than a Running no pod backs.
+func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, reason, msg string) (ctrl.Result, error) {
 	if releaseHasServed(app) {
 		// The diagnosis outlives the Ready condition, which now describes the
 		// serving release: ConditionRollout carries it to the failed deploy
@@ -3145,8 +3152,20 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 			Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
 			Message: msg, ObservedGeneration: releaseGeneration(app),
 		})
-		r.settleFailureOverPriorRelease(ctx, app, "the latest rollout failed: "+strings.TrimSuffix(msg, "."))
-		return ctrl.Result{}, nil
+		if !failedRolloutOverServed(app) {
+			r.settleFailureOverPriorRelease(ctx, app, failedRolloutSummary(msg))
+			return ctrl.Result{}, nil
+		}
+		restored, err := r.restoreServedTemplate(ctx, app, dep)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if restored {
+			r.settlePriorRelease(ctx, app, failedRolloutSummary(msg), dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0)
+			// Come back for holdFailedRollout to converge the served release's
+			// routing and its idle requeue.
+			return ctrl.Result{RequeueAfter: wakeReadyPoll}, nil
+		}
 	}
 	app.Status.Phase = appv1alpha1.PhaseFailed
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
@@ -3157,6 +3176,12 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
+}
+
+// failedRolloutSummary names a failed rollout in the serving release's Ready
+// message.
+func failedRolloutSummary(msg string) string {
+	return "the latest rollout failed: " + strings.TrimSuffix(msg, ".")
 }
 
 // permanentRolloutPullFailure only considers live pods of the desired revision.
@@ -5549,6 +5574,41 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 	}
 	plan.poll = gate.RequeueAfter > 0
 	res, err := r.settleHeldRuntime(ctx, app, prior, plan, failed, gate.RequeueAfter)
+	if err != nil {
+		res, err = r.failStep(ctx, app, err)
+	}
+	return true, res, err
+}
+
+// holdFailedRollout is holdUnpassedRelease one stage later (w1/m172). A release
+// whose rollout settled failed over a served release stays off the pod template:
+// the Deployment runs the served release's template, and its replicas and routing
+// keep following the App, so a wake, resume or scale starts pods that can serve.
+// The hold ends when a newer release is requested, which moves the release
+// generation past the failed verdict. held=false hands the pass to the normal
+// path: no failed rollout, no prior Deployment (or Service), or nothing to
+// restore the served template from — where the rollout settles Failed.
+func (r *AppReconciler) holdFailedRollout(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (bool, ctrl.Result, error) {
+	if !failedRolloutOverServed(app) {
+		return false, ctrl.Result{}, nil
+	}
+	prior, err := r.servingPriorRelease(ctx, app)
+	if err != nil {
+		return true, ctrl.Result{}, err
+	}
+	if prior == nil {
+		return false, ctrl.Result{}, nil
+	}
+	restored, err := r.restoreServedTemplate(ctx, app, prior.dep)
+	if err != nil {
+		// Unrecorded: a read that failed says nothing about the serving release.
+		return true, ctrl.Result{}, err
+	}
+	if !restored {
+		return false, ctrl.Result{}, nil
+	}
+	verdict := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+	res, err := r.settleHeldRuntime(ctx, app, prior, plan, failedRolloutSummary(verdict.Message), 0)
 	if err != nil {
 		res, err = r.failStep(ctx, app, err)
 	}

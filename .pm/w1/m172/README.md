@@ -1,17 +1,17 @@
 # w1 · m172 — A free service that sleeps through a failed rollout wakes onto the broken release: `503 service hibernated` while the API reads Running
 
-**Worker:** worker1 **Goal:** a free service whose newest rollout failed over a prior release wakes on, and keeps serving, the release that last succeeded; its phase never reads Running while its URL can only answer the activator's 503. **Status:** todo
+**Worker:** worker1 **Goal:** a free service whose newest rollout failed over a prior release wakes on, and keeps serving, the release that last succeeded; its phase never reads Running while its URL can only answer the activator's 503. **Status:** in progress (t001, t002, t005, t006 done; t003 live verification waits on the production deploy)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                          | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | Failed rollout over a prior release: restore the served release's pod template so wake, resume and scale run the prior release | 1h  | —          |
-| t002 | Phase truth: never report Running from desired scale while no replica of the serving template can become ready                 | 30m | t001       |
+| t001 | Failed rollout over a prior release: restore the served release's pod template so wake, resume and scale run the prior release — **DONE** | 1h  | —          |
+| t002 | Phase truth: never report Running from desired scale while no replica of the serving template can become ready — **DONE** | 30m | t001       |
 | t003 | Live: reproduce on production, then verify wake after a failed rollout (both orderings)                                        | 40m | t002       |
 | t004 | Render parity                                                                                                                  | 20m | t003       |
-| t005 | Simplify                                                                                                                       | 15m | t004       |
-| t006 | Test coverage                                                                                                                  | 40m | t004       |
+| t005 | Simplify — **DONE** | 15m | t004       |
+| t006 | Test coverage — **DONE** | 40m | t004       |
 | t007 | Closeout                                                                                                                       | 10m | t006       |
 
 ## Definition of done
@@ -39,6 +39,15 @@ Run on a disposable free image web service (`docker.io/mendhak/http-https-echo:3
 
 - **t001.** When a rollout settles failed over a served release, re-apply that release's recorded pod template: reuse w1/m152's `servedPodTemplateForCancel` (`lego/operator/internal/controller/release_config_snapshot.go:463-484`, the `ReleaseRecordName` Secret), generalised from cancel to failed rollout, so later passes scale and route the prior release (m156's `convergeServingRuntime` invariant). If the record is missing (GC'd or pre-m152), fall back to scaling the prior ReplicaSet or report Failed honestly — never Running.
 - **t002.** `settlePriorRelease` must not report Running when the template it scales is not the served one.
+
+## Implementation (2026-10-03)
+
+- **t001.** `settleFailedRolloutMessage` restores the served release's pod template at the verdict (`restoreServedTemplate`, `lego/operator/internal/controller/release_config_snapshot.go`): the w1/m152 release record first, else the template of the ReplicaSet the Deployment still retains for `status.activeRevision`. `holdFailedRollout` (`app_controller.go`, next to `holdUnpassedRelease`) then keeps the failed release off the template on every later pass and hands replicas and routing to m156's `settleHeldRuntime` / `convergeServingRuntime`. The hold is keyed on `ConditionRollout` false at the release generation, so a newer release ends it and rolls normally. Background workers are held the same way.
+- **t002.** With nothing to restore from (no record, no retained ReplicaSet) the settle is `Failed` with the rollout's own reason, never Running. `ConditionRollout` is kept either way, so bex-api still closes the row `update_failed` with the diagnosis.
+- **Known limit, kept from m156.** On the wake pass the phase reads Running as soon as the served template is scaled to 1, a few seconds before its pod is ready and the route leaves the activator (`settleHeldRuntime` settles from the scale it wrote; `TestWakeOverFailedPreDeployRestoresPriorRelease` pins that). The broken state in this milestone, Running with a template that can never become ready, is gone.
+- **t006.** `wake_over_failed_rollout_test.go`: both orderings, the next deploy rolling normally, the ReplicaSet fallback, nothing-to-restore settling Failed, and a worker's suspend/resume. All six fail with the hold and the settle-time restore disabled. They run the full `Reconcile` on the fake client like the m156/m157 siblings (no Deployment controller in envtest either), with Deployment status written by hand. `failed_rollout_phase_test.go` fixtures gained the served ReplicaSet they implied.
+- **t005.** `/simplify` (three reviewers): the held pass now skips the uncached record read once the template is back on the served revision, a failed record read in the hold returns the error instead of stamping Failed over a serving release, and the settle uses the Deployment it already holds. One finding is filed separately as `w1/123` (snapshot GC can reclaim the served release's record).
+- **Verification.** `make test` and `make lint` from `lego/operator/` pass. `docs/ADR004-app-deployment.md` documents the rule.
 
 ## Related
 

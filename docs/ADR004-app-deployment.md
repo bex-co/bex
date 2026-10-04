@@ -285,6 +285,15 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
   - a first release (nothing serves yet);
   - a fresh step failure, which still returns its reconcile error.
 
+**A failed rollout goes back to the served release's template (w1/m172).** A release whose step passed does reach the pod template, and its rollout can still fail (a crash, a failing health check, an image that cannot be pulled).
+
+- **Why the template cannot stay.** Awake, the Deployment keeps the old ReplicaSet's pods, so the prior release serves. Parked, both ReplicaSets sit at 0, and the next wake, resume or scale starts the newest template: the failed one. Nothing becomes ready, the route stays on the activator (`503 service hibernated`), and the phase used to read Running from the desired scale.
+- **At the verdict** (`ConditionRollout` false for the release generation, over a release that served), `settleFailedRolloutMessage` restores the served release's pod template: its recorded template (the w1/m152 release record), or the template of the ReplicaSet the Deployment still retains for it when there is no record.
+- **Afterwards** `holdFailedRollout` keeps the failed release off the template and `convergeServingRuntime` keeps the served release's replicas and routing following the App, exactly as for a held pre-deploy step. A background worker is held the same way.
+- **The hold ends** when a newer release is requested: the release generation moves past the verdict and that release rolls normally. The failed deploy stays `update_failed`; waking never retries it.
+- **Nothing to restore from** (no record and no retained ReplicaSet): the phase settles Failed with the rollout's own reason, never Running.
+- **Unchanged:** a rollout that fails within the served release's own generation (its record is the template that failed), and a first release.
+
 **Background workers are held the same way (w1/m158).** A worker has no Service, Ingress or auto-sleep, but its replicas follow resume, manual scale and autoscale.
 
 - **Both holds now apply.** The pre-deploy hold and the build hold below both move a held worker's replicas on the prior release's template.
