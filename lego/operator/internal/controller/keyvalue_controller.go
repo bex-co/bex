@@ -164,11 +164,45 @@ func valkeySecCtx() *corev1.SecurityContext {
 	return security
 }
 
-// kvExporterResources is the fixed, tiny footprint for the redis_exporter
-// sidecar — it only polls INFO, so it needs a fraction of a core and a few MiB,
-// independent of the store's plan.
+// kvExporterResources is the fixed footprint for the redis_exporter sidecar,
+// independent of the store's plan. Guaranteed QoS (requests == limits) keeps
+// the pod in the same QoS class as the Valkey container beside it.
+//
+// 50m, not the original 10m (w4/181): 10m is ~1 ms of CPU per 100 ms CFS
+// period, and a single scrape (connect + AUTH + INFO ALL parse + encode) spent
+// most of the 10 s Prometheus timeout throttled — production saw ~98% CFS
+// throttling, scrape_duration 10.0 s and `up` ≈ 0 on valkey-instances. With
+// the collectors trimmed (kvExporterEnv) one scrape needs well under 50 ms of
+// CPU, so 50m finishes it in a fraction of a second. The cost is not billed
+// (KV plans bill the server container's tier, tiers.yaml) and is noise against
+// the per-namespace ResourceQuota (Hobby: 3 CPU requests, 1 Key Value — +40m).
 func kvExporterResources() corev1.ResourceRequirements {
-	return guaranteedResources("10m", "32Mi")
+	return guaranteedResources("50m", "32Mi")
+}
+
+// kvExporterEnv configures the redis_exporter sidecar (pinned v1.89.0; env
+// names verified against its main.go). The only consumed series are
+// redis_memory_used_bytes and redis_connected_clients (the Key Value metrics
+// panel, lego/backend/internal/metrics/source.go) plus the scrape's own `up`;
+// both come from INFO, and the valkey-instances job (deploy/gitops/base/
+// prometheus.yaml) drops everything outside redis_.* anyway. So every collector
+// that costs CPU per scrape without feeding a consumer is switched off:
+//   - REDIS_ONLY_METRICS: no Go process/runtime series (dropped by the job).
+//   - EXCLUDE_LATENCY_HISTOGRAM_METRICS: skips LATENCY LATEST + LATENCY
+//     HISTOGRAM round-trips and their per-command histogram encoding.
+//   - CONFIG_COMMAND "-": skips CONFIG GET * (redis_config_* only; the db
+//     count then defaults to 16, which only pads empty-keyspace series).
+//   - INCL_METRICS_FOR_EMPTY_DATABASES=false: no zero-filled db0..db15 series.
+func kvExporterEnv(password corev1.EnvVar) []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: "REDIS_ADDR", Value: fmt.Sprintf("redis://localhost:%d", kvPort)},
+		// The exporter reuses REDIS_PASSWORD; alias the shared secret key.
+		{Name: "REDIS_PASSWORD", ValueFrom: password.ValueFrom},
+		{Name: "REDIS_EXPORTER_REDIS_ONLY_METRICS", Value: "true"},
+		{Name: "REDIS_EXPORTER_EXCLUDE_LATENCY_HISTOGRAM_METRICS", Value: "true"},
+		{Name: "REDIS_EXPORTER_CONFIG_COMMAND", Value: "-"},
+		{Name: "REDIS_EXPORTER_INCL_METRICS_FOR_EMPTY_DATABASES", Value: "false"},
+	}
 }
 
 // valkeyArgs builds the valkey-server flags from the KeyValue spec: the password,
@@ -802,13 +836,9 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		// metrics (redis_memory_used_bytes, redis_connected_clients, …) on
 		// :9121, scraped by the valkey-instances job (deploy/gitops/base/
 		// prometheus.yaml) and surfaced as the Key Value metrics tab (w5/011).
-		Name:  "metrics",
-		Image: kvExporterImage,
-		Env: []corev1.EnvVar{
-			{Name: "REDIS_ADDR", Value: fmt.Sprintf("redis://localhost:%d", kvPort)},
-			// The exporter reuses REDIS_PASSWORD; alias the shared secret key.
-			{Name: "REDIS_PASSWORD", ValueFrom: passwordEnv.ValueFrom},
-		},
+		Name:            "metrics",
+		Image:           kvExporterImage,
+		Env:             kvExporterEnv(passwordEnv),
 		Ports:           []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
 		Resources:       kvExporterResources(),
 		SecurityContext: tenantSecCtx(),
