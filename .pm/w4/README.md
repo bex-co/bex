@@ -201,7 +201,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **180** — [Application logs loses duplicated pre-deploy output](180.md) (55m) ← QA sweep83, 2026-10-03; preserve source membership before filtering
 
-- [ ] **179** — [New Postgres clips fields and plan prices on narrow mobile screens](179.md) (55m) ← QA sweep76, 2026-10-03; scoped layout fix, no paid mutation
+- [x] **179** — [New Postgres clips fields and plan prices on narrow mobile screens](done/179.md) (55m) ← QA sweep76, 2026-10-03; scoped layout fix, no paid mutation — done 2026-10-04: bounded dialog column + wrapping plan trigger/menu; measured in Chromium at 320/360/1280.
 
 - [ ] **178** — [Refresh log-filter discovery while the page remains open](blocked/178.md) — **BLOCKED (release pipeline deploys dashboard; QA replays open-page OPTIONS/TRACE discovery within one 30s poll on an owned service, then cleans up)**. Shared-hook polling, stale-answer retention and real-Apollo regressions done 2026-10-03.
 
