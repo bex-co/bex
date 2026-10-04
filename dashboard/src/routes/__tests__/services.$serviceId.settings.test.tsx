@@ -557,7 +557,7 @@ describe("ServiceSettingsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows Custom Domains + Idle timeout, no instance stepper (moved to Scaling, w7/m43), no Deploy section, for a web service", async () => {
+  it("shows Custom Domains + Idle timeout, no instance stepper (moved to Scaling, w7/m43), and only the image Deploy card, for a web service", async () => {
     serverState.service = svc({ type: "web_service" });
     renderSettings();
 
@@ -575,9 +575,47 @@ describe("ServiceSettingsPage", () => {
     expect(
       screen.getByText("Maintenance Mode", { selector: ":not(a)" }),
     ).toBeInTheDocument();
+    // An image-backed service has no Build & Deploy; its Deploy card holds
+    // only the Docker Command (w4/m166).
     expect(
-      screen.queryByText("Deploy", { selector: ":not(a)" }),
-    ).not.toBeInTheDocument();
+      screen.getByText("Deploy", { selector: ":not(a)" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Build", { selector: ":not(a)" })).toBeNull();
+  });
+
+  it.each(["web_service", "private_service", "background_worker"] as const)(
+    "lets an image-backed %s edit its Docker Command (w4/m166)",
+    async (type) => {
+      serverState.service = svc({
+        type,
+        repo: null,
+        startCommand: "/http-echo -text=hello",
+      });
+      renderSettings();
+
+      expect(await sectionHrefs()).toContain("#deploy");
+      expect(await screen.findByText("Docker Command")).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("/http-echo -text=hello"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Edit Docker Command" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("gives a repo-backed service no separate image Deploy card", async () => {
+    serverState.service = svc({
+      repo: "https://github.com/acme/app",
+      runtime: "docker",
+      builder: "dockerfile",
+    });
+    renderSettings();
+
+    // Its Docker Command lives in Build & Deploy: exactly one editor.
+    expect(
+      await screen.findAllByRole("button", { name: "Edit Docker Command" }),
+    ).toHaveLength(1);
   });
 
   // Settings IA alignment with Render's section layout (w5/m52).

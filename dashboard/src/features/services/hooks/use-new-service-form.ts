@@ -24,6 +24,7 @@ interface PlainFields {
   selectedRepo: RepoView | null;
   gitUrl: string;
   image: string;
+  imageCommand: string;
   registryCredentialId: string;
   branch: string;
   rootDir: string;
@@ -63,6 +64,7 @@ export function useNewServiceForm(search: {
     selectedRepo: null,
     gitUrl: "",
     image: "",
+    imageCommand: "",
     registryCredentialId: "",
     branch: "",
     rootDir: "",

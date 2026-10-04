@@ -16,6 +16,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { InstanceTypeRow } from "@/features/services/components/instance-type-row";
 import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
+import { ImageCommandSection } from "@/features/services/components/image-command-section";
 import { ServiceSourceCard } from "@/features/services/components/service-source-card";
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
@@ -109,9 +110,12 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
     (!service?.runtime && service?.builder === "dockerfile");
   const registryCredentialEligible =
     service != null && !staticSite && (!service.repo || dockerBuild);
+  // No build, so its Docker Command gets a Deploy card of its own.
+  const imageDeploy = service != null && !service.repo && !staticSite && !cron;
   const navigationSections: ServiceSettingsSection[] = ["general"];
   if (cron) navigationSections.push("deploy");
   if (service && !staticSite && !cron) navigationSections.push("source");
+  if (imageDeploy) navigationSections.push("deploy");
   if (service?.repo) navigationSections.push("build");
   if (staticSite && service) navigationSections.push("static-site");
   // Custom domains and the platform subdomain only exist for a type served at
@@ -262,6 +266,14 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                   branch={service.branch ?? null}
                   imagePath={service.imagePath ?? null}
                   registryCredentialId={service.registryCredentialId ?? null}
+                />
+              </section>
+            )}
+            {imageDeploy && service && (
+              <section id="deploy" className="scroll-mt-6">
+                <ImageCommandSection
+                  serviceId={serviceId}
+                  startCommand={service.startCommand}
                 />
               </section>
             )}

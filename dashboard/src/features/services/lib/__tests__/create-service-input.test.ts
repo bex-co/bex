@@ -13,6 +13,7 @@ function form(overrides: Partial<NewServiceForm> = {}): NewServiceForm {
     selectedRepo: null,
     gitUrl: "https://github.com/acme/app.git",
     image: "",
+    imageCommand: "",
     registryCredentialId: "rc-1",
     branch: "",
     rootDir: "",
@@ -98,6 +99,55 @@ describe("buildCreateServiceInput", () => {
     expect(input.repo).toBeUndefined();
     expect(input.runtime).toBe("image");
     expect(input.autoDeploy).toBeUndefined();
+    expect(input.startCommand).toBeUndefined();
+  });
+
+  it("sends an image's Docker Command as startCommand, never the git start command", () => {
+    const withCommand = buildCreateServiceInput(
+      form({
+        tab: "image",
+        image: "hashicorp/http-echo:0.2.3",
+        serviceType: "web_service",
+        imageCommand: "  /http-echo -text=hello  ",
+      }),
+    );
+    expect(withCommand.startCommand).toBe("/http-echo -text=hello");
+
+    for (const serviceType of [
+      "private_service",
+      "background_worker",
+    ] as const) {
+      expect(
+        buildCreateServiceInput(
+          form({
+            tab: "image",
+            image: "alpine:3.20",
+            serviceType,
+            imageCommand: "tail -f /dev/null",
+          }),
+        ).startCommand,
+      ).toBe("tail -f /dev/null");
+    }
+
+    // Blank sends no key; the git tab's runtime default never leaks into it.
+    expect(
+      buildCreateServiceInput(
+        form({ tab: "image", image: "nginx:1", imageCommand: "   " }),
+      ).startCommand,
+    ).toBeUndefined();
+    // A cron image sets its command through `command`, not startCommand.
+    const cron = buildCreateServiceInput(
+      form({
+        tab: "image",
+        image: "alpine:3.20",
+        serviceType: "cron_job",
+        imageCommand: "ignored",
+        command: "echo tick",
+        schedule: "*/5 * * * *",
+      }),
+    );
+    expect(cron.startCommand).toBeUndefined();
+    expect(cron.command).toBe("echo tick");
   });
 
   it("never emits an image source for a static site", () => {

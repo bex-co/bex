@@ -247,6 +247,24 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(fields?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(2);
   });
 
+  it("previews an image service's one-row Deploy card, not Build & Deploy", () => {
+    const { container } = render(
+      <ServiceSettingsSkeleton sourceKind="image" />,
+    );
+    expect(
+      container.querySelector('[data-skeleton-region="build"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-skeleton-region="deploy"]'),
+    ).not.toBeNull();
+
+    const { container: repo } = render(
+      <ServiceSettingsSkeleton sourceKind="repo" />,
+    );
+    expect(repo.querySelector('[data-skeleton-region="build"]')).not.toBeNull();
+    expect(repo.querySelector('[data-skeleton-region="deploy"]')).toBeNull();
+  });
+
   it("keeps account settings mobile navigation and desktop rail together", () => {
     const { container } = render(<AccountSettingsPageSkeleton />);
     expect(regions(container)).toEqual(

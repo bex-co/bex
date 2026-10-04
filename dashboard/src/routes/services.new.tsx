@@ -315,6 +315,17 @@ export function NewServicePage() {
                   </>
                 ) : null}
 
+                {/* Cron jobs set theirs through Command below. */}
+                {shape.showImageCommand ? (
+                  <TextField
+                    id="svc-image-docker-command"
+                    label={t("services.createFieldDockerCommand")}
+                    value={form.imageCommand}
+                    onChange={(imageCommand) => set({ imageCommand })}
+                    placeholder={t("services.imageCommandPlaceholder")}
+                  />
+                ) : null}
+
                 {shape.isCronType ? (
                   <>
                     <TextField
