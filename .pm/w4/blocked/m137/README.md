@@ -1,6 +1,6 @@
 # w4 · m137 — A restarting Key Value or Postgres reports "creating", as if it were brand new
 
-**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** waiting on `w1/m166/t007` and the existing live acceptance; prior completed tasks remain done.
+**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** waiting on the existing live acceptance. The `w1/m166/t007` dependency completed 2026-10-02 (`w1/done/m166`: the production timeline on the fixed build is clean); prior completed tasks remain done.
 
 ## Scope transfer — 2026-09-28
 
