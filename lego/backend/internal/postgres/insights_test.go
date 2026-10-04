@@ -606,3 +606,63 @@ func TestMaskedIsCarriedByEveryInsightSurface(t *testing.T) {
 		}
 	}
 }
+
+// TestInsightsRedactSecretLiterals pins w4/m167: pg_stat_statements does not
+// normalize utility statements, so the provisioning ALTER ROLE … PASSWORD
+// 'SCRAM-SHA-256$…' sat verbatim in Top queries on every fresh database. Every
+// password value must leave bex-api redacted; everything else stays verbatim.
+func TestInsightsRedactSecretLiterals(t *testing.T) {
+	const verifier = "SCRAM-SHA-256$4096:c2FsdA==$c3RvcmVk:c2VydmVy"
+	for _, tc := range []struct{ name, in, want string }{
+		{"provisioning verifier", `ALTER ROLE "dpg_x_user" WITH PASSWORD '` + verifier + `'`,
+			`ALTER ROLE "dpg_x_user" WITH PASSWORD '<redacted>'`},
+		{"encrypted, mixed case", `create user u encrypted Password 'hunter2' valid until 'infinity'`,
+			`create user u encrypted Password '<redacted>' valid until 'infinity'`},
+		{"doubled quote inside", `ALTER ROLE u PASSWORD 'it''s' LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
+		{"escape string", `ALTER ROLE u PASSWORD E'a\'b' LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
+		{"dollar quoted", `ALTER ROLE u PASSWORD $$s3cr3t$$`, `ALTER ROLE u PASSWORD '<redacted>'`},
+		{"tagged dollar quote", `ALTER ROLE u PASSWORD $p$a$$b$p$ LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
+		{"truncated mid-literal", `ALTER ROLE u WITH PASSWORD 'SCRAM-SHA-256$4096:c2Fs`, `ALTER ROLE u WITH PASSWORD '<redacted>'`},
+		{"user mapping option", `CREATE USER MAPPING FOR u SERVER s OPTIONS (user 'a', password 'pw')`,
+			`CREATE USER MAPPING FOR u SERVER s OPTIONS (user 'a', password '<redacted>')`},
+		{"conninfo value", `CREATE SUBSCRIPTION s CONNECTION 'host=h password=pw dbname=d' PUBLICATION p`,
+			`CREATE SUBSCRIPTION s CONNECTION 'host=h password='<redacted>' dbname=d' PUBLICATION p`},
+		{"conninfo value at literal end", `SELECT dblink_connect('host=h password=pw')`,
+			`SELECT dblink_connect('host=h password='<redacted>'')`},
+		{"two secrets", `ALTER ROLE a PASSWORD 'x'; ALTER ROLE b PASSWORD 'y'`,
+			`ALTER ROLE a PASSWORD '<redacted>'; ALTER ROLE b PASSWORD '<redacted>'`},
+		// Negatives: no value follows the keyword, or it is not the keyword.
+		{"password column", `SELECT password FROM users WHERE id = $1`, `SELECT password FROM users WHERE id = $1`},
+		{"normalized parameter", `UPDATE users SET password = $1 WHERE id = $2`, `UPDATE users SET password = $1 WHERE id = $2`},
+		{"password null", `ALTER ROLE u PASSWORD NULL`, `ALTER ROLE u PASSWORD NULL`},
+		{"identifier containing the word", `SELECT password_hash FROM users`, `SELECT password_hash FROM users`},
+		{"plain ALTER ROLE", `ALTER ROLE u CONNECTION LIMIT 5`, `ALTER ROLE u CONNECTION LIMIT 5`},
+		{"provisioning DDL", `CREATE DATABASE "app" OWNER "app_user"`, `CREATE DATABASE "app" OWNER "app_user"`},
+		{"extension", `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`, `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := redactSecrets(tc.in); got != tc.want {
+				t.Errorf("redactSecrets(%q)\n got %q\nwant %q", tc.in, got, tc.want)
+			}
+		})
+	}
+
+	// Both publishers apply it, and a redacted row is readable, not masked.
+	leak := `ALTER ROLE "dpg_x_user" WITH PASSWORD '` + verifier + `'`
+	top := topQueryViews([][]any{{leak, int64(1), 1.0, 1.0, int64(0), int64(0), int64(0)}})
+	procs := processViews([][]any{{int32(1), "postgres", "", "active", leak, "", "", int32(0)}})
+	for surface, got := range map[string]struct {
+		query  string
+		masked bool
+	}{
+		"top queries": {top[0].Query, top[0].Masked},
+		"processes":   {procs[0].Query, procs[0].Masked},
+	} {
+		if strings.Contains(got.query, "SCRAM") || !strings.Contains(got.query, redactedSecret) {
+			t.Errorf("%s published %q, want the verifier redacted", surface, got.query)
+		}
+		if got.masked {
+			t.Errorf("%s: a redacted row must stay Masked=false (distinct from the privilege placeholder)", surface)
+		}
+	}
+}

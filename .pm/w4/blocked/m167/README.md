@@ -1,15 +1,15 @@
 # w4 · m167 — Loop5: redact secrets from Postgres Insights query text
 
-**Worker:** worker4 **Goal:** Database Insights never publishes credential material — no password verifier or secret literal reaches any surface **Status:** todo
+**Worker:** worker4 **Goal:** Database Insights never publishes credential material — no password verifier or secret literal reaches any surface **Status:** blocked — t001–t004 done 2026-10-04; t005 live closeout remains
 
 ## Tasks (in order)
 
 | id   | title                                              | est | depends_on |
 | ---- | -------------------------------------------------- | --- | ---------- |
-| t001 | Redact secret-bearing statements in Insights reads | 1h  | —          |
-| t002 | Render parity across the Insights surfaces         | 30m | w4/m167/t001 |
-| t003 | Simplify the touched backend code                  | 30m | w4/m167/t002 |
-| t004 | Test coverage for Insights redaction               | 1h  | w4/m167/t002 |
+| t001 — **DONE** | Redact secret-bearing statements in Insights reads | 1h  | —          |
+| t002 — **DONE** | Render parity across the Insights surfaces         | 30m | w4/m167/t001 |
+| t003 — **DONE** | Simplify the touched backend code                  | 30m | w4/m167/t002 |
+| t004 — **DONE** | Test coverage for Insights redaction               | 1h  | w4/m167/t002 |
 | t005 | Closeout                                           | 15m | w4/m167/t004 |
 
 ## Definition of done
