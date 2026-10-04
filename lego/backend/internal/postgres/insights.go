@@ -25,9 +25,11 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -44,14 +46,111 @@ import (
 // were query text.
 const pgInsufficientPrivilege = "<insufficient privilege>"
 
-// maskedQuery reports whether PostgreSQL substituted its privilege placeholder
-// for the real query text, and returns the text to publish (empty when masked,
-// so no surface renders the placeholder as SQL).
-func maskedQuery(q string) (string, bool) {
+// redactedSecret replaces the literal of a secret-bearing clause in published
+// query text. It stays a quoted SQL literal so the statement still reads as SQL,
+// and is visibly distinct from the privilege-masked path (which publishes
+// nothing).
+const redactedSecret = "'<redacted>'"
+
+// secretKeyword finds the SQL token PASSWORD (ALTER/CREATE ROLE … [ENCRYPTED]
+// PASSWORD '…', USER MAPPING OPTIONS (password '…')) and the libpq conninfo key
+// password= (CREATE SUBSCRIPTION … CONNECTION '…', dblink). The value that
+// follows, if any, is what redactSecrets removes.
+var secretKeyword = regexp.MustCompile(`(?i)\bpassword\b\s*(=\s*)?`)
+
+// dollarQuoteTag matches a PostgreSQL dollar-quote opener: $$ or $tag$. A
+// positional parameter ($1) is not one.
+var dollarQuoteTag = regexp.MustCompile(`^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$`)
+
+// positionalParam matches a whole $n parameter reference.
+var positionalParam = regexp.MustCompile(`^\$[0-9]+$`)
+
+// publishedQuery returns the query text Insights may publish, and whether
+// PostgreSQL masked it. A privilege placeholder publishes nothing (Masked); any
+// other text publishes with its secrets redacted. pg_stat_statements does not
+// normalize utility statements, so the provisioning ALTER ROLE … PASSWORD
+// 'SCRAM-SHA-256$…' sits there verbatim from a database's first minute
+// (w4/m167) — a verifier no reader, however privileged, should see.
+func publishedQuery(q string) (string, bool) {
 	if q == pgInsufficientPrivilege {
 		return "", true
 	}
-	return q, false
+	return redactSecrets(q), false
+}
+
+// redactSecrets replaces the value after every PASSWORD keyword with
+// redactedSecret: a quoted, escape-string or dollar-quoted literal, or an
+// unquoted conninfo value after password=. Text the reader truncated mid-literal
+// is redacted to its end. A bare PASSWORD with no value (a column name,
+// PASSWORD NULL) is left alone.
+func redactSecrets(q string) string {
+	var b strings.Builder
+	rest := q
+	for {
+		loc := secretKeyword.FindStringSubmatchIndex(rest)
+		if loc == nil {
+			if len(rest) == len(q) {
+				return q // the common case: nothing to redact, nothing to copy
+			}
+			b.WriteString(rest)
+			return b.String()
+		}
+		b.WriteString(rest[:loc[1]])
+		rest = rest[loc[1]:]
+		if n := secretValueLen(rest, loc[2] >= 0); n > 0 {
+			b.WriteString(redactedSecret)
+			rest = rest[n:]
+		}
+	}
+}
+
+// secretValueLen returns the byte length of the secret value at the start of s,
+// or 0 when none follows. assigned reports a conninfo-style password=, where an
+// unquoted value (up to whitespace or a closing quote) is the secret too.
+func secretValueLen(s string, assigned bool) int {
+	switch {
+	case strings.HasPrefix(s, "'"):
+		return quotedLen(s, 1, false)
+	case len(s) > 1 && (s[0] == 'E' || s[0] == 'e') && s[1] == '\'':
+		return quotedLen(s, 2, true)
+	}
+	if tag := dollarQuoteTag.FindString(s); tag != "" {
+		if end := strings.Index(s[len(tag):], tag); end >= 0 {
+			return len(tag) + end + len(tag)
+		}
+		return len(s)
+	}
+	if !assigned {
+		return 0
+	}
+	end := strings.IndexFunc(s, func(r rune) bool { return r == '\'' || unicode.IsSpace(r) })
+	if end < 0 {
+		end = len(s)
+	}
+	if positionalParam.MatchString(s[:end]) {
+		return 0 // pg_stat_statements' normalized constant, not a secret
+	}
+	return end
+}
+
+// quotedLen returns the length of the single-quoted literal at s, whose body
+// starts at offset start. A doubled quote always escapes a quote; backslash
+// escapes the next byte in an escape-string (E-prefixed) literal. An
+// unterminated literal runs to the end of s.
+func quotedLen(s string, start int, backslash bool) int {
+	for i := start; i < len(s); i++ {
+		switch {
+		case backslash && s[i] == '\\':
+			i++
+		case s[i] == '\'':
+			if i+1 < len(s) && s[i+1] == '\'' {
+				i++
+				continue
+			}
+			return i + 1
+		}
+	}
+	return len(s)
 }
 
 // ProcessView is one row from pg_stat_activity (live backend process).
@@ -309,7 +408,7 @@ func processViews(rows [][]any) []ProcessView {
 		if len(row) < 8 {
 			continue
 		}
-		query, masked := maskedQuery(strVal(row[4]))
+		query, masked := publishedQuery(strVal(row[4]))
 		out = append(out, ProcessView{
 			PID:             int32(intVal(row[0])),
 			UserName:        strVal(row[1]),
@@ -355,7 +454,7 @@ func topQueryViews(rows [][]any) []TopQueryView {
 		if len(row) < 7 {
 			continue
 		}
-		query, masked := maskedQuery(strVal(row[0]))
+		query, masked := publishedQuery(strVal(row[0]))
 		out = append(out, TopQueryView{
 			Query:          query,
 			Masked:         masked,
