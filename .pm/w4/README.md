@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m164** — Count initial and newly scraped traffic before free web auto-sleep (7 tasks) ← QA sweep 71, 2026-10-03; 225m
+- [ ] **m164** — [Count initial and newly scraped traffic before free web auto-sleep](blocked/m164/README.md) — **BLOCKED (release pipeline deploys operator; QA replays fixture A (TTL 300, GET/HEAD) and fixture B (TTL 60, one GET), the 20s steady TTL-60 control, the m151 15s/20-min control and both m161 WebSocket directions, browser wake and API/dashboard phase agreement, then cleans up)**. t001/t002/t005/t006 done 2026-10-03: per-series activity (increase or fresh positive first sample) plus the decision instant; real PromQL-engine tests (Prometheus 2.54.1, test-only) green; operator `make test` + `make lint` green.
 
 - [ ] **m163** — [Make saved secret files available to native builds](blocked/m163/README.md) — **BLOCKED (release pipeline deploys operator; QA replays the sweep-59 static cp-marker fixture incl. reload + second build, the printf control, REST/GraphQL/MCP file readback, a content change at the same commit, then deletes the fixture, confirms the `bld-<name>-native-files` Secret is gone and revokes the session)**. t001/t002/t003/t005/t006 done 2026-10-03: saved files mount per build step at `/etc/secrets/<name>` via BuildKit secrets from an App-owned projection; operator `make test`, `make lint` (all modules) and backend suite green; pinned-BuildKit marker build passed locally.
 

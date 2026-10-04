@@ -1,17 +1,17 @@
 # w4 · m164 — Count initial and newly scraped traffic before free web auto-sleep
 
-**Worker:** worker4 **Goal:** a free web service's idle clock includes its first served request and activity scraped after the most recent subquery step. **Status:** todo
+**Worker:** worker4 **Goal:** a free web service's idle clock includes its first served request and activity scraped after the most recent subquery step. **Status:** blocked — t001/t002/t005/t006 done 2026-10-03; t003 live journeys, t004 live parity half and t007 closeout remain
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Audit the activity reader's callers, aliases and timing boundaries | 30m | — |
-| t002 | Preserve initial positive samples and current-step activity in sleep decisions | 60m | t001 |
+| t001 — **DONE** | Audit the activity reader's callers, aliases and timing boundaries | 30m | — |
+| t002 — **DONE** | Preserve initial positive samples and current-step activity in sleep decisions | 60m | t001 |
 | t003 | Repeat sparse traffic, steady traffic, idle and wake journeys live | 45m | t002 |
 | t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage with an actual PromQL evaluator | 45m | t004 |
+| t005 — **DONE** | Simplify | 15m | t004 |
+| t006 — **DONE** | Test coverage with an actual PromQL evaluator | 45m | t004 |
 | t007 | Closeout | 10m | t005, t006 |
 
 Total: **225m / 7 tasks**. Ships the filing only; implementation remains scheduled.
