@@ -69,8 +69,11 @@ spec:
   id: io.buildpacks.stacks.jammy
   buildImage:
     image: paketobuildpacks/build-jammy-base@sha256:01fb3e25c71539f92f2e47d45f43c83fcf5abb5d0f5b33e201adc919a3f02335
+  # bex run image (w1/m169): run-jammy-base plus libatomic1, so current Node
+  # majors (25+, which link libatomic.so.1) start. Published and Node-checked by
+  # .github/workflows/cnb-run-image.yml; recipe in deploy/cnb-run/Dockerfile.
   runImage:
-    image: paketobuildpacks/run-jammy-base@sha256:33c1e0d7158b09c70d3200fdbe9957075cd39dd4e703a3e6ed384475b9793e2b
+    image: ghcr.io/bex-co/bex-cnb-run@sha256:e69885d95e518efa17f35b18f48f92c8435f5eab48612c941b3521a085e3d27a
 ---
 # kpack v0.18 does not accept a complete builder image directly on Image.
 # Instead, ClusterStore imports its buildpackages and this ClusterBuilder

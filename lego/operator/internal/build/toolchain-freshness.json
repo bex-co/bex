@@ -30,10 +30,16 @@
       "committed": "paketobuildpacks/run-jammy-base@sha256:33c1e0d7158b09c70d3200fdbe9957075cd39dd4e703a3e6ed384475b9793e2b",
       "resolved_at": "2026-09-30T18:08:55Z",
       "source": "Docker Hub paketobuildpacks/run-jammy-base:latest multi-arch index",
-      "files": [
-        "deploy/gitops/charts/kpack/platform.yaml",
-        "deploy/cnb-run/Dockerfile"
-      ]
+      "files": ["deploy/cnb-run/Dockerfile"]
+    },
+    {
+      "id": "cnb-run-image",
+      "kind": "stack",
+      "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:e69885d95e518efa17f35b18f48f92c8435f5eab48612c941b3521a085e3d27a",
+      "resolved_at": "2026-10-02T23:00:00Z",
+      "source": "ghcr.io bex-co/bex-cnb-run:latest multi-arch index (linux/amd64 + linux/arm64), published by cnb-run-image.yml run 36979529487 from 1e6b70ed; anonymous pull verified",
+      "files": ["deploy/gitops/charts/kpack/platform.yaml"]
     },
     {
       "id": "helper-aws-cli",
