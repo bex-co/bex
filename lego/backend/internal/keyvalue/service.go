@@ -478,12 +478,14 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	}
 	// Newborn members inherit the environment's inbound-IP layer (w4/m28).
 	kv.Spec.EnvironmentIPAllowList = core.ApplyGrouping(kv, environment)
+	// The billing gate is read-only, so it runs before the dry-run return: a
+	// preview refuses (402) exactly what the real create would (w8/045).
+	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
+		return KeyValueView{}, err
+	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
 		return s.view(kv), nil
-	}
-	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
-		return KeyValueView{}, err
 	}
 	// A freshly minted workspace's tea-* namespace may not exist yet (the
 	// NamespaceReconciler only converges it on its resync tick) — ensure it
