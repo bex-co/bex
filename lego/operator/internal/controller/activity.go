@@ -193,9 +193,13 @@ func (r *AppReconciler) recentlyActive(ctx context.Context, app *appv1alpha1.App
 // stampLastActive merge-patches the App's last-active annotation to at, the one
 // format lastActiveTime parses. The patch carries the resourceVersion it read:
 // the activator stamps the same annotation on a wake, and a stale cached copy
-// must conflict rather than move a newer wake stamp backwards.
-func (r *AppReconciler) stampLastActive(ctx context.Context, app *appv1alpha1.App, at time.Time) error {
+// must conflict rather than move a newer wake stamp backwards. extra annotations
+// ride in the same patch.
+func (r *AppReconciler) stampLastActive(ctx context.Context, app *appv1alpha1.App, at time.Time, extra ...[2]string) error {
 	base := app.DeepCopy()
 	metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotLastActive, at.UTC().Format(time.RFC3339))
+	for _, kv := range extra {
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, kv[0], kv[1])
+	}
 	return r.Patch(ctx, app, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
 }

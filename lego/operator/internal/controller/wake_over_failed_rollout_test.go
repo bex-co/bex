@@ -240,18 +240,9 @@ func TestFailedRolloutStartedWhileParkedServesPriorRelease(t *testing.T) {
 	served := deploymentTemplate(t, cl, nn)
 	parkIdle(t, r, cl, nn)
 
-	// Release 2 is deployed onto the parked service: it stays off the template.
+	// Release 2 is deployed onto the parked service, which wakes it with no
+	// request (w6/076): the served release starts first, behind the activator.
 	deployImageAt(t, cl, nn, failingImage, 2)
-	reconcileTwice(t, r, nn)
-	if got := deploymentTemplate(t, cl, nn); !equality.Semantic.DeepEqual(got, served) {
-		t.Fatalf("parked template = revision %q, want the served release's: an unserved release must not be parked into the template", got.Labels[labelRevision])
-	}
-	if got := deploymentReplicas(t, cl, nn); got != 0 {
-		t.Fatalf("parked replicas = %d, want 0", got)
-	}
-
-	// A request wakes it: the served release starts first, behind the activator.
-	stampLastActiveAt(t, cl, nn, time.Now())
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("woken replicas = %d, want 1", got)
