@@ -1,16 +1,16 @@
 # w4 · m165 — Loop1: workspace-switch navigation + identical-cancel undeployed flag
 
-**Worker:** worker4 **Goal:** workspace switch never shows cross-workspace data; cancel without changes never raises the saved-changes flag **Status:** todo
+**Worker:** worker4 **Goal:** workspace switch never shows cross-workspace data; cancel without changes never raises the saved-changes flag **Status:** blocked — t001–t005 done 2026-10-04; t006 live closeout remains
 
 ## Tasks (in order)
 
 | id   | title                                                     | est | depends_on    |
 | ---- | --------------------------------------------------------- | --- | ------------- |
-| t001 | Dashboard workspace switch navigates to overview          | 40m | —             |
-| t002 | Identical-config cancel leaves undeployedChanges false    | 50m | —             |
-| t003 | Render parity across read surfaces                        | 30m | w4/m165/t002  |
-| t004 | Simplify changed code                                     | 20m | w4/m165/t003  |
-| t005 | Test coverage for shipped behavior                        | 30m | w4/m165/t003  |
+| t001 — **DONE** | Dashboard workspace switch navigates to overview          | 40m | —             |
+| t002 — **DONE** | Identical-config cancel leaves undeployedChanges false    | 50m | —             |
+| t003 — **DONE** | Render parity across read surfaces                        | 30m | w4/m165/t002  |
+| t004 — **DONE** | Simplify changed code                                     | 20m | w4/m165/t003  |
+| t005 — **DONE** | Test coverage for shipped behavior                        | 30m | w4/m165/t003  |
 | t006 | Closeout                                                  | 15m | w4/m165/t005  |
 
 ## Definition of done

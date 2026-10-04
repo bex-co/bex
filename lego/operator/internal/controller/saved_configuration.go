@@ -133,8 +133,14 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 		}
 	}
 	// Cancellation also retains plan/pre-deploy settings outside the rollback
-	// record's selected fields. Preserve that broader existing pending contract.
-	return different || canceledOverServed(app), nil
+	// record's selected fields. The served record's settings fingerprint says
+	// whether any of them differ; a cancel of an identical redeploy leaves
+	// nothing pending (w4/m165). A record without one cannot prove equality.
+	if !different && canceledOverServed(app) {
+		fp := rec.spec.SettingsFingerprint
+		different = fp == "" || fp != releaseSettingsFingerprint(app.Spec)
+	}
+	return different, nil
 }
 
 // retainReleaseSources prevents a newly staged first source from entering the

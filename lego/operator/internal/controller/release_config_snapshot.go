@@ -459,9 +459,7 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 	if err != nil {
 		return err
 	}
-	spec := releaseRecordSpec(runtime)
-	spec.SavedReplicas = new(app.Spec.Replicas)
-	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: spec, template: tmpl})
+	return r.writeRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: releaseRecordSpec(runtime), template: tmpl})
 }
 
 // servedPodTemplateForCancel returns the recorded pod template of the last served

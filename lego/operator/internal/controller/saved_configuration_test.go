@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strconv"
@@ -631,5 +632,87 @@ func TestRuntimeStatusRetriesPreserveSavedConfigurationStatus(t *testing.T) {
 				t.Fatal("runtime retry overwrote the concurrently published configuration difference")
 			}
 		})
+	}
+}
+
+// w4/m165: a cancel over a served release retains the canceled deploy's saved
+// settings, so it reports pending changes only when one of them actually
+// differs from what the served release ran. A redeploy of identical settings
+// (Manual Deploy of the same commit stamps only restartedAt/buildCommit) that is
+// canceled leaves nothing to deploy; a retained pre-deploy or plan change still
+// does (w1/m152), and a record that predates the fingerprint proves nothing.
+func TestSavedConfigurationCancelOverServedComparesRetainedSettings(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		edit   func(*appv1alpha1.AppSpec)
+		legacy bool
+		want   bool
+	}{
+		{name: "identical redeploy", edit: func(*appv1alpha1.AppSpec) {}, want: false},
+		{name: "retained pre-deploy command", edit: func(s *appv1alpha1.AppSpec) { s.PreDeployCommand = "echo migrate" }, want: true},
+		{name: "retained plan", edit: func(s *appv1alpha1.AppSpec) { s.Tier = "standard" }, want: true},
+		{name: "identical redeploy over a legacy record", edit: func(*appv1alpha1.AppSpec) {}, legacy: true, want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, app := savedConfigurationFixture(t, appv1alpha1.TypeWebService, nil)
+			app = reconcileSavedConfiguration(t, r, app, false)
+			if tc.legacy {
+				stripSettingsFingerprint(t, r, app, 1)
+			}
+			// The deploy every trigger stamps, then its cancel.
+			app.Spec.RestartedAt = "2026-10-04T00:00:00Z"
+			app.Spec.BuildCommit = "0123456789abcdef0123456789abcdef01234567"
+			tc.edit(&app.Spec)
+			app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
+			app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "2"
+			if err := r.Update(t.Context(), app); err != nil {
+				t.Fatal(err)
+			}
+			if !canceledOverServed(savedConfigurationApp(t, r, app)) {
+				t.Fatal("fixture is not settling a cancel over a served release")
+			}
+			reconcileSavedConfiguration(t, r, app, tc.want)
+		})
+	}
+}
+
+// A save-only change on top of an identical-redeploy cancel is still pending:
+// the narrowed cancel predicate never hides the saved-revision signal.
+func TestSavedConfigurationCancelKeepsLaterSaveOnlyPending(t *testing.T) {
+	r, app := savedConfigurationFixture(t, appv1alpha1.TypeWebService, map[string][]byte{"MESSAGE": []byte("v1")})
+	app.Spec.RestartedAt = "2026-10-04T00:00:00Z"
+	app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "2"
+	app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "2"
+	if err := r.Update(t.Context(), app); err != nil {
+		t.Fatal(err)
+	}
+	app = reconcileSavedConfiguration(t, r, app, false)
+	setSelectedTestSecret(t, r, "api-files", "v2")
+	app = notifySavedConfiguration(t, r, app, "saved-v2")
+	reconcileSavedConfiguration(t, r, app, true)
+}
+
+func stripSettingsFingerprint(t *testing.T, r *AppReconciler, app *appv1alpha1.App, generation int64) {
+	t.Helper()
+	rec := &corev1.Secret{}
+	key := client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.ReleaseRecordName(app.Name, generation)}
+	if err := r.Get(t.Context(), key, rec); err != nil {
+		t.Fatal(err)
+	}
+	var spec appv1alpha1.ReleaseRecordSpec
+	if err := json.Unmarshal(rec.Data[appv1alpha1.ReleaseRecordSpecKey], &spec); err != nil {
+		t.Fatal(err)
+	}
+	if spec.SettingsFingerprint == "" {
+		t.Fatal("a freshly recorded release carries no settings fingerprint")
+	}
+	spec.SettingsFingerprint = ""
+	raw, err := json.Marshal(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec.Data[appv1alpha1.ReleaseRecordSpecKey] = raw
+	if err := r.Update(t.Context(), rec); err != nil {
+		t.Fatal(err)
 	}
 }
