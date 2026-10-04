@@ -1,4 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@apollo/client/react";
+import {
+  RESOURCE_POLL_INTERVAL_MS,
+  skipPollWhenHidden,
+} from "@/common/lib/polling";
 import { LogLabelValuesDocument } from "@/graphql/definitions";
 
 /**
@@ -36,15 +41,40 @@ export function useLogLabelDiscovery(
   resource: string,
   label: string,
 ): LogLabelDiscovery {
+  // Discovery keeps up with traffic while the page stays open: a method or
+  // status first seen after load becomes selectable on the next visible poll
+  // instead of after a reload (w4/178). Apollo's cache-first default would
+  // otherwise answer every re-render from the first result forever.
   const { data, loading, error } = useQuery(LogLabelValuesDocument, {
     variables: { resource, label },
     errorPolicy: "all",
+    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
-  return {
-    values: (data?.logLabelValues ?? []).filter((v): v is string => v != null),
-    resolved: !loading && !error,
-  };
+  const answered =
+    !loading && !error && data
+      ? (data.logLabelValues ?? []).filter((v): v is string => v != null)
+      : null;
+  // The last authoritative answer for THIS resource+label. A transient poll
+  // failure keeps it (stale values beat flipping back to fallbacks or
+  // emptying an open picker); only a key that has never answered reports
+  // `resolved: false`. Adjusted during render, React's pattern for state
+  // derived from props.
+  const key = `${resource}\u0000${label}`;
+  const [last, setLast] = useState<{ key: string; values: string[] } | null>(
+    null,
+  );
+  if (answered && (last?.key !== key || !sameValues(last.values, answered))) {
+    setLast({ key, values: answered });
+  }
+  if (answered) return { values: answered, resolved: true };
+  if (last?.key === key) return { values: last.values, resolved: true };
+  return { values: [], resolved: false };
+}
+
+function sameValues(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
 /**
