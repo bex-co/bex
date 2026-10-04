@@ -381,7 +381,7 @@ fi
 for kpack_input in \
   paketobuildpacks/builder-jammy-base \
   paketobuildpacks/build-jammy-base \
-  paketobuildpacks/run-jammy-base; do
+  ghcr.io/bex-co/bex-cnb-run; do
   if ! grep -qE "${kpack_input//\//\\/}(@sha256:)[a-f0-9]{64}" <<<"$kpack_render"; then
     echo "FAIL: rendered kpack input is not digest-pinned: $kpack_input" >&2
     fail=1
