@@ -348,8 +348,15 @@ type Options struct {
 	// native build environment (literals + projected Secret sources). It enters
 	// the generated Dockerfile's env-dependent RUN so BuildKit cannot reuse a
 	// layer baked under a different environment (w7/m87). Secret mount contents
-	// alone do not invalidate BuildKit's cache. Empty means "none".
+	// alone do not invalidate BuildKit's cache. Empty means "none". It also
+	// covers NativeFiles' bytes (w4/m163).
 	NativeEnvRevision string
+	// NativeFilesSecret names the operator's App-owned merged projection of the
+	// service's secret files (linked groups, then its own), and NativeFiles its
+	// sorted keys. A native build command reads each at /etc/secrets/<name>
+	// through a transient BuildKit secret mount (w4/m163). Both empty = none.
+	NativeFilesSecret string
+	NativeFiles       []string
 	Namespace         string // namespace the build Job runs in
 	// Workspace is the owning tenant id (app.bex.co/workspace label value) stamped
 	// on the build Job so per-workspace concurrent-build counting works (w7/m9).
@@ -868,6 +875,9 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			"--opt", "filename=Dockerfile",
 			"--secret", "id=render-env,src=/native/render-env",
 		)
+		for i, name := range o.NativeFiles {
+			args = append(args, "--secret", "id="+nativeFileSecretID(i)+",src=/native/files/"+name)
+		}
 	} else {
 		args = append(args, "--local", "dockerfile="+dockerfileDir)
 		if o.DockerfilePath != "" {
@@ -940,6 +950,9 @@ fi
 		volumes = append(volumes, emptyDirVolume("native-build"))
 		if o.RuntimeEnvSecret != "" {
 			volumes = append(volumes, secretVolume("runtime-env", o.RuntimeEnvSecret))
+		}
+		if o.NativeFilesSecret != "" {
+			volumes = append(volumes, secretVolume("native-files", o.NativeFilesSecret))
 		}
 	}
 

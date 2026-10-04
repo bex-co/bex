@@ -38,6 +38,28 @@ const NativeEnvNoneRevision = "none"
 // is opaque platform metadata — never a secret value.
 var nativeEnvRevisionPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]+$`)
 
+// nativeSecretFilesDir is where a native build command reads the service's
+// secret files — the same /etc/secrets path the runtime projection mounts, so a
+// script shared by build and start finds them in both (docs/ADR013-secrets.md).
+const nativeSecretFilesDir = "/etc/secrets"
+
+// nativeFileNamePattern is the Kubernetes Secret key charset (and bex-api's
+// ValidSecretFileName). A name is spliced into a Dockerfile mount flag, a
+// buildctl --secret CSV value and the preparer's word-split list, so anything
+// outside it — separators, quotes, whitespace, globs, slashes — is refused
+// rather than escaped.
+var nativeFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+
+// validNativeFileName also refuses "." and ".." and the "..data"-style names a
+// Secret volume reserves for its own atomic-swap bookkeeping.
+func validNativeFileName(name string) bool {
+	return nativeFileNamePattern.MatchString(name) && name != "." && !strings.HasPrefix(name, "..")
+}
+
+// nativeFileSecretID is the BuildKit secret id carrying the i-th (sorted) file.
+// An index rather than the name keeps the id opaque and trivially CSV-safe.
+func nativeFileSecretID(i int) string { return fmt.Sprintf("bex-file-%d", i) }
+
 // nativePreparerImage is digest-pinned (codex round-7 F10 / the ADR055 F7
 // digest-pinning deferral's highest-value pin): this initContainer mounts and
 // reads the ENTIRE runtime-env secret bundle, so a retagged upstream busybox
@@ -88,6 +110,19 @@ func validateNativeOptions(o Options) error {
 	if rev := strings.TrimSpace(o.NativeEnvRevision); rev != "" && !nativeEnvRevisionPattern.MatchString(rev) {
 		return fmt.Errorf("build: native env revision %q is not opaque cache metadata", rev)
 	}
+	if (o.NativeFilesSecret == "") != (len(o.NativeFiles) == 0) {
+		return fmt.Errorf("build: native secret files need both a Secret and a file list")
+	}
+	for i, name := range o.NativeFiles {
+		if !validNativeFileName(name) {
+			return fmt.Errorf("build: invalid native secret file name %q", name)
+		}
+		// Strictly ascending keeps the generated Dockerfile deterministic for one
+		// file set, and rules out duplicates.
+		if i > 0 && o.NativeFiles[i-1] >= name {
+			return fmt.Errorf("build: native secret files must be sorted and unique")
+		}
+	}
 	return nil
 }
 
@@ -112,7 +147,20 @@ func nativeEnvRevision(o Options) string {
 // NativeEnvRevision is therefore referenced inside the env-dependent RUN so a
 // changed effective environment cannot reuse a layer baked under different
 // values (w7/m87). The revision carries no secret material.
+//
+// Each secret file rides its own transient secret mount at
+// /etc/secrets/<name> (w4/m163): BuildKit mounts it only for this RUN and never
+// commits it to a layer, the image config or the build context. The mount flags
+// carry file NAMES only; the revision above also covers file bytes, since a
+// changed file would otherwise reuse the cached RUN just like a changed env
+// value. required=true makes a missing transport fail the build instead of
+// silently running without the file.
 func nativeDockerfile(o Options) string {
+	var fileMounts strings.Builder
+	for i, name := range o.NativeFiles {
+		fmt.Fprintf(&fileMounts, " --mount=type=secret,id=%s,target=%s/%s,required=true",
+			nativeFileSecretID(i), nativeSecretFilesDir, name)
+	}
 	buildScript := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `while IFS= read -r record; do
   [ -n "$record" ] || continue
   key=${record%%=*}
@@ -127,8 +175,8 @@ done < /run/secrets/render-env
 FROM %s
 WORKDIR /opt/render/project/src
 COPY . .
-RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env %s
-`, nativeRuntimeImages[nativeRuntime(o)], run)
+RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env%s %s
+`, nativeRuntimeImages[nativeRuntime(o)], fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.
@@ -159,7 +207,11 @@ func shellJSON(command string) string {
 // nativeBuildPreparer materializes the generated Dockerfile and a base64 env
 // bundle into an EmptyDir shared with buildkit. The env bundle enters BuildKit
 // through a secret mount, so neither literal nor OpenBao-backed values appear in
-// image metadata or the generated Dockerfile.
+// image metadata or the generated Dockerfile. Secret files are copied byte for
+// byte from the App-owned files Secret into /native/files at the same moment, so
+// one build reads one consistent snapshot of both inputs even if a later
+// reconcile rewrites the projection mid-build; a declared file that is absent
+// fails the preparer rather than the tenant's command.
 func nativeBuildPreparer(o Options) corev1.Container {
 	keys := make([]string, 0, len(o.BuildEnv))
 	env := make([]corev1.EnvVar, 0, len(o.BuildEnv)+2)
@@ -174,11 +226,15 @@ func nativeBuildPreparer(o Options) corev1.Container {
 	env = append(env,
 		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERFILE", Value: nativeDockerfile(o)},
 		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: strings.Join(keys, "\n")},
+		corev1.EnvVar{Name: "BEX_NATIVE_FILES", Value: strings.Join(o.NativeFiles, "\n")},
 	)
 
 	mounts := []corev1.VolumeMount{{Name: "native-build", MountPath: "/native"}}
 	if o.RuntimeEnvSecret != "" {
 		mounts = append(mounts, corev1.VolumeMount{Name: "runtime-env", MountPath: "/runtime-env", ReadOnly: true})
+	}
+	if o.NativeFilesSecret != "" {
+		mounts = append(mounts, corev1.VolumeMount{Name: "native-files", MountPath: "/native-files", ReadOnly: true})
 	}
 	return corev1.Container{
 		Name:    "prepare-native-build",
@@ -201,6 +257,11 @@ for key in $BEX_NATIVE_LITERAL_KEYS; do
   value="$(printenv "$key"; printf '.')"
   encoded="$(printf '%s' "${value%?.}" | base64 | tr -d '\n')"
   printf '%s=%s\n' "$key" "$encoded" >> /native/render-env
+done
+mkdir /native/files
+# Names are validated to the Secret-key charset, so word splitting is exact.
+for name in $BEX_NATIVE_FILES; do
+  cp "/native-files/$name" "/native/files/$name"
 done`},
 		Env:          env,
 		VolumeMounts: mounts,
