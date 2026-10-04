@@ -67,6 +67,7 @@ type artifactIdentityInput struct {
 	BuildEnv                   []corev1.EnvVar `json:"buildEnv,omitempty"`
 	RuntimeEnvSecret           string          `json:"runtimeEnvSecret,omitempty"`
 	EnvFromSecrets             []string        `json:"envFromSecrets,omitempty"`
+	FilesFromSecrets           []string        `json:"filesFromSecrets,omitempty"`
 	RestartedAt                string          `json:"restartedAt,omitempty"`
 }
 
@@ -136,6 +137,11 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		// fresh artifact, exactly like an API link's restartedAt bump does.
 		artifactInput.RuntimeEnvSecret = spec.EnvFromSecret
 		artifactInput.EnvFromSecrets = spec.EnvFromSecrets
+	}
+	// Only the native build mounts secret files into its RUN (w4/m163); kpack
+	// and Dockerfile builds never read them, so their artifacts stay put.
+	if builder == build.BuilderNative {
+		artifactInput.FilesFromSecrets = spec.FilesFromSecrets
 	}
 
 	artifact := identityFingerprint("artifact-v1", artifactInput)

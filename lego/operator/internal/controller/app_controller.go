@@ -882,17 +882,14 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if err := r.relocateBuildSecret(ctx, app, buildNs, app.Spec.CloneSecret, "clone secret"); err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 	}
-	runtimeSecret := ""
-	nativeEnvRevision := ""
+	var native nativeBuildInputs
 	buildLiterals := buildEnv(builder, app.Spec.Env)
 	switch builder {
 	case build.BuilderNative:
-		merged, rev, err := r.projectNativeBuildEnv(ctx, app, buildNs, buildLiterals)
-		if err != nil {
+		var err error
+		if native, err = r.projectNativeBuildInputs(ctx, app, buildNs, buildLiterals); err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 		}
-		runtimeSecret = merged
-		nativeEnvRevision = rev
 	case build.BuilderBuildpack:
 		projected, err := r.projectBuildpackBuildEnv(ctx, app, buildLiterals)
 		if err != nil {
@@ -925,8 +922,10 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		BuildCommand:      app.Spec.BuildCommand,
 		StartCommand:      app.Spec.StartCommand,
 		BuildEnv:          buildLiterals,
-		RuntimeEnvSecret:  runtimeSecret,
-		NativeEnvRevision: nativeEnvRevision,
+		RuntimeEnvSecret:  native.envSecret,
+		NativeEnvRevision: native.revision,
+		NativeFilesSecret: native.filesSecret,
+		NativeFiles:       native.files,
 		Revision:          releaseBuildRevision(app),
 		Namespace:         buildNs,
 		AppNamespace:      app.Namespace,
@@ -1381,6 +1380,30 @@ func (r *AppReconciler) relocateBuildSecret(ctx context.Context, app *appv1alpha
 	return nil
 }
 
+// nativeBuildInputs is what a native build receives beside its source: the
+// merged env Secret, the opaque cache revision covering env and file bytes, and
+// the merged secret-files Secret with its sorted file names.
+type nativeBuildInputs struct {
+	envSecret, revision, filesSecret string
+	files                            []string
+}
+
+// projectNativeBuildInputs projects the in-flight release's secret files and
+// environment next to the build Job. Files go first because their bytes feed
+// the environment Secret's revision (w4/m163).
+func (r *AppReconciler) projectNativeBuildInputs(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar) (nativeBuildInputs, error) {
+	filesSecret, files, err := r.projectNativeBuildFiles(ctx, app, buildNs)
+	if err != nil {
+		return nativeBuildInputs{}, err
+	}
+	envSecret, revision, err := r.projectNativeBuildEnv(ctx, app, buildNs, literals, files)
+	if err != nil {
+		return nativeBuildInputs{}, err
+	}
+	return nativeBuildInputs{envSecret: envSecret, revision: revision,
+		filesSecret: filesSecret, files: slices.Sorted(maps.Keys(files))}, nil
+}
+
 // nativeEnvSecretName is the App-owned merged native-build env Secret. Linked
 // group Secrets and the service's own Secret collapse into one deterministic
 // per-App destination so the build keeps a single BuildKit secret mount and two
@@ -1392,7 +1415,8 @@ const (
 	// native environment. It is the only revision value that enters the
 	// generated Dockerfile (w7/m87).
 	annotNativeEnvRevision = "app.bex.co/native-env-revision"
-	// annotNativeEnvInput is a keyed equality token over Secret bytes + literals.
+	// annotNativeEnvInput is a keyed equality token over Secret bytes, literals
+	// and secret-file bytes.
 	// It lives only on the App-owned Secret so reconciles can keep the opaque
 	// revision stable; it is never passed to BuildKit or image metadata.
 	annotNativeEnvInput = "app.bex.co/native-env-input"
@@ -1407,24 +1431,30 @@ const (
 // over every Secret source: the preparer appends them after the Secret records
 // and the decoder's later-wins export order matches Kubernetes env precedence.
 //
-// No Secret sources and no build-relevant literals => ("", "none") with no
-// Secret written. Literals alone still mint the App-owned Secret so the
-// revision survives operator restarts. A missing group Secret contributes
-// nothing, but any other read failure — including the own Secret missing —
-// fails the build rather than silently building with a partial environment.
-func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar) (string, string, error) {
+// The revision also covers the merged secret files (projectNativeBuildFiles):
+// their bytes ride separate secret mounts that BuildKit's cache key ignores
+// just the same, and one counter keeps a single durable home for the native
+// cache key (w4/m163).
+//
+// No Secret sources, no build-relevant literals and no files => ("", "none")
+// with no Secret written. Literals or files alone still mint the App-owned
+// Secret so the revision survives operator restarts. A missing group Secret
+// contributes nothing, but any other read failure — including the own Secret
+// missing — fails the build rather than silently building with a partial
+// environment.
+func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar, files map[string][]byte) (string, string, error) {
 	// envFromSources owns the source list, order, and optionality — iterating
 	// its output keeps build-time and runtime environments single-sourced.
 	sources := envFromSources(inFlightRelease(app))
 	literals = nativeBuildLiterals(literals)
-	if len(sources) == 0 && len(literals) == 0 {
+	if len(sources) == 0 && len(literals) == 0 && len(files) == 0 {
 		return "", build.NativeEnvNoneRevision, nil
 	}
 	data, err := r.readBuildEnvSources(ctx, app, sources)
 	if err != nil {
 		return "", "", err
 	}
-	input := nativeEnvInputToken(string(app.UID), data, literals)
+	input := nativeEnvInputToken(string(app.UID), data, literals, files)
 	var revision string
 	merged := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: nativeEnvSecretName(app.Name), Namespace: buildNs}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), merged, func() error {
@@ -1466,26 +1496,95 @@ func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alp
 // other read failure, including the service's own Secret missing, fails the
 // build rather than building with a partial environment.
 func (r *AppReconciler) readBuildEnvSources(ctx context.Context, app *appv1alpha1.App, sources []corev1.EnvFromSource) (map[string][]byte, error) {
-	reader := r.uncachedSecretClient()
-	data := map[string][]byte{}
+	refs := make([]buildSecretSource, 0, len(sources))
 	for _, source := range sources {
 		ref := source.SecretRef
+		refs = append(refs, buildSecretSource{name: ref.Name, optional: ref.Optional != nil && *ref.Optional})
+	}
+	return r.readBuildSecretSources(ctx, app, "env", refs)
+}
+
+// buildSecretSource is one App-namespace Secret a build reads, in precedence
+// order, and whether its absence is tolerated.
+type buildSecretSource struct {
+	name     string
+	optional bool
+}
+
+// readBuildSecretSources merges ordered Secret sources into one map, later
+// sources winning. Only NotFound on an optional source is skipped; every other
+// read failure fails the build rather than building with partial inputs.
+func (r *AppReconciler) readBuildSecretSources(ctx context.Context, app *appv1alpha1.App, kind string, sources []buildSecretSource) (map[string][]byte, error) {
+	reader := r.uncachedSecretClient()
+	data := map[string][]byte{}
+	for _, ref := range sources {
 		var src corev1.Secret
-		if err := reader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ref.Name}, &src); err != nil {
-			if ref.Optional != nil && *ref.Optional && apierrors.IsNotFound(err) {
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: ref.name}, &src); err != nil {
+			if ref.optional && apierrors.IsNotFound(err) {
 				continue
 			}
-			return nil, fmt.Errorf("reading build env Secret %s/%s: %w", app.Namespace, ref.Name, err)
+			return nil, fmt.Errorf("reading build %s Secret %s/%s: %w", kind, app.Namespace, ref.name, err)
 		}
 		// rejectProtectedSecretRefs already vets the spec references; re-check at
 		// the read like copyCloneSecret does, so a protected operational Secret
 		// can never be laundered into a build (codex F1/F7).
 		if src.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
-			return nil, fmt.Errorf("refusing to project protected operator Secret %s/%s into a build", app.Namespace, ref.Name)
+			return nil, fmt.Errorf("refusing to project protected operator Secret %s/%s into a build", app.Namespace, ref.name)
 		}
 		maps.Copy(data, src.Data)
 	}
 	return data, nil
+}
+
+// nativeFilesSecretName is the App-owned merged native-build secret-files
+// Secret. The "bld-" prefix keeps it apart from the "<service>-files" names
+// bex-api writes when builds run in the App namespace; checkOwnedArtifact
+// refuses any remaining same-name collision rather than overwriting it.
+func nativeFilesSecretName(app string) string { return build.JobName(app, "native-files") }
+
+// projectNativeBuildFiles merges the in-flight release's secret-file sources —
+// secretFileSources, the exact list and order the runtime /etc/secrets volume
+// projects, so linked groups come first and the service's own files win — into
+// one App-owned Secret next to the build Job (w4/m163). Like the runtime
+// projection every source is optional: an absent one contributes no files,
+// while any other read failure or a protected source fails the build.
+//
+// It returns the Secret's name and the merged bytes (which feed the native
+// cache revision; they never leave the operator otherwise). No files => ("",
+// nil) and any earlier projection this App owns is deleted, so removed file
+// bytes do not linger in the build namespace.
+func (r *AppReconciler) projectNativeBuildFiles(ctx context.Context, app *appv1alpha1.App, buildNs string) (string, map[string][]byte, error) {
+	names := secretFileSources(inFlightRelease(app))
+	sources := make([]buildSecretSource, 0, len(names))
+	for _, name := range names {
+		sources = append(sources, buildSecretSource{name: name, optional: true})
+	}
+	data, err := r.readBuildSecretSources(ctx, app, "file", sources)
+	if err != nil {
+		return "", nil, err
+	}
+	name := nativeFilesSecretName(app.Name)
+	if len(data) == 0 {
+		owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+			Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+		if _, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNs, name, &corev1.Secret{}, owned); err != nil {
+			return "", nil, fmt.Errorf("removing stale native build files: %w", err)
+		}
+		return "", nil, nil
+	}
+	merged := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNs}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), merged, func() error {
+		if err := checkOwnedArtifact(merged, app); err != nil {
+			return err
+		}
+		merged.Type = corev1.SecretTypeOpaque
+		merged.Data = data
+		merged.Labels = artifactLabels(app, "native-files-secret")
+		return nil
+	}); err != nil {
+		return "", nil, fmt.Errorf("projecting native build files: %w", err)
+	}
+	return name, data, nil
 }
 
 // projectBuildpackBuildEnv is the buildpack (kpack) counterpart of
@@ -1548,7 +1647,7 @@ func nativeBuildLiterals(env []corev1.EnvVar) []corev1.EnvVar {
 // nativeEnvInputToken is a keyed equality fingerprint over the effective native
 // environment. The App UID is the HMAC key so the token is not an unkeyed hash
 // of secret values; it never enters BuildKit, logs, or image metadata.
-func nativeEnvInputToken(uid string, data map[string][]byte, literals []corev1.EnvVar) string {
+func nativeEnvInputToken(uid string, data map[string][]byte, literals []corev1.EnvVar, files map[string][]byte) string {
 	var buf bytes.Buffer
 	for _, key := range slices.Sorted(maps.Keys(data)) {
 		buf.WriteString(key)
@@ -1562,6 +1661,20 @@ func nativeEnvInputToken(uid string, data map[string][]byte, literals []corev1.E
 		buf.WriteByte(0)
 		buf.WriteString(item.Value)
 		buf.WriteByte(0)
+	}
+	// Files append a section only when present, so an App without files keeps
+	// the token (and its warm cache) it had before files joined the input.
+	// Lengths frame the bytes because a file, unlike an env value, may contain
+	// NUL; an empty file still differs from no file by its name.
+	if len(files) > 0 {
+		buf.WriteByte(0x1d)
+		for _, name := range slices.Sorted(maps.Keys(files)) {
+			buf.WriteString(name)
+			buf.WriteByte(0)
+			buf.WriteString(strconv.Itoa(len(files[name])))
+			buf.WriteByte(0)
+			buf.Write(files[name])
+		}
 	}
 	mac := hmac.New(sha256.New, []byte(uid))
 	_, _ = mac.Write(buf.Bytes())
@@ -4456,28 +4569,23 @@ const (
 	secretFilesMountPath  = "/etc/secrets"
 )
 
-// secretFileMounts projects spec.filesFromSecrets plus a save-only pending
-// service-file annotation into one read-only /etc/secrets volume + mount
-// (docs/ADR013-secrets.md — secret files): each named Secret's keys become
-// files "/etc/secrets/<key>". A service's own files ("<name>-files") and each
-// linked group's files ("<evg-id>-files") merge into the single projected volume,
-// each source optional so an absent one contributes no files rather than failing
-// the mount. Empty spec => (nil, nil): no volume, unchanged behavior.
-func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount) {
-	var sources []corev1.VolumeProjection
-	optional := true
+// secretFileSources is the ordered list of secret-file Secrets an App's
+// /etc/secrets view merges: spec.filesFromSecrets plus a save-only pending
+// service-file annotation (docs/ADR013-secrets.md — secret files). Each named
+// Secret's keys become files "/etc/secrets/<key>" and a LATER source wins a
+// duplicate name. A service's own files ("<name>-files") and each linked
+// group's files ("<evg-id>-files") all appear here. The runtime projection
+// (secretFileMounts) and the native build (projectNativeBuildFiles) both
+// iterate this one list, so build-time and runtime precedence cannot drift.
+func secretFileSources(app *appv1alpha1.App) []string {
+	var sources []string
 	// project takes the MUTABLE source name and substitutes this release's
 	// immutable copy when one is active (w1/m152), so every caller below keeps
-	// naming sources the way the precedence comment explains. containsSecretProjection
-	// is fed the same substituted name, so the pending-annotation de-duplication
-	// still compares like with like.
+	// naming sources the way the precedence comment explains. The pending
+	// annotation's de-duplication is fed the same substituted name, so it still
+	// compares like with like.
 	project := func(name string) {
-		sources = append(sources, corev1.VolumeProjection{
-			Secret: &corev1.SecretProjection{
-				LocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},
-				Optional:             &optional,
-			},
-		})
+		sources = append(sources, snapshotOrSource(app, name))
 	}
 	// The service's own files Secret goes LAST, whatever its position in
 	// spec.filesFromSecrets, so a service's own secret file always beats a
@@ -4510,11 +4618,30 @@ func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount
 	if deferred {
 		project(own)
 	}
-	if name := app.Annotations[appv1alpha1.PendingFilesSecretAnnotation]; name != "" && !containsSecretProjection(sources, snapshotOrSource(app, name)) {
+	if name := app.Annotations[appv1alpha1.PendingFilesSecretAnnotation]; name != "" && !slices.Contains(sources, snapshotOrSource(app, name)) {
 		project(name)
 	}
-	if len(sources) == 0 {
+	return sources
+}
+
+// secretFileMounts projects secretFileSources into one read-only /etc/secrets
+// volume + mount, each source optional so an absent one contributes no files
+// rather than failing the mount. No sources => (nil, nil): no volume,
+// unchanged behavior.
+func secretFileMounts(app *appv1alpha1.App) (*corev1.Volume, *corev1.VolumeMount) {
+	names := secretFileSources(app)
+	if len(names) == 0 {
 		return nil, nil
+	}
+	optional := true
+	sources := make([]corev1.VolumeProjection, 0, len(names))
+	for _, name := range names {
+		sources = append(sources, corev1.VolumeProjection{
+			Secret: &corev1.SecretProjection{
+				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				Optional:             &optional,
+			},
+		})
 	}
 	vol := &corev1.Volume{
 		Name:         secretFilesVolumeName,
@@ -4533,15 +4660,6 @@ func runtimeEnvSecret(app *appv1alpha1.App) string {
 		return app.Spec.EnvFromSecret
 	}
 	return app.Annotations[appv1alpha1.PendingEnvSecretAnnotation]
-}
-
-func containsSecretProjection(sources []corev1.VolumeProjection, name string) bool {
-	for _, source := range sources {
-		if source.Secret != nil && source.Secret.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // effectiveReplicas derives the Deployment size: spec.replicas (default 1),
@@ -6110,6 +6228,7 @@ func (r *AppReconciler) knownBuildSecretNames(app *appv1alpha1.App) []string {
 		app.Spec.CloneSecret,
 		runtimeEnvSecret(app),
 		nativeEnvSecretName(app.Name),
+		nativeFilesSecretName(app.Name),
 		app.Spec.ExternalRegistryPullSecret,
 		id.PullSecretName(),
 		id.LegacyPullSecretName(),
