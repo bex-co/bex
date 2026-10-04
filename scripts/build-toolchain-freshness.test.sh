@@ -135,6 +135,40 @@ else
   echo "ok: resolve does not edit the worktree"
 fi
 
+# ghcr.io upstream (w1/m169 `cnb-run-image`): parse to the ghcr.io registry and
+# resolve through its anonymous token + manifest endpoints, not Docker Hub's.
+# The HTTP layer is stubbed, so this exercises the real parse/resolve path
+# without contacting a registry.
+if ghcr_out="$(python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+ref = "ghcr.io/bex-co/bex-cnb-run:latest"
+got = m.parse_upstream(ref)
+assert got == ("ghcr.io", "bex-co/bex-cnb-run", "latest"), got
+calls = []
+def fake_json(url, headers=None):
+    calls.append(url)
+    return {"token": "anon"}
+def fake_digest(url, headers):
+    calls.append(url)
+    assert headers.get("Authorization") == "Bearer anon", headers
+    return "sha256:" + "d" * 64
+m.http_json, m.http_digest = fake_json, fake_digest
+assert m.resolve_upstream(ref) == "sha256:" + "d" * 64
+assert calls == [
+    "https://ghcr.io/token?service=ghcr.io&scope=repository%3Abex-co%2Fbex-cnb-run%3Apull",
+    "https://ghcr.io/v2/bex-co/bex-cnb-run/manifests/latest",
+], calls
+PY
+)"; then
+  echo "ok: ghcr.io upstream parses and resolves via ghcr.io token + manifest"
+else
+  echo "FAIL: ghcr.io upstream parse/resolve — $ghcr_out" >&2
+  fails=$((fails + 1))
+fi
+
 body="$(env "$SCRIPT" issue-body "$tmp/drift.json")"
 if ! printf '%s' "$body" | grep -qF "$DIGEST_A" || ! printf '%s' "$body" | grep -qF "$DIGEST_B"; then
   echo "FAIL: issue body omitted exact digests" >&2
