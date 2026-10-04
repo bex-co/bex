@@ -88,9 +88,9 @@ jobs:
         env:
           REF: ${{ env.CNB_RUN_IMAGE }}@${{ steps.build.outputs.digest }}
         run: |
-          cosign sign --yes "$REF"
+          cosign sign --yes --oidc-provider=github-actions "$REF"
           syft "$REF" -o spdx-json > "$RUNNER_TEMP/sbom.spdx.json"
-          cosign attest --yes --type spdxjson --predicate "$RUNNER_TEMP/sbom.spdx.json" "$REF"
+          cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate "$RUNNER_TEMP/sbom.spdx.json" "$REF"
           # `latest` moves only after the regression gate and signature, so the
           # freshness resolver never reports an unverified digest.
           docker buildx imagetools create --tag "$CNB_RUN_IMAGE:latest" "$REF"
