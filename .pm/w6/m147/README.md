@@ -1,18 +1,18 @@
 # w6 · m147 — A free service that auto-hibernates mid-rollout loses its crash diagnosis (generic health-gate reason) and its header disagrees with its phase
 
-**Worker:** worker6 **Goal:** a failing rollout on a free web service reports the operator's specific diagnosis (crash exit code, probe, image pull) as its `failureReason` even when the service auto-hibernated before the progress deadline, and the dashboard header's phase agrees with the API after that failure. **Status:** todo
+**Worker:** worker6 **Goal:** a failing rollout on a free web service reports the operator's specific diagnosis (crash exit code, probe, image pull) as its `failureReason` even when the service auto-hibernated before the progress deadline, and the dashboard header's phase agrees with the API after that failure. **Status:** in progress (t001, t002, t006, t007 done; t003 traced, live sampling with t004 after the deploy)
 
 ## Tasks (in order)
 
 | id   | title                                                                                                     | est | depends_on             |
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------------------- |
-| t001 | Backend: keep the last real stall diagnosis on the open row and close with it instead of the gate line    | 45m | —                      |
-| t002 | Operator: settle (or defer the park of) an App whose current-generation rollout is unsettled at idle      | 1h  | —                      |
+| t001 | Backend: keep the last real stall diagnosis on the open row and close with it instead of the gate line — **DONE** | 45m | —                      |
+| t002 | Operator: settle (or defer the park of) an App whose current-generation rollout is unsettled at idle — **DONE** | 1h  | —                      |
 | t003 | Trace the header "Deploying" vs API `Hibernated` disagreement after the failure, and fix the actual cause | 45m | t002                   |
 | t004 | Live: reproduce and verify both diagnoses and the header/phase agreement on production                    | 40m | t001, t002, t003       |
 | t005 | Render parity                                                                                             | 20m | t004                   |
-| t006 | Simplify                                                                                                  | 15m | t005                   |
-| t007 | Test coverage                                                                                             | 30m | t005                   |
+| t006 | Simplify — **DONE** | 15m | t005                   |
+| t007 | Test coverage — **DONE** | 30m | t005                   |
 | t008 | Closeout                                                                                                  | 10m | t007                   |
 
 ## Definition of done
@@ -37,6 +37,15 @@
 
 - `72da96bc6` (w8/039): `lastStallDiagnosis` (`app_controller.go:2990-3024`) recovers the stall only when the Deployment reaches `ProgressDeadlineExceeded` and Ready still carries it; once parked, Ready reads `AutoHibernated` and settle never runs.
 - `78e410542` (w4/m156): `started_at` stamping only.
+
+## Implementation (2026-10-04)
+
+- **t001** (`lego/backend/internal/store/reconciler.go`): `deployStallObservation` skips the open row's `stallReason` write while Ready carries a park reason (`AutoHibernated`, `Suspended`), so a park no longer clears the crash/probe text. `deployCloseFailureReason` for `update_failed` reads the `Rollout` verdict, then a current Ready diagnosis, then the row's `stallReason`, then the generic line. Tests: `parked_rollout_reason_test.go` (crash exit 127 and TCP probe, each under both park reasons, plus the fallback order); 6 failures with the fix reverted.
+- **t002, decision (a) defer the park.** A deploy in progress is not idleness: Render runs a deploy to completion and spins a free instance down only after 15 minutes without inbound traffic. Deferring keeps one code path for the verdict (`settleFailedRollout`) instead of a second settle-at-park diagnosis. `rolloutAwaitingVerdict` (`app_controller.go`) keeps an idle App awake while the current release, newer than the served one, is on its awake Deployment with no `Rollout` verdict for its generation. It is bounded by the progress deadline plus `rolloutVerdictGrace` (2 min). After the verdict, w1/m172's `holdFailedRollout` keeps the served template and the App parks on it. A manual suspend still parks mid-rollout and puts the served template back (w1/m172 `holdUnservedRelease`). Tests in `wake_over_failed_rollout_test.go`: `TestIdleMidRolloutWaitsForItsVerdict` (crash 127 and TCP probe; 3 failures with the deferral removed), `TestIdleMidRolloutDeferralIsBounded`, and `TestSuspendMidRolloutPutsServedTemplateBack` (replaces `TestParkMidRolloutPutsServedTemplateBack`, whose idle park is now deferred). `docs/ADR004-app-deployment.md` documents the rule.
+- **t003 trace.** The header badge is a pure function of `server(id).phase` (`dashboard/src/features/services/lib/status.ts` `deriveStatus`). It polls every 3 s while converging and every 30 s otherwise (`dashboard/src/common/lib/polling.ts` `useConvergingPoll`), so no client cache can hold "Deploying" against a `Hibernated` read. The divergence was a real phase flap on the pre-m172 operator: the failed rollout had no verdict, so the parked Deployment kept the failed template. Any request woke it onto that template (phase Deploying, no ready pod, activator 503), and it re-parked after the idle window (Hibernated). Two samples taken at different moments disagreed. Now the verdict (t002) plus `holdFailedRollout` keep the served template on the parked Deployment, so a wake goes Hibernated → Running on the prior release. 5-minute live sampling is recorded under t004.
+- **t006** `/simplify` (three reviewers): `progressDeadlineExceeded` returns the condition (and `reasonProgressDeadlineExceeded` replaces the literals); `currentFailureReason` splits the diagnosis from `failureReasonFor`'s generic fallback, so the close order is flat instead of comparing against the generic string; `parkReason` replaces the duplicated Suspended/AutoHibernated test in `observedServiceStateFor`; a shared `rollFailingReleaseTwo` test setup.
+- **t007** Coverage: every new test fails with its fix reverted (backend 6, operator 3). The header/phase agreement has no client mechanism to test (t003); it is verified live in t004.
+- Suites: operator `make test`, `make lint` (all four modules), backend `go test ./...` pass.
 
 ## Related
 
