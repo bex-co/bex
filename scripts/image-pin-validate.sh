@@ -130,6 +130,8 @@ lego/backend/internal/apps/testdata/render-clickhouse/Dockerfile	yandex/clickhou
 deploy/gitops/charts/opensandbox-controller/values.yaml	sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller	upstream chart default; deploy/gitops/base/values/opensandbox-controller.values.yaml overrides it with a digest
 deploy/gitops/charts/opensandbox-controller/values.yaml	image-committer:dev	upstream chart default for a snapshot path production leaves disabled; the same base values file overrides it with a digest
 lego/operator/config/deploy/kustomization.yaml	bex-operator:dev	disposable local overlay: `make docker-build` copies this beside config/default, points it at the just-built local IMG, and deletes the copy — it never reaches a cluster
+deploy/cnb-run/node-check.Dockerfile	${RUN_IMAGE}	CI-only regression check, never pushed: .github/workflows/cnb-run-image.yml passes RUN_IMAGE as the just-built bex-cnb-run image BY DIGEST (`…@${{ steps.build.outputs.digest }}`), so the resolved reference is always digest-pinned
+deploy/cnb-run/node-check.Dockerfile	check-${TARGETARCH}	internal stage reference: TARGETARCH selects one of the two stages declared above it in the same file (check-amd64 / check-arm64), never a registry pull
 deploy/gitops/charts/barman-cloud-plugin/upstream/manifest-0.13.0.yaml	ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.13.0	vendored upstream v0.13.0 release, kept byte-for-byte reproducible against the SHA-256 in its README; the EXECUTED reference is digest-pinned by the kustomize patch beside it, which scripts/gitops-validate.sh asserts on the RENDERED output
 EOF
 }
