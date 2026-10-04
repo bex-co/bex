@@ -517,8 +517,8 @@ func failedRolloutOverServed(app *appv1alpha1.App) bool {
 // template — the failed one — so nothing becomes ready and the public route stays
 // on the activator (w1/m172). restored=false means there is nothing to restore
 // from, and the caller must not report the prior release as serving.
-// Callers gate on failedRolloutOverServed, which is what makes the revision label
-// tell the two templates apart.
+// Callers establish that the current release is not the served one, which is what
+// makes the revision label tell the two templates apart.
 func (r *AppReconciler) restoreServedTemplate(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) (bool, error) {
 	// Already back on the served release: every held pass comes through here, and
 	// the record is read uncached.
@@ -542,8 +542,8 @@ func (r *AppReconciler) restoreServedTemplate(ctx context.Context, app *appv1alp
 	if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
 		return false, err
 	}
-	logf.FromContext(ctx).Info("restored the served release's pod template after a failed rollout",
-		"app", app.Name, "servedRevision", app.Status.ActiveRevision, "failedGeneration", releaseGeneration(app))
+	logf.FromContext(ctx).Info("restored the served release's pod template",
+		"app", app.Name, "servedRevision", app.Status.ActiveRevision, "releaseGeneration", releaseGeneration(app))
 	return true, nil
 }
 

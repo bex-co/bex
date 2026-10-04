@@ -1,6 +1,6 @@
 # w1 · m172 — A free service that sleeps through a failed rollout wakes onto the broken release: `503 service hibernated` while the API reads Running
 
-**Worker:** worker1 **Goal:** a free service whose newest rollout failed over a prior release wakes on, and keeps serving, the release that last succeeded; its phase never reads Running while its URL can only answer the activator's 503. **Status:** in progress (t001, t002, t005, t006 done; t003 live verification waits on the production deploy)
+**Worker:** worker1 **Goal:** a free service whose newest rollout failed over a prior release wakes on, and keeps serving, the release that last succeeded; its phase never reads Running while its URL can only answer the activator's 503. **Status:** in progress (t001, t002, t005, t006 done; t003 live round 1 found a second path, fixed in part 2, re-verification waits on its deploy)
 
 ## Tasks (in order)
 
@@ -48,6 +48,20 @@ Run on a disposable free image web service (`docker.io/mendhak/http-https-echo:3
 - **t006.** `wake_over_failed_rollout_test.go`: both orderings, the next deploy rolling normally, the ReplicaSet fallback, nothing-to-restore settling Failed, and a worker's suspend/resume. All six fail with the hold and the settle-time restore disabled. They run the full `Reconcile` on the fake client like the m156/m157 siblings (no Deployment controller in envtest either), with Deployment status written by hand. `failed_rollout_phase_test.go` fixtures gained the served ReplicaSet they implied.
 - **t005.** `/simplify` (three reviewers): the held pass now skips the uncached record read once the template is back on the served revision, a failed record read in the hold returns the error instead of stamping Failed over a serving release, and the settle uses the Deployment it already holds. One finding is filed separately as `w1/123` (snapshot GC can reclaim the served release's record).
 - **Verification.** `make test` and `make lint` from `lego/operator/` pass. `docs/ADR004-app-deployment.md` documents the rule.
+
+## Live round 1 (2026-10-04, pin `54221109227c`)
+
+Driven through the dashboard's GraphQL API with the QA browser session (`scripts/qa-login.sh`): the CLI device login asks for a password re-authentication an agent cannot perform. Workspace `bex-canary` (`tea-daif693dqjvc73e7as3g`), two free image web services on `docker.io/mendhak/http-https-echo:35`, `HTTP_PORT=3000`; the failing release is `setImage` to `docker.io/library/memcached:1.6-alpine` plus `triggerDeploy`.
+
+- **Control.** `srv-db0vhumkrnec73b0q0t0`, hibernated on a healthy release: first request 09:01:50Z `503`, `200` at 09:02:11Z (21 s).
+- **Fail, then sleep: holds.** `dep-db11c6clp43c73cufiog` started 09:02:17Z with a request every 20 s; closed `update_failed` at 09:17:23Z with the TCP-probe line; 57 of 57 requests got the prior release's `200`. Idle window set to 60 s, `service_hibernated` 09:25:10Z. Requests every second from 09:25:26Z: 13 x `503`, then `200` at 09:25:46Z (20 s) with the echo image's body, `service_woken` 09:25:40Z. Phase Running, the deploy still `update_failed`, no new deploy row.
+- **Deploy while asleep, no traffic: found a second path.** `srv-db0vi0em0lvc73av9r9g`, `dep-db11c6klp43c73cufipg` started 09:02:18Z while hibernated. Nothing woke it, the rollout never ran, and bex-api closed the row at its 18-minute gate (09:20:24Z, generic health-gate line; that diagnosis is w6/m147's). The first request at 09:22:48Z woke it onto the failing template: `503` on every sample through 09:45:13Z (135 samples, 22 minutes), phase Deploying throughout. The parked pass had written the failing template at 0 replicas, so the wake was a scale-up, not a rollout: no `ProgressDeadlineExceeded`, no verdict, nothing for t001 to restore from.
+
+## Implementation, part 2 (2026-10-04)
+
+- `holdUnservedRelease` (`app_controller.go`): while parked, a release that has not served stays off the pod template (a mid-rollout park puts the served template back); a wake starts the served release's pod first, behind the activator, phase Deploying; once it is ready the normal path rolls the newer release over it as a real rolling update, which can fail into t001's restore. After `servedWakeBudget` (5 minutes of pod age) the newer release rolls anyway, so a served release that can no longer start does not block its fix. `holdNewerRelease` runs the three holds in order.
+- Tests: the parked ordering rewritten to this flow, plus a mid-rollout park and the budget escape. All three fail with the hold disabled.
+- **Overlap with w6/m147 t002** (settle or defer the park of an unsettled rollout): this takes the unsettled release off the parked template and re-rolls it on wake. It does not settle a verdict at park time or change the deploy row's reason; those stay m147's.
 
 ## Related
 
