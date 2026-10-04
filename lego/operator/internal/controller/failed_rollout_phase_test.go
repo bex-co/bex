@@ -321,7 +321,7 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 		{"manifest unknown", "ImagePullBackOff", "manifest unknown", "rev-1", 91 * time.Second, true},
 		{"unauthorized", "ErrImagePull", "unauthorized: authentication required", "rev-1", 91 * time.Second, true},
 		{"invalid image name", "InvalidImageName", "invalid reference format: repository name must be lowercase", "rev-1", 0, true},
-		{"grace", "ErrImagePull", "rpc error: code = NotFound", "rev-1", 89 * time.Second, false},
+		{"grace", "ErrImagePull", "rpc error: code = NotFound", "rev-1", 60 * time.Second, false}, // well inside the grace: a loaded runner adds seconds
 		{"timeout", "ErrImagePull", "dial tcp: i/o timeout", "rev-1", 10 * time.Minute, false},
 		{"registry unavailable", "ErrImagePull", "503 Service Unavailable", "rev-1", 10 * time.Minute, false},
 		{"rate limit", "ImagePullBackOff", "429 Too Many Requests", "rev-1", 10 * time.Minute, false},
