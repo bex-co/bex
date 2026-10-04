@@ -1,16 +1,16 @@
 # w4 · m156 — Report honest start times for successful deploys
 
-**Worker:** worker4 **Goal:** successful deploy durations and log chronology reflect observed execution evidence **Status:** todo
+**Worker:** worker4 **Goal:** successful deploy durations and log chronology reflect observed execution evidence **Status:** blocked — t001/t002/t004/t005 done 2026-10-03; t003 live timestamp verification and t006 closeout remain
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Audit successful-skip evidence and sibling consumers | 35m | — |
-| t002 | Preserve evidence or unknown starts on successful terminal skips | 55m | t001 |
+| t001 — **DONE** | Audit successful-skip evidence and sibling consumers | 35m | — |
+| t002 — **DONE** | Preserve evidence or unknown starts on successful terminal skips | 55m | t001 |
 | t003 | Render parity and live timestamp verification | 30m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 40m | t003 |
+| t004 — **DONE** | Simplify | 15m | t003 |
+| t005 — **DONE** | Test coverage | 40m | t003 |
 | t006 | Closeout | 15m | t004, t005 |
 
 ## Definition of done
