@@ -179,3 +179,21 @@ func TestPaidIntentGuardCoversPostgresCreateAndBothPlanUpdatePaths(t *testing.T)
 		})
 	}
 }
+
+// TestDryRunCreatePostgresRunsTheBillingGate is w8/045: the billing gate is
+// read-only, so a dry-run create returns the same 402 the real create does
+// (real-create parity) and writes no Database.
+func TestDryRunCreatePostgresRunsTheBillingGate(t *testing.T) {
+	svc, cl := newService()
+	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
+	gate := &rejectingPaymentGate{}
+	svc.Payment = gate
+	_, err := svc.CreatePostgres(ctxAs("user-a"), CreatePostgresRequest{Name: "paid", Plan: "basic-256mb", DryRun: true})
+	if !errors.Is(err, core.ErrPaymentRequired) || len(gate.calls) != 1 || gate.calls[0] != "tea-a" {
+		t.Fatalf("paid dry-run err=%v calls=%v, want the 402", err, gate.calls)
+	}
+	var list appv1alpha1.DatabaseList
+	if err := cl.List(context.Background(), &list); err != nil || len(list.Items) != 0 {
+		t.Fatalf("dry-run refusal wrote Databases: %+v err=%v", list.Items, err)
+	}
+}

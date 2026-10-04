@@ -659,12 +659,14 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	}
 	// Newborn members inherit the environment's inbound-IP layer (w4/m28).
 	d.Spec.EnvironmentIPAllowList = core.ApplyGrouping(d, environment)
+	// The billing gate is read-only, so it runs before the dry-run return: a
+	// preview refuses (402) exactly what the real create would (w8/045).
+	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
+		return PostgresView{}, err
+	}
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
 		return s.view(d), nil
-	}
-	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
-		return PostgresView{}, err
 	}
 	// A freshly minted workspace's tea-* namespace may not exist yet (the
 	// NamespaceReconciler only converges it on its resync tick) — ensure it

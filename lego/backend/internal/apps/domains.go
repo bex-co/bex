@@ -1000,6 +1000,26 @@ func appClaimIdentity(app *appv1alpha1.App) string {
 // host (via s.ownPlatformHost) — not `<app.Name>.<base>`, which a tenant could
 // otherwise set to a victim's slug and hijack at create time too (codex F5).
 func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
+	return s.checkHostsClaimable(ctx, app, false)
+}
+
+// previewHostsClaimable is ensureHostsClaimable for a dry-run create's preview
+// App (w8/045): the same caps, reserved-host and cross-service collision
+// checks, all read-only, so a preview refuses what the real create would. Two
+// inputs the real create only learns by writing are handled conservatively:
+//   - The own `<slug>.<base>` exemption: with the store on, the real create
+//     mints a random globally-unique slug (store.CreateApp), so no caller can
+//     name it in advance — the preview exempts nothing under the base domain.
+//     Storeless, the slug is the request name and the exemption is unchanged.
+//   - The synchronous DNS-TXT ownership proof (the storeless fallback): its
+//     challenge is keyed by the service id the create mints, which a preview
+//     does not have, so it is not checked. With the store on the real create
+//     never runs it either — managed claims start pending.
+func (s *Service) previewHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
+	return s.checkHostsClaimable(ctx, app, true)
+}
+
+func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App, preview bool) error {
 	// Round-18: the per-service cardinality cap AddDomain enforces, applied to a
 	// create/blueprint-declared host set BEFORE any claim or CR write (a 400 like
 	// the round-12 #3 routes/headers surface validators; the CRD schema's
@@ -1014,6 +1034,12 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 	}
 	ownHost := s.ownPlatformHost(app)
 	_, _, managedClaims := s.managedDomainClaims(app)
+	if preview {
+		if s.Store != nil && app.Labels[core.LabelTenant] != "" {
+			ownHost = ""
+		}
+		managedClaims = true // skip the id-keyed TXT proof (see previewHostsClaimable)
+	}
 	// One cluster-wide sweep serves every host in the set, fetched on first
 	// need so a hostless create still Lists nothing and a reserved first host
 	// still fails before any List.

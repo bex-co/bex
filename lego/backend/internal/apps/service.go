@@ -1922,18 +1922,13 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		return AppView{}, err
 	}
 
-	// Dry-run: return the resolved spec preview without any k8s or store writes.
-	if req.DryRun {
-		a := &appv1alpha1.App{}
-		a.Name = req.Name
-		a.Namespace = s.AppNamespace(tenantID)
-		a.Spec = desired
-		if tenantID != "" {
-			a.Labels = map[string]string{core.LabelTenant: tenantID}
-		}
-		stampEnvironmentMembership(a, environment)
-		return s.view(a), nil
-	}
+	// Every check below, up to the dry-run return, is read-only — they run for
+	// a dry-run exactly as for the real create, so a preview never answers
+	// "would succeed" for a create the real call refuses (w8/045): the billing
+	// gate (402s included — real-create parity), the duplicate name, a reserved
+	// env key, an inaccessible repository, a registry credential that cannot
+	// apply, and the custom-domain gate (reserved/dashboard host, caps, a host
+	// another service owns). Only the writes after the return are skipped.
 	if err := s.RequirePlanBilling(ctx, tenantID, desired.Tier); err != nil {
 		return AppView{}, err
 	}
@@ -1979,6 +1974,32 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if err := s.GitHub.ValidateRepo(ctx, tenantID, desired.Repo); err != nil {
 			return AppView{}, err
 		}
+	}
+
+	// Dry-run: the read-only host gate on the preview, then return it without
+	// any k8s, store, or secret write (w2/m29). The preview keeps the bare
+	// request name (no tenant-prefixed object name, no minted id) so its id
+	// reads back as the requested name, as it always has.
+	if req.DryRun {
+		a := &appv1alpha1.App{}
+		a.Name = req.Name
+		a.Namespace = s.AppNamespace(tenantID)
+		a.Spec = desired
+		if tenantID != "" {
+			a.Labels = map[string]string{core.LabelTenant: tenantID}
+		}
+		stampEnvironmentMembership(a, environment)
+		// The two read-only gates the real create runs inside
+		// materializeNewApp, in the same order: the custom-domain gate, then
+		// the registry credential's applicability (the write-free half of
+		// ensureExternalRegistryPullSecret).
+		if err := s.previewHostsClaimable(ctx, a); err != nil {
+			return AppView{}, err
+		}
+		if err := s.validateExternalRegistryCredential(ctx, a); err != nil {
+			return AppView{}, err
+		}
+		return s.view(a), nil
 	}
 
 	a := &appv1alpha1.App{}
