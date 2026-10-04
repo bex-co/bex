@@ -1146,6 +1146,25 @@ agent_local_image_identity() {
     echo "error: local image $img has empty identity" >&2
     return 1
   fi
+  # Docker's containerd image store (Docker Desktop's default) reports .Id as
+  # the OCI index/manifest digest, while crictl on the node reports the config
+  # digest after docker-save|ctr-import — so the two never compare equal and
+  # every import "fails" its post-import check. Resolve the config digest from
+  # the saved archive instead (the classic store already reports it as .Id).
+  local media cfg
+  media=$(docker image inspect -f '{{with index . "Descriptor"}}{{index . "mediaType"}}{{end}}' "$img" 2>/dev/null || true)
+  case "$media" in
+  *image.index* | *manifest.list* | *image.manifest* | *distribution.manifest*)
+    cfg=$(docker save "$img" | tar -xOf - manifest.json | jq -r '.[0].Config // empty') || cfg=""
+    case "$cfg" in
+    blobs/sha256/*) out="sha256:${cfg#blobs/sha256/}" ;;
+    *)
+      echo "error: cannot resolve config digest for $img (containerd image store)" >&2
+      return 1
+      ;;
+    esac
+    ;;
+  esac
   printf '%s\n' "$out"
 }
 
