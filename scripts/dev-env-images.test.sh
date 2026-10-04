@@ -101,3 +101,30 @@ for failure in inspect-error import-error mismatch; do
   fi
   echo "ok: $failure stops before rollout"
 done
+
+# Docker's containerd image store reports .Id as the OCI index digest; the node
+# reports the config digest after import. The local identity must resolve the
+# config digest from the saved archive or every import fails verification.
+docker() {
+  case "$1 $2" in
+    "image inspect")
+      case "$4" in
+        *Descriptor*) printf 'application/vnd.oci.image.index.v1+json\n' ;;
+        *) printf 'sha256:indexdigest\n' ;;
+      esac
+      ;;
+    "save "*)
+      local d
+      d=$(mktemp -d)
+      printf '[{"Config":"blobs/sha256/configdigest","RepoTags":["bex-probe:dev"]}]' >"$d/manifest.json"
+      tar -cf - -C "$d" manifest.json
+      rm -rf "$d"
+      ;;
+    *) echo "unexpected docker command: $*" >&2; return 1 ;;
+  esac
+}
+[ "$(agent_local_image_identity bex-probe:dev)" = sha256:configdigest ] || {
+  echo 'FAIL: containerd-store index digest must resolve to the config digest' >&2
+  exit 1
+}
+echo 'ok: containerd image store resolves the config digest'
