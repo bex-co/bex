@@ -1,6 +1,6 @@
 # w1 · m169 — Buildpack Node services start on current Node: a run image with libatomic
 
-**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** open — t001–t003 done. t003 (2026-10-02) pinned `ghcr.io/bex-co/bex-cnb-run@sha256:e69885d9…` (public, multi-arch, from `cnb-run-image.yml` run 36979529487) in `deploy/gitops/charts/kpack/platform.yaml`; that change is uncommitted. t004 (live verify on production) awaits /ship + deploy.
+**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** done (2026-10-04): the DoD holds live on production; t004–t007 are done. The t006 regression-test edits (`scripts/gitops-validate.sh`, `scripts/build-toolchain-freshness.test.sh`) are local and await /ship.
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | bex CNB run image recipe: `run-jammy-base` + `libatomic1`, with a Node 26 start check — **DONE** | 30m | — |
 | t002 | Publish workflow `cnb-run-image.yml`, plus `deploy/cnb-run/Dockerfile` as a reviewed pin site — **DONE** | 45m | t001 |
 | t003 | Pin the published digest as the kpack ClusterStack run image (ADR060 D7) — **DONE** | 30m | t002 |
-| t004 | Deploy + live verify: `examples/hello-node` (`>=20` ⇒ Node 26) serves 200 on production | 30m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 20m | t005 |
-| t007 | Closeout | 10m | t006 |
+| t004 | Deploy + live verify: `examples/hello-node` (`>=20` ⇒ Node 26) serves 200 on production — **DONE** | 30m | t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 20m | t005 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -28,7 +28,15 @@
   - On the bex image, Node `v26.10.0 x64 starts` and `v26.10.0 arm64 starts`.
   - On stock `run-jammy-base`, the same check exits 127 on `libatomic.so.1`.
   - The bex image keeps `User 1002:1000` and `io.buildpacks.stack.id=io.buildpacks.stacks.jammy`, which is what kpack matches against the build image.
-- **Tenant workaround until this ships:** set `BP_NODE_VERSION=24.*` on the service. This works in production since `w1/121` (`../done/121.md`, verified live 2026-10-02).
+- **Tenant workaround until this ships:** set `BP_NODE_VERSION=24.*` on the service. This works in production since `w1/121` (`w1/done/121.md`, verified live 2026-10-02).
+
+## Live acceptance — 2026-10-04 UTC
+
+Production platform images were pinned at `8f6a69e9e`. The kpack pin from `a81c1abb2` is a GitOps manifest, and Argo had synced it live.
+
+- **ClusterStack — PASS.** `bex-jammy-base` names `ghcr.io/bex-co/bex-cnb-run@sha256:e69885d9…` in both spec and status. `latestImage` `@sha256:37e1adc5…` is the amd64 manifest of that index. `ClusterBuilder bex` is Ready and UpToDate, and its run image is `clusterbuilder-bex-run-image@sha256:37e1adc5…`. Inventory `cnb-run-image` records the digest, and `build-toolchain-freshness.sh validate` passes.
+- **hello-node on Node 26 — PASS.** Fixture `qa-20261004-m169-bp` / `srv-db0t0dqp7hhs73co7mog` (`builder: buildpack`, `examples/hello-node`, `engines.node: ">=20"`). The build log shows `Selected Node Engine version (using package.json): 26.10.0`, and the Build ran on the `37e1adc5…` run image. It was live and Running at rev-1 at `04:06:25Z`, and `GET /` returned `200 hello from bex`. Deleted: 204, then 404, and no owned k8s artifacts remain.
+- **Regression check — PASS.** `cnb-run-image.yml` runs the Node 26 start check on the pushed digest for both platforms, and the Dockerfile's `ldconfig` gate fails the build itself. In addition, `gitops-validate.sh` now fails on a Paketo ClusterStack run image (t006).
 
 ## Source + Goal linkage
 

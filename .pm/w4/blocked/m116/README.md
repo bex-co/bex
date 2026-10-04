@@ -1,6 +1,6 @@
 # w4 · m116 — CLI hunt sweep 1: psql trust, KV publish, one-off jobs, resume path
 
-**Worker:** worker4 **Goal:** every CLI journey the 2026-09-17 hunt proved broken works end to end from a stock `bex` install **Status:** BLOCKED 2026-09-20 — t001/t002/t006/t007/t008/t009 done, **t004 closed not-reproduced 2026-09-21** (its cause is `w9/m164`'s dual-stack allow-list trap); **t003 done 2026-10-02 (implemented locally, awaits /ship)**: one-off job create is gated with a named `410 ONE_OFF_JOBS_UNSUPPORTED` on REST/GraphQL/MCP, history verbs kept; t005 and the live closeout (t010) need things only you can give
+**Worker:** worker4 **Goal:** every CLI journey the 2026-09-17 hunt proved broken works end to end from a stock `bex` install **Status:** BLOCKED 2026-10-04 on one thing only: DoD bullet 1 needs a bex CLI release carrying t001's `pgtrust` (`w9/066`). t001–t009 are done. The t010 live closeout ran 2026-10-04 on production pinned to `7bdb2b351` (`157431c63`, deploy run `37173569630`). Bullets 2–6 hold live, including the jobs `410 ONE_OFF_JOBS_UNSUPPORTED` refusal. The released `v0.2.1` predates `pgtrust` (`6208c7500` is not an ancestor of `bex-cli/v0.2.1`), so a stock install still fails bullet 1.
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | t002 | Let a private Key Value become public after create | 90m | — | — **DONE** |
 | t003 | Gate one-off jobs (off-roadmap per DO_NOT_DO) and surface why they fail | 60m | — | — **DONE** (2026-10-02, gated with named 410; implemented locally, awaits /ship) |
 | t004 | Resume must restore the Postgres data path, not just the status | 60m | — | — **DONE** (closed not-reproduced 2026-09-21; cause owned by `w9/m164`) |
-| t005 | Device login asks for the password twice; refresh the e2e helper | 45m | — | — **BLOCKED** |
+| t005 | Device login asks for the password twice; refresh the e2e helper | 45m | — | — **DONE** (2026-10-03, second entry evidenced as Kratos’s OAuth2 refresh; helper green live) |
 | t006 | Empty CLI lists print `[]`, not `null` | 30m | — | — **DONE** |
 | t007 | Render parity across the touched surfaces | 45m | t001–t006 | — **DONE** |
 | t008 | Simplify the code this milestone changed | 30m | t007 | — **DONE** |
 | t009 | Test coverage for the shipped behavior | 45m | t007 | — **DONE** |
-| t010 | Closeout | 30m | t009 | — **BLOCKED** |
+| t010 | Closeout | 30m | t009 | — **BLOCKED** (live run 2026-10-04: bullets 2–6 hold; bullet 1 waits on the `w9/066` CLI release) |
 
 ## Definition of done
 
@@ -72,8 +72,8 @@ The simplify pass is folded into the shipped code rather than bolted on after: `
 1. **t003 — resolved 2026-10-02 (triage): gate, do not grant. Implemented 2026-10-02 (locally, awaits /ship):** `POST /v1/services/{id}/jobs`, GraphQL `createJob` and MCP `create_job` refuse after authorization with `410 ONE_OFF_JOBS_UNSUPPORTED` (new `core.ErrGone`/`NewGoneError`), writing no record and submitting no Job; list/get/cancel keep serving history; the dead submit path (`createK8sJob`, `jobSubmitError`, `PGStore.CreateJob`) is removed; checklist + ADR018 re-graded. DO_NOT_DO needed no amendment — its line already keeps one-off jobs excluded, which is now what the code does. Details in [done/t003.md](done/t003.md). One-off jobs stay off-roadmap per DO_NOT_DO (the pillar-5 re-open covers sandboxes only); the grant branch is struck and t003 is now implementable. Original note: `.pm/DO_NOT_DO.md` line 22 lists one-off jobs among the "still-excluded surfaces", but line 18 re-opened pillar 5 on 2026-07-27 without amending it, so the two readings genuinely conflict and the endpoint ships today with tests and `[x]` checklist rows. **Grant** means giving bex-api a minimal audited `batch/jobs` create in tenant namespaces (`deploy/gitops/base/bex-api-apps-rbac.yaml:52-54` is `get,list` only) and hardening the submitted pod; **gate** means refusing with a named 405/410, re-grading the checklist rows, and keeping `jobs list/cancel` for history. Either way the DO_NOT_DO line needs amending so it stops contradicting itself. The honest-failure half is already shipped, so nothing is silent while this waits.
 2. ~~**t004 — one throwaway suspend/resume reproduction on production, or a local stack.**~~ **Cleared 2026-09-21 — no longer a blocker, and no reproduction is needed.** `w9/m164` identified the cause from the evidence already recorded here: the task's "Ruled out: allow-list intact (`162.224.81.143/32` still present)" line checked an **IPv4** `/32` while every failing probe named the **IPv6** server literal. `*.db.bex.co` publishes both A and AAAA, the dual-stack client connected over IPv6, and the SNI proxy correctly denied that unlisted source by closing the connection — which psql reports as `SSL error: unexpected eof`. On 2026-09-21 the premise was re-tested on a fresh fixture with **both** families allow-listed: suspend → resume converged and `bex psql` returned the probe row on the first `available` reading and 5 consecutive probes. Resume never lied about `available`. t004 is closed as not-reproduced; the real defect (the trap plus the illegible denial) is `w9/m164`.
 
-3. **t005 — a live browser run against production auth.** The helper-staleness half is **already fixed**, not by this milestone: `6cf17cb12` (w9/062, 2026-09-20) rewrote `scripts/render-cli-auth-browser.cjs` to drive whichever of `/auth/login`, `/auth/device`, `/auth/consent`, `/auth/device/success` is on screen, which is exactly what this task's step 2 asked for. What remains is step 1 — why the `use-ory-flow.ts:281-292` short-circuit does not fire, which needs request-level evidence (does the flow-creation fetch carry the seconds-old session cookie?) from a real device-login ceremony against production. w9/062 is parked in `.pm/w9/done/062.md` waiting on the same disposable human identity; these two should clear together.
-4. **t010 — the live closeout.** Four of the six DoD bullets are shipped but **not one has been re-probed live**: no production access from this session. Bullets 1, 2 and 3's "or refused with a named error" half are ready for a QA pass the moment the fixes deploy.
+3. ~~**t005 — a live browser run against production auth.**~~ **Cleared 2026-10-03, t005 done.** Live request-level evidence shows that the challenge-bound `createBrowserLoginFlow` **does** carry `ory_kratos_session`. Kratos v1.3.1 (`selfservice/flow/login/handler.go:526-530`) forces `refresh=true` whenever Hydra's login request has `skip=false`, which happens when this browser holds no remembered `ory_hydra_session`. So the second password is upstream-designed OAuth2 re-authentication, not a dropped cookie. With a remembered Hydra session, the same ceremony needs **zero** entries, and the hook's short-circuit fires. The unmodified helper completed `scripts/bex-cli-auth-e2e.sh` against production (login, refresh rotation, logout revocation). Details are in [done/t005.md](done/t005.md).
+4. **t010 — the live closeout.** Four of the six DoD bullets are shipped but **not one has been re-probed live**: no production access from this session. Bullets 1, 2 and 3's "or refused with a named error" half are ready for a QA pass the moment the fixes deploy. **Update 2026-10-03:** bullets 2, 4 (2026-09-26) and 5 (t005, 2026-10-03) hold live, and bullet 6 matches upstream. Two bullets are still open. Bullet 3: live `bex jobs create <own-fixture> --start-command 'echo …'` → exit 1, `503 service unavailable: job job-… could not be submitted — the platform is not permitted to create it: jobs.batch is forbidden …`. That is a named refusal, so the DoD's literal wording is met, but it is not yet t003's `410 ONE_OFF_JOBS_UNSUPPORTED`. The cause is that the production platform pin is still `8f6a69e9e`; deploy runs `37158726980` and `37171066455` were superseded, with images built but not pinned and the rollout skipped. Bullet 1: the stock `v0.2.1` still lacks `pgtrust` (`w9/066`). Re-run t010 once `chore(deploy): pin platform images to <sha ⊇ d51bfdc8a>` lands on main and a CLI release ships.
 
 ## Live verification of DoD bullet 2 (2026-09-26, `/qa-find-bugs-cli` w8 sweep 36)
 
@@ -84,7 +84,7 @@ Production `726042a28`, released `bex v0.2.1` (pin v2.27.0), human device login,
 - `bex kv-cli <id> -o interactive -- PING|SET|GET|CONFIG GET maxmemory-policy|DEL` (PTY) → `PONG` / `OK` / `"hello"` / `noeviction` / `(integer) 1`.
 - Also clean: `--memory-policy allkeys_lru` reached the running server (`CONFIG GET` → `allkeys-lru`) within about 35 s. Suspend → `suspended`, connection refused; resume → `available` plus `PONG` in about 2 min, and a key written before the suspend read back (`v1`). Re-listing to `203.0.113.0/24` refused the caller within 10 s.
 
-The t002 half of the closeout (t010) is therefore satisfied. t003/t005 remain the blockers.
+The t002 half of the closeout (t010) is therefore satisfied. t003/t005 remain the blockers (both since done: t003 2026-10-02, t005 2026-10-03).
 
 ## Live verification of DoD bullets 1 and 4 (2026-09-26, `/qa-find-bugs-cli` w8 sweep 37)
 
@@ -93,3 +93,22 @@ Production `726042a28`, human device login, workspace `bex-canary`, no `~/.postg
 - **Bullet 1:** holds on a HEAD build (`c65e32db9`): `bex psql <dpg> --command 'SELECT 1'` → the probe row. The released `v0.2.1` still fails with `root certificate file … does not exist`. That is release lag, owned by `w9/066`.
 - **Bullet 4 holds:** marker row written → `postgres suspend` → `suspended` → `postgres resume` → status `creating` for about 50 s → the first poll that read `available` (≈52 s after resume) also returned the marker row through `psql`. The status never claimed `available` ahead of the data path.
 - **Caveat for re-runs:** with only the caller's IPv4 `/32` allow-listed, a dual-stack client fails intermittently with `SSL error: unexpected eof` over IPv6 (`w9/m164`'s trap) before and after suspend. That can masquerade as a resume failure. Allow-list the IPv6 `/128` too when timing the data path.
+
+## Live closeout run (t010, 2026-10-04, production pinned to `7bdb2b351`)
+
+Production was pinned by `157431c63 chore(deploy): pin platform images to 7bdb2b351194`, and deploy run `37173569630` logged `deployment "bex-api" successfully rolled out` at 05:02Z. Released `bex v0.2.1` (pin v2.27.0), human device login via the unmodified `scripts/render-cli-auth-browser.cjs` (with a Kratos logout added to the private copy), private `BEX_CLI_CONFIG_PATH`, workspace `bex-canary`. Fixture: free image web service `qa-20261004-*-jobs` (`srv-db0u0amkrnec73b0pv60`, whoami v1.11.0, live).
+
+| DoD bullet | Result | Evidence |
+| --- | --- | --- |
+| 1 psql trust from a stock install | **Not met. Waits on the CLI release.** | `bex-cli/v0.2.1` (2026-09-10) is still the latest release, and `pgtrust` (`6208c7500`) is not in it. The HEAD build passed on 2026-09-26 (sweep 37). Owned by `w9/066`. |
+| 2 KV publish | holds | 2026-09-26 sweep 36 (above); no code change since |
+| 3 one-off jobs refused by name | **holds (t003 gate live)** | `bex jobs create <srv> --start-command 'echo qa-m116-t010' --confirm -o json` → exit 1 in 1 s, ``received response code 410 (ONE_OFF_JOBS_UNSUPPORTED): one-off jobs are not supported on bex; run the command in the service itself (`bex ssh <service>`), as a pre-deploy command, or as a cron job — existing jobs remain listable``. REST `POST /v1/services/<srv>/jobs` → `410 {"code":"ONE_OFF_JOBS_UNSUPPORTED","id":"gone",…}`. GraphQL `createJob` → `data.createJob: null`, `extensions.code: ONE_OFF_JOBS_UNSUPPORTED`. `bex jobs list <srv>` → `[]`, so no record is written. The same probe on 2026-10-03, before the rollout, still answered the old `503 … jobs.batch is forbidden` and left a `failed` record. |
+| 4 suspend/resume data path | holds | 2026-09-26 sweep 37 (above) |
+| 5 device login | holds | t005 (2026-10-03): the second entry is evidenced as Kratos's OAuth2 refresh. Today two more ceremonies used the unmodified helper; both printed `Login successful! CLI token saved.` |
+| 6 empty lists | holds (matches upstream) | t006 premise correction (above) |
+
+**Also verified live (w8/037 logout isolation, now deployed):** two device logins A and B both passed `whoami`. After `bex logout` on B, A still passed `whoami` immediately and again after 35 s. The 2026-10-03 run against the old `8f6a69e9e` pin had signed A out.
+
+Fixture deleted, `GET /v1/services/<srv>` → 404, workspace baseline (6 services) unchanged. Both CLI grants were ended with `bex logout` (bearer → 401), and both helper browser sessions were logged out (`204`).
+
+**To close:** once `w9/066` ships a release containing `6208c7500`, rerun bullet 1 from that stock install. Use a fresh free Postgres, no `~/.postgresql/root.crt` and no `PGSSLROOTCERT`, and allow-list both the caller's IPv4 `/32` and IPv6 `/128` (the w9/m164 trap). Then run `/pm done w4/m116/t010`.
