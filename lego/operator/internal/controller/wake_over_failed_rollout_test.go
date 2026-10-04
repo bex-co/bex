@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,6 +66,12 @@ func deployImageAt(t *testing.T, cl client.Client, nn types.NamespacedName, imag
 // parked. The fake client runs no Deployment controller.
 func markRolloutFailed(t *testing.T, cl client.Client, nn types.NamespacedName, ready int32) {
 	t.Helper()
+	markRolloutFailedAt(t, cl, nn, ready, time.Now())
+}
+
+// markRolloutFailedAt is markRolloutFailed with the deadline reached at at.
+func markRolloutFailedAt(t *testing.T, cl client.Client, nn types.NamespacedName, ready int32, at time.Time) {
+	t.Helper()
 	var dep appsv1.Deployment
 	if err := cl.Get(context.Background(), nn, &dep); err != nil {
 		t.Fatal(err)
@@ -73,6 +80,7 @@ func markRolloutFailed(t *testing.T, cl client.Client, nn types.NamespacedName, 
 		ObservedGeneration: dep.Generation, Replicas: ready, ReadyReplicas: ready, AvailableReplicas: ready,
 		Conditions: []appsv1.DeploymentCondition{{
 			Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: "ProgressDeadlineExceeded",
+			LastTransitionTime: metav1.NewTime(at),
 		}},
 	}
 	if err := cl.Status().Update(context.Background(), &dep); err != nil {
@@ -279,12 +287,10 @@ func TestFailedRolloutStartedWhileParkedServesPriorRelease(t *testing.T) {
 	}
 }
 
-// A park that lands while a newer release is still rolling takes that release off
-// the template too, so the next wake cannot start it alone.
-func TestParkMidRolloutPutsServedTemplateBack(t *testing.T) {
-	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
-
+// rollFailingReleaseTwo serves release 1, then starts rolling release 2 over it
+// with the served pod still ready, and returns release 1's template.
+func rollFailingReleaseTwo(t *testing.T, r *AppReconciler, cl client.Client, nn types.NamespacedName) corev1.PodTemplateSpec {
+	t.Helper()
 	serveReleaseOne(t, r, cl, nn)
 	served := deploymentTemplate(t, cl, nn)
 	deployImageAt(t, cl, nn, failingImage, 2)
@@ -293,8 +299,122 @@ func TestParkMidRolloutPutsServedTemplateBack(t *testing.T) {
 	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
 		t.Fatalf("setup: template revision = %q, want release 2 rolling", got)
 	}
+	return served
+}
 
-	parkIdle(t, r, cl, nn)
+// rolloutPod is a pod of the Deployment's newest template in the given
+// container state: what the rollout's stall scan reads.
+func rolloutPod(t *testing.T, cl client.Client, nn types.NamespacedName, status corev1.ContainerStatus) {
+	t.Helper()
+	var dep appsv1.Deployment
+	if err := cl.Get(context.Background(), nn, &dep); err != nil {
+		t.Fatal(err)
+	}
+	status.Name = appContainerName
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: nn.Name + "-new", Namespace: nn.Namespace, Labels: dep.Spec.Template.Labels},
+		Spec:       *dep.Spec.Template.Spec.DeepCopy(),
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{status}},
+	}
+	if err := cl.Create(context.Background(), pod); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// w6/m147: the idle window equals the rollout budget, so with no traffic a park
+// landed before the progress deadline, overwrote Ready with AutoHibernated, and
+// the rollout never settled: the deploy closed with the generic health-gate line
+// though the operator had named the crash or the failing probe. An idle App now
+// stays up until its rollout has a verdict, which carries the diagnosis, and
+// parks on the served release after it.
+func TestIdleMidRolloutWaitsForItsVerdict(t *testing.T) {
+	longAgo := metav1.NewTime(time.Now().Add(-10 * time.Minute))
+	notStarted := false
+	for _, tc := range []struct {
+		name   string
+		status corev1.ContainerStatus
+		want   string
+	}{
+		{"crash loop", corev1.ContainerStatus{
+			State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+			LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 127}},
+		}, "exit code 127"},
+		{"tcp probe", corev1.ContainerStatus{
+			Started: &notStarted,
+			State:   corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: longAgo}},
+		}, "a TCP connect to port"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := activeApp("tea-m147")
+			r, cl, nn := failedRolloutFixture(t, app)
+
+			served := rollFailingReleaseTwo(t, r, cl, nn)
+			rolloutPod(t, cl, nn, tc.status)
+
+			// Idle past the window mid-rollout: no park.
+			stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
+			reconcileTwice(t, r, nn)
+			reconcileTwice(t, r, nn)
+			if got := deploymentReplicas(t, cl, nn); got != 1 {
+				t.Fatalf("replicas = %d, want the rollout kept running until its verdict", got)
+			}
+			if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+				t.Fatalf("template revision = %q, want release 2 still rolling", got)
+			}
+			if got := appPhase(t, cl, nn); got == appv1alpha1.PhaseHibernated {
+				t.Fatal("parked mid-rollout")
+			}
+
+			// The deadline lands: the verdict carries the diagnosis, then it parks.
+			markRolloutFailed(t, cl, nn, 1)
+			reconcileTwice(t, r, nn)
+			reconcileTwice(t, r, nn)
+			rollout := meta.FindStatusCondition(liveApp(t, cl, nn).Status.Conditions, appv1alpha1.ConditionRollout)
+			if rollout == nil || rollout.ObservedGeneration != 2 || !strings.Contains(rollout.Message, tc.want) {
+				t.Fatalf("Rollout = %+v, want release 2's verdict naming %q", rollout, tc.want)
+			}
+			if got := deploymentReplicas(t, cl, nn); got != 0 {
+				t.Fatalf("replicas = %d, want parked once the rollout settled", got)
+			}
+			if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseHibernated {
+				t.Fatalf("phase = %q, want Hibernated after the verdict", got)
+			}
+			assertServedReleaseHeld(t, cl, nn, served, "parked after the verdict")
+		})
+	}
+}
+
+// The deferral is bounded: a deadline that passed rolloutVerdictGrace ago with
+// no verdict recorded no longer keeps a free service awake.
+func TestIdleMidRolloutDeferralIsBounded(t *testing.T) {
+	app := activeApp("tea-m147")
+	r, cl, nn := failedRolloutFixture(t, app)
+
+	rollFailingReleaseTwo(t, r, cl, nn)
+	markRolloutFailedAt(t, cl, nn, 1, time.Now().Add(-rolloutVerdictGrace-time.Minute))
+	live := liveApp(t, cl, nn)
+	if r.rolloutAwaitingVerdict(context.Background(), &live) {
+		t.Fatal("a deadline past the grace with no verdict still defers the park")
+	}
+}
+
+// A manual suspend still parks mid-rollout: the served template goes back so a
+// resume does not start the unsettled release alone (w1/m172).
+func TestSuspendMidRolloutPutsServedTemplateBack(t *testing.T) {
+	app := activeApp("tea-m172")
+	r, cl, nn := failedRolloutFixture(t, app)
+
+	served := rollFailingReleaseTwo(t, r, cl, nn)
+
+	live := liveApp(t, cl, nn)
+	live.Spec.Suspended = true
+	if err := cl.Update(context.Background(), &live); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("replicas = %d, want 0 once suspended", got)
+	}
 	if got := deploymentTemplate(t, cl, nn); !equality.Semantic.DeepEqual(got, served) {
 		t.Fatalf("parked template = revision %q, want the served release's", got.Labels[labelRevision])
 	}
