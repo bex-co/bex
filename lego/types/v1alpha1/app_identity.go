@@ -78,7 +78,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"Env":                        IdentityArtifact | IdentityRelease,
 	"EnvFromSecret":              IdentityArtifact | IdentityRelease,
 	"EnvFromSecrets":             IdentityArtifact | IdentityRelease,
-	"FilesFromSecrets":           IdentityRelease,
+	"FilesFromSecrets":           IdentityArtifact | IdentityRelease,
 	"HealthCheckPath":            IdentityRelease,
 	"MaxShutdownDelaySeconds":    IdentityRelease,
 	"AutoDeploy":                 IdentityOperational,
