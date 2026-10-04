@@ -27,7 +27,7 @@ import (
 // rest.go is the one-off jobs REST fragment: Render's
 //
 //	GET  /v1/services/{id}/jobs                  → list jobs (array of {job, cursor})
-//	POST /v1/services/{id}/jobs                  → create job (job 201)
+//	POST /v1/services/{id}/jobs                  → 410 ONE_OFF_JOBS_UNSUPPORTED (gated, w4/m116/t003)
 //	GET  /v1/services/{id}/jobs/{jobId}          → get job (job 200)
 //	POST /v1/services/{id}/jobs/{jobId}/cancel   → cancel job (job 200)
 //

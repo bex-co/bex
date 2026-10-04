@@ -41,10 +41,6 @@ import (
 // calling the private parser directly.
 type recordingJobStore struct{ filter store.JobListFilter }
 
-func (s *recordingJobStore) CreateJob(context.Context, string, string, string, string) (store.Job, error) {
-	return store.Job{}, nil
-}
-
 func (s *recordingJobStore) ListJobs(_ context.Context, _, _ string, filter store.JobListFilter) ([]store.Job, error) {
 	s.filter = filter
 	return nil, nil

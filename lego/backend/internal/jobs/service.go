@@ -16,10 +16,12 @@ limitations under the License.
 
 // Package jobs implements Render's one-off jobs surface
 // (GET/POST /v1/services/{id}/jobs, GET/POST .../jobs/{jobId}/cancel).
-// Each job runs a startCommand in the service's current container image as a
-// Kubernetes Job; status is tracked via the cluster and synced back to the
-// control-plane store. The store (BEX_CP_DB_URI) is required — without it
-// every verb returns ErrJobsUnavailable (503), the standard bex degrade shape.
+// One-off jobs are off-roadmap (.pm/DO_NOT_DO.md): create refuses with
+// ErrOneOffJobsUnsupported (410) on every surface, while list/get/cancel keep
+// serving the history of jobs created before that gate — their status is still
+// synced from any surviving Kubernetes Job. The store (BEX_CP_DB_URI) is
+// required for the history verbs — without it they return ErrJobsUnavailable
+// (503), the standard bex degrade shape.
 package jobs
 
 import (
@@ -44,12 +46,8 @@ import (
 // the store is the job log; without it there is nothing to return.
 var ErrJobsUnavailable = core.Unavailable("jobs unavailable: BEX_CP_DB_URI is not set")
 
-// jobTTL is how long Kubernetes keeps a finished Job's pod for log inspection.
-const jobTTL = int32(3600) // 1 hour
-
 // JobStore is the Service's narrow seam to the control-plane store.
 type JobStore interface {
-	CreateJob(ctx context.Context, serviceName, tenantID, startCommand, planID string) (store.Job, error)
 	ListJobs(ctx context.Context, serviceName, tenantID string, filter store.JobListFilter) ([]store.Job, error)
 	GetJob(ctx context.Context, serviceName, tenantID, jobID string) (store.Job, error)
 	UpdateJobStatus(ctx context.Context, jobID, status string) (store.Job, error)
@@ -168,87 +166,41 @@ func (s *Service) List(ctx context.Context, serviceID string, filter ListFilter)
 	return out, nil
 }
 
-// Create starts a new one-off job for the named service. It creates a DB
-// record and a Kubernetes Job using the service's current image. If the
-// service has no image yet (not yet deployed), it returns ErrConflict.
-func (s *Service) Create(ctx context.Context, serviceID, startCommand, planID string) (JobView, error) {
-	// SECURITY (codex round-5 F2): a one-off job runs a caller-supplied command
-	// in the service's image, which is attacker-chosen code execution — the same
-	// sink SetCommands is gated for. can_create (developer and up), not
-	// can_operate.
-	// Deferred audit (w4/m122): a service with no image yet is a 409, and the
-	// Kubernetes submit itself can be refused (w4/m116 taught this verb to
-	// report that instead of returning a corpse) — neither is a job that
-	// started.
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, serviceID)
-	if err != nil {
-		return JobView{}, err
-	}
-	// No job runs in a service being deleted (w8/023): 404, as reads answer.
-	if err := core.NotFoundIfDeleting(a); err != nil {
-		return JobView{}, err
-	}
-	if s.Store == nil {
-		return JobView{}, ErrJobsUnavailable
-	}
-	tenantID := a.Labels[core.LabelTenant]
-	if tenantID == "" {
-		tenantID = core.DefaultTenant
-	}
+// CodeOneOffJobsUnsupported is the stable refusal code for creating a one-off
+// job. REST answers 410 with it in `code`, GraphQL in `extensions.code`, and MCP
+// prefixes it onto the tool error, so a client can branch on it without
+// matching message text.
+const CodeOneOffJobsUnsupported = "ONE_OFF_JOBS_UNSUPPORTED"
 
-	// Resolve the image the job will run in.
-	image := a.Status.Image
-	if image == "" {
-		image = a.Spec.Image
-	}
-	if image == "" {
-		return JobView{}, fmt.Errorf("%w: service %q has no image yet (not deployed)", core.ErrConflict, serviceID)
-	}
-
-	// Persist the job record first so we have its id for the k8s Job name.
-	j, err := s.Store.CreateJob(ctx, serviceID, tenantID, startCommand, planID)
-	if err != nil {
-		return JobView{}, err
-	}
-
-	// Create the Kubernetes Job. A failure here used to be swallowed: the record
-	// was flipped to `failed` and returned as a successful 200, so `bex jobs
-	// create` reported a bare `failed` ~12-16ms after create with no reason on
-	// any surface (live 2026-09-17 and 2026-09-21 — the submit is refused at
-	// admission because bex-api's grant on batch/jobs is get,list only). The
-	// record still lands, so the job's history survives, but the caller is now
-	// told what went wrong at create time instead of being handed a corpse.
-	if createErr := s.createK8sJob(ctx, j.ID, a.Namespace, image, startCommand, tenantID); createErr != nil {
-		// Mark the job failed immediately so it doesn't hang in "pending".
-		_, _ = s.Store.UpdateJobStatus(ctx, j.ID, store.JobFailed)
-		j.Status = store.JobFailed
-		now := s.Now()
-		j.FinishedAt = &now
-		s.recordJobRunEnded(ctx, store.ManagedAppID(a.Labels), j)
-		return view(j), jobSubmitError(j.ID, createErr)
-	}
-
-	// The Job is submitted: this one really started.
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbJobCreate)
-	return view(j), nil
-}
-
-// jobSubmitError turns the Kubernetes rejection that killed a one-off job at
-// submit time into an error the caller can act on. The k8s message is preserved
-// verbatim — it is the only place the actual cause (RBAC refusal, admission
-// policy, quota) is stated — and the job id is named so the caller can find the
-// failed record in `jobs list`.
+// ErrOneOffJobsUnsupported is what Create returns on every surface.
 //
-// An RBAC refusal is a PLATFORM misconfiguration, not the caller's fault: the
-// tenant is authorized (AuthorizeApp already passed) and bex-api simply lacks
-// the grant to submit. It therefore maps to the Unavailable class (503), not
-// Forbidden, so a caller is never told they lack permission they in fact hold.
-func jobSubmitError(jobID string, err error) error {
-	if apierrors.IsForbidden(err) {
-		return fmt.Errorf("%w: job %s could not be submitted — the platform is not permitted to create it: %v",
-			core.ErrUnavailable, jobID, err)
+// Scope decision (w4/m116/t003, 2026-10-02): one-off jobs stay off-roadmap
+// (.pm/DO_NOT_DO.md — the 2026-07-27 pillar-5 re-open covers hosted sandboxes
+// only), so bex-api is not granted batch/jobs create and never submits one.
+// Before this gate every create was accepted, persisted, refused by Kubernetes
+// RBAC at admission, and handed back as a job that was already `failed`
+// (live 2026-09-17/21/26). Refusing up front — after authorization, so a
+// caller who cannot see the service still gets 404/403 — is the honest answer.
+// List/get/cancel keep serving the jobs created before the gate.
+var ErrOneOffJobsUnsupported = core.NewGoneError(
+	CodeOneOffJobsUnsupported,
+	"one-off jobs are not supported on bex; run the command in the service itself (`bex ssh <service>`), as a pre-deploy command, or as a cron job — existing jobs remain listable",
+	map[string]any{"feature": "one-off jobs"},
+)
+
+// Create is Render's one-off job create. bex refuses it with
+// ErrOneOffJobsUnsupported (410) once the caller is authorized for the
+// service; see that sentinel for the scope decision.
+func (s *Service) Create(ctx context.Context, serviceID, _, _ string) (JobView, error) {
+	// SECURITY (codex round-5 F2): a one-off job would run a caller-supplied
+	// command in the service's image — the same sink SetCommands is gated for —
+	// so the gate stays can_create (developer and up), not can_operate, even
+	// though the verb now only refuses. Deferred audit (w4/m122): a refusal is
+	// not a job that started, so nothing is recorded.
+	if _, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, serviceID); err != nil {
+		return JobView{}, err
 	}
-	return fmt.Errorf("%w: job %s could not be submitted: %v", core.ErrUnavailable, jobID, err)
+	return JobView{}, ErrOneOffJobsUnsupported
 }
 
 // Get fetches a single job by id, syncing status from the cluster if non-terminal.
@@ -321,50 +273,6 @@ func (s *Service) Cancel(ctx context.Context, serviceID, jobID string) (JobView,
 	return view(j), nil
 }
 
-// createK8sJob creates a Kubernetes Job that runs startCommand in image.
-// The job is named by jobID (already DNS-safe: "job-<xid>").
-func (s *Service) createK8sJob(ctx context.Context, jobID, namespace, image, startCommand, tenantID string) error {
-	backoff := int32(0)
-	ttl := jobTTL
-	kj := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      k8sJobName(jobID),
-			Namespace: namespace,
-			Labels: map[string]string{
-				core.LabelTenant:    tenantID,
-				"app.bex.co/job-id": jobID,
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            &backoff,
-			TTLSecondsAfterFinished: &ttl,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						core.LabelTenant:    tenantID,
-						"app.bex.co/job-id": jobID,
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:                corev1.RestartPolicyNever,
-					AutomountServiceAccountToken: new(bool),
-					Containers: []corev1.Container{
-						{
-							Name:    "job",
-							Image:   image,
-							Command: []string{"sh", "-c", startCommand},
-						},
-					},
-				},
-			},
-		},
-	}
-	if err := s.Client.Create(ctx, kj); err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
-	}
-	return nil
-}
-
 // syncStatus reads the Kubernetes Job's status and updates the DB record if it
 // has progressed, recording a job_run_ended fact (w7/m66) when it reaches a
 // finished state. It swallows all errors: status sync is best-effort, and a
@@ -372,7 +280,7 @@ func (s *Service) createK8sJob(ctx context.Context, jobID, namespace, image, sta
 // completion fact ("" for a hand-applied service ⇒ no fact).
 func (s *Service) syncStatus(ctx context.Context, appID string, j store.Job) store.Job {
 	var kj batchv1.Job
-	// The Job was created in its App's namespace (createK8sJob, a.Namespace) — the
+	// The Job was created in its App's namespace (a.Namespace) — the
 	// per-tenant `<ws>` namespace under ADR043 — so read it back from there, not
 	// the shared s.Namespace. AppNamespace(j.TenantID) == s.Namespace when off.
 	if err := s.Client.Get(ctx, client.ObjectKey{Name: k8sJobName(j.ID), Namespace: s.AppNamespace(j.TenantID)}, &kj); err != nil {

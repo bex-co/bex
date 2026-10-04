@@ -298,6 +298,8 @@ func WriteErr(w http.ResponseWriter, err error) {
 		code = http.StatusConflict
 	case errors.Is(err, ErrPaymentRequired):
 		code = http.StatusPaymentRequired
+	case errors.Is(err, ErrGone):
+		code = http.StatusGone
 	}
 	msg := err.Error()
 	var ce *CodedError
@@ -340,7 +342,8 @@ func IsPublicError(err error) bool {
 		errors.Is(err, ErrForbidden),
 		errors.Is(err, ErrConflict),
 		errors.Is(err, ErrBillingEnforced),
-		errors.Is(err, ErrPaymentRequired):
+		errors.Is(err, ErrPaymentRequired),
+		errors.Is(err, ErrGone):
 		return true
 	}
 	return false
@@ -524,6 +527,8 @@ func statusErrID(code int) string {
 		return "conflict"
 	case http.StatusPaymentRequired:
 		return "payment_required"
+	case http.StatusGone:
+		return "gone"
 	case http.StatusRequestEntityTooLarge:
 		return "payload_too_large"
 	case http.StatusTooManyRequests:
