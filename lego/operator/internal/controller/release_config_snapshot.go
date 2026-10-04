@@ -365,14 +365,21 @@ func (r *AppReconciler) copyConfigSecret(ctx context.Context, app *appv1alpha1.A
 // what exists: a fleet that has been running since before snapshots shipped has
 // sparse generations, and "keep the newest 20 objects" would retain a snapshot
 // from an arbitrarily old release while dropping a recent one. It never deletes
-// the current generation's snapshots, so the serving template's references always
-// resolve.
+// the current generation's snapshots or the served release's, so the serving
+// template's references always resolve.
 func (r *AppReconciler) gcReleaseConfigSnapshots(ctx context.Context, app *appv1alpha1.App) error {
 	gen := app.Status.ReleaseGeneration
 	if gen <= 0 {
 		return nil
 	}
 	cutoff := gen - releaseSnapshotRetention
+	// The release being rolled is not the serving one until it serves. A failed or
+	// canceled rollout goes back to the served release (w1/m152, w1/m172), and
+	// operational edits can put it any number of generations behind, so its record
+	// and snapshots are kept until a newer release serves (w1/123).
+	if served := successfulReleaseGeneration(app); served > 0 && served < gen && cutoff >= served {
+		cutoff = served - 1
+	}
 	if cutoff <= 0 {
 		return nil
 	}

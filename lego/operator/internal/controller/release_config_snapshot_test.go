@@ -166,6 +166,7 @@ func TestGCReleaseConfigSnapshotsKeepsWindowAndOwnership(t *testing.T) {
 	app := servedAppWithGroup(ns)
 	app.UID = "app-uid"
 	app.Status.ReleaseGeneration = 30
+	app.Status.ActiveRevision = "rev-30" // release 30 serves, so the window alone decides
 	other := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "other", Namespace: ns, UID: "other-uid"}}
 
 	owned := func(name string, gen string, owner *appv1alpha1.App) *corev1.Secret {
@@ -200,6 +201,54 @@ func TestGCReleaseConfigSnapshotsKeepsWindowAndOwnership(t *testing.T) {
 	} {
 		if exists(name) != want {
 			t.Errorf("%s exists=%v, want %v", name, !want, want)
+		}
+	}
+}
+
+// The release being rolled is not the serving one until it serves: the served
+// release's record and snapshots survive the window, because a failed or canceled
+// rollout goes back to them (w1/123).
+func TestGCReleaseConfigSnapshotsKeepsServedReleaseBeyondWindow(t *testing.T) {
+	ctx := context.Background()
+	ns := snapshotTestNS
+	app := servedAppWithGroup(ns)
+	app.UID = "app-uid"
+	app.Status.ActiveRevision = "rev-5"
+	app.Status.ReleaseGeneration = 30
+	owned := func(name, gen string) *corev1.Secret {
+		truth := true
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: name, Namespace: ns,
+			Labels: map[string]string{snapshotGenerationLabel: gen, snapshotOfLabel: "api-env"},
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: "app.bex.co/v1alpha1", Kind: "App", Name: app.Name, UID: app.UID, Controller: &truth,
+			}},
+		}}
+	}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app,
+		owned("api-env-r4", "4"), owned("api-env-r5", "5"), owned("api-podtemplate-r5", "5"), owned("api-env-r30", "30")).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	exists := func(name string) bool {
+		return cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &corev1.Secret{}) == nil
+	}
+
+	if err := r.gcReleaseConfigSnapshots(ctx, app); err != nil {
+		t.Fatalf("gc: %v", err)
+	}
+	for name, want := range map[string]bool{"api-env-r4": false, "api-env-r5": true, "api-podtemplate-r5": true, "api-env-r30": true} {
+		if exists(name) != want {
+			t.Errorf("release 30 not yet serving: %s exists=%v, want %v", name, !want, want)
+		}
+	}
+
+	// Release 30 serves: release 5 leaves the window.
+	app.Status.ActiveRevision = "rev-30"
+	if err := r.gcReleaseConfigSnapshots(ctx, app); err != nil {
+		t.Fatalf("gc: %v", err)
+	}
+	for name, want := range map[string]bool{"api-env-r5": false, "api-podtemplate-r5": false, "api-env-r30": true} {
+		if exists(name) != want {
+			t.Errorf("release 30 serving: %s exists=%v, want %v", name, !want, want)
 		}
 	}
 }
@@ -341,6 +390,7 @@ func TestAdoptUnscopedSnapshotsKeepsTheTemplateAndCoOwns(t *testing.T) {
 	// drops its reference; then the controller deletes it.
 	other.Status.ReleaseGeneration = 5 + releaseSnapshotRetention
 	app.Status.ReleaseGeneration = 5 + releaseSnapshotRetention
+	other.Status.ActiveRevision, app.Status.ActiveRevision = "rev-25", "rev-25" // that release serves
 	if err := r.gcReleaseConfigSnapshots(ctx, other); err != nil {
 		t.Fatal(err)
 	}
