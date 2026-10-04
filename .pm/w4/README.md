@@ -16,6 +16,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [ ] **m165** — [Loop1: workspace-switch navigation + identical-cancel undeployed flag](m165/README.md) (6 tasks) ← infinite /qa-find-bugs loop1 2026-10-04 UTC, muse.env, journeys 1-4,6-8
+- [ ] **m166** — [Loop2: Docker Command for image-source services](m166/README.md) (6 tasks) ← infinite /qa-find-bugs loop2 2026-10-04 UTC, muse.env, journeys 5,9-15
 
 - [ ] **m164** — [Count initial and newly scraped traffic before free web auto-sleep](blocked/m164/README.md) — **BLOCKED (release pipeline deploys operator; QA replays fixture A (TTL 300, GET/HEAD) and fixture B (TTL 60, one GET), the 20s steady TTL-60 control, the m151 15s/20-min control and both m161 WebSocket directions, browser wake and API/dashboard phase agreement, then cleans up)**. t001/t002/t005/t006 done 2026-10-03: per-series activity (increase or fresh positive first sample) plus the decision instant; real PromQL-engine tests (Prometheus 2.54.1, test-only) green; operator `make test` + `make lint` green.
 
@@ -187,6 +188,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
+
+- [ ] **182** — [Unknown `?type=` renders a hybrid create wizard](182.md) ← infinite /qa-find-bugs loop2 2026-10-04 UTC, muse.env; default form init through `isServiceType`, export the guard.
 
 - [ ] **181** — [Key Value metrics sidecar is CPU-starved: production `valkey-instances` scrapes time out](181.md) — filed 2026-10-03 (the m144 follow-up): `kvExporterResources` 10m limit throttles ~98%; raise the budget, trim exporter collectors, verify `up` = 1 over 24 h.
 
