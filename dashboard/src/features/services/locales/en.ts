@@ -3116,6 +3116,20 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Use the Dockerfile CMD",
     description: "Create-wizard optional Docker Command placeholder",
   },
+  "services.imageCommandPlaceholder": {
+    message: "Use the image's default command",
+    description:
+      "Create-wizard and settings placeholder for an Existing Image service's optional Docker Command",
+  },
+  "services.imageDeployDescription": {
+    message: "How this image's container starts.",
+    description: "Existing Image service Settings: Deploy card description",
+  },
+  "services.imageCommandHint": {
+    message:
+      "Overrides the image's default command (its CMD). Leave blank to use the default.",
+    description: "Existing Image service Settings: Docker Command help text",
+  },
   "services.createRuntimeNode": {
     message: "Node",
     description: "Create-wizard Node runtime option",

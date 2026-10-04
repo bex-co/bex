@@ -25,6 +25,8 @@ export interface NewServiceForm {
   selectedRepo: RepoView | null;
   gitUrl: string;
   image: string;
+  /** Docker Command override for an Existing Image source (not cron). */
+  imageCommand: string;
   registryCredentialId: string;
   branch: string;
   rootDir: string;
@@ -57,6 +59,8 @@ export interface BuildShape {
   isCronType: boolean;
   isStaticType: boolean;
   isImageSource: boolean;
+  /** An Existing Image long-running service: its Docker Command override. */
+  showImageCommand: boolean;
   isGitSource: boolean;
   isBuildableGit: boolean;
   isDockerBuild: boolean;
@@ -88,6 +92,7 @@ export function buildShape(form: NewServiceForm): BuildShape {
     isCronType,
     isStaticType,
     isImageSource,
+    showImageCommand: isImageSource && !isCronType,
     isGitSource,
     isBuildableGit,
     isDockerBuild,
@@ -197,7 +202,9 @@ export function buildCreateServiceInput(
       ? shape.isCronType
         ? form.command.trim()
         : set(form.startCommand)
-      : undefined,
+      : shape.showImageCommand
+        ? set(form.imageCommand)
+        : undefined,
     dockerfilePath: shape.isDockerBuild ? set(form.dockerfilePath) : undefined,
     buildFilter:
       shape.isStaticBuild && (paths.length || ignoredPaths.length)
