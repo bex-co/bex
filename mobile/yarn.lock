@@ -1106,10 +1106,10 @@
   resolved "https://registry.yarnpkg.com/@expo/sudo-prompt/-/sudo-prompt-9.3.2.tgz#0fd2813402a42988e49145cab220e25bea74b308"
   integrity sha512-HHQigo3rQWKMDzYDLkubN5WQOYXJJE2eNqIQC2axC2iO3mHdwnIR7FgZVvHWtBwAdzBgAP0ECp8KqS8TiMKvgw==
 
-"@expo/ui@^57.0.20":
-  version "57.0.20"
-  resolved "https://registry.yarnpkg.com/@expo/ui/-/ui-57.0.20.tgz#86d9f1404888a62d387a97f2205e75220b8f6ed8"
-  integrity sha512-0ChmuyWBwEy3JHMR5wDkJGyvkTR5zH3BTwjJrv3f2ymtamhpU9hD5uH4GsLoWuB6MJFOPTuchq4zByZbtgPyNw==
+"@expo/ui@^57.0.21":
+  version "57.0.21"
+  resolved "https://registry.yarnpkg.com/@expo/ui/-/ui-57.0.21.tgz#8d812e204eab37a7f472cf536a6fe92a6cfdd18e"
+  integrity sha512-4s1ypGNxJhJv2r1fj3wZo4Aubao0zGnCajCuiaTp8pTNrT+1vR8KvyoFEwp+c7gpKm2D58nGCiGBXhEnmKHtDQ==
   dependencies:
     sf-symbols-typescript "^2.1.0"
     vaul "^1.1.2"
@@ -4311,6 +4311,13 @@ expo-constants@~57.0.19:
   dependencies:
     "@expo/env" "~2.4.3"
 
+expo-constants@~57.0.20:
+  version "57.0.20"
+  resolved "https://registry.yarnpkg.com/expo-constants/-/expo-constants-57.0.20.tgz#d8691eccf44282f230a60b5f415b2d94cf7b9be0"
+  integrity sha512-WycPVvBgbluSa6yAh6DKnX646ZHrae0gV2ZLum5fioNkR+DiWyulq1+UfS++Jc6yfAh/l55NOirv6mt5cnQhSw==
+  dependencies:
+    "@expo/env" "~2.4.3"
+
 expo-crypto@~57.0.3:
   version "57.0.3"
   resolved "https://registry.yarnpkg.com/expo-crypto/-/expo-crypto-57.0.3.tgz#e232bf2775f268baa8c5afab30085dc850410bb2"
@@ -4368,10 +4375,10 @@ expo-modules-autolinking@~57.0.13:
     chalk "^4.1.0"
     commander "^7.2.0"
 
-expo-modules-core@~57.0.19:
-  version "57.0.19"
-  resolved "https://registry.yarnpkg.com/expo-modules-core/-/expo-modules-core-57.0.19.tgz#2a9021c7d5658c4574c70607b06312298936dd46"
-  integrity sha512-eAJwa5u30r4BTT8cFAcrY3809qG1cPszmEci7//+RjWGA1OMXtwirhVY1H+YtCJPyVGs9MuwrIjqQDMReguG2g==
+expo-modules-core@~57.0.20:
+  version "57.0.20"
+  resolved "https://registry.yarnpkg.com/expo-modules-core/-/expo-modules-core-57.0.20.tgz#b9bce153f43766e6f9d1cf01f157f5b89587303f"
+  integrity sha512-vEL3aeih32yuD7sQHB3Y3LKXRT8mMgoVQWFIcHtX811Bl0StnNZUG2vT5je4fe+OWYVfkjb6gNqfMc04moREgA==
   dependencies:
     "@expo/expo-modules-macros-plugin" "0.6.1"
     expo-modules-jsi "~57.1.1"
@@ -4393,15 +4400,15 @@ expo-notifications@~57.0.21:
     expo-application "~57.0.3"
     expo-constants "~57.0.19"
 
-expo-router@~57.0.23:
-  version "57.0.23"
-  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-57.0.23.tgz#d15a2dd4a983028a653ed227edb237007ba1b4a6"
-  integrity sha512-u/iWSdQovEma/owymgz8etxGAif5ZrC8YdXYeGQhDRZwXpAvraordYV0SWej1QWWbYoIkgXcoqHVkgsAff8P4w==
+expo-router@~57.0.24:
+  version "57.0.24"
+  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-57.0.24.tgz#169b8b0c92c6381bc13b3ce360d7528845cf7294"
+  integrity sha512-XpqE4Oh4yrmc+sVfsDQPLErBlus//85ulLRghVZltYcdvFm9yNzErmaKrXuBVMUL6D3tnpDtkIgxESG9hYBd7w==
   dependencies:
     "@expo/log-box" "^57.0.4"
     "@expo/metro-runtime" "^57.0.16"
     "@expo/schema-utils" "^57.0.2"
-    "@expo/ui" "^57.0.20"
+    "@expo/ui" "^57.0.21"
     "@radix-ui/react-slot" "^1.2.0"
     "@radix-ui/react-tabs" "^1.1.12"
     "@react-native-masked-view/masked-view" "^0.3.2"
@@ -4463,10 +4470,10 @@ expo-web-browser@~57.0.3:
   resolved "https://registry.yarnpkg.com/expo-web-browser/-/expo-web-browser-57.0.3.tgz#adc332852ef29546de2fa47ba33ce4df9137f98e"
   integrity sha512-+ecvhyS/PdWkpv4ai6FF1Trd6Y/4kn/eQ3O86mie2ecU3w+I8bKZh13kppY/jw1uSL7yikt03L5W/iiHojrFwQ==
 
-expo@~57.0.25:
-  version "57.0.25"
-  resolved "https://registry.yarnpkg.com/expo/-/expo-57.0.25.tgz#52278e265bc9ca9e9063e1220920fe4ec3c65b8f"
-  integrity sha512-oqtX4PekGgU+pBQfsbnbwxh5tKG58o27mN13wTmAhRPlQyK9SHICfCNHxBo+uQyT1BlI3OLhqTwu1qKmHYL5Ug==
+expo@~57.0.26:
+  version "57.0.26"
+  resolved "https://registry.yarnpkg.com/expo/-/expo-57.0.26.tgz#f0f35b49629c75c0e0a6e28e91a6b011c0776a54"
+  integrity sha512-U1rsFwcuZNnU61Z/YLnnVC/ZqP0wpxh/rCKUMff3ot/rhLpxFY1zxEqu4vyaexyvBAB1mwpl9lA/ltcHBoQGyg==
   dependencies:
     "@babel/runtime" "^7.20.0"
     "@expo/cli" "^57.0.27"
@@ -4482,12 +4489,12 @@ expo@~57.0.25:
     "@ungap/structured-clone" "^1.3.0"
     babel-preset-expo "~57.0.13"
     expo-asset "~57.0.18"
-    expo-constants "~57.0.19"
+    expo-constants "~57.0.20"
     expo-file-system "~57.0.7"
     expo-font "~57.0.4"
     expo-keep-awake "~57.0.2"
     expo-modules-autolinking "~57.0.13"
-    expo-modules-core "~57.0.19"
+    expo-modules-core "~57.0.20"
     pretty-format "^29.7.0"
     react-refresh "^0.14.2"
     whatwg-url-minimum "^0.1.2"
