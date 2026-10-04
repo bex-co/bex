@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-
-	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // Job is a row of `jobs` — a one-off command run in a service's container
@@ -59,24 +57,9 @@ func scanJob(row pgx.Row) (Job, error) {
 	return j, err
 }
 
-func (s *PGStore) CreateJob(ctx context.Context, serviceName, tenantID, startCommand, planID string) (Job, error) {
-	j := Job{
-		ID:           ids.New(ids.Job),
-		ServiceName:  serviceName,
-		TenantID:     tenantID,
-		StartCommand: startCommand,
-		PlanID:       planID,
-		Status:       JobPending,
-	}
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO jobs (id, service_name, tenant_id, start_command, plan_id, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING created_at`,
-		j.ID, j.ServiceName, j.TenantID, j.StartCommand, j.PlanID, j.Status,
-	).Scan(&j.CreatedAt)
-	if err != nil {
-		return Job{}, classify("job", err)
-	}
-	return j, nil
-}
+// There is no CreateJob: one-off job creation is gated off-roadmap
+// (w4/m116/t003, internal/jobs.ErrOneOffJobsUnsupported). The table and the
+// read/cancel verbs below keep serving the rows created before that gate.
 
 // JobListFilter narrows ListJobs. Limit 0 means no cap (returns all).
 type JobListFilter struct {
