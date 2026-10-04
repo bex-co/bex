@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m164** — Count initial and newly scraped traffic before free web auto-sleep (7 tasks) ← QA sweep 71, 2026-10-03; 225m
+
 - [ ] **m163** — [Make saved secret files available to native builds](m163/README.md) (7 tasks) ← QA sweep 59
 
 - [ ] **m162** — [Keep platform health checks off tenant HTTP paths](blocked/m162/README.md) — **BLOCKED (release pipeline deploys operator image + activator/static-server manifests together; QA confirms both pods Ready on TCP probes, suspended/sleeping `/healthz` behaves like `/`, static `/healthz` fallback and rewrite, then cleans up)**. t001/t005 done and t002/t003/t006 code halves landed 2026-10-03: both `/healthz` overrides removed, readiness moved to TCP, gitops-validate pins it; operator `make test`, lint and gitops-validate green.
