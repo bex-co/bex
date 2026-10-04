@@ -233,6 +233,10 @@ const (
 // newer traffic.
 const annotLastActive = "app.bex.co/last-active"
 
+// annotReleaseWakeGeneration records the release generation a sleeping App was
+// last woken to roll out (w6/076), so each release wakes it at most once.
+const annotReleaseWakeGeneration = "app.bex.co/release-wake-generation"
+
 // annotTLSSecretHistory persists every cert-manager Secret name ever selected
 // for an App. spec.hosts is mutable, so deletion cannot reconstruct removed
 // custom-domain names from the final spec alone.
@@ -5596,9 +5600,8 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 		return false, ctrl.Result{}, nil
 	}
 
-	pd := app.Status.PreDeploy
 	failed := ""
-	if pd != nil && pd.Generation == releaseGeneration(app) && pd.Status == appv1alpha1.PreDeployFailed {
+	if preDeployFailedFor(app, releaseGeneration(app)) {
 		failed = "the latest pre-deploy command failed"
 	}
 	var gate ctrl.Result
@@ -5618,6 +5621,17 @@ func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha
 		res, err = r.failStep(ctx, app, err)
 	}
 	return true, res, err
+}
+
+// newerReleaseUnserved reports a current release newer than the one that served.
+func newerReleaseUnserved(app *appv1alpha1.App) bool {
+	return releaseHasServed(app) && successfulReleaseGeneration(app) != releaseGeneration(app)
+}
+
+// preDeployFailedFor reports a failed pre-deploy verdict stored for release gen.
+func preDeployFailedFor(app *appv1alpha1.App, gen int64) bool {
+	pd := app.Status.PreDeploy
+	return pd != nil && pd.Generation == gen && pd.Status == appv1alpha1.PreDeployFailed
 }
 
 // holdFailedRollout is holdUnpassedRelease one stage later (w1/m172). A release
@@ -5660,6 +5674,12 @@ func (r *AppReconciler) holdFailedRollout(ctx context.Context, app *appv1alpha1.
 // has not passed, a rollout that settled failed, and a release that would
 // otherwise be started alone from zero.
 func (r *AppReconciler) holdNewerRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, plan replicaPlan) (bool, ctrl.Result, error) {
+	if woke, err := r.wakeForRelease(ctx, app, plan); err != nil {
+		return true, ctrl.Result{}, err
+	} else if woke {
+		// The annotation patch alone triggers no reconcile.
+		return true, ctrl.Result{RequeueAfter: wakeReadyPoll}, nil
+	}
 	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, plan); held {
 		return true, res, err
 	}
@@ -5667,6 +5687,25 @@ func (r *AppReconciler) holdNewerRelease(ctx context.Context, app *appv1alpha1.A
 		return true, res, err
 	}
 	return r.holdUnservedRelease(ctx, app, plan)
+}
+
+// wakeForRelease wakes an auto-hibernated App once for a newer release that has
+// not served (w6/076). A deploy is activity: Render marks a deploy live only after
+// the new instance passes its health check, and parked, the holds below keep the
+// release off the Deployment until something wakes it. One wake per release
+// generation bounds the cost of a release that never rolls to one idle window.
+func (r *AppReconciler) wakeForRelease(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (bool, error) {
+	gen := releaseGeneration(app)
+	genKey := strconv.FormatInt(gen, 10)
+	if !plan.autoHibernating || !newerReleaseUnserved(app) ||
+		failedRolloutOverServed(app) || preDeployFailedFor(app, gen) || app.Annotations[annotReleaseWakeGeneration] == genKey {
+		return false, nil
+	}
+	if err := r.stampLastActive(ctx, app, time.Now(), [2]string{annotReleaseWakeGeneration, genKey}); err != nil {
+		return false, err
+	}
+	logf.FromContext(ctx).Info("waking app to roll out a new release", "name", app.Name, "releaseGeneration", gen)
+	return true, nil
 }
 
 // servedWakeBudget is how long a wake waits for the served release's pod before
@@ -5688,7 +5727,7 @@ const servedWakeBudget = 5 * time.Minute
 // normal path rolls the newer release over it as a rolling update, which keeps
 // the served pod until the new one is ready and can fail into holdFailedRollout.
 func (r *AppReconciler) holdUnservedRelease(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (bool, ctrl.Result, error) {
-	if !releaseHasServed(app) || successfulReleaseGeneration(app) == releaseGeneration(app) {
+	if !newerReleaseUnserved(app) {
 		return false, ctrl.Result{}, nil
 	}
 	prior, err := r.servingPriorRelease(ctx, app)
