@@ -83,6 +83,11 @@ func TestResourceDisplayNamesPG(t *testing.T) {
 	if got := nameOf(t, tenant.ID, ResourceKindService, app.ID); got != "checkout-api" {
 		t.Fatalf("after rename = %q, want checkout-api", got)
 	}
+	// The usage resolver reads the displayed name from the app row (ListApps);
+	// without it a read recaptures the creation name over the retained one.
+	if got, err := st.GetApp(ctx, app.ID); err != nil || got.DisplayName != "checkout-api" || got.Name != "checkout" {
+		t.Fatalf("GetApp after rename = %+v, %v; want Name checkout, DisplayName checkout-api", got, err)
+	}
 	// Clearing the display name falls back to apps.name, the same rule readers use.
 	if err := st.SetAppDisplayName(ctx, app.ID, ""); err != nil {
 		t.Fatalf("SetAppDisplayName(clear): %v", err)
