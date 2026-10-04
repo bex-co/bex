@@ -110,6 +110,10 @@ type ReleaseRecordSpec struct {
 	EnvFromSecret    string   `json:"envFromSecret,omitempty"`
 	EnvFromSecrets   []string `json:"envFromSecrets,omitempty"`
 	FilesFromSecrets []string `json:"filesFromSecrets,omitempty"`
+	// SettingsFingerprint identifies the saved settings the release ran with,
+	// so a cancel can tell a retained change from an identical redeploy (the
+	// operator's releaseSettingsFingerprint). Empty in older records.
+	SettingsFingerprint string `json:"settingsFingerprint,omitempty"`
 }
 
 // ReleaseConfigReference selects one retained release without changing saved
