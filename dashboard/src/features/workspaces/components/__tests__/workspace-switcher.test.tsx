@@ -13,8 +13,10 @@ function renderSwitcher() {
 }
 
 const mockNavigate = vi.fn();
+let routeParams: Record<string, string> = {};
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
+  useParams: () => routeParams,
 }));
 
 const setCurrentWorkspaceId = vi.fn();
@@ -56,6 +58,7 @@ const WORKSPACES = [
 
 beforeEach(() => {
   mockNavigate.mockReset();
+  routeParams = {};
   setCurrentWorkspaceId.mockReset();
   workspaceState.workspaces = WORKSPACES;
   workspaceState.currentWorkspace = WORKSPACES[0];
@@ -111,5 +114,52 @@ describe("WorkspaceSwitcher", () => {
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
     expect(await screen.findByText("Hobby")).toBeInTheDocument();
     expect(screen.getByText("Pro")).toBeInTheDocument();
+  });
+
+  // w4/m165: switching from a page about one of the old workspace's resources
+  // must leave it, or the new workspace's chrome frames the old one's data.
+  it.each([
+    ["project", { projectId: "prj-1" }],
+    ["service", { serviceId: "srv-1" }],
+  ])(
+    "lands on the new workspace's overview when switching from a %s page",
+    async (_kind, params) => {
+      routeParams = params;
+      const user = userEvent.setup();
+      renderSwitcher();
+
+      await user.click(screen.getByRole("button", { name: /acme-hq/ }));
+      await user.click(
+        await screen.findByRole("menuitem", { name: /acme-staging/ }),
+      );
+
+      expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    },
+  );
+
+  it("stays on a workspace-level page such as billing when switching", async () => {
+    const user = userEvent.setup();
+    renderSwitcher();
+
+    await user.click(screen.getByRole("button", { name: /acme-hq/ }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: /acme-staging/ }),
+    );
+
+    expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the current workspace is picked again", async () => {
+    routeParams = { serviceId: "srv-1" };
+    const user = userEvent.setup();
+    renderSwitcher();
+
+    await user.click(screen.getByRole("button", { name: /acme-hq/ }));
+    await user.click(await screen.findByRole("menuitem", { name: /acme-hq/ }));
+
+    expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

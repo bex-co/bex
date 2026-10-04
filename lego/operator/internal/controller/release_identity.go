@@ -180,6 +180,18 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 	return appReleaseIdentity{artifact: artifact, release: release}
 }
 
+// releaseSettingsFingerprint is the release identity of spec's saved settings
+// alone. It drops the inputs a deploy stamps on every trigger — the restart
+// stamp, the resolved commit, the release-config selector and the per-deploy
+// pull Secret name (the credential itself stays, via RegistryCredentialID) — so
+// a redeploy of unchanged settings fingerprints the same as the release it
+// would have replaced.
+func releaseSettingsFingerprint(spec appv1alpha1.AppSpec) string {
+	spec.RestartedAt, spec.BuildCommit, spec.ExternalRegistryPullSecret = "", "", ""
+	spec.ReleaseConfig = nil
+	return desiredAppReleaseIdentity(spec).release
+}
+
 func releaseDisk(disk *appv1alpha1.DiskSpec) *releaseDiskIdentity {
 	if disk == nil {
 		return nil

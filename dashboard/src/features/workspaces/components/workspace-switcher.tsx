@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import {
   Check,
   ChevronsUpDown,
@@ -61,8 +61,19 @@ function WorkspaceInitial({
 export function WorkspaceSwitcher() {
   const { t } = useTranslations();
   const navigate = useNavigate();
+  // Any path param names one resource (project, service, database, …) of the
+  // workspace being left; staying on it after a switch shows that workspace's
+  // data under the new one's chrome. Workspace-level pages (billing, settings,
+  // the overview) re-render for the new workspace in place.
+  const onResourceRoute = Object.keys(useParams({ strict: false })).length > 0;
   const { workspaces, currentWorkspace, setCurrentWorkspaceId, loading } =
     useWorkspace();
+
+  const switchTo = (id: string) => {
+    if (id === currentWorkspace?.id) return;
+    setCurrentWorkspaceId(id);
+    if (onResourceRoute) void navigate({ to: "/" });
+  };
 
   if (loading && workspaces.length === 0) {
     return (
@@ -113,7 +124,7 @@ export function WorkspaceSwitcher() {
               return (
                 <DropdownMenuItem
                   key={w.id}
-                  onSelect={() => setCurrentWorkspaceId(w.id)}
+                  onSelect={() => switchTo(w.id)}
                   className="gap-2"
                 >
                   <WorkspaceInitial name={w.name} className="size-5 shrink-0" />

@@ -136,7 +136,6 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 		if err := r.copySelectedSources(ctx, app, ref, rec); err != nil {
 			return err
 		}
-		rec.spec.SavedReplicas = new(app.Spec.Replicas)
 		if err := r.writeRuntimeConfigRecord(ctx, app, ref.Generation, rec); err != nil {
 			return err
 		}
@@ -318,7 +317,11 @@ func releaseRecordSpec(app *appv1alpha1.App) appv1alpha1.ReleaseRecordSpec {
 		EnvFromSecret: runtimeEnvSecret(app), EnvFromSecrets: app.Spec.EnvFromSecrets, FilesFromSecrets: files}
 }
 
+// writeRuntimeConfigRecord stores record for generation, stamped with the saved
+// settings (replicas, settings fingerprint) app holds as it is written.
 func (r *AppReconciler) writeRuntimeConfigRecord(ctx context.Context, app *appv1alpha1.App, generation int64, record *runtimeConfigRecord) error {
+	record.spec.SavedReplicas = new(app.Spec.Replicas)
+	record.spec.SettingsFingerprint = releaseSettingsFingerprint(app.Spec)
 	raw, err := json.Marshal(record.template)
 	if err != nil {
 		return err
