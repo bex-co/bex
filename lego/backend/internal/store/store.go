@@ -141,6 +141,10 @@ type App struct {
 	ProjectID            string    `json:"projectId,omitempty"`
 	EnvironmentID        string    `json:"environmentId,omitempty"`
 	CreatedAt            time.Time `json:"createdAt"`
+	// DisplayName is the read projection of the CR's mutable spec.displayName
+	// (SetAppDisplayName). Empty means never renamed; readers fall back to
+	// Name. Read-only here: CreateApp does not write it.
+	DisplayName string `json:"displayName,omitempty"`
 	// CreationPending prevents the projector from dispatching a Blueprint App
 	// before its initial environment-group composition has committed.
 	CreationPending bool `json:"-"`
@@ -984,13 +988,14 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 
 const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
-	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode, a.creation_pending`
+	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode, a.creation_pending,
+	COALESCE(a.display_name,'')`
 
 func scanApp(row pgx.Row) (App, error) {
 	var a App
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
 		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
-		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode, &a.CreationPending)
+		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode, &a.CreationPending, &a.DisplayName)
 	return a, err
 }
 
@@ -1469,7 +1474,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		var envRules []byte
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
-			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.TenantName, &envRules)
+			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName, &d.TenantName, &envRules)
 		if err != nil {
 			return nil, err
 		}

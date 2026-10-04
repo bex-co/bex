@@ -248,6 +248,42 @@ func TestUsageReadRetainsLiveNamesAndSkipsUnchangedOnes(t *testing.T) {
 	}
 }
 
+// A real rename changes spec.displayName, never the immutable creation Name.
+// Live on 2026-10-03 (w2/m96 t008) the resolver read app.Name, so a renamed
+// service kept billing under its creation name and the read then recaptured
+// that name over the one SetAppDisplayName had retained — after deletion the
+// charge showed the pre-rename name.
+func TestRenamedServiceBillsUnderItsDisplayName(t *testing.T) {
+	const tenant = "tea-001"
+	renamed := store.App{ID: "srv-renamed", TenantID: tenant, Name: "created-as", DisplayName: "shown-as", Tier: "starter"}
+	never := store.App{ID: "srv-never", TenantID: tenant, Name: "only-name", Tier: "starter"}
+	st := meteredStore(t, tenant, []store.ResourceDisplayName{
+		{Kind: store.ResourceKindService, ID: "srv-renamed"},
+		{Kind: store.ResourceKindService, ID: "srv-never"},
+	}, renamed, never)
+	// SetAppDisplayName already moved the retained record forward.
+	st.retained = map[string]map[string]string{tenant: {
+		store.ResourceDisplayNameKey(store.ResourceKindService, "srv-renamed"): "shown-as",
+		store.ResourceDisplayNameKey(store.ResourceKindService, "srv-never"):   "only-name",
+	}}
+
+	got := namedByID(t, monthToDate(t, svcWithTenant(st, tenant)))
+
+	if svc := got["srv-renamed"]; svc.ServiceName != "shown-as" || svc.Deleted {
+		t.Errorf("renamed service = %q deleted=%v, want shown-as and deleted=false", svc.ServiceName, svc.Deleted)
+	}
+	if svc := got["srv-never"]; svc.ServiceName != "only-name" {
+		t.Errorf("never-renamed service = %q, want its creation name", svc.ServiceName)
+	}
+	if len(st.recorded) != 0 {
+		t.Errorf("read rewrote retained names %+v, want none (all already current)", st.recorded)
+	}
+	if want := "shown-as"; st.retained[tenant][store.ResourceDisplayNameKey(store.ResourceKindService, "srv-renamed")] != want {
+		t.Errorf("retained name = %q, want %q kept for after deletion",
+			st.retained[tenant][store.ResourceDisplayNameKey(store.ResourceKindService, "srv-renamed")], want)
+	}
+}
+
 // Names travel from the summary onto the per-resource estimates the Charges
 // card actually renders, deleted flag included.
 func TestResourceEstimatesCarryTheNameAndDeletedFlag(t *testing.T) {
