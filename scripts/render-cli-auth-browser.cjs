@@ -48,21 +48,30 @@ async function debugPage(page, path) {
 
 // submitPasswordLogin fills and submits the password method. On a Hydra
 // re-authentication (`?login_challenge=…`) the password field starts collapsed
-// behind the method's own button and the identifier is present but hidden, so
-// neither is assumed visible: the method button is clicked first when the field
-// is not there, and the identifier is filled only when it is fillable. On a
-// first login both are visible and the extra click never happens.
+// behind a plain `type="button"` disclosure (the Ory auth picker, accessible
+// name "Password …") and the identifier is present but hidden. That collapsed
+// page has NO `button[name="method"]` — the submit only appears once the
+// disclosure expands — so the helper waits for whichever of the visible
+// password field or the disclosure renders first, expands when needed, and
+// fills the identifier only when it is fillable. On a first login both fields
+// are visible and the extra click never happens (w9/062).
 async function submitPasswordLogin(page, email, password) {
   const method = page.locator('button[name="method"][value="password"]');
   const passwordField = page.locator('input[name="password"]');
-  await method.first().waitFor({ state: "attached", timeout: 30_000 });
+  const disclosure = page
+    .locator('[data-testid="ory/form/auth-picker/password"]')
+    .or(page.getByRole("button", { name: /^password\b/i }));
+  await passwordField
+    .or(disclosure)
+    .first()
+    .waitFor({ state: "visible", timeout: 30_000 });
   if (
     !(await passwordField
       .first()
       .isVisible()
       .catch(() => false))
   ) {
-    await method.first().click();
+    await disclosure.first().click();
     await passwordField.first().waitFor({ state: "visible", timeout: 30_000 });
   }
   const identifier = page.locator('input[name="identifier"]');
