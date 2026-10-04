@@ -1,6 +1,6 @@
 # w4 · m155 — Keep serving static sites Running after a failed publish
 
-**Worker:** worker4 **Goal:** report the serving static release separately from a failed replacement publish **Status:** blocked — t001/t002/t004/t005 implemented and locally verified; t003/t006 require deployed acceptance
+**Worker:** worker4 **Goal:** report the serving static release separately from a failed replacement publish **Status:** done (2026-10-04): every DoD bullet was replayed live on production (operator `8f6a69e9e`, which includes `1263d12ae`), and t001–t006 are done.
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 — **DONE** | Bound the publish-failure change and audit shared consumers | 25m | — |
 | t002 — **DONE** | Preserve prior static release status and durable failed-deploy verdict | 50m | t001 |
-| t003 | Verify REST, GraphQL, MCP and dashboard Render parity | 25m | t002 |
+| t003 — **DONE** | Verify REST, GraphQL, MCP and dashboard Render parity | 25m | t002 |
 | t004 — **DONE** | Simplify | 15m | t003 |
 | t005 — **DONE** | Test coverage | 35m | t003 |
-| t006 | Closeout with live replay and cleanup | 20m | t004, t005 |
+| t006 — **DONE** | Closeout with live replay and cleanup | 20m | t004, t005 |
 
 ## Definition of done
 
@@ -24,6 +24,31 @@ Repeat the owned Free static-site journey below (new qa-prefixed name; public be
 - Delete the fixture through the dashboard, verify API/public URL no longer serve it, wait for its exact App UID and owned Kubernetes artifacts to disappear, and revoke only the QA session.
 
 First-ever publish failure, built-image extraction failures, concurrent/superseded releases and real origin outages were **not** probed in this sweep; t001/t005 require explicit tests before closeout, not a claim that they passed live.
+
+## Live acceptance — 2026-10-04
+
+Production, workspace `bex` (`tea-d98210cbbpdc73dcrkvg`), operator `bex-operator@sha256:6a1d96a6…` (pin `5fcaf3b49` → `8f6a69e9e`, which contains `1263d12ae`). QA session in a private cookie jar, revoked at the end. Fixture: Free static site **qa-20261004-m155-static** / `srv-db0t0de5nmac738l46sg`, App UID `e9baa759-c256-4957-ba72-2d101d9a3e57`, public `bex-co/bex` `main`, root `examples/static-site`, publish `.`, no build inputs, auto-deploy off. The public body was 1548 bytes with sha256 `1eb4041e…14d7e8bb` throughout, except while suspended.
+
+| Time (UTC) | Action / observation |
+| --- | --- |
+| 04:04:05 | Created. `dep-db0t0de5nmac738l46t0` live at 04:04:24, Running rev-1, HTTP 200 |
+| 04:05:04 | `setPublishPath` → `qa-m155-missing-output` |
+| 04:05:39 | `dep-db0t0s2p7hhs73co7mpg` **update_failed**, with reason `clone: the publish directory "examples/static-site/qa-m155-missing-output" does not exist in the repository at "main" (exit 2)`. Prior deploy still `live` |
+| 04:05:54–04:06:05 | GraphQL, REST and MCP single and list reads all show **Running rev-1**. HTTP 200, same hash. Dashboard header shows **Service Running · Latest deploy Failed**. Overview row shows Running |
+| 04:07:05 | Restored `.`. `dep-db0t1qap7hhs73co7msg` live at 04:07:24. Service Running rev-3. Create deploy → `deactivated`. The failed row keeps its reason |
+| 04:11:12 | Reloaded Settings, then **Edit publish directory** → `qa-m155-missing-again` → Save changes (dashboard) |
+| 04:11:39 | `dep-db0t3o2p7hhs73co7mu0` update_failed (missing-again reason). `dep-db0t1qap7hhs73co7msg` stays live. GraphQL, REST and MCP show Running rev-3. HTTP 200, same hash. Header shows Service Running · Latest deploy Failed. App: Ready=True/`PriorReleaseServing`, Rollout=False/`PublishFailed` |
+| 04:12:35 | Suspend accepted. Dashboard shows **Suspended**, Latest deploy Failed. Public URL returns `404 no static site for host` (24 bytes), so traffic is blocked |
+| 04:13:32 | Resume accepted. By 04:13:58: HTTP 200 with the same 1548-byte body and hash, Running rev-3. The failed `dep-db0t3o2p7hhs73co7mu0` stays update_failed and was not activated |
+| 04:14:54 | Deleted through Settings → Delete Service (sudo confirm) in the dashboard |
+| 04:14:59 | REST GET returns 404 `not_found`. MCP `get_service` returns `not found`. Public URL returns 404 |
+| 04:16:01 | Read-only kubectl: no App with that UID, and no Jobs, Pods, Secrets, ConfigMaps, ServiceAccounts, Ingress or certificate for the fixture |
+
+DoD disposition: bullet 1 PASS (twice), bullet 2 PASS, bullet 3 PASS (restore plus the dashboard Settings repeat), bullet 4 PASS (blocked while suspended, and resume restores prior content without activating the failed revision), bullet 5 PASS.
+
+Side observation, not a DoD item: the `resumeService` mutation response itself returned `phase: "Hibernated"` for an always-on static site. The phase settled to Running on the next reads, within 25 s. It is transient and was not filed.
+
+Unverified: the environment manage-resources dialog badge (the fixture had no project or environment) and the in-flight phase before the publish settled. First-ever publish failure, image-extraction failure, superseded releases and origin outages are covered by the t001/t005 tests only, as the DoD states.
 
 ## Source + Goal linkage
 
