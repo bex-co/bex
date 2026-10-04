@@ -294,6 +294,13 @@ The step's outcome and logs are visible on the deploy record: `preDeployStatus` 
 - **Nothing to restore from** (no record and no retained ReplicaSet): the phase settles Failed with the rollout's own reason, never Running.
 - **Unchanged:** a rollout that fails within the served release's own generation (its record is the template that failed), and a first release.
 
+**A release that has not served is never started alone from zero (w1/m172).** Scaling a Deployment up is not a rollout: Kubernetes raises `ProgressDeadlineExceeded` only for a template change in progress. With a newer template already on a parked Deployment, a wake starts only that template's pods, and one that cannot become ready leaves the service on the activator with no deadline and no verdict to restore from (live: `503 service hibernated` for 22 minutes and counting, phase Deploying).
+
+- **Parked**, `holdUnservedRelease` keeps the served release's template on the Deployment: a deploy made while the service sleeps does not reach it, and a park that lands mid-rollout puts the served template back.
+- **Waking** (or resuming), the served release's pod starts first, behind the activator, with the phase Deploying.
+- **Once that pod is ready** the normal path rolls the newer release over it as a rolling update: the served pod keeps serving until the new one is ready, and a failure reaches the progress deadline and the restore above.
+- **A served release that can no longer start** does not block the release that might fix it: after `servedWakeBudget` (5 minutes of pod age) the newer release rolls anyway.
+
 **Background workers are held the same way (w1/m158).** A worker has no Service, Ingress or auto-sleep, but its replicas follow resume, manual scale and autoscale.
 
 - **Both holds now apply.** The pre-deploy hold and the build hold below both move a held worker's replicas on the prior release's template.

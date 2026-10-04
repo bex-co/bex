@@ -2318,15 +2318,12 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
 	// the new revision's image before rolling the Deployment to it; a non-zero
-	// exit fails the deploy. While a prior release serves, holdUnpassedRelease keeps
+	// exit fails the deploy. While a prior release serves, holdNewerRelease keeps
 	// the template on it until the step passes and keeps its replicas and routing
 	// converging (w1/m156; a worker's replicas alone, w1/m158). For a first release
 	// the gate below halts the pass, and
 	// it is skipped while suspended or auto-hibernating, where nothing rolls.
-	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, plan); held {
-		return res, err
-	}
-	if held, res, err := r.holdFailedRollout(ctx, app, plan); held {
+	if held, res, err := r.holdNewerRelease(ctx, app, image, port, plan); held {
 		return res, err
 	}
 	if !app.Spec.Suspended && !autoHibernating {
@@ -5613,6 +5610,101 @@ func (r *AppReconciler) holdFailedRollout(ctx context.Context, app *appv1alpha1.
 		res, err = r.failStep(ctx, app, err)
 	}
 	return true, res, err
+}
+
+// holdNewerRelease runs the three holds that keep a newer release off the pod
+// template while a prior release serves, in rollout order: a pre-deploy step that
+// has not passed, a rollout that settled failed, and a release that would
+// otherwise be started alone from zero.
+func (r *AppReconciler) holdNewerRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, plan replicaPlan) (bool, ctrl.Result, error) {
+	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, plan); held {
+		return true, res, err
+	}
+	if held, res, err := r.holdFailedRollout(ctx, app, plan); held {
+		return true, res, err
+	}
+	return r.holdUnservedRelease(ctx, app, plan)
+}
+
+// servedWakeBudget is how long a wake waits for the served release's pod before
+// the newer release rolls anyway, so a served release that can no longer start
+// never blocks the release that might fix it.
+const servedWakeBudget = 5 * time.Minute
+
+// holdUnservedRelease keeps a release that has not served from being started on
+// its own from zero (w1/m172). Scaling a Deployment up is not a rollout: with the
+// newer template already on a parked Deployment, a wake starts only its pods,
+// Kubernetes raises no progress deadline, and a release that cannot become ready
+// leaves the service on the activator with no verdict to restore from.
+//
+//   - Parked: the Deployment carries the served release's template, restored if a
+//     rollout was in flight when the park landed.
+//   - Waking: the served release's pod comes up first, behind the activator.
+//
+// Once that pod is ready, or servedWakeBudget has passed, held=false and the
+// normal path rolls the newer release over it as a rolling update, which keeps
+// the served pod until the new one is ready and can fail into holdFailedRollout.
+func (r *AppReconciler) holdUnservedRelease(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (bool, ctrl.Result, error) {
+	if !releaseHasServed(app) || successfulReleaseGeneration(app) == releaseGeneration(app) {
+		return false, ctrl.Result{}, nil
+	}
+	prior, err := r.servingPriorRelease(ctx, app)
+	if err != nil {
+		return true, ctrl.Result{}, err
+	}
+	if prior == nil {
+		return false, ctrl.Result{}, nil
+	}
+	held := func(res ctrl.Result, err error) (bool, ctrl.Result, error) {
+		if err != nil {
+			res, err = r.failStep(ctx, app, err)
+		}
+		return true, res, err
+	}
+	if plan.parked(app) {
+		restored, err := r.restoreServedTemplate(ctx, app, prior.dep)
+		if err != nil {
+			return true, ctrl.Result{}, err
+		}
+		if !restored {
+			return false, ctrl.Result{}, nil
+		}
+		return held(r.convergeServingRuntime(ctx, app, prior, plan))
+	}
+	dep := prior.dep
+	if dep.Spec.Template.Labels[labelRevision] != app.Status.ActiveRevision || dep.Status.ReadyReplicas > 0 ||
+		plan.replicas == 0 || r.podsOlderThan(ctx, dep, servedWakeBudget) {
+		return false, ctrl.Result{}, nil
+	}
+	res, err := r.convergeServingRuntime(ctx, app, prior, plan)
+	if err != nil {
+		return held(res, err)
+	}
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "RolloutProgressing",
+		Message: "starting the previously deployed release before rolling the new one", ObservedGeneration: app.Generation,
+	})
+	r.updateStatusRetrying(ctx, app, "releaseHeld")
+	res.RequeueAfter = soonerRequeue(res.RequeueAfter, wakeReadyPoll)
+	return true, res, nil
+}
+
+// podsOlderThan reports whether any live pod of dep has existed for longer than d.
+func (r *AppReconciler) podsOlderThan(ctx context.Context, dep *appsv1.Deployment, d time.Duration) bool {
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return false
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return false
+	}
+	for i := range pods.Items {
+		if pod := &pods.Items[i]; pod.DeletionTimestamp.IsZero() && time.Since(pod.CreationTimestamp.Time) > d {
+			return true
+		}
+	}
+	return false
 }
 
 // holdPendingArtifact is holdUnpassedRelease one stage earlier (w1/m157). While a

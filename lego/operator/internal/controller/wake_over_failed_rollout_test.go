@@ -80,6 +80,21 @@ func markRolloutFailed(t *testing.T, cl client.Client, nn types.NamespacedName, 
 	}
 }
 
+// markServedPodReady reports one ready pod that is not of the Deployment's newest
+// template: the served release's pod while a newer release rolls, or once it
+// alone has been started.
+func markServedPodReady(t *testing.T, cl client.Client, nn types.NamespacedName) {
+	t.Helper()
+	var dep appsv1.Deployment
+	if err := cl.Get(context.Background(), nn, &dep); err != nil {
+		t.Fatal(err)
+	}
+	dep.Status = appsv1.DeploymentStatus{ObservedGeneration: dep.Generation, Replicas: 1, ReadyReplicas: 1, AvailableReplicas: 1}
+	if err := cl.Status().Update(context.Background(), &dep); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // markDeploymentDrained reports the parked Deployment with no pods.
 func markDeploymentDrained(t *testing.T, cl client.Client, nn types.NamespacedName) {
 	t.Helper()
@@ -204,7 +219,11 @@ func TestWakeAfterFailedRolloutServesPriorRelease(t *testing.T) {
 }
 
 // The observed ordering: the failing deploy starts while the service is
-// hibernated, so its rollout runs with no old pod at all.
+// hibernated. Scaling a Deployment up is not a rollout, so a failing template
+// written onto the parked Deployment would be started by the wake with no progress
+// deadline and no verdict: live, the service answered 503 for 22 minutes and
+// counting. The parked Deployment keeps the served template instead, the wake
+// starts the served release, and only then does the new release roll over it.
 func TestFailedRolloutStartedWhileParkedServesPriorRelease(t *testing.T) {
 	app := activeApp("tea-m172")
 	r, cl, nn := failedRolloutFixture(t, app)
@@ -213,30 +232,109 @@ func TestFailedRolloutStartedWhileParkedServesPriorRelease(t *testing.T) {
 	served := deploymentTemplate(t, cl, nn)
 	parkIdle(t, r, cl, nn)
 
-	// Release 2 is deployed onto the parked service, a request wakes it, and the
-	// rollout runs out its deadline with nothing ready.
+	// Release 2 is deployed onto the parked service: it stays off the template.
 	deployImageAt(t, cl, nn, failingImage, 2)
 	reconcileTwice(t, r, nn)
+	if got := deploymentTemplate(t, cl, nn); !equality.Semantic.DeepEqual(got, served) {
+		t.Fatalf("parked template = revision %q, want the served release's: an unserved release must not be parked into the template", got.Labels[labelRevision])
+	}
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("parked replicas = %d, want 0", got)
+	}
+
+	// A request wakes it: the served release starts first, behind the activator.
 	stampLastActiveAt(t, cl, nn, time.Now())
-	markRolloutFailed(t, cl, nn, 0)
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("woken replicas = %d, want 1", got)
+	}
+	if got := deploymentTemplate(t, cl, nn); !equality.Semantic.DeepEqual(got, served) {
+		t.Fatalf("woken template = revision %q, want the served release's until its pod is ready", got.Labels[labelRevision])
+	}
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseDeploying {
+		t.Fatalf("phase while the served release starts = %q, want Deploying", got)
+	}
+	if got := ingressBackendName(t, cl, nn); got != activatorAliasName(app.Name) {
+		t.Fatalf("backend = %q, want the activator alias until a pod is ready", got)
+	}
+
+	// Its pod is ready: release 2 rolls over it, and fails.
+	markServedPodReady(t, cl, nn)
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+		t.Fatalf("template revision = %q, want release 2 rolling over the ready served pod", got)
+	}
+	if got := ingressBackendName(t, cl, nn); got != app.Name {
+		t.Fatalf("backend = %q, want the App's own Service %q while the served pod is ready", got, app.Name)
+	}
+	markRolloutFailed(t, cl, nn, 1)
 	reconcileTwice(t, r, nn)
 
 	assertServedReleaseHeld(t, cl, nn, served, "after the rollout failed")
-	if got := deploymentReplicas(t, cl, nn); got != 1 {
-		t.Fatalf("replicas = %d, want 1 on the prior release", got)
-	}
-	if got := ingressBackendName(t, cl, nn); got != activatorAliasName(app.Name) {
-		t.Fatalf("backend = %q, want the activator alias until the prior release's pod is ready", got)
-	}
-	markDeploymentRolledOut(t, cl, nn)
-	reconcileTwice(t, r, nn)
-	if got := ingressBackendName(t, cl, nn); got != app.Name {
-		t.Fatalf("backend = %q, want the App's own Service %q once the prior release's pod is ready", got, app.Name)
-	}
 	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseRunning {
 		t.Fatalf("phase = %q, want Running", got)
 	}
-	assertServedReleaseHeld(t, cl, nn, served, "serving again")
+	if got := ingressBackendName(t, cl, nn); got != app.Name {
+		t.Fatalf("backend = %q, want the App's own Service %q", got, app.Name)
+	}
+}
+
+// A park that lands while a newer release is still rolling takes that release off
+// the template too, so the next wake cannot start it alone.
+func TestParkMidRolloutPutsServedTemplateBack(t *testing.T) {
+	app := activeApp("tea-m172")
+	r, cl, nn := failedRolloutFixture(t, app)
+
+	serveReleaseOne(t, r, cl, nn)
+	served := deploymentTemplate(t, cl, nn)
+	deployImageAt(t, cl, nn, failingImage, 2)
+	markServedPodReady(t, cl, nn)
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+		t.Fatalf("setup: template revision = %q, want release 2 rolling", got)
+	}
+
+	parkIdle(t, r, cl, nn)
+	if got := deploymentTemplate(t, cl, nn); !equality.Semantic.DeepEqual(got, served) {
+		t.Fatalf("parked template = revision %q, want the served release's", got.Labels[labelRevision])
+	}
+	if live := liveApp(t, cl, nn); live.Status.ActiveRevision != "rev-1" {
+		t.Fatalf("activeRevision = %q, want rev-1", live.Status.ActiveRevision)
+	}
+}
+
+// A served release that can no longer start must not block the release that
+// might fix it: past servedWakeBudget the new release rolls anyway.
+func TestWakeRollsNewReleaseWhenServedPodStaysUnready(t *testing.T) {
+	app := activeApp("tea-m172")
+	r, cl, nn := failedRolloutFixture(t, app)
+	ctx := context.Background()
+
+	serveReleaseOne(t, r, cl, nn)
+	parkIdle(t, r, cl, nn)
+	deployImageAt(t, cl, nn, "nginx:2", 2)
+	reconcileTwice(t, r, nn)
+	stampLastActiveAt(t, cl, nn, time.Now())
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-1" {
+		t.Fatalf("setup: template revision = %q, want the served release starting first", got)
+	}
+
+	var dep appsv1.Deployment
+	if err := cl.Get(ctx, nn, &dep); err != nil {
+		t.Fatal(err)
+	}
+	stuck := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: "web-stuck", Namespace: nn.Namespace, Labels: dep.Spec.Template.Labels,
+		CreationTimestamp: metav1.NewTime(time.Now().Add(-servedWakeBudget - time.Minute)),
+	}}
+	if err := cl.Create(ctx, stuck); err != nil {
+		t.Fatal(err)
+	}
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+		t.Fatalf("template revision = %q, want release 2 to roll once the served pod overran its budget", got)
+	}
 }
 
 // The hold ends with the next release: a later deploy rolls and is promoted.
@@ -252,7 +350,7 @@ func TestDeployAfterFailedRolloutRollsNormally(t *testing.T) {
 	assertServedReleaseHeld(t, cl, nn, served, "after the rollout failed")
 
 	deployImageAt(t, cl, nn, "nginx:2", 3)
-	markDeploymentDrained(t, cl, nn) // the new ReplicaSet has no pod yet
+	markServedPodReady(t, cl, nn) // the served pod serves; release 3's is not up yet
 	reconcileTwice(t, r, nn)
 	got := deploymentTemplate(t, cl, nn)
 	if got.Labels[labelRevision] != "rev-3" || got.Spec.Containers[0].Image != "nginx:2" {
@@ -334,6 +432,8 @@ func TestFailedRolloutWithNothingToRestoreSettlesFailed(t *testing.T) {
 
 	serveReleaseOne(t, r, cl, nn)
 	deployImageAt(t, cl, nn, failingImage, 2)
+	markServedPodReady(t, cl, nn)
+	reconcileTwice(t, r, nn) // release 2 rolls over the served pod
 	deleteServedRecord(t, cl, nn)
 	markRolloutFailed(t, cl, nn, 0)
 	reconcileTwice(t, r, nn)
