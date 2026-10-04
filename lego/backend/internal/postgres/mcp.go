@@ -449,7 +449,7 @@ type parameterSpecResult struct {
 func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_processes",
-		Description: "List active backend processes for a managed Postgres database (pg_stat_activity snapshot). Includes each process's pid, user, application name, state, current query, wait event, and how long it has been running. A row whose query PostgreSQL hid from the reading role reports masked=true with an empty query.",
+		Description: "List active backend processes for a managed Postgres database (pg_stat_activity snapshot). Includes each process's pid, user, application name, state, current query, wait event, and how long it has been running. A row whose query PostgreSQL hid from the reading role reports masked=true with an empty query. Password values in query text are published as '<redacted>'.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, processesResult, error) {
 		out, err := s.Processes(ctx, in.PostgresID)
 		if err != nil {
@@ -460,7 +460,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_top_queries",
-		Description: "List the top 25 queries by total execution time for a managed Postgres database (pg_stat_statements). Returns query text, call count, total/mean time in milliseconds, row count, and block hit/read stats. A row whose query PostgreSQL hid from the reading role reports masked=true with an empty query, its statistics still real. Returns unavailable when the database or pg_stat_statements cannot be read.",
+		Description: "List the top 25 queries by total execution time for a managed Postgres database (pg_stat_statements). Returns query text, call count, total/mean time in milliseconds, row count, and block hit/read stats. A row whose query PostgreSQL hid from the reading role reports masked=true with an empty query, its statistics still real. Password values in query text are published as '<redacted>'. Returns unavailable when the database or pg_stat_statements cannot be read.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, topQueriesResult, error) {
 		out, err := s.TopQueries(ctx, in.PostgresID)
 		if err != nil {
