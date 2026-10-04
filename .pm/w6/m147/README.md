@@ -1,6 +1,6 @@
 # w6 · m147 — A free service that auto-hibernates mid-rollout loses its crash diagnosis (generic health-gate reason) and its header disagrees with its phase
 
-**Worker:** worker6 **Goal:** a failing rollout on a free web service reports the operator's specific diagnosis (crash exit code, probe, image pull) as its `failureReason` even when the service auto-hibernated before the progress deadline, and the dashboard header's phase agrees with the API after that failure. **Status:** in progress (t001, t002, t006, t007 done; t003 traced, live sampling with t004 after the deploy)
+**Worker:** worker6 **Goal:** a failing rollout on a free web service reports the operator's specific diagnosis (crash exit code, probe, image pull) as its `failureReason` even when the service auto-hibernated before the progress deadline, and the dashboard header's phase agrees with the API after that failure. **Status:** in progress (t001, t002, t006, t007 done; t003 open — the parking-pass Deploying write is not yet fixed on upstream's code, see `t003.md`; then t004 live sampling)
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------------------- |
 | t001 | Backend: keep the last real stall diagnosis on the open row and close with it instead of the gate line — **DONE** | 45m | —                      |
 | t002 | Operator: settle (or defer the park of) an App whose current-generation rollout is unsettled at idle — **DONE** | 1h  | —                      |
-| t003 | Trace the header "Deploying" vs API `Hibernated` disagreement after the failure, and fix the actual cause | 45m | t002                   |
+| t003 | Trace the header "Deploying" vs API `Hibernated` disagreement after the failure, and fix the actual cause — **REOPENED 2026-10-04** | 45m | t002                   |
 | t004 | Live: reproduce and verify both diagnoses and the header/phase agreement on production                    | 40m | t001, t002, t003       |
 | t005 | Render parity                                                                                             | 20m | t004                   |
 | t006 | Simplify — **DONE** | 15m | t005                   |
@@ -33,6 +33,10 @@
 - **The backend throws away what it had.** Each pass calls `SetDeployStallReason(open.ID, deployStallReason(cur))` (`lego/backend/internal/store/reconciler.go:706`); `deployStallReason` (`:1459-1474`) returns `""` for `AutoHibernated`, clearing the crash/probe text. At the gate, `deployCloseFailureReason` (`:808-836`) finds no `recordedRolloutFailure` (`:844-851`), `failureReasonFor` (`:1428-1449`) reads Ready=AutoHibernated, and falls to `timedOutDeployReason` (`:1493-1501`).
 - **Header badge (cause unverified).** `ServiceStatusBadge` (`dashboard/src/features/services/components/service-detail-header.tsx:120`) → `deriveStatus` (`dashboard/src/features/services/lib/status.ts:239-250`) maps the raw phase only; the backend projects the CR phase verbatim (`lego/backend/internal/apps/service.go:1002,1043`); `useServer` polls every 3 s while converging (`dashboard/src/features/services/hooks/use-server.ts:65-71`). A stale cache should self-correct in 3 s, so the leading hypothesis is a real phase flap: the parked rollout never settled, any wake scales the broken template (Deploying), then it re-parks. Not traced to file:line — t003 owns it.
 
+## Superseded local work (2026-10-03)
+
+A parallel t001–t003 implementation was made before upstream's (below) landed. On /ship rebase, upstream's t001 backend fix and t002 deferral (`rolloutAwaitingVerdict`) were kept; the local t001 test `TestStallReasonClearsOnProgressAndReadyDiagnosisWins` (`failed_rollout_reason_test.go`) was kept as extra coverage. The local t003 fix (skip the Deploying stamp on parking passes, `TestParkingPassNeverWritesDeploying`) was dropped and is not on upstream — see `t003.md`.
+
 ## Not fixed by
 
 - `72da96bc6` (w8/039): `lastStallDiagnosis` (`app_controller.go:2990-3024`) recovers the stall only when the Deployment reaches `ProgressDeadlineExceeded` and Ready still carries it; once parked, Ready reads `AutoHibernated` and settle never runs.
@@ -49,7 +53,7 @@
 
 ## Related
 
-- [w1/m172](../../w1/m172/README.md) — a free service woken after a failed rollout over a prior release serves the broken template (503 while Running). Same family; t002 here must leave a settle verdict that w1/m172's template restore can act on. Coordinate, do not duplicate.
+- [w1/m172](../../w1/done/m172/README.md) — a free service woken after a failed rollout over a prior release serves the broken template (503 while Running). Same family; t002 here must leave a settle verdict that w1/m172's template restore can act on. Coordinate, do not duplicate.
 
 ## Source + Goal linkage
 
