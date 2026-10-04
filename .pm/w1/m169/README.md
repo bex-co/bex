@@ -1,6 +1,6 @@
 # w1 · m169 — Buildpack Node services start on current Node: a run image with libatomic
 
-**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** open — t001, t002 done; unblocked 2026-10-02: `cnb-run-image.yml` published (run 36979529487) and `ghcr.io/bex-co/bex-cnb-run` is public, so t003 (pin the digest in `deploy/gitops/charts/kpack/platform.yaml`) is ready
+**Worker:** worker1 **Goal:** A `builder: buildpack` Node app with an open `engines.node` range (Render resolves it to the latest Node) builds and then starts. Today it crash-loops on `libatomic.so.1`. **Status:** open — t001–t003 done. t003 (2026-10-02) pinned `ghcr.io/bex-co/bex-cnb-run@sha256:e69885d9…` (public, multi-arch, from `cnb-run-image.yml` run 36979529487) in `deploy/gitops/charts/kpack/platform.yaml`; that change is uncommitted. t004 (live verify on production) awaits /ship + deploy.
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | bex CNB run image recipe: `run-jammy-base` + `libatomic1`, with a Node 26 start check — **DONE** | 30m | — |
 | t002 | Publish workflow `cnb-run-image.yml`, plus `deploy/cnb-run/Dockerfile` as a reviewed pin site — **DONE** | 45m | t001 |
-| t003 | Pin the published digest as the kpack ClusterStack run image (ADR060 D7) | 30m | t002 |
+| t003 | Pin the published digest as the kpack ClusterStack run image (ADR060 D7) — **DONE** | 30m | t002 |
 | t004 | Deploy + live verify: `examples/hello-node` (`>=20` ⇒ Node 26) serves 200 on production | 30m | t003 |
 | t005 | Simplify | 15m | t004 |
 | t006 | Test coverage | 20m | t005 |
@@ -28,7 +28,7 @@
   - On the bex image, Node `v26.10.0 x64 starts` and `v26.10.0 arm64 starts`.
   - On stock `run-jammy-base`, the same check exits 127 on `libatomic.so.1`.
   - The bex image keeps `User 1002:1000` and `io.buildpacks.stack.id=io.buildpacks.stacks.jammy`, which is what kpack matches against the build image.
-- **Tenant workaround until this ships:** set `BP_NODE_VERSION=24.*` on the service. That only works once `w1/121` (`blocked/121.md`) deploys; before it, service env vars never reached the kpack build.
+- **Tenant workaround until this ships:** set `BP_NODE_VERSION=24.*` on the service. This works in production since `w1/121` (`../done/121.md`, verified live 2026-10-02).
 
 ## Source + Goal linkage
 
