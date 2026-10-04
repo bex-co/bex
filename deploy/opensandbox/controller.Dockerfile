@@ -37,7 +37,9 @@ RUN cd opensandbox \
     && git apply --stat --apply /tmp/terminal-pod-status.patch
 
 WORKDIR /src/opensandbox/kubernetes
-RUN go mod download
+# go mod download retries (3 attempts, backoff): a single proxy.golang.org TLS
+# handshake timeout failed a whole deploy build on 2026-10-04.
+RUN n=0; until go mod download; do n=$((n+1)); [ "$n" -ge 3 ] && exit 1; sleep $((n*15)); done
 
 # Mirror upstream kubernetes/Dockerfile: static, trimmed, no VCS stamping.
 RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH}" \
