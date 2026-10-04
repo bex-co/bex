@@ -17,6 +17,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [ ] **m165** — [Loop1: workspace-switch navigation + identical-cancel undeployed flag](m165/README.md) (6 tasks) ← infinite /qa-find-bugs loop1 2026-10-04 UTC, muse.env, journeys 1-4,6-8
 - [ ] **m166** — [Loop2: Docker Command for image-source services](m166/README.md) (6 tasks) ← infinite /qa-find-bugs loop2 2026-10-04 UTC, muse.env, journeys 5,9-15
+- [ ] **m167** — [Loop5: redact secrets from Postgres Insights query text](m167/README.md) (5 tasks) ← infinite /qa-find-bugs loop5 2026-10-04 UTC, muse.env, SCRAM verifier in Top queries
 
 - [ ] **m164** — [Count initial and newly scraped traffic before free web auto-sleep](blocked/m164/README.md) — **BLOCKED (release pipeline deploys operator; QA replays fixture A (TTL 300, GET/HEAD) and fixture B (TTL 60, one GET), the 20s steady TTL-60 control, the m151 15s/20-min control and both m161 WebSocket directions, browser wake and API/dashboard phase agreement, then cleans up)**. t001/t002/t005/t006 done 2026-10-03: per-series activity (increase or fresh positive first sample) plus the decision instant; real PromQL-engine tests (Prometheus 2.54.1, test-only) green; operator `make test` + `make lint` green.
 
