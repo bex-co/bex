@@ -75,7 +75,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **045** — [Service create dry-run skips every check the real create runs after the spec resolves](045.md) — filed 2026-10-03 from live QA: dry-run accepts reserved `dashboard.bex.co` (and taken names, `PORT`, claimed domains) because `apps/service.go:1925` returns before them.
+- [ ] **046** — [Create dry-runs preview a service/Postgres/Key Value past the plan's count cap](046.md) — filed 2026-10-03 (the w8/045 remainder): plan count caps live only in ResourceQuota admission, which a dry run never reaches.
+
+- [x] **045** — [Service create dry-run runs every read-only check the real create runs](done/045.md) — **DONE 2026-10-03**: billing (402 parity), duplicate name, reserved env, repo access, registry credential, and the custom-domain gate (reserved `dashboard.bex.co`, caps, claimed hosts) now run before the preview. Postgres/Key Value dry runs run the billing gate too. Count caps are filed as 046.
 
 - [x] **037** — [`bex logout` revokes only the presented grant](done/037.md) — **DONE 2026-10-03**: per-token Hydra RFC 7009 revoke replaces the consent-session wipe; proven against Hydra v26.2.0 (other device keeps access + refresh).
 - [x] **038** — [`BEX_WORKSPACE=<name>` resolves to the workspace id](done/038.md) — **DONE 2026-10-03**: launcher resolves a name once via `GET /v1/owners?name=` (unknown/duplicate names exit 1 with named errors); ships to users with the next `bex-cli/v*` release.
