@@ -186,6 +186,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **179** — [New Postgres clips fields and plan prices on narrow mobile screens](179.md) (55m) ← QA sweep76, 2026-10-03; scoped layout fix, no paid mutation
+
 - [ ] **178** — [Refresh log-filter discovery while the page remains open](blocked/178.md) — **BLOCKED (release pipeline deploys dashboard; QA replays open-page OPTIONS/TRACE discovery within one 30s poll on an owned service, then cleans up)**. Shared-hook polling, stale-answer retention and real-Apollo regressions done 2026-10-03.
 
 - [ ] **177** — [Report suspended Postgres SQL execution as unavailable](blocked/177.md) — **BLOCKED (release pipeline deploys backend + dashboard; QA replays owned Free suspend/SQL/resume across UI/REST/GraphQL/MCP, then cleans up)**. Server 503 guard, console suspension state (en/zh) and regressions done 2026-10-03.
