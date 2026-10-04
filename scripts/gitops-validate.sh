@@ -387,6 +387,16 @@ for kpack_input in \
     fail=1
   fi
 done
+# The ClusterStack must run apps on the bex run image (w1/m169): no Paketo Jammy
+# run image ships libatomic.so.1, so Node 25+ (what Render resolves an open
+# `engines.node` range to) builds green and then crash-loops on a Paketo one.
+kpack_run_image="$(yq -N \
+  'select(.kind == "ClusterStack" and .metadata.name == "bex-jammy-base") | .spec.runImage.image' \
+  - <<<"$kpack_render" | tr -d '\n')"
+if ! [[ "$kpack_run_image" =~ ^ghcr\.io/bex-co/bex-cnb-run@sha256:[a-f0-9]{64}$ ]]; then
+  echo "FAIL: ClusterStack bex-jammy-base run image is '$kpack_run_image' (want ghcr.io/bex-co/bex-cnb-run@sha256:<digest>; Paketo run images lack libatomic.so.1, w1/m169)" >&2
+  fail=1
+fi
 for component in kpack-controller kpack-webhook; do
   placement="$(yq -N \
     "select(.kind == \"Deployment\" and .metadata.name == \"$component\") |
