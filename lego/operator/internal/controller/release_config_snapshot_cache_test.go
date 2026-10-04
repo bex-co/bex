@@ -134,6 +134,7 @@ func TestReleaseSnapshotsWorkOutsideTheCachedNamespace(t *testing.T) {
 	}
 
 	app.Status.ReleaseGeneration = 1 + releaseSnapshotRetention
+	app.Status.ActiveRevision = releaseRevision(app) // that release serves; until then generation 1's copies are kept
 	if err := r.gcReleaseConfigSnapshots(ctx, app); err != nil {
 		t.Fatalf("gc: %v", err)
 	}
