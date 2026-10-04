@@ -17,7 +17,9 @@ limitations under the License.
 package store
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -108,5 +110,34 @@ func TestStaticPublishFailureOverServedReleaseClosesUpdateFailed(t *testing.T) {
 	recovered := Deploy{Generation: 5, Status: DeployUpdateInProgress}
 	if got := observedDeployStatus(recovered, app, false); got != DeployLive {
 		t.Errorf("recovered status = %q, want %q", got, DeployLive)
+	}
+}
+
+// A progressing rollout still clears its stall reason, and a specific Ready
+// diagnosis at close keeps winning over the row's older one (with its code).
+func TestStallReasonClearsOnProgressAndReadyDiagnosisWins(t *testing.T) {
+	ctx := context.Background()
+	m := newMemStore()
+	m.deploys["dep-1"] = Deploy{ID: "dep-1", Generation: 2, Status: DeployUpdateInProgress, CreatedAt: time.Now(), StallReason: "old"}
+	r := &Reconciler{Store: m, DeployGateTimeout: 18 * time.Minute}
+	app := &appv1alpha1.App{}
+	app.Generation = 2
+	app.Status.ReleaseGeneration = 2
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	app.Status.Conditions = []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: "RolloutProgressing", ObservedGeneration: 2}}
+	r.recordDeploy(ctx, DesiredApp{}, m.deploys["dep-1"], app)
+	if got := m.deploys["dep-1"].StallReason; got != "" {
+		t.Fatalf("stall reason = %q, want cleared while progressing", got)
+	}
+
+	app.Status.Conditions[0] = metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: "ImagePullBackOff", Message: pullFailing, ObservedGeneration: 2}
+	open := Deploy{ID: "dep-1", Generation: 2, Status: DeployUpdateInProgress, StallReason: "an older stall"}
+	if got, code := deployCloseFailureReason(app, open, DeployUpdateFailed, true); got != pullFailing || code != EventReasonImagePullBackoff {
+		t.Fatalf("reason = (%q, %q), want the current Ready diagnosis with its code", got, code)
+	}
+	if got, _ := deployCloseFailureReason(app, Deploy{Generation: 2}, DeployUpdateFailed, false); got != "" {
+		t.Fatalf("reason = %q for another release's row with no stall, want none", got)
 	}
 }
