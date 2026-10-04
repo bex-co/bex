@@ -1,17 +1,17 @@
 # w4 · m163 — Make saved secret files available to native builds
 
-**Worker:** worker4 **Goal:** Native build commands can read accepted service secret files without leaking them into platform-generated artifacts. **Status:** todo
+**Worker:** worker4 **Goal:** Native build commands can read accepted service secret files without leaking them into platform-generated artifacts. **Status:** blocked — t001/t002/t003/t005/t006 done 2026-10-03; t004 hosted acceptance and t007 closeout remain
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Audit native secret-file inputs and release semantics | 30m | — |
-| t002 | Project isolated file inputs with correct cache identity | 45m | t001 |
-| t003 | Mount file inputs into the native build command | 45m | t002 |
+| t001 — **DONE** | Audit native secret-file inputs and release semantics | 30m | — |
+| t002 — **DONE** | Project isolated file inputs with correct cache identity | 45m | t001 |
+| t003 — **DONE** | Mount file inputs into the native build command | 45m | t002 |
 | t004 | Render parity and hosted acceptance | 25m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 45m | t004 |
+| t005 — **DONE** | Simplify | 15m | t004 |
+| t006 — **DONE** | Test coverage | 45m | t004 |
 | t007 | Closeout | 20m | t005, t006 |
 
 ## Definition of done
