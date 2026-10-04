@@ -65,7 +65,7 @@ const (
 
 var errActivityUnavailable = errors.New("service activity unavailable: a recent Prometheus read failed")
 
-// NewPrometheusAppActivityReader returns a reader over two series Prometheus
+// NewPrometheusAppActivityReader returns a reader over series Prometheus
 // already scrapes: Traefik's per-service request counter (every request,
 // whatever its status — Render counts inbound traffic, not successes) and the
 // websocketegress plugin's per-App frame counters, in both directions. No new
@@ -102,13 +102,39 @@ func NewPrometheusAppActivityReader(base string, hc *http.Client) AppActivityRea
 	}
 }
 
-// activityQuery asks for the latest step within lookback at which either signal
-// rose over the preceding minute. The answer trails the request by up to a
-// minute plus a scrape, which only ever delays a sleep. increase() is
-// reset-safe, and a series that went stale when the service was parked yields
-// nothing rather than activity.
+// activityQuery asks for the latest instant within lookback at which any
+// signal showed traffic. Each original series (one per Traefik pod, method and
+// status, or per meter pod) is judged before labels are aggregated away, and
+// counts as traffic at an instant when either
+//
+//   - it rose over the preceding minute — increase() is reset-safe, and a
+//     reset to zero is no traffic; or
+//   - it first appeared, already positive, within the preceding step. A
+//     counter is created by the request it counts, so a new series' first
+//     sample is traffic increase() cannot see: it needs two samples, and the
+//     sole GET a fresh service answered (1, then 1) has none (w4/m164, sweep
+//     71). A flat series is never new again, so it cannot keep a service
+//     awake; only a gap longer than Prometheus's 5m lookback, or a stale marker
+//     from a failed scrape, makes it look new — once, for one step.
+//
+// Subquery steps sit on Prometheus's absolute 15s grid, so traffic scraped
+// after the last step before now was invisible until the next one (the 503
+// sweep 71's steady control got): the query is also asked at now itself, and
+// that answer, never older than any step, wins when present.
+//
+// Every answer is at or after the scrape that recorded the traffic, so the
+// stamp never predates the request (to the second), and trails it by at most
+// a minute plus a scrape — which only ever delays a sleep. Traffic newer than
+// the latest scrape (one 15s interval) cannot be seen at all: a service sleeps
+// only after a full window with no traffic Prometheus has recorded, and a
+// request in that final unscraped moment, already served, is followed by the
+// sleep; its next request wakes the service. A series that went stale when the
+// service was parked yields nothing rather than activity.
 func activityQuery(app *appv1alpha1.App, lookback time.Duration) string {
-	rose := func(series string) string { return "(sum(increase(" + series + "[1m])) > 0)" }
+	step := int(activityStep.Seconds())
+	active := func(series string) string {
+		return fmt.Sprintf("increase(%[1]s[1m]) > 0 or (%[1]s > 0 unless %[1]s offset %[2]ds)", series, step)
+	}
 	service := traefikServiceLabel(app.Namespace, app.Name, app.Spec.EffectivePort())
 	// Both WebSocket directions count as traffic: a connection the client alone
 	// feeds (telemetry, a log shipper) kept no service awake while only the
@@ -116,11 +142,12 @@ func activityQuery(app *appv1alpha1.App, lookback time.Duration) string {
 	// from w1/102). `or` over a series Prometheus does not have yet contributes
 	// nothing, so an operator ahead of the plugin roll behaves exactly as before.
 	appID := strconv.Quote(appIDOrName(app))
-	return fmt.Sprintf("max_over_time(timestamp(%s or %s or %s)[%ds:%ds])",
-		rose("traefik_service_requests_total{service="+strconv.Quote(service)+"}"),
-		rose("bex_websocket_egress_bytes_total{app_id="+appID+"}"),
-		rose("bex_websocket_ingress_bytes_total{app_id="+appID+"}"),
-		int(math.Ceil(max(lookback, time.Minute).Seconds())), int(activityStep.Seconds()))
+	traffic := fmt.Sprintf("count(%s or %s or %s)",
+		active("traefik_service_requests_total{service="+strconv.Quote(service)+"}"),
+		active("bex_websocket_egress_bytes_total{app_id="+appID+"}"),
+		active("bex_websocket_ingress_bytes_total{app_id="+appID+"}"))
+	return fmt.Sprintf("timestamp(%[1]s) or max_over_time(timestamp(%[1]s)[%[2]ds:%[3]ds])",
+		traffic, int(math.Ceil(max(lookback, time.Minute).Seconds())), step)
 }
 
 // traefikServiceLabel is the Traefik Kubernetes-Ingress provider's service name
