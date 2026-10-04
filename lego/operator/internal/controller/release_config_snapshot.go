@@ -29,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -464,6 +465,12 @@ func (r *AppReconciler) servedPodTemplateForCancel(ctx context.Context, app *app
 	if !canceledOverServed(app) {
 		return nil, nil
 	}
+	return r.servedPodTemplate(ctx, app)
+}
+
+// servedPodTemplate returns the recorded pod template of the last served release,
+// or nil when it has no record.
+func (r *AppReconciler) servedPodTemplate(ctx context.Context, app *appv1alpha1.App) (*corev1.PodTemplateSpec, error) {
 	served := successfulReleaseGeneration(app)
 	if served <= 0 {
 		return nil, nil
@@ -482,6 +489,95 @@ func (r *AppReconciler) servedPodTemplateForCancel(ctx context.Context, app *app
 	}
 	return &tmpl, nil
 }
+
+// failedRolloutOverServed reports whether the current release's rollout settled
+// failed (ConditionRollout) over an earlier release that served. Until a newer
+// release is requested the Deployment must run that served release's template,
+// not the failed one (w1/m172). A rollout that failed within the served release's
+// own generation is excluded: its record is the template that failed.
+func failedRolloutOverServed(app *appv1alpha1.App) bool {
+	gen := releaseGeneration(app)
+	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+	return c != nil && c.Status == metav1.ConditionFalse && c.ObservedGeneration == gen &&
+		c.Reason != reasonPublishFailed && releaseHasServed(app) && successfulReleaseGeneration(app) != gen
+}
+
+// restoreServedTemplate puts dep back on the last served release's pod template
+// after a failed rollout: its recorded template (w1/m152), or, for a release with
+// no record, the template its ReplicaSet still carries. A rollout that fails keeps
+// the old pods only while the Deployment stays awake; once it parks, both
+// ReplicaSets sit at 0 and the next wake, resume or scale starts the newest
+// template — the failed one — so nothing becomes ready and the public route stays
+// on the activator (w1/m172). restored=false means there is nothing to restore
+// from, and the caller must not report the prior release as serving.
+// Callers gate on failedRolloutOverServed, which is what makes the revision label
+// tell the two templates apart.
+func (r *AppReconciler) restoreServedTemplate(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) (bool, error) {
+	// Already back on the served release: every held pass comes through here, and
+	// the record is read uncached.
+	if dep.Spec.Template.Labels[labelRevision] == app.Status.ActiveRevision {
+		return true, nil
+	}
+	tmpl, err := r.servedPodTemplate(ctx, app)
+	if err != nil {
+		return false, err
+	}
+	if tmpl == nil {
+		if tmpl, err = r.servedReplicaSetTemplate(ctx, app, dep); err != nil || tmpl == nil {
+			return false, err
+		}
+	}
+	if equality.Semantic.DeepEqual(dep.Spec.Template, *tmpl) {
+		return true, nil
+	}
+	base := dep.DeepCopy()
+	dep.Spec.Template = *tmpl.DeepCopy()
+	if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
+		return false, err
+	}
+	logf.FromContext(ctx).Info("restored the served release's pod template after a failed rollout",
+		"app", app.Name, "servedRevision", app.Status.ActiveRevision, "failedGeneration", releaseGeneration(app))
+	return true, nil
+}
+
+// servedReplicaSetTemplate is the pod template of the served release's newest
+// ReplicaSet, for a release that has no record (it predates w1/m152, or GC
+// reclaimed it). nil when the Deployment retains no such ReplicaSet.
+func (r *AppReconciler) servedReplicaSetTemplate(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) (*corev1.PodTemplateSpec, error) {
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return nil, nil
+	}
+	var rss appsv1.ReplicaSetList
+	if err := r.List(ctx, &rss, client.InNamespace(dep.Namespace),
+		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return nil, err
+	}
+	var served *appsv1.ReplicaSet
+	newest := int64(-1)
+	for i := range rss.Items {
+		rs := &rss.Items[i]
+		if rs.Spec.Template.Labels[labelRevision] != app.Status.ActiveRevision || !metav1.IsControlledBy(rs, dep) {
+			continue
+		}
+		// Several ReplicaSets can share a release (a re-projection that is not a
+		// new release, such as an operator upgrade, rolls the template); the
+		// Deployment controller numbers them in order.
+		revision, _ := strconv.ParseInt(rs.Annotations[deploymentRevisionAnnotation], 10, 64)
+		if revision > newest {
+			served, newest = rs, revision
+		}
+	}
+	if served == nil {
+		return nil, nil
+	}
+	tmpl := served.Spec.Template.DeepCopy()
+	delete(tmpl.Labels, appsv1.DefaultDeploymentUniqueLabelKey)
+	return tmpl, nil
+}
+
+// deploymentRevisionAnnotation is the rollout sequence number the Deployment
+// controller stamps on each ReplicaSet it creates or adopts.
+const deploymentRevisionAnnotation = "deployment.kubernetes.io/revision"
 
 // recordServingTemplate records what this release generation now runs, for a later
 // cancel to restore. Never while settling a cancel: that pass is the served

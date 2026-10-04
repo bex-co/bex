@@ -42,7 +42,7 @@ import (
 func progressDeadlineDep(name string) *appsv1.Deployment {
 	one := int32(1)
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", UID: "uid-dep"},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &one,
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": name}},
@@ -57,6 +57,20 @@ func progressDeadlineDep(name string) *appsv1.Deployment {
 				Reason: "ProgressDeadlineExceeded",
 			}},
 		},
+	}
+}
+
+// servedReplicaSet is the ReplicaSet dep still retains for a served release: what
+// a failed rollout over it is restored from when the release has no record.
+func servedReplicaSet(dep *appsv1.Deployment, revision string) *appsv1.ReplicaSet {
+	controller := true
+	labels := map[string]string{"app": dep.Name, labelRevision: revision}
+	return &appsv1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: dep.Name + "-served", Namespace: dep.Namespace, Labels: labels,
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "Deployment", Name: dep.Name, UID: dep.UID, Controller: &controller}},
+		},
+		Spec: appsv1.ReplicaSetSpec{Selector: dep.Spec.Selector, Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: labels}}},
 	}
 }
 
@@ -270,7 +284,7 @@ func TestRolloutDeadlineOverPriorReleaseKeepsTheDiagnosis(t *testing.T) {
 				pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
 			}
 			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).
-				WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+				WithObjects(app, dep, pod, servedReplicaSet(dep, "rev-2")).WithStatusSubresource(&appv1alpha1.App{}).Build()
 			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
 
 			if _, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting"); err != nil {
@@ -329,7 +343,7 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 				Labels: map[string]string{"app": "web", labelRevision: tc.revision}, CreationTimestamp: metav1.NewTime(time.Now().Add(-tc.age))},
 				Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "app", Image: image,
 					State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: tc.reason, Message: tc.message}}}}}}
-			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod, servedReplicaSet(dep, "old")).WithStatusSubresource(&appv1alpha1.App{}).Build()
 			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
 			result, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting")
 			if err != nil {
