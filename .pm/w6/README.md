@@ -185,6 +185,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [x] **076** — [A deploy made while a free service sleeps never runs, then closes update_failed with the generic health-gate line](done/076.md) — done 2026-10-04; a deploy wakes an auto-hibernated free service once per release (`wakeForRelease`), so the release rolls and the row closes with its real outcome.
 - [x] **075** — [Honor Render region filters on Postgres and Key Value lists](done/075.md) — done 2026-10-02; literal placement filtering before pagination, repeated-value enum validation, and handler/composed regressions verified.
 
 - [x] **074** — [Live-verify m143/m144 permission UI on dev-6](done/074.md) — promoted to [m146](blocked/m146/README.md) on 2026-10-02; live verification and reproduced fixes remain tracked there.

@@ -267,17 +267,12 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	if err := cl.Update(ctx, &live); err != nil {
 		t.Fatal(err)
 	}
+	// The deploy itself wakes it (w6/076): the step starts and the prior
+	// release serves meanwhile.
 	reconcileTwice(t, r, nn)
 	if got := deploymentTemplateRevision(t, cl, nn); got != priorRevision {
-		t.Fatalf("parked template revision = %q, want the prior release's %q — an unmigrated release must not be parked into the template", got, priorRevision)
+		t.Fatalf("template revision = %q, want the prior release's %q — an unmigrated release must not reach the template", got, priorRevision)
 	}
-	if jobs := jobsIn(t, cl, app.Namespace); len(jobs) != 0 {
-		t.Fatalf("jobs = %d, want none while parked", len(jobs))
-	}
-
-	// A request wakes it: the step starts and the prior release serves meanwhile.
-	stampLastActiveAt(t, cl, nn, time.Now())
-	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("woken replicas = %d, want 1 while the pre-deploy step runs", got)
 	}
