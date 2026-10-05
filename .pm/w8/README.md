@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](blocked/m51/README.md) (9 tasks) — **BLOCKED (release pipeline deploys the operator image (new `/native-resolve`); QA replays the DoD on production with the released `bex` CLI: `PYTHON_VERSION=3.11.9` and a `.python-version` build on 3.11, `NODE_VERSION=22`/`.nvmrc`/bounded `engines.node` on 22, `PYTHON_VERSION=2.7.18` fails by name, no signal narrates "default"; then cleans up)**. t001–t008 done 2026-10-05: reviewed digest-pinned lines per runtime (ADR060 D7 addendum), an in-cluster `resolve-native-runtime` phase that picks the line from Render's signals, rewrites the FROM and narrates the choice; unsupported requests fail as tenant errors. Verified locally on real BuildKit (`Python 3.11.17 want=3.11.9`).
+- [ ] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](blocked/m51/README.md) (9 tasks) — **BLOCKED (live-verified 2026-10-05 on pin `c7afefad5` for `PYTHON_VERSION`, `NODE_VERSION`, `engines.node`, unsupported-version refusal and default; t009 closeout waits only on a `.python-version` / `.nvmrc` replay, which needs a fixture repo carrying those files)**
 - [x] **m50** — [Enforce Postgres tier capacity across write paths](done/m50/README.md) (9 tasks) ← promoted from `035` on 2026-10-02.
 
 - [x] **m49** — [Reject invalid image deploy inputs with actionable errors](done/m49/README.md) (7 tasks) ← promoted from `033` on 2026-10-02. Completed 2026-10-02; full suites/lint and 57 live checks passed.
@@ -76,6 +76,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **059** — [Every Render-route 400 for an unknown query parameter says "request contains an unsupported query parameter" without naming it](059.md) (~20m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 21.
+- [ ] **060** — [Service events answer `service_hibernated`/`service_woken` on the Render REST feed, outside Render's event-type enum](060.md) (~40m, minor; event half of w8/058) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweeps 20/22.
+- [ ] **061** — [Render's `/metrics/{memory,cpu,…}` answers a bare `404 not found` for a live Key Value or Postgres](061.md) (~40m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 38.
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
 
 - [x] **058** — [Deploy `trigger` answers `create` and `config_change`, values outside Render's enum](done/058.md) — **DONE 2026-10-05**: REST/MCP map onto Render's enum (`bexTrigger` keeps bex's value); conformance seeds every trigger.
