@@ -72,3 +72,7 @@ Workspace `bex-canary`, API with the bex CLI's access key. Fixture `qa-20261005-
 - **Failures surface promptly — PASS on timing, FAIL on reason.** 19/19 failing runs reached `unsuccessful` within 0–5 s of `finishedAt`, but no surface said why (`cron_job_run_ended` details were `{"status":"failed"}`). That is fixed in t007.
 - Not re-run: the dashboard "UI and API agree" check and the m96 log-boundary control.
 
+
+## Post-deploy live check — 2026-10-05 (qa loop41, pin `c7afefad5` ⊇ `6a64712b6`)
+
+Owned Free cron `qa-20261005-l41-cron` (`alpine:3`, `sh -c 'echo l41-marker; exit 3'`, deleted afterwards). Manual run `crr-30icul0qglu2d7v7pqhf` settled `unsuccessful` 7 s after start. `GET /v1/services/<id>/events` → `cron_job_run_ended` `{"status":"failed","reasonCode":"non_zero_exit","cronJobRunId":"crr-30icul0qglu2d7v7pqhf","reason":{"evicted":false,"nonZeroExit":3}}`. The dashboard Activity row reads "Cron run finished · Failed — The run exited with status 3." t007 holds on the deployed build. Found alongside: w4/203 (Trigger Run ignores the suspended `cron_run_now` decision).

@@ -196,6 +196,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **203** — [Trigger Run stays enabled on a suspended cron job and fails with a raw English error](203.md) ← infinite /qa-find-bugs loop41 2026-10-05 UTC.
+
 - [ ] **202** — [Failed health-check deploy's final failureReason still says "the rollout is waiting"](202.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC.
 
 - [ ] **201** — [Undeployed-changes notice tells users to deploy while that deploy is already running](201.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC.
