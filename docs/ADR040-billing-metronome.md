@@ -71,6 +71,8 @@ The meter-event `identifier` is the SHA-256 hash of normalized resource kind, se
 
 A retryable network/5xx/429 failure leaves its row pending for the next cycle while accepted siblings are stamped independently. A permanent non-429 4xx becomes a durable `permanent_reject` issue and the row becomes `rejected`; it is never falsely stamped emitted and cannot hot-loop the outbox. Repair is dry-run-first and audited. `retry` is allowed only for a definite permanent reject whose event timestamp remains inside the 34-day operational backfill horizon; `mark_repaired` records an externally reconciled outcome without manufacturing another provider event.
 
+**`instance_seconds` correction (w4/m173).** Before the w4/m173 meter correction, `instance_seconds` rows over-counted short-lived, sidecar-bearing and rolled-over instances (ADR023 §Instance running time). Meter events already exported from those rows carry the old quantities. Any repair goes through the dry-run, audited `mark_repaired` path above, never a fresh provider event for an hour that was already emitted. Whether to repair at all is an open decision, pending a read-only quantification of paid-tier exposure.
+
 The internal control-plane operations API exposes bounded local rows and issue context, never secret values or payment payloads. [`scripts/stripe-billing-reconcile.sh`](../scripts/stripe-billing-reconcile.sh) compares each normalized paid dimension with Stripe's eventually consistent meter-event summaries and invoice-preview lines, fails on mismatch/reject/ambiguity/duplicate evidence, and refuses every live key.
 
 ### 4. Invoice reads preserve the m48 public contract

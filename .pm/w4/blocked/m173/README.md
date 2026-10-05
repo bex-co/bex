@@ -1,16 +1,16 @@
 # w4 · m173 — `instance_seconds` meters how many container series appeared in an hour, not how long instances ran
 
-**Worker:** worker4 **Goal:** billed `instance_seconds` equals real instance running time: one instance per pod (not per container), prorated to the seconds it actually ran in the window, with replacement pods during a rollout counted only for their own lifetimes. **Status:** todo
+**Worker:** worker4 **Goal:** billed `instance_seconds` equals real instance running time: one instance per pod (not per container), prorated to the seconds it actually ran in the window, with replacement pods during a rollout counted only for their own lifetimes. **Status:** blocked — t001/t003/t004/t005 done 2026-10-04; t002 waits on a paid-exposure production read + the user's repair decision; t006 on the live replay
 
 ## Tasks (in order)
 
 | id   | title                                                           | est | depends_on                 |
 | ---- | --------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Prorated, per-pod instance-seconds query for Apps and datastores | 1h  | —                          |
+| t001 | Prorated, per-pod instance-seconds query for Apps and datastores — **DONE** | 1h  | —                          |
 | t002 | Decide and apply the correction for already-metered hours       | 45m | w4/m173/t001               |
-| t003 | Render parity across usage surfaces                             | 30m | w4/m173/t002               |
-| t004 | Simplify changed code                                           | 20m | w4/m173/t003               |
-| t005 | Test coverage for shipped behavior                              | 45m | w4/m173/t003               |
+| t003 | Render parity across usage surfaces — **DONE**                             | 30m | w4/m173/t002               |
+| t004 | Simplify changed code — **DONE**                                           | 20m | w4/m173/t003               |
+| t005 | Test coverage for shipped behavior — **DONE**                              | 45m | w4/m173/t003               |
 | t006 | Closeout                                                        | 15m | w4/m173/t005               |
 
 ## Definition of done
