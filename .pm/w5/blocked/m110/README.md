@@ -1,6 +1,6 @@
 # w5 · m110 — Key Value: platform clients log in as a platform ACL user, so locking down the tenant user can't break them
 
-**Worker:** worker5 **Goal:** The tenant `default` user is denied admin commands by category while the operator, exporter, probe and backup keep what they need, which fixes the persistence-switch regression from w4/191. **Status:** blocked — t001–t004, t006–t008 done 2026-10-05; t005 needs a deployed operator for the live replay; t009 closeout follows
+**Worker:** worker5 **Goal:** The tenant `default` user is denied admin commands by category while the operator, exporter, probe and backup keep what they need, which fixes the persistence-switch regression from w4/191. **Status:** in progress — t001–t008 done 2026-10-05 (t005 live replay passed on production, pin `1128928ce` ⊇ `7ea5ce849`); t009 closeout next
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | Add a platform ACL user with its own secret — **DONE** | 45m | t001 |
 | t003 | Move live-prep, exporter, probe and backup to the platform user — **DONE** | 1h | t002 |
 | t004 | Deny admin commands to the tenant user by category — **DONE** | 45m | t003 |
-| t005 | Roll out to existing Key Values and verify live | 45m | t004 |
+| t005 | Roll out to existing Key Values and verify live — **DONE** | 45m | t004 |
 | t006 | Render parity — **DONE** | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006, t007 |
@@ -47,3 +47,17 @@ On an owned Free `qa-` Key Value in `bex-canary` (QA session per `/qa-find-bugs`
 2. As the tenant: `CONFIG SET maxmemory 0`, `SAVE`, `MONITOR`, `CLIENT KILL ID 1` → NOPERM; `CONFIG GET maxmemory`, `INFO`, `CLIENT LIST`, `FLUSHALL` → OK; `ACL WHOAMI` → `default`.
 3. The Metrics tab shows memory and connected clients (exporter scrapes as `bex`).
 4. Delete the fixture; record the evidence here, then run t009.
+
+## t005 live replay — passed 2026-10-05 (w4 `/qa-find-bugs` loop57)
+
+Production, `bex-canary`, pin `1128928ce` (includes `7ea5ce849`; deploy run 37375252906 finished 22:01:37Z). Owned Free Key Value `qa-20261005-l57-kv` (`red-db21sne1c8rs73e1jmhg`, Valkey 8, IP allowlist = the QA runner's /32). The connection string went through a 0600 loopback file and was never printed. The instance was deleted afterwards (`DELETE` 204, `GET` 404, list empty).
+
+1. **Persistence round trip.**
+   - Created with `journal_snapshot`. `ACL WHOAMI` → `default`; `SET l57:base`; counter `INCRBY`/`INCR` → 42; `CONFIG GET appendonly` → `yes`.
+   - `PATCH persistenceMode: snapshot` → `config_restart` → `available` in ~20 s. Data intact, `appendonly no`, then `SET l57:new`.
+   - `PATCH persistenceMode: journal_snapshot` → `available` in ~20 s, **no wedge**. `l57:base`, `l57:new` and `l57:ctr=42` were all intact, and `appendonly yes`.
+2. **Tenant command surface.**
+   - **NOPERM:** `CONFIG SET` (maxmemory, appendonly), `CONFIG REWRITE`, `SAVE`, `BGSAVE`, `SHUTDOWN NOSAVE`, `ACL LIST`, `ACL SETUSER`, `REPLICAOF NO ONE`, `CLIENT KILL`, `CLIENT PAUSE`, `MODULE LIST`, `SYNC`, `MONITOR`.
+   - `DEBUG` → `ERR DEBUG command not allowed` (Valkey `enable-debug-command`).
+   - **OK:** `CONFIG GET maxmemory`, `INFO server`, `CLIENT LIST`, `SLOWLOG GET`, `DBSIZE`, `FLUSHALL` (3 → 0).
+3. **Metrics.** `GET /v1/metrics/kv-memory` and `kv-connections` returned one point per minute from 22:04 to 22:07, after both switches. The dashboard Key Value → Metrics tab rendered Memory (up to ~1.2 MiB) and Connections (0–1).
