@@ -47,6 +47,10 @@ import { useDisconnectBlueprint } from "@/features/blueprints/hooks/use-disconne
 import { useBlueprintSyncs } from "@/features/blueprints/hooks/use-blueprint-syncs";
 import { RelativeAge } from "@/common/components/relative-time";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
+import {
+  takeoverCopy,
+  type BlueprintTakeover,
+} from "@/features/blueprints/lib/takeover";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 import { BlueprintDocument } from "@/graphql/definitions";
 import {
@@ -227,6 +231,7 @@ export function BlueprintDetailPage() {
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
   >(null);
+  const [takeover, setTakeover] = useState<BlueprintTakeover | null>(null);
   // The pin the protected-confirmation retry resends. Closing the sync dialog
   // drops the reviewed pin, and the server's phrase only arrives after that
   // close — without carrying it here the retry has nothing to send (w8/m41).
@@ -272,6 +277,7 @@ export function BlueprintDetailPage() {
       setConfirming(false);
       setProtectedReviewed(reviewed);
       setProtectedConfirmation(result.confirmation);
+      setTakeover(result.takeover ?? null);
       return;
     }
     if (result.status === "source_changed") {
@@ -710,11 +716,13 @@ export function BlueprintDetailPage() {
         }
         requiredConfirmation={protectedConfirmation ?? ""}
         actionLabel={t("blueprints.syncConfirmAction")}
+        {...(takeover ? takeoverCopy(takeover, t) : {})}
         busy={syncBusy}
         onOpenChange={(open) => {
           if (!open) {
             setProtectedConfirmation(null);
             setProtectedReviewed(null);
+            setTakeover(null);
           }
         }}
         onConfirm={async (confirmation) => {
