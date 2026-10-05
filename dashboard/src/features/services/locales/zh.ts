@@ -896,11 +896,13 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Secret-files content input placeholder",
   },
   "services.secretFileInvalidName": {
-    message: "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
+    message:
+      "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
     description: "Secret-files add-file validation message for an invalid name",
   },
   "services.secretFileNameHint": {
-    message: "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
+    message:
+      "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
     description:
       "Neutral file-name rule under a new secret-file row before the user types or blurs — same rule as secretFileInvalidName but helper styling, not an error",
   },
@@ -1860,6 +1862,12 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.deployCommandEdit": {
     message: "编辑命令",
     description: "Accessible label for the cron command edit button",
+  },
+  "services.cronScheduleNeverFires": {
+    message:
+      "此计划永远不会触发：没有日期同时匹配其日期和月份（例如 31 2 表示 2 月 31 日）。",
+    description:
+      "Cron schedule validation error when the schedule parses but no date ever matches (w4/197)",
   },
   "services.deployScheduleError": {
     message: "请输入有效的 5 段 cron 表达式，例如 0 * * * *。",

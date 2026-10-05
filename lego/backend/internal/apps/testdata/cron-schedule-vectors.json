@@ -28,10 +28,9 @@
   { "schedule": "*-5 * * * *", "valid": true, "why": "robfig ignores whatever follows *- (the range is already the whole field)" },
   { "schedule": "1,,2 * * * *", "valid": true, "why": "robfig splits a list with strings.FieldsFunc, which drops empty items" },
   { "schedule": ",5 * * * *", "valid": true, "why": "robfig splits a list with strings.FieldsFunc, which drops empty items" },
-  { "schedule": ", * * * *", "valid": true, "why": "robfig splits a list with strings.FieldsFunc, which drops empty items" },
+  { "schedule": ", * * * *", "valid": false, "why": "robfig drops the empty items, leaving the minute field with no values: it parses but never fires (w4/197)" },
   { "schedule": "0 0 * constructor *", "valid": false, "why": "only jan-dec are month names (an object-prototype key is not)" },
   { "schedule": "0 0 * * __proto__", "valid": false, "why": "only sun-sat are day-of-week names (an object-prototype key is not)" },
-
   { "schedule": "0 0 * * 7", "valid": false, "why": "robfig bounds day-of-week to 0-6; 7 is not Sunday here (w1/m145)" },
   { "schedule": "0 0 * * 0-7", "valid": false, "why": "day-of-week is 0-6" },
   { "schedule": "0 0 * * 1,7", "valid": false, "why": "day-of-week is 0-6" },
@@ -62,5 +61,17 @@
   { "schedule": "*", "valid": false },
   { "schedule": "* * *", "valid": false },
   { "schedule": "* * * * * *", "valid": false },
-  { "schedule": "not a cron", "valid": false }
+  { "schedule": "not a cron", "valid": false },
+  { "schedule": "0 0 31 2 *", "valid": false },
+  { "schedule": "0 0 30 2 *", "valid": false },
+  { "schedule": "0 0 31 4 *", "valid": false },
+  { "schedule": "0 0 30,31 2 *", "valid": false },
+  { "schedule": "0 0 31 2,4,6,9,11 *", "valid": false },
+  { "schedule": "0 0 29 2 *", "valid": true },
+  { "schedule": "0 0 31 1 *", "valid": true },
+  { "schedule": "0 0 31 2,3 *", "valid": true },
+  { "schedule": "0 0 31 2 1", "valid": true },
+  { "schedule": "0 0 31 2 */2", "valid": true },
+  { "schedule": "0 0 31 2 */1", "valid": false },
+  { "schedule": "0 0 31 2 ?", "valid": false }
 ]
