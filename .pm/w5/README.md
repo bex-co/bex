@@ -47,6 +47,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **079** — [A database's unavailable reason should travel as a code the dashboard can translate](079.md) (~50m) ← `faf2ca1f6` (w4/m170)
 - [ ] **080** — [The Blueprint compiler refuses `dockerCommand` on `runtime: image`](080.md) (~45m) ← found in w5/073's review
 - [ ] **081** — [workspaces_e2e's OpenBao purge assertions never run in CI](081.md) (~45m) ← found in w5/m112's review
+- [ ] **082** — [ci-red-streak reads main through the runs API's branch search, which can return stale pages](082.md) (~30m) ← found in w5/m112's review
 
 ## Approved queue — 2026-10-01
 
