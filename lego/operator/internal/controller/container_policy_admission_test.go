@@ -346,6 +346,7 @@ func admissionPlatformWorkloads(namespace string) []client.Object {
 	plan, _ := resolveKVPlan(kv.Spec)
 	intent := keyValueIntentFor(kv, plan, 1, "")
 	intent.authSecretName = "strict-valkey-auth"
+	intent.platformSecretName = "strict-valkey-platform"
 	cl := fake.NewClientBuilder().WithScheme(k8sClient.Scheme()).Build()
 	kvReconciler := &KeyValueReconciler{Client: cl, Scheme: cl.Scheme()}
 	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: namespace}}

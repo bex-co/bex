@@ -78,9 +78,7 @@ func keyValuePersistenceInit(kv *appv1alpha1.KeyValue, intent keyValueIntent, so
 			{Name: "PERSISTENCE_SOURCE", Value: source},
 			{Name: "PERSISTENCE_TOKEN", Value: intent.persistenceToken},
 			{Name: "PERSISTENCE_TARGET", Value: keyValuePersistenceMode(kv.Spec.PersistenceMode)},
-			{Name: "VALKEY_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: intent.authSecretName}, Key: "password",
-			}}},
+			kvSecretEnv(kvPasswordEnv, intent.authSecretName),
 		},
 		Resources: kvResources(intent.plan), SecurityContext: valkeySecCtx(),
 		VolumeMounts: []corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}},

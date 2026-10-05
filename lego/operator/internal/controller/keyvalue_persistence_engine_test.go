@@ -22,11 +22,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"github.com/redis/go-redis/v9"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Run with BEX_TEST_VALKEY=1. These tests use the same pinned 7/8 engine images
@@ -46,7 +50,7 @@ func TestValkeyPersistenceEngine(t *testing.T) {
 				c = e.start("snapshot")
 				e.set(c, "counter", "23")
 				e.set(c, "new", "kept")
-				if err := c.Save(context.Background()).Err(); err != nil {
+				if err := e.platform().Save(context.Background()).Err(); err != nil {
 					t.Fatal(err)
 				}
 				e.stop()
@@ -58,6 +62,7 @@ func TestValkeyPersistenceEngine(t *testing.T) {
 					t.Fatal("old projection unexpectedly kept new key")
 				}
 			})
+			t.Run("tenant_acl_and_platform_user", func(t *testing.T) { testTenantACLAndPlatformUser(t, major) })
 			t.Run("live_handoff_and_reverse_survive_restart", func(t *testing.T) {
 				e := newPersistenceEngine(t, major)
 				e.init("journal-snapshot", "journal-snapshot", "")
@@ -73,7 +78,8 @@ func TestValkeyPersistenceEngine(t *testing.T) {
 				c = e.start("snapshot")
 				e.set(c, "new", "kept")
 				e.set(c, "counter", "23")
-				if err := c.Save(context.Background()).Err(); err != nil {
+				// SAVE is @admin: tenants can't issue it, so the control does.
+				if err := e.platform().Save(context.Background()).Err(); err != nil {
 					t.Fatal(err)
 				}
 				e.stop()
@@ -81,7 +87,7 @@ func TestValkeyPersistenceEngine(t *testing.T) {
 				e.assert(c, "counter", "23")
 				e.assert(c, "new", "kept")
 				e.set(c, "after-save", "live")
-				e.prepare(c)
+				e.prepare()
 				// An acknowledged write AFTER completion must be journaled too. Kill
 				// without shutdown SAVE: the live gate must not depend on old grace time.
 				e.set(c, "after-handoff", "acknowledged")
@@ -276,11 +282,77 @@ func TestValkeyPersistenceEngine(t *testing.T) {
 	}
 }
 
+// w5/m110: the tenant's default user keeps data commands and read-only
+// introspection but no @admin verb; the platform user keeps what the
+// handoff (CONFIG SET), the exporter (INFO) and the backup (SYNC) need.
+func testTenantACLAndPlatformUser(t *testing.T, major string) {
+	e := newPersistenceEngine(t, major)
+	e.init("snapshot", "snapshot", "")
+	c := e.start("snapshot")
+	ctx := context.Background()
+	platform := e.platform()
+	dryRun := func(cmd ...any) string {
+		t.Helper()
+		reply, err := platform.Do(ctx, append([]any{"ACL", "DRYRUN", kvDefaultUser}, cmd...)...).Text()
+		if err != nil {
+			t.Fatalf("ACL DRYRUN %v: %v", cmd, err)
+		}
+		return reply
+	}
+	for _, cmd := range [][]any{
+		{"SET", "k", "v"}, {"GET", "k"}, {"DEL", "k"}, {"FLUSHALL"}, {"PING"}, {"INFO"},
+		{"EVAL", "return 1", "0"}, {"CONFIG", "GET", "maxmemory"}, {"CLIENT", "LIST"},
+		{"CLIENT", "SETNAME", "app"}, {"SLOWLOG", "GET"}, {"SLOWLOG", "LEN"}, {"ACL", "WHOAMI"},
+	} {
+		if reply := dryRun(cmd...); reply != "OK" {
+			t.Errorf("tenant refused %v: %s", cmd, reply)
+		}
+	}
+	for _, cmd := range [][]any{
+		{"CONFIG", "SET", "maxmemory", "0"}, {"CONFIG", "REWRITE"}, {"CONFIG", "RESETSTAT"},
+		{"ACL", "SETUSER", "x"}, {"ACL", "LIST"}, {"SHUTDOWN"}, {"DEBUG", "SLEEP", "0"},
+		{"MODULE", "LIST"}, {"REPLICAOF", "NO", "ONE"}, {"FAILOVER"}, {"MONITOR"}, {"SYNC"},
+		{"SAVE"}, {"BGSAVE"}, {"BGREWRITEAOF"}, {"CLIENT", "KILL", "ID", "1"}, {"CLIENT", "PAUSE", "1"},
+	} {
+		if reply := dryRun(cmd...); reply == "OK" {
+			t.Errorf("tenant may run %v", cmd)
+		}
+	}
+	if err := c.ConfigSet(ctx, "maxmemory", "0").Err(); err == nil || !strings.Contains(err.Error(), "NOPERM") {
+		t.Fatalf("tenant CONFIG SET = %v, want NOPERM", err)
+	}
+	// The backup Job's own snapshot script, run beside the server: it must
+	// replicate as the platform user and be refused the tenant's password.
+	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "fixture"}}
+	snapshot := (&KeyValueReconciler{}).keyValueBackupCronJobSpec(kv, starterValkeyTier(), "fixture-platform").JobTemplate.Spec.Template.Spec.InitContainers[0]
+	runSnapshot := func(user, password string) ([]byte, error) {
+		args := []string{"exec", "-e", "VALKEY_HOST=127.0.0.1", "-e", "VALKEY_USER=" + user, "-e", "REDISCLI_AUTH=" + password,
+			e.container, "sh", "-ceu", "mkdir -p /backup\n" + snapshot.Args[0]}
+		return exec.CommandContext(ctx, "docker", args...).CombinedOutput()
+	}
+	if !slices.Contains(snapshot.Env, corev1.EnvVar{Name: "VALKEY_USER", Value: kvPlatformUser}) {
+		t.Fatalf("snapshot env = %v", snapshot.Env)
+	}
+	if out, err := runSnapshot(kvPlatformUser, fixturePlatformPassword); err != nil {
+		t.Fatalf("platform snapshot failed: %v\n%s", err, out)
+	}
+	if out, err := runSnapshot(kvDefaultUser, fixturePassword); err == nil {
+		t.Fatalf("tenant credentials replicated the dataset:\n%s", out)
+	}
+}
+
+// fixturePassword and fixturePlatformPassword stand in for the <kv>-auth and
+// <kv>-platform Secrets.
+const (
+	fixturePassword         = "fixture-password"
+	fixturePlatformPassword = "fixture-platform-password"
+)
+
 type persistenceEngine struct {
-	t                        *testing.T
-	image, volume, container string
-	client                   *redis.Client
-	bootstrapped             bool
+	t                                 *testing.T
+	image, volume, container, address string
+	client                            *redis.Client
+	bootstrapped                      bool
 }
 
 func newPersistenceEngine(t *testing.T, major string) *persistenceEngine {
@@ -311,14 +383,18 @@ func (e *persistenceEngine) docker(args ...string) string {
 }
 func (e *persistenceEngine) start(mode string) *redis.Client {
 	e.t.Helper()
-	args := []string{"run", "-d", "-p", "127.0.0.1::6379", "-v", e.volume + ":/data", e.image, "valkey-server", "--requirepass", "fixture-password", "--appendfsync", "always"}
-	switch mode {
-	case "off":
-		args = append(args, "--appendonly", "no", "--save", "", "--dir", "/tmp")
-	case "snapshot":
-		args = append(args, "--appendonly", "no")
-	default:
-		args = append(args, "--appendonly", "yes")
+	// The StatefulSet's own server arguments, ACL users included, so the live
+	// handoff and the fixtures run under production permissions. Kubernetes
+	// expands the $(VAR) password references from the container env; so does this.
+	server := valkeyArgs(appv1alpha1.KeyValueSpec{PersistenceMode: mode}, starterValkeyTier())
+	for i, arg := range server {
+		arg = strings.ReplaceAll(arg, "$("+kvPasswordEnv+")", fixturePassword)
+		server[i] = strings.ReplaceAll(arg, "$("+kvPlatformPasswordEnv+")", fixturePlatformPassword)
+	}
+	args := append([]string{"run", "-d", "-p", "127.0.0.1::6379", "-v", e.volume + ":/data", e.image, "valkey-server"}, server...)
+	args = append(args, "--appendfsync", "always")
+	if mode == keyValueOffMode {
+		args = append(args, "--dir", "/tmp")
 	}
 	output := strings.Split(strings.TrimSpace(e.docker(args...)), "\n")
 	e.container = output[len(output)-1]
@@ -329,7 +405,8 @@ func (e *persistenceEngine) start(mode string) *redis.Client {
 		e.t.Fatalf("Valkey port unavailable: %v: %s\n%s", err, portOutput, e.docker("logs", e.container))
 	}
 	address := strings.TrimSpace(string(portOutput))
-	c := redis.NewClient(&redis.Options{Addr: address, Password: "fixture-password", Protocol: 2, MaxRetries: -1})
+	e.address = address
+	c := redis.NewClient(&redis.Options{Addr: address, Password: fixturePassword, Protocol: 2, MaxRetries: -1})
 	e.client = c
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
@@ -370,7 +447,7 @@ func (e *persistenceEngine) initScriptResult(source, target, token, script strin
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
 	defer cancel()
 	cidFile := filepath.Join(e.t.TempDir(), "init.cid")
-	args := []string{"run", "--rm", "--cidfile", cidFile, "--user", "999:1000", "-v", e.volume + ":/data", "-e", "VALKEY_PASSWORD=fixture-password", "-e", "PERSISTENCE_SOURCE=" + source, "-e", "PERSISTENCE_TARGET=" + target, "-e", "PERSISTENCE_TOKEN=" + token, "--entrypoint", "sh", e.image, "-ec", script}
+	args := []string{"run", "--rm", "--cidfile", cidFile, "--user", "999:1000", "-v", e.volume + ":/data", "-e", kvPasswordEnv + "=" + fixturePassword, "-e", "PERSISTENCE_SOURCE=" + source, "-e", "PERSISTENCE_TARGET=" + target, "-e", "PERSISTENCE_TOKEN=" + token, "--entrypoint", "sh", e.image, "-ec", script}
 	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
 	// Killing a timed-out docker CLI does not stop its container. Remove the
 	// exact captured container before the volume cleanup, even on failure.
@@ -400,8 +477,18 @@ func (e *persistenceEngine) assert(c *redis.Client, k, v string) {
 		e.t.Fatalf("%s = %q (%v), want %q", k, got, err, v)
 	}
 }
-func (e *persistenceEngine) prepare(c *redis.Client) {
+
+// platform logs in through the operator's own platformValkeyClient, so the
+// engine runs exercise the production credentials.
+func (e *persistenceEngine) platform() *redis.Client {
 	e.t.Helper()
+	c := platformValkeyClient(e.address, &corev1.Secret{Data: map[string][]byte{kvPasswordKey: []byte(fixturePlatformPassword)}})
+	e.t.Cleanup(func() { _ = c.Close() })
+	return c
+}
+func (e *persistenceEngine) prepare() {
+	e.t.Helper()
+	c := e.platform()
 	for range 100 {
 		ready, err := prepareValkeyJournal(context.Background(), c)
 		if err != nil {
