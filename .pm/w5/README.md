@@ -19,7 +19,7 @@ On 2026-10-05 the user handed every fix from the last-24h code review (`061ab769
 
 Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback tail); m113 re-scopes w4/200 to a backend cause; m115 is the consolidation w4/m172 deliberately deferred. Pointers were added to w4/200 and w4/m173.
 
-- [ ] **070** — [The cron schedule editor hangs the browser tab on a zero step (`*/0`)](070.md) (~45m) ← regression from `299767929` (w4/197)
+- [x] **070** — [The cron schedule editor hangs the browser tab on a zero step (`*/0`)](done/070.md) (~45m) ← regression from `299767929` (w4/197) — **DONE 2026-10-05**: one parse-first classifier (`cronScheduleProblem`) drives both editors; dashboard tests + lint green.
 - [ ] **m110** — [Key Value: platform clients log in as a platform ACL user, so locking down the tenant user can't break them](m110/README.md) (9 tasks; 5h total) ← regression from `e9fb4178c` (w4/191)
 - [ ] **m111** — [`instance_seconds` stops metering terminated pods through Prometheus's 5-minute lookback](m111/README.md) (9 tasks; 3h40m total) ← billing; gap in `e2510371c` (w4/m173 t001)
 - [ ] **071** — [Reserved Postgres roles miss CNPG's `cnpg_` prefix](071.md) (~40m) ← gap in `faf2ca1f6` (w4/m170)

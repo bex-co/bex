@@ -52,7 +52,10 @@ const FIELDS: FieldSpec[] = [
 // robfig's mustParseInt: Go's strconv.Atoi (an optional "+", decimal digits
 // that fit an int64) with negatives refused.
 function parseUint(raw: string): number | null {
-  const digits = /^\+?0*(\d+)$/.exec(raw)?.[1];
+  // Leading zeros don't count toward overflow ("000…05" is 5). They are stripped
+  // in a second pass: folding them into this pattern as "0*(\d+)" backtracks
+  // quadratically on a long pasted run of zeros, once per keystroke.
+  const digits = /^\+?(\d+)$/.exec(raw)?.[1].replace(/^0+(?=\d)/, "");
   if (digits === undefined) return null;
   const overflows =
     digits.length > 19 ||
@@ -133,16 +136,12 @@ function expandField(field: string, spec: FieldSpec) {
 // exceeds every listed month's length never matches.
 const MONTH_MAX_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-/**
- * True when a syntactically valid schedule has no date to fire on (w4/197),
- * e.g. "0 0 31 2 *", or a field emptied by its list (", * * * *"). robfig ANDs day-of-month with day-of-week when either is
- * a star and ORs them otherwise; every month holds every weekday, so only a
- * star day-of-week can leave nothing to match — when no listed day exists in
- * any listed month. bex-api refuses the same set (SCHEDULE_NEVER_FIRES).
- */
-export function cronNeverFires(s: string): boolean {
-  const fields = s.trim().split(/\s+/);
-  if (fields.length !== 5) return false;
+// neverFires reports whether five parsed fields have no date to fire on
+// (w4/197), e.g. "0 0 31 2 *", or a field emptied by its list (", * * * *").
+// robfig ANDs day-of-month with day-of-week when either is a star and ORs them
+// otherwise; every month holds every weekday, so only a star day-of-week can
+// leave nothing to match — when no listed day exists in any listed month.
+function neverFires(fields: string[]): boolean {
   // A list of only empty items (", * * * *") parses to a field with no values.
   if (
     fields.some((field, i) => expandField(field, FIELDS[i]).values.size === 0)
@@ -157,10 +156,19 @@ export function cronNeverFires(s: string): boolean {
   );
 }
 
-/** Returns true if s is a valid standard 5-field cron expression that fires. */
-export function isValidCron(s: string): boolean {
+/**
+ * Why bex-api would refuse a 5-field schedule, or null when it accepts it:
+ * "format" for anything robfig's parser rejects, "never_fires" for a schedule
+ * that parses but has no date to fire on (bex-api's SCHEDULE_NEVER_FIRES).
+ * Fields are expanded only after every item parses, so expansion is bounded
+ * by the field's own range: a step of 0 or an out-of-range bound is a format
+ * error, never an unbounded loop (w5/070).
+ */
+export function cronScheduleProblem(
+  s: string,
+): "format" | "never_fires" | null {
   const fields = s.trim().split(/\s+/);
-  if (fields.length !== 5) return false;
+  if (fields.length !== 5) return "format";
   // robfig splits a list with strings.FieldsFunc, which drops empty items.
   const parses = fields.every((field, i) =>
     field
@@ -168,7 +176,13 @@ export function isValidCron(s: string): boolean {
       .filter(Boolean)
       .every((expr) => validRange(expr, FIELDS[i])),
   );
-  return parses && !cronNeverFires(s);
+  if (!parses) return "format";
+  return neverFires(fields) ? "never_fires" : null;
+}
+
+/** Returns true if s is a valid standard 5-field cron expression that fires. */
+export function isValidCron(s: string): boolean {
+  return cronScheduleProblem(s) === null;
 }
 
 const DAY_NAMES = [
