@@ -192,6 +192,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **184** — [Database detail minor UI nits (disk-autoscaling SR dupe + stale password alert)](done/184.md) ← infinite /qa-find-bugs loop7 2026-10-04 UTC — done 2026-10-04.
+
 - [ ] **188** — [REST create may drop an image service's `envSpecificDetails.dockerCommand`](188.md) ← w4/m166 t003 parity check 2026-10-04; verify Render's image-runtime shape, then accept it on create or delete.
 
 - [x] **183** — [Unlinking a deleted service's env-group link always 404s, stranding the link](done/183.md) ← infinite /qa-find-bugs loop3 2026-10-04 UTC, muse.env; tolerate NotFound in `UnlinkService` like `detach` does. — done 2026-10-04.

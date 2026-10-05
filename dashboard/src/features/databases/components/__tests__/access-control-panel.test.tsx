@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessControlPanel } from "@/features/databases/components/access-control-panel";
 
 const createUser = vi.fn();
+const deleteUser = vi.fn();
+let users: string[] = [];
 let pooled: { internal: string; external: string } | null = null;
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({
@@ -16,13 +18,13 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
 vi.mock("@/features/databases/hooks/use-access-control", () => ({
   useAccessControl: () => ({
     allowList: [],
-    users: [],
+    users,
     loading: false,
     savingAllowList: false,
     creatingUser: false,
     saveAllowList: vi.fn(),
     createUser,
-    deleteUser: vi.fn(),
+    deleteUser,
     pooled,
     poolLoading: false,
     revealPooled: vi.fn(),
@@ -31,6 +33,8 @@ vi.mock("@/features/databases/hooks/use-access-control", () => ({
 
 beforeEach(() => {
   createUser.mockReset();
+  deleteUser.mockReset();
+  users = [];
   pooled = null;
 });
 
@@ -52,6 +56,33 @@ describe("AccessControlPanel database-user creation", () => {
       screen.getByRole("button", { name: /Copy .*password/i }),
     ).toBeInTheDocument();
     expect(screen.getByPlaceholderText("reporting")).toHaveValue("");
+  });
+
+  it("drops the one-time password once that user is deleted, and only then", async () => {
+    createUser.mockResolvedValue("one-time-password");
+    users = ["analytics", "other"];
+    const user = userEvent.setup();
+    render(<AccessControlPanel id="dpg-source" plan="free" />);
+    await user.type(screen.getByPlaceholderText("reporting"), "analytics");
+    await user.click(screen.getByRole("button", { name: "Add user" }));
+    expect(await screen.findByText("one-time-password")).toBeInTheDocument();
+
+    deleteUser.mockResolvedValue(true);
+    await user.click(screen.getByRole("button", { name: /Delete .*other/i }));
+    expect(screen.getByText("one-time-password")).toBeInTheDocument();
+
+    deleteUser.mockResolvedValue(false); // a failed delete leaves the user
+    await user.click(
+      screen.getByRole("button", { name: /Delete .*analytics/i }),
+    );
+    expect(screen.getByText("one-time-password")).toBeInTheDocument();
+
+    deleteUser.mockResolvedValue(true);
+    await user.click(
+      screen.getByRole("button", { name: /Delete .*analytics/i }),
+    );
+    expect(screen.queryByText("one-time-password")).not.toBeInTheDocument();
+    expect(deleteUser).toHaveBeenLastCalledWith("analytics");
   });
 
   it("names the allowlist and database-user inputs", () => {
