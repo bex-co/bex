@@ -100,7 +100,7 @@ func TestNativeDockerfileEnvRevisionBustsCacheKey(t *testing.T) {
 // RUN and CMD must therefore use a NON-login shell.
 func TestNativeDockerfileKeepsToolchainPATH(t *testing.T) {
 	const profileDefault = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	for runtime := range nativeRuntimeImages {
+	for runtime := range nativeToolchains {
 		o := nativeOptions()
 		o.Runtime = runtime
 		dockerfile := nativeDockerfile(o)
@@ -119,10 +119,15 @@ func TestNativeDockerfileKeepsToolchainPATH(t *testing.T) {
 }
 
 func TestNativeRuntimeImagesAreDigestPinned(t *testing.T) {
-	for runtime, image := range nativeRuntimeImages {
-		parts := strings.Split(image, "@sha256:")
-		if len(parts) != 2 || len(parts[1]) != 64 {
-			t.Errorf("native runtime %s image is not digest-pinned: %q", runtime, image)
+	for runtime, toolchain := range nativeToolchains {
+		if _, ok := toolchain.find(toolchain.defaultLine); !ok {
+			t.Errorf("native runtime %s default line %q is not one of its lines", runtime, toolchain.defaultLine)
+		}
+		for _, line := range toolchain.lines {
+			parts := strings.Split(line.image, "@sha256:")
+			if len(parts) != 2 || len(parts[1]) != 64 {
+				t.Errorf("native runtime %s line %s image is not digest-pinned: %q", runtime, line.line, line.image)
+			}
 		}
 	}
 }
