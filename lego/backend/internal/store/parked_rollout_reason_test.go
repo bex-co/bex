@@ -137,3 +137,81 @@ func TestUpdateFailedCloseReasonOrder(t *testing.T) {
 		t.Errorf("current diagnosis: reason = %q code = %q", got, code)
 	}
 }
+
+// w4/m171: a USER suspend (spec.suspended) ends the rollout it interrupts. The
+// row closes canceled on the next pass, naming the suspend — not "in progress"
+// for 18 minutes and then update_failed with a health-gate line blaming code
+// that never ran. Auto-hibernate (no spec.suspended) keeps w6/m147's deferral,
+// and a release that already serves is not canceled.
+func TestUserSuspendCancelsTheInterruptedRollout(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		userSuspended bool
+		active        string
+		wantStatus    string
+	}{
+		{"user suspend mid-rollout", true, "rev-6", DeployCanceled},
+		{"auto-hibernate mid-rollout", false, "rev-6", DeployUpdateInProgress},
+		{"user suspend after the release serves", true, "rev-7", DeployUpdateInProgress},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			st := newMemStore()
+			tenant, err := st.CreateTenant(ctx, "suspend", PlanHobby)
+			if err != nil {
+				t.Fatal(err)
+			}
+			row, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "web", Image: "docker.io/traefik/whoami:latest", Tier: "free"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			open, err := st.CreateDeploy(ctx, row.ID, "deploy_hook", row.Image, 7, CommitInfo{}, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := st.TransitionDeploy(ctx, open.ID, DeployUpdateInProgress, "", "", "", "", nil); err != nil {
+				t.Fatal(err)
+			}
+			park := appv1alpha1.ReasonAutoHibernated
+			if tc.userSuspended {
+				park = appv1alpha1.ReasonSuspended
+			}
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Generation: 7},
+				Spec:       appv1alpha1.AppSpec{Suspended: tc.userSuspended},
+				Status: appv1alpha1.AppStatus{
+					Phase: appv1alpha1.PhaseHibernated, Image: row.Image, ObservedGeneration: 7,
+					ReleaseGeneration: 7, ActiveRevision: tc.active,
+					Conditions: []metav1.Condition{{
+						Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+						Reason: park, ObservedGeneration: 7,
+					}},
+				},
+			}
+			rec := NewReconciler(nil, st)
+			current, err := st.GetDeploy(ctx, row.ID, open.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rec.recordDeploy(ctx, DesiredApp{App: row}, current, app)
+			got, err := st.GetDeploy(ctx, row.ID, open.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Status != tc.wantStatus {
+				t.Fatalf("deploy = %s, want %s", got.Status, tc.wantStatus)
+			}
+			if tc.wantStatus != DeployCanceled {
+				return
+			}
+			if got.CancelReason != suspendCancelReason || got.FailureReason != "" || got.FinishedAt == nil {
+				t.Fatalf("suspend cancel = reason %q failure %q finished %v", got.CancelReason, got.FailureReason, got.FinishedAt)
+			}
+			// deploy_ended (events feed and webhook alike) reads it as canceled,
+			// never a failure.
+			if RenderDeployStatus(got.Status) != "canceled" {
+				t.Fatalf("deploy_ended outcome = %q, want canceled", RenderDeployStatus(got.Status))
+			}
+		})
+	}
+}

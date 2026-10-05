@@ -1,16 +1,16 @@
 # w4 · m171 — A deploy cut off by a user suspend closes canceled, not as a false health-gate failure
 
-**Worker:** worker4 **Goal:** suspending a service while a deploy is in flight closes that deploy `canceled` straight away, with a cancel reason naming the suspend. It is never left "In Progress" for 18 minutes and then failed with a health-gate line that blames the user's code. **Status:** todo
+**Worker:** worker4 **Goal:** suspending a service while a deploy is in flight closes that deploy `canceled` straight away, with a cancel reason naming the suspend. It is never left "In Progress" for 18 minutes and then failed with a health-gate line that blames the user's code. **Status:** blocked — t001–t005 done 2026-10-04; t006 live closeout remains
 
 ## Tasks (in order)
 
 | id   | title                                                              | est | depends_on                 |
 | ---- | ------------------------------------------------------------------ | --- | -------------------------- |
-| t001 | Close the open deploy `canceled` when the user suspends            | 1h  | —                          |
-| t002 | No failure notifications, webhooks or events for a suspend-cancel  | 30m | w4/m171/t001               |
-| t003 | Render parity across deploy read surfaces                          | 30m | w4/m171/t001, w4/m171/t002 |
-| t004 | Simplify changed code                                              | 20m | w4/m171/t003               |
-| t005 | Test coverage for shipped behavior                                 | 45m | w4/m171/t003               |
+| t001 — **DONE** | Close the open deploy `canceled` when the user suspends            | 1h  | —                          |
+| t002 — **DONE** | No failure notifications, webhooks or events for a suspend-cancel  | 30m | w4/m171/t001               |
+| t003 — **DONE** | Render parity across deploy read surfaces                          | 30m | w4/m171/t001, w4/m171/t002 |
+| t004 — **DONE** | Simplify changed code                                              | 20m | w4/m171/t003               |
+| t005 — **DONE** | Test coverage for shipped behavior                                 | 45m | w4/m171/t003               |
 | t006 | Closeout                                                           | 15m | w4/m171/t005               |
 
 ## Definition of done
