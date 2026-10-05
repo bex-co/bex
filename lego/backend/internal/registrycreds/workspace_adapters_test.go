@@ -77,10 +77,18 @@ func TestCredentialWorkspaceAdapters(t *testing.T) {
 				for path, data := range kv.m {
 					beforeSecrets[path] = maps.Clone(data)
 				}
+				if selected.owner == "" {
+					// No owner named: a member reaches the other workspace's credential by id (w4/m172).
+					if body, ok := call(ctx, "get", "", ids[other]); !ok || !strings.Contains(body, other) {
+						t.Fatalf("ownerless get of the %s credential: %s, %v", other, body, ok)
+					}
+				}
 				for _, operation := range []string{"get", "update", "delete"} {
-					// Both workspaces are memberships, but a credential must still match the selected owner.
-					if body, ok := call(ctx, operation, selected.owner, ids[other]); ok {
-						t.Fatalf("wrong-owner %s allowed: %s", operation, body)
+					// Both workspaces are memberships, but a credential must still match an explicitly selected owner.
+					if selected.owner != "" {
+						if body, ok := call(ctx, operation, selected.owner, ids[other]); ok {
+							t.Fatalf("wrong-owner %s allowed: %s", operation, body)
+						}
 					}
 					if body, ok := call(ctx, operation, "tea-foreign", ids[selected.workspace]); ok {
 						t.Fatalf("nonmember %s allowed: %s", operation, body)

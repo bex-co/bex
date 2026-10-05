@@ -303,10 +303,27 @@ func TestGetScopedToWorkspaceCrossTenantIsNotFound(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	other := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-other"}}, Store: st, Secret: kv}
-	if _, err := other.Get(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("cross-workspace get = %v, want ErrNotFound", err)
+	// A non-member's id answers exactly like a missing one (w4/m172).
+	other := &Service{Base: &core.Base{Namespace: "default", Workspace: soleWorkspaceResolver{"tea-other"}}, Store: st, Secret: kv}
+	_, foreign := other.Get(ctx, created.ID)
+	_, missing := other.Get(ctx, "rgc-missing")
+	if !errors.Is(foreign, core.ErrNotFound) || foreign.Error() != missing.Error() {
+		t.Errorf("cross-workspace get = %v, missing = %v, want identical ErrNotFound", foreign, missing)
 	}
+	if err := other.Delete(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("cross-workspace delete = %v, want ErrNotFound", err)
+	}
+}
+
+// soleWorkspaceResolver is a caller who belongs to exactly one workspace.
+type soleWorkspaceResolver struct{ tenant string }
+
+func (f soleWorkspaceResolver) Tenant(context.Context, core.Identity) (string, bool) {
+	return f.tenant, true
+}
+
+func (f soleWorkspaceResolver) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
+	return tenantID == f.tenant, nil
 }
 
 func TestUpdateUsernameAndExpiryAndRotateSecret(t *testing.T) {

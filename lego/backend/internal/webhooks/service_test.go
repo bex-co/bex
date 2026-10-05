@@ -109,6 +109,14 @@ func (f *fakeEndpointStore) GetWebhookEndpoint(_ context.Context, tenantID, id s
 	return redact(e), nil
 }
 
+func (f *fakeEndpointStore) WebhookEndpointWorkspace(_ context.Context, id string) (string, error) {
+	e, ok := f.rows[id]
+	if !ok {
+		return "", store.ErrNotFound
+	}
+	return e.TenantID, nil
+}
+
 func (f *fakeEndpointStore) SetWebhookEndpointEnabled(_ context.Context, tenantID, id string, enabled bool, reason string) (store.WebhookEndpoint, error) {
 	e, ok := f.rows[id]
 	if !ok || e.TenantID != tenantID {
@@ -235,8 +243,8 @@ func (f fakeWorkspaceResolver) Tenant(context.Context, core.Identity) (string, b
 	return f.tenant, true
 }
 
-func (f fakeWorkspaceResolver) IsMember(context.Context, core.Identity, string) (bool, error) {
-	return true, nil
+func (f fakeWorkspaceResolver) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
+	return tenantID == f.tenant, nil
 }
 
 func newTestService() (*Service, *fakeEndpointStore) {
@@ -1005,4 +1013,64 @@ func TestResendReturnsStableSafeRefusals(t *testing.T) {
 	}
 	_, err = s.Resend(t.Context(), "", created.ID, "whd-source", "pending-second-0002")
 	assertCode(err, WebhookDeliveryPendingCode, core.ErrConflict)
+}
+
+// multiWorkspaceResolver: the caller's default is the first workspace, and
+// they are a member of every listed one.
+type multiWorkspaceResolver []string
+
+func (m multiWorkspaceResolver) Tenant(context.Context, core.Identity) (string, bool) {
+	return m[0], true
+}
+
+func (m multiWorkspaceResolver) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
+	return slices.Contains(m, tenantID), nil
+}
+
+// w4/m172: a member of several workspaces reaches an endpoint in a
+// non-default one by id alone, as Render's by-id routes take no owner. A
+// non-member's id and a mismatched ownerId answer the same 404 as a missing id.
+func TestByIDVerbsResolveTheEndpointsOwnWorkspace(t *testing.T) {
+	st := newFakeEndpointStore()
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
+	creator := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-b"}}, Store: st}
+	created, err := creator.Create(ctx, CreateRequest{Name: "b", URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}, Enabled: true})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	member := &Service{Base: &core.Base{Namespace: "default", Workspace: multiWorkspaceResolver{"tea-a", "tea-b"}}, Store: st}
+	if v, err := member.Get(ctx, "", created.ID); err != nil || v.ID != created.ID {
+		t.Fatalf("Get without ownerId = %+v, %v", v, err)
+	}
+	name := "renamed"
+	if v, err := member.Update(ctx, "", created.ID, UpdateRequest{Name: &name}); err != nil || v.Name != name {
+		t.Fatalf("Update without ownerId = %+v, %v", v, err)
+	}
+	if _, err := member.SetEnabled(ctx, "", created.ID, false); err != nil {
+		t.Fatalf("SetEnabled without ownerId: %v", err)
+	}
+	if _, err := member.ListDeliveries(ctx, "", created.ID, "", 0); err != nil {
+		t.Fatalf("ListDeliveries without ownerId: %v", err)
+	}
+	if _, err := member.Get(ctx, "tea-a", created.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("mismatched ownerId Get = %v, want ErrNotFound", err)
+	}
+
+	outsider := &Service{Base: &core.Base{Namespace: "default", Workspace: multiWorkspaceResolver{"tea-c"}}, Store: st}
+	_, missing := outsider.Get(ctx, "", "whk-missing")
+	_, foreign := outsider.Get(ctx, "", created.ID)
+	if !errors.Is(missing, core.ErrNotFound) || !errors.Is(foreign, core.ErrNotFound) || missing.Error() != foreign.Error() {
+		t.Errorf("non-member %v vs missing %v, want identical not-found", foreign, missing)
+	}
+	if err := outsider.Delete(ctx, "", created.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("non-member Delete = %v, want ErrNotFound", err)
+	}
+
+	if err := member.Delete(ctx, "", created.ID); err != nil {
+		t.Fatalf("Delete without ownerId: %v", err)
+	}
+	if _, ok := st.rows[created.ID]; ok {
+		t.Error("endpoint still stored after Delete")
+	}
 }

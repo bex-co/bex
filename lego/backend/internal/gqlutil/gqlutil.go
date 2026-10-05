@@ -219,6 +219,22 @@ func IDVerb[T any](out graphql.Output, fn func(context.Context, string) (T, erro
 	return KeyVerb(out, "id", fn)
 }
 
+// OwnedIDVerb is IDVerb plus Render's optional `ownerId`, bound as the request's
+// acting workspace before fn runs — the shape of a per-resource projection that
+// answers "this resource in this workspace" (ADR087), so a resource in a
+// non-default workspace is reachable by naming it (w4/m172).
+func OwnedIDVerb[T any](out graphql.Output, fn func(context.Context, string) (T, error)) *graphql.Field {
+	args := IDArg()
+	args["ownerId"] = Arg(graphql.String)
+	return &graphql.Field{
+		Type: out,
+		Args: args,
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			return fn(core.WithWorkspace(p.Context, Str(p.Args, "ownerId")), p.Args["id"].(string))
+		},
+	}
+}
+
 // ArgMutation is PatchMutation without the preview branch: the `(id, <arg>)`
 // setter shape taken by every verb that writes one string field and has no
 // dryRun counterpart (setRootDir, setPublishPath, renameProject, ...).

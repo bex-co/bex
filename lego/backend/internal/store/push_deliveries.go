@@ -103,6 +103,29 @@ func (s *PGStore) ListOwnPushNotifications(ctx context.Context, tenantID, subjec
 	return out, rows.Err()
 }
 
+// PushNotificationWorkspaces returns the workspaces in which subject's own
+// inbox holds eventID, ordered by tenant id, or ErrNotFound. A routing read
+// only (w4/m172): mark-read with no ownerId acts in the item's own workspace,
+// then still authorizes there and updates through the tenant-scoped
+// MarkOwnPushNotificationRead. Keyed by subject, so it can never surface
+// another member's row; the tenant_members FK means every returned workspace
+// is one the subject belongs to. Rows are unique per (tenant, subject,
+// event_id), not per (subject, event_id), hence a list.
+func (s *PGStore) PushNotificationWorkspaces(ctx context.Context, subject, eventID string) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT tenant_id FROM push_notifications WHERE subject=$1 AND event_id=$2 ORDER BY tenant_id`, subject, eventID)
+	if err != nil {
+		return nil, safePushStoreError(ctx, err)
+	}
+	tenants, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, safePushStoreError(ctx, err)
+	}
+	if len(tenants) == 0 {
+		return nil, ErrNotFound
+	}
+	return tenants, nil
+}
+
 func (s *PGStore) MarkOwnPushNotificationRead(ctx context.Context, tenantID, subject, eventID string, at time.Time) (bool, error) {
 	if at.IsZero() {
 		return false, fmt.Errorf("push notification read: %w", ErrInvalid)

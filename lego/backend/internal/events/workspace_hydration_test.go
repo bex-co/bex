@@ -54,6 +54,13 @@ func (s *hydrationStore) GetServiceEvent(ctx context.Context, workspace, eventID
 	return s.fakeStore.GetServiceEvent(ctx, workspace, eventID)
 }
 
+// ServiceEventWorkspaces routes the event to tea-b, its own workspace: with no
+// ownerId every surface hydrates it there (w4/m172) instead of 404ing on the
+// caller's default tea-a.
+func (s *hydrationStore) ServiceEventWorkspaces(context.Context, string) ([]string, error) {
+	return []string{"tea-b"}, nil
+}
+
 func TestEventHydrationWorkspaceAdapters(t *testing.T) {
 	for _, surface := range []string{"REST", "GraphQL", "MCP"} {
 		for _, workspace := range []string{"", "tea-a", "tea-b", "tea-foreign"} {
@@ -82,7 +89,7 @@ func TestEventHydrationWorkspaceAdapters(t *testing.T) {
 					if workspace == "tea-foreign" && rec.Code != http.StatusForbidden {
 						t.Fatalf("foreign response:%d %s", rec.Code, encoded)
 					}
-					if workspace != "tea-foreign" && workspace != "tea-b" && rec.Code != http.StatusNotFound {
+					if workspace == "tea-a" && rec.Code != http.StatusNotFound {
 						t.Fatalf("wrong/default workspace response:%d %s", rec.Code, encoded)
 					}
 				case "GraphQL":
@@ -122,7 +129,7 @@ func TestEventHydrationWorkspaceAdapters(t *testing.T) {
 					payload, _ := json.Marshal(result)
 					encoded = string(payload)
 				}
-				if accepted != (workspace == "tea-b") {
+				if accepted != (workspace == "tea-b" || workspace == "") {
 					t.Fatalf("accepted=%t workspace=%q:%s", accepted, workspace, encoded)
 				}
 				if accepted && (!strings.Contains(encoded, eventID) || !strings.Contains(encoded, st.lookup.ServiceID)) {

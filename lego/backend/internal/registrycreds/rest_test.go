@@ -257,11 +257,11 @@ func TestRESTNonDefaultWorkspaceCredentialIsFullyReachable(t *testing.T) {
 		t.Fatalf("created ownerId = %q, want tea-other", created.OwnerID)
 	}
 
-	// Control: no ?ownerId still means the caller's default workspace.
+	// No ?ownerId resolves the credential's own workspace (w4/m172).
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/registrycredentials/"+created.ID, nil).WithContext(ctx))
-	if rec.Code == http.StatusOK {
-		t.Errorf("get without ownerId => 200, want a miss in the default workspace: %s", rec.Body)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ownerId":"tea-other"`) {
+		t.Errorf("get without ownerId => %d %s, want the tea-other credential", rec.Code, rec.Body)
 	}
 
 	for _, tc := range []struct {

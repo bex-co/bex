@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -130,5 +131,42 @@ func TestWebhookEndpointLatestDeliveryIsTheSameOnEveryRead(t *testing.T) {
 	same(t, "UpdateWebhookEndpoint", updated)
 	if updated.Name != "renamed" || updated.URL != "https://hooks.example.test/v2" || !updated.Enabled || updated.DisabledReason != "" {
 		t.Errorf("the update must still do its own job: %+v", updated)
+	}
+}
+
+// TestWebhookEndpointWorkspaceRoutesByID is w4/m172's routing read: the
+// owning workspace from the id alone, ErrNotFound for an unknown id.
+func TestWebhookEndpointWorkspaceRoutesByID(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `DELETE FROM tenants WHERE name='webhook-routing-read'`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+	tenant, err := s.CreateTenant(ctx, "webhook-routing-read", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id=$1`, tenant.ID) }()
+	endpoint, err := s.CreateWebhookEndpoint(ctx, tenant.ID, "route", "https://hooks.example.test/route", "whsec_route", []string{"deploy_started"}, true, "user-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.WebhookEndpointWorkspace(ctx, endpoint.ID); err != nil || got != tenant.ID {
+		t.Fatalf("WebhookEndpointWorkspace = %q, %v; want %q", got, err, tenant.ID)
+	}
+	if _, err := s.WebhookEndpointWorkspace(ctx, "whk-missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown id = %v, want ErrNotFound", err)
 	}
 }
