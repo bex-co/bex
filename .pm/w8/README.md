@@ -76,8 +76,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
-- [ ] **052** — [A failed native build reports bex's internal env-decoding wrapper instead of the user's build command and exit code](052.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 7.
 
+- [x] **052** — [A failed native build reports bex's internal env-decoding wrapper instead of the user's build command and exit code](done/052.md) — **DONE 2026-10-04**: the env loader moved to a COPY heredoc, and the failure summary reads `build command '<cmd>' exited with code N`.
 - [x] **051** — [`blueprints validate` reports only one dangling `fromDatabase`/`fromService` reference, and which one changes from run to run](done/051.md) — **DONE 2026-10-04**: every dangling reference gets its own located entry, deterministically; apply names the sorted first.
 - [x] **050** — [Platform internals ship as tenant log lines: kubelet "failed to try resolving symlinks" and CNPG's Go TLS-handshake line](done/050.md) — **DONE 2026-10-04**: exact shipper drops on App and Postgres, logger-less instance-manager JSON dropped, pod path re-types the body.
 - [x] **049** — [Postgres and Key Value accept another resource's ID as their name](done/049.md) — **DONE 2026-10-04**: create, rename and Blueprint refuse an ID-shaped datastore name with `NAME_RESOURCE_ID_RESERVED`.

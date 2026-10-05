@@ -18,7 +18,7 @@ Synthetic values only; no tenant credentials. Host-local images were removed aft
 
 ## Fix
 
-The operator persists an opaque monotonic revision on the App-owned `<app>-native-env` Secret (`app.bex.co/native-env-revision`) and embeds `: bex-native-env-rev=<rev>` inside the native env-dependent `RUN`. A keyed HMAC equality token (`app.bex.co/native-env-input`, App UID as key) covers merged Secret bytes plus build-relevant literals so reconciles and restarts keep the same revision when the effective environment is unchanged. The token never enters BuildKit, generated Dockerfiles, or image metadata; raw values never appear in the Dockerfile.
+The operator persists an opaque monotonic revision on the App-owned `<app>-native-env` Secret (`app.bex.co/native-env-revision`) and embeds `: bex-native-env-rev=<rev>` inside the native env-dependent `RUN`. (Since w8/052 the line lives in the env loader that a `COPY` heredoc writes just before that `RUN`, so BuildKit names only the tenant's command. A changed loader misses the `COPY` cache and therefore the `RUN` after it. This was re-verified with local BuildKit on 2026-10-04: same revision → both `CACHED`, new revision → both re-run.) A keyed HMAC equality token (`app.bex.co/native-env-input`, App UID as key) covers merged Secret bytes plus build-relevant literals so reconciles and restarts keep the same revision when the effective environment is unchanged. The token never enters BuildKit, generated Dockerfiles, or image metadata; raw values never appear in the Dockerfile.
 
 Unit coverage (default `make test` path):
 

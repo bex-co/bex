@@ -29,6 +29,8 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -686,10 +688,52 @@ func failureDetail(ctx context.Context, o Options, jobName string) (step, tail s
 			if s, ok := buildStepNames[cs.Name]; ok {
 				step = s
 			}
-			tail = failureTail(t.Message)
+			tail = failureTail(nativeCommandFailure(t.Message))
 		}
 	}
 	return step, tail
+}
+
+// buildkitProcessFailure is BuildKit's verdict on a failed RUN, which quotes
+// the process with Go %q: `failed to solve: process "<args joined>" did not
+// complete successfully: exit code: N`.
+var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process ("(?:[^"\\]|\\.)*") did not complete successfully: exit code: ([0-9]+)`)
+
+// buildkitNativeRunStep is BuildKit's progress header for the native RUN,
+// mount flags and all; BuildKit prints the exec form without re-escaping.
+var buildkitNativeRunStep = regexp.MustCompile(`(?m)RUN --mount=type=secret,id=render-env,target=` +
+	regexp.QuoteMeta(nativeEnvSecretPath) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
+	regexp.QuoteMeta(strings.ReplaceAll(nativeEnvLoaderPrefix, "\n", `\n`)) + `(.*)"\](:?)$`)
+
+// nativeCommandFailure rewrites BuildKit's verdict on a native build's RUN
+// into the tenant's own terms — "build command '<cmd>' exited with code N",
+// and the step header to "RUN build command '<cmd>'" — so the failure summary
+// names their command, not bex's env loader or secret mounts (w8/052).
+// The pre-w8/052 inline loader is recognized too, for builds generated before
+// the rollout. Any other process (a Dockerfile build's own RUN) is untouched.
+func nativeCommandFailure(msg string) string {
+	msg = buildkitNativeRunStep.ReplaceAllString(msg, "RUN build command '$1'$2")
+	return buildkitProcessFailure.ReplaceAllStringFunc(msg, func(match string) string {
+		parts := buildkitProcessFailure.FindStringSubmatch(match)
+		process, err := strconv.Unquote(parts[1])
+		if err != nil {
+			return match
+		}
+		script, ok := strings.CutPrefix(process, "/bin/bash -c ")
+		if !ok {
+			return match
+		}
+		command, ok := strings.CutPrefix(script, nativeEnvLoaderPrefix)
+		if !ok {
+			if _, after, inline := strings.Cut(script, "done < "+nativeEnvSecretPath+"\n"); inline && strings.HasPrefix(script, ": bex-native-env-rev=") {
+				command, ok = after, true
+			}
+		}
+		if !ok {
+			return match
+		}
+		return fmt.Sprintf("build command '%s' exited with code %s", command, parts[2])
+	})
 }
 
 // failureTailBytes bounds how much of the failing container's output enters
