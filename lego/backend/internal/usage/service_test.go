@@ -1632,7 +1632,8 @@ func TestAppInstanceSecondsSelectsByKubernetesObjectName(t *testing.T) {
 		mu.Lock()
 		queries = append(queries, r.URL.Query().Get("query"))
 		mu.Unlock()
-		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"2"]}]}}`))
+		// 2 pods present at all 240 of the hour's 15 s steps.
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"480"]}]}}`))
 	}))
 	defer prom.Close()
 
@@ -1659,7 +1660,7 @@ func TestAppInstanceSecondsSelectsByKubernetesObjectName(t *testing.T) {
 	if strings.Contains(query, `pod=~"hello-go-`) {
 		t.Errorf("instance_seconds query still selects by the workspace-scoped store name: %s", query)
 	}
-	// 2 pods × 3600 s.
+	// 480 pod-steps × 15 s = 2 pods × 3600 s.
 	k := usageKey{store.ResourceKindService, app.ID, store.UsageKindInstanceSeconds, "starter", window}
 	st.mu.Lock()
 	row, ok := st.rows[k]
@@ -1766,7 +1767,7 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 	}, {
 		name: "running App with pods stays healthy",
 		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
-		pods: 2, want: store.UsageSourceHealthy, quant: 7200,
+		pods: 480, want: store.UsageSourceHealthy, quant: 7200, // 2 pods × 240 steps
 	}}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
