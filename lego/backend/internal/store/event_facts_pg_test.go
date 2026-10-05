@@ -27,6 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // A post-Running crash and its recovery, observed by the reconciler across
@@ -37,7 +39,7 @@ import (
 func TestPGObservedCrashEdgeEmitsExactlyOnePair(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)
@@ -146,7 +148,7 @@ func TestPGObservedCrashEdgeEmitsExactlyOnePair(t *testing.T) {
 func TestPGAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)
@@ -211,7 +213,7 @@ func TestPGAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
 func TestPGDatastoreAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)

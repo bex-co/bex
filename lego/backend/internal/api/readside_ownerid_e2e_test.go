@@ -32,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
@@ -56,7 +57,7 @@ func TestReadSideOwnerIDTargetingE2E(t *testing.T) {
 	dbURI := os.Getenv("BEX_TEST_DB_URI")
 	fgaURL := os.Getenv("BEX_TEST_OPENFGA_URL")
 	if dbURI == "" || fgaURL == "" {
-		t.Skip("BEX_TEST_DB_URI and BEX_TEST_OPENFGA_URL not both set")
+		testenv.Skip(t, "BEX_TEST_DB_URI and BEX_TEST_OPENFGA_URL not both set")
 	}
 	ctx := context.Background()
 

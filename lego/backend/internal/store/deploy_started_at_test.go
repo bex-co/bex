@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // TestTransitionDeployFailureSkipStartedAt (w6/m123, memStore half): a
@@ -95,7 +97,7 @@ func mustTransition(t *testing.T, s Store, id, status string, startedAt *time.Ti
 func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -277,7 +279,7 @@ func TestTransitionDeploySuccessfulSkipStartedAt(t *testing.T) {
 func TestPGTransitionDeploySuccessfulSkipStartedAt(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {

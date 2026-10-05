@@ -38,6 +38,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 func renderRequest(method, path, body string) *http.Request {
@@ -176,7 +177,7 @@ func openRefreshTestPool(t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := store.Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)

@@ -23,6 +23,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // reasonCodes0138 is the reason vocabulary migration 0138 admits. Later
@@ -35,7 +37,7 @@ var reasonCodes0138 = []string{
 func TestSupersededReasonMigrationPreservesVocabularyAndFacts(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := t.Context()
 	pool, err := pgxpool.New(ctx, uri)
@@ -124,7 +126,7 @@ func TestSupersededReasonMigrationPreservesVocabularyAndFacts(t *testing.T) {
 func TestCronRunReasonMigrationAdmitsFailureReasons(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := t.Context()
 	pool, err := pgxpool.New(ctx, uri)

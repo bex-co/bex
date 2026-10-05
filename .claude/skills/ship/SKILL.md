@@ -4,12 +4,12 @@ description: >-
   Safely bring main up to date, commit intended pending changes, and push to origin/main — resolving any rebase conflicts autonomously and stopping only when a decision genuinely needs a human. Use when the user explicitly asks to ship the current main branch or invokes the repository's ship workflow.
 
 
-allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git rebase:*), Bash(git show:*), Bash(git checkout:*), Bash(git reset:*), Read, Edit, Grep, Glob
+allowed-tools: Bash(git status:*), Bash(git pull:*), Bash(git fetch:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git rebase:*), Bash(git show:*), Bash(git checkout:*), Bash(git reset:*), Bash(bash scripts/ship-gates.sh:*), Read, Edit, Grep, Glob
 ---
 
 # Task: Ship the current main branch
 
-Bring the local `main` up to date, commit any pending work, and push to `origin/main`. A successful push is the end of the ship — do not watch CI, do not monitor the deploy, do not chase runs to green. Report the pushed HEAD and stop.
+Bring the local `main` up to date, commit any pending work, pass the pre-push gates (Step 5), and push to `origin/main`. A successful push is the end of the ship — do not watch CI, do not monitor the deploy, do not chase runs to green. Report the pushed HEAD and stop.
 
 ## Conflicts are yours to resolve — do not hand them back
 
@@ -96,13 +96,26 @@ EOF
 
 If a pre-commit hook fails, fix the underlying issue and create a NEW commit. Do not use `--no-verify` or `--amend`.
 
-## Step 5 — Push
+## Step 5 — Gate, then push
+
+Run the pre-push gates against what is about to be pushed. The backend suite can take several minutes on a cold run, so give the command a long timeout (30 minutes):
+
+```bash
+bash scripts/ship-gates.sh origin/main
+```
+
+They fail the ship when either check fails:
+
+- **main is red.** The latest `deploy (bex via Argo)` run on `main` failed. Stacking more commits on a red main hides the break behind them. This is one read of CI status, not watching CI. If this push is the fix, say so in the commit and run the gate with `--fixes-red-main`.
+- **The real-DB backend suite fails.** For a push touching `lego/backend/**`, `lego/types/**` or the seeded authz model (markdown excluded), the gate brings up the CI-pinned Postgres + OpenFGA + OpenBao (`scripts/backend-test-deps.sh`) and runs `go test -p 1 ./...` with `BEX_TEST_REQUIRE_DEPS=1`. Locally those tests otherwise skip, and only CI ran them.
+
+A failed gate is not a conflict to push past: fix the failure, commit the fix, and run the gate again. If it cannot be fixed in this session, stop and report it.
 
 ```bash
 git push origin main
 ```
 
-If the push is rejected (non-fast-forward), re-run Step 3, resolve any conflicts using its procedure, and retry push. Do not force-push to `main`.
+If the push is rejected (non-fast-forward), re-run Step 3, resolve any conflicts using its procedure, run the gates again, and retry push. Do not force-push to `main`.
 
 ## Step 6 — Report
 

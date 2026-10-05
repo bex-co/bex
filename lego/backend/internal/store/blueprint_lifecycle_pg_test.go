@@ -26,6 +26,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"os"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // blueprint_lifecycle_pg_test.go (w8/m37 t008) proves the persisted execution
@@ -39,7 +41,7 @@ func openLifecyclePG(t *testing.T) *PGStore {
 	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatal(err)
@@ -167,7 +169,7 @@ func TestPGDisconnectedReadsAsAbsent(t *testing.T) {
 func TestPGAdmissionRaceAdmitsOne(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	st := openLifecyclePG(t)
 	tenant := lifecycleTenant(t, st, "race")
