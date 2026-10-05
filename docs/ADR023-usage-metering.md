@@ -6,7 +6,7 @@ bex records month-to-date resource consumption per workspace and exposes it over
 
 | Meter | Unit | Source |
 | --- | --- | --- |
-| `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — per-pod running time: 15 s steps each pod was present (containers collapsed per pod), × 15 s |
+| `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — per-pod running time: 15 s steps at which each pod had reported within 44 s (containers collapsed per pod), × 15 s |
 | `egress_bytes` | bytes | loss-detecting sum of exact App HTTP + WebSocket + direct-public sources, or the public datastore proxy response source |
 | `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
@@ -102,11 +102,25 @@ For App services, each meter (`instance_seconds`, `egress_bytes`, and `build_sec
 - The meters advance independently and are collected concurrently. A transient egress failure therefore cannot hold build/instance/storage metering back, and vice versa.
 - The existing 48-hour catch-up bound still applies and is clamped to the App's creation hour, so a new service never gains synthetic pre-creation coverage. Outages longer than 48 hours are visible as gaps rather than silently synthesized as zero.
 
-**Instance running time (w4/m173).** Until this correction, `instance_seconds` was `count(avg_over_time(container_memory_working_set_bytes{…}[1h])) × 3600`. That counted every container series seen at any moment of the hour and billed each one a full hour. A pod alive five minutes read 3600, a Key Value's Valkey plus exporter sidecar read 7200, and each rollout's replacement pod added another 3600. The meter now evaluates `sum(count_over_time((max by (pod) (…))[3599s:15s])) × 15`, which is each pod's own presence at the cAdvisor scrape step, so one pod is one instance.
+**Instance running time (w4/m173).** Until this correction, `instance_seconds` was `count(avg_over_time(container_memory_working_set_bytes{…}[1h])) × 3600`. That counted every container series seen at any moment of the hour and billed each one a full hour. A pod alive five minutes read 3600, a Key Value's Valkey plus exporter sidecar read 7200, and each rollout's replacement pod added another 3600. The meter now evaluates `sum(count_over_time((max by (pod) (count_over_time(…[44s])))[3599s:15s])) × 15`, which is each pod's own presence at the cAdvisor scrape step, so one pod is one instance.
 
-- **Accuracy.** Within one step per pod. The 3599 s range avoids the aligned left endpoint Prometheus 2.x includes, so consecutive hours partition as (start, end].
-- **Verified** in Prometheus's engine (`TestInstanceSecondsQueryOnPrometheus`): 5 minutes reads 285, a sidecar pod reads 3600, two replicas read 7200, and a rollout with a 2-minute overlap reads 3720.
-- **Cut-over.** Hours metered after the deploy that ships this use the new query. Earlier `usage_hourly` rows keep the over-counted quantities. Whether to recompute paid-tier hours, and to repair Stripe meter events already sent for them through ADR040's reconcile/repair path, is an open decision (w4/m173 t002). Paid exposure must first be quantified with a read-only production query.
+- **Liveness (w5/m111).** A step counts a pod only if it reported within the previous 44 s.
+  - cAdvisor samples carry their own timestamps, so Prometheus writes no staleness marker when a pod is deleted (w4/m110).
+  - A bare instant selector would have carried the last sample forward for the 5-minute lookback. That billed every terminated pod about 285 s more than it ran: every rollout, scale-down and pod replacement.
+  - The samples are stamped at kubelet housekeeping (10 s, jittered up to 2×), so stored samples can sit about 34 s apart even when every scrape lands. 44 s covers that plus one missed scrape.
+  - 44 s sits off the 15 s grid, so Prometheus 2.x's closed and 3.x's left-open ranges agree.
+- **Accuracy.** Within three steps per pod.
+  - A deleted pod is still counted for up to 44 s after its last sample.
+  - A gap in stored samples longer than 44 s (Prometheus down) under-counts the excess.
+  - The 3599 s range avoids the aligned left endpoint Prometheus 2.x includes, so consecutive hours partition as (start, end].
+- **Verified** in Prometheus's engine (`TestInstanceSecondsQueryOnPrometheus`, v2.54.1 and v3.14.0), with series ending the way cAdvisor's do (no staleness marker):
+  - 5 minutes reads 315;
+  - a sidecar pod reads 3600;
+  - two replicas read 7200;
+  - a rollout with a 2-minute overlap reads 3750;
+  - gaps of one or two missed scrapes lose nothing, while three lose one step;
+  - a restarted container's overlapping new series continues its pod once.
+- **Cut-over.** Hours metered after each deploy use that deploy's query, so `usage_hourly` holds two over-counted cohorts. Rows from before w4/m173 billed every container series a full hour. Rows from the w4/m173 query (live from pin `f837cec46294` until the deploy that ships w5/m111) billed each terminated pod about 285 s of lookback. Whether to recompute paid-tier hours, and to repair Stripe meter events already sent for them through ADR040's reconcile/repair path, is an open decision (w4/m173 t002). Paid exposure must first be quantified with a read-only production query.
 
 Successful zero egress/build rows are coverage anchors in `usage_hourly`; the period aggregation omits their all-zero groups so REST/GraphQL/MCP response semantics remain unchanged. `instance_seconds` retains zero groups for tiered suspended services, as before. Any analysis that needs to prove collection completeness must query raw hourly rows from the deployment time of this corrected contract; older positive-only rows are consumption evidence, not coverage evidence.
 
