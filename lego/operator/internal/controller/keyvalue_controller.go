@@ -212,7 +212,7 @@ func kvExporterEnv(password corev1.EnvVar) []corev1.EnvVar {
 // (appendonly yes, no maxmemory), so a KeyValue created before these fields
 // reconciles byte-identically.
 func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
-	args := []string{"--requirepass", "$(VALKEY_PASSWORD)"}
+	args := append([]string{"--user"}, valkeyDefaultUserRule("$(VALKEY_PASSWORD)")...)
 	switch spec.PersistenceMode {
 	case "off":
 		// No AOF and no RDB save points — a pure in-memory cache.
@@ -230,6 +230,24 @@ func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
 		args = append(args, "--maxmemory", valkeyMaxmemory(plan), "--maxmemory-policy", spec.MaxmemoryPolicy)
 	}
 	return args
+}
+
+// valkeyDefaultUserRule is the ACL of the one user tenants connect as. Every
+// data command stays, and so does read-only introspection (CONFIG GET, INFO,
+// CLIENT — the metrics sidecar needs them), but the verbs whose state the
+// control plane owns are removed: the memory budget and eviction policy the
+// dashboard shows (CONFIG SET/REWRITE/RESETSTAT), the password the dashboard
+// reveals and the exporter scrapes with (ACL SETUSER/DELUSER/SAVE/LOAD), and
+// process/topology control (SHUTDOWN, MODULE, REPLICAOF/SLAVEOF, FAILOVER,
+// DEBUG). With only --requirepass the implicit default user kept +@all, and a
+// tenant could silently override all of it until the next restart (w4/191).
+func valkeyDefaultUserRule(password string) []string {
+	return []string{
+		"default", "on", ">" + password, "~*", "&*", "+@all",
+		"-config|set", "-config|rewrite", "-config|resetstat",
+		"-acl|setuser", "-acl|deluser", "-acl|save", "-acl|load",
+		"-shutdown", "-module", "-replicaof", "-slaveof", "-failover", "-debug",
+	}
 }
 
 // valkeyMaxmemory returns the data budget (bytes) eviction triggers at: 80% of
