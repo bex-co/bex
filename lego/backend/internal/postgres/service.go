@@ -718,8 +718,12 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return PostgresView{}, err
 	}
-	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
+	// Dry-run: return the resolved spec preview without any k8s write (w2/m29),
+	// refusing past the plan's count cap as admission would (w8/046).
 	if req.DryRun {
+		if err := s.CheckQuotaCap(ctx, tenantID, store.DatabasesQuotaCountKey, "Postgres database"); err != nil {
+			return PostgresView{}, err
+		}
 		return s.view(d), nil
 	}
 	// A freshly minted workspace's tea-* namespace may not exist yet (the

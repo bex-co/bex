@@ -400,7 +400,7 @@ func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *cor
 	caps := quotaForPlan(t.Plan)
 	return &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tenant-quota",
+			Name:      core.TenantQuotaName,
 			Namespace: namespace,
 			Labels:    r.managedLabels(t.ID),
 		},

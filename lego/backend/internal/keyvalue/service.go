@@ -483,8 +483,12 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return KeyValueView{}, err
 	}
-	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
+	// Dry-run: return the resolved spec preview without any k8s write (w2/m29),
+	// refusing past the plan's count cap as admission would (w8/046).
 	if req.DryRun {
+		if err := s.CheckQuotaCap(ctx, tenantID, store.KeyValuesQuotaCountKey, "key-value store"); err != nil {
+			return KeyValueView{}, err
+		}
 		return s.view(kv), nil
 	}
 	// A freshly minted workspace's tea-* namespace may not exist yet (the
