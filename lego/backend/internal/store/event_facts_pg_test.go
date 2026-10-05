@@ -209,6 +209,63 @@ func TestPGAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
 	}
 }
 
+// w5/m113 (w4/200): a readiness loss flips Ready=False and the phase back to
+// Deploying in one status write, and the reconciler's first unhealthy pass is
+// debounced — availability unseen, phase change recorded. That write must not
+// become the floor the failure edge is ordered after, or server_failed lands a
+// resync late. Replayed through the reconciler's own guards.
+func TestPGFailureEdgeOutlivesTheDebouncedPhaseWrite(t *testing.T) {
+	st, _, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: fmt.Sprintf("web-%d", time.Now().UnixNano()), Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+
+	base := time.Date(2026, 10, 5, 6, 56, 0, 0, time.UTC)
+	at := func(sec int) time.Time { return base.Add(time.Duration(sec) * time.Second) }
+	r := &Reconciler{Store: st}
+	pass := func(sec int, cr *appv1alpha1.App, hasOpenDeploy bool) []ServiceEventFact {
+		t.Helper()
+		obs := observedServiceStateFor(app.ID, cr, hasOpenDeploy)
+		obs.At = at(sec)
+		facts, err := st.RecordObservedServiceState(ctx, r.guardServiceObservation(ctx, obs))
+		if err != nil {
+			t.Fatalf("record :%d: %v", sec, err)
+		}
+		return facts
+	}
+
+	pass(5, healthyCR(at(0)), false)
+	pass(35, healthyCR(at(0)), false)
+	// Readiness lost at :62, as reportRolloutProgress writes it.
+	lost := readyCR(appv1alpha1.PhaseDeploying, metav1.ConditionFalse, "RolloutProgressing", at(62))
+	if f := pass(65, lost, false); len(f) != 0 {
+		t.Fatalf("debounced pass emitted %+v", f)
+	}
+	if f := pass(95, lost, false); len(f) != 1 || f[0].Type != EventFactServerFailed || !f[0].At.Equal(at(62)) {
+		t.Fatalf("server_failed = %+v, want one edge at the :62 Ready transition", f)
+	}
+	if f := pass(125, healthyCR(at(120)), false); len(f) != 1 || f[0].Type != EventFactServerAvailable || !f[0].At.Equal(at(120)) {
+		t.Fatalf("server_available = %+v, want one edge at the :120 Ready transition", f)
+	}
+
+	// A write no guard suppressed still moves the floor. A deploy's rollout
+	// flips Ready=False at :198 and stays undecided; when its pods crash at
+	// :250, Ready's transition time is still the rollout start, which must not
+	// become the outage's start.
+	pass(200, readyCR(appv1alpha1.PhaseDeploying, metav1.ConditionFalse, "RolloutProgressing", at(198)), true)
+	pass(260, crashedCR(at(198)), true)
+	if f := pass(290, crashedCR(at(198)), true); len(f) != 1 || f[0].Type != EventFactServerFailed || !f[0].At.Equal(at(290)) {
+		t.Fatalf("server_failed = %+v, want one edge at the :290 observation, not the :198 rollout start", f)
+	}
+
+	contradictory := ObservedServiceState{AppID: app.ID, At: at(300), AvailabilityObserved: true, AvailabilitySuppressed: true, Availability: "healthy"}
+	if _, err := st.RecordObservedServiceState(ctx, contradictory); err == nil {
+		t.Fatal("a pass both observed and suppressed was recorded")
+	}
+}
+
 // The datastore twin of TestPGAvailabilityEdgesCarryTheReadyTransitionTime.
 func TestPGDatastoreAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
@@ -256,5 +313,48 @@ func TestPGDatastoreAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
 	}
 	if f := record(at(200), "unhealthy", at(100)); len(f) != 1 || !f[0].At.Equal(at(200)) {
 		t.Fatalf("stale transition: %+v, want the observation time", f)
+	}
+}
+
+// The datastore twin of TestPGFailureEdgeOutlivesTheDebouncedPhaseWrite: a
+// Database that loses its only instance reports Ready → Provisioning, and the
+// debounced first pass still records that phase.
+func TestPGDatastoreFailureEdgeOutlivesTheDebouncedPhaseWrite(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("dpg-debounce%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM datastore_event_facts WHERE datastore_id = $1`, name)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM datastore_observed_checkpoints WHERE datastore_id = $1`, name)
+	})
+
+	base := time.Date(2026, 10, 5, 6, 56, 0, 0, time.UTC)
+	at := func(sec int) time.Time { return base.Add(time.Duration(sec) * time.Second) }
+	r := &Reconciler{Store: st}
+	pass := func(sec int, db *appv1alpha1.Database) []DatastoreEventFact {
+		t.Helper()
+		db.Name, db.Labels = name, map[string]string{LabelTenant: tenant.ID}
+		obs, ok := observedDatabaseStateFor(db)
+		if !ok {
+			t.Fatal("database not attributable")
+		}
+		obs.At = at(sec)
+		facts, err := st.RecordObservedDatastoreState(ctx, r.guardDatastoreObservation(ctx, obs))
+		if err != nil {
+			t.Fatalf("record :%d: %v", sec, err)
+		}
+		return facts
+	}
+
+	pass(5, readyDatabase(at(0)))
+	pass(35, readyDatabase(at(0)))
+	if f := pass(65, downDatabase(at(62))); len(f) != 0 {
+		t.Fatalf("debounced pass emitted %+v", f)
+	}
+	if f := pass(95, downDatabase(at(62))); len(f) != 1 || f[0].Type != DatastoreFactPostgresUnavailable || !f[0].At.Equal(at(62)) {
+		t.Fatalf("unavailable edge = %+v, want one at the :62 Ready transition", f)
+	}
+	if f := pass(125, readyDatabase(at(120))); len(f) != 1 || f[0].Type != DatastoreFactPostgresAvailable || !f[0].At.Equal(at(120)) {
+		t.Fatalf("available edge = %+v, want one at the :120 Ready transition", f)
 	}
 }

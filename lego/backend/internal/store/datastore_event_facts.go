@@ -104,6 +104,9 @@ type ObservedDatastoreState struct {
 	AvailabilityObserved bool
 	ReasonCode           string
 	ReadyTransitionAt    time.Time
+	// AvailabilitySuppressed is the App snapshot's flag: a guard blanked this
+	// pass's conclusion, so it leaves the checkpoint's updated_at alone.
+	AvailabilitySuppressed bool
 
 	// LastBackup* mirror Database.status.lastBackup for t002 edge detection.
 	// Empty Name means the operator has not yet projected a terminal backup.
@@ -243,6 +246,9 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 	if obs.ReasonCode != "" && obs.ReasonCode != EventReasonReadinessFailed {
 		return nil, fmt.Errorf("invalid observed reason code %q", obs.ReasonCode)
 	}
+	if obs.AvailabilitySuppressed && obs.AvailabilityObserved {
+		return nil, fmt.Errorf("observed datastore state cannot be both suppressed and observed")
+	}
 	if obs.At.IsZero() {
 		obs.At = time.Now().UTC()
 	}
@@ -329,13 +335,16 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 		}
 		// IS DISTINCT FROM makes the steady state a no-op instead of a row
 		// write: the reconciler observes every datastore on every resync and
-		// almost none of them changed. Nothing reads updated_at — it is
-		// write-only bookkeeping — so letting it stop advancing costs nothing.
-		// Same guard the App checkpoint uses. Lifecycle extras join the guard
-		// so a backup completion that doesn't change availability still writes.
+		// almost none of them changed. Same guard the App checkpoint uses.
+		// Lifecycle extras join the guard so a backup completion that doesn't
+		// change availability still writes. updated_at is the next edge's
+		// floor and, as on the App checkpoint, a suppressed pass leaves it
+		// alone (w5/m113): a lost instance's debounced first pass still
+		// records Ready → Provisioning.
 		_, err = tx.Exec(ctx,
 			`UPDATE datastore_observed_checkpoints
-			 SET workspace_id = $2, phase = $3, availability = $4, suspended = $5, updated_at = $6,
+			 SET workspace_id = $2, phase = $3, availability = $4, suspended = $5,
+			     updated_at = CASE WHEN $12 THEN updated_at ELSE $6 END,
 			     healthy_transition_at = COALESCE($7, healthy_transition_at),
 			     last_backup_name = $8, last_backup_phase = $9,
 			     restore_outcome = $10, upgrade_key = $11
@@ -345,7 +354,7 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			       IS DISTINCT FROM ($2, $3, $4, $5, $8, $9, $10, $11)`,
 			obs.DatastoreID, obs.WorkspaceID, obs.Phase, availability, obs.Suspended, obs.At, healthyTransition,
 			nextExtras.LastBackupName, nextExtras.LastBackupPhase,
-			nextExtras.RestoreOutcome, nextExtras.UpgradeKey)
+			nextExtras.RestoreOutcome, nextExtras.UpgradeKey, obs.AvailabilitySuppressed)
 		return err
 	})
 	if err != nil {
