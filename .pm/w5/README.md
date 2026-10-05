@@ -13,6 +13,39 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-10-05
+
+On 2026-10-05 the user handed every fix from the last-24h code review (`061ab7698^..327a7e4b1`) to w5: the confirmed bugs, the lower-severity findings, the structural proposals and the process/test-gate items. Execute top to bottom: the 2026-10-04 regressions and billing first, then the test gates that protect the rest of the queue, then the structural milestones. Inbox notes are sub-hour fixes. Each milestone ends with its standing closing tasks: Render parity where a REST/GraphQL/MCP/UI surface changes (omitted for m112, tooling only), then Simplify, Test coverage and Closeout.
+
+Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback tail); m113 re-scopes w4/200 to a backend cause; m115 is the consolidation w4/m172 deliberately deferred. Pointers were added to w4/200 and w4/m173.
+
+- [ ] **070** — [The cron schedule editor hangs the browser tab on a zero step (`*/0`)](070.md) (~45m) ← regression from `299767929` (w4/197)
+- [ ] **m110** — [Key Value: platform clients log in as a platform ACL user, so locking down the tenant user can't break them](m110/README.md) (9 tasks; 5h total) ← regression from `e9fb4178c` (w4/191)
+- [ ] **m111** — [`instance_seconds` stops metering terminated pods through Prometheus's 5-minute lookback](m111/README.md) (9 tasks; 3h40m total) ← billing; gap in `e2510371c` (w4/m173 t001)
+- [ ] **071** — [Reserved Postgres roles miss CNPG's `cnpg_` prefix](071.md) (~40m) ← gap in `faf2ca1f6` (w4/m170)
+- [ ] **072** — [Blueprint apply skips the card requirement for free-only stacks](072.md) (~45m) ← pre-existing; ADR075 D7
+- [ ] **073** — [MCP create drops `dockerCommand` for image services](073.md) (~40m) ← REST fixed in `4fe79515b` (w4/188); MCP not
+- [ ] **m112** — [Test gates: no silent skips in CI, the real-DB backend suite runs locally, and /ship won't push onto a red main](m112/README.md) (8 tasks; 4h25m total) ← process; the w4/m172 red-main incident
+- [ ] **m113** — [Availability failure edges carry the Ready transition time (re-scopes w4/200)](m113/README.md) (8 tasks; 3h25m total) ← gap in `44a612e8d` (w4/196); likely cause of w4/200
+- [ ] **m114** — [Suspend ends the release it interrupts, not just its deploy row](m114/README.md) (10 tasks; 4h50m total) ← gap in `60ae617b3` (w4/m171)
+- [ ] **m115** — [By-id verbs: one resolver, one 403/404 rule, and a guard that checks types instead of source text](m115/README.md) (10 tasks; 6h total) ← consolidates w4/m169, w4/194, w4/m172, w4/199
+- [ ] **m116** — [Dry-run is the real call stopped before its first write, for create and update of every kind](m116/README.md) (8 tasks; 5h15m total) ← follow-up to w8/045 and w8/046
+- [ ] **m117** — [Every create field reaches the service through REST, GraphQL and MCP, and Blueprint export round-trips](m117/README.md) (8 tasks; 4h30m total) ← follow-up to w4/188 and w4/193
+- [ ] **m118** — [One source of truth for naming and config-key rules across Go, TypeScript, Kubernetes and CNPG](m118/README.md) (9 tasks; 5h30m total) ← follow-up to w4/m168, w4/m170, w8/049, w4/190, w4/197
+- [ ] **m119** — [Env and secret-file writes share one rollback path](m119/README.md) (7 tasks; 3h15m total) ← follow-up to `eb55d1e27` (w4/m168)
+- [ ] **m120** — [Env-group links store service ids and are removed when the service is deleted](m120/README.md) (8 tasks; 3h45m total) ← follow-up to `ee1341133` (w4/183)
+- [ ] **m121** — [Custom domains: public-suffix-aware validation, correct DNS record names, one TLS secret name](m121/README.md) (8 tasks; 3h30m total) ← follow-up to `6f4ca308a` (w4/190)
+- [ ] **m122** — [Tenant logs: classify lines by source, not by message text](m122/README.md) (8 tasks; 4h40m total) ← follow-up to w8/050 and w8/047
+- [ ] **074** — [A reconcile pass compares its final status against a cache that hasn't seen its own write](074.md) (~45m) ← lifecycle review; c33c9e7d6 fixed one path
+- [ ] **m123** — [Release lifecycle as one pure decision function](m123/README.md) (8 tasks; 5h55m total) ← consolidates w1/m172, w6/m147, w6/076
+- [ ] **m124** — [Service settings: one section list drives the page and its skeleton, and image services reuse the Deploy card](m124/README.md) (7 tasks; 4h total) ← follow-up to w4/m166 and w4/m165
+- [ ] **m125** — [Dashboard decides by error code, not message text, and log views share one empty state](m125/README.md) (8 tasks; 4h15m total) ← follow-up to w4/189, w4/180, w4/195, w4/192
+- [ ] **075** — [Postgres Insights redaction misses password literals it doesn't parse](075.md) (~1h) ← `4acf2a96c` (w4/m167)
+- [ ] **076** — [Tenant request logs keep only the Traefik access-log fields something reads](076.md) (~45m) ← `c41d1aa91` (w8/047)
+- [ ] **077** — [Native build failure text: drop the legacy loader branch and unescape the step-header path](077.md) (~45m) ← `8f58b933d` (w8/052)
+- [ ] **078** — [An invalid `?type=` survives the create route's search validator](078.md) (~25m) ← `1d331d334` (w4/182)
+- [ ] **079** — [A database's unavailable reason should travel as a code the dashboard can translate](079.md) (~50m) ← `faf2ca1f6` (w4/m170)
+
 ## Approved queue — 2026-10-01
 
 User approved the three Render-aligned follow-ups and requested `/pm` filing followed by `/loopx w5`. Each milestone starts with Render behavior research and ends with Render parity, Simplify, Test coverage and Closeout. Execute m107 → m108 → m109; these are distinct from the older blocked production acceptance in m105.
