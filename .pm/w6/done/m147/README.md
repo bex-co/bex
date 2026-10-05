@@ -1,6 +1,6 @@
 # w6 · m147 — A free service that auto-hibernates mid-rollout loses its crash diagnosis (generic health-gate reason) and its header disagrees with its phase
 
-**Worker:** worker6 **Goal:** a failing rollout on a free web service reports the operator's specific diagnosis (crash exit code, probe, image pull) as its `failureReason` even when the service auto-hibernated before the progress deadline, and the dashboard header's phase agrees with the API after that failure. **Status:** in progress (t001, t002, t006, t007 done; t003 done — parking-pass Deploying guard re-applied 2026-10-04; t004 live sampling next)
+**Worker:** worker6 **Goal:** a failing rollout on a free web service reports the operator's specific diagnosis (crash exit code, probe, image pull) as its `failureReason` even when the service auto-hibernated before the progress deadline, and the dashboard header's phase agrees with the API after that failure. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | Backend: keep the last real stall diagnosis on the open row and close with it instead of the gate line — **DONE** | 45m | —                      |
 | t002 | Operator: settle (or defer the park of) an App whose current-generation rollout is unsettled at idle — **DONE** | 1h  | —                      |
 | t003 | Trace the header "Deploying" vs API `Hibernated` disagreement after the failure, and fix the actual cause — **DONE** (re-applied 2026-10-04) | 45m | t002                   |
-| t004 | Live: reproduce and verify both diagnoses and the header/phase agreement on production                    | 40m | t001, t002, t003       |
-| t005 | Render parity                                                                                             | 20m | t004                   |
+| t004 | Live: reproduce and verify both diagnoses and the header/phase agreement on production — **DONE** | 40m | t001, t002, t003       |
+| t005 | Render parity — **DONE** | 20m | t004                   |
 | t006 | Simplify — **DONE** | 15m | t005                   |
 | t007 | Test coverage — **DONE** | 30m | t005                   |
-| t008 | Closeout                                                                                                  | 10m | t007                   |
+| t008 | Closeout — **DONE** | 10m | t007                   |
 
 ## Definition of done
 
@@ -50,6 +50,17 @@ A parallel t001–t003 implementation was made before upstream's (below) landed.
 - **t006** `/simplify` (three reviewers): `progressDeadlineExceeded` returns the condition (and `reasonProgressDeadlineExceeded` replaces the literals); `currentFailureReason` splits the diagnosis from `failureReasonFor`'s generic fallback, so the close order is flat instead of comparing against the generic string; `parkReason` replaces the duplicated Suspended/AutoHibernated test in `observedServiceStateFor`; a shared `rollFailingReleaseTwo` test setup.
 - **t007** Coverage: every new test fails with its fix reverted (backend 6, operator 3). The header/phase agreement has no client mechanism to test (t003); it is verified live in t004.
 - Suites: operator `make test`, `make lint` (all four modules), backend `go test ./...` pass.
+
+## Live verification (2026-10-05 UTC, production pin `4acf2a96c`)
+
+Workspace `bex-canary`, three free image web services (`docker.io/mendhak/http-https-echo:35`, `HTTP_PORT=3000`), driven through GraphQL with the QA session. Each was set to a 60 s idle timeout, and no request reached any fixture URL.
+
+- **t004 crash.** `srv-db1eslpj8bls738hh16g`, start command `./qa-missing-binary`, `dep-db1etarffk7s73ag800g`. Created 00:26:19Z, closed `update_failed` 00:41:37Z. Phase Deploying on all 29 polls through 00:41:08Z, so no mid-rollout park despite the 60 s window; Hibernated first seen at 00:41:39Z, after the close. `stallReason` carried the crash from 00:27:30Z. `failureReason`, identical on GraphQL, REST and MCP `get_deploy`: "container exited shortly after start and is restarting repeatedly (last exit code 127) — check the service logs …".
+- **t004 TCP probe.** `srv-db1esm3ffk7s73ag7vt0`, `setImage` `memcached:1.6-alpine`, `dep-db1etb1j8bls738hh1c0`. Created 00:26:20Z, closed `update_failed` 00:41:51Z. Deploying throughout; Hibernated at 00:42:10Z. `failureReason` on all three surfaces: "the container is running but its startup health check has not succeeded, so the rollout is waiting: a TCP connect to port 3000. …".
+- **w6/076 deploy while asleep.** `srv-db1esm9j8bls738hh180`. Hibernated by 00:26:27Z. `QA_REV=2` plus `triggerDeploy` at 00:28:20Z (`dep-db1eu91j8bls738hh1eg`). Phase went Deploying 00:28:35Z, Running 00:29:06Z, then Hibernated 00:29:22Z. The deploy went `live` at 00:29:07Z with no request.
+- **t004 header vs phase (t003 DoD).** 11 pairs from 00:42:45Z to 00:47:24Z on service A after its failure. The dashboard header read "Service Sleeping · Latest deploy Failed" on every pair, against GraphQL `Hibernated`. During the rollout (00:30:34Z) it read "Service Deploying · Latest deploy In Progress" against `Deploying`. These samples ran before `c33c9e7d6` (the parking-pass guard) deployed and still caught no flap; that guard is pinned by `TestParkingPassNeverWritesDeploying` rather than by live observation.
+- **Gaps:** two requested screenshots were not written, so the text pairs are the only header evidence. Fixtures were deleted at 00:47:53Z (`server(id)` not found) and the QA session was revoked.
+- **t005 parity.** GraphQL, REST and MCP return the same `failureReason` and status; the dashboard header follows `server(id).phase`. Render's deploy object carries the status (`update_failed`) and no reason text, so `failureReason` is a bex extension with nothing to drift from. A deploy runs to completion before spin-down, and a deploy to a sleeping service runs, as on Render. No drift filed.
 
 ## Related
 
