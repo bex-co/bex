@@ -137,7 +137,7 @@ A failed run says why. While the failed Job's Pod still exists, the operator rec
 - `Evicted`: the run's Pod was evicted.
 - `DeadlineExceeded`: the Job's `DeadlineExceeded` reap at the twelve-hour limit.
 
-The ended fact stores this as a closed reason code (`non_zero_exit`, `oom_killed`, `evicted`, `timed_out`; migration 0140) with the exit code and the run's `crr-` id. `cron_job_run_ended` details then carry Render's "Cron Job Run Ended" fields: `cronJobRunId` and a `reason` object (`evicted`, `nonZeroExit`, `oomKilled.memoryLimit`, `timedOutSeconds`) on REST and MCP. GraphQL carries `cronJobRunId`, `reasonCode` and `exitCode`. The dashboard Activity row reads "The run exited with status 3." A run whose cause was not observed keeps `status: failed` with no reason.
+The ended fact stores this as a closed reason code (`non_zero_exit`, `oom_killed`, `evicted`, `timed_out`; migration 0141) with the exit code and the run's `crr-` id. `cron_job_run_ended` details then carry Render's "Cron Job Run Ended" fields: `cronJobRunId` and a `reason` object (`evicted`, `nonZeroExit`, `oomKilled.memoryLimit`, `timedOutSeconds`) on REST and MCP. GraphQL carries `cronJobRunId`, `reasonCode` and `exitCode`. The dashboard Activity row reads "The run exited with status 3." A run whose cause was not observed keeps `status: failed` with no reason.
 
 Two known divergences remain:
 
