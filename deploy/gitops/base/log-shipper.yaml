@@ -219,6 +219,12 @@ spec:
                   expression          = "^unable to retrieve container logs for containerd://[0-9a-f]{64}\\r?\\n?$"
                   drop_counter_reason = "kubelet_container_logs_gone"
                 }
+                // Once the pod's whole log directory is gone the kubelet
+                // answers with this body instead (w8/050); exact, as above.
+                stage.drop {
+                  expression          = "^failed to try resolving symlinks in path \"/var/log/pods/[^\"]+/[^/\"]+/[0-9]+\\.log\": lstat /var/log/pods/\\S+: no such file or directory\\r?\\n?$"
+                  drop_counter_reason = "kubelet_pod_log_dir_gone"
+                }
 
                 // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan
                 // via "level", pino numeric aside) and `severity` (OTel/GCP).
@@ -490,6 +496,13 @@ spec:
                   drop_counter_reason = "missing_database_id"
                 }
 
+                // Once the pod's whole log directory is gone the kubelet
+                // answers with this body instead (w8/050); exact, as above.
+                stage.drop {
+                  expression          = "^failed to try resolving symlinks in path \"/var/log/pods/[^\"]+/[^/\"]+/[0-9]+\\.log\": lstat /var/log/pods/\\S+: no such file or directory\\r?\\n?$"
+                  drop_counter_reason = "kubelet_pod_log_dir_gone"
+                }
+
                 // In CNPG the postgres container's PID 1 is the instance
                 // manager: it logs its own JSON (controller start-up, leases,
                 // config reloads) and re-emits PostgreSQL's csvlog as
@@ -503,6 +516,7 @@ spec:
                     cnpg_logger = "logger",
                     cnpg_record = "msg == 'record'",
                     cnpg_probe  = "logging_pod != null && logging_pod != ''",
+                    cnpg_server = "level != null && ts != null && msg != null && record == null",
                     pg_time     = "record.log_time",
                     pg_pid      = "record.process_id",
                     pg_severity = "record.error_severity",
@@ -516,6 +530,7 @@ spec:
                     cnpg_logger = "",
                     cnpg_record = "",
                     cnpg_probe  = "",
+                    cnpg_server = "",
                   }
                 }
                 stage.match {
@@ -525,6 +540,14 @@ spec:
                 }
                 stage.match {
                   selector            = "{cnpg_logger=\"\", cnpg_probe=\"true\"}"
+                  action              = "drop"
+                  drop_counter_reason = "cnpg_instance_manager"
+                }
+                // Logger-less {level, ts, msg} JSON is the instance manager's
+                // Go net/http server error log ("http: TLS handshake error
+                // from <pod ip>…", w8/050), never PostgreSQL's own output.
+                stage.match {
+                  selector            = "{cnpg_logger=\"\", cnpg_server=\"true\"}"
                   action              = "drop"
                   drop_counter_reason = "cnpg_instance_manager"
                 }
@@ -551,7 +574,7 @@ spec:
                   }
                 }
                 stage.label_drop {
-                  values = ["cnpg_logger", "cnpg_record", "cnpg_probe"]
+                  values = ["cnpg_logger", "cnpg_record", "cnpg_probe", "cnpg_server"]
                 }
 
                 stage.static_labels {

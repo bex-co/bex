@@ -1593,13 +1593,26 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 // marker never rides a split rune.
 const maxLogMessageBytes = 64 * 1024
 
-// kubeletLogsGonePrefix opens the kubelet's own 200 body when a container's
+// kubeletLogsGonePrefixes open the kubelet's own 200 bodies when a container's
 // log file no longer exists (the container was evicted or collected): one
-// untimestamped line naming the internal containerd id.
-const kubeletLogsGonePrefix = "unable to retrieve container logs for "
+// untimestamped line naming the internal containerd id, or — once the pod's
+// whole log directory is gone — its /var/log/pods path (w8/050).
+var kubeletLogsGonePrefixes = []string{
+	"unable to retrieve container logs for ",
+	`failed to try resolving symlinks in path "/var/log/pods/`,
+}
 
 // logsGoneMessage is the platform line that stands in for that placeholder.
 const logsGoneMessage = "==> logs for this instance are no longer available: its container was removed"
+
+func kubeletLogsGone(line string) bool {
+	for _, prefix := range kubeletLogsGonePrefixes {
+		if strings.HasPrefix(line, prefix) {
+			return true
+		}
+	}
+	return false
+}
 
 func parseContainerLogLine(service, pod, container, logType, line string) LogEntry {
 	ts, msg := "", line
@@ -1613,7 +1626,7 @@ func parseContainerLogLine(service, pod, container, logType, line string) LogEnt
 	// logs-gone placeholder does not. It is platform text, not the tenant's
 	// output, so it is re-typed as a platform line and never shows the
 	// containerd id (w8/025).
-	if ts == "" && strings.HasPrefix(line, kubeletLogsGonePrefix) {
+	if ts == "" && kubeletLogsGone(line) {
 		container, msg = progressContainer, logsGoneMessage
 	}
 	if len(msg) > maxLogMessageBytes {
