@@ -1,6 +1,6 @@
 # w5 · m110 — Key Value: platform clients log in as a platform ACL user, so locking down the tenant user can't break them
 
-**Worker:** worker5 **Goal:** The tenant `default` user is denied admin commands by category while the operator, exporter, probe and backup keep what they need, which fixes the persistence-switch regression from w4/191. **Status:** in progress — t001–t008 done 2026-10-05 (t005 live replay passed on production, pin `1128928ce` ⊇ `7ea5ce849`); t009 closeout next
+**Worker:** worker5 **Goal:** The tenant `default` user is denied admin commands by category while the operator, exporter, probe and backup keep what they need, which fixes the persistence-switch regression from w4/191. **Status:** done — 2026-10-05 (t005 live replay passed on production, pin `1128928ce` ⊇ `7ea5ce849`)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — **DONE** | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006, t007 |
-| t009 | Closeout | 10m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -39,7 +39,7 @@
 - Verified locally: engine suite on both pinned images (valkey 7, 8) with production args, gate/envtest/unit suites, `make test`, `make lint`; mutation checks on the gate and the handoff's `Username`.
 - Not verified locally: a live switch on a running cluster. Every `dev-N` stack shares the one in-cluster bex operator, which this workstream may not replace (AGENTS.md isolation rule), so t005 runs after the release pipeline deploys this change.
 
-## Blocked — t005 live replay (after deploy)
+## t005 live replay — plan
 
 On an owned Free `qa-` Key Value in `bex-canary` (QA session per `/qa-find-bugs`), after the deploy that includes this milestone:
 
@@ -61,3 +61,13 @@ Production, `bex-canary`, pin `1128928ce` (includes `7ea5ce849`; deploy run 3737
    - `DEBUG` → `ERR DEBUG command not allowed` (Valkey `enable-debug-command`).
    - **OK:** `CONFIG GET maxmemory`, `INFO server`, `CLIENT LIST`, `SLOWLOG GET`, `DBSIZE`, `FLUSHALL` (3 → 0).
 3. **Metrics.** `GET /v1/metrics/kv-memory` and `kv-connections` returned one point per minute from 22:04 to 22:07, after both switches. The dashboard Key Value → Metrics tab rendered Memory (up to ~1.2 MiB) and Connections (0–1).
+
+## Closeout — 2026-10-05
+
+Every definition-of-done line holds:
+
+- **Persistence switch.** The live Journal + Snapshot → Snapshot → Journal + Snapshot round trip kept all data (t005). It ran on production `bex-canary` rather than dev-5, because every dev stack shares the one in-cluster operator.
+- **Tenant command surface.** The tenant `default` user gets NOPERM on CONFIG SET/REWRITE, MODULE, ACL, REPLICAOF, SHUTDOWN, CLIENT KILL/PAUSE, MONITOR and SYNC. DEBUG is refused by `enable-debug-command`. Data commands, CONFIG GET, INFO and CLIENT LIST still work.
+- **Platform logins.** The exporter, handoff and backup authenticate as `bex`, and live metrics flowed. The readiness probe deliberately stays on `default` (t003): PING is not `@admin`, and the tenant can't change its own user, because ACL and CONFIG SET are denied. No API returns the platform password; its Secret carries the tenant-mount protection label.
+- **Engine test.** It boots Valkey with `valkeyArgs`, on both pinned images.
+
