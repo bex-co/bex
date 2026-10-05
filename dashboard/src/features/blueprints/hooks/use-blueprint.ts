@@ -6,7 +6,6 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { BlueprintView } from "@/features/blueprints/types";
 
 export interface UseBlueprintResult {
@@ -17,9 +16,10 @@ export interface UseBlueprintResult {
 }
 
 export function useBlueprint(id: string): UseBlueprintResult {
-  const { currentWorkspaceId } = useWorkspace();
   const { data, loading, error, refetch } = useQuery(BlueprintDocument, {
-    variables: { id, ownerId: currentWorkspaceId },
+    // No ownerId: a Blueprint id resolves its own workspace server-side, so a
+    // link to one in another of the caller's workspaces opens (w4/m169).
+    variables: { id },
     fetchPolicy: "cache-first",
     errorPolicy: "all",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,

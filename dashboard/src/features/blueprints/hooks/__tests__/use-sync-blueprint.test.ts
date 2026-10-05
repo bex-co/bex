@@ -8,10 +8,6 @@ vi.mock("@apollo/client/react", () => ({
   useMutation: () => [mutate],
 }));
 
-vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
-}));
-
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 const toastWarning = vi.fn();
@@ -135,7 +131,6 @@ describe("useSyncBlueprint", () => {
     expect(mutate).toHaveBeenCalledWith({
       variables: {
         id: "blp-1",
-        ownerId: "tea-1",
         confirm: "sudo deploy service api",
         commitId: reviewed.commitId,
         path: reviewed.path,

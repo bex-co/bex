@@ -3,7 +3,6 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DisconnectBlueprintDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   hasGraphQLErrorCode,
   mutationErrorMessage,
@@ -16,7 +15,6 @@ export interface UseDisconnectBlueprintResult {
 
 export function useDisconnectBlueprint(): UseDisconnectBlueprintResult {
   const { t } = useTranslations();
-  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(DisconnectBlueprintDocument);
   const [busy, setBusy] = useState(false);
 
@@ -24,7 +22,7 @@ export function useDisconnectBlueprint(): UseDisconnectBlueprintResult {
     async (id: string): Promise<boolean> => {
       setBusy(true);
       try {
-        await mutate({ variables: { id, ownerId: currentWorkspaceId } });
+        await mutate({ variables: { id } });
         toast.success(t("blueprints.disconnectSuccess"));
         return true;
       } catch (err) {
@@ -42,7 +40,7 @@ export function useDisconnectBlueprint(): UseDisconnectBlueprintResult {
         setBusy(false);
       }
     },
-    [mutate, t, currentWorkspaceId],
+    [mutate, t],
   );
 
   return { disconnect, busy };

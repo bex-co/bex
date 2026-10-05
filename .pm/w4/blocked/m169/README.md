@@ -1,16 +1,16 @@
 # w4 · m169 — Blueprint by-id verbs resolve the Blueprint's own workspace
 
-**Worker:** worker4 **Goal:** a Blueprint id works like a service or env-group id: every by-id verb finds it in whichever of the caller's workspaces owns it, with no `ownerId` needed **Status:** todo
+**Worker:** worker4 **Goal:** a Blueprint id works like a service or env-group id: every by-id verb finds it in whichever of the caller's workspaces owns it, with no `ownerId` needed **Status:** blocked — t001–t005 done 2026-10-04; t006 live closeout remains
 
 ## Tasks (in order)
 
 | id   | title                                                          | est | depends_on                 |
 | ---- | -------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Resolve the owning workspace from the Blueprint id             | 1h  | —                          |
-| t002 | Dashboard Blueprint deep links across workspaces               | 30m | w4/m169/t001               |
-| t003 | Render parity across Blueprint by-id surfaces                  | 30m | w4/m169/t001, w4/m169/t002 |
-| t004 | Simplify changed code                                          | 20m | w4/m169/t003               |
-| t005 | Test coverage for shipped behavior                             | 45m | w4/m169/t003               |
+| t001 — **DONE** | Resolve the owning workspace from the Blueprint id             | 1h  | —                          |
+| t002 — **DONE** | Dashboard Blueprint deep links across workspaces               | 30m | w4/m169/t001               |
+| t003 — **DONE** | Render parity across Blueprint by-id surfaces                  | 30m | w4/m169/t001, w4/m169/t002 |
+| t004 — **DONE** | Simplify changed code                                          | 20m | w4/m169/t003               |
+| t005 — **DONE** | Test coverage for shipped behavior                             | 45m | w4/m169/t003               |
 | t006 | Closeout                                                       | 15m | w4/m169/t005               |
 
 ## Definition of done
