@@ -485,17 +485,21 @@ type ClaimSelection struct {
 }
 
 // GetClaimSelection renders an outstanding selection for the picker WITHOUT
-// consuming it. Admin-gated on ownerID's workspace ("" => the caller's default,
-// ADR078 §6) and subject-matched on top: a selection id is a name, not a
-// capability, so it reveals its candidates only to the bex user who started the
-// claim, inside the workspace that claim was for. Unknown, expired, foreign-
-// workspace and foreign-subject selections are all refused identically.
+// consuming it. Admin-gated on ownerID's workspace — or, with no ownerID, on the
+// workspace the selection itself was started for (w4/m172, scopeSelection) — and
+// subject-matched on top: a selection id is a name, not a capability, so it
+// reveals its candidates only to the bex user who started the claim, inside the
+// workspace that claim was for. Unknown, expired, foreign-workspace and
+// foreign-subject selections are all refused identically.
 func (s *Service) GetClaimSelection(ctx context.Context, ownerID, selectionID string) (ClaimSelection, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeSelection(ctx, ownerID, selectionID)
+	if err != nil {
+		return ClaimSelection{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return ClaimSelection{}, err
 	}
-	sel, err := s.loadSelection(ctx, selectionID, false)
+	sel, err := s.loadSelection(ctx, selectionID)
 	if err != nil {
 		return ClaimSelection{}, err
 	}
@@ -513,38 +517,94 @@ func (s *Service) GetClaimSelection(ctx context.Context, ownerID, selectionID st
 }
 
 // SelectClaim completes an ambiguous claim by binding one installation the
-// callback already proved. Admin-gated on ownerID's workspace.
+// callback already proved. Admin-gated on ownerID's workspace, or with no
+// ownerID on the selection's own workspace (w4/m172, scopeSelection).
 //
-// SECURITY: this grants nothing the callback had not established. The selection
-// is consumed atomically (so a replay finds nothing), can_manage is re-checked
-// NOW rather than inherited from the callback (a demotion inside the selection
-// window must not still bind), the presenting subject must equal the initiator,
-// the selection's workspace must be the authorized one, and the installation must
-// be a member of the stored set — so the client chooses among proved options and
-// can never introduce a new one.
+// SECURITY: this grants nothing the callback had not established. can_manage is
+// re-checked NOW rather than inherited from the callback (a demotion inside the
+// selection window must not still bind), the presenting subject must equal the
+// initiator, the selection's workspace must be the authorized one, and the
+// installation must be a member of the stored set — so the client chooses among
+// proved options and can never introduce a new one. Every one of those checks
+// runs on a PEEK; only once all pass is the selection consumed atomically (so a
+// replay finds nothing). A refused call — wrong workspace, wrong subject, no
+// can_manage, out-of-set choice — therefore never spends the caller's pending
+// choice (w4/m172: consuming first let a call routed to the wrong workspace
+// destroy the selection and then report it gone).
 func (s *Service) SelectClaim(ctx context.Context, ownerID, selectionID string, installationID int64) (Connection, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
-		return Connection{}, err
-	}
-	sel, err := s.loadSelection(ctx, selectionID, true)
+	ctx, err := s.scopeSelection(ctx, ownerID, selectionID)
 	if err != nil {
 		return Connection{}, err
 	}
+	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+		return Connection{}, err
+	}
+	sel, err := s.loadSelection(ctx, selectionID)
+	if err != nil {
+		return Connection{}, err
+	}
+	if !selectionOffers(sel, installationID) {
+		return Connection{}, fmt.Errorf("%w: that GitHub account is not one of this claim's options", core.ErrBadRequest)
+	}
+	spent, err := s.Store.ConsumeGitHubClaimSelection(ctx, selectionID)
+	if errors.Is(err, store.ErrNotFound) {
+		return Connection{}, errClaimSelectionGone // a concurrent select won the race
+	}
+	if err != nil {
+		return Connection{}, err
+	}
+	// The consumed row is the authority for the bind: re-hold it to the checks
+	// the peek passed, so nothing between peek and consume can widen the grant.
+	if spent.Subject != sel.Subject || spent.WorkspaceID != sel.WorkspaceID || !selectionOffers(spent, installationID) {
+		return Connection{}, errClaimSelectionGone
+	}
+	return s.connectWithWorkspace(ctx, spent.WorkspaceID, installationID)
+}
+
+// selectionOffers reports whether installationID is one of sel's proved options.
+func selectionOffers(sel store.GitHubClaimSelection, installationID int64) bool {
 	for _, c := range sel.Candidates {
 		if c.InstallationID == installationID {
-			return s.connectWithWorkspace(ctx, sel.WorkspaceID, c.InstallationID)
+			return true
 		}
 	}
-	return Connection{}, fmt.Errorf("%w: that GitHub account is not one of this claim's options", core.ErrBadRequest)
+	return false
+}
+
+// scopeSelection picks the workspace a selection verb acts in (w4/m172): an
+// explicit ownerID as before, else the workspace the selection was started for —
+// so a claim begun in a non-default workspace completes without ?ownerId=. Only
+// the initiating subject's own selection routes; any other (unknown, expired,
+// foreign subject) stays on the default path, where loadSelection refuses it
+// with the same errClaimSelectionGone. A caller no longer a member of the
+// selection's workspace gets that same refusal. Peek only: routing never
+// consumes.
+func (s *Service) scopeSelection(ctx context.Context, ownerID, selectionID string) (context.Context, error) {
+	var owner core.ResourceOwner
+	if s.configured() {
+		owner = func(ctx context.Context) (string, bool, error) {
+			sel, err := s.Store.GetGitHubClaimSelection(ctx, selectionID)
+			if errors.Is(err, store.ErrNotFound) {
+				return "", false, nil
+			}
+			if err != nil {
+				return "", false, err
+			}
+			if ident, ok := core.IdentityFrom(ctx); !ok || ident.Subject == "" || sel.Subject != ident.Subject {
+				return "", false, nil
+			}
+			return sel.WorkspaceID, true, nil
+		}
+	}
+	return s.ScopeByID(ctx, ownerID, owner, errClaimSelectionGone)
 }
 
 // loadSelection is the shared guard of both selection verbs — one copy so the
-// read and the write cannot drift on who may see a pending choice. consume
-// distinguishes them: peek (render the picker) vs spend it (bind). Unknown,
+// read and the write cannot drift on who may see a pending choice. It only
+// PEEKS; SelectClaim consumes afterwards, once every check has passed. Unknown,
 // expired, foreign-subject and foreign-workspace all collapse to one
 // indistinguishable refusal, so a selection id cannot be probed.
-func (s *Service) loadSelection(ctx context.Context, selectionID string, consume bool) (store.GitHubClaimSelection, error) {
+func (s *Service) loadSelection(ctx context.Context, selectionID string) (store.GitHubClaimSelection, error) {
 	if !s.configured() {
 		return store.GitHubClaimSelection{}, core.ErrGitHubUnavailable
 	}
@@ -555,11 +615,7 @@ func (s *Service) loadSelection(ctx context.Context, selectionID string, consume
 	if caller == "" {
 		return store.GitHubClaimSelection{}, core.ErrForbidden
 	}
-	load := s.Store.GetGitHubClaimSelection
-	if consume {
-		load = s.Store.ConsumeGitHubClaimSelection
-	}
-	sel, err := load(ctx, selectionID)
+	sel, err := s.Store.GetGitHubClaimSelection(ctx, selectionID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return store.GitHubClaimSelection{}, errClaimSelectionGone
@@ -664,14 +720,25 @@ func (s *Service) ListConnections(ctx context.Context, ownerID string) ([]Connec
 	return out, nil
 }
 
-// Disconnect removes one of ownerID's connections ("" => the caller's default
-// workspace, w6/m18). installationID names the exact connection to remove; 0
-// targets the sole connection (the singular-alias behavior) and is refused with
-// ErrConflict when the workspace holds several — an ambiguous "disconnect" must
-// not silently pick one. Idempotent: disconnecting when not connected is a no-op
-// success. Admin-only.
+// Disconnect removes one of ownerID's connections. installationID names the
+// exact connection to remove; with no ownerID it acts in the workspace that
+// connection is bound in (w4/m172, scopeInstallation) rather than the caller's
+// default, so a member of several workspaces disconnects any of theirs by id.
+// 0 targets the sole connection of ownerID's workspace ("" => the caller's
+// default, w6/m18 — the singular-alias behavior) and is refused with ErrConflict
+// when the workspace holds several — an ambiguous "disconnect" must not silently
+// pick one. Idempotent: disconnecting when not connected is a no-op success, and
+// an installation bound only in workspaces the caller is not a member of answers
+// that SAME no-op (deleting nothing), so the verb is no existence oracle.
+// Admin-only.
 func (s *Service) Disconnect(ctx context.Context, ownerID string, installationID int64) error {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeInstallation(ctx, ownerID, installationID)
+	if errors.Is(err, errInstallationNotVisible) {
+		return nil // indistinguishable from never connected
+	}
+	if err != nil {
+		return err
+	}
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return err
 	}
@@ -693,11 +760,61 @@ func (s *Service) Disconnect(ctx context.Context, ownerID string, installationID
 			return fmt.Errorf("%w: this workspace has multiple GitHub connections; specify which installation to disconnect", core.ErrConflict)
 		}
 	}
-	err := s.Store.DeleteGitConnection(ctx, workspace, installationID)
+	err = s.Store.DeleteGitConnection(ctx, workspace, installationID)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil
 	}
 	return err
+}
+
+// errInstallationNotVisible is scopeInstallation's not-found: the caller is not
+// a member of the binding's workspace. Disconnect folds it into its idempotent
+// no-op, the answer an installation bound nowhere gets.
+var errInstallationNotVisible = errors.New("github: installation not bound in a workspace the caller belongs to")
+
+// scopeInstallation picks the workspace a by-installation verb acts in
+// (w4/m172). An installation may be bound in several workspaces (ADR078 §2,
+// N:N), so its "own" workspace is chosen among the bindings the caller can see:
+// the caller's default when it holds one (today's behavior), else the single
+// binding in a workspace the caller is a member of. Bindings only in foreign
+// workspaces stay unrouted — the default path then finds nothing, exactly as for
+// an installation bound nowhere. Several visible non-default bindings are
+// ambiguous: refused with ErrConflict naming ownerId rather than guessed.
+func (s *Service) scopeInstallation(ctx context.Context, ownerID string, installationID int64) (context.Context, error) {
+	var owner core.ResourceOwner
+	if s.configured() && installationID > 0 {
+		owner = func(ctx context.Context) (string, bool, error) {
+			rows, err := s.Store.GitConnectionsByInstallation(ctx, installationID)
+			if err != nil {
+				return "", false, err
+			}
+			ident, _ := core.IdentityFrom(ctx)
+			def := s.WorkspaceOrDefault(ctx)
+			visible := []string{}
+			for _, row := range rows {
+				if row.WorkspaceID == def {
+					return def, true, nil
+				}
+				member, err := s.Workspace.IsMember(ctx, ident, row.WorkspaceID)
+				if err != nil {
+					log.Printf("github: workspace membership unavailable: %v", err)
+					return "", false, core.ErrAuthzUnavailable
+				}
+				if member {
+					visible = append(visible, row.WorkspaceID)
+				}
+			}
+			switch len(visible) {
+			case 0:
+				return "", false, nil
+			case 1:
+				return visible[0], true, nil
+			default:
+				return "", false, fmt.Errorf("%w: this GitHub installation is connected to several of your workspaces; specify ownerId", core.ErrConflict)
+			}
+		}
+	}
+	return s.ScopeByID(ctx, ownerID, owner, errInstallationNotVisible)
 }
 
 // ListRepos returns the repositories across ALL of ownerID's connected

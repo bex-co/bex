@@ -1148,12 +1148,15 @@ func TestEnvGroup_GetAndRevealRefuseCrossWorkspace(t *testing.T) {
 		t.Fatalf("erin seed var: %v", err)
 	}
 
+	// A non-member's answer is the one a nonexistent id gets (w4/m172) — a
+	// Forbidden would confirm the group exists in a workspace dana can't see.
 	danaSvc, danaCtx := svcAs("dana")
-	if _, err := danaSvc.GetEnvGroup(danaCtx, group.ID); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("dana GetEnvGroup(bravo's group): want ErrForbidden, got %v", err)
+	_, missing := danaSvc.GetEnvGroup(danaCtx, "evg-d0000000000000000000")
+	if _, err := danaSvc.GetEnvGroup(danaCtx, group.ID); !errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) || (missing != nil && err.Error() != missing.Error()) {
+		t.Errorf("dana GetEnvGroup(bravo's group): want the missing-id not-found (%v), got %v", missing, err)
 	}
-	if _, err := danaSvc.GetEnvGroupVar(danaCtx, group.ID, "TOKEN"); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("dana GetEnvGroupVar(bravo's group): want ErrForbidden, got %v", err)
+	if _, err := danaSvc.GetEnvGroupVar(danaCtx, group.ID, "TOKEN"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("dana GetEnvGroupVar(bravo's group): want not found, got %v", err)
 	}
 	// Owner can still reach it.
 	if _, err := erinSvc.GetEnvGroup(erinCtx, group.ID); err != nil {
@@ -1686,5 +1689,31 @@ func TestEnvGroup_OverLongNamesAreBadRequests(t *testing.T) {
 	}
 	if _, err := svc.SetEnvGroupFile(ctx, g.ID, long[1:], "c"); err != nil {
 		t.Fatalf("SetEnvGroupFile(253) = %v, want success", err)
+	}
+}
+
+// onlyWorkspaceChecker grants every relation on exactly one workspace.
+type onlyWorkspaceChecker struct{ object string }
+
+func (c onlyWorkspaceChecker) Check(_ context.Context, _, _, object string) (bool, error) {
+	return object == c.object, nil
+}
+
+// w4/m172: a by-id verb authorizes in the group's own workspace, so a member
+// whose role there exceeds their role in their default workspace is not
+// refused by the leading default-workspace check.
+func TestEnvGroup_ByIDVerbAuthorizesInTheGroupsWorkspace(t *testing.T) {
+	store := newFakeStore()
+	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	creator := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"dana": {"tea-b"}}}, Store: store}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	group, err := creator.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver,
+		Authz: onlyWorkspaceChecker{core.WorkspaceObject("tea-b")}}, Store: store}
+	if got, err := svc.GetEnvGroup(ctx, group.ID); err != nil || got.ID != group.ID {
+		t.Fatalf("GetEnvGroup with a role only in the group's workspace = %+v, %v", got, err)
 	}
 }

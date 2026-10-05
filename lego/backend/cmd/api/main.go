@@ -124,6 +124,16 @@ func (p sandboxKeyProvider) WorkspaceKey(ctx context.Context, workspaceID string
 	return p.st.SandboxKeyForWorkspace(ctx, workspaceID)
 }
 
+// The by-id sandbox routing type-asserts this seam; without it, routing would
+// silently fall back to the caller's default workspace.
+var _ sandbox.PurgeKeyLookup = sandboxKeyProvider{}
+
+// SandboxKeyLookup is the lookup-only seam (never mints) the by-id sandbox
+// verbs use to find which of the caller's workspaces owns a sandbox (w4/m172).
+func (p sandboxKeyProvider) SandboxKeyLookup(ctx context.Context, workspaceID string) (string, bool, error) {
+	return p.st.SandboxKeyLookup(ctx, workspaceID)
+}
+
 // drainWindow is how long a SIGTERM'd bex-api keeps serving NEW requests while
 // /readyz reports draining (w1/m52): long enough for the readiness probe
 // (periodSeconds 5, failureThreshold 1) plus endpoint/ingress propagation to

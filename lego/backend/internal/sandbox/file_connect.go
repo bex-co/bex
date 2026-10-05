@@ -105,7 +105,10 @@ func validateFileConnectPath(value string) error {
 // Both reading credentials and writing executable content require can_create;
 // the fresh check makes a role revoked since mint effective at redemption.
 func (s *Service) authorizeFileTarget(ctx context.Context, req FileConnectRequest) (string, osSandbox, error) {
-	ctx = core.WithWorkspace(ctx, req.OwnerID)
+	ctx, err := s.scopeSandbox(ctx, req.OwnerID, req.SandboxID)
+	if err != nil {
+		return "", osSandbox{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return "", osSandbox{}, err
 	}

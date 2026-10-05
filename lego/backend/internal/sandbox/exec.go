@@ -113,7 +113,10 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 // below. It returns the resolved workspace and the live sandbox object; it
 // opens no stream and mints nothing.
 func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (string, osSandbox, error) {
-	ctx = core.WithWorkspace(ctx, req.OwnerID)
+	ctx, err := s.scopeSandbox(ctx, req.OwnerID, req.SandboxID)
+	if err != nil {
+		return "", osSandbox{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return "", osSandbox{}, err
 	}
