@@ -3909,3 +3909,26 @@ func TestBlueprintByIDNotFoundIsIdenticalAcrossSurfaces(t *testing.T) {
 		t.Errorf("GetBlueprintByID on the real row = %v, want success", err)
 	}
 }
+
+// w4/m170: a Blueprint database cannot declare a name PostgreSQL owns.
+func TestValidateBlueprintRefusesReservedPostgresIdentifiers(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	for field, value := range map[string]string{"user": "postgres", "databaseName": "template1"} {
+		manifest := "databases:\n  - name: main\n    plan: free\n    " + field + ": " + value + "\n"
+		v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+		if err == nil && v.Valid {
+			t.Errorf("databases[].%s %q validated, want a reserved-name refusal", field, value)
+			continue
+		}
+		msg := ""
+		if err != nil {
+			msg = err.Error()
+		}
+		for _, e := range v.Errors {
+			msg += e.Error
+		}
+		if !strings.Contains(msg, "reserved by PostgreSQL") {
+			t.Errorf("databases[].%s %q refusal = %q, want it to say reserved by PostgreSQL", field, value, msg)
+		}
+	}
+}

@@ -65,6 +65,18 @@ function renderCard(database: DatabaseDetailView) {
 }
 
 describe("DatabaseMetadataCard", () => {
+  // w4/m170: "Unavailable" is never a dead end — the reason sits beside it.
+  it("shows why an unavailable database is unavailable, and nothing otherwise", () => {
+    renderCard(
+      db({
+        status: "unavailable",
+        statusReason:
+          "The database cluster rejected its configuration, so the latest change could not be applied.",
+      }),
+    );
+    expect(screen.getByText(/rejected its configuration/)).toBeInTheDocument();
+  });
+
   it("reads the suspended status, not a stale ready label (w1/m159)", () => {
     // deriveStatus prefers the suspended flag; with w5/061 the wire status is
     // also "suspended", so either input must keep this row aligned with the badge.

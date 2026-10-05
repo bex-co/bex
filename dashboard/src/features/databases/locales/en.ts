@@ -189,6 +189,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "orders_owner",
     description: "Create-database physical PostgreSQL owner-role placeholder",
   },
+  "databases.fieldPhysicalNameReserved": {
+    message: "“{name}” is reserved by PostgreSQL. Choose another name.",
+    description:
+      "Create-database / add-user validation for a name PostgreSQL reserves (postgres, template0/1, streaming_replica, pg_*)",
+  },
   "databases.fieldPhysicalNameError": {
     message:
       "Use up to 63 lowercase letters, digits, and underscores; start with a letter or underscore.",

@@ -35,7 +35,11 @@ import {
   formatInstanceMemory,
 } from "@/features/services/lib/instance-type";
 import { POSTGRES_VERSIONS } from "@/features/databases/lib/versions";
-import { isValidPostgresIdentifier } from "@/features/databases/lib/identifiers";
+import {
+  isReservedPostgresDatabaseName,
+  isReservedPostgresRole,
+  isValidPostgresIdentifier,
+} from "@/features/databases/lib/identifiers";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 
 // PostgreSQL major versions bex offers. Keep in sync with the Database CRD's
@@ -101,10 +105,14 @@ export function CreateDatabaseDialog({
 
   const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
+  const databaseNameReserved = isReservedPostgresDatabaseName(databaseName);
+  const databaseUserReserved = isReservedPostgresRole(databaseUser);
   const databaseNameValid =
-    databaseName === "" || isValidPostgresIdentifier(databaseName);
+    databaseName === "" ||
+    (isValidPostgresIdentifier(databaseName) && !databaseNameReserved);
   const databaseUserValid =
-    databaseUser === "" || isValidPostgresIdentifier(databaseUser);
+    databaseUser === "" ||
+    (isValidPostgresIdentifier(databaseUser) && !databaseUserReserved);
   const diskFloor = selectedPlan?.storageGB ?? 1;
   const diskCeiling = selectedPlan?.maxStorageGB;
   const diskEntered = diskSizeGB.trim() !== "";
@@ -235,7 +243,11 @@ export function CreateDatabaseDialog({
                 />
                 {!databaseNameValid ? (
                   <p className="text-sm text-destructive">
-                    {t("databases.fieldPhysicalNameError")}
+                    {databaseNameReserved
+                      ? t("databases.fieldPhysicalNameReserved", {
+                          name: databaseName,
+                        })
+                      : t("databases.fieldPhysicalNameError")}
                   </p>
                 ) : null}
               </div>
@@ -253,7 +265,11 @@ export function CreateDatabaseDialog({
                 />
                 {!databaseUserValid ? (
                   <p className="text-sm text-destructive">
-                    {t("databases.fieldPhysicalNameError")}
+                    {databaseUserReserved
+                      ? t("databases.fieldPhysicalNameReserved", {
+                          name: databaseUser,
+                        })
+                      : t("databases.fieldPhysicalNameError")}
                   </p>
                 ) : null}
               </div>

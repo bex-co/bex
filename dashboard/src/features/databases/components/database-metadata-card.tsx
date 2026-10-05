@@ -35,7 +35,19 @@ export function DatabaseMetadataCard({
         // The same label the header badge shows: a suspended instance still
         // reports status "available", so the raw value contradicted the badge
         // beside it (w1/m159, from w1/085).
-        { label: t("databases.metaStatus"), value: t(statusLabel(database)) },
+        {
+          label: t("databases.metaStatus"),
+          value: database.statusReason ? (
+            <span className="flex flex-col gap-0.5">
+              <span>{t(statusLabel(database))}</span>
+              <span className="text-muted-foreground text-xs">
+                {database.statusReason}
+              </span>
+            </span>
+          ) : (
+            t(statusLabel(database))
+          ),
+        },
         { label: t("databases.metaPlan"), value: planName ?? "—" },
         {
           label: t("databases.metaVersion"),

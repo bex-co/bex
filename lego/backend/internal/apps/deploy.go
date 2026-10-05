@@ -2434,6 +2434,12 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if d.User != "" && !appv1alpha1.ValidPostgresIdentifier(d.User) {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q user must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", core.ErrBadRequest, d.Name)
 	}
+	if appv1alpha1.ReservedPostgresDatabaseName(d.DatabaseName) {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q databaseName %q is reserved by PostgreSQL", core.ErrBadRequest, d.Name, d.DatabaseName)
+	}
+	if appv1alpha1.ReservedPostgresRole(d.User) {
+		return parsedDatabase{}, fmt.Errorf("%w: database %q user %q is reserved by PostgreSQL", core.ErrBadRequest, d.Name, d.User)
+	}
 	plan := d.Plan
 	// Render's current Blueprint default is a paid basic-256mb instance. This
 	// is intentionally a create default; a presence-aware sync leaves an

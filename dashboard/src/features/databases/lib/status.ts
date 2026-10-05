@@ -62,6 +62,7 @@ export function toDatabaseDetailView(
 ): DatabaseDetailView {
   return {
     ...toDatabaseView(d),
+    statusReason: d.statusReason || null,
     databaseName: d.databaseName ?? null,
     databaseUser: d.databaseUser ?? null,
     highAvailabilityEnabled: d.highAvailabilityEnabled ?? false,

@@ -1,17 +1,17 @@
 # w4 · m170 — Refuse reserved Postgres identifiers so a database name or user can't break or wedge a database
 
-**Worker:** worker4 **Goal:** reserved PostgreSQL names are refused with a 400 at create and at add-user. A database whose reconcile fails says why, and a tenant can always undo a user add. **Status:** todo
+**Worker:** worker4 **Goal:** reserved PostgreSQL names are refused with a 400 at create and at add-user. A database whose reconcile fails says why, and a tenant can always undo a user add. **Status:** blocked — t001–t006 done 2026-10-04; t007 live closeout remains
 
 ## Tasks (in order)
 
 | id   | title                                                               | est | depends_on                 |
 | ---- | ------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Refuse reserved database names and roles at every write path        | 1h  | —                          |
-| t002 | Recover databases already wedged by a reserved managed role         | 45m | w4/m170/t001               |
-| t003 | Surface the failure reason of an unavailable database               | 1h  | —                          |
-| t004 | Render parity across Postgres create/user/read surfaces             | 30m | w4/m170/t002, w4/m170/t003 |
-| t005 | Simplify changed code                                               | 20m | w4/m170/t004               |
-| t006 | Test coverage for shipped behavior                                  | 45m | w4/m170/t004               |
+| t001 — **DONE** | Refuse reserved database names and roles at every write path        | 1h  | —                          |
+| t002 — **DONE** | Recover databases already wedged by a reserved managed role         | 45m | w4/m170/t001               |
+| t003 — **DONE** | Surface the failure reason of an unavailable database               | 1h  | —                          |
+| t004 — **DONE** | Render parity across Postgres create/user/read surfaces             | 30m | w4/m170/t002, w4/m170/t003 |
+| t005 — **DONE** | Simplify changed code                                               | 20m | w4/m170/t004               |
+| t006 — **DONE** | Test coverage for shipped behavior                                  | 45m | w4/m170/t004               |
 | t007 | Closeout                                                            | 15m | w4/m170/t006               |
 
 ## Definition of done

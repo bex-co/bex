@@ -101,6 +101,46 @@ describe("CreateDatabaseDialog", () => {
     expect(submit).toBeEnabled();
   });
 
+  // w4/m170: names PostgreSQL owns block Create with their own message.
+  it("blocks a reserved database user or name before submit", async () => {
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+    const submit = within(dialog).getByRole("button", {
+      name: "Create database",
+    });
+
+    await user.type(within(dialog).getByLabelText("Database user"), "postgres");
+    expect(
+      within(dialog).getByText(
+        "“postgres” is reserved by PostgreSQL. Choose another name.",
+      ),
+    ).toBeInTheDocument();
+    expect(submit).toBeDisabled();
+
+    await user.clear(within(dialog).getByLabelText("Database user"));
+    await user.type(
+      within(dialog).getByLabelText("Database name"),
+      "template1",
+    );
+    expect(
+      within(dialog).getByText(
+        "“template1” is reserved by PostgreSQL. Choose another name.",
+      ),
+    ).toBeInTheDocument();
+    expect(submit).toBeDisabled();
+
+    await user.clear(within(dialog).getByLabelText("Database name"));
+    await user.type(
+      within(dialog).getByLabelText("Database name"),
+      "orders_data",
+    );
+    expect(submit).toBeEnabled();
+  });
+
   it('submits with the default plan and omits an unset version (default -> "")', async () => {
     const onCreated = vi.fn();
     const user = userEvent.setup();
