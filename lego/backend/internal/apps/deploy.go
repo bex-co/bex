@@ -1335,7 +1335,9 @@ func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack)
 		if err == nil {
 			continue
 		}
-		if !errors.Is(err, core.ErrBadRequest) {
+		// A host another site already serves is a manifest problem too (w8/055);
+		// the aggregate unwraps to its first error, so apply keeps the 409.
+		if !errors.Is(err, core.ErrBadRequest) && !errors.Is(err, core.ErrConflict) {
 			return err // not a manifest problem; nothing to aggregate
 		}
 		problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: svc.req.Name, err: err})
@@ -1354,7 +1356,37 @@ func (s *Service) validateBlueprintService(ctx context.Context, svc parsedServic
 	if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
+	if err := s.previewBlueprintHosts(ctx, svc.req.Name, desired); err != nil {
+		return fmt.Errorf("service %q: %w", svc.req.Name, err)
+	}
 	return nil
+}
+
+// previewBlueprintHosts runs the custom-domain gate apply enforces (reserved
+// platform hosts, caps, cross-workspace collisions) read-only over a declared
+// service's hosts, so validate and the pre-sync preview refuse what apply
+// will (w8/055). An existing service is checked as itself — its CR name and
+// immutable slug — so a re-sync re-stating its own hosts, including its own
+// `<slug>.<base>`, is not self-refused; a new one exempts nothing under the
+// base domain, as a create dry run does (w8/045).
+func (s *Service) previewBlueprintHosts(ctx context.Context, name string, desired appv1alpha1.AppSpec) error {
+	if desired.Host == "" && len(desired.Hosts) == 0 {
+		return nil
+	}
+	probe := &appv1alpha1.App{Spec: desired}
+	probe.Name = name
+	existing := false
+	if current, err := s.GetApp(ctx, core.RelCanView, name); err == nil {
+		// Its identity (srv- id label, UID) is what the collision sweep skips.
+		probe = current.DeepCopy()
+		probe.Spec = desired
+		probe.Spec.Subdomain = current.Spec.Subdomain
+		existing = true
+	} else if tenantID := s.resolveTenantID(ctx); tenantID != "" {
+		probe.Name = core.CRName(tenantID, name)
+		probe.Labels = map[string]string{core.LabelTenant: tenantID}
+	}
+	return s.checkHostsClaimable(ctx, probe, true, existing)
 }
 
 // blueprintResourceError ties a semantic-stage refusal to the declaration that

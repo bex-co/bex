@@ -719,20 +719,23 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		}
 		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(st)}, nil
 	}
-	if !errors.Is(err, core.ErrBadRequest) {
-		return BlueprintValidation{}, err
-	}
+	// Per-resource refusals (a host another site serves is a 409, w8/055) are
+	// located entries whatever their sentinel.
 	if errors.As(err, &refused) {
 		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
+	}
+	if !errors.Is(err, core.ErrBadRequest) {
+		return BlueprintValidation{}, err
 	}
 	return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, blueprintManifestCreateMessage(blueprintValidationMessage(err)))}}, nil
 }
 
-// blueprintValidationMessage drops the ErrBadRequest sentinel text wherever a
+// blueprintValidationMessage drops the ErrBadRequest/ErrConflict sentinel text wherever a
 // wrap put it — "service \"x\": bad request: …" as well as a leading one. The
 // entry is already a validation error; the sentinel is transport detail.
 func blueprintValidationMessage(err error) string {
-	return strings.ReplaceAll(err.Error(), core.ErrBadRequest.Error()+": ", "")
+	msg := strings.ReplaceAll(err.Error(), core.ErrBadRequest.Error()+": ", "")
+	return strings.ReplaceAll(msg, core.ErrConflict.Error()+": ", "")
 }
 
 // blueprintResourceValidationErrors turns per-resource refusals into entries
@@ -750,6 +753,8 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 		pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
 		if i, ok := blueprintEnvVarIndex(resource, msg); ok {
 			pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+		} else if i, ok := blueprintDomainIndex(resource, msg); ok {
+			pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
 		}
 		out = append(out, blueprintLocatedError(source, msg, pointer))
 	}
@@ -778,6 +783,24 @@ func blueprintEnvVarIndex(resource BlueprintResourceIR, msg string) (int, bool) 
 	for i, raw := range envVars {
 		if env, _ := raw.(map[string]any); env["key"] == match[1] {
 			return i, true
+		}
+	}
+	return 0, false
+}
+
+var blueprintQuotedRE = regexp.MustCompile(`"([^"]+)"`)
+
+// blueprintDomainIndex resolves a hostname refusal to the domains entry it
+// quotes (w8/055) — compared case- and trailing-dot-insensitively, as hosts
+// are canonicalized before the check that quotes them.
+func blueprintDomainIndex(resource BlueprintResourceIR, msg string) (int, bool) {
+	domains, _ := resource.Fields["domains"].Value.([]any)
+	for _, match := range blueprintQuotedRE.FindAllStringSubmatch(msg, -1) {
+		quoted := strings.TrimSuffix(strings.ToLower(match[1]), ".")
+		for i, raw := range domains {
+			if host, _ := raw.(string); strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".") == quoted {
+				return i, true
+			}
 		}
 	}
 	return 0, false
@@ -1894,6 +1917,12 @@ func blueprintErrorPath(ir BlueprintIR, message string) string {
 func blueprintErrorField(message string) string {
 	if strings.Contains(message, "health check path") {
 		return ".healthCheckPath"
+	}
+	// Hostname refusals contain "name"; they belong to domains (w8/055).
+	for _, marker := range []string{"hostname", "wildcard", "this domain", "custom domains"} {
+		if strings.Contains(strings.ToLower(message), marker) {
+			return ".domains"
+		}
 	}
 	for _, field := range []string{"maintenanceMode", "highAvailability", "readReplicas", "diskSizeGB", "storageAutoscalingEnabled", "connectionPool", "plan", "domains", "schedule", "runtime", "type", "image", "databaseName", "name", "ipAllowList", "renderSubdomainPolicy", "scaling", "staticPublishPath", "publishPath"} {
 		if strings.Contains(strings.ToLower(message), strings.ToLower(field)) {
