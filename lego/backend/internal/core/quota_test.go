@@ -17,12 +17,17 @@ limitations under the License.
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // quotaExceededErr reproduces the exact Kubernetes ResourceQuota admission
@@ -121,5 +126,52 @@ func TestQuotaCapError_DoesNotCrossDatastoreDimensions(t *testing.T) {
 	err := quotaExceededErr("databases", "over-cap", "tenant-quota", "count/databases.app.bex.co", 1, 1, 1)
 	if _, ok := QuotaCapError(err, "count/keyvalues.app.bex.co", "key-value store"); ok {
 		t.Error("a Postgres quota rejection was mapped as a Key Value cap")
+	}
+}
+
+// tenantQuota is the `<ws>` tenant-quota with one count key's hard and used.
+func tenantQuota(ns, key string, hard, used int64) *corev1.ResourceQuota {
+	name := corev1.ResourceName(key)
+	return &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: TenantQuotaName},
+		Spec:       corev1.ResourceQuotaSpec{Hard: corev1.ResourceList{name: *resource.NewQuantity(hard, resource.DecimalSI)}},
+		Status:     corev1.ResourceQuotaStatus{Used: corev1.ResourceList{name: *resource.NewQuantity(used, resource.DecimalSI)}},
+	}
+}
+
+// TestCheckQuotaCap is w8/046: the dry-run preview of ResourceQuota admission
+// refuses exactly when one more object would not fit, with the same message
+// QuotaCapError gives the real create.
+func TestCheckQuotaCap(t *testing.T) {
+	const key = "count/keyvalues.app.bex.co"
+	ctx := context.Background()
+	cases := []struct {
+		name    string
+		objs    []client.Object
+		tenant  string
+		refused bool
+	}{
+		{"at cap", []client.Object{tenantQuota("tea-a", key, 1, 1)}, "tea-a", true},
+		{"under cap", []client.Object{tenantQuota("tea-a", key, 1, 0)}, "tea-a", false},
+		{"no quota (fresh workspace)", nil, "tea-a", false},
+		{"other key capped only", []client.Object{tenantQuota("tea-a", "count/apps.app.bex.co", 1, 1)}, "tea-a", false},
+		{"another workspace at cap", []client.Object{tenantQuota("tea-b", key, 1, 1)}, "tea-a", false},
+		{"no tenant", []client.Object{tenantQuota("default", key, 1, 1)}, "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := &Base{Client: fakeAppClient(tc.objs...), Namespace: "default"}
+			err := b.CheckQuotaCap(ctx, tc.tenant, key, "key-value store")
+			if !tc.refused {
+				if err != nil {
+					t.Fatalf("want no refusal, got %v", err)
+				}
+				return
+			}
+			want, _ := QuotaCapError(quotaExceededErr("keyvalues", "x", TenantQuotaName, key, 1, 1, 1), key, "key-value store")
+			if !errors.Is(err, ErrBadRequest) || err.Error() != want.Error() {
+				t.Fatalf("got %v, want the real create's %v", err, want)
+			}
+		})
 	}
 }

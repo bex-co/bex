@@ -75,7 +75,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **046** — [Create dry-runs preview a service/Postgres/Key Value past the plan's count cap](046.md) — filed 2026-10-03 (the w8/045 remainder): plan count caps live only in ResourceQuota admission, which a dry run never reaches.
 - [ ] **047** — [Every tenant's request log carries Traefik's platform-wide request counter, pod IPs and internal router names](047.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 2.
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](048.md) (**decision needed**: parity ~50m or record-only ~15m) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 2.
 - [ ] **049** — [Postgres and Key Value accept another resource's ID as their name](049.md) (~35m, minor; sibling of w8/034) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 2.
@@ -83,6 +82,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **051** — [`blueprints validate` reports only one dangling `fromDatabase`/`fromService` reference, and which one changes from run to run](051.md) (~45m, minor; residual of w8/019) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 4.
 - [ ] **052** — [A failed native build reports bex's internal env-decoding wrapper instead of the user's build command and exit code](052.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 7.
 
+- [x] **046** — [Create dry-runs preview a service/Postgres/Key Value past the plan's count cap](done/046.md) — **DONE 2026-10-04**: every create dry run reads the workspace `tenant-quota` and refuses past the count cap with the real create's message.
 - [x] **045** — [Service create dry-run runs every read-only check the real create runs](done/045.md) — **DONE 2026-10-03**: billing (402 parity), duplicate name, reserved env, repo access, registry credential, and the custom-domain gate (reserved `dashboard.bex.co`, caps, claimed hosts) now run before the preview. Postgres/Key Value dry runs run the billing gate too. Count caps are filed as 046.
 
 - [x] **037** — [`bex logout` revokes only the presented grant](done/037.md) — **DONE 2026-10-03**: per-token Hydra RFC 7009 revoke replaces the consent-session wipe; proven against Hydra v26.2.0 (other device keeps access + refresh).

@@ -1981,7 +1981,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		}
 	}
 
-	// Dry-run: the read-only host gate on the preview, then return it without
+	// Dry-run: the read-only gates on the preview, then return it without
 	// any k8s, store, or secret write (w2/m29). The preview keeps the bare
 	// request name (no tenant-prefixed object name, no minted id) so its id
 	// reads back as the requested name, as it always has.
@@ -2002,6 +2002,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 			return AppView{}, err
 		}
 		if err := s.validateExternalRegistryCredential(ctx, a); err != nil {
+			return AppView{}, err
+		}
+		// Then the plan's service count cap, which the real create meets at
+		// ResourceQuota admission (w8/046).
+		if err := s.CheckQuotaCap(ctx, tenantID, store.AppsQuotaCountKey, "service"); err != nil {
 			return AppView{}, err
 		}
 		return s.view(a), nil
