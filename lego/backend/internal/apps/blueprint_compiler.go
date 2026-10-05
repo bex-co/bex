@@ -29,6 +29,7 @@ import (
 	"sync"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"gopkg.in/yaml.v3"
@@ -215,11 +216,11 @@ func blueprintCapabilityProblemsAt(value any, path []string, locations map[strin
 		}
 		capabilityPointer := blueprintFieldCapabilityPointer(context, field)
 		if blueprintCapabilityUnsupported(registry, capabilityPointer) {
-			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedCapabilityMessage(field, capabilityPointer))
+			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedCapabilityMessage(registry, field, capabilityPointer))
 			continue
 		}
 		if enumPointer := blueprintFieldEnumCapabilityPointer(context, field); enumPointer != "" && blueprintEnumCapabilityUnsupported(registry, enumPointer, blueprintEncodedValue(child)) {
-			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedEnumMessage(field, enumPointer))
+			problem("BLUEPRINT_CAPABILITY_UNSUPPORTED", blueprintUnsupportedEnumMessage(registry, field, enumPointer, blueprintEncodedValue(child)))
 			continue
 		}
 		childContext := blueprintChildCapabilityContext(context, field, child)
@@ -645,8 +646,12 @@ func blueprintEncodedValue(value any) string {
 	return string(encoded)
 }
 
-func blueprintUnsupportedCapabilityMessage(field, pointer string) string {
+func blueprintUnsupportedCapabilityMessage(registry *BlueprintCapabilityRegistry, field, pointer string) string {
 	switch pointer {
+	case "#/definitions/cronService/properties/preDeployCommand":
+		return "preDeployCommand: cron jobs do not run a pre-deploy phase on bex; put the command at the start of startCommand instead"
+	case "#/definitions/staticService/properties/preDeployCommand":
+		return "preDeployCommand: static sites do not run a pre-deploy phase; put the command in buildCommand instead"
 	case "#/definitions/serverService/properties/disk":
 		return "persistent service disks are not available on bex"
 	case "#/allOf/1/properties/previews", "#/allOf/1/properties/previewsEnabled", "#/allOf/1/properties/previewsExpireAfterDays", "#/definitions/serverService/properties/previews", "#/definitions/serverService/properties/previewPlan", "#/definitions/serverService/properties/pullRequestPreviewsEnabled", "#/definitions/staticService/properties/previews", "#/definitions/staticService/properties/pullRequestPreviewsEnabled", "#/definitions/database/properties/previewPlan", "#/definitions/database/properties/previewDiskSizeGB", "#/definitions/redisServer/properties/previewPlan":
@@ -658,12 +663,22 @@ func blueprintUnsupportedCapabilityMessage(field, pointer string) string {
 	case "#/allOf/1/properties/buildSources", "#/allOf/1/properties/ungrouped/properties/buildSources", "#/definitions/project/properties/buildSources", "#/definitions/serverService/properties/buildSource":
 		return field + ": Render Build Sources (shared build reuse) are not available on bex; declare the repo or image and build settings on each service instead"
 	default:
+		if reason := tenantFacingReason(registry.Fields[pointer].Reason); reason != "" {
+			return fmt.Sprintf("%s is not available on bex: %s", field, reason)
+		}
 		return fmt.Sprintf("%s is not available on bex", field)
 	}
 }
 
-func blueprintUnsupportedEnumMessage(field, pointer string) string {
+func blueprintUnsupportedEnumMessage(registry *BlueprintCapabilityRegistry, field, pointer, encodedValue string) string {
+	var value string
+	if json.Unmarshal([]byte(encodedValue), &value) != nil {
+		value = encodedValue
+	}
 	switch pointer {
+	case "#/definitions/database/properties/postgresMajorVersion/enum":
+		// The create API's wording and supported list, from one source (w8/054).
+		return field + ": " + postgres.UnsupportedVersionMessage(value)
 	case "#/definitions/autoDeployTrigger/enum":
 		return "autoDeployTrigger: checksPass requires CI-check gating, which is not available on bex"
 	case "#/definitions/serverPlan/enum", "#/definitions/cronPlan/enum", "#/definitions/keyValuePlan/enum", "#/definitions/postgresPlan/enum":
@@ -673,7 +688,35 @@ func blueprintUnsupportedEnumMessage(field, pointer string) string {
 	case "#/definitions/serviceEnvVarProperty/enum":
 		return "fromService property slug is defined only for Render Workflows, which are not available on bex"
 	}
+	if reason := tenantFacingReason(registry.EnumValues[pointer][encodedValue].Reason); reason != "" {
+		return fmt.Sprintf("%s %s is not available on bex: %s", field, encodedValue, reason)
+	}
 	return fmt.Sprintf("%s uses an unsupported Render Blueprint value", field)
+}
+
+// tenantFacingReason is a registry reason cut before its first parenthetical
+// or em dash — where reviewed entries cite ADRs, milestones and DO_NOT_DO
+// lines a tenant cannot act on (w8/054). The guard test pins that no
+// unsupported entry's message leaks such a reference.
+func tenantFacingReason(reason string) string {
+	// Whole families already have a tenant sentence; reuse it rather than the
+	// maintainer's rationale for the classification.
+	for _, family := range []struct{ marker, sentence string }{
+		{"PR preview environments", "preview environments are not available on bex"},
+		{"Render Workflows", "Render Workflows are not available on bex"},
+		{"buildSource", "Render Build Sources (shared build reuse) are not available on bex"},
+		{"single-region", "per-resource region placement is not available on bex"},
+	} {
+		if strings.Contains(reason, family.marker) {
+			return family.sentence
+		}
+	}
+	for _, cut := range []string{" (", " — "} {
+		if i := strings.Index(reason, cut); i >= 0 {
+			reason = reason[:i]
+		}
+	}
+	return strings.TrimRight(strings.TrimSpace(reason), ".;:,")
 }
 
 // blueprintCapabilityUnsupported makes reviewed registry state authoritative

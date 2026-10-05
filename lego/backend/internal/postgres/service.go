@@ -1462,10 +1462,17 @@ func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch 
 	return view, nil
 }
 
+// UnsupportedVersionMessage is the one wording for a PostgreSQL version bex
+// cannot provision — the create/update API's POSTGRES_VERSION_UNKNOWN and the
+// Blueprint postgresMajorVersion refusal (w8/054) share it, list included.
+func UnsupportedVersionMessage(version string) string {
+	return fmt.Sprintf("PostgreSQL version %q is not supported; choose one of %s", version, supportedPostgresVersionText())
+}
+
 func unknownPostgresVersionError(version string) error {
 	return core.NewBadRequestError(
 		"POSTGRES_VERSION_UNKNOWN",
-		fmt.Sprintf("PostgreSQL version %q is not supported; choose one of %s", version, supportedPostgresVersionText()),
+		UnsupportedVersionMessage(version),
 		map[string]any{"version": version, "supportedVersions": supportedPostgresVersions},
 	)
 }
