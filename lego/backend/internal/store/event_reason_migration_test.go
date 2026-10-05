@@ -117,7 +117,7 @@ func TestSupersededReasonMigrationPreservesVocabularyAndFacts(t *testing.T) {
 	migration("0138_service_event_superseded_reason.up.sql")
 }
 
-// w4/m114: migration 0140 admits the cron-run failure reasons and adds the
+// w4/m114: migration 0141 admits the cron-run failure reasons and adds the
 // exit_code / run_id columns. Only the reason CHECK and the new columns are
 // under test, so the fixture uses the 0043 fact type the 0138 test uses. Its rollback is non-lossy, so a fact written with
 // a cron reason survives a downgrade and the re-upgrade is safe.
@@ -151,31 +151,31 @@ func TestCronRunReasonMigrationAdmitsFailureReasons(t *testing.T) {
 		}
 		exec(string(sql))
 	}
-	exec(`CREATE SCHEMA migration_0140_cron_reason;
- SET LOCAL search_path TO migration_0140_cron_reason;
+	exec(`CREATE SCHEMA migration_0141_cron_reason;
+ SET LOCAL search_path TO migration_0141_cron_reason;
  CREATE TABLE apps (id TEXT PRIMARY KEY);
  INSERT INTO apps(id) VALUES ('app');`)
 	migration("0043_service_event_facts.up.sql")
 	migration("0138_service_event_superseded_reason.up.sql")
-	exec("SAVEPOINT before_0140")
+	exec("SAVEPOINT before_0141")
 	if _, err := tx.Exec(ctx, `INSERT INTO service_event_facts(source_key,app_id,fact_type,at,reason_code) VALUES ('early','app','server_failed',now(),'non_zero_exit')`); err == nil {
-		t.Fatal("0138 admitted a cron failure reason; this test no longer proves 0140 widens the check")
+		t.Fatal("0138 admitted a cron failure reason; this test no longer proves 0141 widens the check")
 	}
-	exec("ROLLBACK TO SAVEPOINT before_0140")
+	exec("ROLLBACK TO SAVEPOINT before_0141")
 
-	migration("0140_cron_run_failure_reason.up.sql")
+	migration("0141_cron_run_failure_reason.up.sql")
 	for _, reason := range []string{EventReasonNonZeroExit, EventReasonOOMKilled, EventReasonEvicted, EventReasonTimedOut} {
 		if _, err := tx.Exec(ctx, `INSERT INTO service_event_facts(source_key,app_id,fact_type,at,reason_code,exit_code,run_id)
 VALUES ($1,'app','server_failed',now(),$2,3,'crr-run')`, "cron-"+reason, reason); err != nil {
-			t.Fatalf("0140 rejected %q: %v", reason, err)
+			t.Fatalf("0141 rejected %q: %v", reason, err)
 		}
 	}
-	migration("0140_cron_run_failure_reason.down.sql")
+	migration("0141_cron_run_failure_reason.down.sql")
 	var exit int32
 	var runID, reason string
 	if err := tx.QueryRow(ctx, `SELECT exit_code, run_id, reason_code FROM service_event_facts WHERE source_key='cron-non_zero_exit'`).Scan(&exit, &runID, &reason); err != nil ||
 		exit != 3 || runID != "crr-run" || reason != EventReasonNonZeroExit {
 		t.Fatalf("rollback lost the cron failure fact: %d %q %q %v", exit, runID, reason, err)
 	}
-	migration("0140_cron_run_failure_reason.up.sql")
+	migration("0141_cron_run_failure_reason.up.sql")
 }
