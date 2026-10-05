@@ -1321,6 +1321,34 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 		[]string{cronFacts[0].SourceKey, cronFacts[1].SourceKey}).Scan(&cronFactCount); err != nil || cronFactCount != 2 {
 		t.Fatalf("batched cron fact count = %d (err %v), want exactly 2 after replay", cronFactCount, err)
 	}
+	// w4/m114: a failed run's ended fact carries why it failed, its exit status
+	// and its public run id through both the feed and the by-id lookup.
+	failedRun := ServiceEventFact{
+		SourceKey: "cron:" + app.ID + ":run-2:ended", AppID: app.ID, Type: EventFactCronRunEnded,
+		At: base.Add(950 * time.Millisecond), Status: EventStatusFailed,
+		ReasonCode: EventReasonNonZeroExit, ExitCode: new(int32(3)), RunID: "crr-run2",
+	}
+	if inserted, err := s.InsertServiceEventFact(ctx, failedRun); err != nil || !inserted {
+		t.Fatalf("insert failed cron run fact: %v", err)
+	}
+	cronEnded, err := s.ListServiceEvents(ctx, app.ID, ten.ID,
+		ServiceEventFilter{FactTypes: []string{string(EventFactCronRunEnded)}})
+	if err != nil || len(cronEnded) != 2 {
+		t.Fatalf("cron_job_run_ended feed = %+v (err %v), want run-1 and run-2", cronEnded, err)
+	}
+	failedRow := cronEnded[0]
+	if failedRow.FactStatus != EventStatusFailed || failedRow.ReasonCode != EventReasonNonZeroExit ||
+		failedRow.FactExitCode == nil || *failedRow.FactExitCode != 3 || failedRow.FactRunID != "crr-run2" {
+		t.Fatalf("failed cron run row = %+v, want failed non_zero_exit 3 crr-run2", failedRow)
+	}
+	if cronEnded[1].FactExitCode != nil || cronEnded[1].ReasonCode != "" {
+		t.Fatalf("successful cron run row = %+v, want no exit code or reason", cronEnded[1])
+	}
+	failedLookup, err := s.GetServiceEvent(ctx, ten.ID, ids.Derive(ids.Event, failedRow.Key))
+	if err != nil || failedLookup.Event.FactExitCode == nil || *failedLookup.Event.FactExitCode != 3 ||
+		failedLookup.Event.FactRunID != "crr-run2" || failedLookup.Event.ReasonCode != EventReasonNonZeroExit {
+		t.Fatalf("failed cron run lookup = %+v (err %v), want the same reason, exit code and run id", failedLookup.Event, err)
+	}
 	buildOnly, err := s.ListServiceEvents(ctx, app.ID, ten.ID,
 		ServiceEventFilter{FactTypes: []string{string(EventFactBuildEnded)}})
 	if err != nil || len(buildOnly) != 1 || buildOnly[0].FactStatus != EventStatusFailed {

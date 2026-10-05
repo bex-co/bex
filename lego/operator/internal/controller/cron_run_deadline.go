@@ -25,9 +25,9 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Render caps cron runs at twelve hours. Kubernetes counts from Job startTime,
+// Kubernetes counts appv1alpha1.CronRunActiveDeadlineSeconds from Job startTime,
 // including pending scheduling and image pulls, and honors Pod termination grace.
-const cronRunActiveDeadlineSeconds int64 = 12 * 60 * 60
+const cronRunActiveDeadlineSeconds = appv1alpha1.CronRunActiveDeadlineSeconds
 
 // CronJob template updates apply only to future Jobs. Adopt active owned runs
 // while observing history so an upgrade also bounds their existing lifetime.

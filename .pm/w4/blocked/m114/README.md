@@ -1,6 +1,6 @@
 # w4 · m114 — Cron runs can't be trusted: resurrected cancels, twin pendings, 11-minute terminal delay
 
-**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** blocked — transferred to w5/069; retained acceptance/history only
+**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** blocked — live replay 2026-10-05 on production proved cancels stay dead, one active slot and prompt terminal status (t002 done); the failure reason was not visible anywhere, now implemented in t007; t006 closeout waits on t007's live replay after deploy
 
 ## Transfer — 2026-09-30
 
@@ -13,11 +13,12 @@ The blocker narratives below are historical; local harness work is now pre-appro
 | id   | title                                                                             | est | depends_on |
 | ---- | --------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Canceled manual run resurrects when CancelRun is overwritten                      | 1h  | —          | — **DONE** |
-| t002 | Twin pending: scheduled successor created while predecessor still active — **BLOCKED: transferred** | 1h | w5/069 |
+| t002 | Twin pending: scheduled successor created while predecessor still active — **DONE** (via w5/m106; live 2026-10-05) | 1h | w5/069 |
+| t007 | Say why a failed cron run failed — implemented, live replay pending | 2h | — |
 | t003 | Trigger Run disabled in UI while the server preempts by design                    | 30m | —          | — **DONE** |
 | t004 | Render parity + docs (cron-runs.md single-execution guarantee)                    | 20m | t001–t003  | — **DONE** (scoped to t001/t003) |
 | t005 | Test coverage (controller-level resurrection + projection tests)                   | 45m | t004       | — **DONE** (scoped to t001/t003) |
-| t006 | Closeout (live re-probe with a failing cron) — **BLOCKED: transferred** | 15m | w5/069 |
+| t006 | Closeout (live re-probe with a failing cron) — **BLOCKED** (t007 live replay) | 15m | t002, t007 |
 ## Blocked on
 
 **t002 needs a live reproduction that only the user can authorize** — and so
@@ -58,3 +59,16 @@ Each bullet is a click the next person can repeat on production and watch succee
 - **Expected outcome:** run-status convergence a user can believe (cancel means cancel; one active run; prompt terminal states), with the trigger/tick race closed or honestly documented.
 - **Why now:** t001's defect is a live footgun with a known one-line-family fix (the recreation guard consults a single-slot intent that any later cancel overwrites); t002's paradox (successor scheduled run created mid-flight) questions the ForbidConcurrent story and needs cluster truth before it bites a paying cron.
 - **Explicitly out:** the m96 log-boundary fix (re-probed live this pass: 3 records render 3 in both live and history, whitespace/empty/unterminated edges byte-identical — holds, not re-filed); client+server schedule-expression validation (both reject, not re-filed); suspend/resume transport itself (both flip phase correctly, not re-filed).
+
+## Live closeout replay (2026-10-05, production `24482892a`)
+
+Workspace `bex-canary`, API with the bex CLI's access key. Fixture `qa-20261005-m114-cron` `srv-db1jl28cnepc739umehg` (busybox:1.36, free, `* * * * *`, `sh -c 'echo qa-m114-x7k2; sleep 20; exit 3'`), created 05:50:00Z and deleted 06:11:01Z (`GET` 404; no `m114` resource left). 199 REST + GraphQL samples (05:50:13–06:10:59Z).
+
+- **Cancels stay dead — PASS.**
+  - Manual run `crr-kfm1e804oj0a10qdh147` was triggered at 05:52:12 and canceled at 05:52:31 (`canceled` 05:52:32).
+  - The current scheduled run `crr-iv1cj12mesir6ih5ejlo` was canceled at 05:54:04. The service was suspended at 05:54:12 and resumed at 05:54:28.
+  - Through 06:10:59 the canceled manual run only read `canceled`, and its marker appears exactly once in the logs (05:52:25.77). All 23 runs logged 23 markers from 23 distinct instances.
+- **One active slot — PASS.** There were zero samples with two runs `pending`. A manual trigger preempts the active scheduled run the same way on REST and GraphQL. A manual run that spans a tick holds that tick's scheduled run until it ends. See `done/t002.md`.
+- **Failures surface promptly — PASS on timing, FAIL on reason.** 19/19 failing runs reached `unsuccessful` within 0–5 s of `finishedAt`, but no surface said why (`cron_job_run_ended` details were `{"status":"failed"}`). That is fixed in t007.
+- Not re-run: the dashboard "UI and API agree" check and the m96 log-boundary control.
+

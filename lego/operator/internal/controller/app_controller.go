@@ -4339,10 +4339,16 @@ func (r *AppReconciler) cronRuns(ctx context.Context, app *appv1alpha1.App, cron
 			if old.Status == appv1alpha1.CronRunCanceled {
 				run.Status, run.FinishedAt = old.Status, old.FinishedAt
 			}
+			if run.Status == appv1alpha1.CronRunFailed && old.Status == appv1alpha1.CronRunFailed {
+				run.FailureReason, run.ExitCode = old.FailureReason, old.ExitCode
+			}
 		}
 		if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name == run.Name {
 			run.Status = appv1alpha1.CronRunCanceled
 			run.FinishedAt = app.Spec.CancelRun.RequestedAt
+		}
+		if old, ok := prior[run.Name]; !ok || old.Status != appv1alpha1.CronRunFailed {
+			r.observeCronRunFailure(ctx, &items[i], &run)
 		}
 		current[run.Name] = run
 		// A Job absent from the prior status is new, and the sorted Job list puts

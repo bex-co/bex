@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -259,6 +260,48 @@ func TestCronRunFactsAreObservedAndStable(t *testing.T) {
 	})
 	if len(intentOnly) != 1 || intentOnly[0].Type != EventFactCronRunStarted {
 		t.Fatalf("cancel intent facts = %+v, want started only", intentOnly)
+	}
+}
+
+// w4/m114: a failed run's ended fact carries the operator's observed cause as a
+// closed reason code, the exit status where the cause has one, and the run's
+// public crr- id. Success, cancel and an unobserved cause carry no reason.
+func TestCronRunEndedFactCarriesWhyTheRunFailed(t *testing.T) {
+	ended := func(run appv1alpha1.CronRun) ServiceEventFact {
+		t.Helper()
+		run.Name, run.StartedAt, run.FinishedAt = "nightly-100", "2026-10-05T05:51:00Z", "2026-10-05T05:51:27Z"
+		facts := cronRunFacts("srv-cron", run)
+		if len(facts) != 2 {
+			t.Fatalf("facts = %+v, want started + ended", facts)
+		}
+		return facts[1]
+	}
+	exit := new(int32(3))
+	for _, tc := range []struct {
+		name     string
+		run      appv1alpha1.CronRun
+		wantCode string
+		wantExit *int32
+	}{
+		{"non-zero exit", appv1alpha1.CronRun{Status: appv1alpha1.CronRunFailed, FailureReason: appv1alpha1.CronRunReasonNonZeroExit, ExitCode: exit}, EventReasonNonZeroExit, exit},
+		{"out of memory", appv1alpha1.CronRun{Status: appv1alpha1.CronRunFailed, FailureReason: appv1alpha1.CronRunReasonOOMKilled, ExitCode: new(int32(137))}, EventReasonOOMKilled, new(int32(137))},
+		{"evicted", appv1alpha1.CronRun{Status: appv1alpha1.CronRunFailed, FailureReason: appv1alpha1.CronRunReasonEvicted}, EventReasonEvicted, nil},
+		{"deadline", appv1alpha1.CronRun{Status: appv1alpha1.CronRunFailed, FailureReason: appv1alpha1.CronRunReasonDeadlineExceeded}, EventReasonTimedOut, nil},
+		{"cause not observed", appv1alpha1.CronRun{Status: appv1alpha1.CronRunFailed}, "", nil},
+		{"succeeded", appv1alpha1.CronRun{Status: appv1alpha1.CronRunSucceeded, FailureReason: appv1alpha1.CronRunReasonNonZeroExit, ExitCode: exit}, "", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := ended(tc.run)
+			if f.ReasonCode != tc.wantCode || (f.ExitCode == nil) != (tc.wantExit == nil) || (f.ExitCode != nil && *f.ExitCode != *tc.wantExit) {
+				t.Fatalf("ended fact reason %q exit %v, want %q %v", f.ReasonCode, f.ExitCode, tc.wantCode, tc.wantExit)
+			}
+			if f.RunID != ids.Derive(ids.CronRun, "nightly-100") {
+				t.Fatalf("run id = %q, want the run's public crr- id", f.RunID)
+			}
+			if err := validateServiceEventFact(f); err != nil {
+				t.Fatalf("ended fact is not storable: %v", err)
+			}
+		})
 	}
 }
 

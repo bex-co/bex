@@ -3877,6 +3877,22 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "提交消息要求跳过此次部署。",
     description: "因 Render 跳过短语而忽略提交",
   },
+  "services.eventsReason.non_zero_exit": {
+    message: "运行以状态码 {exitCode} 退出。",
+    description: "定时任务运行失败原因：容器以非零状态退出（w4/m114）",
+  },
+  "services.eventsReason.oom_killed": {
+    message: "运行内存不足，已被终止。",
+    description: "定时任务运行失败原因：容器因内存不足被终止（w4/m114）",
+  },
+  "services.eventsReason.evicted": {
+    message: "运行在完成前被从节点驱逐。",
+    description: "定时任务运行失败原因：运行的 Pod 被驱逐（w4/m114）",
+  },
+  "services.eventsReason.timed_out": {
+    message: "运行达到 12 小时上限，已被终止。",
+    description: "定时任务运行失败原因：运行超出时限（w4/m114）",
+  },
   "services.eventsTypeCronRunStarted": {
     message: "定时任务已开始",
     description: "Service activity type: cron run started",

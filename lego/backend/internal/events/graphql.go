@@ -94,6 +94,10 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"toCount":    gqlutil.IntField(func(d Details) any { return d.ToCount }),
 		"branchFrom": gqlutil.StrField(func(d Details) any { return d.BranchFrom }),
 		"branchTo":   gqlutil.StrField(func(d Details) any { return d.BranchTo }),
+		// cron_job_run_ended (w4/m114): the run's crr- id, and the failed run's
+		// container exit status beside reasonCode non_zero_exit / oom_killed.
+		"cronJobRunId": gqlutil.StrField(func(d Details) any { return d.CronJobRunID }),
+		"exitCode":     gqlutil.IntField(func(d Details) any { return d.ExitCode }),
 		"trigger": &graphql.Field{Type: triggerGQLType, Resolve: gqlutil.Field(func(d Details) any {
 			if d.Trigger == nil {
 				return nil

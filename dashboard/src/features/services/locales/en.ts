@@ -3967,6 +3967,22 @@ const enServices: Record<string, TranslationEntry> = {
     message: "The commit message requested that this deploy be skipped.",
     description: "Commit ignored because of a Render skip phrase",
   },
+  "services.eventsReason.non_zero_exit": {
+    message: "The run exited with status {exitCode}.",
+    description: "Cron run failure reason: the container exited non-zero (w4/m114)",
+  },
+  "services.eventsReason.oom_killed": {
+    message: "The run ran out of memory and was stopped.",
+    description: "Cron run failure reason: the container was OOM-killed (w4/m114)",
+  },
+  "services.eventsReason.evicted": {
+    message: "The run was evicted from its node before it finished.",
+    description: "Cron run failure reason: the run's pod was evicted (w4/m114)",
+  },
+  "services.eventsReason.timed_out": {
+    message: "The run hit the 12-hour limit and was stopped.",
+    description: "Cron run failure reason: the run exceeded its deadline (w4/m114)",
+  },
   "services.eventsTypeCronRunStarted": {
     message: "Cron run started",
     description: "Service activity type: cron run started",

@@ -110,6 +110,12 @@ const (
 	// replaced it (w4/089) — distinct from a user-initiated cancel, which
 	// carries no reason code.
 	EventReasonSuperseded = "superseded"
+	// Why a cron run failed (w4/m114), one per field of the reason object on
+	// Render's "Cron Job Run Ended" event.
+	EventReasonNonZeroExit = "non_zero_exit"
+	EventReasonOOMKilled   = "oom_killed"
+	EventReasonEvicted     = "evicted"
+	EventReasonTimedOut    = "timed_out"
 )
 
 var serviceEventReasonCodes = map[string]bool{
@@ -120,6 +126,10 @@ var serviceEventReasonCodes = map[string]bool{
 	EventReasonBuildFilter:      true,
 	EventReasonSkipPhrase:       true,
 	EventReasonSuperseded:       true,
+	EventReasonNonZeroExit:      true,
+	EventReasonOOMKilled:        true,
+	EventReasonEvicted:          true,
+	EventReasonTimedOut:         true,
 }
 
 // ServiceEventFact is a closed, non-secret event record. SourceKey is a stable
@@ -143,6 +153,11 @@ type ServiceEventFact struct {
 	// pre_deploy_ended, job_run_ended): one of EventStatus* or "" for the
 	// started/observed kinds that have no outcome. Closed set (w7/m66).
 	Status string
+	// ExitCode and RunID are cron_job_run_ended details (w4/m114): a failed
+	// run's container exit status (with ReasonCode non_zero_exit or oom_killed)
+	// and the run's public crr- id.
+	ExitCode *int32
+	RunID    string
 }
 
 // EventFactWriter is the narrow producer seam used by apps and webhook code.
@@ -180,10 +195,7 @@ func (s *PGStore) InsertServiceEventFact(ctx context.Context, fact ServiceEventF
 	if fact.At.IsZero() {
 		fact.At = time.Now().UTC()
 	}
-	tag, err := s.Pool.Exec(ctx, insertServiceEventFactSQL,
-		fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
-		fact.ReasonCode, fact.InstanceID, fact.FromCount, fact.ToCount,
-		fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL, fact.Status)
+	tag, err := s.Pool.Exec(ctx, insertServiceEventFactSQL, fact.insertArgs()...)
 	if err != nil {
 		return false, classify("service event fact", err)
 	}
@@ -203,10 +215,7 @@ func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEv
 			facts[i].At = time.Now().UTC()
 		}
 		fact := facts[i]
-		batch.Queue(insertServiceEventFactSQL,
-			fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
-			fact.ReasonCode, fact.InstanceID, fact.FromCount, fact.ToCount,
-			fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL, fact.Status)
+		batch.Queue(insertServiceEventFactSQL, fact.insertArgs()...)
 	}
 	if batch.Len() == 0 {
 		return nil
@@ -224,11 +233,22 @@ func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEv
 	return nil
 }
 
+// insertArgs is the fact's insertServiceEventFactSQL arguments, in column order.
+func (f ServiceEventFact) insertArgs() []any {
+	return []any{
+		f.SourceKey, f.AppID, f.Type, f.At, f.DeployID, f.Image,
+		f.ReasonCode, f.InstanceID, f.FromCount, f.ToCount,
+		f.BranchFrom, f.BranchTo, f.CommitID, f.CommitURL, f.Status,
+		f.ExitCode, f.RunID,
+	}
+}
+
 const insertServiceEventFactSQL = `
 INSERT INTO service_event_facts (
     source_key, app_id, fact_type, at, deploy_id, image, reason_code,
-    instance_id, from_count, to_count, branch_from, branch_to, commit_id, commit_url, status
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    instance_id, from_count, to_count, branch_from, branch_to, commit_id, commit_url, status,
+    exit_code, run_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 ON CONFLICT (source_key) DO NOTHING`
 
 // BuiltDeployIDs is the set of an App's deploys that actually ran a build —
@@ -356,10 +376,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 		obs.Availability = availability
 		facts := observedStateFacts(obs, previousPhase, previousAvailability, previousSuspended, previousChangedAt)
 		for _, fact := range facts {
-			if _, err := tx.Exec(ctx, insertServiceEventFactSQL,
-				fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
-				fact.ReasonCode, fact.InstanceID, fact.FromCount, fact.ToCount,
-				fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL, fact.Status); err != nil {
+			if _, err := tx.Exec(ctx, insertServiceEventFactSQL, fact.insertArgs()...); err != nil {
 				return err
 			}
 			inserted = append(inserted, fact)

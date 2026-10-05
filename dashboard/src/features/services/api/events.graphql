@@ -48,6 +48,9 @@ query ServiceEvents(
       startedAt
       finishedAt
       reasonCode
+      # cron_job_run_ended (w4/m114): a failed run's container exit status
+      # beside reasonCode non_zero_exit / oom_killed.
+      exitCode
       instanceId
       fromCount
       toCount

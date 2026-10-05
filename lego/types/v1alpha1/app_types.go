@@ -1206,6 +1206,17 @@ type CronRun struct {
 	// Status is the run outcome: Running, Succeeded, Failed, or Canceled.
 	// +required
 	Status string `json:"status"`
+
+	// FailureReason is why a Failed run failed, from the closed CronRunReason*
+	// set. Empty while running, on success or cancel, and when the operator
+	// could not observe the cause (w4/m114).
+	// +optional
+	FailureReason string `json:"failureReason,omitempty"`
+
+	// ExitCode is the run container's exit status when FailureReason is
+	// NonZeroExit or OOMKilled.
+	// +optional
+	ExitCode *int32 `json:"exitCode,omitempty"`
 }
 
 // CronRunCancellation is durable cancellation intent for a cron Job. Name is
@@ -1230,6 +1241,20 @@ const (
 	CronRunSucceeded = "Succeeded"
 	CronRunFailed    = "Failed"
 	CronRunCanceled  = "Canceled"
+)
+
+// CronRunActiveDeadlineSeconds is Render's twelve-hour cap on one cron run; the
+// operator sets it as every run Job's activeDeadlineSeconds, and a
+// DeadlineExceeded run reports it as Render's timedOutSeconds.
+const CronRunActiveDeadlineSeconds int64 = 12 * 60 * 60
+
+// Cron run failure reasons stored in CronRun.FailureReason. They mirror the
+// fields of the reason object on Render's "Cron Job Run Ended" event.
+const (
+	CronRunReasonNonZeroExit      = "NonZeroExit"
+	CronRunReasonOOMKilled        = "OOMKilled"
+	CronRunReasonEvicted          = "Evicted"
+	CronRunReasonDeadlineExceeded = "DeadlineExceeded"
 )
 
 // Pre-deploy step outcomes, shared by the operator (which writes

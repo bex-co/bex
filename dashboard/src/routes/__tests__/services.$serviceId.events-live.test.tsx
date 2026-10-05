@@ -77,6 +77,7 @@ function event(id: string, type: string, offset: number, status = "") {
       startedAt: "",
       finishedAt: "",
       reasonCode: "",
+      exitCode: null as number | null,
       instanceId: "",
       fromCount: null,
       toCount: null,
@@ -223,6 +224,22 @@ describe("mounted Activity refresh", () => {
       }
     },
   );
+
+  // w4/m114: a failed cron run says why it failed, with its exit status.
+  it("shows why a cron run failed", async () => {
+    const page = mountLiveEvents();
+    await tick(1);
+    const failed = event("evt-cron-end", "cron_job_run_ended", 5_000);
+    failed.details.status = "failed";
+    failed.details.reasonCode = "non_zero_exit";
+    failed.details.exitCode = 3;
+    page.available.push(failed);
+    await tick(30_000);
+    expect(screen.getByText("Cron run finished")).toBeInTheDocument();
+    expect(
+      screen.getByText("The run exited with status 3."),
+    ).toBeInTheDocument();
+  });
 
   it("keeps existing rows during a failed refresh and retries at the current time", async () => {
     const page = mountLiveEvents();

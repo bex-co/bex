@@ -646,6 +646,11 @@ type Details struct {
 	BranchFrom string
 	BranchTo   string
 	CommitURL  string
+	// cron_job_run_ended (w4/m114): the run's public crr- id (Render's
+	// cronJobRunId) and, with ReasonCode non_zero_exit or oom_killed, the failed
+	// run's container exit status.
+	CronJobRunID string
+	ExitCode     *int32
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1049,6 +1054,8 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.BranchTo = r.BranchTo
 		ev.Details.CommitURL = r.CommitURL
 		ev.Details.Status = r.FactStatus
+		ev.Details.CronJobRunID = r.FactRunID
+		ev.Details.ExitCode = r.FactExitCode
 	}
 	return ev
 }
