@@ -23,6 +23,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -417,5 +418,54 @@ func TestGenerateBlueprintCrossSurface(t *testing.T) {
 	})
 	if mcpOut["manifest"] != want.Manifest {
 		t.Fatalf("MCP manifest differs: %v", mcpOut)
+	}
+}
+
+// w4/193: hello-go's exact shape — a Dockerfile build whose spec.runtime is
+// empty (the builder says it) — failed the generator's own self-check with
+// "missing property 'runtime'" and surfaced as a bare 500.
+func TestGenerateBlueprintDockerfileServiceWithoutExplicitRuntime(t *testing.T) {
+	const appID = "srv-daif6dsmg29s73d1umvg"
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "hello-go", Namespace: "default", Labels: map[string]string{
+			core.LabelServiceName: "hello-go", core.LabelAppID: appID,
+		}},
+		Spec: appv1alpha1.AppSpec{
+			Type: appv1alpha1.TypeWebService, Repo: "https://github.com/bex-co/bex", Branch: "main",
+			RootDir: "examples/hello-go", DockerContext: "examples/hello-go", HealthCheckPath: "/",
+			Env: []appv1alpha1.EnvVar{{Name: "MESSAGE", Value: "hi"}},
+		},
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(app), Namespace: "default"}}
+	out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{ServiceIDs: []string{appID}})
+	if err != nil {
+		t.Fatalf("GenerateBlueprint(hello-go) = %v", err)
+	}
+	if !strings.Contains(out.Manifest, "runtime: docker") {
+		t.Fatalf("manifest must carry the effective runtime:\n%s", out.Manifest)
+	}
+	if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, ""); err != nil || !v.Valid {
+		t.Fatalf("generated manifest must self-validate: %+v err=%v", v, err)
+	}
+}
+
+// A shape the generator still cannot express fails with a coded error naming
+// the service, never an anonymous "internal error".
+func TestGenerateBlueprintSelfCheckFailureNamesTheService(t *testing.T) {
+	const appID = "srv-buildpack-norun"
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "bp", Namespace: "default", Labels: map[string]string{
+			core.LabelServiceName: "bp", core.LabelAppID: appID,
+		}},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: "https://github.com/acme/app", Builder: "buildpack"},
+	}
+	svc := &Service{Base: &core.Base{Client: fakeClient(app), Namespace: "default"}}
+	_, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{ServiceIDs: []string{appID}})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_GENERATE_FAILED" || coded.Params["resourceId"] != appID {
+		t.Fatalf("self-check failure = %v, want BLUEPRINT_GENERATE_FAILED naming %s", err, appID)
+	}
+	if !core.IsPublicError(err) || !strings.Contains(err.Error(), appID) {
+		t.Fatalf("the refusal must reach the caller and name the service: %v", err)
 	}
 }
