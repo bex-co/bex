@@ -200,6 +200,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **206** — [Blueprint apply creates a service, then 400s on an unknown `fromService` target, leaving it half-configured](206.md) ← infinite /qa-find-bugs loop53 2026-10-05 UTC.
+
 - [ ] **205** — [The Disk tab (and Shell/Slug labels) render in English under the Chinese locale](205.md) ← infinite /qa-find-bugs loop50 2026-10-05 UTC.
 
 - [ ] **204** — [A static-site header rule `Content-Length` is accepted and takes the site down](204.md) ← infinite /qa-find-bugs loop48 2026-10-05 UTC.
