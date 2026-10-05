@@ -757,18 +757,23 @@ func TestAddDomainSiblingClaimedElsewhereIsConflict(t *testing.T) {
 	}
 }
 
-// TestAddDomainSiblingReservedIsSkippedNotFailed: if the auto-paired sibling
-// happens to be a platform-reserved host, the primary add still succeeds — the
-// sibling pairing is best-effort (domains.go AddDomain doc comment). Uses
-// DashboardHost (an exact-match reserved host, unrelated to BaseDomain) set to
-// exactly the sibling "www.foo.com", so "foo.com" itself is unreserved.
-func TestAddDomainSiblingReservedIsSkippedNotFailed(t *testing.T) {
+// TestAddDomainUnderThePlatformApexIsReserved: the platform's own hosts reserve
+// their whole registrable apex (w4/190) — with the dashboard at www.foo.com,
+// foo.com and any other *.foo.com are platform-owned and refused, while an
+// unrelated domain still adds with its www sibling. (Before w4/190 only the
+// exact dashboard host was reserved, and a foo.com add skipped that sibling.)
+func TestAddDomainUnderThePlatformApexIsReserved(t *testing.T) {
 	svc, cl := newBaseDomainService("", "www.foo.com", sampleApp("web"))
-	if _, err := svc.AddDomain(context.Background(), "web", "foo.com"); err != nil {
-		t.Fatalf("AddDomain: %v", err)
+	for _, host := range []string{"foo.com", "api.foo.com"} {
+		if _, err := svc.AddDomain(context.Background(), "web", host); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("AddDomain(%q) = %v, want the reserved platform hostname refusal", host, err)
+		}
 	}
-	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "foo.com" {
-		t.Errorf("spec.hosts = %v, want [foo.com] (reserved sibling www.foo.com skipped)", got)
+	if _, err := svc.AddDomain(context.Background(), "web", "example.org"); err != nil {
+		t.Fatalf("AddDomain(example.org): %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 2 {
+		t.Errorf("spec.hosts = %v, want example.org and its www sibling", got)
 	}
 }
 
@@ -2459,5 +2464,24 @@ func TestDisablingTheSubdomainNamesThePendingDomain(t *testing.T) {
 		!strings.Contains(msg, "app.qa-example.com still pending verification") ||
 		strings.Contains(msg, "renderSubdomainPolicy") {
 		t.Fatalf("message = %q, want the verified-domain rule naming the pending domain", msg)
+	}
+}
+
+// w4/190: the live probe's accepted names become 400s, the refused set stays
+// refused, and a normal custom domain still adds.
+func TestCustomDomainRefusesPlatformHostsIPsAndBareNames(t *testing.T) {
+	svc, _ := newBaseDomainService("onbex.co", "dashboard.bex.co", sampleApp("web"))
+	svc.PlatformHosts = []string{"api.bex.co", "ssh.bex.co"}
+	for _, host := range []string{
+		"api.bex.co", "auth.bex.co", "bex.co", "dashboard.bex.co", "ssh.bex.co", // platform
+		"localhost", "127.0.0.1", "10.0.0.8", "::1", // not domains
+		"x.onbex.co", "onbex.co", "*.qa-l7.example.com", "qa_l7.example.com", // refused before
+	} {
+		if _, err := svc.AddDomain(context.Background(), "web", host); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("AddDomain(%q) = %v, want 400", host, err)
+		}
+	}
+	if _, err := svc.AddDomain(context.Background(), "web", "QA-L7.Example.COM."); err != nil {
+		t.Fatalf("a real custom domain = %v", err)
 	}
 }
