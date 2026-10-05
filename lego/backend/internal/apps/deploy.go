@@ -1060,11 +1060,19 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 	}
 
 	tenantID, scoped := s.Tenant(ctx)
-	if err := s.resolveUndeclaredDatabases(ctx, st, neededDatabases, databases, tenantID, scoped, databaseIDs); err != nil {
+	// Every unresolvable reference is reported, databases then Key Values,
+	// each sorted by name (w8/051): apply's single message is deterministic
+	// and validate can locate every one. A cluster read failure still stops.
+	refused, err := s.resolveUndeclaredDatabases(ctx, st, neededDatabases, databases, tenantID, scoped, databaseIDs)
+	if err != nil {
 		return nil, nil, err
 	}
-	if err := s.resolveUndeclaredKeyValues(ctx, neededKeyValues, keyValues, tenantID, scoped, keyValueIDs); err != nil {
+	refusedKV, err := s.resolveUndeclaredKeyValues(ctx, neededKeyValues, keyValues, tenantID, scoped, keyValueIDs)
+	if err != nil {
 		return nil, nil, err
+	}
+	if refused = append(refused, refusedKV...); len(refused) > 0 {
+		return nil, nil, refused
 	}
 	return databaseIDs, keyValueIDs, nil
 }
@@ -1100,72 +1108,83 @@ func undeclaredBlueprintRefs(st parsedStack) (databases, keyValues map[string]bo
 }
 
 // resolveUndeclaredDatabases records each needed database name's CR identity in
-// out, fetching the workspace snapshot only if the caller had none. A name that
-// matches no database, or more than one, fails the deploy.
-func (s *Service) resolveUndeclaredDatabases(ctx context.Context, st parsedStack, needed map[string]bool, databases *appv1alpha1.DatabaseList, tenantID string, scoped bool, out map[string]string) error {
+// out, fetching the workspace snapshot only if the caller had none. Every name
+// that matches no database, or more than one, is refused (sorted by name); err
+// is only a failed workspace read.
+func (s *Service) resolveUndeclaredDatabases(ctx context.Context, st parsedStack, needed map[string]bool, databases *appv1alpha1.DatabaseList, tenantID string, scoped bool, out map[string]string) (blueprintResourceErrors, error) {
 	if len(needed) == 0 {
-		return nil
+		return nil, nil
 	}
 	if databases == nil {
 		var err error
 		if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	for name := range needed {
+	var refused blueprintResourceErrors
+	for _, name := range slices.Sorted(maps.Keys(needed)) {
 		found, duplicate := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, name)
-		if duplicate {
-			return fmt.Errorf("%w: fromDatabase reference %q is ambiguous in this workspace", core.ErrConflict, name)
+		switch {
+		case duplicate:
+			refused = append(refused, blueprintResourceError{kind: BlueprintResourcePostgres, name: name,
+				err: fmt.Errorf("%w: fromDatabase reference %q is ambiguous in this workspace", core.ErrConflict, name)})
+		case found == nil:
+			refused = append(refused, blueprintResourceError{kind: BlueprintResourcePostgres, name: name,
+				err: fmt.Errorf("%w: fromDatabase references unknown database %q in this workspace", core.ErrBadRequest, name)})
+		default:
+			if service, ok := poolerRefWithoutPooler(st, name, found); ok {
+				refused = append(refused, blueprintResourceError{kind: BlueprintResourceService, name: service,
+					err: poolerRequiredError(service, name)})
+				continue
+			}
+			out[name] = found.Name
 		}
-		if found == nil {
-			return fmt.Errorf("%w: fromDatabase references unknown database %q in this workspace", core.ErrBadRequest, name)
-		}
-		if err := requirePoolerForRefs(st, name, found); err != nil {
-			return err
-		}
-		out[name] = found.Name
 	}
-	return nil
+	return refused, nil
 }
 
-// requirePoolerForRefs fails the deploy when a service asks the named database
-// for its connectionPoolString but that database has no pooler.
-func requirePoolerForRefs(st parsedStack, name string, found *appv1alpha1.Database) error {
+// poolerRefWithoutPooler names the first service that asks the named database
+// for its connectionPoolString when that database has no pooler.
+func poolerRefWithoutPooler(st parsedStack, name string, found *appv1alpha1.Database) (string, bool) {
 	if found.Spec.Pooler {
-		return nil
+		return "", false
 	}
 	for _, service := range st.services {
 		for _, ref := range service.databaseRefs {
 			if ref.FromDatabase != nil && ref.FromDatabase.Name == name && ref.FromDatabase.Property == dbPropertyConnectionPoolString {
-				return poolerRequiredError(service.req.Name, name)
+				return service.req.Name, true
 			}
 		}
 	}
-	return nil
+	return "", false
 }
 
 // resolveUndeclaredKeyValues is resolveUndeclaredDatabases' Key Value twin.
-func (s *Service) resolveUndeclaredKeyValues(ctx context.Context, needed map[string]bool, keyValues *appv1alpha1.KeyValueList, tenantID string, scoped bool, out map[string]string) error {
+func (s *Service) resolveUndeclaredKeyValues(ctx context.Context, needed map[string]bool, keyValues *appv1alpha1.KeyValueList, tenantID string, scoped bool, out map[string]string) (blueprintResourceErrors, error) {
 	if len(needed) == 0 {
-		return nil
+		return nil, nil
 	}
 	if keyValues == nil {
 		var err error
 		if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	for name := range needed {
+	var refused blueprintResourceErrors
+	for _, name := range slices.Sorted(maps.Keys(needed)) {
 		found, duplicate := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, name)
-		if duplicate {
-			return fmt.Errorf("%w: fromService Key Value reference %q is ambiguous in this workspace", core.ErrConflict, name)
+		switch {
+		case duplicate:
+			refused = append(refused, blueprintResourceError{kind: BlueprintResourceKeyValue, name: name,
+				err: fmt.Errorf("%w: fromService Key Value reference %q is ambiguous in this workspace", core.ErrConflict, name)})
+		case found == nil:
+			refused = append(refused, blueprintResourceError{kind: BlueprintResourceKeyValue, name: name,
+				err: fmt.Errorf("%w: fromService references unknown Key Value %q in this workspace", core.ErrBadRequest, name)})
+		default:
+			out[name] = found.Name
 		}
-		if found == nil {
-			return fmt.Errorf("%w: fromService references unknown Key Value %q in this workspace", core.ErrBadRequest, name)
-		}
-		out[name] = found.Name
 	}
-	return nil
+	return refused, nil
 }
 
 // uniqueDatabaseByDisplayName resolves a Blueprint display name against a
