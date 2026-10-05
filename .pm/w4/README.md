@@ -194,6 +194,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **191** — [Key Value `default` user has `+@all`: tenants can `CONFIG SET` the plan cap and eviction policy, rotate the password, and `SHUTDOWN`](done/191.md) ← infinite /qa-find-bugs loop10 2026-10-04 UTC — done 2026-10-04.
+
 - [x] **190** — [Custom-domain add accepts `api.bex.co`, `localhost` and IP literals](done/190.md) ← infinite /qa-find-bugs loop7 2026-10-04 UTC — done 2026-10-04.
 
 - [x] **189** — [Blueprint takeover confirmation says "Protected environment confirmation required"](done/189.md) ← infinite /qa-find-bugs loop7 2026-10-04 UTC — done 2026-10-04.

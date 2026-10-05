@@ -18,6 +18,7 @@ package controller
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -76,10 +77,24 @@ func TestValkeyArgs(t *testing.T) {
 		}
 	})
 
-	t.Run("password flag is always first", func(t *testing.T) {
+	// w4/191: the password rides an explicit default-user ACL that drops the
+	// control-plane-owned verbs; a bare --requirepass left the user +@all.
+	t.Run("default user ACL is always first and owns the password", func(t *testing.T) {
 		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan)
-		if len(args) < 2 || args[0] != "--requirepass" || args[1] != "$(VALKEY_PASSWORD)" {
-			t.Errorf("want --requirepass $(VALKEY_PASSWORD) first, got %v", args)
+		rule := valkeyDefaultUserRule("$(VALKEY_PASSWORD)")
+		if len(args) < 1+len(rule) || args[0] != "--user" || !slices.Equal(args[1:1+len(rule)], rule) {
+			t.Fatalf("want --user %v first, got %v", rule, args)
+		}
+		if slices.Contains(args, "--requirepass") {
+			t.Errorf("a bare --requirepass would leave the default user +@all: %v", args)
+		}
+		for _, denied := range []string{"-config|set", "-acl|setuser", "-shutdown"} {
+			if !slices.Contains(rule, denied) {
+				t.Errorf("default user rule keeps %s", strings.TrimPrefix(denied, "-"))
+			}
+		}
+		if slices.Contains(rule, "-config|get") || slices.Contains(rule, "-info") || slices.Contains(rule, "-client") {
+			t.Errorf("the exporter needs CONFIG GET, INFO and CLIENT: %v", rule)
 		}
 	})
 }

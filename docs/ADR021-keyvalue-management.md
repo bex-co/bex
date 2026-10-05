@@ -152,6 +152,10 @@ Identity and display name are separate, exactly as managed Postgres shipped in w
 
 **Migration closeout.** The original rollout backfilled missing display names without re-keying CRs, then enabled rename traffic after identity-preservation checks. The 2026-07-28 fleet audit found zero remaining legacy shapes, so the one-time script and metadata-name reader were retired and `spec.name` became required. Rollback restores the preceding code/CRD commit without reversing canonical object data.
 
+### 8. Tenant command surface (w4/191)
+
+Tenants connect as Valkey's `default` user, which the operator now defines explicitly (`--user default on >$(VALKEY_PASSWORD) ~* &* +@all …`) instead of a bare `--requirepass` that left it `+@all`. Every data command and read-only introspection (`CONFIG GET`, `INFO`, `CLIENT`) stays; the verbs whose state the control plane owns answer `NOPERM`: `CONFIG SET|REWRITE|RESETSTAT` (the plan's memory budget and the eviction policy the dashboard shows), `ACL SETUSER|DELUSER|SAVE|LOAD` (the password the dashboard reveals and the metrics sidecar scrapes with), `SHUTDOWN`, `MODULE`, `REPLICAOF`/`SLAVEOF`, `FAILOVER` and `DEBUG`. Verified on the pinned Valkey 8 image. This is a deliberate bex restriction: change those settings through the API, which reconciles them durably. The persistence-transition helper instance is exempt: it listens only on a private unix socket and is driven by the operator itself.
+
 ## MVP scope
 
 Ship only what fits the current single node — single-instance plans differing by compute + storage (above). The metered TLS/SNI front door is opt-in per store via `spec.public` + `BEX_KV_DOMAIN`; `BEX_CLUSTER_ISSUER` is also required so the operator can issue the backend certificate.
