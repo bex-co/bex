@@ -4246,6 +4246,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Pre-deploy command succeeded",
     description: "Deploy row: the pre-deploy step passed",
   },
+  "services.eventsPreDeployCanceled": {
+    message: "Pre-deploy command canceled",
+    description:
+      "Deploy row: the deploy ended (superseded or canceled) while its pre-deploy step was still running",
+  },
   "services.eventsPreDeployFailed": {
     message: "Pre-deploy command failed",
     description:

@@ -192,6 +192,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **187** — [A superseded deploy keeps `preDeployStatus: running` forever](done/187.md) ← infinite /qa-find-bugs loop13 2026-10-04 UTC — done 2026-10-04.
+
 - [x] **186** — [Registry-credential delete dialog promises attached delete; the server forbids it](done/186.md) ← infinite /qa-find-bugs loop11 2026-10-04 UTC — done 2026-10-04.
 
 - [x] **185** — [Insights/SQL console show the probe's own session rails as observed parameter values](done/185.md) ← infinite /qa-find-bugs loop9 2026-10-04 UTC — done 2026-10-04.

@@ -871,6 +871,12 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage
 	if IsTerminalDeployStatus(status) && d.FinishedAt == nil {
 		d.FinishedAt = &now
 	}
+	if IsTerminalDeployStatus(status) && d.PreDeployStatus == PreDeployRunning {
+		d.PreDeployStatus = PreDeployCanceled
+		if status == DeployLive {
+			d.PreDeployStatus = PreDeploySucceeded
+		}
+	}
 	m.deploys[id] = d
 	if status == DeployLive {
 		for otherID, other := range m.deploys {

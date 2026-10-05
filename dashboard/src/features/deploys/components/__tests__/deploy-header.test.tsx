@@ -43,6 +43,7 @@ describe("DeployHeader", () => {
     ["running", "Pre-deploy command running"],
     ["succeeded", "Pre-deploy command succeeded"],
     ["failed", "Pre-deploy command failed"],
+    ["canceled", "Pre-deploy command canceled"],
   ])("renders the %s pre-deploy outcome", (preDeployStatus, label) => {
     render(<DeployHeader deploy={deploy({ preDeployStatus })} />);
     expect(screen.getByText(label)).toBeInTheDocument();

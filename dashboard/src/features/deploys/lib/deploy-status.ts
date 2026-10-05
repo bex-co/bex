@@ -121,6 +121,8 @@ export function preDeployStatusKey(status: string): string | null {
       return "services.eventsPreDeploySucceeded";
     case "failed":
       return "services.eventsPreDeployFailed";
+    case "canceled":
+      return "services.eventsPreDeployCanceled";
     default:
       return null;
   }

@@ -4156,6 +4156,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "预部署命令成功",
     description: "Deploy row: the pre-deploy step passed",
   },
+  "services.eventsPreDeployCanceled": {
+    message: "预部署命令已取消",
+    description:
+      "Deploy row: the deploy ended (superseded or canceled) while its pre-deploy step was still running",
+  },
   "services.eventsPreDeployFailed": {
     message: "预部署命令失败",
     description:

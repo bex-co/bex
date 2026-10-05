@@ -72,7 +72,8 @@ type renderDeploy struct {
 	StartedAt  string             `json:"startedAt,omitempty"`
 	FinishedAt string             `json:"finishedAt,omitempty"`
 	// PreDeployStatus is the pre-deploy command's outcome (bex extra, w1/m33):
-	// "running" | "succeeded" | "failed"; omitted when no pre-deploy step ran.
+	// "running" | "succeeded" | "failed" | "canceled" (the deploy ended while
+	// the step was still running); omitted when no pre-deploy step ran.
 	// Distinguishes a migration failure from a health-check failure (both
 	// status=update_failed). Logs: GET /v1/logs?service=<id>&type=predeploy.
 	PreDeployStatus string `json:"preDeployStatus,omitempty"`
