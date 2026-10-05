@@ -196,6 +196,12 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **202** — [Failed health-check deploy's final failureReason still says "the rollout is waiting"](202.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC.
+
+- [ ] **201** — [Undeployed-changes notice tells users to deploy while that deploy is already running](201.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC.
+
+- [ ] **200** — [The operator flips an App's Ready condition ~40 s after its pod failed readiness, so `server_failed` still lands late](200.md) ← infinite /qa-find-bugs loop37 2026-10-05 UTC (w4/196 live check).
+
 - [x] **199** — [BLOCKER: deploys red since `d1e4c9315` (w4/m172): non-member by-id reads 404 but ADR072 #8 / the w6/m24 e2e require 403](done/199.md) — done 2026-10-05 (`ScopeByID` answers a typed-id non-member 403; full suite green under CI's Postgres + OpenFGA + OpenBao).
 
 - [x] **197** — [A cron schedule that can never fire is accepted and shown as "Next run: now"](done/197.md) ← infinite /qa-find-bugs loop21 2026-10-05 UTC — done 2026-10-04 (`SCHEDULE_NEVER_FIRES` on every write path + wizard; no zero-time `nextRunAt`).
