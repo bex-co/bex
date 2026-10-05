@@ -60,5 +60,7 @@ if [ -n "$changed" ]; then
   # No KUBECONFIG: with the test database set, it would point live-acceptance
   # tests at whatever cluster the caller has open.
   (cd lego/backend && env -u KUBECONFIG GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./...)
+  # Only on success: a failed suite leaves its database up to inspect.
+  bash scripts/backend-test-deps.sh down
 fi
 echo "ship-gates: ok" >&2
