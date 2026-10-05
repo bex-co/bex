@@ -4,15 +4,15 @@
 
 ## Tasks (in order)
 
-| id   | title                                                           | est | depends_on                 |
-| ---- | --------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Prorated, per-pod instance-seconds query for Apps and datastores — **DONE** | 1h  | —                          |
-| t002 | Decide and apply the correction for already-metered hours       | 45m | w4/m173/t001               |
-| t003 | Render parity across usage surfaces — **DONE**                             | 30m | w4/m173/t002               |
-| t004 | Simplify changed code — **DONE**                                           | 20m | w4/m173/t003               |
-| t005 | Test coverage for shipped behavior — **DONE**                              | 45m | w4/m173/t003               |
-| t007 | Meter resources deleted before their hour is rolled up          | 1h  | w4/m173/t001               |
-| t006 | Closeout                                                        | 15m | w4/m173/t005, w4/m173/t007 |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Prorated, per-pod instance-seconds query for Apps and datastores — **DONE** | 1h | — |
+| t002 | Decide and apply the correction for already-metered hours | 45m | w4/m173/t001 |
+| t003 | Render parity across usage surfaces — **DONE** | 30m | w4/m173/t002 |
+| t004 | Simplify changed code — **DONE** | 20m | w4/m173/t003 |
+| t005 | Test coverage for shipped behavior — **DONE** | 45m | w4/m173/t003 |
+| t007 | Meter resources deleted before their hour is rolled up | 1h | w4/m173/t001 |
+| t006 | Closeout | 15m | w4/m173/t005, w4/m173/t007 |
 
 ## Definition of done
 
@@ -40,3 +40,4 @@ Live replay on owned Free fixtures (deleted afterwards). Read `GET /v1/usage?own
 - **Why now:** every paid instance that restarts, deploys, has a sidecar, or lives under an hour is mis-metered today, in both directions, and the rows feed Stripe meter events. Render parity task INCLUDED (t003): usage surfaces' numbers change.
 - **Unverified:** paid-tier dollar impact (only Free fixtures probed, $0); the cause of the zero rows; whether `usage_monthly` compaction already sealed affected months.
 - **Severity:** major.
+- **Live replay 2026-10-05 (loop39, pin `f837cec46294`):** proration (t001) holds on the short-life bullet. `qa-20261005-l39-pro` (`srv-db1n2futdtps73dl0c9g`, Free, `traefik/whoami`) went Live at 09:43:40Z and was kept awake by a 2-minute pinger. After the ~10:55Z rollup tick, `GET /v1/usage?ownerId=tea-daif693dqjvc73e7as3g` read `instance_seconds` **990** for it (expected ≈980 for 09:43:30–10:00, against 3600 before t001). It was deleted at 10:59Z, before its 10:00 hour rolled up at ~11:55Z. Under t007 that hour (~3540 s) is expected to stay unmetered, which is a third replay of that gap. The sidecar, rollout and full-hour control bullets are still unprobed.
