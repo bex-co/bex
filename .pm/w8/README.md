@@ -75,7 +75,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](048.md) (**decision needed**: parity ~50m or record-only ~15m) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 2.
+- [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
 - [ ] **049** — [Postgres and Key Value accept another resource's ID as their name](049.md) (~35m, minor; sibling of w8/034) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 2.
 - [ ] **050** — [Platform internals ship as tenant log lines: kubelet "failed to try resolving symlinks" (app + Postgres) and CNPG's Go TLS-handshake line (Postgres)](050.md) (~55m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04; sibling of w8/025.
 - [ ] **051** — [`blueprints validate` reports only one dangling `fromDatabase`/`fromService` reference, and which one changes from run to run](051.md) (~45m, minor; residual of w8/019) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 4.
