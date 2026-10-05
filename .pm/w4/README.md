@@ -194,6 +194,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **190** — [Custom-domain add accepts `api.bex.co`, `localhost` and IP literals](done/190.md) ← infinite /qa-find-bugs loop7 2026-10-04 UTC — done 2026-10-04.
+
 - [x] **189** — [Blueprint takeover confirmation says "Protected environment confirmation required"](done/189.md) ← infinite /qa-find-bugs loop7 2026-10-04 UTC — done 2026-10-04.
 
 - [x] **187** — [A superseded deploy keeps `preDeployStatus: running` forever](done/187.md) ← infinite /qa-find-bugs loop13 2026-10-04 UTC — done 2026-10-04.
