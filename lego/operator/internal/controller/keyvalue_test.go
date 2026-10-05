@@ -594,6 +594,22 @@ var _ = Describe("KeyValue Controller", func() {
 		Expect(sts.Spec.Template.Annotations).To(HaveKeyWithValue("app.bex.co/credential-revision",
 			appv1alpha1.KeyValueCredentialRevision(auth.Data["password"])))
 
+		By("keeping the platform user's password in its own Secret that nothing reveals (w5/m110)")
+		platform := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name + "-platform", Namespace: "default"}, platform)).To(Succeed())
+		Expect(platform.Immutable).NotTo(BeNil())
+		Expect(*platform.Immutable).To(BeTrue(), "platform password is immutable")
+		Expect(platform.Labels).To(HaveKeyWithValue(appv1alpha1.LabelProtectedFromTenantMount, appv1alpha1.ProtectedFromTenantMount),
+			"a co-located App must be refused a mount of the platform password")
+		platformPw := string(platform.Data[kvPasswordKey])
+		Expect(platformPw).NotTo(BeEmpty())
+		Expect(platformPw).NotTo(Equal(firstPw), "the platform user has its own password")
+		for key, value := range sec.Data {
+			Expect(string(value)).NotTo(ContainSubstring(platformPw), "connection Secret key %q reveals the platform password", key)
+		}
+		Expect(c.Env).To(ContainElement(kvSecretEnv(kvPlatformPasswordEnv, name+"-platform")),
+			"the server's platform user reads its password from the platform Secret")
+
 		By("rejecting unsupported direct password mutation at the Kubernetes API")
 		auth.Data["password"] = []byte("unsupported-direct-mutation")
 		Expect(k8sClient.Update(ctx, auth)).NotTo(Succeed())
@@ -601,6 +617,8 @@ var _ = Describe("KeyValue Controller", func() {
 		reconcileN()
 		Expect(k8sClient.Get(ctx, nn, sec)).To(Succeed())
 		Expect(string(sec.Data["password"])).To(Equal(firstPw), "password is reused, not regenerated")
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name + "-platform", Namespace: "default"}, platform)).To(Succeed())
+		Expect(string(platform.Data[kvPasswordKey])).To(Equal(platformPw), "platform password is reused, not regenerated")
 
 		By("recording status coordinates")
 		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
@@ -616,7 +634,7 @@ var _ = Describe("KeyValue Controller", func() {
 		// half of "deleting the KeyValue removes the owned objects."
 		By("owner-referencing every owned object to the KeyValue (drives delete cascade)")
 		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
-		for _, obj := range []metav1.Object{sts, svc, sec, auth} {
+		for _, obj := range []metav1.Object{sts, svc, sec, auth, platform} {
 			Expect(metav1.IsControlledBy(obj, kv)).To(BeTrue())
 		}
 	})

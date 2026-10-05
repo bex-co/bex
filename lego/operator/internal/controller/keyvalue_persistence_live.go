@@ -42,25 +42,35 @@ import (
 
 var errKeyValuePersistenceSourceUnknown = errors.New("legacy persistence source is unknown")
 
-// prepareKeyValuePersistence leaves the current serving pod untouched until its
-// entire live snapshot dataset is journaled. The UID/generation token tells the
+// prepareKeyValuePersistence leaves the current serving pod's data untouched
+// until its entire live snapshot dataset is journaled; the only restart it may
+// make first is the one that gives an older process the platform user, in the
+// same snapshot mode. The UID/generation token tells the
 // offline initializer that this AOF, rather than an older RDB marker, is now
 // authoritative. An initializer consumes a token once, so later restarts and
 // mode reversals cannot replay an obsolete handoff.
-func (r *KeyValueReconciler) prepareKeyValuePersistence(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, auth *corev1.Secret, intent *keyValueIntent) (ctrl.Result, bool, error) {
-	return r.prepareKeyValuePersistenceWith(ctx, kv, sts, auth, intent, prepareKeyValueJournalAtPod)
+func (r *KeyValueReconciler) prepareKeyValuePersistence(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, platform *corev1.Secret, intent *keyValueIntent) (ctrl.Result, bool, error) {
+	return r.prepareKeyValuePersistenceWith(ctx, kv, sts, platform, intent, prepareKeyValueJournalAtPod)
 }
 
-func prepareKeyValueJournalAtPod(ctx context.Context, pod *corev1.Pod, auth *corev1.Secret) (bool, error) {
+// prepareKeyValueJournalAtPod runs the handoff as kvPlatformUser: its CONFIG
+// SET is an @admin verb the tenant's default user cannot run.
+func prepareKeyValueJournalAtPod(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret) (bool, error) {
 	timeout, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
-	c := redis.NewClient(&redis.Options{Addr: net.JoinHostPort(pod.Status.PodIP, "6379"), Password: string(auth.Data["password"]),
-		DialTimeout: 2 * time.Second, ReadTimeout: 2 * time.Second, WriteTimeout: 2 * time.Second, MaxRetries: -1, Protocol: 2, ContextTimeoutEnabled: true})
+	c := platformValkeyClient(net.JoinHostPort(pod.Status.PodIP, "6379"), platform)
 	defer func() { _ = c.Close() }()
 	return prepareValkeyJournal(timeout, c)
 }
 
-func (r *KeyValueReconciler) prepareKeyValuePersistenceWith(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, auth *corev1.Secret, intent *keyValueIntent, prepare func(context.Context, *corev1.Pod, *corev1.Secret) (bool, error)) (ctrl.Result, bool, error) {
+// platformValkeyClient connects to a Key Value's Valkey as kvPlatformUser with
+// the password from its platform Secret.
+func platformValkeyClient(addr string, platform *corev1.Secret) *redis.Client {
+	return redis.NewClient(&redis.Options{Addr: addr, Username: kvPlatformUser, Password: string(platform.Data[kvPasswordKey]),
+		DialTimeout: 2 * time.Second, ReadTimeout: 2 * time.Second, WriteTimeout: 2 * time.Second, MaxRetries: -1, Protocol: 2, ContextTimeoutEnabled: true})
+}
+
+func (r *KeyValueReconciler) prepareKeyValuePersistenceWith(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, platform *corev1.Secret, intent *keyValueIntent, prepare func(context.Context, *corev1.Pod, *corev1.Secret) (bool, error)) (ctrl.Result, bool, error) {
 	reader := cmp.Or(r.APIReader, client.Reader(r.Client))
 	if legacyKeyValueWorkloadUnchanged(sts, kv, *intent) {
 		intent.skipPersistenceInit = true
@@ -82,8 +92,21 @@ func (r *KeyValueReconciler) prepareKeyValuePersistenceWith(ctx context.Context,
 	pod := &corev1.Pod{}
 	err := reader.Get(ctx, client.ObjectKey{Namespace: kv.Namespace, Name: kv.Name + "-0"}, pod)
 	if err == nil && metav1.IsControlledBy(pod, sts) && pod.DeletionTimestamp.IsZero() && pod.Status.PodIP != "" && keyValueHandoffSourceReady(pod, sts, intent) {
+		// The handoff logs in as kvPlatformUser, which a process started before
+		// that user existed lacks (and its default user can't CONFIG SET). Roll it
+		// once in its current snapshot mode to add the user — the same ordinary
+		// restart any template change makes — and hand off from the new process.
+		if !valkeyHasPlatformUser(pod.Spec.Containers) {
+			current := kv.DeepCopy()
+			current.Spec.PersistenceMode = keyValueSnapshotMode
+			if err := r.reconcileKeyValueWorkload(ctx, current, sts, *intent); err != nil {
+				result, failErr := r.kvFail(ctx, kv, "StatefulSetFailed", err)
+				return result, true, failErr
+			}
+			return r.deferKeyValuePersistence(ctx, kv, nil)
+		}
 		var ready bool
-		ready, err = prepare(ctx, pod, auth)
+		ready, err = prepare(ctx, pod, platform)
 		if ready && err == nil {
 			// Re-check the exact process, not just the pod UID: a container can
 			// restart in the same pod while the rewrite is being observed.
@@ -117,6 +140,11 @@ func (r *KeyValueReconciler) prepareKeyValuePersistenceWith(ctx context.Context,
 			}
 			return ctrl.Result{}, false, nil
 		}
+	}
+	if apierrors.IsNotFound(err) {
+		// The StatefulSet is replacing its pod (e.g. the platform-user roll
+		// above); nothing has failed yet.
+		err = nil
 	}
 	return r.deferKeyValuePersistence(ctx, kv, err)
 }
@@ -302,4 +330,20 @@ func legacyKeyValueWorkloadUnchanged(sts *appsv1.StatefulSet, kv *appv1alpha1.Ke
 	applyKeyValueStatefulSet(projected, kv, intent)
 	return apiequality.Semantic.DeepEqual(projected.Spec.Template, sts.Spec.Template) &&
 		apiequality.Semantic.DeepEqual(projected.Spec.Replicas, sts.Spec.Replicas)
+}
+
+// valkeyHasPlatformUser reports whether a Valkey container's args define
+// kvPlatformUser; false for every store started before it existed.
+func valkeyHasPlatformUser(containers []corev1.Container) bool {
+	for _, c := range containers {
+		if c.Name != keyValueContainerName {
+			continue
+		}
+		for i := 0; i+1 < len(c.Args); i++ {
+			if c.Args[i] == "--user" && c.Args[i+1] == kvPlatformUser {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -152,9 +152,35 @@ Identity and display name are separate, exactly as managed Postgres shipped in w
 
 **Migration closeout.** The original rollout backfilled missing display names without re-keying CRs, then enabled rename traffic after identity-preservation checks. The 2026-07-28 fleet audit found zero remaining legacy shapes, so the one-time script and metadata-name reader were retired and `spec.name` became required. Rollback restores the preceding code/CRD commit without reversing canonical object data.
 
-### 8. Tenant command surface (w4/191)
+### 8. Tenant command surface (w4/191, w5/m110)
 
-Tenants connect as Valkey's `default` user, which the operator now defines explicitly (`--user default on >$(VALKEY_PASSWORD) ~* &* +@all …`) instead of a bare `--requirepass` that left it `+@all`. Every data command and read-only introspection (`CONFIG GET`, `INFO`, `CLIENT`) stays; the verbs whose state the control plane owns answer `NOPERM`: `CONFIG SET|REWRITE|RESETSTAT` (the plan's memory budget and the eviction policy the dashboard shows), `ACL SETUSER|DELUSER|SAVE|LOAD` (the password the dashboard reveals and the metrics sidecar scrapes with), `SHUTDOWN`, `MODULE`, `REPLICAOF`/`SLAVEOF`, `FAILOVER` and `DEBUG`. Verified on the pinned Valkey 8 image. This is a deliberate bex restriction: change those settings through the API, which reconciles them durably. The persistence-transition helper instance is exempt: it listens only on a private unix socket and is driven by the operator itself.
+Tenants connect as Valkey's `default` user, which the operator defines explicitly instead of a bare `--requirepass` that left it `+@all` (w4/191).
+
+**The tenant user loses `@admin` as a category** (w5/m110): `default on >$(VALKEY_PASSWORD) ~* &* +@all -@admin +config|get +client|list +slowlog|get +slowlog|len`.
+
+- Every data, keyspace, scripting and pub/sub command stays, including `FLUSHALL`.
+- So does read-only introspection: `INFO`, `CONFIG GET`, `CLIENT LIST`, `SLOWLOG GET`/`LEN`.
+- Everything in `@admin` answers `NOPERM`, so a new admin verb is denied by default. That covers:
+  - `CONFIG SET|REWRITE|RESETSTAT` (the memory budget and eviction policy the dashboard shows);
+  - `ACL SETUSER|LIST|…` (the revealed password; it also hides the platform user);
+  - `SAVE`/`BGSAVE`/`BGREWRITEAOF` and `SYNC`/`PSYNC` (persistence and backups are platform-managed);
+  - `REPLICAOF`/`FAILOVER`;
+  - `SHUTDOWN`, `DEBUG`, `MODULE`;
+  - `MONITOR`, and `CLIENT KILL|PAUSE` over other connections.
+- w4/191's thirteen-verb deny-list had left `SYNC`, `MONITOR` and `CLIENT KILL` open.
+
+**The control plane logs in as its own ACL user, `bex`** (`+@all`). Its password is in the immutable `<id>-platform` Secret, which nothing names in status and no API reveals.
+
+- That user runs the live persistence handoff (`CONFIG SET appendonly`), the metrics exporter's `INFO` scrape and the backup's `--rdb` replication.
+- So a tenant restriction can never lock them out. w4/191 had: the handoff ran as `default` and every Snapshot → Journal + Snapshot switch wedged in `PersistenceTransitionFailed`.
+- A store whose serving process predates the user is first rolled once in its current Snapshot mode to add it, then journaled from the new process. This is the same ordinary restart any template change makes.
+- The readiness probe stays on `default`, because `PING` is not `@admin`.
+
+Verified with `ACL DRYRUN` on both pinned images (Valkey 7 and 8) booted with the StatefulSet's own args (`keyvalue_persistence_engine_test.go`).
+
+**Divergence from Render.** Render documents no command list today. Its forum shows `CONFIG` (including `CONFIG GET`) refused, `SAVE`/`BGSAVE` disabled, and `CLIENT` allowed. bex matches that except that `CONFIG GET` stays readable: tenants have relied on it since w4/191, and it exposes nothing they don't own. Change these settings through the API, which reconciles them durably.
+
+The persistence-transition helper instance is exempt from all of this: it listens only on a private unix socket and is driven by the operator itself.
 
 ## MVP scope
 

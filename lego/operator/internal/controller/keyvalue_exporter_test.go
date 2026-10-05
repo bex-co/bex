@@ -54,7 +54,7 @@ func TestKVExporterBudgetIsGuaranteedAndNotStarved(t *testing.T) {
 		}
 		plan, _ := resolveKVPlan(kv.Spec)
 		var spec corev1.PodSpec
-		applyValkeyPodSpec(&spec, kv, keyValueIntent{plan: plan, authSecretName: "red-x-auth"})
+		applyValkeyPodSpec(&spec, kv, keyValueIntent{plan: plan, authSecretName: "red-x-auth", platformSecretName: "red-x-platform"})
 
 		exp := exporterContainer(t, &spec)
 		want := corev1.ResourceList{
@@ -87,7 +87,7 @@ func TestKVExporterRunsOnlyConsumedCollectors(t *testing.T) {
 	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-x", Namespace: "ws"}}
 	plan, _ := resolveKVPlan(kv.Spec)
 	var spec corev1.PodSpec
-	applyValkeyPodSpec(&spec, kv, keyValueIntent{plan: plan, authSecretName: "red-x-auth"})
+	applyValkeyPodSpec(&spec, kv, keyValueIntent{plan: plan, authSecretName: "red-x-auth", platformSecretName: "red-x-platform"})
 	exp := exporterContainer(t, &spec)
 
 	env := map[string]corev1.EnvVar{}
@@ -95,8 +95,9 @@ func TestKVExporterRunsOnlyConsumedCollectors(t *testing.T) {
 		env[e.Name] = e
 	}
 	for name, want := range map[string]string{
-		"REDIS_ADDR":                                       "redis://localhost:6379",
-		"REDIS_EXPORTER_REDIS_ONLY_METRICS":                "true",
+		"REDIS_ADDR":                        "redis://localhost:6379",
+		"REDIS_USER":                        kvPlatformUser,
+		"REDIS_EXPORTER_REDIS_ONLY_METRICS": "true",
 		"REDIS_EXPORTER_EXCLUDE_LATENCY_HISTOGRAM_METRICS": "true",
 		"REDIS_EXPORTER_CONFIG_COMMAND":                    "-",
 		"REDIS_EXPORTER_INCL_METRICS_FOR_EMPTY_DATABASES":  "false",
@@ -105,10 +106,12 @@ func TestKVExporterRunsOnlyConsumedCollectors(t *testing.T) {
 			t.Errorf("exporter env %s = %q (set=%v), want %q", name, got.Value, ok, want)
 		}
 	}
+	// The exporter scrapes as the platform user (w5/m110), so the tenant's
+	// ACL never decides whether the metrics tab has data.
 	pw, ok := env["REDIS_PASSWORD"]
 	if !ok || pw.ValueFrom == nil || pw.ValueFrom.SecretKeyRef == nil ||
-		pw.ValueFrom.SecretKeyRef.Name != "red-x-auth" || pw.Value != "" {
-		t.Errorf("REDIS_PASSWORD must come from the auth Secret, never a literal: %+v", pw)
+		pw.ValueFrom.SecretKeyRef.Name != "red-x-platform" || pw.Value != "" {
+		t.Errorf("REDIS_PASSWORD must come from the platform Secret, never a literal: %+v", pw)
 	}
 }
 

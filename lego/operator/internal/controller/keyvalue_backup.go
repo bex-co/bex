@@ -154,7 +154,7 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 	ctx context.Context,
 	kv *appv1alpha1.KeyValue,
 	plan tiers.ValkeyTier,
-	authSecretName string,
+	platformSecretName string,
 ) error {
 	name := keyValueBackupName(kv.Name)
 	if !keyValueBackupsEnabled(plan, r.Backup) {
@@ -189,13 +189,13 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cron, func() error {
 		cron.Labels = keyValueBackupLabels(kv, keyValueBackupComponent)
-		cron.Spec = r.keyValueBackupCronJobSpec(kv, plan, authSecretName)
+		cron.Spec = r.keyValueBackupCronJobSpec(kv, plan, platformSecretName)
 		return controllerutil.SetControllerReference(kv, cron, r.Scheme)
 	})
 	return err
 }
 
-func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, authSecretName string) batchv1.CronJobSpec {
+func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, platformSecretName string) batchv1.CronJobSpec {
 	failedHistory := int32(3)
 	successfulHistory := int32(3)
 	backoff := int32(2)
@@ -222,13 +222,14 @@ func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue,
 			Image:   valkeyImage(kv.Spec.Version),
 			Command: []string{shellBinary, "-ceu"},
 			Args: []string{`rm -f /backup/dump.rdb
-valkey-cli -h "${VALKEY_HOST}" -p "6379" --rdb /backup/dump.rdb
+valkey-cli -h "${VALKEY_HOST}" -p "6379" --user "${VALKEY_USER}" --rdb /backup/dump.rdb
 test -s /backup/dump.rdb`},
 			Env: []corev1.EnvVar{
 				{Name: "VALKEY_HOST", Value: kv.Name},
-				{Name: "REDISCLI_AUTH", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: authSecretName}, Key: "password",
-				}}},
+				// --rdb replicates (SYNC), an @admin command only the platform
+				// user keeps.
+				{Name: "VALKEY_USER", Value: kvPlatformUser},
+				kvSecretEnv("REDISCLI_AUTH", platformSecretName),
 			},
 			Resources:       backupResources("100m", "128Mi", workBudget),
 			SecurityContext: tenantSecCtx(),
