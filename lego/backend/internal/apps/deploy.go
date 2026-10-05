@@ -698,7 +698,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.preflightBlueprintOwnership(ctx, req, st); err != nil {
 		return StackResult{}, err
 	}
-	if err := s.requireStackPaymentMethod(ctx, st); err != nil {
+	if err := s.requireStackBilling(ctx, st); err != nil {
 		return StackResult{}, err
 	}
 	databases, keyValues, err := s.stackDatastoreSnapshots(ctx, st)
@@ -1220,24 +1220,17 @@ func uniqueMatching[T any](items []T, match func(*T) bool) (*T, bool) {
 	return found, false
 }
 
-// requireStackPaymentMethod runs the same paid-intent gate the interactive
-// create paths run through core.Base.RequirePlanBilling: a paid plan needs a
-// bound payment method (ADR046), and — for ANY plan — a workspace under dunning
-// enforcement is refused (RequireBillingMutation). Blueprint apply once wired
-// only the payment-method half, which let an enforced (delinquent) workspace
-// provision unlimited new paid Services/Databases/KeyValues past the very
-// control dunning enforcement exists to impose. Both halves live here now, in
-// the one helper every stack apply (deployParsedStack) and preflight (Blueprint
-// prepare/deploy) shares, so the interactive and Blueprint paths cannot drift
-// apart again.
-func (s *Service) requireStackPaymentMethod(ctx context.Context, st parsedStack) error {
+// requireStackBilling runs the interactive create paths' billing gate over a
+// whole stack, through the same core seam (RequireBillingFor): a bound payment
+// method when any resource is on a paid plan (ADR046) — or for every stack
+// when PaymentAllPlans widens the gate (ADR075 D7) — and no mutation at all
+// under dunning enforcement. It derives only the stack's paid intent; the
+// policy is core's, so the Blueprint path cannot drift from the create paths.
+// Every stack apply (deployParsedStack) and preflight (Blueprint create/sync)
+// shares it.
+func (s *Service) requireStackBilling(ctx context.Context, st parsedStack) error {
 	tenantID, _ := s.Tenant(ctx)
-	if stackHasPaidPlan(st) {
-		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
-			return err
-		}
-	}
-	return s.RequireBillingMutation(ctx, tenantID)
+	return s.RequireBillingFor(ctx, tenantID, stackHasPaidPlan(st))
 }
 
 func stackHasPaidPlan(st parsedStack) bool {

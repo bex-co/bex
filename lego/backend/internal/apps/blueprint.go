@@ -992,7 +992,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if parseErr != nil {
 		return BlueprintView{}, parseErr
 	}
-	if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+	if err := s.requireStackBilling(ctx, parsed); err != nil {
 		return BlueprintView{}, err
 	}
 	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, ""); err != nil {
@@ -1177,7 +1177,7 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, ru
 	if err != nil {
 		return store.Blueprint{}, nil, err
 	}
-	if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+	if err := s.requireStackBilling(ctx, parsed); err != nil {
 		return store.Blueprint{}, nil, err
 	}
 	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, ""); err != nil {
