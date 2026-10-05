@@ -21,7 +21,7 @@ The QA user belongs to `bex` (default), `tian-personal` and `bex-canary` (`tea-d
 - **Webhooks:** `GET`, `PATCH` and `DELETE /v1/webhooks/<id>` and `GET /v1/webhooks/<id>/events` without `ownerId` return 200/204, matching their `?ownerId=` responses. Today: `GET` 404 and `DELETE` 404 without the owner; `GET` 200, events 200 (six 200 deliveries) and `DELETE` 204 with it, on `whk-db1h3s68inbs73f0v75g`.
 - **Every family enumerated in t002** (at least registry credentials, sandboxes, agent sessions, Postgres/Key Value by-id sub-verbs, environments) shows the same: no `ownerId` needed for the caller's own resource. Each family's result is recorded with the probe that proved it.
 - **Controls, unchanged:** services, env groups and projects keep resolving by id; Blueprints (w4/m169) and API keys (w4/194) keep their shipped behavior.
-- **Adjacent classes:** a non-member's id returns the same 404 as a nonexistent id on every family (no existence oracle). A supplied, mismatched `ownerId` returns the same 404.
+- **Adjacent classes:** per ADR072 #8, a typed-id non-member gets **403** ("typed-id 403 stays"), and a genuinely missing id gets 404. A supplied, mismatched `ownerId` answers like the non-member case. (Corrected 2026-10-05: the original bullet asked for 404 for non-members, contradicting ADR072 #8 and breaking `TestEnvGroupReadSideOwnerIDTargetingE2E`. See w4/199.)
 
 ## Source + Goal linkage
 
