@@ -199,7 +199,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **181** — [Key Value metrics sidecar is CPU-starved: production `valkey-instances` scrapes time out](blocked/181.md) — **BLOCKED (ship + release pipeline deploys operator (rolls every Valkey StatefulSet); QA observes 24 h: `up{job="valkey-instances"}` = 1 for every production store, scrape duration well under 10 s, exporter throttling far below 98%, continuous series on `/keyvalue/red-d9p49kdrtmes73c34ovg`)**. Exporter budget 10m → 50m (Guaranteed QoS kept), collectors trimmed to INFO, drift-guard tests done 2026-10-03.
 
-- [ ] **180** — [Application logs loses duplicated pre-deploy output](180.md) (55m) ← QA sweep83, 2026-10-03; preserve source membership before filtering
+- [ ] **180** — [Application logs loses duplicated pre-deploy output](blocked/180.md) — **BLOCKED (release pipeline deploys dashboard; QA replays the r83 failing pre-deploy on an owned Free web service: the marker appears once in All, Build and Application and is found by search in Application, then cleans up)**. Source-membership merge, bucket predicate and an integrated real-merge panel test done 2026-10-04.
 
 - [x] **179** — [New Postgres clips fields and plan prices on narrow mobile screens](done/179.md) (55m) ← QA sweep76, 2026-10-03; scoped layout fix, no paid mutation — done 2026-10-04: bounded dialog column + wrapping plan trigger/menu; measured in Chromium at 320/360/1280.
 

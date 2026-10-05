@@ -40,9 +40,18 @@ const BUILD_RETRY_MS = 5000;
 // store-only for historical queries; the live SSE path reads pod stdout.
 const STORE_UNAVAILABLE_MARKER = "durable log store";
 
+/** The deploy viewer's type buckets; Application is everything but build. */
+export type LogBucket = "build" | "app";
+
 export interface UseDeployLogsResult {
   /** build + predeploy + app lines inside the deploy's window, chronological. */
   lines: LogLine[];
+  /**
+   * Whether a line belongs in the Build or Application bucket. A deduped line
+   * may stand for copies from several legs (a pre-deploy line is also durable
+   * build output), so its own `type` alone would drop it from one bucket.
+   */
+  inLogBucket: (line: LogLine, bucket: LogBucket) => boolean;
   loading: boolean;
   error: Error | undefined;
   /** True when the build-log leg 503'd because no durable store is wired. */
@@ -178,7 +187,7 @@ export function useDeployLogs(
   // History is the expensive leg — mapping, sorting, and deduping three
   // windowed query results. Memoize it on the query data identities so a
   // streamed live line never re-maps or re-sorts it.
-  const history = useMemo(() => {
+  const { history, firstTypes, otherTypes } = useMemo(() => {
     const merged = [
       build.pages.older,
       predeploy.pages.older,
@@ -188,7 +197,23 @@ export function useDeployLogs(
       ),
     ].flat();
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    return dedupeLogLines(merged);
+    // Dedupe keeps the first copy of a record two legs returned; remember the
+    // other legs' types for the bucket filter.
+    const first = new Map<string, string>();
+    const others = new Map<string, Set<string>>();
+    for (const line of merged) {
+      const type = first.get(line.key);
+      if (type === undefined) first.set(line.key, line.type);
+      else if (type !== line.type) {
+        const set = others.get(line.key) ?? new Set<string>();
+        others.set(line.key, set.add(line.type));
+      }
+    }
+    return {
+      history: dedupeLogLines(merged),
+      firstTypes: first,
+      otherTypes: others,
+    };
   }, [
     build.data,
     predeploy.data,
@@ -211,9 +236,27 @@ export function useDeployLogs(
     loadApp();
   }, [loadBuild, loadPredeploy, loadApp]);
 
-  const historyKeys = useMemo(
-    () => new Set(history.map((line) => line.key)),
-    [history],
+  const liveKeys = useMemo(
+    () => new Set(liveBuild.lines.map((line) => line.key)),
+    [liveBuild.lines],
+  );
+  // A history line whose live build twin was folded into it is build output too.
+  const inLogBucket = useCallback(
+    (line: LogLine, bucket: LogBucket): boolean => {
+      const isBuild = (type: string) => type === LOG_TYPE_BUILD;
+      const others = otherTypes.get(line.key);
+      if (bucket === "build") {
+        return (
+          isBuild(line.type) ||
+          liveKeys.has(line.key) ||
+          (others?.has(LOG_TYPE_BUILD) ?? false)
+        );
+      }
+      if (!isBuild(line.type)) return true;
+      for (const type of others ?? []) if (!isBuild(type)) return true;
+      return false;
+    },
+    [otherTypes, liveKeys],
   );
 
   const lines = useMemo(() => {
@@ -225,17 +268,18 @@ export function useDeployLogs(
     // so merging is an append plus a key filter for the poll/stream straddle
     // — O(live) per flush, no re-sort of history per streamed line.
     if (!last || live[0].timestamp >= last.timestamp) {
-      return [...history, ...live.filter((line) => !historyKeys.has(line.key))];
+      return [...history, ...live.filter((line) => !firstTypes.has(line.key))];
     }
     // Correctness fallback: a live line predates the tail of history (the
     // query won the race against the stream) — full chronological merge.
     const merged = [...history, ...live];
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return dedupeLogLines(merged);
-  }, [history, historyKeys, liveBuild.lines]);
+  }, [history, firstTypes, liveBuild.lines]);
 
   return {
     lines,
+    inLogBucket,
     loading: [build, predeploy, app].some((r) => r.loading && !r.data),
     error: queryError,
     buildStoreUnavailable,
