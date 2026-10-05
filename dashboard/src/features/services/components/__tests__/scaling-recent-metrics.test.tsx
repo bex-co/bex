@@ -44,9 +44,12 @@ function errorResult(): UseMetricsResult {
   return { ...emptyResult(), error: new Error("boom") };
 }
 
-function renderPanel(impl: (metric: MetricId) => UseMetricsResult) {
+function renderPanel(
+  impl: (metric: MetricId, percentage: boolean) => UseMetricsResult,
+) {
   mockUseMetrics.mockImplementation(
-    (_resource: string, metric: MetricId) => impl(metric),
+    (_resource: string, metric: MetricId, opts?: { percentage?: boolean }) =>
+      impl(metric, opts?.percentage === true),
   );
   const rootRoute = createRootRoute();
   const scalingRoute = createRoute({
@@ -111,5 +114,63 @@ describe("ScalingRecentMetrics error-vs-empty", () => {
     expect(
       screen.getAllByText("No data captured in the past 48 hours").length,
     ).toBeGreaterThan(0);
+  });
+});
+
+const points = (...values: number[]) =>
+  values.map((value, i) => ({
+    timestamp: `2026-08-22T0${i}:00:00Z`,
+    value,
+  }));
+const withSeries = (...values: number[]): UseMetricsResult => ({
+  ...emptyResult(),
+  series: [
+    {
+      labels: { instance: "web-0" },
+      unit: "percentage",
+      points: points(...values),
+    },
+  ] as never,
+});
+
+// w4/192: a sleeping or suspended service has no current pod, so the current
+// limit reads are empty — but the server-side percentages keep each pod's own
+// limit history. The card must chart those, not call the service limitless.
+describe("ScalingRecentMetrics utilization of a sleeping service", () => {
+  it("charts the server-side percentages when the current limit is empty", async () => {
+    renderPanel((metric, percentage) => {
+      if (metric === "memory_limit" || metric === "cpu_limit")
+        return emptyResult();
+      if (metric === "memory" || metric === "cpu") {
+        return percentage
+          ? withSeries(0.5, 0.7)
+          : withSeries(2_000_000, 3_000_000);
+      }
+      return emptyResult();
+    });
+
+    await screen.findAllByText("Across all instances");
+    expect(
+      screen.queryByText("No limit configured — percentage is undefined"),
+    ).toBeNull();
+    expect(
+      screen.queryByText("No data captured in the past 48 hours"),
+    ).not.toBeNull(); // instances section only
+    expect(
+      screen.getAllByText("No data captured in the past 48 hours"),
+    ).toHaveLength(1);
+  });
+
+  it("says no limit only for usage with neither percentages nor a limit", async () => {
+    renderPanel((metric, percentage) =>
+      (metric === "memory" || metric === "cpu") && !percentage
+        ? withSeries(2_000_000)
+        : emptyResult(),
+    );
+    expect(
+      await screen.findAllByText(
+        "No limit configured — percentage is undefined",
+      ),
+    ).toHaveLength(2);
   });
 });
