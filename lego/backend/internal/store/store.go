@@ -185,11 +185,14 @@ const (
 // (w1/m33). The lowercase projection of the App CR's status.preDeploy.Status,
 // distinct from the overall deploy status: a deploy can be update_failed with
 // pre_deploy_status 'failed' (its migration failed) or ” (its health check
-// failed). Empty means no pre-deploy step ran.
+// failed). Empty means no pre-deploy step ran. Canceled is the close's own
+// verdict on a step still running when its deploy ended without going live
+// (superseded or canceled, w4/187): no later observation can settle it.
 const (
 	PreDeployRunning   = "running"
 	PreDeploySucceeded = "succeeded"
 	PreDeployFailed    = "failed"
+	PreDeployCanceled  = "canceled"
 )
 
 // RenderDeployStatus maps a TERMINAL bex deploy status onto Render's
@@ -285,7 +288,7 @@ type Deploy struct {
 	StartedAt      *time.Time `json:"startedAt,omitempty"`
 	FinishedAt     *time.Time `json:"finishedAt,omitempty"`
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy
-	// (w1/m33): '' (no step) | 'running' | 'succeeded' | 'failed'. The reconciler
+	// (w1/m33): '' (no step) | 'running' | 'succeeded' | 'failed' | 'canceled'. The reconciler
 	// projects it from the App CR's status.preDeploy so a migration failure is
 	// distinguishable from a health-check failure (both close as update_failed).
 	PreDeployStatus string `json:"preDeployStatus,omitempty"`
@@ -2324,12 +2327,20 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			     -- A terminal row's story is failure_reason/cancel_reason; the
 			     -- in-flight stall observation is over, so clear it (w4/m112).
 			     stall_reason = CASE WHEN $5 THEN '' ELSE stall_reason END,
+			     -- Likewise a still-running pre-deploy step: SetDeployPreDeployStatus
+			     -- only writes open rows, so nothing else would ever settle it. A
+			     -- release that went live passed its pre-deploy; any other close
+			     -- ended it (w4/187).
+			     pre_deploy_status = CASE WHEN $5 AND pre_deploy_status = $10
+			                              THEN CASE WHEN $2 = $11 THEN $12 ELSE $13 END
+			                              ELSE pre_deploy_status END,
 			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp())
 			                       ELSE COALESCE(started_at, $9) END,
 			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
-			id, status, resolvedImage, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt); err != nil {
+			id, status, resolvedImage, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
+			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled); err != nil {
 			return err
 		}
 		if status == DeployLive {
