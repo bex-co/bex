@@ -103,11 +103,12 @@ export function useAccessControl(id: string) {
   );
 
   const deleteUser = useCallback(
-    async (name: string) => {
+    async (name: string): Promise<boolean> => {
       try {
         await deleteUserMut({ variables: { id, name } });
         void usersQuery.refetch();
         toast.success(t("databases.accessUserDeleted", { name }));
+        return true;
       } catch (err) {
         toast.error(
           mutationErrorMessage(
@@ -115,6 +116,7 @@ export function useAccessControl(id: string) {
             t("databases.accessUserDeleteError", { name }),
           ),
         );
+        return false;
       }
     },
     [deleteUserMut, usersQuery, id, t],
