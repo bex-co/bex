@@ -196,6 +196,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **196** — [`server_failed` / `server_available` are stamped when the reconciler notices, not when the service went down or came back](done/196.md) ← infinite /qa-find-bugs loop18 2026-10-04 UTC — done 2026-10-04 (edges carry the Ready transition time, bounded by the prior checkpoint change).
+
 - [x] **195** — [Datastore log search with no matches says "No database logs yet"](done/195.md) ← infinite /qa-find-bugs loop15 2026-10-04 UTC — done 2026-10-04 (filtered-empty title "No matching logs", en + zh, both kinds).
 
 - [x] **194** — [API key REST revoke 403s outside the default workspace](done/194.md) ← infinite /qa-find-bugs loop14 2026-10-04 UTC — done 2026-10-04 (no `ownerId` resolves the key's own workspace; non-member → 404).
