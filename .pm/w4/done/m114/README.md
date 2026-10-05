@@ -1,6 +1,6 @@
 # w4 · m114 — Cron runs can't be trusted: resurrected cancels, twin pendings, 11-minute terminal delay
 
-**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** blocked — live replay 2026-10-05 on production proved cancels stay dead, one active slot and prompt terminal status (t002 done); the failure reason was not visible anywhere, now implemented in t007; t006 closeout waits on t007's live replay after deploy
+**Worker:** worker4 **Goal:** every cron run converges exactly once to its true terminal state — a canceled run stays dead, a scheduled run never shares the active slot, and failure surfaces promptly with its reason. **Status:** done (2026-10-05: every DoD bullet live-verified on production; t007 surfaced the failure reason)
 
 ## Transfer — 2026-09-30
 
@@ -14,11 +14,11 @@ The blocker narratives below are historical; local harness work is now pre-appro
 | ---- | --------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Canceled manual run resurrects when CancelRun is overwritten                      | 1h  | —          | — **DONE** |
 | t002 | Twin pending: scheduled successor created while predecessor still active — **DONE** (via w5/m106; live 2026-10-05) | 1h | w5/069 |
-| t007 | Say why a failed cron run failed — implemented, live replay pending | 2h | — |
+| t007 | Say why a failed cron run failed — **DONE** | 2h | — |
 | t003 | Trigger Run disabled in UI while the server preempts by design                    | 30m | —          | — **DONE** |
 | t004 | Render parity + docs (cron-runs.md single-execution guarantee)                    | 20m | t001–t003  | — **DONE** (scoped to t001/t003) |
 | t005 | Test coverage (controller-level resurrection + projection tests)                   | 45m | t004       | — **DONE** (scoped to t001/t003) |
-| t006 | Closeout (live re-probe with a failing cron) — **BLOCKED** (t007 live replay) | 15m | t002, t007 |
+| t006 | Closeout (live re-probe with a failing cron) — **DONE** | 15m | t002, t007 |
 ## Blocked on
 
 **t002 needs a live reproduction that only the user can authorize** — and so
