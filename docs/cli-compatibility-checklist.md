@@ -138,7 +138,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `postgres create` — id/name/ipAllowList wire shape correct (description persists). With no allowlist flag, the pinned builder omits `ipAllowList`; REST defaults to public with explicit `0.0.0.0/0` and `::/0` rules, so readback no longer reports a blocked empty list (w2/038). Explicit REST `[]` creates private intent unless Bex `public:true` overrides it; the public API rejects `ipAllowList:null` and `public:null` with HTTP 400. Native GraphQL/MCP create defaults stay private. [Create matrix and CLI limits](ADR009-postgresql-management.md#postgres-create-access-intent-w2038)
     - [x] payment-required failures use the same CLI-decodable 402 envelope as Service and Key Value creates
     - [x] `--name`
-    - [~] `--plan <free|basic_*|pro_*|accelerated_*>` — bex's own tier names round-trip; v2.25.0's help/picker also advertises Render's spec-based compute plans (`0.1c-256mb` … `128c-1024g`), which map onto bex rungs when unambiguous (w8/011); larger names still 400
+    - [~] `--plan <free|basic_*|pro_*|accelerated_*>` — bex's own tier names round-trip (input takes either spelling; REST answers in Render's API spelling `basic_256mb`, not the Blueprint `basic-256mb`, since w8/057); v2.25.0's help/picker also advertises Render's spec-based compute plans (`0.1c-256mb` … `128c-1024g`), which map onto bex rungs when unambiguous (w8/011); larger names still 400
     - [~] `--region <frankfurt|ohio|oregon|singapore|virginia>` — accepted; platform-stamped `local-capd`
     - [x] `--version <int>`
     - [x] `--disk-size-gb <int>` — free is fixed at 1 GB; paid storage is capped at 16,384 GB (w8/m50)
