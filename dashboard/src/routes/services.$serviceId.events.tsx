@@ -390,6 +390,7 @@ function EventSummary({
   const startedAt = details?.startedAt || null;
   const finishedAt = details?.finishedAt || null;
   const reasonCode = details?.reasonCode || null;
+  const exitCode = details?.exitCode ?? null;
   const instanceId = details?.instanceId || null;
   const fromCount = details?.fromCount ?? null;
   const toCount = details?.toCount ?? null;
@@ -508,7 +509,7 @@ function EventSummary({
         ) : null}
         {reasonCode ? (
           <p className="text-muted-foreground mt-2 text-xs">
-            {t(`services.eventsReason.${reasonCode}`)}
+            {t(`services.eventsReason.${reasonCode}`, { exitCode })}
             {instanceId
               ? ` · ${t("services.eventsInstanceReference", { id: instanceId })}`
               : ""}

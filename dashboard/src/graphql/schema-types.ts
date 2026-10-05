@@ -3681,10 +3681,12 @@ export type ServiceEventDetails = {
   commitId: Maybe<Scalars['String']['output']>;
   commitMessage: Maybe<Scalars['String']['output']>;
   commitUrl: Maybe<Scalars['String']['output']>;
+  cronJobRunId: Maybe<Scalars['String']['output']>;
   deployId: Maybe<Scalars['String']['output']>;
   deployStatus: Maybe<Scalars['String']['output']>;
   environmentFrom: Maybe<Scalars['String']['output']>;
   environmentTo: Maybe<Scalars['String']['output']>;
+  exitCode: Maybe<Scalars['Int']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['String']['output']>;
   fromCount: Maybe<Scalars['Int']['output']>;

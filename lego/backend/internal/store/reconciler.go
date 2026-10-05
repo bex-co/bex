@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -480,13 +481,28 @@ func cronRunFacts(appID string, run appv1alpha1.CronRun) []ServiceEventFact {
 	default:
 		return facts
 	}
-	return append(facts, ServiceEventFact{
+	ended := ServiceEventFact{
 		SourceKey: "cron:" + appID + ":" + run.Name + ":ended",
 		AppID:     appID,
 		Type:      EventFactCronRunEnded,
 		At:        finished,
 		Status:    status,
-	})
+		RunID:     ids.Derive(ids.CronRun, run.Name),
+	}
+	if status == EventStatusFailed {
+		ended.ReasonCode, ended.ExitCode = cronRunReasonCodes[run.FailureReason], run.ExitCode
+	}
+	return append(facts, ended)
+}
+
+// cronRunReasonCodes maps the operator's CronRun.FailureReason onto the closed
+// event reason codes (w4/m114). An unknown or empty reason maps to "", so a run
+// whose cause was not observed still records that it failed.
+var cronRunReasonCodes = map[string]string{
+	appv1alpha1.CronRunReasonNonZeroExit:      EventReasonNonZeroExit,
+	appv1alpha1.CronRunReasonOOMKilled:        EventReasonOOMKilled,
+	appv1alpha1.CronRunReasonEvicted:          EventReasonEvicted,
+	appv1alpha1.CronRunReasonDeadlineExceeded: EventReasonTimedOut,
 }
 
 func parseObservedTime(value string) (time.Time, bool) {

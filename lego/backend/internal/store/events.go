@@ -152,6 +152,10 @@ type ServiceEventRow struct {
 	// started/observed kinds. A distinct column from the deploy-arm Status above,
 	// which carries a deploy row's terminal status (w7/m66).
 	FactStatus string
+	// FactExitCode and FactRunID belong to cron_job_run_ended (w4/m114): the
+	// failed run's container exit status, and the run's public crr- id.
+	FactExitCode *int32
+	FactRunID    string
 }
 
 // ServiceEventLookup is one globally-addressed event plus the resource identity
@@ -280,7 +284,9 @@ WITH feed AS (
            ''::text                            AS branch_from,
            ''::text                            AS branch_to,
            ''::text                            AS commit_url,
-           ''::text                            AS fact_status
+           ''::text                            AS fact_status,
+           NULL::integer                       AS fact_exit_code,
+           ''::text                            AS fact_run_id
     FROM deploys d
     WHERE d.app_id = $1 AND '` + EventPhaseStarted + `' = ANY($4)
   UNION ALL
@@ -328,6 +334,8 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
+           ''::text,
+           NULL::integer,
            ''::text
     FROM deploys d
     WHERE d.app_id = $1 AND d.finished_at IS NOT NULL AND '` + EventPhaseEnded + `' = ANY($4)
@@ -376,6 +384,8 @@ WITH feed AS (
            ''::text,
            ''::text,
            ''::text,
+           ''::text,
+           NULL::integer,
            ''::text
     FROM audit_events a
     JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = a.id
@@ -432,7 +442,9 @@ WITH feed AS (
            f.branch_from,
            f.branch_to,
            f.commit_url,
-           f.status
+           f.status,
+           f.exit_code,
+           f.run_id
     FROM service_event_facts f
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
     WHERE f.app_id = $1 AND f.fact_type = ANY($11)
@@ -444,7 +456,7 @@ SELECT key, at, source, phase, deploy_id, trigger, status, pre_deploy_status, fa
        high_availability_enabled, connection_pool_enabled, disk_size_gb, maxmemory_policy, persistence_mode,
        image, commit_id, commit_message, started_at, finished_at,
        fact_type, reason_code, instance_id, fact_from_count, fact_to_count,
-       branch_from, branch_to, commit_url, fact_status
+       branch_from, branch_to, commit_url, fact_status, fact_exit_code, fact_run_id
 FROM feed
 WHERE ($5::timestamptz IS NULL OR at >= $5)
   AND ($6::timestamptz IS NULL OR at <= $6)
@@ -590,6 +602,8 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.branch_to, '') ELSE '' END AS branch_to,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.commit_url, '') ELSE '' END AS commit_url,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.status, '') ELSE '' END AS fact_status,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.exit_code END AS fact_exit_code,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.run_id, '') ELSE '' END AS fact_run_id,
        COALESCE(h.app_id, h.service_id)
 FROM hit h
 LEFT JOIN deploys d
@@ -682,7 +696,7 @@ func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
 		&r.HighAvailabilityEnabled, &r.ConnectionPoolEnabled, &r.DiskSizeGB, &r.MaxmemoryPolicy, &r.PersistenceMode,
 		&r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
 		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
-		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus,
+		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus, &r.FactExitCode, &r.FactRunID,
 	}
 	return append(destinations, trailing...)
 }

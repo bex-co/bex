@@ -128,6 +128,22 @@ That distinction is the whole design. `recordCronRunFacts` explicitly "does not 
 
 The "who asked" record is not lost: it stays in the workspace audit log, which is where the other deliberately-unmapped verbs put it. No Render divergence — Render's vocabulary has these two types and no separate "someone pressed trigger" event.
 
+### Why a run failed (w4/m114)
+
+A failed run says why. While the failed Job's Pod still exists, the operator records the cause on `status.runs[].failureReason`, with `exitCode` where the cause has one, and carries it forward after Kubernetes collects the Pod. The cause is one of:
+
+- `NonZeroExit`: the run container's exit status.
+- `OOMKilled`: the container was killed for memory.
+- `Evicted`: the run's Pod was evicted.
+- `DeadlineExceeded`: the Job's `DeadlineExceeded` reap at the twelve-hour limit.
+
+The ended fact stores this as a closed reason code (`non_zero_exit`, `oom_killed`, `evicted`, `timed_out`; migration 0140) with the exit code and the run's `crr-` id. `cron_job_run_ended` details then carry Render's "Cron Job Run Ended" fields: `cronJobRunId` and a `reason` object (`evicted`, `nonZeroExit`, `oomKilled.memoryLimit`, `timedOutSeconds`) on REST and MCP. GraphQL carries `cronJobRunId`, `reasonCode` and `exitCode`. The dashboard Activity row reads "The run exited with status 3." A run whose cause was not observed keeps `status: failed` with no reason.
+
+Two known divergences remain:
+
+- bex does not record the memory limit a run was killed at, so `oomKilled.memoryLimit` is present but empty.
+- The ended `status` keeps bex's `succeeded|failed|canceled` lifecycle vocabulary rather than Render's `successful|unsuccessful`. The dashboard and the other `*_ended` events share it.
+
 ## Evidence
 
 `cron_runs_test.go`, `service_types_test.go` (envtest), `cron-runs-section.test.tsx`, `events/service_test.go` (`TestScheduledCronRunReachesTheFeed`, `TestManualCronRunIsNotCountedTwice`) + `events/lifecycle_vocab_test.go` (`TestCronRunEventsComeFromObservedFactsNotIntentVerbs`); parity row [ADR018-render-parity.md](ADR018-render-parity.md) (Cron job); milestone `.pm/w1/done/m15` + `w2/m36`.

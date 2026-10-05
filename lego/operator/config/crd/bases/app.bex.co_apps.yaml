@@ -1254,6 +1254,18 @@ spec:
                     CronJob's schedule or by a one-off RunAt trigger. Recorded in AppStatus.Runs so
                     the run history is visible over the API without listing Jobs.
                   properties:
+                    exitCode:
+                      description: |-
+                        ExitCode is the run container's exit status when FailureReason is
+                        NonZeroExit or OOMKilled.
+                      format: int32
+                      type: integer
+                    failureReason:
+                      description: |-
+                        FailureReason is why a Failed run failed, from the closed CronRunReason*
+                        set. Empty while running, on success or cancel, and when the operator
+                        could not observe the cause (w4/m114).
+                      type: string
                     finishedAt:
                       description: FinishedAt is when the run completed or failed
                         (RFC3339); empty while running.
