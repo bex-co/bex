@@ -198,6 +198,32 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "重试",
     description: "Review section retry button after a failed manifest fetch",
   },
+  "blueprints.takeoverConnectionTitle": {
+    message: "替换 Blueprint “{name}”？",
+    description:
+      "Takeover dialog title when another Blueprint already tracks this repo and branch (BLUEPRINT_CONNECTION_CONFLICT)",
+  },
+  "blueprints.takeoverConnectionBody": {
+    message:
+      "“{name}” 已在跟踪 {repo}@{branch} 上的 {path}。部署会将它改为指向此文件，并接管它管理的资源。请输入下方命令以继续。",
+    description: "Takeover dialog body for a Blueprint connection conflict",
+  },
+  "blueprints.takeoverResourceTitle": {
+    message: "接管 “{name}”？",
+    description:
+      "Takeover dialog title when a resource is managed by another Blueprint (BLUEPRINT_RESOURCE_CONFLICT)",
+  },
+  "blueprints.takeoverResourceBody": {
+    message:
+      "{kind} “{name}” 由 Blueprint {owner} 管理。继续将把它转移到此 Blueprint。请输入下方命令以继续。",
+    description: "Takeover dialog body for a Blueprint resource conflict",
+  },
+  "blueprints.previewConflictBody": {
+    message:
+      "另一个 Blueprint 已在管理此仓库和分支或其中的部分资源。部署将替换它；下一步会确认具体接管的内容。",
+    description:
+      "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
+  },
   "blueprints.previewConflict": {
     message: "已被占用 — 部署将接管",
     description:

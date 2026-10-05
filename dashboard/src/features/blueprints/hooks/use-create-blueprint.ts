@@ -10,16 +10,17 @@ import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { BlueprintView } from "@/features/blueprints/types";
 import { toBlueprintView } from "@/features/blueprints/lib/views";
-import {
-  protectedConfirmationFromError,
-  type ProtectedActionResult,
-} from "@/features/services/lib/protected-confirmation";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
+import {
+  blueprintConfirmationFromError,
+  type BlueprintConfirmationRequired,
+} from "@/features/blueprints/lib/takeover";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 
 export type BlueprintCreateActionResult =
   | { status: "success"; blueprint: BlueprintView }
-  | Exclude<ProtectedActionResult, { status: "success" }>;
+  | BlueprintConfirmationRequired
+  | { status: "error" };
 
 export interface UseCreateBlueprintResult {
   create: (
@@ -73,13 +74,8 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
         return { status: "success", blueprint: toBlueprintView(blueprint) };
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return { status: "error" };
-        const requiredConfirmation = protectedConfirmationFromError(err);
-        if (requiredConfirmation) {
-          return {
-            status: "confirmation_required",
-            confirmation: requiredConfirmation,
-          };
-        }
+        const confirmation = blueprintConfirmationFromError(err);
+        if (confirmation) return confirmation;
         toast.error(mutationErrorMessage(err, t("blueprints.createError")));
         return { status: "error" };
       } finally {

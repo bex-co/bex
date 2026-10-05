@@ -6,9 +6,9 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import type { SyncBlueprintResult } from "@/features/blueprints/types";
 import { toSyncBlueprintResult } from "@/features/blueprints/lib/views";
 import {
-  protectedConfirmationFromError,
-  type ProtectedActionResult,
-} from "@/features/services/lib/protected-confirmation";
+  blueprintConfirmationFromError,
+  type BlueprintConfirmationRequired,
+} from "@/features/blueprints/lib/takeover";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import {
@@ -19,7 +19,8 @@ import {
 export type BlueprintSyncActionResult =
   | { status: "success"; result: SyncBlueprintResult | null }
   | { status: "source_changed" }
-  | Exclude<ProtectedActionResult, { status: "success" }>;
+  | BlueprintConfirmationRequired
+  | { status: "error" };
 
 /** Reviewed Git source pinned at confirm time (w8/m41). */
 export interface ReviewedBlueprintSource {
@@ -77,13 +78,8 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
         return { status: "success", result };
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return { status: "error" };
-        const requiredConfirmation = protectedConfirmationFromError(err);
-        if (requiredConfirmation) {
-          return {
-            status: "confirmation_required",
-            confirmation: requiredConfirmation,
-          };
-        }
+        const confirmation = blueprintConfirmationFromError(err);
+        if (confirmation) return confirmation;
         if (hasGraphQLErrorCode(err, "BLUEPRINT_SOURCE_CHANGED")) {
           toast.error(t("blueprints.syncSourceChanged"));
           return { status: "source_changed" };
