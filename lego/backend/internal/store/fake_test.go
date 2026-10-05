@@ -51,7 +51,7 @@ type memStore struct {
 	eventFacts       map[string]ServiceEventFact
 	eventCheckpoints map[string]ObservedServiceState
 	// eventChangedAt mirrors service_event_checkpoints.updated_at: the last
-	// pass that changed the checkpoint, not merely the last pass.
+	// unsuppressed pass that changed the checkpoint, not merely the last pass.
 	eventChangedAt map[string]time.Time
 	// Managed-datastore observation mirror (w3/m82), keyed on the dpg-/red-
 	// resource id exactly as the Postgres tables are.
@@ -977,7 +977,8 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	}
 	obs.Suspended = checkpointServiceSuspended(previous.ServicePhase, obs.ServicePhase, previous.Suspended, obs.Suspended)
 	obs.ServicePhase = checkpointServicePhase(previous.ServicePhase, obs.ServicePhase)
-	if obs.ServicePhase != previous.ServicePhase || obs.Availability != previous.Availability || obs.Suspended != previous.Suspended {
+	changed := obs.ServicePhase != previous.ServicePhase || obs.Availability != previous.Availability || obs.Suspended != previous.Suspended
+	if changed && !obs.AvailabilitySuppressed {
 		m.eventChangedAt[obs.AppID] = obs.At
 	}
 	m.eventCheckpoints[obs.AppID] = obs

@@ -313,6 +313,15 @@ type ObservedServiceState struct {
 	// hibernation) or the condition carried no timestamp; the guard treats
 	// zero as "cannot order" and fails open toward recording.
 	ReadyTransitionAt time.Time
+	// AvailabilitySuppressed marks a pass whose availability conclusion a
+	// reconciler guard blanked: the debounce's first unhealthy pass, or a
+	// stale re-read (suppressAvailability). Its phase still records, but it
+	// leaves the checkpoint's updated_at alone — the conclusion it carried
+	// began before this pass, so this pass is no floor for the next edge. It
+	// cannot be inferred from AvailabilityObserved: a pass that concluded
+	// nothing (a rollout in progress) is unobserved too, and its phase change
+	// must move the floor.
+	AvailabilitySuppressed bool
 }
 
 // RecordObservedServiceState atomically advances a service checkpoint and
@@ -327,6 +336,9 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 	}
 	if obs.ReasonCode != "" && obs.ReasonCode != EventReasonReadinessFailed {
 		return nil, fmt.Errorf("invalid observed reason code %q", obs.ReasonCode)
+	}
+	if obs.AvailabilitySuppressed && obs.AvailabilityObserved {
+		return nil, fmt.Errorf("observed service state cannot be both suppressed and observed")
 	}
 	if obs.At.IsZero() {
 		obs.At = time.Now().UTC()
@@ -386,11 +398,14 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 		// IS DISTINCT FROM makes the steady state a no-op instead of a row
 		// write: the reconciler records an observation for EVERY app on every
 		// resync (30s) and every Kick (after each successful API write), and
-		// almost none of them changed. Without the guard, updated_at alone
-		// still moved, so each pass cost one real write + WAL + index churn per
-		// app. Nothing reads updated_at — it is write-only bookkeeping — so
-		// letting it stop advancing on a no-change pass loses nothing.
-		// Same shape as SetDeployPreDeployStatus's guard in store.go.
+		// almost none of them changed. Same shape as SetDeployPreDeployStatus's
+		// guard in store.go.
+		//
+		// updated_at is the floor availabilityEdgeAt orders the next edge
+		// after, so it moves with every recorded change except a suppressed
+		// pass's (w5/m113): on a readiness loss the debounced first pass still
+		// records Running → Deploying, and that write must not lift the floor
+		// past the Ready transition the confirmed server_failed carries.
 		//
 		// healthy_transition_at moves only inside this change-guarded write, so
 		// a healthy conclusion re-observed with an older or missing timestamp
@@ -402,11 +417,12 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 		// later wake edge report service_woken for a real user Resume.
 		_, err = tx.Exec(ctx,
 			`UPDATE service_event_checkpoints
-			 SET service_phase = $2, availability = $3, suspended = $4, updated_at = $5,
+			 SET service_phase = $2, availability = $3, suspended = $4,
+			     updated_at = CASE WHEN $7 THEN updated_at ELSE $5 END,
 			     healthy_transition_at = COALESCE($6, healthy_transition_at)
 			 WHERE app_id = $1
 			   AND (service_phase, availability, suspended) IS DISTINCT FROM ($2, $3, $4)`,
-			obs.AppID, checkpointPhase, availability, checkpointSuspended, obs.At, healthyTransition)
+			obs.AppID, checkpointPhase, availability, checkpointSuspended, obs.At, healthyTransition, obs.AvailabilitySuppressed)
 		return err
 	})
 	if err != nil {
@@ -469,8 +485,10 @@ func checkpointServiceSuspended(previousPhase, observedPhase string, previousSus
 // stamping it understated a live ~45 s outage as 13 s. The transition is used
 // only when it falls after the checkpoint's last change (an edge cannot
 // predate the state it leaves; Ready's LastTransitionTime moves on status
-// flips only, so it can be older than a Serving-backed healthy conclusion)
-// and not after the observation itself; otherwise the observation stands.
+// flips only, so it can be older than a Serving-backed healthy conclusion, or
+// than a rollout's undecided phase write) and not after the observation
+// itself; otherwise the observation stands. A guard-suppressed pass is not a
+// change for this purpose (ObservedServiceState.AvailabilitySuppressed).
 func availabilityEdgeAt(transition, previousChangedAt, observed time.Time) time.Time {
 	if transition.IsZero() || !transition.After(previousChangedAt) || transition.After(observed) {
 		return observed
