@@ -559,23 +559,36 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 	if _, scoped := s.Tenant(ctx); !scoped {
 		return nil
 	}
+	var out []BlueprintValidationError
 	if _, _, err := s.resolveExistingBlueprintReferences(ctx, st, nil, nil); err != nil {
-		if !errors.Is(err, core.ErrBadRequest) && !errors.Is(err, core.ErrConflict) {
+		var refused blueprintResourceErrors
+		if !errors.As(err, &refused) {
 			// A cluster read failure is not a manifest problem; the apply path
 			// is still the enforcement point.
 			return nil
 		}
-		msg := err.Error()
-		for _, prefix := range []string{"bad request: ", "conflict: "} {
-			if after, ok := strings.CutPrefix(msg, prefix); ok {
-				msg = after
-				break
+		// One located entry per referencing envVars entry (w8/051): two
+		// services naming the same missing database each get their own.
+		for _, problem := range refused {
+			msg := blueprintReferenceMessage(problem.err)
+			var pointers []string
+			switch problem.kind {
+			case BlueprintResourcePostgres:
+				pointers = blueprintReferencePointers(ir, "fromDatabase", problem.name)
+			case BlueprintResourceKeyValue:
+				pointers = blueprintReferencePointers(ir, "fromService", problem.name)
+			default:
+				if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
+					pointers = []string{pointer}
+				}
+			}
+			if len(pointers) == 0 {
+				out = append(out, blueprintValidationError(ir, msg))
+			}
+			for _, pointer := range pointers {
+				out = append(out, blueprintLocatedError(source, msg, pointer))
 			}
 		}
-		if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
-			return []BlueprintValidationError{blueprintLocatedError(source, msg, pointer)}
-		}
-		return []BlueprintValidationError{blueprintValidationError(ir, msg)}
 	}
 	// fromService `property: host` may name a service outside the file (an
 	// existing workspace service). Apply resolves it with GetApp; validate
@@ -593,13 +606,49 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 			if _, err := s.GetApp(ctx, core.RelCanView, ref.target); errors.Is(err, core.ErrNotFound) {
 				msg := fmt.Sprintf("service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", svc.req.Name, ref.target)
 				if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
-					return []BlueprintValidationError{blueprintLocatedError(source, msg, pointer)}
+					out = append(out, blueprintLocatedError(source, msg, pointer))
+				} else {
+					out = append(out, blueprintValidationError(ir, msg))
 				}
-				return []BlueprintValidationError{blueprintValidationError(ir, msg)}
 			}
 		}
 	}
-	return nil
+	return out
+}
+
+// blueprintReferenceMessage is a resolver refusal without its transport
+// sentinel prefix, as validation reports it.
+func blueprintReferenceMessage(err error) string {
+	msg := err.Error()
+	for _, prefix := range []string{"bad request: ", "conflict: "} {
+		if after, ok := strings.CutPrefix(msg, prefix); ok {
+			return after
+		}
+	}
+	return msg
+}
+
+// blueprintReferencePointers is every service envVars entry whose key
+// (fromDatabase, or a Key Value fromService) names target, in document order.
+func blueprintReferencePointers(ir BlueprintIR, key, target string) []string {
+	var pointers []string
+	for _, resource := range ir.Resources {
+		if resource.Kind != BlueprintResourceService {
+			continue
+		}
+		envVars, _ := resource.Fields["envVars"].Value.([]any)
+		for i, raw := range envVars {
+			env, _ := raw.(map[string]any)
+			ref, _ := env[key].(map[string]any)
+			if refType, _ := ref["type"].(string); key == "fromService" && !isKeyValueType(refType) {
+				continue // a service reference that happens to share the name
+			}
+			if name, _ := ref["name"].(string); name == target {
+				pointers = append(pointers, fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i))
+			}
+		}
+	}
+	return pointers
 }
 
 // blueprintReferencePointer finds the first service envVars entry whose

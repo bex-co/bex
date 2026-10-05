@@ -253,3 +253,71 @@ services:
 		t.Fatalf("want located group refusal, got %+v", e)
 	}
 }
+
+// w8/051: every dangling workspace reference gets its own located entry —
+// grouped by sorted target name, each in document order — identically on every run — the resolver used to stop at the
+// first name drawn from a Go map. Apply's single message is the sorted first.
+func TestValidateBlueprintReportsEveryDanglingWorkspaceReference(t *testing.T) {
+	const manifest = `services:
+  - type: web
+    name: qa-bp4-web
+    runtime: image
+    image: { url: docker.io/mendhak/http-https-echo:35 }
+    plan: free
+    envVars:
+      - key: B_URL
+        fromDatabase: { name: qa-bp4-missing-b, property: connectionString }
+      - key: A_URL
+        fromDatabase: { name: qa-bp4-missing-a, property: connectionString }
+      - key: KV_URL
+        fromService: { type: keyvalue, name: qa-bp4-missing-kv, property: connectionString }
+  - type: web
+    name: qa-bp4-web2
+    runtime: image
+    image: { url: docker.io/mendhak/http-https-echo:35 }
+    plan: free
+    envVars:
+      - key: C_URL
+        fromDatabase: { name: qa-bp4-missing-c, property: host }
+      - key: A_HOST
+        fromDatabase: { name: qa-bp4-missing-a, property: host }
+      - key: PEER
+        fromService: { type: web, name: qa-bp4-missing-svc, property: host }
+`
+	want := []string{
+		"services[0].envVars[1] " + `fromDatabase references unknown database "qa-bp4-missing-a" in this workspace`,
+		"services[1].envVars[1] " + `fromDatabase references unknown database "qa-bp4-missing-a" in this workspace`,
+		"services[0].envVars[0] " + `fromDatabase references unknown database "qa-bp4-missing-b" in this workspace`,
+		"services[1].envVars[0] " + `fromDatabase references unknown database "qa-bp4-missing-c" in this workspace`,
+		"services[0].envVars[2] " + `fromService references unknown Key Value "qa-bp4-missing-kv" in this workspace`,
+		"services[1].envVars[2] " + `service "qa-bp4-web2": fromService references unknown service "qa-bp4-missing-svc" (declare it under services: or create it in this workspace first)`,
+	}
+	svc, _ := connectionService(t)
+	for run := 0; run < 10; run++ {
+		v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, manifest, "")
+		if err != nil {
+			t.Fatalf("ValidateBlueprint: %v", err)
+		}
+		got := make([]string, 0, len(v.Errors))
+		for _, e := range v.Errors {
+			if e.Line == nil || *e.Line <= 0 {
+				t.Errorf("entry %q has no line", e.Error)
+			}
+			got = append(got, fmt.Sprint(ptrValue(e.Path))+" "+e.Error)
+		}
+		if strings.Join(got, "\n") != strings.Join(want, "\n") {
+			t.Fatalf("run %d errors =\n%s\nwant\n%s", run, strings.Join(got, "\n"), strings.Join(want, "\n"))
+		}
+	}
+
+	st, err := parseStack(DeployRequest{Manifest: manifest})
+	if err != nil {
+		t.Fatalf("parseStack: %v", err)
+	}
+	for run := 0; run < 10; run++ {
+		_, _, err := svc.resolveExistingBlueprintReferences(ownershipCtx(), st, nil, nil)
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `"qa-bp4-missing-a"`) {
+			t.Fatalf("apply resolver run %d = %v, want the sorted-first missing database", run, err)
+		}
+	}
+}
