@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // rest.go is the deploy-history REST fragment (w2/m5's list/get/trigger,
@@ -63,7 +64,8 @@ type renderDeploy struct {
 	ID         string             `json:"id"`
 	ServiceID  string             `json:"serviceId,omitempty"`
 	Status     string             `json:"status"`
-	Trigger    string             `json:"trigger,omitempty"`    // bex extra: "create" | "api" | "deploy_hook" | "rollback"
+	Trigger    string             `json:"trigger,omitempty"`    // Render's enum (renderTrigger); bex's own value is BexTrigger
+	BexTrigger string             `json:"bexTrigger,omitempty"` // bex extra (w8/058): store.Trigger*, finer than Render's enum
 	Image      *renderDeployImage `json:"image,omitempty"`      // Render's nested image object, not a bare string
 	RollbackOf string             `json:"rollbackOf,omitempty"` // bex extra (w2/m10): the deploy this one restores, if any
 	Commit     *renderCommit      `json:"commit,omitempty"`
@@ -117,7 +119,8 @@ func toRenderDeploy(d DeployView) renderDeploy {
 		ID:              d.ID,
 		ServiceID:       d.ServiceID,
 		Status:          d.Status,
-		Trigger:         d.Trigger,
+		Trigger:         renderTrigger(d.Trigger),
+		BexTrigger:      d.Trigger,
 		RollbackOf:      d.RollbackOf,
 		CreatedAt:       formatTime(d.CreatedAt),
 		UpdatedAt:       formatTime(d.UpdatedAt),
@@ -292,4 +295,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusCreated, toRenderDeploy(d))
 	})
+}
+
+// renderTrigger maps bex's deploy trigger onto Render's closed `trigger` enum
+// (components.schemas.deploy.properties.trigger) so a strictly generated
+// Render client can decode every deploy (w8/058). A settings-driven rollout
+// is Render's service_updated; a service's first deploy has no exact Render
+// value, so it is `other` rather than a cause bex cannot vouch for (a
+// new_commit or an api call). The rest are spelled alike. Unknown values map
+// to `other` too; TestRenderConformance seeds every store.AllTriggers entry.
+func renderTrigger(trigger string) string {
+	switch trigger {
+	case store.TriggerConfigChange:
+		return "service_updated"
+	case store.TriggerAPI, store.TriggerDeployHook, store.TriggerRollback, store.TriggerNewCommit:
+		return trigger
+	case "":
+		return ""
+	default:
+		return "other"
+	}
 }

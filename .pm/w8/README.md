@@ -76,9 +76,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **058** — [Deploy `trigger` answers `create` and `config_change`, values outside Render's enum, and the conformance test only seeds `api`](058.md) (~40m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 19.
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
 
+- [x] **058** — [Deploy `trigger` answers `create` and `config_change`, values outside Render's enum](done/058.md) — **DONE 2026-10-05**: REST/MCP map onto Render's enum (`bexTrigger` keeps bex's value); conformance seeds every trigger.
 - [x] **057** — [Postgres REST wire drift: `plan` answers `basic-256mb`, and create refuses `parameterOverrides`](done/057.md) — **DONE 2026-10-05**: REST answers Render's `basic_256mb`; create accepts `parameterOverrides`; decode errors name the field.
 - [x] **056** — [REST create skips the per-type setting gates that update and Blueprints enforce](done/056.md) — **DONE 2026-10-05**: one applicability rule per setting shared by create, update and Blueprints.
 - [x] **055** — [`blueprints validate` passes reserved domains that apply refuses, and points hostname errors at `services[n].name`](done/055.md) — **DONE 2026-10-05**: validate/preview run apply's read-only host-claim gate; hostname refusals locate at `domains[i]`.
