@@ -1349,6 +1349,37 @@ func cachePhase(o Options, name, image, script string, args []string, mounts ...
 	return c
 }
 
+// sourcePathChecks names the checkout paths the build will read, so the clone
+// step can refuse a missing one in the tenant's own terms (w8/053) instead of
+// BuildKit's "invalid local: resolve : lstat /source/…". Each pair is the
+// display path (repo-relative, as configured) and the bounded mount path the
+// build actually uses; both travel as env, never spliced into the script.
+func sourcePathChecks(o Options) []corev1.EnvVar {
+	var env []corev1.EnvVar
+	add := func(key, display, mounted string) {
+		env = append(env, corev1.EnvVar{Name: key, Value: display}, corev1.EnvVar{Name: key + "_PATH", Value: mounted})
+	}
+	if rel := repoRelative(o.RootDir); rel != "" {
+		add("BEX_ROOT_DIR", rel, boundedSourceDir(o.RootDir))
+	}
+	if rel := repoRelative(o.DockerContext); rel != "" {
+		add("BEX_DOCKER_CONTEXT", rel, boundedSourceDir(o.DockerContext))
+	}
+	if o.Builder != BuilderNative && o.Builder != BuilderBuildpack {
+		dockerfile := cmp.Or(o.DockerfilePath, "Dockerfile")
+		add("BEX_DOCKERFILE", repoRelative(path.Join(o.RootDir, dockerfile)), boundedSourceDir(path.Join(o.RootDir, dockerfile)))
+	}
+	return env
+}
+
+// repoRelative is a configured path as the repository names it ("" for root).
+func repoRelative(dir string) string {
+	if clean := strings.TrimPrefix(path.Clean("/"+dir), "/"); clean != "." {
+		return clean
+	}
+	return ""
+}
+
 func buildCloneContainer(o Options, image string) corev1.Container {
 	ref := o.Ref
 	if ref == "" {
@@ -1362,6 +1393,7 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 	if o.ExpectedCommit != "" {
 		env = append(env, corev1.EnvVar{Name: "EXPECTED_COMMIT", Value: o.ExpectedCommit})
 	}
+	env = append(env, sourcePathChecks(o)...)
 	if o.CloneSecret != "" {
 		env = append(env, corev1.EnvVar{
 			Name: "GIT_AUTH_TOKEN",
@@ -1395,6 +1427,15 @@ if [ -n "${EXPECTED_COMMIT:-}" ]; then
   actual_commit="$(git rev-parse HEAD)"
   [ "$actual_commit" = "$EXPECTED_COMMIT" ] || { echo "fetched commit does not match EXPECTED_COMMIT" >&2; exit 1; }
 fi
+commit="$(git rev-parse HEAD)"
+bex_require() {
+  [ "$1" "$2" ] && return 0
+  echo "the $3 \"$4\" does not exist in the repository at \"$commit\"" >&2
+  exit ` + fmt.Sprint(ExitTenantError) + `
+}
+if [ -n "${BEX_ROOT_DIR:-}" ]; then bex_require -d "$BEX_ROOT_DIR_PATH" "root directory" "$BEX_ROOT_DIR"; fi
+if [ -n "${BEX_DOCKER_CONTEXT:-}" ]; then bex_require -d "$BEX_DOCKER_CONTEXT_PATH" "Docker build context" "$BEX_DOCKER_CONTEXT"; fi
+if [ -n "${BEX_DOCKERFILE:-}" ]; then bex_require -f "$BEX_DOCKERFILE_PATH" "Dockerfile" "$BEX_DOCKERFILE"; fi
 rm -rf .git`},
 		Env:             env,
 		VolumeMounts:    []corev1.VolumeMount{{Name: "source", MountPath: sourceMount}},
