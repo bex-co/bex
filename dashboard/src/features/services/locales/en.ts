@@ -1906,6 +1906,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Edit command",
     description: "Accessible label for the cron command edit button",
   },
+  "services.cronScheduleNeverFires": {
+    message:
+      "This schedule never fires: no date matches its day of month and month (e.g. 31 2 is February 31).",
+    description:
+      "Cron schedule validation error when the schedule parses but no date ever matches (w4/197)",
+  },
   "services.deployScheduleError": {
     message: "Enter a valid 5-field cron expression, e.g. 0 * * * *.",
     description: "Cron job Deploy section: schedule validation error",

@@ -54,12 +54,12 @@ func loadCronScheduleVectors(t *testing.T) map[string]bool {
 }
 
 // TestValidCronScheduleVectors makes bex-api the source of truth for the shared
-// table: every expectation in it is what validCronSchedule actually returns.
+// table: every expectation in it is what checkCronSchedule actually accepts.
 func TestValidCronScheduleVectors(t *testing.T) {
 	var valid, invalid int
 	for schedule, want := range loadCronScheduleVectors(t) {
-		if got := validCronSchedule(schedule); got != want {
-			t.Errorf("validCronSchedule(%q) = %v, table says %v", schedule, got, want)
+		if err := checkCronSchedule(schedule); (err == nil) != want {
+			t.Errorf("checkCronSchedule(%q) = %v, table says valid=%v", schedule, err, want)
 		}
 		if want {
 			valid++

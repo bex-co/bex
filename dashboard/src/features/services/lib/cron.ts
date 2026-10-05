@@ -1,5 +1,5 @@
 // Standard 5-field cron helpers shared by the create form and the Settings
-// editor. isValidCron accepts exactly what bex-api's validCronSchedule accepts:
+// editor. isValidCron accepts exactly what bex-api's checkCronSchedule accepts:
 // five fields, each parsed the way github.com/robfig/cron/v3 parses it — the
 // parser behind both bex-api's check and the Kubernetes CronJob controller.
 // Both sides are tested against one vector table
@@ -89,17 +89,86 @@ function validRange(expr: string, spec: FieldSpec): boolean {
   return start >= spec.min && end <= spec.max && start <= end && step !== 0;
 }
 
-/** Returns true if s is a valid standard 5-field cron expression. */
+// expandRange is validRange's value set for one already-valid list item, with
+// robfig's star bit: a bare "*"/"?" (step 1) marks the field unrestricted.
+function expandRange(
+  expr: string,
+  spec: FieldSpec,
+): { values: number[]; star: boolean } {
+  const rangeAndStep = expr.split("/");
+  const lowAndHigh = rangeAndStep[0].split("-");
+  let start = spec.min;
+  let end = spec.max;
+  let star = lowAndHigh[0] === "*" || lowAndHigh[0] === "?";
+  if (!star) {
+    start = parseIntOrName(lowAndHigh[0], spec) ?? spec.min;
+    end =
+      lowAndHigh.length === 1
+        ? start
+        : (parseIntOrName(lowAndHigh[1], spec) ?? start);
+  }
+  let step = 1;
+  if (rangeAndStep.length === 2) {
+    step = parseUint(rangeAndStep[1]) ?? 1;
+    if (lowAndHigh.length === 1) end = spec.max;
+    if (step > 1) star = false;
+  }
+  const values: number[] = [];
+  for (let v = start; v <= end; v += step) values.push(v);
+  return { values, star };
+}
+
+function expandField(field: string, spec: FieldSpec) {
+  const items = field
+    .split(",")
+    .filter(Boolean)
+    .map((expr) => expandRange(expr, spec));
+  return {
+    values: new Set(items.flatMap((item) => item.values)),
+    star: items.some((item) => item.star),
+  };
+}
+
+// Longest each month can be (February in a leap year): a day-of-month that
+// exceeds every listed month's length never matches.
+const MONTH_MAX_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/**
+ * True when a syntactically valid schedule has no date to fire on (w4/197),
+ * e.g. "0 0 31 2 *", or a field emptied by its list (", * * * *"). robfig ANDs day-of-month with day-of-week when either is
+ * a star and ORs them otherwise; every month holds every weekday, so only a
+ * star day-of-week can leave nothing to match — when no listed day exists in
+ * any listed month. bex-api refuses the same set (SCHEDULE_NEVER_FIRES).
+ */
+export function cronNeverFires(s: string): boolean {
+  const fields = s.trim().split(/\s+/);
+  if (fields.length !== 5) return false;
+  // A list of only empty items (", * * * *") parses to a field with no values.
+  if (
+    fields.some((field, i) => expandField(field, FIELDS[i]).values.size === 0)
+  )
+    return true;
+  const dow = expandField(fields[4], FIELDS[4]);
+  if (!dow.star) return false;
+  const dom = expandField(fields[2], FIELDS[2]);
+  const months = expandField(fields[3], FIELDS[3]);
+  return ![...months.values].some((month) =>
+    [...dom.values].some((day) => day <= MONTH_MAX_DAYS[month - 1]),
+  );
+}
+
+/** Returns true if s is a valid standard 5-field cron expression that fires. */
 export function isValidCron(s: string): boolean {
   const fields = s.trim().split(/\s+/);
   if (fields.length !== 5) return false;
   // robfig splits a list with strings.FieldsFunc, which drops empty items.
-  return fields.every((field, i) =>
+  const parses = fields.every((field, i) =>
     field
       .split(",")
       .filter(Boolean)
       .every((expr) => validRange(expr, FIELDS[i])),
   );
+  return parses && !cronNeverFires(s);
 }
 
 const DAY_NAMES = [

@@ -1288,7 +1288,13 @@ func (s *Service) nextCronRunAt(a *appv1alpha1.App) string {
 	if err != nil {
 		return ""
 	}
-	return sched.Next(s.Now().UTC()).UTC().Format(time.RFC3339)
+	next := sched.Next(s.Now().UTC())
+	if next.IsZero() {
+		// A schedule with no matching date (Feb 31): no next run, not Go's
+		// zero time rendered as "now" (w4/197) — legacy Apps may still carry one.
+		return ""
+	}
+	return next.UTC().Format(time.RFC3339)
 }
 
 // List returns the caller's Apps, optionally narrowed to a single owning
@@ -2819,8 +2825,8 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 		if sched == "" {
 			return fmt.Errorf("%w: schedule is required for a cron_job", core.ErrBadRequest)
 		}
-		if !validCronSchedule(sched) {
-			return fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
+		if err := checkCronSchedule(sched); err != nil {
+			return err
 		}
 	}
 	// Only a type served at a public host can carry custom domains. This named
@@ -4113,7 +4119,7 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 	})
 }
 
-// validCronSchedule reports whether s is a valid standard 5-field cron
+// checkCronSchedule refuses s unless it is a valid standard 5-field cron
 // expression. It first requires exactly 5 whitespace-separated fields (bex's
 // contract, matching Render — descriptors like @daily are not accepted), then
 // parses the fields with the SAME parser the Kubernetes CronJob controller uses
@@ -4123,13 +4129,30 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 // CronJob (minute/hour out of range) and flipped the App to Failed with no
 // caller feedback. Validating with the operator's own parser guarantees "if
 // bex accepts it, the CronJob accepts it."
-func validCronSchedule(s string) bool {
+//
+// A schedule that parses but can never fire — a date that does not exist,
+// like February 30/31 or April 31, or a field whose list is only empty items
+// (", * * * *") — is refused too (w4/197): the CronJob would
+// accept it and silently never run, while the header promised "Next run:
+// now". robfig/cron's Next reports that as the zero time after searching
+// five years, so a leap-day schedule (Feb 29) still passes.
+func checkCronSchedule(s string) error {
 	if len(strings.Fields(s)) != 5 {
-		return false
+		return errCronScheduleFormat
 	}
-	_, err := cron.ParseStandard(s)
-	return err == nil
+	sched, err := cron.ParseStandard(s)
+	if err != nil {
+		return errCronScheduleFormat
+	}
+	if sched.Next(time.Now().UTC()).IsZero() {
+		return core.NewBadRequestError("SCHEDULE_NEVER_FIRES",
+			fmt.Sprintf("schedule %q never fires: no date and time matches all of its fields (e.g. February 31)", s),
+			map[string]any{"field": "schedule"})
+	}
+	return nil
 }
+
+var errCronScheduleFormat = fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
 
 // SetHealthCheckPath changes spec.healthCheckPath — what the operator wires
 // into the container's startup and readiness probes (w1/m23/t001). A direct CR

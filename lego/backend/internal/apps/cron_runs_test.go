@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -562,5 +563,44 @@ func TestCronActionErrorCodesMatchRESTGraphQLAndMCP(t *testing.T) {
 				t.Fatalf("MCP error=%q, want code %s", text, tt.wantCode)
 			}
 		})
+	}
+}
+
+// TestCronScheduleThatNeverFires is w4/197: "0 0 31 2 *" parses but no date
+// matches. A legacy App carrying it reports no next run (not Go's zero time,
+// which the dashboard rendered as "Next run: now"), and create/update refuse
+// it with a named code while a leap-day schedule stays accepted.
+func TestCronScheduleThatNeverFires(t *testing.T) {
+	legacy := cronApp("february")
+	legacy.Spec.Schedule = "0 0 31 2 *"
+	svc, _ := newService(nil, legacy)
+	svc.Clock = func() time.Time { return time.Date(2026, 7, 14, 12, 2, 10, 0, time.UTC) }
+	view, err := svc.Get(context.Background(), "february")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if view.NextRunAt != "" {
+		t.Fatalf("NextRunAt = %q, want empty for a schedule that never fires", view.NextRunAt)
+	}
+	if _, present := toRenderService(view).ServiceDetails["nextRunAt"]; present {
+		t.Errorf("REST cronJobDetails carries nextRunAt for a schedule that never fires")
+	}
+
+	for _, schedule := range []string{"0 0 31 2 *", "0 0 30 2 *", "0 0 31 4 *"} {
+		var coded *core.CodedError
+		if err := checkCronSchedule(schedule); !errors.As(err, &coded) || coded.Code != "SCHEDULE_NEVER_FIRES" || !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("checkCronSchedule(%q) = %v, want SCHEDULE_NEVER_FIRES", schedule, err)
+		}
+	}
+	if err := checkCronSchedule("0 0 29 2 *"); err != nil {
+		t.Errorf("leap-day schedule refused: %v", err)
+	}
+	if _, err := svc.Create(context.Background(), CreateRequest{Name: "feb31", Type: appv1alpha1.TypeCronJob,
+		Image: "busybox:1.37", Schedule: "0 0 31 2 *", StartCommand: "echo hi"}); !strings.Contains(fmt.Sprint(err), "never fires") {
+		t.Errorf("create with a never-firing schedule = %v, want SCHEDULE_NEVER_FIRES", err)
+	}
+	sched := "0 0 30 2 *"
+	if _, err := svc.SetCronJob(context.Background(), "february", &sched, nil); !strings.Contains(fmt.Sprint(err), "never fires") {
+		t.Errorf("update to a never-firing schedule = %v, want SCHEDULE_NEVER_FIRES", err)
 	}
 }

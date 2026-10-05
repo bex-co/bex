@@ -31,7 +31,11 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { TextField } from "@/common/components/text-field";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
-import { describeCron, isValidCron } from "@/features/services/lib/cron";
+import {
+  cronNeverFires,
+  describeCron,
+  isValidCron,
+} from "@/features/services/lib/cron";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { PathList } from "@/features/services/components/build-deploy-section";
@@ -343,7 +347,9 @@ export function NewServicePage() {
                       }
                       error={
                         scheduleError
-                          ? t("services.createFieldScheduleError")
+                          ? cronNeverFires(form.schedule)
+                            ? t("services.cronScheduleNeverFires")
+                            : t("services.createFieldScheduleError")
                           : undefined
                       }
                     />
