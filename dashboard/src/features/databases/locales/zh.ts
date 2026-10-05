@@ -190,7 +190,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.fieldPhysicalNameReserved": {
     message: "“{name}” 是 PostgreSQL 保留的名称，请换一个名称。",
     description:
-      "Create-database / add-user validation for a name PostgreSQL reserves (postgres, template0/1, streaming_replica, pg_*)",
+      "Create-database / add-user validation for a name the managed PostgreSQL service reserves (postgres, template0/1, streaming_replica, public, none, pg_*, cnpg_*)",
   },
   "databases.fieldPhysicalNameError": {
     message: "请使用最多 63 个小写字母、数字和下划线，并以字母或下划线开头。",

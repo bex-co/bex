@@ -46,6 +46,22 @@ func TestValidPostgresIdentifier(t *testing.T) {
 	}
 }
 
+// TestReservedPostgresRole pins the roles bex never projects into CNPG: CNPG's
+// own reserved names (its webhook refuses the whole Cluster update for them)
+// and the names PostgreSQL 17 refuses to create ("role name ... is reserved").
+func TestReservedPostgresRole(t *testing.T) {
+	t.Parallel()
+	for name, want := range map[string]bool{
+		"postgres": true, "streaming_replica": true, "cnpg_pooler_pgbouncer": true, "cnpg_reader": true,
+		"public": true, "none": true, "pg_monitor": true, "pg_reader": true,
+		"app_user": false, "orders_owner": false, "cnpg": false, "pg": false, "publicist": false, "nonexistent": false,
+	} {
+		if got := ReservedPostgresRole(name); got != want {
+			t.Errorf("ReservedPostgresRole(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
 func TestEffectiveDatabaseIdentifiersDefaultIndependently(t *testing.T) {
 	t.Parallel()
 	const resourceID = "dpg-abc123"

@@ -372,17 +372,18 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 	}
 }
 
-// w4/m170: a reserved role (postgres, streaming_replica, pg_*) is never
+// w4/m170: a reserved role (appv1alpha1.ReservedPostgresRole) is never
 // projected — not as a user, not as a deletion tombstone — because CNPG refuses
 // it and the whole reconcile fails. A spec that already carries one (an
 // add-user of "postgres", then its delete) heals on the next reconcile.
 func TestManagedRolesNeverProjectReservedRoles(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
-	users := []appv1alpha1.DatabaseUser{{Name: "postgres", SecretName: "s1"}, {Name: "pg_monitor_x", SecretName: "s2"}, {Name: "qa_extra", SecretName: "s3"}}
+	extra := appv1alpha1.DatabaseUser{Name: "qa_extra", SecretName: "s4"}
+	users := []appv1alpha1.DatabaseUser{{Name: "postgres", SecretName: "s1"}, {Name: "pg_monitor_x", SecretName: "s2"}, {Name: "cnpg_reader", SecretName: "s3"}, extra}
 	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user",
 		users: users, deletedUsers: []string{"postgres", "streaming_replica", "gone"}})
 	roles := managedRoleIndex(t, spec)
-	for _, reserved := range []string{"postgres", "pg_monitor_x", "streaming_replica"} {
+	for _, reserved := range []string{"postgres", "pg_monitor_x", "streaming_replica", "cnpg_reader"} {
 		if r, ok := roles[reserved]; ok {
 			t.Errorf("reserved role %q projected: %v", reserved, r)
 		}
@@ -401,10 +402,10 @@ func TestManagedRolesNeverProjectReservedRoles(t *testing.T) {
 	db := &appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Users: users, DeletedUsers: []string{"postgres"}}}
 	noteReservedRoles(db, "d_user")
 	c := apimeta.FindStatusCondition(db.Status.Conditions, conditionReservedRolesIgnored)
-	if c == nil || c.Message != "not managed, reserved by PostgreSQL: pg_monitor_x, postgres" {
+	if c == nil || c.Message != "not managed, reserved by PostgreSQL: cnpg_reader, pg_monitor_x, postgres" {
 		t.Fatalf("reserved-roles condition = %+v", c)
 	}
-	db.Spec.Users, db.Spec.DeletedUsers = users[2:], nil
+	db.Spec.Users, db.Spec.DeletedUsers = []appv1alpha1.DatabaseUser{extra}, nil
 	noteReservedRoles(db, "d_user")
 	if apimeta.FindStatusCondition(db.Status.Conditions, conditionReservedRolesIgnored) != nil {
 		t.Fatal("the condition must clear once no reserved role remains")
