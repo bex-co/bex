@@ -94,6 +94,16 @@ accessLog:
   format: json
   fields:
     defaultMode: keep
+    # Platform internals a tenant must not read off their own request log
+    # (w8/047): RequestCount is the process-wide edge counter (any tenant could
+    # sample total platform traffic), ServiceAddr/ServiceURL are pod IPs, and
+    # RouterName is the edge's internal routing name. Nothing reads them; keep
+    # ServiceName/KubernetesIngressName, which the shipper attributes by.
+    names:
+      RequestCount: drop
+      ServiceAddr: drop
+      ServiceURL: drop
+      RouterName: drop
     headers:
       defaultMode: drop
     # Deploy-hook credentials use the `key` query parameter so they remain
