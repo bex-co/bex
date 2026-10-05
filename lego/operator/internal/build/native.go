@@ -144,9 +144,9 @@ func nativeEnvRevision(o Options) string {
 //
 // BuildKit secret mounts do not participate in the instruction cache key
 // (https://docs.docker.com/build/cache/invalidation/#build-secrets). The opaque
-// NativeEnvRevision is therefore referenced inside the env-dependent RUN so a
-// changed effective environment cannot reuse a layer baked under different
-// values (w7/m87). The revision carries no secret material.
+// NativeEnvRevision is therefore written into the env loader the RUN sources,
+// so a changed effective environment cannot reuse a layer baked under
+// different values (w7/m87). The revision carries no secret material.
 //
 // Each secret file rides its own transient secret mount at
 // /etc/secrets/<name> (w4/m163): BuildKit mounts it only for this RUN and never
@@ -155,28 +155,43 @@ func nativeEnvRevision(o Options) string {
 // changed file would otherwise reuse the cached RUN just like a changed env
 // value. required=true makes a missing transport fail the build instead of
 // silently running without the file.
+// The env-decoding loop lives in its own file, written by a COPY heredoc just
+// before the RUN, so BuildKit's step line and its "process … did not complete"
+// error name only the tenant's command behind one short source line (w8/052)
+// instead of bex's plumbing. The loop's sentinel `.` keeps command substitution
+// from stripping value newlines. The revision line rides in the helper: a
+// changed helper misses the COPY cache and therefore the RUN after it, exactly
+// as the RUN-embedded revision did.
+const (
+	nativeEnvSecretPath   = "/run/secrets/render-env"
+	nativeEnvLoaderPath   = "/opt/bex/load-env"
+	nativeEnvLoaderEOF    = "BEX_LOAD_ENV"
+	nativeEnvLoaderPrefix = ". " + nativeEnvLoaderPath + "\n"
+)
+
 func nativeDockerfile(o Options) string {
 	var fileMounts strings.Builder
 	for i, name := range o.NativeFiles {
 		fmt.Fprintf(&fileMounts, " --mount=type=secret,id=%s,target=%s/%s,required=true",
 			nativeFileSecretID(i), nativeSecretFilesDir, name)
 	}
-	buildScript := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `while IFS= read -r record; do
+	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `while IFS= read -r record; do
   [ -n "$record" ] || continue
   key=${record%%=*}
   encoded=${record#*=}
-  # The sentinel keeps command substitution from stripping value newlines.
   value="$(printf '%s' "$encoded" | base64 -d 2>/dev/null && printf '.')" || exit 1
   export "$key=${value%.}"
-done < /run/secrets/render-env
-` + o.BuildCommand
-	run := shellJSON(buildScript)
+done < ` + nativeEnvSecretPath + "\n"
+	run := shellJSON(nativeEnvLoaderPrefix + o.BuildCommand)
 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
 FROM %s
 WORKDIR /opt/render/project/src
 COPY . .
-RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env%s %s
-`, nativeRuntimeImages[nativeRuntime(o)], fileMounts.String(), run)
+COPY <<'%s' %s
+%s%s
+RUN --mount=type=secret,id=render-env,target=%s%s %s
+`, nativeRuntimeImages[nativeRuntime(o)], nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+		nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.
