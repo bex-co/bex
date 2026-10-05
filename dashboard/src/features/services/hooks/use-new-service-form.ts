@@ -8,6 +8,7 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 import {
   DEFAULT_SERVICE_TYPE,
+  isServiceType,
   type ServiceType,
 } from "@/features/services/lib/create-context";
 import type { NewServiceForm } from "@/features/services/lib/create-service-input";
@@ -58,8 +59,13 @@ export function useNewServiceForm(search: {
 }) {
   const { instanceTypes } = useInstanceTypes();
   const build = useBuildRuntimeFields();
+  // The route validator drops an unknown `?type=`, but raw search can still
+  // reach here; a non-member must open the default wizard, not a typeless one.
+  const initialType = isServiceType(search.type)
+    ? search.type
+    : DEFAULT_SERVICE_TYPE;
   const [fields, setFields] = useState<PlainFields>(() => ({
-    serviceType: search.type ?? DEFAULT_SERVICE_TYPE,
+    serviceType: initialType,
     tab: "github",
     selectedRepo: null,
     gitUrl: "",
@@ -77,7 +83,7 @@ export function useNewServiceForm(search: {
     // Pre-fill a valid default when the wizard opens on a cron job (New → Cron
     // Job deep-links ?type=cron_job), matching Render's cron form. Harmless for
     // other types, which never read schedule.
-    schedule: search.type === "cron_job" ? "*/5 * * * *" : "",
+    schedule: initialType === "cron_job" ? "*/5 * * * *" : "",
     command: "",
     publishPath: "",
     staticBuildCommand: "",
