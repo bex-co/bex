@@ -46,5 +46,5 @@ Live on an owned Free web service (`traefik/whoami`, `WHOAMI_PORT_NUMBER=8080`, 
 - **Expected outcome:** a fresh deploy's traffic appears on every range immediately; totals do not depend on the wall-clock minute.
 - **Why now:** the 24h/7d defaults read "No data in range" for any service whose traffic is younger than one bucket. That is exactly the "did my deploy get traffic?" check after a release.
 - **Render parity:** included (t002). The numbers on REST/GraphQL/MCP/UI change; the shapes do not.
-- **Unverified:** whether Loki or bex-api's window builder does the epoch alignment (t001 reads Loki's `query_range` step handling at the pinned version); 2d/14d presets (reasoned the same); `HTTP_LATENCY` at 24h read `0` at 15:11:08 despite traffic in the window (separate cause until traced).
+- **Unverified:** whether Loki or bex-api's window builder does the epoch alignment (t001 reads Loki's `query_range` step handling at the pinned version); 2d/14d presets (reasoned the same). (An earlier note that `HTTP_LATENCY` read `0` at 24h was a probe artifact: the probe rounded sub-second seconds to integers. Retracted 2026-10-05.)
 - **Severity:** major.
