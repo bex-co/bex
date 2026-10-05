@@ -131,6 +131,16 @@ func (f *fakeBlueprintStore) GetBlueprint(_ context.Context, id, tenantID string
 	return b, nil
 }
 
+func (f *fakeBlueprintStore) BlueprintWorkspace(_ context.Context, id string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b, ok := f.blueprints[id]
+	if !ok || b.Status == "disconnected" {
+		return "", fmt.Errorf("blueprint: %w", store.ErrNotFound)
+	}
+	return b.TenantID, nil
+}
+
 func (f *fakeBlueprintStore) GetBlueprintByRepo(_ context.Context, tenantID, repo, branch string) (store.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

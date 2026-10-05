@@ -47,6 +47,9 @@ import (
 type BlueprintStore interface {
 	UpsertBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, error)
 	GetBlueprint(ctx context.Context, id, tenantID string) (store.Blueprint, error)
+	// BlueprintWorkspace resolves the workspace owning a live Blueprint id —
+	// routing only; the caller authorizes against it (w4/m169).
+	BlueprintWorkspace(ctx context.Context, id string) (string, error)
 	GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch string) (store.Blueprint, error)
 	// ListAutoSyncBlueprints returns auto-sync-enabled, non-disconnected
 	// Blueprints on branch (w8/m38). tenantScope "" = all workspaces;
@@ -1050,14 +1053,9 @@ func (s *Service) completeAdmittedSync(ctx context.Context, b store.Blueprint, r
 
 // GetBlueprintByID returns a single blueprint by its opaque id.
 func (s *Service) GetBlueprintByID(ctx context.Context, bpID, ownerID string) (BlueprintView, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	ctx, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
+	if err != nil {
 		return BlueprintView{}, err
-	}
-	if s.Blueprints == nil {
-		return BlueprintView{}, ErrBlueprintsUnavailable
 	}
 	tenantID := s.resolveTenantID(ctx)
 	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
@@ -1120,14 +1118,9 @@ func (s *Service) canReadManifest(ctx context.Context) bool {
 // when non-nil with CommitID set, the apply pins that revision and never
 // re-resolves the branch tip; omit for HEAD-resolve (auto-sync / old clients).
 func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, confirm string, reviewed *ReviewedBlueprintSource) (SyncBlueprintResult, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	if err != nil {
 		return SyncBlueprintResult{}, err
-	}
-	if s.Blueprints == nil {
-		return SyncBlueprintResult{}, ErrBlueprintsUnavailable
 	}
 	tenantID := s.resolveTenantID(ctx)
 	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
@@ -1385,14 +1378,9 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.
 func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor string, limit int) ([]BlueprintSyncView, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	ctx, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
+	if err != nil {
 		return nil, err
-	}
-	if s.Blueprints == nil {
-		return nil, ErrBlueprintsUnavailable
 	}
 	tenantID := s.resolveTenantID(ctx)
 	if _, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err != nil {
@@ -1411,14 +1399,9 @@ func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 
 // UpdateBlueprint applies a partial update to name/autoSync/path.
 func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req UpdateBlueprintRequest) (BlueprintView, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	if err != nil {
 		return BlueprintView{}, err
-	}
-	if s.Blueprints == nil {
-		return BlueprintView{}, ErrBlueprintsUnavailable
 	}
 	if req.Name == nil && req.AutoSync == nil && req.Path == nil {
 		return BlueprintView{}, fmt.Errorf("%w: at least one of name/autoSync/path must be provided", core.ErrBadRequest)
@@ -1473,14 +1456,9 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 // discarded: the row stays disconnected either way, and the error names the
 // failed sweep for the operator.
 func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string) error {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	if err != nil {
 		return err
-	}
-	if s.Blueprints == nil {
-		return ErrBlueprintsUnavailable
 	}
 	tenantID := s.resolveTenantID(ctx)
 	// Read the stored manifest before the row disappears — it names the
@@ -1633,6 +1611,52 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 		Manifest: req.Manifest,
 		Status:   store.BlueprintStatusInSync,
 	})
+}
+
+// blueprintScope scopes ctx to the workspace that owns Blueprint bpID and
+// authorizes relation there. An explicit ownerID (or a workspace already named
+// on ctx) keeps the caller's choice. Without one the id resolves its own
+// workspace, so a caller who belongs to several needs no ownerId, as Render's
+// owner-less GET /blueprints/{id} implies (w4/m169). A non-member gets the same
+// not-found as a missing id, so the id is no existence oracle; a member whose
+// role falls short keeps the 403.
+func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, error) {
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	} else if _, named := core.WorkspaceFrom(ctx); !named && s.Blueprints != nil {
+		owner, err := s.Blueprints.BlueprintWorkspace(ctx, bpID)
+		switch {
+		case err == nil:
+			scoped := core.WithWorkspace(ctx, owner)
+			if err := s.Authorize(scoped, relation); err != nil {
+				if errors.Is(err, core.ErrForbidden) && !s.isMember(ctx, owner) {
+					return ctx, core.NotFound("blueprint")
+				}
+				return ctx, err
+			}
+			return scoped, nil
+		case !errors.Is(err, store.ErrNotFound):
+			return ctx, store.MapError(err)
+		}
+	}
+	if err := s.Authorize(ctx, relation); err != nil {
+		return ctx, err
+	}
+	if s.Blueprints == nil {
+		return ctx, ErrBlueprintsUnavailable
+	}
+	return ctx, nil
+}
+
+// isMember reports whether the caller belongs to workspace. Unknown (no
+// identity, no resolver, a lookup error) is not membership.
+func (s *Service) isMember(ctx context.Context, workspace string) bool {
+	id, ok := core.IdentityFrom(ctx)
+	if !ok || s.Workspace == nil {
+		return false
+	}
+	member, err := s.Workspace.IsMember(ctx, id, workspace)
+	return err == nil && member
 }
 
 // resolveTenantID returns the effective tenant id.
