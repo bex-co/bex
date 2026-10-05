@@ -214,7 +214,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **201** — [Undeployed-changes notice tells users to deploy while that deploy is already running](201.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC.
 
-- [ ] **200** — [The operator flips an App's Ready condition ~40 s after its pod failed readiness, so `server_failed` still lands late](200.md) ← infinite /qa-find-bugs loop37 2026-10-05 UTC (w4/196 live check). Re-scoped 2026-10-05: likely backend cause; fix filed as [w5/m113](../w5/m113/README.md).
+- [x] **200** — [The operator flips an App's Ready condition ~40 s after its pod failed readiness, so `server_failed` still lands late](done/200.md) ← infinite /qa-find-bugs loop37 2026-10-05 UTC (w4/196 live check) — **DONE 2026-10-05, fixed by [w5/m113](../w5/done/m113/README.md)**: the cause was the backend's debounced phase write, not the operator. A dev-5 replay stamps `server_failed` at the pod's readiness drop (0 s, was ~40 s).
 
 - [x] **199** — [BLOCKER: deploys red since `d1e4c9315` (w4/m172): non-member by-id reads 404 but ADR072 #8 / the w6/m24 e2e require 403](done/199.md) — done 2026-10-05 (`ScopeByID` answers a typed-id non-member 403; full suite green under CI's Postgres + OpenFGA + OpenBao).
 

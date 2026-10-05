@@ -258,13 +258,25 @@ func namespaceFor(d DesiredApp) string {
 	return WorkspaceNamespace(d.TenantID)
 }
 
+// guardServiceObservation runs an observation through both availability
+// guards, stale rejection first (see rejectStaleUnhealthy for why the order
+// matters).
+func (r *Reconciler) guardServiceObservation(ctx context.Context, obs ObservedServiceState) ObservedServiceState {
+	if r.unhealthyOnce == nil {
+		r.unhealthyOnce = make(map[string]bool)
+	}
+	return debounceUnhealthy(r.rejectStaleUnhealthy(ctx, obs), r.unhealthyOnce)
+}
+
 // suppressAvailability marks an observation as availability-unseen: the
-// checkpoint keeps its previous availability and no edge can fire. Shared by
-// debounceUnhealthy and rejectStaleUnhealthy — two distinct guards that must
-// blank exactly the same conclusion fields (the fourth, ReadyTransitionAt, was
-// added by w6/m41; a single clearing site keeps the guards from drifting).
+// checkpoint keeps its previous availability and edge floor, and no edge can
+// fire. Shared by debounceUnhealthy and rejectStaleUnhealthy — two distinct
+// guards that must blank exactly the same conclusion fields (the fourth,
+// ReadyTransitionAt, was added by w6/m41; a single clearing site keeps the
+// guards from drifting).
 func suppressAvailability(obs ObservedServiceState) ObservedServiceState {
 	obs.AvailabilityObserved = false
+	obs.AvailabilitySuppressed = true
 	obs.Availability = ""
 	obs.ReasonCode = ""
 	obs.ReadyTransitionAt = time.Time{}
@@ -424,11 +436,7 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 	for _, deploy := range open {
 		r.recordDeploy(ctx, d, deploy, cur)
 	}
-	hasOpenDeploy := len(open) > 0
-	if r.unhealthyOnce == nil {
-		r.unhealthyOnce = make(map[string]bool)
-	}
-	obs := debounceUnhealthy(r.rejectStaleUnhealthy(ctx, observedServiceStateFor(d.ID, cur, hasOpenDeploy)), r.unhealthyOnce)
+	obs := r.guardServiceObservation(ctx, observedServiceStateFor(d.ID, cur, len(open) > 0))
 	if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
 		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
 	}

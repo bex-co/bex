@@ -94,26 +94,31 @@ func (r *Reconciler) reconcileDatastores(ctx context.Context) error {
 	return repairErr
 }
 
-// recordDatastoreObservation applies the two guards the App path applies, in
-// the same order and for the same reasons: the stale-conclusion rejection runs
-// first so a time-traveled phantom cannot consume the debounce's one free tick
-// belonging to the real outage that may follow it.
 func (r *Reconciler) recordDatastoreObservation(ctx context.Context, obs ObservedDatastoreState) {
-	if r.datastoreUnhealthyOnce == nil {
-		r.datastoreUnhealthyOnce = make(map[string]bool)
-	}
-	obs = debounceDatastoreUnhealthy(r.rejectStaleDatastoreUnhealthy(ctx, obs), r.datastoreUnhealthyOnce)
-	if _, err := r.Store.RecordObservedDatastoreState(ctx, obs); err != nil {
+	if _, err := r.Store.RecordObservedDatastoreState(ctx, r.guardDatastoreObservation(ctx, obs)); err != nil {
 		log.Printf("controlplane: record observed datastore state %s: %v", obs.DatastoreID, err)
 	}
 }
 
+// guardDatastoreObservation applies the two guards the App path applies, in
+// the same order and for the same reasons: the stale-conclusion rejection runs
+// first so a time-traveled phantom cannot consume the debounce's one free tick
+// belonging to the real outage that may follow it.
+func (r *Reconciler) guardDatastoreObservation(ctx context.Context, obs ObservedDatastoreState) ObservedDatastoreState {
+	if r.datastoreUnhealthyOnce == nil {
+		r.datastoreUnhealthyOnce = make(map[string]bool)
+	}
+	return debounceDatastoreUnhealthy(r.rejectStaleDatastoreUnhealthy(ctx, obs), r.datastoreUnhealthyOnce)
+}
+
 // suppressDatastoreAvailability marks an observation as availability-unseen:
-// the checkpoint keeps its previous availability and no edge can fire. Shared
-// by both datastore guards so they cannot drift about which fields to blank —
-// the App path's suppressAvailability, for the datastore snapshot.
+// the checkpoint keeps its previous availability and edge floor, and no edge
+// can fire. Shared by both datastore guards so they cannot drift about which
+// fields to blank — the App path's suppressAvailability, for the datastore
+// snapshot.
 func suppressDatastoreAvailability(obs ObservedDatastoreState) ObservedDatastoreState {
 	obs.AvailabilityObserved = false
+	obs.AvailabilitySuppressed = true
 	obs.Availability = ""
 	obs.ReasonCode = ""
 	obs.ReadyTransitionAt = time.Time{}
