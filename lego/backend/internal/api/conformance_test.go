@@ -32,6 +32,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -215,9 +216,16 @@ func TestRenderConformance(t *testing.T) {
 		"services/" + appName + "/env":   {"API_KEY": "val1", "DB_URL": "val2"},
 		"services/" + appName + "/files": {"ca.pem": "cert", "db.pem": "cert2"},
 	}}
-	deployStore := &conformDeployStore{byApp: map[string][]store.Deploy{
-		appID: {conformDeploy(deployID, appID)},
-	}}
+	// One deploy per bex trigger value, so list-deploys proves every one of
+	// them serializes inside Render's closed trigger enum (w8/058) — a new
+	// store.Trigger* fails here until renderTrigger maps it.
+	deploys := []store.Deploy{conformDeploy(deployID, appID)}
+	for i, trigger := range store.AllTriggers {
+		d := conformDeploy(fmt.Sprintf("dep-t%d", i), appID)
+		d.Trigger = trigger
+		deploys = append(deploys, d)
+	}
+	deployStore := &conformDeployStore{byApp: map[string][]store.Deploy{appID: deploys}}
 	eventStore := &conformEventStore{rows: []store.ServiceEventRow{
 		{
 			Key:      deployID + ":" + store.EventPhaseStarted,
