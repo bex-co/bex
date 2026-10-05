@@ -6,9 +6,13 @@
 # from that workflow so the two cannot drift — so `go test ./...` in
 # lego/backend runs the integration tests instead of skipping them (w5/m112).
 # Containers are named per checkout and Docker picks their host ports, so they
-# never collide with a dev-N stack or with another worktree's run.
+# never collide with a dev-N stack or with another worktree's run. Every `up`
+# starts them fresh, like CI's ephemeral ones: the suite assumes an empty
+# database (one run retires a webhook replay epoch that the next run's
+# registration of it then refuses), so run `up` and the `eval` again before
+# each suite run — `up` also gets new ports.
 #
-#   bash scripts/backend-test-deps.sh up     # start (idempotent), wait, seed
+#   bash scripts/backend-test-deps.sh up     # start fresh, wait, seed
 #   bash scripts/backend-test-deps.sh env    # print the exports for the tests
 #   bash scripts/backend-test-deps.sh down   # remove the containers
 #
@@ -42,10 +46,9 @@ running() { [ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" = tru
 start() { # name, image, docker run args (before the image)..., -- image args...
   local name=$1 image=$2
   shift 2
-  if running "$name" && [ "$(docker inspect -f '{{.Config.Image}}' "$name")" = "$image" ]; then
-    return 0
-  fi
-  docker rm -f "$name" >/dev/null 2>&1 || true
+  # -v: the Postgres and OpenBao images declare VOLUMEs, which would
+  # otherwise outlive every fresh start.
+  docker rm -f -v "$name" >/dev/null 2>&1 || true
   local opts=()
   while [ $# -gt 0 ] && [ "$1" != -- ]; do
     opts+=("$1")
@@ -78,8 +81,6 @@ up() {
   start "$prefix-postgres" "$pg_image" -e POSTGRES_PASSWORD=pw -p 127.0.0.1::5432
   start "$prefix-openbao" "$bao_image" -e BAO_DEV_ROOT_TOKEN_ID=$bao_token -p 127.0.0.1::8200 \
     -- server -dev -dev-listen-address=0.0.0.0:8200
-  # In-memory and seeded from the current model on every up: never stale.
-  docker rm -f "$prefix-openfga" >/dev/null 2>&1 || true
   start "$prefix-openfga" "$fga_image" -e OPENFGA_DATASTORE_ENGINE=memory -p 127.0.0.1::8080 -- run
 
   # Over TCP: the image's init-time server listens only on its unix socket.
@@ -125,7 +126,7 @@ EOF
 }
 
 down() {
-  docker rm -f "$prefix-postgres" "$prefix-openfga" "$prefix-openbao" >/dev/null 2>&1 || true
+  docker rm -f -v "$prefix-postgres" "$prefix-openfga" "$prefix-openbao" >/dev/null 2>&1 || true
   rm -rf "${TMPDIR:-/tmp}/$prefix"
 }
 
