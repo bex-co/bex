@@ -1694,7 +1694,7 @@ func (s *Service) groupsNamed(ctx context.Context, workspace, name, excludeID st
 // workspace but merely a viewer of (or not a member of) the group's actual
 // owner may not read/reveal/mutate it just because they know its id.
 func (s *Service) authorizeGroup(ctx context.Context, relation, gid string) (meta, error) {
-	ctx, err := s.ScopeByID(ctx, "", s.groupOwner(gid), core.ErrNotFound)
+	ctx, err := s.ScopeByID(ctx, "", s.groupOwner(gid))
 	if err != nil {
 		return meta{}, err
 	}

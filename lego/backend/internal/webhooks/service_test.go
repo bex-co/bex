@@ -745,7 +745,9 @@ func TestCreateDeduplicatesEventTypesInCanonicalOrder(t *testing.T) {
 	}
 }
 
-func TestCrossWorkspaceAccessIsNotFound(t *testing.T) {
+// A non-member's typed endpoint id is a 403 (ADR072 #8, w4/199), never a
+// silent miss in their own workspace; listing still shows only their own.
+func TestCrossWorkspaceAccessIsForbidden(t *testing.T) {
 	st := newFakeEndpointStore()
 	mine := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-mine"}}, Store: st}
 	other := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-other"}}, Store: st}
@@ -755,20 +757,20 @@ func TestCrossWorkspaceAccessIsNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if _, err := other.Get(ctx, "", created.ID); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("cross-workspace Get = %v, want ErrNotFound", err)
+	if _, err := other.Get(ctx, "", created.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("cross-workspace Get = %v, want ErrForbidden", err)
 	}
-	if err := other.Delete(ctx, "", created.ID); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("cross-workspace Delete = %v, want ErrNotFound", err)
+	if err := other.Delete(ctx, "", created.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("cross-workspace Delete = %v, want ErrForbidden", err)
 	}
-	if _, err := other.SetEnabled(ctx, "", created.ID, false); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("cross-workspace SetEnabled = %v, want ErrNotFound", err)
+	if _, err := other.SetEnabled(ctx, "", created.ID, false); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("cross-workspace SetEnabled = %v, want ErrForbidden", err)
 	}
-	if _, err := other.ListDeliveries(ctx, "", created.ID, "", 0); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("cross-workspace ListDeliveries = %v, want ErrNotFound", err)
+	if _, err := other.ListDeliveries(ctx, "", created.ID, "", 0); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("cross-workspace ListDeliveries = %v, want ErrForbidden", err)
 	}
-	if _, err := other.Resend(ctx, "", created.ID, "whd-source", "foreign-resend-0001"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("cross-workspace Resend = %v, want ErrNotFound", err)
+	if _, err := other.Resend(ctx, "", created.ID, "whd-source", "foreign-resend-0001"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("cross-workspace Resend = %v, want ErrForbidden", err)
 	}
 	if list, err := other.List(ctx, ""); err != nil || len(list) != 0 {
 		t.Errorf("cross-workspace List = %+v (err %v), want empty", list, err)
@@ -1029,7 +1031,7 @@ func (m multiWorkspaceResolver) IsMember(_ context.Context, _ core.Identity, ten
 
 // w4/m172: a member of several workspaces reaches an endpoint in a
 // non-default one by id alone, as Render's by-id routes take no owner. A
-// non-member's id and a mismatched ownerId answer the same 404 as a missing id.
+// mismatched ownerId is a 404; a non-member's id is a 403 (ADR072 #8).
 func TestByIDVerbsResolveTheEndpointsOwnWorkspace(t *testing.T) {
 	st := newFakeEndpointStore()
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
@@ -1057,14 +1059,15 @@ func TestByIDVerbsResolveTheEndpointsOwnWorkspace(t *testing.T) {
 		t.Errorf("mismatched ownerId Get = %v, want ErrNotFound", err)
 	}
 
+	// ADR072 #8 (w4/199): a non-member's typed id is a 403, a missing one 404.
 	outsider := &Service{Base: &core.Base{Namespace: "default", Workspace: multiWorkspaceResolver{"tea-c"}}, Store: st}
 	_, missing := outsider.Get(ctx, "", "whk-missing")
 	_, foreign := outsider.Get(ctx, "", created.ID)
-	if !errors.Is(missing, core.ErrNotFound) || !errors.Is(foreign, core.ErrNotFound) || missing.Error() != foreign.Error() {
-		t.Errorf("non-member %v vs missing %v, want identical not-found", foreign, missing)
+	if !errors.Is(missing, core.ErrNotFound) || !errors.Is(foreign, core.ErrForbidden) {
+		t.Errorf("non-member %v vs missing %v, want forbidden vs not found", foreign, missing)
 	}
-	if err := outsider.Delete(ctx, "", created.ID); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("non-member Delete = %v, want ErrNotFound", err)
+	if err := outsider.Delete(ctx, "", created.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("non-member Delete = %v, want ErrForbidden", err)
 	}
 
 	if err := member.Delete(ctx, "", created.ID); err != nil {

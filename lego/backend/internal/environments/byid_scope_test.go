@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // memberOf is a caller whose default is the first workspace and who belongs
@@ -37,8 +36,8 @@ func (m memberOf) IsMember(_ context.Context, _ core.Identity, tenantID string) 
 
 // w4/m172: an environment id resolves its own workspace, so the verb's leading
 // check runs there — a member whose role lives only in that workspace is not
-// refused by their default workspace — and a non-member's id answers exactly
-// like a missing one.
+// refused by their default workspace — and a non-member's typed id is a 403
+// while a missing one is a 404 (ADR072 #8, w4/199).
 func TestEnvironmentByIDVerbsResolveTheOwningWorkspace(t *testing.T) {
 	st := newFakeStore()
 	env, err := st.CreateEnvironment(context.Background(), "prj-b", "tea-b", "staging")
@@ -55,13 +54,10 @@ func TestEnvironmentByIDVerbsResolveTheOwningWorkspace(t *testing.T) {
 	outsider := &Service{Base: &core.Base{Authz: allowChecker{}, Workspace: memberOf{"tea-c"}}, Store: st}
 	_, foreign := outsider.Get(ctx, env.ID)
 	_, missing := outsider.Get(ctx, "evm-d0000000000000000000")
-	if !errors.Is(foreign, store.ErrNotFound) && !errors.Is(foreign, core.ErrNotFound) {
-		t.Fatalf("non-member Get = %v, want not found", foreign)
+	if !errors.Is(foreign, core.ErrForbidden) || !errors.Is(missing, core.ErrNotFound) {
+		t.Fatalf("non-member Get = %v, missing = %v; want forbidden vs not found (ADR072 #8)", foreign, missing)
 	}
-	if foreign.Error() != missing.Error() {
-		t.Fatalf("non-member %v vs missing %v, want identical", foreign, missing)
-	}
-	if err := outsider.Delete(ctx, env.ID); err == nil || foreign.Error() != err.Error() {
-		t.Fatalf("non-member Delete = %v, want the same not-found", err)
+	if err := outsider.Delete(ctx, env.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("non-member Delete = %v, want forbidden", err)
 	}
 }
