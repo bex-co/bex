@@ -50,6 +50,9 @@ type memStore struct {
 	deploys          map[string]Deploy
 	eventFacts       map[string]ServiceEventFact
 	eventCheckpoints map[string]ObservedServiceState
+	// eventChangedAt mirrors service_event_checkpoints.updated_at: the last
+	// pass that changed the checkpoint, not merely the last pass.
+	eventChangedAt map[string]time.Time
 	// Managed-datastore observation mirror (w3/m82), keyed on the dpg-/red-
 	// resource id exactly as the Postgres tables are.
 	datastoreFacts       map[string]DatastoreEventFact
@@ -73,6 +76,7 @@ func newMemStore() *memStore {
 		deploys:          map[string]Deploy{},
 		eventFacts:       map[string]ServiceEventFact{},
 		eventCheckpoints: map[string]ObservedServiceState{},
+		eventChangedAt:   map[string]time.Time{},
 
 		datastoreFacts:       map[string]DatastoreEventFact{},
 		datastoreCheckpoints: map[string]ObservedDatastoreState{},
@@ -948,14 +952,19 @@ func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string
 func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedServiceState) ([]ServiceEventFact, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if obs.At.IsZero() {
+		obs.At = time.Now().UTC()
+	}
 	previous, ok := m.eventCheckpoints[obs.AppID]
 	if !ok {
 		m.eventCheckpoints[obs.AppID] = obs
+		m.eventChangedAt[obs.AppID] = obs.At
 		return nil, nil
 	}
 	if !obs.AvailabilityObserved {
 		obs.Availability = previous.Availability
 	}
+	facts := observedStateFacts(obs, previous.ServicePhase, previous.Availability, previous.Suspended, m.eventChangedAt[obs.AppID])
 	// Only an observed, timestamped healthy conclusion advances the recorded
 	// healthy-transition reference (PG: the change-guarded UPDATE's
 	// COALESCE($5, healthy_transition_at)); every other observation carries
@@ -963,12 +972,14 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	if !(obs.AvailabilityObserved && obs.Availability == "healthy" && !obs.ReadyTransitionAt.IsZero()) {
 		obs.ReadyTransitionAt = previous.ReadyTransitionAt
 	}
-	facts := observedStateFacts(obs, previous.ServicePhase, previous.Availability, previous.Suspended)
 	for _, fact := range facts {
 		m.eventFacts[fact.SourceKey] = fact
 	}
 	obs.Suspended = checkpointServiceSuspended(previous.ServicePhase, obs.ServicePhase, previous.Suspended, obs.Suspended)
 	obs.ServicePhase = checkpointServicePhase(previous.ServicePhase, obs.ServicePhase)
+	if obs.ServicePhase != previous.ServicePhase || obs.Availability != previous.Availability || obs.Suspended != previous.Suspended {
+		m.eventChangedAt[obs.AppID] = obs.At
+	}
 	m.eventCheckpoints[obs.AppID] = obs
 	return facts, nil
 }
@@ -1019,7 +1030,9 @@ func (m *memStore) RecordObservedDatastoreState(_ context.Context, obs ObservedD
 	if !(obs.AvailabilityObserved && obs.Availability == "healthy" && !obs.ReadyTransitionAt.IsZero()) {
 		obs.ReadyTransitionAt = previous.ReadyTransitionAt
 	}
-	facts := observedDatastoreStateFacts(obs, previous.Availability)
+	// obs.At as the lower bound keeps the fake on observation-time stamps; the
+	// w4/196 transition stamping is pinned against real Postgres.
+	facts := observedDatastoreStateFacts(obs, previous.Availability, obs.At)
 	previousExtras := datastoreCheckpointExtras{
 		LastBackupName:  previous.LastBackupName,
 		LastBackupPhase: previous.LastBackupPhase,

@@ -2674,7 +2674,7 @@ func TestFailedReplacementDoesNotEmitOutage(t *testing.T) {
 	if obs.Availability != "healthy" || !obs.AvailabilityObserved {
 		t.Fatalf("observation = %+v", obs)
 	}
-	if facts := observedStateFacts(obs, "Running", "healthy", false); len(facts) != 0 {
+	if facts := observedStateFacts(obs, "Running", "healthy", false, time.Time{}); len(facts) != 0 {
 		t.Fatalf("phantom outage: %+v", facts)
 	}
 	// A stale serving observation must not hide a real failure.
@@ -2683,7 +2683,7 @@ func TestFailedReplacementDoesNotEmitOutage(t *testing.T) {
 	if obs.Availability != "unhealthy" {
 		t.Fatalf("stale condition hid failure: %+v", obs)
 	}
-	if facts := observedStateFacts(obs, "Running", "healthy", false); len(facts) != 1 || facts[0].Type != EventFactServerFailed {
+	if facts := observedStateFacts(obs, "Running", "healthy", false, time.Time{}); len(facts) != 1 || facts[0].Type != EventFactServerFailed {
 		t.Fatalf("missing failure: %+v", facts)
 	}
 }

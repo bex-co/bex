@@ -138,3 +138,121 @@ func TestPGObservedCrashEdgeEmitsExactlyOnePair(t *testing.T) {
 		t.Fatalf("open-deploy rollout progress emitted %+v, want none", facts)
 	}
 }
+
+// TestPGAvailabilityEdgesCarryTheReadyTransitionTime is w4/196: an outage
+// users saw as ~45 s read as 13 s because both edges were stamped with the
+// pass that noticed them. Each edge now carries the operator's Ready
+// transition — unless that would predate the state it leaves.
+func TestPGAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	tenant, err := st.CreateWorkspace(ctx, "edge-time-"+stamp, PlanHobby, "alice-"+stamp)
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), tenant.ID) })
+	app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "web-" + stamp, Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+
+	base := time.Date(2026, 10, 4, 2, 0, 0, 0, time.UTC)
+	at := func(sec int) time.Time { return base.Add(time.Duration(sec) * time.Second) }
+	record := func(obsAt time.Time, availability string, transition time.Time) []ServiceEventFact {
+		t.Helper()
+		obs := ObservedServiceState{AppID: app.ID, At: obsAt, ServicePhase: string(appv1alpha1.PhaseRunning),
+			Availability: availability, AvailabilityObserved: true, ReadyTransitionAt: transition}
+		if availability == "unhealthy" {
+			obs.ReasonCode = EventReasonReadinessFailed
+		}
+		facts, err := st.RecordObservedServiceState(ctx, obs)
+		if err != nil {
+			t.Fatalf("record: %v", err)
+		}
+		return facts
+	}
+
+	record(at(10), "healthy", at(5)) // baseline
+	// Ready flipped False at :68; the debounced edge is emitted at :106.
+	failed := record(at(106), "unhealthy", at(68))
+	if len(failed) != 1 || !failed[0].At.Equal(at(68)) {
+		t.Fatalf("server_failed = %+v, want one edge stamped at the :68 Ready transition", failed)
+	}
+	// Ready flipped True at :113; noticed at :119.
+	available := record(at(119), "healthy", at(113))
+	if len(available) != 1 || !available[0].At.Equal(at(113)) {
+		t.Fatalf("server_available = %+v, want one edge stamped at the :113 Ready transition", available)
+	}
+
+	// A transition older than the state it leaves (Ready's time moves on
+	// status flips only) never backdates an edge, nor does a future one.
+	if f := record(at(200), "unhealthy", at(100)); len(f) != 1 || !f[0].At.Equal(at(200)) {
+		t.Fatalf("stale transition: %+v, want the observation time", f)
+	}
+	if f := record(at(300), "healthy", at(400)); len(f) != 1 || !f[0].At.Equal(at(300)) {
+		t.Fatalf("future transition: %+v, want the observation time", f)
+	}
+}
+
+// The datastore twin of TestPGAvailabilityEdgesCarryTheReadyTransitionTime.
+func TestPGDatastoreAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	tenant, err := st.CreateWorkspace(ctx, "ds-edge-time-"+stamp, PlanHobby, "alice-"+stamp)
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), tenant.ID) })
+
+	base := time.Date(2026, 10, 4, 2, 0, 0, 0, time.UTC)
+	at := func(sec int) time.Time { return base.Add(time.Duration(sec) * time.Second) }
+	record := func(obsAt time.Time, availability string, transition time.Time) []DatastoreEventFact {
+		t.Helper()
+		obs := ObservedDatastoreState{DatastoreID: "dpg-edge" + stamp, WorkspaceID: tenant.ID, Kind: DatastoreKindPostgres,
+			Phase: "running", Availability: availability, AvailabilityObserved: true, At: obsAt, ReadyTransitionAt: transition}
+		if availability == "unhealthy" {
+			obs.ReasonCode = EventReasonReadinessFailed
+		}
+		facts, err := st.RecordObservedDatastoreState(ctx, obs)
+		if err != nil {
+			t.Fatalf("record: %v", err)
+		}
+		return facts
+	}
+	record(at(10), "healthy", at(5))
+	if f := record(at(106), "unhealthy", at(68)); len(f) != 1 || !f[0].At.Equal(at(68)) {
+		t.Fatalf("unavailable edge = %+v, want it at the :68 transition", f)
+	}
+	if f := record(at(119), "healthy", at(113)); len(f) != 1 || !f[0].At.Equal(at(113)) {
+		t.Fatalf("available edge = %+v, want it at the :113 transition", f)
+	}
+	if f := record(at(200), "unhealthy", at(100)); len(f) != 1 || !f[0].At.Equal(at(200)) {
+		t.Fatalf("stale transition: %+v, want the observation time", f)
+	}
+}

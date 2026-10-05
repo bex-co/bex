@@ -326,9 +326,10 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var previousPhase, previousAvailability string
 		var previousSuspended bool
+		var previousChangedAt time.Time
 		err := tx.QueryRow(ctx,
-			`SELECT service_phase, availability, suspended FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
-			obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended)
+			`SELECT service_phase, availability, suspended, updated_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
+			obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended, &previousChangedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			tag, insertErr := tx.Exec(ctx,
 				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, suspended, updated_at, healthy_transition_at)
@@ -341,8 +342,8 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 				return nil
 			}
 			err = tx.QueryRow(ctx,
-				`SELECT service_phase, availability, suspended FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
-				obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended)
+				`SELECT service_phase, availability, suspended, updated_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
+				obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended, &previousChangedAt)
 		}
 		if err != nil {
 			return err
@@ -353,7 +354,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			availability = obs.Availability
 		}
 		obs.Availability = availability
-		facts := observedStateFacts(obs, previousPhase, previousAvailability, previousSuspended)
+		facts := observedStateFacts(obs, previousPhase, previousAvailability, previousSuspended, previousChangedAt)
 		for _, fact := range facts {
 			if _, err := tx.Exec(ctx, insertServiceEventFactSQL,
 				fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
@@ -445,7 +446,22 @@ func checkpointServiceSuspended(previousPhase, observedPhase string, previousSus
 	return observedSuspended
 }
 
-func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailability string, previousSuspended bool) []ServiceEventFact {
+// availabilityEdgeAt is when an availability edge actually happened (w4/196):
+// the operator's Ready transition backing the conclusion, not the pass that
+// noticed it — that pass runs a reconcile poll and a debounce tick later, and
+// stamping it understated a live ~45 s outage as 13 s. The transition is used
+// only when it falls after the checkpoint's last change (an edge cannot
+// predate the state it leaves; Ready's LastTransitionTime moves on status
+// flips only, so it can be older than a Serving-backed healthy conclusion)
+// and not after the observation itself; otherwise the observation stands.
+func availabilityEdgeAt(transition, previousChangedAt, observed time.Time) time.Time {
+	if transition.IsZero() || !transition.After(previousChangedAt) || transition.After(observed) {
+		return observed
+	}
+	return transition
+}
+
+func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailability string, previousSuspended bool, previousChangedAt time.Time) []ServiceEventFact {
 	makeFact := func(suffix string, typ ServiceEventFactType) ServiceEventFact {
 		return ServiceEventFact{
 			SourceKey:  fmt.Sprintf("observed:%s:%s:%d", obs.AppID, suffix, obs.At.UnixNano()),
@@ -482,11 +498,16 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 		}
 	}
 	if obs.Availability != previousAvailability {
+		edge := func(suffix string, typ ServiceEventFactType) ServiceEventFact {
+			fact := makeFact(suffix, typ)
+			fact.At = availabilityEdgeAt(obs.ReadyTransitionAt, previousChangedAt, obs.At)
+			return fact
+		}
 		switch {
 		case previousAvailability == "healthy" && obs.Availability == "unhealthy":
-			facts = append(facts, makeFact("failed", EventFactServerFailed))
+			facts = append(facts, edge("failed", EventFactServerFailed))
 		case previousAvailability == "unhealthy" && obs.Availability == "healthy":
-			facts = append(facts, makeFact("available", EventFactServerAvailable))
+			facts = append(facts, edge("available", EventFactServerAvailable))
 		}
 	}
 	return facts

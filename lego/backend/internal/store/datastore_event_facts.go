@@ -180,7 +180,7 @@ func nextDatastoreAvailability(previous, observed string) string {
 // crossed. Deliberately narrower than the App path's observedStateFacts: a
 // datastore's phase moves are covered by audit-derived facts (create, restart,
 // plan change), so only the availability dimension produces edges here.
-func observedDatastoreStateFacts(obs ObservedDatastoreState, previousAvailability string) []DatastoreEventFact {
+func observedDatastoreStateFacts(obs ObservedDatastoreState, previousAvailability string, previousChangedAt time.Time) []DatastoreEventFact {
 	if obs.Availability == previousAvailability {
 		return nil
 	}
@@ -199,7 +199,7 @@ func observedDatastoreStateFacts(obs ObservedDatastoreState, previousAvailabilit
 		DatastoreID: obs.DatastoreID,
 		Kind:        obs.Kind,
 		Type:        typ,
-		At:          obs.At,
+		At:          availabilityEdgeAt(obs.ReadyTransitionAt, previousChangedAt, obs.At), // w4/196
 		ReasonCode:  obs.ReasonCode,
 	}}
 }
@@ -258,15 +258,16 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 	var inserted []DatastoreEventFact
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		selectCheckpoint := `SELECT phase, availability, suspended,
-			last_backup_name, last_backup_phase, restore_outcome, upgrade_key
+			last_backup_name, last_backup_phase, restore_outcome, upgrade_key, updated_at
 			FROM datastore_observed_checkpoints WHERE datastore_id = $1 FOR UPDATE`
 		var previousPhase, previousAvailability string
 		var previousSuspended bool
+		var previousChangedAt time.Time
 		var previousExtras datastoreCheckpointExtras
 		err := tx.QueryRow(ctx, selectCheckpoint, obs.DatastoreID).
 			Scan(&previousPhase, &previousAvailability, &previousSuspended,
 				&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
-				&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey)
+				&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey, &previousChangedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			// The baseline latches through the same arming rule as every later
 			// pass, so a first-ever observation caught mid-provisioning records
@@ -306,7 +307,7 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			err = tx.QueryRow(ctx, selectCheckpoint, obs.DatastoreID).
 				Scan(&previousPhase, &previousAvailability, &previousSuspended,
 					&previousExtras.LastBackupName, &previousExtras.LastBackupPhase,
-					&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey)
+					&previousExtras.RestoreOutcome, &previousExtras.UpgradeKey, &previousChangedAt)
 		}
 		if err != nil {
 			return err
@@ -317,7 +318,7 @@ func (s *PGStore) RecordObservedDatastoreState(ctx context.Context, obs Observed
 			availability = nextDatastoreAvailability(previousAvailability, obs.Availability)
 		}
 		obs.Availability = availability
-		facts := observedDatastoreStateFacts(obs, previousAvailability)
+		facts := observedDatastoreStateFacts(obs, previousAvailability, previousChangedAt)
 		lifecycle, nextExtras := observedDatastoreLifecycleFacts(obs, previousExtras)
 		facts = append(facts, lifecycle...)
 		for _, fact := range facts {
