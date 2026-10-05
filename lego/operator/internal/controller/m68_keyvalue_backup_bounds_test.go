@@ -68,7 +68,7 @@ func TestKeyValueBackupWorkVolumeIsBounded(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "kv-bounded", Namespace: "default", UID: "kv-uid"},
 			Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
 		}
-		pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "kv-auth").JobTemplate.Spec.Template.Spec
+		pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "kv-platform").JobTemplate.Spec.Template.Spec
 
 		var work *corev1.Volume
 		for i := range pod.Volumes {

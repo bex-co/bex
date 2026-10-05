@@ -102,9 +102,17 @@ func assertKeyValueSnapshot(t *testing.T, snapshot corev1.Container) {
 	if !strings.Contains(snapshot.Args[0], "valkey-cli") || !strings.Contains(snapshot.Args[0], "--rdb /backup/dump.rdb") {
 		t.Fatalf("snapshot command does not request a coherent remote RDB: %q", snapshot.Args[0])
 	}
-	if strings.Contains(snapshot.Args[0], " -a ") || len(snapshot.Env) != 2 || snapshot.Env[1].Name != "REDISCLI_AUTH" ||
-		snapshot.Env[1].ValueFrom.SecretKeyRef.Name != "red-paid-kv-auth" {
-		t.Fatalf("snapshot authentication must use REDISCLI_AUTH from the authority Secret: %#v", snapshot.Env)
+	// --rdb replicates (SYNC), an @admin verb the tenant's default user lacks:
+	// the snapshot logs in as the platform user, its password never in argv.
+	env := map[string]corev1.EnvVar{}
+	for _, e := range snapshot.Env {
+		env[e.Name] = e
+	}
+	auth := env["REDISCLI_AUTH"].ValueFrom
+	if strings.Contains(snapshot.Args[0], " -a ") || !strings.Contains(snapshot.Args[0], `--user "${VALKEY_USER}"`) ||
+		env["VALKEY_USER"].Value != kvPlatformUser || auth == nil || auth.SecretKeyRef == nil ||
+		auth.SecretKeyRef.Name != "red-paid-kv-platform" || auth.SecretKeyRef.Key != "password" {
+		t.Fatalf("snapshot must authenticate as %s via REDISCLI_AUTH from the platform Secret: %q %#v", kvPlatformUser, snapshot.Args[0], snapshot.Env)
 	}
 }
 
@@ -170,7 +178,7 @@ func TestKeyValueBackupFixedImagesAreDigestPinned(t *testing.T) {
 					Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: vc.version},
 				}
 				r := &KeyValueReconciler{Backup: tc.store, BackupHelperImage: testBackupHelperImage}
-				spec := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-auth")
+				spec := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-platform")
 				pod := spec.JobTemplate.Spec.Template.Spec
 				sawSnapshot := false
 				for _, c := range append(append([]corev1.Container{}, pod.InitContainers...), pod.Containers...) {
@@ -200,14 +208,14 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
 	}
 	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
-	spec := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-auth")
+	spec := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-platform")
 
 	cron := &batchv1.CronJob{Spec: spec}
 	assertKeyValueBackupSchedule(t, cron)
 	assertKeyValueBackupPod(t, cron.Spec.JobTemplate.Spec.Template.Spec)
 
 	kv.Spec.Suspended = true
-	suspended := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-auth")
+	suspended := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-platform")
 	if suspended.Suspend == nil || !*suspended.Suspend {
 		t.Fatal("suspended KeyValue must suspend its backup CronJob")
 	}
@@ -231,7 +239,7 @@ func TestKeyValueBackupEncryptStepDisabledByDefault(t *testing.T) {
 	}
 	// testKeyValueBackupStore has no AgePublicKey ⇒ byte-identical pre-ADR050 shape.
 	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
-	pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-plain-kv-auth").JobTemplate.Spec.Template.Spec
+	pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-plain-kv-platform").JobTemplate.Spec.Template.Spec
 	if len(pod.InitContainers) != 2 {
 		t.Fatalf("encryption off must keep snapshot+compress only, got %d init containers", len(pod.InitContainers))
 	}
@@ -258,7 +266,7 @@ func TestKeyValueBackupEncryptStepWhenKeyConfigured(t *testing.T) {
 		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
 	}
 	r := &KeyValueReconciler{Backup: store, BackupHelperImage: testBackupHelperImage}
-	pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-enc-kv-auth").JobTemplate.Spec.Template.Spec
+	pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-enc-kv-platform").JobTemplate.Spec.Template.Spec
 
 	// The encrypt step slots between compress and upload (snapshot, compress, encrypt).
 	if len(pod.InitContainers) != 3 {
@@ -649,7 +657,7 @@ func TestKeyValueBackupEncryptionFailsClosedWithoutHelperImage(t *testing.T) {
 	cronKey := types.NamespacedName{Name: keyValueBackupName(kv.Name), Namespace: kv.Namespace}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv.DeepCopy()).Build()
 	r := &KeyValueReconciler{Client: cl, Scheme: scheme, Backup: encrypted}
-	err := r.reconcileKeyValueBackup(ctx, kv, starterValkeyTier(), "red-failclosed-kv-auth")
+	err := r.reconcileKeyValueBackup(ctx, kv, starterValkeyTier(), "red-failclosed-kv-platform")
 	if err == nil {
 		t.Fatal("encryption configured with no helper image must fail the reconcile, not converge a CronJob")
 	}
@@ -662,7 +670,7 @@ func TestKeyValueBackupEncryptionFailsClosedWithoutHelperImage(t *testing.T) {
 
 	// Same operator, same missing helper image, encryption OFF: unchanged.
 	plain := &KeyValueReconciler{Client: cl, Scheme: scheme, Backup: testKeyValueBackupStore}
-	if err := plain.reconcileKeyValueBackup(ctx, kv, starterValkeyTier(), "red-failclosed-kv-auth"); err != nil {
+	if err := plain.reconcileKeyValueBackup(ctx, kv, starterValkeyTier(), "red-failclosed-kv-platform"); err != nil {
 		t.Fatalf("unencrypted backups must not depend on the helper image: %v", err)
 	}
 	cron := &batchv1.CronJob{}

@@ -36,7 +36,7 @@ func TestValkeyReadinessProbeIsAuthenticatedPing(t *testing.T) {
 		var spec corev1.PodSpec
 		kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-x", Namespace: "ws"}}
 		plan, _ := resolveKVPlan(kv.Spec)
-		applyValkeyPodSpec(&spec, kv, keyValueIntent{plan: plan, public: public, authSecretName: "red-x-auth", tlsSecretName: "red-x-kv-tls"})
+		applyValkeyPodSpec(&spec, kv, keyValueIntent{plan: plan, public: public, authSecretName: "red-x-auth", platformSecretName: "red-x-platform", tlsSecretName: "red-x-kv-tls"})
 		valkey := spec.Containers[0]
 		probe := valkey.ReadinessProbe
 		if probe == nil || probe.TCPSocket != nil || probe.Exec == nil {

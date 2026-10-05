@@ -18,7 +18,6 @@ package controller
 
 import (
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -77,9 +76,11 @@ func TestValkeyArgs(t *testing.T) {
 		}
 	})
 
-	// w4/191: the password rides an explicit default-user ACL that drops the
-	// control-plane-owned verbs; a bare --requirepass left the user +@all.
-	t.Run("default user ACL is always first and owns the password", func(t *testing.T) {
+	// The tenant's password rides an explicit default-user ACL that lacks every
+	// @admin verb (a bare --requirepass would leave it +@all), and the control
+	// plane's clients log in as their own user, so the tenant restriction can't
+	// lock the persistence handoff, exporter or backups out.
+	t.Run("tenant ACL is first and drops @admin; the platform user owns its own password", func(t *testing.T) {
 		args := valkeyArgs(appv1alpha1.KeyValueSpec{}, plan)
 		rule := valkeyDefaultUserRule("$(VALKEY_PASSWORD)")
 		if len(args) < 1+len(rule) || args[0] != "--user" || !slices.Equal(args[1:1+len(rule)], rule) {
@@ -88,13 +89,21 @@ func TestValkeyArgs(t *testing.T) {
 		if slices.Contains(args, "--requirepass") {
 			t.Errorf("a bare --requirepass would leave the default user +@all: %v", args)
 		}
-		for _, denied := range []string{"-config|set", "-acl|setuser", "-shutdown"} {
-			if !slices.Contains(rule, denied) {
-				t.Errorf("default user rule keeps %s", strings.TrimPrefix(denied, "-"))
+		if all, admin := slices.Index(rule, "+@all"), slices.Index(rule, "-@admin"); all < 0 || admin < all {
+			t.Errorf("default user must grant +@all and then drop @admin: %v", rule)
+		}
+		for _, readOnly := range []string{"+config|get", "+client|list", "+slowlog|get", "+slowlog|len"} {
+			if !slices.Contains(rule, readOnly) {
+				t.Errorf("default user lost read-only introspection %s: %v", readOnly, rule)
 			}
 		}
-		if slices.Contains(rule, "-config|get") || slices.Contains(rule, "-info") || slices.Contains(rule, "-client") {
-			t.Errorf("the exporter needs CONFIG GET, INFO and CLIENT: %v", rule)
+		platform := valkeyPlatformUserRule("$(" + kvPlatformPasswordEnv + ")")
+		rest := args[1+len(rule):]
+		if len(rest) < 1+len(platform) || rest[0] != "--user" || !slices.Equal(rest[1:1+len(platform)], platform) {
+			t.Fatalf("want --user %v second, got %v", platform, args)
+		}
+		if platform[0] != kvPlatformUser || !slices.Contains(platform, "+@all") {
+			t.Errorf("platform user rule = %v", platform)
 		}
 	})
 }

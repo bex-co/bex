@@ -64,6 +64,18 @@ const (
 	// kvDefaultUser is Valkey's built-in default ACL user; required by
 	// valkey-cli URI authentication.
 	kvDefaultUser = "default"
+	// kvPlatformUser is the ACL user the control plane's own clients log in as:
+	// the live persistence handoff, the metrics exporter and the backup
+	// snapshot. Its password lives in a Secret no API reveals, so restricting
+	// the tenant's default user can never lock those clients out (w5/m110).
+	kvPlatformUser = "bex"
+	// kvPasswordEnv and kvPlatformPasswordEnv carry the tenant and platform
+	// passwords into the server's $(VAR)-expanded args.
+	kvPasswordEnv         = "VALKEY_PASSWORD"
+	kvPlatformPasswordEnv = "VALKEY_PLATFORM_PASSWORD"
+	// kvPasswordKey is the data key of every Valkey credential Secret: the
+	// tenant's auth and connection Secrets, and the platform Secret.
+	kvPasswordKey = "password"
 	// kvTLSPort is private to the public pass-through proxy. Keeping plaintext on
 	// kvPort preserves existing in-cluster redis:// clients while external
 	// rediss:// clients terminate end-to-end TLS inside Valkey.
@@ -193,11 +205,14 @@ func kvExporterResources() corev1.ResourceRequirements {
 //   - CONFIG_COMMAND "-": skips CONFIG GET * (redis_config_* only; the db
 //     count then defaults to 16, which only pads empty-keyspace series).
 //   - INCL_METRICS_FOR_EMPTY_DATABASES=false: no zero-filled db0..db15 series.
-func kvExporterEnv(password corev1.EnvVar) []corev1.EnvVar {
+//
+// It logs in as kvPlatformUser, so the tenant's ACL never decides whether the
+// Key Value metrics tab has data.
+func kvExporterEnv(platformPassword corev1.EnvVar) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "REDIS_ADDR", Value: fmt.Sprintf("redis://localhost:%d", kvPort)},
-		// The exporter reuses REDIS_PASSWORD; alias the shared secret key.
-		{Name: "REDIS_PASSWORD", ValueFrom: password.ValueFrom},
+		{Name: "REDIS_USER", Value: kvPlatformUser},
+		{Name: "REDIS_PASSWORD", ValueFrom: platformPassword.ValueFrom},
 		{Name: "REDIS_EXPORTER_REDIS_ONLY_METRICS", Value: "true"},
 		{Name: "REDIS_EXPORTER_EXCLUDE_LATENCY_HISTOGRAM_METRICS", Value: "true"},
 		{Name: "REDIS_EXPORTER_CONFIG_COMMAND", Value: "-"},
@@ -212,7 +227,9 @@ func kvExporterEnv(password corev1.EnvVar) []corev1.EnvVar {
 // (appendonly yes, no maxmemory), so a KeyValue created before these fields
 // reconciles byte-identically.
 func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
-	args := append([]string{"--user"}, valkeyDefaultUserRule("$(VALKEY_PASSWORD)")...)
+	args := append([]string{"--user"}, valkeyDefaultUserRule("$("+kvPasswordEnv+")")...)
+	args = append(args, "--user")
+	args = append(args, valkeyPlatformUserRule("$("+kvPlatformPasswordEnv+")")...)
 	switch spec.PersistenceMode {
 	case "off":
 		// No AOF and no RDB save points — a pure in-memory cache.
@@ -232,22 +249,35 @@ func valkeyArgs(spec appv1alpha1.KeyValueSpec, plan tiers.ValkeyTier) []string {
 	return args
 }
 
-// valkeyDefaultUserRule is the ACL of the one user tenants connect as. Every
-// data command stays, and so does read-only introspection (CONFIG GET, INFO,
-// CLIENT — the metrics sidecar needs them), but the verbs whose state the
-// control plane owns are removed: the memory budget and eviction policy the
-// dashboard shows (CONFIG SET/REWRITE/RESETSTAT), the password the dashboard
-// reveals and the exporter scrapes with (ACL SETUSER/DELUSER/SAVE/LOAD), and
-// process/topology control (SHUTDOWN, MODULE, REPLICAOF/SLAVEOF, FAILOVER,
-// DEBUG). With only --requirepass the implicit default user kept +@all, and a
-// tenant could silently override all of it until the next restart (w4/191).
+// valkeyDefaultUserRule is the ACL of the one user tenants connect as: every
+// command outside @admin, plus a few read-only @admin introspection commands.
+// @admin holds every verb whose state the control plane owns — the memory
+// budget and eviction policy the dashboard shows (CONFIG SET), the password it
+// reveals (ACL SETUSER), persistence and replication (SAVE, BGSAVE, SYNC,
+// REPLICAOF), process control (SHUTDOWN, DEBUG, MODULE) and other clients'
+// connections (CLIENT KILL/PAUSE, MONITOR) — so an admin verb a future Valkey
+// adds is denied by default, not by an entry someone remembered. Render denies CONFIG
+// outright; CONFIG GET stays here because tenants have relied on it since
+// w4/191, and it exposes nothing they don't own.
 func valkeyDefaultUserRule(password string) []string {
 	return []string{
-		"default", "on", ">" + password, "~*", "&*", "+@all",
-		"-config|set", "-config|rewrite", "-config|resetstat",
-		"-acl|setuser", "-acl|deluser", "-acl|save", "-acl|load",
-		"-shutdown", "-module", "-replicaof", "-slaveof", "-failover", "-debug",
+		kvDefaultUser, "on", ">" + password, "~*", "&*", "+@all", "-@admin",
+		"+config|get", "+client|list", "+slowlog|get", "+slowlog|len",
 	}
+}
+
+// valkeyPlatformUserRule is the ACL of kvPlatformUser: everything, since the
+// persistence handoff needs CONFIG SET, the backup SYNC and the exporter INFO.
+func valkeyPlatformUserRule(password string) []string {
+	return []string{kvPlatformUser, "on", ">" + password, "~*", "&*", "+@all"}
+}
+
+// kvSecretEnv projects the password of a Key Value credential Secret as env
+// var name, the only way any Valkey password reaches a container.
+func kvSecretEnv(name, secret string) corev1.EnvVar {
+	return corev1.EnvVar{Name: name, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{Name: secret}, Key: kvPasswordKey,
+	}}}
 }
 
 // valkeyMaxmemory returns the data budget (bytes) eviction triggers at: 80% of
@@ -271,10 +301,10 @@ func generatePassword() (string, error) {
 
 func keyValueConnectionSecretData(password, internalHost string, public bool, name, domain string) map[string][]byte {
 	data := map[string][]byte{
-		"username": []byte(kvDefaultUser),
-		"password": []byte(password),
-		"host":     []byte(internalHost),
-		"port":     []byte(strconv.Itoa(kvPort)),
+		"username":    []byte(kvDefaultUser),
+		kvPasswordKey: []byte(password),
+		"host":        []byte(internalHost),
+		"port":        []byte(strconv.Itoa(kvPort)),
 		// Explicit default user is required by valkey-cli URI authentication.
 		"uri": fmt.Appendf(nil, "redis://default:%s@%s:%d", password, internalHost, kvPort),
 	}
@@ -481,21 +511,21 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
 		return nil, result, true, failErr
 	}
-	seedPassword := connection.Data["password"]
+	seedPassword := connection.Data[kvPasswordKey]
 	auth := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-auth", Namespace: kv.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), auth, func() error {
 		if auth.Data == nil {
 			auth.Data = map[string][]byte{}
 		}
-		if len(auth.Data["password"]) == 0 {
+		if len(auth.Data[kvPasswordKey]) == 0 {
 			if len(seedPassword) > 0 {
-				auth.Data["password"] = bytes.Clone(seedPassword)
+				auth.Data[kvPasswordKey] = bytes.Clone(seedPassword)
 			} else {
 				password, err := generatePassword()
 				if err != nil {
 					return err
 				}
-				auth.Data["password"] = []byte(password)
+				auth.Data[kvPasswordKey] = []byte(password)
 			}
 		}
 		auth.Data["username"] = []byte(kvDefaultUser)
@@ -505,7 +535,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		result, failErr := r.kvFail(ctx, kv, "CredentialSecretFailed", err)
 		return nil, result, true, failErr
 	}
-	desiredData := keyValueConnectionSecretData(string(auth.Data["password"]), internalHost,
+	desiredData := keyValueConnectionSecretData(string(auth.Data[kvPasswordKey]), internalHost,
 		kv.Spec.Public && r.KvDomain != "", kv.Name, r.KvDomain)
 	if connection.Immutable != nil && *connection.Immutable && !secretDataEqual(connection.Data, desiredData) {
 		if err := r.Delete(ctx, connection); err != nil && !apierrors.IsNotFound(err) {
@@ -529,6 +559,30 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		return nil, result, true, failErr
 	}
 	return auth, ctrl.Result{}, false, nil
+}
+
+// reconcileKeyValuePlatformCredential returns the immutable Secret holding the
+// kvPlatformUser password, generating it once. Nothing names it in status or
+// copies it into the connection Secret, so no API reveals it; it is separate
+// from the auth Secret because that one is immutable and predates the user.
+// It shares the tenant's namespace, so it is labeled protected: an App that
+// names it in its env or files is refused, or a tenant could mount a password
+// that outranks its own ACL.
+func (r *KeyValueReconciler) reconcileKeyValuePlatformCredential(ctx context.Context, kv *appv1alpha1.KeyValue) (*corev1.Secret, error) {
+	platform := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-platform", Namespace: kv.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), platform, func() error {
+		if len(platform.Data[kvPasswordKey]) == 0 {
+			password, err := generatePassword()
+			if err != nil {
+				return err
+			}
+			platform.Data = map[string][]byte{kvPasswordKey: []byte(password)}
+		}
+		platform.Immutable = new(true)
+		metav1.SetMetaDataLabel(&platform.ObjectMeta, execution.LabelProtectedFromTenantMount, execution.ProtectedFromTenantMount)
+		return controllerutil.SetControllerReference(kv, platform, r.Scheme)
+	})
+	return platform, err
 }
 
 // reconcileKeyValueBackupNetworkPolicy supplies the egress the backup and purge
@@ -624,9 +678,11 @@ type keyValueIntent struct {
 	replicas  int32
 	labels    map[string]string
 	podLabels map[string]string
-	// authSecretName and credentialRevision are filled in after the credential
-	// Secrets reconcile, which is the only step that must precede the workload.
+	// authSecretName, platformSecretName and credentialRevision are filled in
+	// after the credential Secrets reconcile, which is the only step that must
+	// precede the workload.
 	authSecretName       string
+	platformSecretName   string
 	credentialRevision   string
 	persistenceToken     string
 	persistenceSource    string
@@ -796,15 +852,11 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 // serviceAccountName, …) survives an update instead of being blanked and
 // re-defaulted into a spurious rollout every reconcile.
 func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
-	// The Valkey password, shared by the server (arg expansion) and the metrics
-	// exporter (authenticated INFO scrape).
-	passwordEnv := corev1.EnvVar{
-		Name: "VALKEY_PASSWORD",
-		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{Name: intent.authSecretName},
-			Key:                  "password",
-		}},
-	}
+	// Both passwords expand into the server's ACL args: the tenant's (default
+	// user, also the readiness probe's) and the platform user's (the metrics
+	// exporter's authenticated INFO scrape).
+	passwordEnv := kvSecretEnv(kvPasswordEnv, intent.authSecretName)
+	platformPasswordEnv := kvSecretEnv(kvPlatformPasswordEnv, intent.platformSecretName)
 	serverArgs := valkeyArgs(kv.Spec, intent.plan)
 	// Install the ephemeral Off directory with the handoff, never by rolling an
 	// unchanged legacy cache merely because the operator was upgraded.
@@ -844,7 +896,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		// $(VAR) from the container env list. appendonly persists to the PVC.
 		Args:            serverArgs,
 		Ports:           serverPorts,
-		Env:             []corev1.EnvVar{passwordEnv},
+		Env:             []corev1.EnvVar{passwordEnv, platformPasswordEnv},
 		Resources:       kvResources(intent.plan),
 		SecurityContext: valkeySecCtx(),
 		VolumeMounts:    append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
@@ -856,7 +908,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		// prometheus.yaml) and surfaced as the Key Value metrics tab (w5/011).
 		Name:            "metrics",
 		Image:           kvExporterImage,
-		Env:             kvExporterEnv(passwordEnv),
+		Env:             kvExporterEnv(platformPasswordEnv),
 		Ports:           []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
 		Resources:       kvExporterResources(),
 		SecurityContext: tenantSecCtx(),
@@ -931,13 +983,17 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return result, err
 	}
 	intent.authSecretName = auth.Name
-	intent.credentialRevision = appv1alpha1.KeyValueCredentialRevision(auth.Data["password"])
-	authSecretName := intent.authSecretName
+	intent.credentialRevision = appv1alpha1.KeyValueCredentialRevision(auth.Data[kvPasswordKey])
+	platform, err := r.reconcileKeyValuePlatformCredential(ctx, &kv)
+	if err != nil {
+		return r.kvFail(ctx, &kv, "CredentialSecretFailed", err)
+	}
+	intent.platformSecretName = platform.Name
 
 	if err := r.reconcileKeyValueService(ctx, &kv, intent); err != nil {
 		return r.kvFail(ctx, &kv, "ServiceFailed", err)
 	}
-	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, auth, &intent); done || err != nil {
+	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, platform, &intent); done || err != nil {
 		return result, err
 	}
 	if err := r.reconcileKeyValueWorkload(ctx, &kv, sts, intent); err != nil {
@@ -953,7 +1009,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.kvFail(ctx, &kv, "BackupNetworkPolicyFailed", err)
 	}
 
-	if err := r.reconcileKeyValueBackup(ctx, &kv, plan, authSecretName); err != nil {
+	if err := r.reconcileKeyValueBackup(ctx, &kv, plan, intent.platformSecretName); err != nil {
 		return r.kvFail(ctx, &kv, "BackupCronJobFailed", err)
 	}
 
@@ -971,7 +1027,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	kv.Status.Host = intent.internalHost
 	kv.Status.Port = kvPort
 	kv.Status.SecretName = kv.Name
-	kv.Status.CredentialSecretName = authSecretName
+	kv.Status.CredentialSecretName = intent.authSecretName
 	kv.Status.ObservedGeneration = kv.Generation
 
 	storageState, err := r.reconcileKeyValueStorage(ctx, &kv, sts, storageGB)

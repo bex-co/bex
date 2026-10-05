@@ -43,7 +43,7 @@ func persistenceLiveFixture(t *testing.T) (*appv1alpha1.KeyValue, *appsv1.Statef
 		}
 	}
 	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-persistence", Namespace: "test", UID: "kv-uid", Generation: 2}, Spec: appv1alpha1.KeyValueSpec{PersistenceMode: "journal-snapshot"}}
-	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace, UID: "sts-uid", Generation: 1}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(1)), Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{keyValuePersistenceSourceAnnotation: "snapshot"}}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "valkey", Image: "valkey:8", Args: []string{"--appendonly", "no"}}}}}}, Status: appsv1.StatefulSetStatus{ObservedGeneration: 1, UpdateRevision: "snapshot-revision"}}
+	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace, UID: "sts-uid", Generation: 1}, Spec: appsv1.StatefulSetSpec{Replicas: new(int32(1)), Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{keyValuePersistenceSourceAnnotation: "snapshot"}}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "valkey", Image: "valkey:8", Args: []string{"--user", kvPlatformUser, "--appendonly", "no"}}}}}}, Status: appsv1.StatefulSetStatus{ObservedGeneration: 1, UpdateRevision: "snapshot-revision"}}
 	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-0", Namespace: kv.Namespace, UID: "pod-uid", Labels: map[string]string{appsv1.StatefulSetRevisionLabel: "snapshot-revision"}, OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "StatefulSet", Name: sts.Name, UID: sts.UID, Controller: new(true)}}}, Spec: *sts.Spec.Template.Spec.DeepCopy(), Status: corev1.PodStatus{PodIP: "127.0.0.1", Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}, ContainerStatuses: []corev1.ContainerStatus{{Name: "valkey", ContainerID: "containerd://process-one", State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}}}}}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(kv, pod, sts).WithObjects(kv, sts, pod).Build()
 	return kv, sts, pod, c
@@ -214,6 +214,75 @@ func TestPersistenceGateRetainsWorkloadWhileSourceUnavailable(t *testing.T) {
 				t.Fatalf("readiness=%+v", condition)
 			}
 		})
+	}
+}
+
+// TestPersistenceGateAddsPlatformUserBeforeHandoff pins w5/m110's migration: a
+// serving process that predates the platform user (every store on the w4/191
+// template) refuses the handoff's CONFIG SET to every credential, so the gate
+// first rolls it in its current snapshot mode with the user added — never
+// calling the handoff, and reporting a transition rather than a failure — and
+// journals from the new process, as the platform user, once it serves.
+func TestPersistenceGateAddsPlatformUserBeforeHandoff(t *testing.T) {
+	ctx := context.Background()
+	kv, sts, p, c := persistenceLiveFixture(t)
+	legacy := []string{"--appendonly", "no"}
+	sts.Spec.Template.Spec.Containers[0].Args = legacy
+	if err := c.Update(ctx, sts); err != nil {
+		t.Fatal(err)
+	}
+	sts.Status.ObservedGeneration = sts.Generation
+	if err := c.Status().Update(ctx, sts); err != nil {
+		t.Fatal(err)
+	}
+	p.Spec.Containers[0].Args = legacy
+	if err := c.Update(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	r := &KeyValueReconciler{Client: c, Scheme: c.Scheme()}
+	intent := legacyPersistenceTestIntent(kv)
+	intent.authSecretName, intent.platformSecretName = kv.Name+"-auth", kv.Name+"-platform"
+	platform := &corev1.Secret{Data: map[string][]byte{"password": []byte("platform-credential")}}
+	result, stop, err := r.prepareKeyValuePersistenceWith(ctx, kv, sts, platform, &intent, func(context.Context, *corev1.Pod, *corev1.Secret) (bool, error) {
+		t.Fatal("handoff ran against a process without the platform user")
+		return false, nil
+	})
+	if err != nil || !stop || result.RequeueAfter == 0 {
+		t.Fatalf("result=%+v stop=%v err=%v", result, stop, err)
+	}
+	rolled := &appsv1.StatefulSet{}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(sts), rolled); err != nil {
+		t.Fatal(err)
+	}
+	if !valkeyHasPlatformUser(rolled.Spec.Template.Spec.Containers) {
+		t.Fatalf("rolled template lacks the platform user: %v", rolled.Spec.Template.Spec.Containers)
+	}
+	if mode := keyValueTemplatePersistenceMode(rolled, kv.Spec.PersistenceMode); mode != keyValueSnapshotMode {
+		t.Fatalf("credential roll changed the persistence mode to %q before any handoff", mode)
+	}
+	current := &appv1alpha1.KeyValue{}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(kv), current); err != nil {
+		t.Fatal(err)
+	}
+	if condition := meta.FindStatusCondition(current.Status.Conditions, appv1alpha1.ConditionReady); current.Status.Phase == appv1alpha1.KVPhaseFailed ||
+		condition == nil || condition.Reason != "PersistenceTransition" {
+		t.Fatalf("credential roll reported %+v", current.Status)
+	}
+
+	// The rolled pod serves: the handoff now runs, as the platform user.
+	rolled.Status = appsv1.StatefulSetStatus{ObservedGeneration: rolled.Generation, UpdateRevision: "platform-revision"}
+	p.Labels[appsv1.StatefulSetRevisionLabel] = "platform-revision"
+	p.Spec = *rolled.Spec.Template.Spec.DeepCopy()
+	if err := c.Update(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	next := legacyPersistenceTestIntent(kv)
+	prepared := false
+	if _, stop, err := r.prepareKeyValuePersistenceWith(ctx, kv, rolled, platform, &next, func(_ context.Context, _ *corev1.Pod, secret *corev1.Secret) (bool, error) {
+		prepared = secret == platform
+		return true, nil
+	}); err != nil || stop || !prepared || next.persistenceToken == "" {
+		t.Fatalf("handoff after the roll: prepared=%v stop=%v err=%v token=%q", prepared, stop, err, next.persistenceToken)
 	}
 }
 
