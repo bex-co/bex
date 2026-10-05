@@ -1029,7 +1029,7 @@ func appClaimIdentity(app *appv1alpha1.App) string {
 // host (via s.ownPlatformHost) — not `<app.Name>.<base>`, which a tenant could
 // otherwise set to a victim's slug and hijack at create time too (codex F5).
 func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
-	return s.checkHostsClaimable(ctx, app, false)
+	return s.checkHostsClaimable(ctx, app, false, false)
 }
 
 // previewHostsClaimable is ensureHostsClaimable for a dry-run create's preview
@@ -1045,10 +1045,13 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 //     does not have, so it is not checked. With the store on the real create
 //     never runs it either — managed claims start pending.
 func (s *Service) previewHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
-	return s.checkHostsClaimable(ctx, app, true)
+	return s.checkHostsClaimable(ctx, app, true, false)
 }
 
-func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App, preview bool) error {
+// checkHostsClaimable is the shared gate. existing marks a preview of an App
+// that already exists (a Blueprint re-sync): its immutable slug is known, so
+// its own `<slug>.<base>` stays exempt as it would on the real apply.
+func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App, preview, existing bool) error {
 	// Round-18: the per-service cardinality cap AddDomain enforces, applied to a
 	// create/blueprint-declared host set BEFORE any claim or CR write (a 400 like
 	// the round-12 #3 routes/headers surface validators; the CRD schema's
@@ -1064,7 +1067,7 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 	ownHost := s.ownPlatformHost(app)
 	_, _, managedClaims := s.managedDomainClaims(app)
 	if preview {
-		if s.Store != nil && app.Labels[core.LabelTenant] != "" {
+		if s.Store != nil && app.Labels[core.LabelTenant] != "" && !existing {
 			ownHost = ""
 		}
 		managedClaims = true // skip the id-keyed TXT proof (see previewHostsClaimable)
@@ -1090,7 +1093,9 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 			fetched = true
 		}
 		if hostClaimedInApps(apps, app, h) {
-			return errDomainInUse()
+			// Names the caller's own host so a Blueprint refusal can be located
+			// at its domains entry (w8/055) — never the site that holds it.
+			return fmt.Errorf("%w: %q", errDomainInUse(), h)
 		}
 		if !managedClaims {
 			if err := s.requireDomainOwnership(ctx, app, h); err != nil {
