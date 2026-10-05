@@ -2370,7 +2370,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// ProgressDeadlineExceeded, reportRolloutProgress settles a terminal phase
 	// (Failed / prior-release Running|Hibernated); re-stamping Deploying here
 	// every requeue would flap the service header against the deploy row (w4/m103).
-	if rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) {
+	// A parking pass never stamps it: parkKubernetes writes Hibernated against the
+	// cached App, which has not seen the Deploying write and skips it as unchanged,
+	// so a sleeping service could read Deploying (w6/m147).
+	if rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) && !plan.parked(app) {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 	}
 	// Reclaim snapshots outside the retained window only after the Deployment is in
