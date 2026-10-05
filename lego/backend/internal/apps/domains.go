@@ -227,6 +227,12 @@ func canonicalHostname(raw string) (string, error) {
 	if host == "" || len(validation.IsDNS1123Subdomain(host)) != 0 {
 		return "", fmt.Errorf("%w: invalid hostname %q", core.ErrBadRequest, raw)
 	}
+	// A custom domain is a DNS name under a public suffix: an IP literal
+	// ("127.0.0.1" passes the DNS-1123 check) or a single label ("localhost")
+	// could never verify and only yields nonsense DNS instructions (w4/190).
+	if net.ParseIP(host) != nil || !strings.Contains(host, ".") {
+		return "", fmt.Errorf("%w: invalid hostname %q: use a fully qualified domain name", core.ErrBadRequest, raw)
+	}
 	return host, nil
 }
 
@@ -803,7 +809,30 @@ func (s *Service) reservedHost(ownPlatformHost, host string) bool {
 			return true
 		}
 	}
-	return s.DashboardHost != "" && host == s.DashboardHost
+	return s.platformHostReserved(host)
+}
+
+// platformHostReserved reports a host the platform itself serves (dashboard,
+// API, SSH gateway) or one under their registrable apex — the whole `bex.co`
+// zone is the operator's, so a tenant claim there is never verifiable and
+// only produces a pending domain with nonsense DNS instructions. The
+// BEX_BASE_DOMAIN apex is left to the rule above, which exempts each App's own
+// auto host.
+func (s *Service) platformHostReserved(host string) bool {
+	baseApex := registrableDomain(s.BaseDomain)
+	for _, platform := range append([]string{s.DashboardHost}, s.PlatformHosts...) {
+		if platform == "" {
+			continue
+		}
+		if host == platform {
+			return true
+		}
+		if apex := registrableDomain(platform); apex != "" && apex != baseApex &&
+			(host == apex || strings.HasSuffix(host, "."+apex)) {
+			return true
+		}
+	}
+	return false
 }
 
 // errNoPublicIngress rejects a custom domain on a service type the platform

@@ -96,6 +96,11 @@ type Service struct {
 	// dashboard host as a custom domain (w7/m6). Empty => not reserved (the
 	// base-domain guard still covers the `*.<BaseDomain>` platform namespace).
 	DashboardHost string
+	// PlatformHosts are the platform's other public hosts (the API and SSH
+	// gateway, from their configured public URLs). Together with DashboardHost
+	// they and everything under their registrable apex (bex.co) are reserved:
+	// no tenant may claim api.bex.co as a custom domain (w4/190).
+	PlatformHosts []string
 	// MaxCustomDomainsPerService and MaxCustomDomainsPerWorkspace cap
 	// custom-domain cardinality (codex-security round 18;
 	// BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE / BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE,
