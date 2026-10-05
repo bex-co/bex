@@ -198,10 +198,10 @@ type createWebServiceArgs struct {
 	// error. Re-encoding that as an if/then in the schema would duplicate a
 	// rule the core owns and let the two drift.
 	BuildCommand            string                  `json:"buildCommand,omitempty" jsonschema:"command used to build a native-runtime service; required for a native runtime, refused for runtime image"`
-	StartCommand            string                  `json:"startCommand,omitempty" jsonschema:"command used to start a native-runtime service; required for a native runtime, refused for runtime image"`
+	StartCommand            string                  `json:"startCommand,omitempty" jsonschema:"command used to start the service; required for a native runtime; for runtime image it overrides the image's command (or pass dockerCommand)"`
 	DockerfilePath          string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
 	DockerContext           string                  `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root; applies only when runtime is docker (default the repo root)"`
-	DockerCommand           string                  `json:"dockerCommand,omitempty" jsonschema:"overrides the image's startup command; omitted or empty uses the Dockerfile's ENTRYPOINT and CMD. Applies only when runtime is docker; do not combine with startCommand"`
+	DockerCommand           string                  `json:"dockerCommand,omitempty" jsonschema:"overrides the image's startup command; omitted or empty uses the image's ENTRYPOINT and CMD. Applies when runtime is docker or image; do not combine with startCommand"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free; a background_worker is paid-only — free is rejected and an omitted plan defaults to starter)"`
 	EnvVars                 []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
@@ -289,10 +289,10 @@ type createCronJobArgs struct {
 	// tool inherited the identical required set from Render's git-only tool,
 	// and reproduced the identical deadlock on the image path.
 	BuildCommand   string            `json:"buildCommand,omitempty" jsonschema:"command used to build a native-runtime cron job; required for a native runtime, refused for runtime image"`
-	StartCommand   string            `json:"startCommand,omitempty" jsonschema:"command run by the native-runtime cron job; required for a native runtime, refused for runtime image"`
+	StartCommand   string            `json:"startCommand,omitempty" jsonschema:"command run by the cron job; required for a native runtime; for runtime image it overrides the image's command (or pass dockerCommand)"`
 	DockerfilePath string            `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
 	DockerContext  string            `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root; applies only when runtime is docker (default the repo root)"`
-	DockerCommand  string            `json:"dockerCommand,omitempty" jsonschema:"overrides the image's command for each run; omitted or empty uses the Dockerfile's ENTRYPOINT and CMD. Applies only when runtime is docker; do not combine with startCommand or command"`
+	DockerCommand  string            `json:"dockerCommand,omitempty" jsonschema:"overrides the image's command for each run; omitted or empty uses the image's ENTRYPOINT and CMD. Applies when runtime is docker or image; do not combine with startCommand or command"`
 	Builder        string            `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan           string            `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
 	EnvVars        []envVarInput     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
@@ -304,6 +304,11 @@ type createCronJobArgs struct {
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
 	docker := resolveMCPDockerArgs(a.Runtime, a.StartCommand, a.Command, a.DockerCommand, a.DockerContext)
+	// REST's cron bridge for a prebuilt image: its run command may arrive as
+	// startCommand, and REST stores it as the cron's command (rest.go).
+	if docker.command == "" && isImageRuntime(a.Runtime) {
+		docker.command = docker.startCommand
+	}
 	return CreateRequest{
 		OwnerID:              a.OwnerID,
 		EnvironmentID:        a.EnvironmentID,
@@ -347,22 +352,35 @@ func isDockerRuntime(runtime string) bool {
 	return strings.EqualFold(strings.TrimSpace(runtime), "docker")
 }
 
+// isImageRuntime reports whether a create selected a prebuilt image.
+func isImageRuntime(runtime string) bool {
+	return strings.EqualFold(strings.TrimSpace(runtime), "image")
+}
+
+// dockerCommandApplies reports whether a create's dockerCommand is the
+// service's command: on the docker runtime (REST's envSpecificDetails docker
+// keys) and on a prebuilt image, whose CMD override REST also reads from
+// dockerCommand (w4/188).
+func dockerCommandApplies(runtime string) bool {
+	return isDockerRuntime(runtime) || isImageRuntime(runtime)
+}
+
 // resolveMCPDockerArgs maps dockerCommand/dockerContext the way REST does.
-// Both apply only when runtime is docker — upstream's own "Applies when runtime
-// is 'docker'", and REST reads envSpecificDetails' docker keys only on that
-// runtime — so on any other runtime they are inert and a call that succeeds
-// against Render succeeds here with its native commands untouched. On docker,
-// dockerCommand is the start command (REST's rule), and for a cron it is also
-// the run command when no bex `command` is given (REST's docker cron bridge).
-// checkMCPDockerArgs refuses the ambiguous combinations before this runs, and
-// dockerContext's path is validated by the core (validateCreateSource), exactly
-// as for REST.
+// dockerContext applies only on the docker runtime (it is a build context) and
+// dockerCommand on docker and image (dockerCommandApplies); on a native runtime
+// both are inert, as upstream's "Applies when runtime is 'docker'" and REST
+// have it, so a call that succeeds against Render succeeds here with its
+// native commands untouched. Where it applies, dockerCommand is the start
+// command (REST's rule), and for a cron also the run command when no bex
+// `command` is given (REST's cron bridge). checkMCPDockerArgs refuses the
+// ambiguous combinations before this runs, and dockerContext's path is
+// validated by the core (validateCreateSource), exactly as for REST.
 func resolveMCPDockerArgs(runtime, startCommand, command, dockerCommand, dockerContext string) mcpDockerArgs {
-	if !isDockerRuntime(runtime) {
-		return mcpDockerArgs{startCommand: startCommand, command: command}
+	out := mcpDockerArgs{startCommand: startCommand, command: command}
+	if isDockerRuntime(runtime) {
+		out.context = dockerContext
 	}
-	out := mcpDockerArgs{startCommand: startCommand, command: command, context: dockerContext}
-	if dockerCommand != "" {
+	if dockerCommandApplies(runtime) && strings.TrimSpace(dockerCommand) != "" {
 		out.startCommand = dockerCommand
 		if out.command == "" {
 			out.command = dockerCommand
@@ -371,14 +389,14 @@ func resolveMCPDockerArgs(runtime, startCommand, command, dockerCommand, dockerC
 	return out
 }
 
-// checkMCPDockerArgs refuses a docker-runtime dockerCommand sent alongside
-// another spelling of the same command. REST cannot express that collision (its
-// docker branch replaces startCommand), and the Blueprint compiler refuses it
-// outright ("cannot set both dockerCommand and startCommand"); MCP keeps a
-// flat startCommand (and a cron's bex `command`) that bex also honours on the
-// docker runtime, so silently picking one would drop the caller's other value.
+// checkMCPDockerArgs refuses a dockerCommand sent alongside another spelling
+// of the same command. REST cannot express that collision (its docker and
+// image branches replace startCommand), and the Blueprint compiler refuses it
+// on docker ("cannot set both dockerCommand and startCommand"); MCP keeps a
+// flat startCommand (and a cron's bex `command`) that bex also honours on these
+// runtimes, so silently picking one would drop the caller's other value.
 func checkMCPDockerArgs(runtime, startCommand, command, dockerCommand string) error {
-	if !isDockerRuntime(runtime) || strings.TrimSpace(dockerCommand) == "" {
+	if !dockerCommandApplies(runtime) || strings.TrimSpace(dockerCommand) == "" {
 		return nil
 	}
 	if strings.TrimSpace(startCommand) != "" {

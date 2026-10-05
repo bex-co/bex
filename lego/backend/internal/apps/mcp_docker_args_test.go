@@ -18,6 +18,8 @@ package apps
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -26,10 +28,11 @@ import (
 
 // mcp_docker_args_test.go covers upstream render-mcp-server bc94f8d (#154):
 // create_web_service and create_cron_job take dockerCommand/dockerContext,
-// which apply when runtime is docker (w1/118). They land on the same spec
-// fields REST's envSpecificDetails.dockerCommand/dockerContext reach
+// which apply when runtime is docker (w1/118); dockerCommand also applies to a
+// prebuilt image (w4/188, w5/073). They land on the same spec fields REST's
+// envSpecificDetails.dockerCommand/dockerContext reach
 // (TestRenderDockerDetailsMapToDockerfileBuild), so an agent written against
-// Render's MCP gets the build REST would have produced.
+// Render's MCP gets the service REST would have produced.
 
 // dockerArgsMCP calls a tool and reports its tool-level error text instead of
 // failing the test, so refusals can be asserted.
@@ -109,11 +112,76 @@ func TestMCPCreateCronJobDockerArgsReachSpec(t *testing.T) {
 	}
 }
 
-// TestMCPCreateDockerArgsApplyOnlyToDockerRuntime pins upstream's "Applies
-// when runtime is 'docker'" (and REST's identical rule): on a native runtime
-// both args are inert, so a call that succeeds against Render succeeds here
-// with the native commands untouched.
-func TestMCPCreateDockerArgsApplyOnlyToDockerRuntime(t *testing.T) {
+// TestMCPCreateImageServiceKeepsDockerCommand pins w5/073: a prebuilt image's
+// CMD override travels as dockerCommand on MCP exactly as on REST (w4/188).
+// MCP once applied dockerCommand only on the docker runtime, so an image
+// service created over MCP silently lost its command and crash-looped.
+func TestMCPCreateImageServiceKeepsDockerCommand(t *testing.T) {
+	const cmd = "/http-echo -listen=:3000 -text=ok"
+	svc, cl := newService(nil)
+	call := dockerArgsMCP(t, svc)
+	if isErr, msg := call("create_web_service", map[string]any{
+		"name": "echo", "runtime": "image", "image": "hashicorp/http-echo:0.2.3", "dockerCommand": cmd,
+	}); isErr {
+		t.Fatalf("create_web_service image with dockerCommand refused: %s", msg)
+	}
+
+	restSvc, restCl := newService(nil)
+	mux := http.NewServeMux()
+	restSvc.RegisterREST(mux)
+	body := `{"name":"echo","type":"web_service","image":{"imagePath":"hashicorp/http-echo:0.2.3"},"serviceDetails":{"runtime":"image","plan":"free",` +
+		`"envSpecificDetails":{"dockerCommand":"` + cmd + `"}}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("REST image create = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if mcpCmd, restCmd := getApp(t, cl, "echo").Spec.StartCommand, getApp(t, restCl, "echo").Spec.StartCommand; mcpCmd != cmd || restCmd != cmd {
+		t.Fatalf("startCommand MCP=%q REST=%q, want both %q", mcpCmd, restCmd, cmd)
+	}
+}
+
+// An image cron's command is its run command in either spelling, as REST's
+// cron bridge has it; the runtime matches case-insensitively, as the core's.
+func TestMCPCreateImageCronJobCommandIsTheRunCommand(t *testing.T) {
+	for _, args := range []map[string]any{
+		{"runtime": "image", "dockerCommand": "echo tick"},
+		{"runtime": "Image", "dockerCommand": "echo tick"},
+		{"runtime": "image", "startCommand": "echo tick"},
+	} {
+		svc, cl := newService(nil)
+		call := dockerArgsMCP(t, svc)
+		args["name"], args["schedule"], args["image"] = "tick", "0 * * * *", "busybox:1.36"
+		if isErr, msg := call("create_cron_job", args); isErr {
+			t.Fatalf("create_cron_job %v refused: %s", args, msg)
+		}
+		if got := getApp(t, cl, "tick").Spec.Command; got != "echo tick" {
+			t.Fatalf("image cron %v command = %q, want echo tick", args, got)
+		}
+	}
+}
+
+// A blank dockerCommand is absent: it neither replaces a real startCommand nor
+// trips the both-spellings refusal.
+func TestMCPCreateImageBlankDockerCommandKeepsStartCommand(t *testing.T) {
+	svc, cl := newService(nil)
+	call := dockerArgsMCP(t, svc)
+	if isErr, msg := call("create_web_service", map[string]any{
+		"name": "web", "runtime": "image", "image": "nginx:alpine", "startCommand": "nginx -g 'daemon off;'", "dockerCommand": "   ",
+	}); isErr {
+		t.Fatalf("blank dockerCommand refused: %s", msg)
+	}
+	if got := getApp(t, cl, "web").Spec.StartCommand; got != "nginx -g 'daemon off;'" {
+		t.Fatalf("startCommand = %q, want the real startCommand kept", got)
+	}
+}
+
+// TestMCPCreateDockerArgsInertOnNativeRuntime pins upstream's "Applies when
+// runtime is 'docker'" (and REST's identical rule): on a native runtime both
+// args are inert, so a call that succeeds against Render succeeds here with the
+// native commands untouched.
+func TestMCPCreateDockerArgsInertOnNativeRuntime(t *testing.T) {
 	web := createWebServiceArgs{
 		Name: "w", Repo: "https://github.com/x/w", Runtime: "node",
 		BuildCommand: "npm ci", StartCommand: "npm start",
@@ -158,6 +226,12 @@ func TestMCPCreateDockerArgsRefusals(t *testing.T) {
 		{"cron dockerCommand with startCommand", "create_cron_job", map[string]any{
 			"name": "job", "schedule": "0 0 * * *", "repo": "https://github.com/x/job", "runtime": "docker", "dockerCommand": "bin/a", "startCommand": "bin/b",
 		}, "cannot set both dockerCommand and startCommand"},
+		{"image dockerCommand with startCommand", "create_web_service", map[string]any{
+			"name": "web", "runtime": "image", "image": "nginx:alpine", "dockerCommand": "bin/a", "startCommand": "bin/b",
+		}, "cannot set both dockerCommand and startCommand"},
+		{"image cron dockerCommand with command", "create_cron_job", map[string]any{
+			"name": "job", "schedule": "0 0 * * *", "runtime": "image", "image": "busybox:1.36", "dockerCommand": "bin/a", "command": "bin/b",
+		}, "cannot set both dockerCommand and command"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
