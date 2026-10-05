@@ -972,8 +972,8 @@ func TestRESTSetPostgresPlan(t *testing.T) {
 	}
 	var pg PostgresView
 	_ = json.Unmarshal(w.Body.Bytes(), &pg)
-	if pg.Plan != "basic-1gb" {
-		t.Errorf("plan in view = %q, want basic-1gb", pg.Plan)
+	if pg.Plan != "basic_1gb" { // Render's REST enum spelling (w8/057)
+		t.Errorf("plan in view = %q, want basic_1gb", pg.Plan)
 	}
 	var got appv1alpha1.Database
 	_ = cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "plan-db"}, &got)
