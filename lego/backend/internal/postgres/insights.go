@@ -335,7 +335,8 @@ func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Data
 	if uri == "" {
 		return QueryResult{}, core.ErrNotFound
 	}
-	return runReadOnlyQuery(ctx, uri, sql, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap})
+	return runReadOnlyQuery(ctx, uri, sql, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap,
+		serverSettings: sql == sqlParameterOverrides})
 }
 
 // strVal extracts a string from a pgx any value (nil → "").

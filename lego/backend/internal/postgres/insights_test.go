@@ -341,6 +341,29 @@ func TestParameterOverridesIntegration(t *testing.T) {
 		t.Fatalf("ParameterOverrides => %v", err)
 	}
 	t.Logf("ParameterOverrides returned %d rows", len(out))
+	// w4/185: the probe's own session rails must not read back as the
+	// database's settings — a declared statement_timeout looked unapplied
+	// because the probe reported its own 10000 ms from source "client".
+	for _, row := range out {
+		if row.Source == "client" && (row.Name == "statement_timeout" || row.Name == "default_transaction_read_only") {
+			t.Errorf("ParameterOverrides published the probe session's own %s=%s (source client)", row.Name, row.Setting)
+		}
+	}
+}
+
+// The pg_settings read dials without the session rails; every other insight
+// and the console keep them (TestInsightConnectionKeepsItsReadOnlyRails).
+func TestServerSettingsReadDialsWithoutSessionRails(t *testing.T) {
+	cfg, err := buildQueryConnConfig("postgres://u:p@localhost:5432/db?sslmode=disable",
+		queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap, serverSettings: true}, true)
+	if err != nil {
+		t.Fatalf("buildQueryConnConfig => %v", err)
+	}
+	for _, k := range []string{"statement_timeout", "default_transaction_read_only"} {
+		if v, ok := cfg.RuntimeParams[k]; ok {
+			t.Errorf("server-settings read pins %s=%q; pg_settings would report it as the database's", k, v)
+		}
+	}
 }
 
 // TestInsightQueryTimeout verifies that the statement-timeout envelope applies

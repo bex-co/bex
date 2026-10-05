@@ -192,6 +192,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **185** — [Insights/SQL console show the probe's own session rails as observed parameter values](done/185.md) ← infinite /qa-find-bugs loop9 2026-10-04 UTC — done 2026-10-04.
+
 - [x] **184** — [Database detail minor UI nits (disk-autoscaling SR dupe + stale password alert)](done/184.md) ← infinite /qa-find-bugs loop7 2026-10-04 UTC — done 2026-10-04.
 
 - [ ] **188** — [REST create may drop an image service's `envSpecificDetails.dockerCommand`](188.md) ← w4/m166 t003 parity check 2026-10-04; verify Render's image-runtime shape, then accept it on create or delete.
