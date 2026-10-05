@@ -66,6 +66,10 @@ jobs:
       # proven here on every push, not only when the daily job happens to run.
       - name: CI red-streak detector self-test
         run: bash scripts/ci-red-streak.test.sh
+      # w5/m112: /ship's pre-push gate refuses to stack commits on a red main
+      # unless the push is the fix; proven with a stubbed gh, no network.
+      - name: ship gates self-test
+        run: bash scripts/ship-gates.test.sh
       # w3/042. Its sibling for a probe that is green but late. Two things are
       # proven on every push rather than only when the daily job runs: every
       # scheduled workflow declares a drift window (a new probe without one

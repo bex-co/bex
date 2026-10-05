@@ -131,6 +131,10 @@ jobs:
           BEX_TEST_OPENFGA_URL: http://localhost:8080
           BEX_TEST_OPENBAO_KV_URL: http://localhost:8200
           BEX_TEST_OPENBAO_KV_TOKEN: backend-test-only
+          # This job provisions every dependency above (and promtool): a test
+          # that would skip for want of one fails here instead (testenv.Skip,
+          # w5/m112), so the job can't quietly stop running it.
+          BEX_TEST_REQUIRE_DEPS: "1"
         # The integration packages share this one ephemeral database, and
         # legacy store suites intentionally TRUNCATE their fixtures. Serialize
         # package test binaries so those resets cannot erase another package's

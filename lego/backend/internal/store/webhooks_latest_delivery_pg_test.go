@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // TestWebhookEndpointLatestDeliveryIsTheSameOnEveryRead is w4/117: the
@@ -40,7 +41,7 @@ import (
 func TestWebhookEndpointLatestDeliveryIsTheSameOnEveryRead(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -139,7 +140,7 @@ func TestWebhookEndpointLatestDeliveryIsTheSameOnEveryRead(t *testing.T) {
 func TestWebhookEndpointWorkspaceRoutesByID(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {

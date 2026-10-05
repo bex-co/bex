@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // newBillingTestStore is the shared harness for the billing outbox/exclusion
@@ -36,7 +37,7 @@ func newBillingTestStore(t *testing.T) (*PGStore, context.Context) {
 	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {

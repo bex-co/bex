@@ -25,7 +25,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **071** — [Reserved Postgres roles miss CNPG's `cnpg_` prefix](done/071.md) (~40m) ← gap in `faf2ca1f6` (w4/m170) — **DONE 2026-10-05**: `cnpg_*`, `public` and `none` reserved in types + dashboard; every caller refuses them.
 - [x] **072** — [Blueprint apply skips the card requirement for free-only stacks](done/072.md) (~45m) ← pre-existing; ADR075 D7 — **DONE 2026-10-05**: Blueprint deploy/sync/connect go through core's `RequireBillingFor`, so all-plans mode refuses cardless free stacks.
 - [x] **073** — [MCP create drops `dockerCommand` for image services](done/073.md) (~40m) ← REST fixed in `4fe79515b` (w4/188); MCP not — **DONE 2026-10-05**: MCP applies `dockerCommand` on image (and bridges an image cron's command) exactly as REST.
-- [ ] **m112** — [Test gates: no silent skips in CI, the real-DB backend suite runs locally, and /ship won't push onto a red main](m112/README.md) (8 tasks; 4h25m total) ← process; the w4/m172 red-main incident
+- [x] **m112** — [Test gates: no silent skips in CI, the real-DB backend suite runs locally, and /ship won't push onto a red main](done/m112/README.md) (8 tasks; 4h25m total) ← process; the w4/m172 red-main incident — **DONE 2026-10-05**: `testenv.Skip` + strict backend CI, `scripts/backend-test-deps.sh`, `/ship` gates (red main, real-DB suite).
 - [ ] **m113** — [Availability failure edges carry the Ready transition time (re-scopes w4/200)](m113/README.md) (8 tasks; 3h25m total) ← gap in `44a612e8d` (w4/196); likely cause of w4/200
 - [ ] **m114** — [Suspend ends the release it interrupts, not just its deploy row](m114/README.md) (10 tasks; 4h50m total) ← gap in `60ae617b3` (w4/m171)
 - [ ] **m115** — [By-id verbs: one resolver, one 403/404 rule, and a guard that checks types instead of source text](m115/README.md) (10 tasks; 6h total) ← consolidates w4/m169, w4/194, w4/m172, w4/199
@@ -46,6 +46,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **078** — [An invalid `?type=` survives the create route's search validator](078.md) (~25m) ← `1d331d334` (w4/182)
 - [ ] **079** — [A database's unavailable reason should travel as a code the dashboard can translate](079.md) (~50m) ← `faf2ca1f6` (w4/m170)
 - [ ] **080** — [The Blueprint compiler refuses `dockerCommand` on `runtime: image`](080.md) (~45m) ← found in w5/073's review
+- [ ] **081** — [workspaces_e2e's OpenBao purge assertions never run in CI](081.md) (~45m) ← found in w5/m112's review
 
 ## Approved queue — 2026-10-01
 

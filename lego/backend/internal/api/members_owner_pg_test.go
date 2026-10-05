@@ -29,6 +29,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // members_owner_pg_test.go is w5/m101's regression proof against REAL Postgres,
@@ -183,7 +184,7 @@ func ownerGuardPG(t *testing.T) (context.Context, *pgxpool.Pool, *store.PGStore)
 	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := store.Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)

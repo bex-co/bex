@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/members"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // members_owner_e2e_test.go is w5/m101 t009's row↔tuple half, against REAL
@@ -50,7 +51,7 @@ func TestMembershipInvariantsE2E(t *testing.T) {
 	dbURI := os.Getenv("BEX_TEST_DB_URI")
 	fgaURL := os.Getenv("BEX_TEST_OPENFGA_URL")
 	if dbURI == "" || fgaURL == "" {
-		t.Skip("BEX_TEST_DB_URI and BEX_TEST_OPENFGA_URL not both set")
+		testenv.Skip(t, "BEX_TEST_DB_URI and BEX_TEST_OPENFGA_URL not both set")
 	}
 	ctx := context.Background()
 	if err := store.Migrate(dbURI); err != nil {

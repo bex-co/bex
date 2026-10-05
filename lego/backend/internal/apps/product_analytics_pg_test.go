@@ -25,6 +25,7 @@ import (
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"github.com/jackc/pgx/v5/pgxpool"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ func (c *productCertificateClient) Get(ctx context.Context, key client.ObjectKey
 func TestPGObserveProductAppHostingAndCertificates(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := store.Migrate(uri); err != nil {
 		t.Fatal(err)

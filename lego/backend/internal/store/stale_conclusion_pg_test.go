@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // w6/m41 (source .pm/w3/016.md, found by w3/m78's live crash leg): the
@@ -42,7 +44,7 @@ import (
 func TestPGStaleConclusionEmitsNoPhantomPair(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)

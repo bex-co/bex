@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // w2/m96 t001: the retained-name record is what lets a charge line name a
@@ -33,7 +35,7 @@ import (
 func TestResourceDisplayNamesPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)
@@ -167,7 +169,7 @@ func TestResourceDisplayNamesPG(t *testing.T) {
 func TestSandboxUsageMetadataPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)
@@ -273,7 +275,7 @@ func TestSandboxUsageMetadataPG(t *testing.T) {
 func TestSandboxUsageMetadataMeterOnlyPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)

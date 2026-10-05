@@ -28,6 +28,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -43,7 +44,7 @@ import (
 func TestPushWorkerEnqueuesObservedLifecycleFacts(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := store.Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)

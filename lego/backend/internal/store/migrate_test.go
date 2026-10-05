@@ -27,12 +27,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 func TestDomainClaimMigrationRoundTrip(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -115,7 +116,7 @@ func TestDomainClaimMigrationRoundTrip(t *testing.T) {
 func TestCLIRefreshMigrationRoundTrip(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -219,7 +220,7 @@ func TestOwnershipErrorDetectsMisowned(t *testing.T) {
 func TestCheckOwnershipAfterMigration(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatalf("migrate: %v", err)
@@ -244,7 +245,7 @@ func TestCheckOwnershipAfterMigration(t *testing.T) {
 func TestNotificationDeployStartedMigrationRepairsSkippedPrerequisite(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -306,7 +307,7 @@ func TestNotificationDeployStartedMigrationRepairsSkippedPrerequisite(t *testing
 func TestDeployLifecycleMigrationBackfillsOldRows(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -375,7 +376,7 @@ func TestDeployLifecycleMigrationBackfillsOldRows(t *testing.T) {
 func TestDeployOverlapQueueMigrationPreservesActiveOnDown(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -444,7 +445,7 @@ func TestDeployOverlapQueueMigrationPreservesActiveOnDown(t *testing.T) {
 func TestAgentSessionTurnPersistenceMigrationBackfillsRecoverableIntent(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -531,7 +532,7 @@ func TestAgentSessionTurnPersistenceMigrationBackfillsRecoverableIntent(t *testi
 func TestServiceEventIndexMigrationBackfillsAndMaintainsEverySource(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -713,7 +714,7 @@ func TestServiceEventIndexMigrationBackfillsAndMaintainsEverySource(t *testing.T
 func TestEnvironmentAllowListMigrationNormalizesLegacyRows(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -778,7 +779,7 @@ func TestEnvironmentAllowListMigrationNormalizesLegacyRows(t *testing.T) {
 func TestPaymentMethodBoundMigrationAppliesAndRollsBack(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -844,7 +845,7 @@ func TestPaymentMethodBoundMigrationAppliesAndRollsBack(t *testing.T) {
 func TestPushDatastoreEventsMigrationRoundTrips(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -1028,7 +1029,7 @@ func TestBlueprintPathDefaultMigrationUsesCanonicalRenderFilename(t *testing.T) 
 func TestCLITelemetryBexVersionMigrationAppliesAndRollsBack(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)
@@ -1095,7 +1096,7 @@ func TestCLITelemetryBexVersionMigrationAppliesAndRollsBack(t *testing.T) {
 func TestProductActivitySurfaceMigrationAppliesAndRollsBack(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, uri)

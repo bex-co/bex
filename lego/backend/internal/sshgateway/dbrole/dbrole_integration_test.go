@@ -35,6 +35,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // dbrole_integration_test.go is w7/m56/t005: the durable proof of the gateway's
@@ -71,7 +72,7 @@ var sensitiveTables = []string{
 func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	dbURI := os.Getenv("BEX_TEST_DB_URI")
 	if dbURI == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 

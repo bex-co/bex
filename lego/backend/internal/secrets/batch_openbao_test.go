@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // This opt-in suite uses real OpenBao KV v2 with the production store adapter.
@@ -37,7 +38,7 @@ func realBatchBao(t *testing.T) *openBaoStore {
 	t.Helper()
 	addr, token := os.Getenv("BEX_TEST_OPENBAO_KV_URL"), os.Getenv("BEX_TEST_OPENBAO_KV_TOKEN")
 	if addr == "" || token == "" {
-		t.Skip("requires BEX_TEST_OPENBAO_KV_URL and BEX_TEST_OPENBAO_KV_TOKEN")
+		testenv.Skip(t, "requires BEX_TEST_OPENBAO_KV_URL and BEX_TEST_OPENBAO_KV_TOKEN")
 	}
 	mount := fmt.Sprintf("batch-test-%d", time.Now().UnixNano())
 	httpClient := &http.Client{Timeout: 10 * time.Second, Transport: batchBaoTrace{t: t}}

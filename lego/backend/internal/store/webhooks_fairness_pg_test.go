@@ -25,6 +25,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 func TestWebhookDeliveryAdmissionIsBoundedPerWorkspace(t *testing.T) {
@@ -199,7 +200,7 @@ func webhookPGStore(t *testing.T, ctx context.Context) (*PGStore, *pgxpool.Pool)
 	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatal(err)

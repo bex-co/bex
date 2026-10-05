@@ -36,6 +36,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -46,7 +47,7 @@ import (
 func TestPGStore(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 
@@ -1572,7 +1573,7 @@ func assertWorkspaceLifecycle(ctx context.Context, t *testing.T, s *PGStore, poo
 func TestTenantMintIdempotentAndRaceSafe(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -1648,7 +1649,7 @@ func assertOneTenantOneMember(ctx context.Context, t *testing.T, pool *pgxpool.P
 func TestOwnerIDForSubject(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -1686,7 +1687,7 @@ func TestOwnerIDForSubject(t *testing.T) {
 func TestTenantForIdentityAndClient(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -2660,7 +2661,7 @@ func assertDeleteCascades(ctx context.Context, t *testing.T, s *PGStore, pool *p
 func TestMembersAndInvites(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -2761,7 +2762,7 @@ func TestMembersAndInvites(t *testing.T) {
 func TestInviteResendAndTokenAcceptance(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -2891,7 +2892,7 @@ func TestInviteResendAndTokenAcceptance(t *testing.T) {
 func TestClaimShellNonce(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -2938,7 +2939,7 @@ func TestClaimShellNonce(t *testing.T) {
 func TestCLIRefreshStore(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3050,7 +3051,7 @@ func TestCLIRefreshStore(t *testing.T) {
 func TestCheckOwnership(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3097,7 +3098,7 @@ func TestCheckOwnership(t *testing.T) {
 func TestAcceptInviteRespectsPlanLimits(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3188,7 +3189,7 @@ func TestAcceptInviteRespectsPlanLimits(t *testing.T) {
 func TestDefaultWorkspaceIsTheOldestMembership(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3266,7 +3267,7 @@ func TestDefaultWorkspaceIsTheOldestMembership(t *testing.T) {
 func TestNotificationSettings(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3395,7 +3396,7 @@ func TestNotificationSettings(t *testing.T) {
 func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3509,7 +3510,7 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 func TestSandboxKeyCascadesOnTenantDelete(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3559,7 +3560,7 @@ func TestSandboxKeyCascadesOnTenantDelete(t *testing.T) {
 func TestPGGroupingTxRollsBackPartialSets(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3625,7 +3626,7 @@ func TestPGGroupingTxRollsBackPartialSets(t *testing.T) {
 func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3716,7 +3717,7 @@ func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 func TestRedeemingAnInviteNeverRerolesAnExistingMember(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
@@ -3811,7 +3812,7 @@ func TestRedeemingAnInviteNeverRerolesAnExistingMember(t *testing.T) {
 func TestPGAppServiceTypeRoundTrip(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	ctx := context.Background()
 	if err := Migrate(uri); err != nil {
