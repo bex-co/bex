@@ -16,6 +16,7 @@
   { "schedule": "0 0 * * MON-FRI", "valid": true },
   { "schedule": "59 23 31 12 6", "valid": true },
   { "schedule": "05 * * * *", "valid": true },
+  { "schedule": "00000000000000000000005 * * * *", "valid": true, "why": "leading zeros don't count toward strconv.Atoi's int64 overflow" },
   { "schedule": "1-10/3 * * * *", "valid": true },
   { "schedule": "*/100 * * * *", "valid": true, "why": "a step wider than the range still names its start" },
   { "schedule": "5/15 * * * *", "valid": true, "why": "robfig reads N/step as N-max/step" },
@@ -70,7 +71,7 @@
   { "schedule": "0 0 29 2 *", "valid": true },
   { "schedule": "0 0 31 1 *", "valid": true },
   { "schedule": "0 0 31 2,3 *", "valid": true },
-  { "schedule": "0 0 31 2 1", "valid": true },
+  { "schedule": "0 0 31 2 1", "valid": true, "why": "a restricted day-of-week ORs with day-of-month, so Mondays in February still fire" },
   { "schedule": "0 0 31 2 */2", "valid": true },
   { "schedule": "0 0 31 2 */1", "valid": false },
   { "schedule": "0 0 31 2 ?", "valid": false }

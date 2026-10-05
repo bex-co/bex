@@ -10,9 +10,8 @@ import { EditableFieldRow } from "@/features/services/components/editable-field-
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
-  cronNeverFires,
+  cronScheduleProblem,
   describeCron,
-  isValidCron,
 } from "@/features/services/lib/cron";
 
 export interface CronDeploySectionProps {
@@ -80,9 +79,10 @@ export function CronDeploySection({
           validate={(draft) => {
             const sched = draft.trim();
             if (!sched) return t("services.deployScheduleRequired");
-            if (cronNeverFires(sched))
+            const problem = cronScheduleProblem(sched);
+            if (problem === "never_fires")
               return t("services.cronScheduleNeverFires");
-            if (!isValidCron(sched)) return t("services.deployScheduleError");
+            if (problem === "format") return t("services.deployScheduleError");
             return null;
           }}
           describe={(value) => {

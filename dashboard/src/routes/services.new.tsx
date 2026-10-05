@@ -32,9 +32,8 @@ import { TextField } from "@/common/components/text-field";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
 import {
-  cronNeverFires,
+  cronScheduleProblem,
   describeCron,
-  isValidCron,
 } from "@/features/services/lib/cron";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
@@ -88,10 +87,10 @@ export function NewServicePage() {
   const shape = buildShape(form);
   const createCopy = serviceTypeCreateCopy(form.serviceType);
 
-  const scheduleError =
-    shape.isCronType &&
-    form.schedule.trim() !== "" &&
-    !isValidCron(form.schedule);
+  const scheduleProblem =
+    shape.isCronType && form.schedule.trim() !== ""
+      ? cronScheduleProblem(form.schedule)
+      : null;
   const scheduleDescription = shape.isCronType
     ? describeCron(form.schedule)
     : null;
@@ -346,11 +345,11 @@ export function NewServicePage() {
                           : t("services.createFieldScheduleHint")
                       }
                       error={
-                        scheduleError
-                          ? cronNeverFires(form.schedule)
-                            ? t("services.cronScheduleNeverFires")
-                            : t("services.createFieldScheduleError")
-                          : undefined
+                        scheduleProblem === "never_fires"
+                          ? t("services.cronScheduleNeverFires")
+                          : scheduleProblem === "format"
+                            ? t("services.createFieldScheduleError")
+                            : undefined
                       }
                     />
                     <TextField
