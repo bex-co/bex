@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { describeCron, isValidCron } from "@/features/services/lib/cron";
+import {
+  cronScheduleProblem,
+  describeCron,
+  isValidCron,
+} from "@/features/services/lib/cron";
 
 // The one acceptance table for a cron schedule. bex-api's validCronSchedule is
 // tested against the same file (lego/backend/internal/apps/
@@ -25,6 +29,41 @@ describe("isValidCron", () => {
   it("is checked against a non-trivial table", () => {
     expect(VECTORS.filter((v) => v.valid).length).toBeGreaterThanOrEqual(10);
     expect(VECTORS.filter((v) => !v.valid).length).toBeGreaterThanOrEqual(10);
+  });
+});
+
+// isValidCron's vector table above already runs every row through
+// cronScheduleProblem; these pin which refusal each draft gets, which the
+// settings editor computes on every keystroke (w5/070: classifying "*/0 * * * *"
+// used to expand the zero step forever).
+describe("cronScheduleProblem", () => {
+  it("calls a schedule robfig cannot parse a format error, never a never-firing one", () => {
+    for (const schedule of [
+      "*/0 * * * *",
+      "0 0 1-99999999 * *",
+      "9007199254740993 * * * *",
+      "* * 32 * *",
+      "* * * 13 *",
+      "5-2 * * * *",
+      "0 0 99 2 *",
+      "* * *",
+      "",
+    ]) {
+      expect(cronScheduleProblem(schedule), schedule).toBe("format");
+    }
+  });
+
+  it("calls a schedule that parses but has no date to fire on never_fires", () => {
+    for (const schedule of [
+      "0 0 31 2 *",
+      "0 0 30,31 2 *",
+      "0 0 31 2,4,6,9,11 *",
+      "0 0 31 2 ?",
+      "0 0 31 2 */1",
+      ", * * * *",
+    ]) {
+      expect(cronScheduleProblem(schedule), schedule).toBe("never_fires");
+    }
   });
 });
 

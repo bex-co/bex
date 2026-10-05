@@ -127,6 +127,55 @@ describe("CronDeploySection", () => {
     expect(updateCronJob).not.toHaveBeenCalled();
   });
 
+  // w5/070: changing "*/30" to "*/15" by deleting the 3 first passes through
+  // "*/0 * * * *". Classifying that draft used to expand a zero step forever,
+  // freezing the tab; it is a format error like any other unparseable draft.
+  it("shows the format error for a zero step instead of hanging", async () => {
+    const user = userEvent.setup();
+    render(
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="*/30 * * * *"
+        command={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
+    await user.type(schedInput, "{Backspace}", {
+      initialSelectionStart: 3,
+      initialSelectionEnd: 3,
+    });
+
+    expect(schedInput).toHaveValue("*/0 * * * *");
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByText(/valid.*5-field/i)).toBeInTheDocument();
+    expect(updateCronJob).not.toHaveBeenCalled();
+  });
+
+  it("names a schedule that parses but never fires, and an out-of-range day as a format error", async () => {
+    const user = userEvent.setup();
+    render(
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
+    await user.clear(schedInput);
+    await user.type(schedInput, "0 0 31 2 *");
+    expect(screen.getByText(/never fires/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+
+    await user.clear(schedInput);
+    await user.type(schedInput, "0 0 99 2 *");
+    expect(screen.queryByText(/never fires/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/valid.*5-field/i)).toBeInTheDocument();
+  });
+
   it("shows a human-readable preview of the current schedule", () => {
     render(
       <CronDeploySection

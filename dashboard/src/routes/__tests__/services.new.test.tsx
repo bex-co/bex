@@ -1335,20 +1335,46 @@ describe("NewServicePage", () => {
       ).toBeInTheDocument();
     });
 
-    it("keeps Deploy disabled and shows error for a 5-field schedule with out-of-range values", async () => {
-      // The 99 99 * * * bug: 5 fields but minute/hour out of range. A
-      // field-count-only check let this through to the operator, which flipped
-      // the service to Failed. The form must refuse it up front.
+    // "99 99 * * *": five fields but minute/hour out of range; a field-count-only
+    // check let it through to the operator, which flipped the service to Failed.
+    // "*/0 * * * *": classifying a zero step used to expand it forever, freezing
+    // the tab (w5/070). Repo and command are filled, so the schedule alone
+    // keeps Deploy disabled.
+    it.each(["99 99 * * *", "*/0 * * * *"])(
+      "keeps Deploy disabled and shows the format error for %j",
+      async (schedule) => {
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(
+          await screen.findByRole("radio", { name: /Cron Job/i }),
+        );
+        await user.click(
+          await screen.findByRole("button", {
+            name: /acme-corp\/web-frontend/,
+          }),
+        );
+        await user.type(screen.getByLabelText("Start Command"), "npm run job");
+        await user.type(screen.getByLabelText("Schedule"), schedule);
+        expect(
+          screen.getByRole("button", { name: /Deploy Service/i }),
+        ).toBeDisabled();
+        expect(
+          screen.getByText(/valid 5-field cron expression/i),
+        ).toBeInTheDocument();
+      },
+    );
+
+    it("tells a never-firing schedule apart from an out-of-range one", async () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
-      await user.click(
-        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
-      );
-      await user.type(screen.getByLabelText("Schedule"), "99 99 * * *");
-      expect(
-        screen.getByRole("button", { name: /Deploy Service/i }),
-      ).toBeDisabled();
+      const schedule = screen.getByLabelText("Schedule");
+      await user.type(schedule, "0 0 31 2 *");
+      expect(screen.getByText(/never fires/i)).toBeInTheDocument();
+
+      await user.clear(schedule);
+      await user.type(schedule, "0 0 99 2 *");
+      expect(screen.queryByText(/never fires/i)).not.toBeInTheDocument();
       expect(
         screen.getByText(/valid 5-field cron expression/i),
       ).toBeInTheDocument();
