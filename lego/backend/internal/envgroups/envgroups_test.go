@@ -1625,3 +1625,47 @@ func TestCreateEnvGroupPerWorkspaceQuota(t *testing.T) {
 		t.Fatalf("create after freeing a slot: %v", err)
 	}
 }
+
+// w4/183: deleting a linked service must not strand its row in the group —
+// unlink drops a link whose service is gone, like DeleteEnvGroup's detach.
+func TestEnvGroup_UnlinkDropsALinkWhoseServiceWasDeleted(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
+	ctx := context.Background()
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+		t.Fatalf("LinkService: %v", err)
+	}
+	if err := svc.Client.Delete(ctx, getApp(t, svc.Client, "web")); err != nil {
+		t.Fatalf("delete service: %v", err)
+	}
+
+	if err := svc.UnlinkService(ctx, g.ID, "web"); err != nil {
+		t.Fatalf("UnlinkService after the service was deleted = %v, want nil", err)
+	}
+	if got, _ := svc.GetEnvGroup(ctx, g.ID); len(got.ServiceLinks) != 0 {
+		t.Fatalf("group should forget the deleted service: %+v", got.ServiceLinks)
+	}
+	// A name the group never linked still reports not found.
+	if err := svc.UnlinkService(ctx, g.ID, "never-linked"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("unlink of an unknown, unlinked service = %v, want ErrNotFound", err)
+	}
+}
+
+// The stale-link path trusts only true absence: AuthorizeApp also answers not
+// found for a service hidden from the caller, and such a link must survive.
+func TestEnvGroup_StaleUnlinkKeepsALinkWhoseServiceStillExists(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
+	ctx := context.Background()
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+		t.Fatalf("LinkService: %v", err)
+	}
+
+	err := svc.unlinkDeletedService(ctx, g.ID, "web", core.ErrNotFound)
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("stale unlink of a live service = %v, want the not-found answer kept", err)
+	}
+	if got, _ := svc.GetEnvGroup(ctx, g.ID); !slices.Equal(got.ServiceLinks, []string{"web"}) {
+		t.Fatalf("a live service's link must survive: %+v", got.ServiceLinks)
+	}
+}
