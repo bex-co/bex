@@ -198,12 +198,13 @@ func TestEnvVars_RoundTripAndMaterialize(t *testing.T) {
 	if _, ok := getSecret(t, svc.Client, "web-env").Data["FOO"]; ok {
 		t.Fatal("FOO lingered in materialized Secret")
 	}
-	// Removing the last key deletes the OpenBao path outright (storeEnv).
+	// Removing the last key leaves an empty map, written as data — never a KV
+	// metadata delete, which silently failed to restore an empty set (w4/m168).
 	if err := svc.DeleteEnvVar(ctx, "web", "APP_KEY"); err != nil {
 		t.Fatalf("DeleteEnvVar last: %v", err)
 	}
-	if store.deletes != 1 || len(store.m[envPath("web")]) != 0 {
-		t.Errorf("emptying the set should DeleteEnv once: deletes=%d m=%+v", store.deletes, store.m[envPath("web")])
+	if store.deletes != 0 || len(store.m[envPath("web")]) != 0 {
+		t.Errorf("emptying the set should write an empty map: deletes=%d m=%+v", store.deletes, store.m[envPath("web")])
 	}
 }
 

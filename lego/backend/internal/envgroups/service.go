@@ -545,8 +545,8 @@ func prepareCreateFiles(files []SecretFileView) (map[string]string, error) {
 	out := make(map[string]string, len(files))
 	for _, input := range files {
 		name := strings.TrimSpace(input.Name)
-		if !core.ValidSecretFileName(name) {
-			return nil, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
+		if err := core.CheckSecretFileName(name); err != nil {
+			return nil, err
 		}
 		out[name] = input.Content
 	}
@@ -998,8 +998,8 @@ func (s *Service) SetEnvGroupFile(ctx context.Context, gid, name, content string
 		return SecretFileView{}, err
 	}
 	name = strings.TrimSpace(name)
-	if !core.ValidSecretFileName(name) {
-		return SecretFileView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
+	if err := core.CheckSecretFileName(name); err != nil {
+		return SecretFileView{}, err
 	}
 	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{
 		SecretFiles: []SecretFilePatch{{Name: name, Content: content}}, SaveMode: SaveModeDeploy,

@@ -1669,3 +1669,22 @@ func TestEnvGroup_StaleUnlinkKeepsALinkWhoseServiceStillExists(t *testing.T) {
 		t.Fatalf("a live service's link must survive: %+v", got.ServiceLinks)
 	}
 }
+
+// w4/m168: an over-long group secret-file name or key is a 400 before
+// anything is written — previously the Secret write failed and the group
+// answered 409 ENV_GROUP_UPDATE_RESTORED.
+func TestEnvGroup_OverLongNamesAreBadRequests(t *testing.T) {
+	svc := newService(newFakeStore())
+	ctx := context.Background()
+	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	long := strings.Repeat("f", core.MaxConfigKeyLength+1)
+	if _, err := svc.SetEnvGroupFile(ctx, g.ID, long, "c"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("SetEnvGroupFile(254) = %v, want ErrBadRequest", err)
+	}
+	if _, err := svc.SetEnvGroupVar(ctx, g.ID, "K"+long[1:], "v"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("SetEnvGroupVar(254) = %v, want ErrBadRequest", err)
+	}
+	if _, err := svc.SetEnvGroupFile(ctx, g.ID, long[1:], "c"); err != nil {
+		t.Fatalf("SetEnvGroupFile(253) = %v, want success", err)
+	}
+}
