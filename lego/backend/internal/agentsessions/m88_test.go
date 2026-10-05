@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -76,7 +75,11 @@ func TestCompleterTurnDurationIgnoresPinRewrite(t *testing.T) {
 	}
 }
 
-// Two Completers racing Finalize yield exactly one outcome observation.
+// Two Completer replicas that both listed the running row yield exactly one
+// outcome observation: the store's finalize CAS lets one win, and the loser
+// must not observe. Sequential on purpose — the store decides the race, and
+// the PG CAS itself is proven in store_pg_test.go; the in-memory fake is not
+// safe to race from goroutines.
 func TestCompleterDoubleFinalizeObservesOnce(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	metrics := NewCompletionMetrics(reg)
@@ -86,15 +89,9 @@ func TestCompleterDoubleFinalizeObservesOnce(t *testing.T) {
 	base := st.now
 	c.Now = func() time.Time { return base.Add(5 * time.Second) }
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	for range 2 {
-		go func() {
-			defer wg.Done()
-			c.Reconcile(context.Background())
-		}()
-	}
-	wg.Wait()
+	listed := st.rows[id]
+	c.finalize(context.Background(), listed)
+	c.finalize(context.Background(), listed)
 	if st.rows[id].Phase != PhaseFailed {
 		t.Fatalf("phase = %s", st.rows[id].Phase)
 	}
