@@ -1047,13 +1047,12 @@ func (s *Service) recordSourceHealth(ctx context.Context, workspaceID, resourceK
 
 // --- t002: Prometheus rollup queries ---
 
-// queryInstanceSeconds returns how many seconds at least one container for the
-// app was running in [start, end), using cAdvisor's
+// queryInstanceSeconds returns the app's pods' running seconds in [start, end),
+// summed per pod (instanceSecondsQuery), using cAdvisor's
 // container_memory_working_set_bytes as a presence signal (the same matcher as
 // the metrics feature's instance-count query — egressquery.PodNameMatcher is
 // shared with metrics/source.go precisely so a service can never be charged for
-// pods its Metrics page does not chart, or the reverse). The result is
-// count-of-present-pods × window-seconds, truncated to an integer.
+// pods its Metrics page does not chart, or the reverse).
 //
 // crName is the App's Kubernetes object name (core.CRName(tenant, name)), which
 // is what its ReplicaSet pods are named after — not the workspace-scoped
@@ -1109,21 +1108,31 @@ func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, 
 
 // instanceSampleStepSeconds is the resolution instance-seconds are measured
 // at: the kubernetes-cadvisor scrape interval (deploy/gitops/base/prometheus.yaml).
-// Each pod is credited one step per evaluation point it was present at, so a
-// pod's metered time is its lifetime in the window to within one step.
+// Each pod is credited one step per evaluation point it reported near, so a
+// pod's metered time is its lifetime in the window to within three steps.
 const instanceSampleStepSeconds = 15
+
+// instanceLivenessSeconds is how recently a pod must have reported for a step
+// to count it. cAdvisor samples carry their own timestamps, so no staleness
+// marker ends a deleted pod's series (w4/m110): a bare instant selector at each
+// step would carry its last sample forward for Prometheus's 5-minute lookback
+// and bill every terminated pod ~285 s more than it ran. The samples are also
+// stamped at kubelet housekeeping (10 s, jittered up to 2x), so stored samples
+// can sit ~34 s apart even with every scrape landing; three scrape intervals
+// cover that plus a missed scrape, and one second short keeps the bound off the
+// 15 s grid, so Prometheus 2.x's closed range and 3.x's left-open range agree.
+// It is deliberately tighter than the Metrics page's 90 s instanceLivenessWindow
+// (metrics/source.go): a chart wants continuity across scrape gaps, a meter
+// wants a terminated pod billed at most 44 s past its last sample.
+const instanceLivenessSeconds = 3*instanceSampleStepSeconds - 1
 
 // instanceSecondsQuery is the running-time measure (w4/m173): per POD — the
 // max by (pod) collapses a pod's containers (an App's one, Valkey's server +
-// exporter sidecar, CNPG's instance) into one presence series — count the
-// 15 s steps of the window the pod existed at, sum across pods, and scale by
-// the step. A pod alive 5 minutes reads ~300, a full-hour pod 3600, two
-// replicas 7200, and a rollout adds only the seconds old and new pods
-// actually co-ran. Staleness markers end a deleted pod's series promptly.
-//
-// The previous count(avg_over_time(...))×window counted container SERIES
-// seen at any moment of the hour and billed each a full window, so every
-// short-lived pod, sidecar, and replacement pod was metered as one hour.
+// exporter sidecar, CNPG's instance, a restarted container's new series) into
+// one presence series — count the 15 s steps of the window at which the pod
+// reported within instanceLivenessSeconds, sum across pods, and scale by the
+// step. A pod alive 5 minutes reads ~300, a full-hour pod 3600, two replicas
+// 7200, and a rollout adds only the seconds old and new pods actually co-ran.
 //
 // The range is one second short of the window: Prometheus 2.x subqueries
 // include an aligned left endpoint, so a full [3600s:15s] holds 241 steps and
@@ -1131,8 +1140,8 @@ const instanceSampleStepSeconds = 15
 // steps, (start, end], so consecutive hours partition with no shared step.
 func instanceSecondsQuery(matchers string, windowSecs int64) string {
 	return fmt.Sprintf(
-		`sum(count_over_time((max by (pod) (container_memory_working_set_bytes{%s}))[%ds:%ds]))`,
-		matchers, windowSecs-1, instanceSampleStepSeconds)
+		`sum(count_over_time((max by (pod) (count_over_time(container_memory_working_set_bytes{%s}[%ds])))[%ds:%ds]))`,
+		matchers, instanceLivenessSeconds, windowSecs-1, instanceSampleStepSeconds)
 }
 
 // queryInstanceSecondsByMatcher is the shared cAdvisor instant-query body:

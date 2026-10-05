@@ -99,6 +99,16 @@ jobs:
             quay.io/openbao/openbao:2.5.5@sha256:6150c4a6b62067db6141c8da7a6a6b5763f4f47c315343d0c848b40fecdfd452 \
             server -dev -dev-listen-address=0.0.0.0:8200
           timeout 60 bash -c 'until curl -sf http://localhost:8200/v1/sys/health; do sleep 2; done'
+      - name: install promtool # TestInstanceSecondsQueryOnPrometheus runs the billing query in Prometheus's engine (w5/m111); 2.x ranges like the live 2.54.1 server, same pin as gitops.yml
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSL -o "$RUNNER_TEMP/prometheus.tar.gz" \
+            https://github.com/prometheus/prometheus/releases/download/v2.55.1/prometheus-2.55.1.linux-arm64.tar.gz
+          echo "af43368bc6379c3c8bd5ac0b82208060bba22267bf01ad3ab5df56ad5725bf88  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/prometheus.tar.gz" -C "$RUNNER_TEMP" prometheus-2.55.1.linux-arm64/promtool
+          install -m755 -D "$RUNNER_TEMP/prometheus-2.55.1.linux-arm64/promtool" \
+            "$RUNNER_TEMP/bin/promtool"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       # TestRenderConformance (internal/api/conformance_test.go) validates bex's
       # REST responses against the pinned Render OpenAPI schemas in
       # internal/api/testdata/render-openapi.json. It runs as part of go test
