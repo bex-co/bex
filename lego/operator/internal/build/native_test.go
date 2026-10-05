@@ -270,18 +270,36 @@ func TestNativeEnvironmentRoundTrip(t *testing.T) {
 	}
 }
 
+// runNativeBuildShell plays the generated Dockerfile's env loader (its COPY
+// heredoc) and RUN locally, with the secret mount pointed at bundle.
 func runNativeBuildShell(t *testing.T, o Options, bundle string) ([]byte, error) {
 	t.Helper()
+	loader := filepath.Join(t.TempDir(), "load-env")
+	var heredoc []string
+	inHeredoc := false
 	for line := range strings.SplitSeq(nativeDockerfile(o), "\n") {
-		if !strings.HasPrefix(line, "RUN ") {
-			continue
+		switch {
+		case line == "COPY <<'"+nativeEnvLoaderEOF+"' "+nativeEnvLoaderPath:
+			inHeredoc = true
+		case inHeredoc && line == nativeEnvLoaderEOF:
+			inHeredoc = false
+			script := strings.ReplaceAll(strings.Join(heredoc, "\n")+"\n", nativeEnvSecretPath, bundle)
+			if err := os.WriteFile(loader, []byte(script), 0600); err != nil {
+				t.Fatal(err)
+			}
+		case inHeredoc:
+			heredoc = append(heredoc, line)
+		case strings.HasPrefix(line, "RUN "):
+			if heredoc == nil {
+				t.Fatal("RUN precedes the env loader")
+			}
+			var args []string
+			if err := json.Unmarshal([]byte(line[strings.Index(line, "["):]), &args); err != nil {
+				t.Fatal(err)
+			}
+			args[2] = strings.Replace(args[2], nativeEnvLoaderPath, loader, 1)
+			return exec.Command(args[0], args[1:]...).CombinedOutput()
 		}
-		var args []string
-		if err := json.Unmarshal([]byte(line[strings.Index(line, "["):]), &args); err != nil {
-			t.Fatal(err)
-		}
-		args[2] = strings.ReplaceAll(args[2], "/run/secrets/render-env", bundle)
-		return exec.Command(args[0], args[1:]...).CombinedOutput()
 	}
 	t.Fatal("missing native RUN")
 	return nil, nil
@@ -617,5 +635,69 @@ func TestNativeEnvironmentRejectsInvalidBase64(t *testing.T) {
 	out, err := runNativeBuildShell(t, o, bundle)
 	if err == nil || len(out) != 0 {
 		t.Fatalf("invalid bundle must fail silently before build: err=%v, output=%q", err, out)
+	}
+}
+
+// w8/052: BuildKit names a failed RUN by its process string, which the failure
+// summary quotes. The RUN must carry only the tenant's command behind one
+// source line; the env loader lives in a COPY heredoc before it.
+func TestNativeDockerfileRunNamesOnlyTheBuildCommand(t *testing.T) {
+	o := nativeOptions()
+	o.NativeEnvRevision = "1"
+	var run string
+	for line := range strings.SplitSeq(nativeDockerfile(o), "\n") {
+		if strings.HasPrefix(line, "RUN ") {
+			run = line
+		}
+	}
+	want := `["/bin/bash","-c",". /opt/bex/load-env\nnpm ci && npm run build"]`
+	if !strings.HasSuffix(run, want) {
+		t.Fatalf("RUN = %s, want it to end %s", run, want)
+	}
+	for _, internal := range []string{"bex-native-env-rev", "while IFS", "base64 -d", "/run/secrets/render-env ["} {
+		if strings.Contains(run[strings.Index(run, "["):], internal) {
+			t.Errorf("RUN process string carries %q: %s", internal, run)
+		}
+	}
+}
+
+func TestNativeCommandFailureNamesTheCommand(t *testing.T) {
+	// Captured from a real BuildKit build of the generated shape.
+	tail := `#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\necho qa7-marker; exit 3"]
+0.101 qa7-marker
+------
+ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-env\necho qa7-marker; exit 3" did not complete successfully: exit code: 3`
+	got := nativeCommandFailure(tail)
+	if !strings.HasSuffix(got, "ERROR: failed to build: build command 'echo qa7-marker; exit 3' exited with code 3") ||
+		!strings.Contains(got, "0.101 qa7-marker") ||
+		!strings.HasPrefix(got, "#12 [stage-0 5/5] RUN build command 'echo qa7-marker; exit 3'\n") {
+		t.Fatalf("rewritten tail =\n%s", got)
+	}
+	for _, internal := range []string{"bex-native-env-rev", "/run/secrets/render-env", "base64 -d", "while IFS= read", "load-env"} {
+		if strings.Contains(got, internal) {
+			t.Errorf("rewritten tail still carries %q:\n%s", internal, got)
+		}
+	}
+	// With secret-file mounts, and BuildKit's "> [step] RUN …:" error header.
+	header := `> [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env --mount=type=secret,id=bex-file-0,target=/etc/secrets/.npmrc,required=true ["/bin/bash","-c",". /opt/bex/load-env\nnpm ci"]:`
+	if got := nativeCommandFailure(header); got != "> [stage-0 5/5] RUN build command 'npm ci':" {
+		t.Errorf("error header = %q", got)
+	}
+
+	// The pre-w8/052 inline loader, as production reported it.
+	legacy := `error: failed to solve: process "/bin/bash -c : bex-native-env-rev=1\nwhile IFS= read -r record; do\n  [ -n \"$record\" ] || continue\n  export \"$key=${value%.}\"\ndone < /run/secrets/render-env\necho qa7-build-445879; exit 3" did not complete successfully: exit code: 3`
+	if got := nativeCommandFailure(legacy); got != "error: build command 'echo qa7-build-445879; exit 3' exited with code 3" {
+		t.Fatalf("legacy rewrite = %q", got)
+	}
+
+	// A Dockerfile build's own RUN, and anything unparseable, are untouched.
+	for _, keep := range []string{
+		`ERROR: failed to solve: process "/bin/sh -c make" did not complete successfully: exit code: 2`,
+		`process "/bin/bash -c npm test" did not complete successfully: exit code: 1`,
+		"plain output",
+	} {
+		if got := nativeCommandFailure(keep); got != keep {
+			t.Errorf("nativeCommandFailure(%q) = %q, want unchanged", keep, got)
+		}
 	}
 }

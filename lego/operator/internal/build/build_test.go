@@ -1578,3 +1578,33 @@ func TestDispatchedJobWithNoPodObservesAsWaitingNotBuilding(t *testing.T) {
 		t.Fatalf("phase = %v, want PhaseBuilding once a pod is placed", obs.Phase)
 	}
 }
+
+// w8/052: a native build's captured tail reaches the observation in the
+// tenant's terms — their command and exit code, not bex's env loader.
+func TestNativeBuildFailureTailNamesTheCommand(t *testing.T) {
+	o := opts()
+	j := completedJob(o, batchv1.JobFailed)
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: j.Name + "-abcde", Namespace: o.Namespace,
+			Labels: map[string]string{jobNameLabel: j.Name},
+		},
+		Status: corev1.PodStatus{
+			InitContainerStatuses: []corev1.ContainerStatus{
+				{Name: "buildkit", State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+					ExitCode:   ExitTenantError,
+					Message:    "0.098 marker\n------\nerror: failed to solve: process \"/bin/bash -c . /opt/bex/load-env\\necho marker; exit 3\" did not complete successfully: exit code: 3",
+					FinishedAt: metav1.NewTime(time.Date(2026, 10, 4, 23, 0, 0, 0, time.UTC)),
+				}}},
+			},
+		},
+	}
+	o.Client = fakeClient(j, pod)
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if want := "0.098 marker\n------\nerror: build command 'echo marker; exit 3' exited with code 3"; obs.Tail != want {
+		t.Errorf("Tail = %q, want %q", obs.Tail, want)
+	}
+}
