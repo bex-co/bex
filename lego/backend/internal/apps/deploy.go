@@ -2413,6 +2413,9 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if !appv1alpha1.ValidDatabaseName(d.Name) {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest, d.Name)
 	}
+	if id.LooksLikeResourceID(d.Name) {
+		return parsedDatabase{}, core.NameResourceIDReservedError(d.Name)
+	}
 	if d.EnvironmentID != "" {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the database under projects[].environments[].databases instead", core.ErrBadRequest, d.Name)
 	}
@@ -2490,6 +2493,9 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	if k.Name == "" {
 		return parsedKeyValue{}, fmt.Errorf("%w: a key-value service entry is missing its name", core.ErrBadRequest)
+	}
+	if id.LooksLikeResourceID(k.Name) {
+		return parsedKeyValue{}, core.NameResourceIDReservedError(k.Name)
 	}
 	if k.EnvironmentID != "" {
 		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest it under projects[].environments[].services instead", core.ErrBadRequest, k.Name)
