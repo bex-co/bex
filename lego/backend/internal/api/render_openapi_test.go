@@ -164,7 +164,7 @@ func TestRenderOpenAPICompatibilityIsOperationScoped(t *testing.T) {
 		route := &routers.Route{PathItem: item, Operation: operation}
 		for extension := range extensions {
 			req := httptest.NewRequest(http.MethodGet, "/?"+extension+"=true", nil)
-			if contract.hasUnknownRenderQuery(route, req) {
+			if len(contract.unknownRenderQuery(route, req)) > 0 {
 				t.Errorf("%s rejects documented query extension %s", operationID, extension)
 			}
 		}
@@ -790,6 +790,46 @@ func TestRenderRequestValidatorNamesParameterConstraints(t *testing.T) {
 	w := requestOpenAPITest(t, h, http.MethodGet, "/v1/logs?resource=srv-x&notARealParam=1", "", "")
 	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "unsupported query parameter") {
 		t.Fatalf("undeclared param = %d %s, want unsupported query parameter", w.Code, w.Body.String())
+	}
+}
+
+// TestRenderRequestValidatorNamesUnsupportedQuery is w8/059: an undeclared
+// query parameter is named in the refusal (sorted, quoted, capped), never the
+// anonymous "request contains an unsupported query parameter".
+func TestRenderRequestValidatorNamesUnsupportedQuery(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/postgres", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	long := strings.Repeat("x", 200)
+	cases := []struct {
+		query string
+		want  string
+	}{
+		{"ownerId=tea-x&limt=5", `unsupported query parameter "limt" for list-postgres`},
+		{"zeta=1&ownerId=tea-x&alpha=2", `unsupported query parameters "alpha", "zeta" for list-postgres`},
+		{"a=1&b=1&c=1&d=1&e=1&f=1&g=1", `unsupported query parameters "a", "b", "c", "d", "e" and 2 more for list-postgres`},
+		{"bad%0Aname=1", `unsupported query parameter "bad\nname" for list-postgres`},
+		{long + "=1", `unsupported query parameter "` + strings.Repeat("x", 64) + `…" for list-postgres`},
+	}
+	for _, tc := range cases {
+		w := requestOpenAPITest(t, h, http.MethodGet, "/v1/postgres?"+tc.query, "", "")
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("%s = %d, want 400: %s", tc.query, w.Code, w.Body.String())
+		}
+		var envelope struct {
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &envelope); err != nil || envelope.Message != tc.want {
+			t.Fatalf("%s message = %q (err %v), want %q", tc.query, envelope.Message, err, tc.want)
+		}
+	}
+	if w := requestOpenAPITest(t, h, http.MethodGet, "/v1/postgres?ownerId=tea-x&limit=5", "", ""); w.Code != http.StatusNoContent {
+		t.Fatalf("declared params = %d, want pass-through: %s", w.Code, w.Body.String())
 	}
 }
 

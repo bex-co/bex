@@ -540,8 +540,8 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		core.WriteErrStatus(w, http.StatusBadRequest, "request body is not allowed for this operation")
 		return
 	}
-	if v.contract.hasUnknownRenderQuery(route, r) {
-		core.WriteErrStatus(w, http.StatusBadRequest, "request contains an unsupported query parameter")
+	if unknown := v.contract.unknownRenderQuery(route, r); len(unknown) > 0 {
+		core.WriteErrStatus(w, http.StatusBadRequest, unsupportedQueryMessage(unknown, route.Operation.OperationID))
 		return
 	}
 	// Datastore region filters accept repeated keys as well as comma lists.
@@ -627,14 +627,46 @@ func requestHasBody(r *http.Request) bool {
 	return r.Body != nil && r.Body != http.NoBody && r.ContentLength != 0
 }
 
-func (c *renderOpenAPIContract) hasUnknownRenderQuery(route *routers.Route, r *http.Request) bool {
+// unknownRenderQuery returns the request's query names the operation does not
+// declare, sorted so the refusal names them deterministically (w8/059).
+func (c *renderOpenAPIContract) unknownRenderQuery(route *routers.Route, r *http.Request) []string {
 	allowed := c.allowedQuery[route.Operation]
+	var unknown []string
 	for name := range r.URL.Query() {
 		if _, ok := allowed[name]; !ok {
-			return true
+			unknown = append(unknown, name)
 		}
 	}
-	return false
+	slices.Sort(unknown)
+	return unknown
+}
+
+const (
+	maxNamedUnknownQuery   = 5
+	maxUnknownQueryNameLen = 64
+)
+
+// unsupportedQueryMessage names the undeclared query parameters. The names are
+// caller-supplied, so each is truncated and %q-quoted (escaping control
+// characters), and only the first few are listed.
+func unsupportedQueryMessage(unknown []string, operationID string) string {
+	named := unknown[:min(len(unknown), maxNamedUnknownQuery)]
+	quoted := make([]string, 0, len(named))
+	for _, name := range named {
+		if len(name) > maxUnknownQueryNameLen {
+			name = strings.ToValidUTF8(name[:maxUnknownQueryNameLen], "") + "…"
+		}
+		quoted = append(quoted, fmt.Sprintf("%q", name))
+	}
+	list := strings.Join(quoted, ", ")
+	if extra := len(unknown) - len(quoted); extra > 0 {
+		list += fmt.Sprintf(" and %d more", extra)
+	}
+	noun := "parameter"
+	if len(unknown) > 1 {
+		noun = "parameters"
+	}
+	return fmt.Sprintf("unsupported query %s %s for %s", noun, list, operationID)
 }
 
 func safeRenderValidationMessage(err error) string {
