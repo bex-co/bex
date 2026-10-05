@@ -194,7 +194,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **188** — [REST create may drop an image service's `envSpecificDetails.dockerCommand`](188.md) ← w4/m166 t003 parity check 2026-10-04; verify Render's image-runtime shape, then accept it on create or delete.
 
-- [ ] **183** — [Unlinking a deleted service's env-group link always 404s, stranding the link](183.md) ← infinite /qa-find-bugs loop3 2026-10-04 UTC, muse.env; tolerate NotFound in `UnlinkService` like `detach` does.
+- [x] **183** — [Unlinking a deleted service's env-group link always 404s, stranding the link](done/183.md) ← infinite /qa-find-bugs loop3 2026-10-04 UTC, muse.env; tolerate NotFound in `UnlinkService` like `detach` does. — done 2026-10-04.
 
 - [x] **182** — [Unknown `?type=` renders a hybrid create wizard](done/182.md) ← infinite /qa-find-bugs loop2 2026-10-04 UTC, muse.env; default form init through `isServiceType`, export the guard. — done 2026-10-04.
 
