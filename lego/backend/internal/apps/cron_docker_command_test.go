@@ -423,3 +423,24 @@ func TestImageBackedServiceReadsNoBranch(t *testing.T) {
 		}
 	}
 }
+
+// w4/188: an Existing Image web service's CMD override arrives as
+// envSpecificDetails.dockerCommand — the pinned spec's docker variant is the
+// only one carrying a command for a runtime with no build — and REST create
+// read it only under runtime docker, silently dropping it.
+func TestRESTCreateImageServiceKeepsDockerCommand(t *testing.T) {
+	svc, cl := newService(nil)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := `{"name":"echo","type":"web_service","image":{"imagePath":"hashicorp/http-echo:0.2.3"},"serviceDetails":{"runtime":"image","plan":"free",` +
+		`"envSpecificDetails":{"dockerCommand":"/http-echo -listen=:3000 -text=ok"}}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST image service = %d: %s", rec.Code, rec.Body.String())
+	}
+	if got := getApp(t, cl, "echo").Spec.StartCommand; got != "/http-echo -listen=:3000 -text=ok" {
+		t.Errorf("stored startCommand = %q, want the dockerCommand", got)
+	}
+}

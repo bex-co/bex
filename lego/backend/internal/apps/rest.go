@@ -496,6 +496,14 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 				// independent of rootDir) — the pre-w8/m19 rootDir fold was a
 				// lossy approximation.
 				dockerContext = r.ServiceDetails.EnvSpecificDetails.DockerContext
+			} else if strings.EqualFold(runtime, "image") {
+				// A prebuilt image's CMD override travels as dockerCommand: the
+				// pinned spec's envSpecificDetailsPOST is docker-or-native
+				// details, and only the docker variant carries a command for a
+				// runtime with no build. Update already maps it (w4/188).
+				if cmd := r.ServiceDetails.EnvSpecificDetails.DockerCommand; cmd != "" {
+					startCommand = cmd
+				}
 			}
 		}
 		if r.ServiceDetails.BuildCommand != "" {
