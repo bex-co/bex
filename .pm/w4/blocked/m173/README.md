@@ -1,6 +1,6 @@
 # w4 · m173 — `instance_seconds` meters how many container series appeared in an hour, not how long instances ran
 
-**Worker:** worker4 **Goal:** billed `instance_seconds` equals real instance running time: one instance per pod (not per container), prorated to the seconds it actually ran in the window, with replacement pods during a rollout counted only for their own lifetimes. **Status:** blocked — t001/t003/t004/t005 done 2026-10-04; t002 waits on a paid-exposure production read + the user's repair decision; t006 on the live replay
+**Worker:** worker4 **Goal:** billed `instance_seconds` equals real instance running time: one instance per pod (not per container), prorated to the seconds it actually ran in the window, with replacement pods during a rollout counted only for their own lifetimes. **Status:** blocked — t001/t003/t004/t005 done 2026-10-04; t002 waits on a paid-exposure production read + the user's repair decision; t006 on the live replay; t007 added 2026-10-05: the live replay found resources deleted before their hour's rollup are never metered
 
 ## Tasks (in order)
 
@@ -11,7 +11,8 @@
 | t003 | Render parity across usage surfaces — **DONE**                             | 30m | w4/m173/t002               |
 | t004 | Simplify changed code — **DONE**                                           | 20m | w4/m173/t003               |
 | t005 | Test coverage for shipped behavior — **DONE**                              | 45m | w4/m173/t003               |
-| t006 | Closeout                                                        | 15m | w4/m173/t005               |
+| t007 | Meter resources deleted before their hour is rolled up          | 1h  | w4/m173/t001               |
+| t006 | Closeout                                                        | 15m | w4/m173/t005, w4/m173/t007 |
 
 ## Definition of done
 
