@@ -1200,6 +1200,9 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	// which authorizes once for the GROUP, not per service) still does its own
 	// bare GetApp: it must not fan out into one audit event per linked service.
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
+	if errors.Is(err, core.ErrNotFound) {
+		return s.unlinkDeletedService(ctx, gid, service, err)
+	}
 	if err != nil {
 		return err
 	}
@@ -1232,6 +1235,44 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbUnlinkService)
 	return nil
+}
+
+// unlinkDeletedService drops a link whose service no longer exists (w4/183) —
+// the per-service twin of detach's tolerance, without which a deleted service
+// leaves a row only deleting the whole group can clear. The group's own
+// authorization is the gate and only its metadata is written. AuthorizeApp
+// also answers not-found for a service the caller may not see, so the link is
+// dropped only when no App in the group's workspace still answers to that
+// identifier; otherwise notFound is returned unchanged.
+func (s *Service) unlinkDeletedService(ctx context.Context, gid, service string, notFound error) error {
+	m, err := s.fetchGroup(ctx, core.RelCanCreate, gid)
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(m.links, service) {
+		return notFound
+	}
+	// Only a stale unlink reaches here, so a full list is affordable; an
+	// unlabeled (legacy) App may still be the group's.
+	var apps appv1alpha1.AppList
+	if err := s.Client.List(ctx, &apps); err != nil {
+		return err
+	}
+	for i := range apps.Items {
+		l := apps.Items[i].Labels
+		if tenant := l[core.LabelTenant]; tenant != "" && tenant != m.workspace {
+			continue
+		}
+		if apps.Items[i].Name == service || l[core.LabelAppID] == service || l[core.LabelServiceName] == service {
+			return notFound
+		}
+	}
+	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+		cur.links = removeString(cur.links, service)
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
+	return err
 }
 
 // detach removes the group's Secret refs from a service and rolls it, tolerating a
