@@ -46,12 +46,6 @@ const LOG_TYPE_KEYS: Record<LogTypeChoice, string> = {
   build: "deploys.logTypeBuild",
 };
 
-function matchesTypeChoice(lineType: string, choice: LogTypeChoice): boolean {
-  if (choice === "all") return true;
-  if (choice === "build") return lineType === "build";
-  return lineType !== "build";
-}
-
 export interface DeployLogPanelProps {
   resource: string;
   startTime: string | undefined;
@@ -106,6 +100,7 @@ export function DeployLogPanel({
 
   const {
     lines,
+    inLogBucket,
     loading,
     error,
     buildStoreUnavailable,
@@ -126,7 +121,7 @@ export function DeployLogPanel({
     let out =
       typeChoice === "all"
         ? lines
-        : lines.filter((l) => matchesTypeChoice(l.type, typeChoice));
+        : lines.filter((l) => inLogBucket(l, typeChoice));
     if (debouncedSearch) {
       // Match the *displayed* text, not the wire bytes: a build line's color
       // escapes sit between words, so a raw substring search silently misses
@@ -140,7 +135,7 @@ export function DeployLogPanel({
       out = out.filter((l) => l.instance === instanceFilter);
     }
     return out;
-  }, [lines, debouncedSearch, typeChoice, instanceFilter]);
+  }, [lines, inLogBucket, debouncedSearch, typeChoice, instanceFilter]);
 
   const narrowed =
     !!debouncedSearch || typeChoice !== "all" || !!instanceFilter;

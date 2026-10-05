@@ -7,8 +7,11 @@ import type { LogLine } from "@/features/logs/types";
 import { needsAnsiParse, parseAnsi } from "@/features/logs/lib/ansi";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
+const ownType = (line: LogLine, bucket: string) =>
+  bucket === "build" ? line.type === "build" : line.type !== "build";
 const logState: UseDeployLogsResult = {
   lines: [],
+  inLogBucket: ownType,
   loading: false,
   error: undefined,
   buildStoreUnavailable: false,
@@ -28,6 +31,7 @@ setupVirtualGeometry();
 
 beforeEach(() => {
   logState.lines = [];
+  logState.inLogBucket = ownType;
   logState.loading = false;
   logState.error = undefined;
   logState.buildStoreUnavailable = false;
