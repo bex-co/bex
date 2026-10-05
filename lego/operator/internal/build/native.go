@@ -70,18 +70,75 @@ const (
 	nativeNodeRuntime   = "node"
 )
 
-// nativeRuntimeImages retain readable tags but pin their multi-arch manifest
-// identities. Patch upgrades are deliberate reviewed changes; a registry retag
-// cannot silently alter a privileged tenant build environment. Last-reviewed
-// resolution time lives in toolchain-freshness.json and must move with the
-// digest (docs/ADR060 D7).
-var nativeRuntimeImages = map[string]string{
-	"elixir":          "elixir:1.18@sha256:45cd5b9be69e9bf62920762c732a0b8a09c4efb91ec5c499e9c6e8a3b1de1475",
-	"go":              "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
-	nativeNodeRuntime: "node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4",
-	"python":          "python:3.13-bookworm@sha256:227b6570d6ee07061ae6ca2eb04dedfb6d2b34045835f343065b9869e4d427ea",
-	"ruby":            "ruby:3.4-bookworm@sha256:246b2dc3f6e40bba3af18503c22997a34dbb27c9f97e198dde6dd727895115c5",
-	"rust":            "rust:1-bookworm@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e",
+// nativeToolchains is the reviewed set of toolchain lines a native build may
+// run on (w8/m51, docs/ADR060 D7 addendum). Every image keeps a readable tag
+// but pins its multi-arch manifest identity: patch upgrades are deliberate
+// reviewed changes, and a registry retag cannot silently alter a privileged
+// tenant build environment. Last-reviewed resolution times live in
+// toolchain-freshness.json and must move with each digest. A build selects one
+// line from the service's own version signal (nativeversion.go); nothing
+// outside this table is ever pulled.
+var nativeToolchains = map[string]nativeToolchain{
+	"elixir": {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
+		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:a40312b97492ce708d2a1cefee144ec680503ab097f52020299645d174a13a8a"},
+		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:45cd5b9be69e9bf62920762c732a0b8a09c4efb91ec5c499e9c6e8a3b1de1475"},
+		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:7d0cc07a9814b23c354c5ecae400ef1d8422c56b101940429f31008f8bfad26b"},
+	}},
+	// Render offers no Go version selection for native services; neither does bex.
+	"go": {label: "Go", defaultLine: "1.24", lines: []nativeLine{
+		{line: "1.24", image: "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac"},
+	}},
+	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
+		{line: "22", version: "22.23.3", image: "node:22-bookworm@sha256:363e1587494626837fa7f9a23bdb453d13b0ff3c67c705c2805cfc69c2d2fad7"},
+		{line: "24", version: "24.21.0", image: "node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4"},
+		{line: "26", version: "26.10.0", image: "node:26-bookworm@sha256:2aaae6d91f99fee84cfc92da9b52c22a185752d247746052bbc3f961e44478c6"},
+	}},
+	"python": {label: "Python", defaultLine: "3.13", lines: []nativeLine{
+		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:e1d1d0eb753a9ff331dd8a3f19e41107e5bb452eed9da1410b03318ffe4f8bb8"},
+		{line: "3.11", version: "3.11.17", image: "python:3.11-bookworm@sha256:3fd8382c50bae84184460a6e1a8ff4eeac0e3ca6a560691cb56bd84d2b6ec9ca"},
+		{line: "3.12", version: "3.12.15", image: "python:3.12-bookworm@sha256:e91fec3d1ac69f04e4eddcd29c327e630ce34658cf31075bfa7e8b0e052bafea"},
+		{line: "3.13", version: "3.13.15", image: "python:3.13-bookworm@sha256:227b6570d6ee07061ae6ca2eb04dedfb6d2b34045835f343065b9869e4d427ea"},
+		{line: "3.14", version: "3.14.8", image: "python:3.14-bookworm@sha256:b3c121f5b6b446c964c6ea924d9a099e259b29d7b56df82729e33572a31eadcc"},
+	}},
+	"ruby": {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
+		{line: "3.3", version: "3.3.12", image: "ruby:3.3-bookworm@sha256:dba270af6994f64e45ee3dd2b85225a2a0d01f29c04508c7a3c7c8dbf59d2a85"},
+		{line: "3.4", version: "3.4.11", image: "ruby:3.4-bookworm@sha256:246b2dc3f6e40bba3af18503c22997a34dbb27c9f97e198dde6dd727895115c5"},
+		{line: "4.0", version: "4.0.7", image: "ruby:4.0-bookworm@sha256:119a36c51c7893215202220eabfdcb561638735de4d45bacf2e8619be3de47f2"},
+	}},
+	// Rust stays one stable image: rustup inside it applies Render's own
+	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself.
+	"rust": {label: "Rust", defaultLine: "1", lines: []nativeLine{
+		{line: "1", image: "rust:1-bookworm@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e"},
+	}},
+}
+
+// nativeToolchain is one runtime's reviewed lines, ascending.
+type nativeToolchain struct {
+	label       string
+	defaultLine string
+	lines       []nativeLine
+}
+
+// nativeLine is one pinned toolchain line. version is the exact toolchain the
+// pinned image carries — what a version range is matched against; empty for a
+// runtime that offers no selection. otp is an Elixir line's Erlang/OTP major.
+type nativeLine struct {
+	line, version, otp, image string
+}
+
+func (t nativeToolchain) find(line string) (nativeLine, bool) {
+	for _, l := range t.lines {
+		if l.line == line {
+			return l, true
+		}
+	}
+	return nativeLine{}, false
+}
+
+// defaultImage is the line a build without a version signal runs on.
+func (t nativeToolchain) defaultImage() string {
+	l, _ := t.find(t.defaultLine)
+	return l.image
 }
 
 // nativeRuntime resolves the toolchain a native build runs in. A static
@@ -96,7 +153,7 @@ func nativeRuntime(o Options) string {
 
 func validateNativeOptions(o Options) error {
 	runtime := nativeRuntime(o)
-	if _, ok := nativeRuntimeImages[runtime]; !ok {
+	if _, ok := nativeToolchains[runtime]; !ok {
 		return fmt.Errorf("build: unsupported native runtime %q", runtime)
 	}
 	if strings.TrimSpace(o.BuildCommand) == "" {
@@ -190,7 +247,7 @@ COPY . .
 COPY <<'%s' %s
 %s%s
 RUN --mount=type=secret,id=render-env,target=%s%s %s
-`, nativeRuntimeImages[nativeRuntime(o)], nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish

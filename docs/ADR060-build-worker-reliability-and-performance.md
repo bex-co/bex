@@ -301,6 +301,30 @@ After D1, admission — not reconcile threads — is the only logical concurrenc
 - Freshness SLO: a ClusterBuilder pin older than **30 days**, or missing/malformed resolution metadata, fires the warning `ClusterBuilderImageStale`. The 30-day window is the review cadence grounded in toolchain-CVE risk — long enough not to churn on every Paketo rebuild, short enough that a silently rotting builder cannot freeze old CVEs into every buildpack tenant indefinitely.
 - The kpack `ClusterBuilder` is also observed live: the operator exports `bex_build_clusterbuilder_present` / `bex_build_clusterbuilder_ready` / `bex_build_clusterbuilder_image_resolved_timestamp_seconds` (no labels). `ClusterBuilderNotReady` fires when the builder is missing, unknown, or not Ready for 15m — independent of pin age. A Ready builder can still be stale; a recently reviewed pin can still be unready.
 
+#### D7 addendum — native runtime version lines (w8/m51, 2026-10-05)
+
+A native build no longer has exactly one base per runtime. Each runtime offers a small set of **reviewed version lines**, each one a digest-pinned inventory entry like any other D7 pin. A build selects a line from the service's own version signal, using Render's mechanism for that runtime. Nothing outside the table is ever pulled.
+
+| Runtime | Lines (default **bold**) | Signals, in precedence order |
+| --- | --- | --- |
+| Python | 3.10, 3.11, 3.12, **3.13**, 3.14 | `PYTHON_VERSION` → `.python-version` |
+| Node | 22, **24**, 26 | `NODE_VERSION` → `.node-version` → `.nvmrc` → `package.json` `engines.node` |
+| Ruby | 3.3, **3.4**, 4.0 | `Gemfile` `ruby` directive → `.ruby-version` |
+| Elixir | 1.17 (OTP 27), **1.18** (OTP 28), 1.19 (OTP 28) | `ELIXIR_VERSION`; `ERLANG_VERSION` must match the chosen line's OTP major |
+| Go | **1.24** | none (Render offers no native Go version selection) |
+| Rust | **1** (stable) | none at the image level: rustup inside the image applies Render's `RUSTUP_TOOLCHAIN` / `rust-toolchain` signals itself |
+
+**Resolution rules:**
+
+- **Plain versions.** A plain version maps onto its line: by major.minor for Python, Ruby and Elixir, and by major for Node. `PYTHON_VERSION=3.11.9` therefore builds on the 3.11 line's pinned patch (3.11.17 at this review), **not** on 3.11.9. This is a recorded divergence from Render, which installs the exact patch it was asked for. Reproducing arbitrary patches would mean pulling unreviewed images at build time, which D7 exists to forbid.
+- **Ranges.** A range resolves to the **highest** line whose pinned toolchain version satisfies it. This covers a Node `engines` range or `.nvmrc` range and a RubyGems requirement (`~> 3.3` is ≥3.3 <4, `~> 3.3.1` is ≥3.3.1 <3.4).
+- **Node aliases.** `lts`, `lts/*` and `lts/<codename>` (`jod`=22, `krypton`=24) resolve to their LTS line. `node`, `latest`, `current` and `stable` resolve to the newest line.
+- **Unsupported requests fail the build by name.** Examples: `PYTHON_VERSION=2.7.18`, `.nvmrc` `18`, Gemfile `ruby "2.7.8"`, or an `ERLANG_VERSION` the line's image does not carry. The build fails with a tenant-classified message (exit `ExitTenantError`, step "runtime version selection") that lists the supported lines. It never silently falls back to the default line. A request bex previously ignored can therefore now refuse a build that used to succeed on the default line. That is the intended correction: the old behavior ran the app on a toolchain it did not ask for.
+- **No signal keeps the default.** A service with no version signal stays on today's default line, byte-identical to the pre-addendum pin. Python's default stays 3.13 although Render's creation-date default is now 3.14; Node's 24 matches Render's.
+- **Mechanism.** After the preparer, a `resolve-native-runtime` init container runs bex's own image (`/native-resolve`, the same self-image pattern as `/backup-encrypt`). It reads the decoded env bundle and the checkout read-only from the service's root directory, rewrites the generated Dockerfile's single `FROM` to the chosen pin, and narrates `==> Using Python 3.11 (from PYTHON_VERSION=3.11.9)` / `(default)` into the build log. Version files are read only when they are regular files, never through a symlink, because the refusal quotes what it read and the tenant's env bundle sits beside the checkout.
+- **Rust exception, verified 2026-10-05.** On the pinned `rust:1` image (rustup 1.29.1), `RUSTUP_TOOLCHAIN=1.80.0` ran cargo 1.80.0 and a `rust-toolchain` file containing `1.81.0` ran cargo 1.81.0. rustup **downloads** that toolchain from static.rust-lang.org at build time. It is Render's own mechanism and predates this addendum, but it is an unpinned fetch outside the line table, recorded here rather than closed.
+- **Lines retire like any pin.** An end-of-life line (Node 20 in April 2026, Ruby 3.2 in March 2026) is not offered. Adding or retiring a line is a reviewed inventory change under the same cadence as above.
+
 ### D8 — Dedicated build pool: tainted lg/burst, serving overflow grows the stable pool
 
 Build capacity is physically reserved, not shared with serving (2026-08-15, follows the live incident below; realizes ADR034 §3 step 4's "dedicated untrusted build node pool"):

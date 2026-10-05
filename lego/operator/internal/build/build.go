@@ -359,7 +359,11 @@ type Options struct {
 	// through a transient BuildKit secret mount (w4/m163). Both empty = none.
 	NativeFilesSecret string
 	NativeFiles       []string
-	Namespace         string // namespace the build Job runs in
+	// NativeResolverImage is bex's own image, whose /native-resolve picks the
+	// toolchain line a native build asked for (w8/m51). Empty skips the phase:
+	// the build runs on its runtime's default line, as before the resolver.
+	NativeResolverImage string
+	Namespace           string // namespace the build Job runs in
 	// Workspace is the owning tenant id (app.bex.co/workspace label value) stamped
 	// on the build Job so per-workspace concurrent-build counting works (w7/m9).
 	// Empty = label omitted (legacy/hand-applied Apps without a workspace label).
@@ -655,6 +659,7 @@ var buildStepNames = map[string]string{
 	cacheRestorePhase:      "build cache restore",
 	cachePurgePhase:        "build cache purge",
 	"prepare-native-build": "build preparation",
+	nativeResolveContainer: "runtime version selection",
 	"buildkit":             "docker build",
 	pushContainer:          "image push",
 	"sign":                 "image signing",
@@ -1099,6 +1104,9 @@ fi
 	}
 	if o.Builder == BuilderNative {
 		podSpec.InitContainers = append(podSpec.InitContainers, nativeBuildPreparer(o))
+		if o.NativeResolverImage != "" {
+			podSpec.InitContainers = append(podSpec.InitContainers, nativeVersionResolver(o))
+		}
 	}
 	podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
 	execution.HardenPod(&podSpec)
