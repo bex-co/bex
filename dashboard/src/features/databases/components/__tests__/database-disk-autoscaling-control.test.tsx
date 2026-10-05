@@ -102,6 +102,11 @@ describe("DatabaseDiskAutoscalingControl", () => {
     expect(toggle).toHaveAccessibleDescription(
       /does not support disk autoscaling/,
     );
+    // The visible note IS the description — one copy, so a screen reader
+    // does not hear it twice (w4/184).
+    expect(
+      screen.getAllByText(/does not support disk autoscaling/),
+    ).toHaveLength(1);
     await user.click(toggle);
     expect(updateDiskAutoscaling).not.toHaveBeenCalled();
   });

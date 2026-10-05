@@ -18,6 +18,7 @@ export function DatabaseDiskAutoscalingControl({
   const { instanceTypes } = useDatabaseInstanceTypes();
   const plan = instanceTypes.find((it) => it.id === database.plan);
   const enableBlocked = !plan?.supportsDiskAutoscaling;
+  const planBlocked = plan != null && enableBlocked;
 
   async function handleChange(enabled: boolean) {
     if (enabled && enableBlocked) return;
@@ -43,8 +44,11 @@ export function DatabaseDiskAutoscalingControl({
                 current: database.diskSizeGB ?? 0,
               })}
         </span>
-        {plan && enableBlocked ? (
-          <span className="block text-xs text-muted-foreground">
+        {planBlocked ? (
+          <span
+            id="database-disk-autoscaling-hint"
+            className="block text-xs text-muted-foreground"
+          >
             {t("databases.diskAutoscalingPlanUnsupported")}
           </span>
         ) : null}
@@ -56,13 +60,13 @@ export function DatabaseDiskAutoscalingControl({
         aria-describedby="database-disk-autoscaling-hint"
         onCheckedChange={(enabled) => void handleChange(enabled)}
       />
-      <span id="database-disk-autoscaling-hint" className="sr-only">
-        {t(
-          plan && enableBlocked
-            ? "databases.diskAutoscalingPlanUnsupported"
-            : "databases.diskAutoscalingHint",
-        )}
-      </span>
+      {/* When blocked, the visible note above is the description; repeating
+          it here made screen readers announce it twice. */}
+      {planBlocked ? null : (
+        <span id="database-disk-autoscaling-hint" className="sr-only">
+          {t("databases.diskAutoscalingHint")}
+        </span>
+      )}
     </div>
   );
 }

@@ -142,7 +142,13 @@ function UsersSection({ access }: { access: Access }) {
                 variant="ghost"
                 size="icon-sm"
                 aria-label={t("databases.accessUserDelete", { name: u })}
-                onClick={() => void access.deleteUser(u)}
+                onClick={async () => {
+                  // A deleted user's one-time password is dead; don't keep
+                  // offering it for copy.
+                  if (await access.deleteUser(u)) {
+                    setRevealed((r) => (r?.name === u ? null : r));
+                  }
+                }}
               >
                 <Trash2 />
               </Button>
