@@ -121,6 +121,14 @@ loki.echo "test" {}
             run("docker", "rm", "-f", name)
 
 
+# w8/050: the kubelet's body once a pod's whole log directory is gone (replayed
+# from production, 2026-10-03, pod uid shortened only in shape-neutral ways).
+POD_LOG_DIR_GONE = ('failed to try resolving symlinks in path "/var/log/pods/tea-daif693dqjvc73e7as3g_'
+                    'tea-daif693dqjvc73e7as3g-hello-go-74bdbc5966-54lpf_c2c5039f-1b2c-4d5e-8f90-123456789abc/app/0.log": '
+                    'lstat /var/log/pods/tea-daif693dqjvc73e7as3g_tea-daif693dqjvc73e7as3g-hello-go-74bdbc5966-54lpf_'
+                    'c2c5039f-1b2c-4d5e-8f90-123456789abc/app/0.log: no such file or directory')
+
+
 class AppLogLevelsTest(unittest.TestCase):
     def test_missing_container_flood_dropped_without_matching_app_messages(self):
         placeholder = "unable to retrieve container logs for containerd://" + "a1" * 32
@@ -151,6 +159,23 @@ class AppLogLevelsTest(unittest.TestCase):
                 self.assertEqual({key: value for key, value in actual[line].items() if key != "filename"},
                                  {"namespace": "tenant", "app": "web", "pod": "web-1",
                                   "container": "app", "type": "app", "level": level})
+
+    def test_pod_log_dir_gone_dropped_without_matching_app_messages(self):
+        cases = {
+            "before": "unknown",
+            f"error: {POD_LOG_DIR_GONE}": "unknown",
+            f"{POD_LOG_DIR_GONE} while tailing": "unknown",
+            json.dumps({"level": "warn", "msg": POD_LOG_DIR_GONE}): "warning",
+            "after": "unknown",
+        }
+        lines = list(cases)
+        lines[1:1] = [POD_LOG_DIR_GONE] * 7
+        actual, output = run_pipeline(self, "app_logs", lines, "app",
+                                      'namespace = "tenant", app = "web", pod = "web-1", container = "app"')
+        self.assertEqual(set(actual), set(cases), f"unexpected App lines:\n{output}")
+        for line, level in cases.items():
+            with self.subTest(line=line):
+                self.assertEqual(actual[line].get("level"), level)
 
     def test_structured_severity_and_bounded_labels(self):
         cases = {
@@ -224,6 +249,11 @@ class PostgresLogsTest(unittest.TestCase):
             '{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"78","error_severity":"WARNING","message":"checkpoints too frequent","hint":"raise max_wal_size"}}',
             '{"msg":"logging_pod is only mentioned in this message"}',
             'plain line kept verbatim',
+            # w8/050: the instance manager's Go net/http error log and the
+            # kubelet's gone-directory body are platform text.
+            '{"level":"info","ts":"2026-10-05T01:28:20.987818348Z","msg":"http: TLS handshake error from 10.244.1.2:42270: tls: no certificates configured\\n"}',
+            POD_LOG_DIR_GONE.replace("hello-go-74bdbc5966-54lpf", "dpg-test-1").replace("/app/", "/postgres/"),
+            '{"level":"info","msg":"no ts, so not the instance manager server log"}',
         ]
         want = {
             "2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections": "info",
@@ -231,6 +261,7 @@ class PostgresLogsTest(unittest.TestCase):
             "t [78] WARNING:  checkpoints too frequent HINT:  raise max_wal_size": "warning",
             '{"msg":"logging_pod is only mentioned in this message"}': None,
             "plain line kept verbatim": None,
+            '{"level":"info","msg":"no ts, so not the instance manager server log"}': None,
         }
         for severity, level in {"ERROR": "error", "PANIC": "error", "INFO": "info", "NOTICE": "info",
                                 "DEBUG1": "debug", "DEBUG5": "debug"}.items():
