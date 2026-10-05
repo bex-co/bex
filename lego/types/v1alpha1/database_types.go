@@ -57,12 +57,18 @@ func ReservedPostgresDatabaseName(name string) bool {
 	return name == "postgres" || name == "template0" || name == "template1"
 }
 
-// ReservedPostgresRole reports a role bex must never manage: the superuser,
-// CNPG's replication role, and the pg_ prefix PostgreSQL reserves for its own
-// roles. Projected into CNPG's managed roles, any of them fails the reconcile
-// on add and again as a deletion tombstone, wedging the database (w4/m170).
+// ReservedPostgresRole reports a role bex must never manage: the names CNPG's
+// IsRoleReserved refuses (postgres, streaming_replica and the cnpg_ and pg_
+// prefixes), whose projection fails the whole Cluster update on add and again
+// as a deletion tombstone, wedging the database (w4/m170), and the names
+// PostgreSQL refuses to create (public, none), which leave a role that
+// silently never exists.
 func ReservedPostgresRole(name string) bool {
-	return name == "postgres" || name == "streaming_replica" || strings.HasPrefix(name, "pg_")
+	switch name {
+	case "postgres", "streaming_replica", "public", "none":
+		return true
+	}
+	return strings.HasPrefix(name, "pg_") || strings.HasPrefix(name, "cnpg_")
 }
 
 // DefaultPostgresDatabaseName is the stable legacy/default physical database
