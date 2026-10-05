@@ -440,8 +440,8 @@ func (s *Service) boundTenant(ctx context.Context) (tenantID string, scoped bool
 
 // RevokeAPIKey deletes the credential; tokens already minted with it stop
 // introspecting active (subject to bex-api's ≤30s introspection cache). ownerID
-// ("" => the caller's default workspace, w6/m18) must be the key's OWN bound
-// workspace — a caller who can manage keys in their own workspace may not
+// ("" => the key's own bound workspace, w4/194; see revokeScope) must be the
+// key's OWN bound workspace — a caller who can manage keys in their own workspace may not
 // revoke another workspace's (the same cross-workspace gate w6/m14 gave
 // Apps/Databases/KeyValues, applied here since a key has no AuthorizeApp-style
 // CRD to fetch through). With the store on it also drops the tenant binding +
@@ -454,7 +454,10 @@ func (s *Service) boundTenant(ctx context.Context) (tenantID string, scoped bool
 // fail-closed: a Hydra delete failure after a successful unbind is retryable
 // (idempotent Delete), while the reverse stranded authority.
 func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.revokeScope(ctx, ownerID, id)
+	if err != nil {
+		return err
+	}
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return err
 	}
@@ -485,6 +488,34 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 		return err
 	}
 	return nil
+}
+
+// revokeScope picks the workspace RevokeAPIKey authorizes in (w4/194). A named
+// workspace (ownerId or the request's own) decides, as before. Otherwise a
+// bound key resolves its OWN workspace — not the caller's default — so a
+// multi-workspace member revokes a key without naming where it lives, as env
+// groups and Blueprints (w4/m169) already do. A caller who may not manage keys
+// there gets the same not-found as an unknown id: Forbidden would confirm the
+// key exists in a workspace they cannot see.
+func (s *Service) revokeScope(ctx context.Context, ownerID, id string) (context.Context, error) {
+	if ownerID != "" {
+		return core.WithWorkspace(ctx, ownerID), nil
+	}
+	if _, named := core.WorkspaceFrom(ctx); named || s.Binding == nil {
+		return ctx, nil
+	}
+	owner, ok := s.Binding.TenantForKey(ctx, id)
+	if !ok {
+		return ctx, nil
+	}
+	scoped := core.WithWorkspace(ctx, owner)
+	if err := s.Authorize(scoped, core.RelCanManageKeys); err != nil {
+		if errors.Is(err, core.ErrForbidden) {
+			return ctx, core.ErrNotFound
+		}
+		return ctx, err
+	}
+	return scoped, nil
 }
 
 // hydraAPIKeys implements APIKeyStore over Hydra's admin API.
