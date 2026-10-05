@@ -655,6 +655,10 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "没有匹配当前过滤条件的日志。",
     description: "Empty state body when filters are active and nothing matches",
   },
+  "keyvalue.logsEmptyFilteredTitle": {
+    message: "没有匹配的日志",
+    description: "Empty state title when filters are active and nothing matches",
+  },
   "keyvalue.logsUnavailableTitle": {
     message: "日志不可用",
     description: "Empty state title when the logs source is not configured",

@@ -112,12 +112,18 @@ export function DatastoreLogViewer({
       </div>
     );
   } else if (history.lines.length === 0) {
+    // A search that matched nothing is not an empty store (w4/195).
+    const filtered = Boolean(text || instance);
     const empty = (
       <EmptyState
         iconName="ScrollText"
-        title={t(`${kind}.logsEmptyTitle`)}
+        title={
+          filtered
+            ? t(`${kind}.logsEmptyFilteredTitle`)
+            : t(`${kind}.logsEmptyTitle`)
+        }
         description={
-          text || instance
+          filtered
             ? t(`${kind}.logsEmptyFilteredBody`)
             : t(`${kind}.logsEmptyBody`)
         }
