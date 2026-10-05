@@ -595,7 +595,7 @@ func (s *Service) scopeEndpoint(ctx context.Context, ownerID, id string) (contex
 			return workspace, err == nil, err
 		}
 	}
-	return s.ScopeByID(ctx, ownerID, owner, mapStoreErr(store.ErrNotFound))
+	return s.ScopeByID(ctx, ownerID, owner)
 }
 
 // Get returns one endpoint (secret never included). ownerID optionally names

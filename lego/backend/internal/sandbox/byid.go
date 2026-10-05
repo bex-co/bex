@@ -31,7 +31,7 @@ import (
 // sandbox endpoints take no owner). A non-member's id — like a nonexistent
 // one — answers the same SANDBOX_NOT_FOUND.
 func (s *Service) scopeSandbox(ctx context.Context, ownerID, id string) (context.Context, error) {
-	return s.ScopeByID(ctx, ownerID, s.sandboxOwner(id), sandboxNotFound(id))
+	return s.ScopeByID(ctx, ownerID, s.sandboxOwner(id))
 }
 
 // sandboxOwner is the unscoped routing read behind scopeSandbox. bex keeps no

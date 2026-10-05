@@ -27,36 +27,35 @@ func TestScopeByID(t *testing.T) {
 	b := &Base{Workspace: multiWorkspace{"dana": {"tea-a", "tea-b"}, "eve": {"tea-c"}}}
 	dana := WithIdentity(context.Background(), Identity{Subject: "dana", Method: "session"})
 	eve := WithIdentity(context.Background(), Identity{Subject: "eve", Method: "session"})
-	errMissing := errors.New("thing not found")
 	inB := func(context.Context) (string, bool, error) { return "tea-b", true, nil }
 	unknown := func(context.Context) (string, bool, error) { return "", false, nil }
 	named := func(ctx context.Context) (string, bool) { return WorkspaceFrom(ctx) }
 
-	ctx, err := b.ScopeByID(dana, "", inB, errMissing)
+	ctx, err := b.ScopeByID(dana, "", inB)
 	if ws, ok := named(ctx); err != nil || !ok || ws != "tea-b" {
 		t.Errorf("member, no owner: workspace=%q named=%v err=%v; want tea-b", ws, ok, err)
 	}
-	if ctx, err := b.ScopeByID(dana, "tea-a", inB, errMissing); err != nil || NamedWorkspace(ctx) != "tea-a" {
+	if ctx, err := b.ScopeByID(dana, "tea-a", inB); err != nil || NamedWorkspace(ctx) != "tea-a" {
 		t.Errorf("explicit ownerId must decide: %q %v", NamedWorkspace(ctx), err)
 	}
-	if ctx, err := b.ScopeByID(WithWorkspace(dana, "tea-a"), "", inB, errMissing); err != nil || NamedWorkspace(ctx) != "tea-a" {
+	if ctx, err := b.ScopeByID(WithWorkspace(dana, "tea-a"), "", inB); err != nil || NamedWorkspace(ctx) != "tea-a" {
 		t.Errorf("a request-named workspace must decide: %q %v", NamedWorkspace(ctx), err)
 	}
-	if _, err := b.ScopeByID(eve, "", inB, errMissing); err != errMissing {
-		t.Errorf("non-member = %v, want the not-found answer", err)
+	if _, err := b.ScopeByID(eve, "", inB); !errors.Is(err, ErrForbidden) {
+		t.Errorf("non-member = %v, want ErrForbidden (ADR072 #8: typed-id 403)", err)
 	}
-	if ctx, err := b.ScopeByID(eve, "", unknown, errMissing); err != nil || NamedWorkspace(ctx) != "" {
+	if ctx, err := b.ScopeByID(eve, "", unknown); err != nil || NamedWorkspace(ctx) != "" {
 		t.Errorf("unknown id stays on the default path: %q %v", NamedWorkspace(ctx), err)
 	}
 	broken := &Base{Workspace: brokenWorkspace{}}
-	if _, err := broken.ScopeByID(dana, "", inB, errMissing); !errors.Is(err, ErrAuthzUnavailable) {
+	if _, err := broken.ScopeByID(dana, "", inB); !errors.Is(err, ErrAuthzUnavailable) {
 		t.Errorf("membership outage = %v, want ErrAuthzUnavailable (fail closed)", err)
 	}
 	readErr := errors.New("db down")
-	if _, err := b.ScopeByID(dana, "", func(context.Context) (string, bool, error) { return "", false, readErr }, errMissing); err != readErr {
+	if _, err := b.ScopeByID(dana, "", func(context.Context) (string, bool, error) { return "", false, readErr }); err != readErr {
 		t.Errorf("routing read failure = %v, want it surfaced", err)
 	}
-	if ctx, err := (&Base{}).ScopeByID(dana, "", inB, errMissing); err != nil || NamedWorkspace(ctx) != "" {
+	if ctx, err := (&Base{}).ScopeByID(dana, "", inB); err != nil || NamedWorkspace(ctx) != "" {
 		t.Errorf("store off: nothing to route: %q %v", NamedWorkspace(ctx), err)
 	}
 }

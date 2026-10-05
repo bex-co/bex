@@ -596,7 +596,10 @@ func (s *Service) scopeSelection(ctx context.Context, ownerID, selectionID strin
 			return sel.WorkspaceID, true, nil
 		}
 	}
-	return s.ScopeByID(ctx, ownerID, owner, errClaimSelectionGone)
+	// A selection is the caller's own short-lived row: one they can no longer
+	// reach (they left its workspace) reads as gone, like an expired one.
+	ctx, err := s.ScopeByID(ctx, ownerID, owner)
+	return ctx, forbiddenAs(err, errClaimSelectionGone)
 }
 
 // loadSelection is the shared guard of both selection verbs — one copy so the
@@ -814,7 +817,11 @@ func (s *Service) scopeInstallation(ctx context.Context, ownerID string, install
 			}
 		}
 	}
-	return s.ScopeByID(ctx, ownerID, owner, errInstallationNotVisible)
+	// A GitHub installation id is not a bex id: one connected only in
+	// workspaces the caller is not in stays indistinguishable from an absent
+	// one (the idempotent no-op), rather than ADR072's typed-id 403.
+	ctx, err := s.ScopeByID(ctx, ownerID, owner)
+	return ctx, forbiddenAs(err, errInstallationNotVisible)
 }
 
 // ListRepos returns the repositories across ALL of ownerID's connected
@@ -1515,4 +1522,13 @@ func classifyBlueprintCommitLookup(err error) error {
 		return fmt.Errorf("%w: %w", ErrBranchNotFound, err)
 	}
 	return fmt.Errorf("%w: %w", ErrRepoNotFoundOrNoAccess, err)
+}
+
+// forbiddenAs maps ScopeByID's non-member refusal (ErrForbidden) to a verb's
+// own answer, for ids that are not typed bex resource ids (w4/199).
+func forbiddenAs(err, instead error) error {
+	if errors.Is(err, core.ErrForbidden) {
+		return instead
+	}
+	return err
 }

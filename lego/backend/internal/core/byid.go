@@ -30,13 +30,16 @@ type ResourceOwner func(ctx context.Context) (workspace string, found bool, err 
 // Render's by-id endpoints take no owner (services, env groups, Blueprints
 // (w4/m169) and API keys (w4/194) already resolve this way).
 //
-// A caller who is not a member of the owning workspace gets notFound — the
-// answer a nonexistent id gets, so the id is no existence oracle. A member
-// lacking the verb's relation keeps the 403 the caller's own Authorize gives.
-// An unknown id, or no caller identity, stays on the default path, whose
-// scoped lookup answers its own not-found. The store being off (Workspace nil)
-// means one workspace and nothing to route.
-func (b *Base) ScopeByID(ctx context.Context, ownerID string, owner ResourceOwner, notFound error) (context.Context, error) {
+// A caller who is not a member of the owning workspace gets ErrForbidden: a
+// typed id answers 403 when it exists elsewhere and 404 when it exists
+// nowhere — ADR072 #8 kept that typed-id 403 deliberately (only by-name sweeps
+// collapse to 404), and the w6/m24 e2e pins it (w4/199 corrected w4/m172,
+// which had collapsed both to 404). A member lacking the verb's relation keeps
+// the 403 the caller's own Authorize gives. An unknown id, or no caller
+// identity, stays on the default path, whose scoped lookup answers its own
+// not-found. The store being off (Workspace nil) means one workspace and
+// nothing to route.
+func (b *Base) ScopeByID(ctx context.Context, ownerID string, owner ResourceOwner) (context.Context, error) {
 	if ownerID != "" {
 		return WithWorkspace(ctx, ownerID), nil
 	}
@@ -55,9 +58,6 @@ func (b *Base) ScopeByID(ctx context.Context, ownerID string, owner ResourceOwne
 		return ctx, nil
 	}
 	if err := b.requireMember(ctx, caller, workspace); err != nil {
-		if err == ErrForbidden {
-			return ctx, notFound
-		}
 		return ctx, err
 	}
 	return WithWorkspace(ctx, workspace), nil
