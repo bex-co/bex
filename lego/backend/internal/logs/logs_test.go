@@ -2137,6 +2137,20 @@ func TestKubeletLogsGonePlaceholderIsAPlatformLine(t *testing.T) {
 	}
 }
 
+// w8/050: once the pod's whole log directory is gone the kubelet answers with
+// a /var/log/pods path instead; it is the same platform line.
+func TestKubeletPodLogDirGoneIsAPlatformLine(t *testing.T) {
+	body := `failed to try resolving symlinks in path "/var/log/pods/tea-a_web-1_c2c5039f/app/0.log": lstat /var/log/pods/tea-a_web-1_c2c5039f/app/0.log: no such file or directory`
+	got := parseContainerLogLine("web", "web-1", "app", LogTypeApp, body)
+	if got.Message != logsGoneMessage || got.Labels["container"] != progressContainer {
+		t.Errorf("gone-directory body = %+v, want the platform line", got)
+	}
+	own := parseContainerLogLine("web", "web-1", "app", LogTypeApp, "2026-10-03T22:00:25Z "+body)
+	if own.Labels["container"] != "app" || own.Message != body {
+		t.Errorf("tenant line = %+v, want it untouched", own)
+	}
+}
+
 // w8/030: the direct-pod Postgres read unwraps CNPG's envelope and drops the
 // instance manager's chatter, like the shipper does for history.
 func TestManagedPostgresPodLogsUnwrapCNPG(t *testing.T) {
