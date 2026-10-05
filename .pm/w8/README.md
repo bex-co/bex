@@ -15,6 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](m51/README.md) (9 tasks) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 12: `PYTHON_VERSION=3.11.9` built on Python 3.13.15.
 - [x] **m50** — [Enforce Postgres tier capacity across write paths](done/m50/README.md) (9 tasks) ← promoted from `035` on 2026-10-02.
 
 - [x] **m49** — [Reject invalid image deploy inputs with actionable errors](done/m49/README.md) (7 tasks) ← promoted from `033` on 2026-10-02. Completed 2026-10-02; full suites/lint and 57 live checks passed.
@@ -75,6 +76,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **053** — [A root directory missing from the repo fails the build with BuildKit's `invalid local: resolve : lstat /source/…`](053.md) (~40m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 8.
+- [ ] **054** — [Blueprint refusal messages ignore the registry's recorded reason (`postgresMajorVersion` 10–12, cron `preDeployCommand`)](054.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweeps 14–15.
+- [ ] **055** — [`blueprints validate` passes `domains: [dashboard.bex.co]`, `api.bex.co` and `*.onbex.co` that apply refuses, and points hostname errors at `services[n].name`](055.md) (~45m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 15.
+- [ ] **056** — [REST create skips the per-type setting gates that update and Blueprints enforce (cron, worker, private and static accept settings that don't apply)](056.md) (~1h, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweeps 15–17.
+- [ ] **057** — [Postgres REST wire drift: `plan` answers `basic-256mb` (Render's API enum is `basic_256mb`), and create refuses Render's `parameterOverrides` with a bare `bad request body`](057.md) (~45m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 18.
+- [ ] **058** — [Deploy `trigger` answers `create` and `config_change`, values outside Render's enum, and the conformance test only seeds `api`](058.md) (~40m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 19.
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
 
 - [x] **052** — [A failed native build reports bex's internal env-decoding wrapper instead of the user's build command and exit code](done/052.md) — **DONE 2026-10-04**: the env loader moved to a COPY heredoc, and the failure summary reads `build command '<cmd>' exited with code N`.
