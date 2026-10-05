@@ -1,6 +1,6 @@
 # w4 · m137 — A restarting Key Value or Postgres reports "creating", as if it were brand new
 
-**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** blocked — live closeout 2026-10-05 passed every Key Value bullet and the Postgres API bullet, but the dashboard misses a Postgres restart (t010); t007 closeout waits on t010 + a live replay
+**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** done (2026-10-05: every DoD bullet live-verified; t010 fixed the Postgres dashboard restart)
 
 ## Scope transfer — 2026-09-28
 
@@ -17,8 +17,8 @@ User approved moving t009 implementation to `w1/m166/t007` in w1. Its original f
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE** | 20m | t003, t008 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 30m | t004 |
-| t010 | Postgres restart: the operator re-marks Ready for the restart generation before CNPG starts the rollout — implemented, live replay pending | 1h30m | — |
-| t007 | Closeout — **BLOCKED** | 10m | t006, t010, w1/m166/t007 |
+| t010 | Postgres restart: the operator re-marks Ready for the restart generation before CNPG starts the rollout — **DONE** | 1h30m | — |
+| t007 | Closeout — **DONE** | 10m | t006, t010, w1/m166/t007 |
 
 ## Definition of done
 
