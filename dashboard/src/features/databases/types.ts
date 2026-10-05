@@ -41,6 +41,8 @@ export interface ReadReplicaView {
 
 /** The extra fields the detail query reads beyond the list projection. */
 export interface DatabaseDetailView extends DatabaseView {
+  /** Why an unavailable database is unavailable (bex-api statusReason), else null. */
+  statusReason?: string | null;
   /** Normalized (unquoted-identifier) database name. */
   databaseName: string | null;
   /** Owner role, `<db>_user`. */

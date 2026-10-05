@@ -40,6 +40,7 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"plan":                    gqlutil.StrField(func(v PostgresView) any { return v.Plan }),
 		"version":                 gqlutil.StrField(func(v PostgresView) any { return v.Version }),
 		"status":                  gqlutil.StrField(func(v PostgresView) any { return v.Status }),
+		"statusReason":            gqlutil.StrField(func(v PostgresView) any { return v.StatusReason }),
 		"databaseName":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseName }),
 		"databaseUser":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseUser }),
 		"diskSizeGB":              gqlutil.IntField(func(v PostgresView) any { return v.DiskSizeGB }),

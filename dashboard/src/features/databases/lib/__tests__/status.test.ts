@@ -79,6 +79,7 @@ describe("toDatabaseDetailView", () => {
   it("extends the list view with the detail-only fields", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
+      statusReason: null,
       id: "db1",
       name: "db1",
       plan: "free",
@@ -111,6 +112,7 @@ describe("toDatabaseDetailView", () => {
   it("normalizes the private-database empty-string externalHost to null (w6/052)", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
+      statusReason: null,
       id: "db3",
       name: "db3",
       plan: "free",
@@ -139,6 +141,7 @@ describe("toDatabaseDetailView", () => {
   it("carries region through from the wire type when configured (w9/m42/t004)", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
+      statusReason: null,
       id: "db2",
       name: "db2",
       plan: "free",
