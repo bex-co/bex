@@ -187,13 +187,14 @@ func TestGraphQLNonDefaultWorkspaceCredentialIsFullyReachable(t *testing.T) {
 	}
 	id := created["id"].(string)
 
-	// Without ownerId every by-id verb still resolves the caller's default
-	// workspace — the pre-existing behaviour, and the control that proves the
-	// three assertions below come from the binding and not from a widened lookup.
+	// Without ownerId a by-id verb resolves the credential's OWN workspace
+	// (w4/m172) — the caller is a member of tea-other, so it is found there.
 	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,
-		RequestString: `{ registryCredential(id: "` + id + `") { id } }`})
-	if len(res.Errors) == 0 {
-		t.Errorf("get without ownerId should stay scoped to the default workspace, got %+v", res.Data)
+		RequestString: `{ registryCredential(id: "` + id + `") { id ownerId } }`})
+	if len(res.Errors) > 0 {
+		t.Errorf("get without ownerId: %v", res.Errors)
+	} else if got := res.Data.(map[string]any)["registryCredential"].(map[string]any); got["ownerId"] != "tea-other" {
+		t.Errorf("get without ownerId = %+v, want the tea-other credential", got)
 	}
 
 	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx,

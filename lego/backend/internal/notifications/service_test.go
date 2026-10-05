@@ -246,6 +246,28 @@ func (f *fakeStore) MarkOwnPushNotificationRead(_ context.Context, tenantID, sub
 	return false, nil
 }
 
+func (f *fakeStore) PushNotificationWorkspaces(_ context.Context, subject, eventID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var tenants []string
+	for key, rows := range f.push {
+		if key[1] != subject {
+			continue
+		}
+		for _, row := range rows {
+			if row.EventID == eventID {
+				tenants = append(tenants, key[0])
+				break
+			}
+		}
+	}
+	if len(tenants) == 0 {
+		return nil, store.ErrNotFound
+	}
+	slices.Sort(tenants)
+	return tenants, nil
+}
+
 func (f *fakeStore) CountUnreadPushNotifications(_ context.Context, tenantID, subject string, excludeEvents []string) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -164,13 +164,35 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]CredentialView, e
 	return out, nil
 }
 
+// scopeCredential resolves the workspace a by-id credential verb acts in: the
+// one the adapter named from `ownerId`, else the credential's own (w4/m172), so
+// a credential in a non-default workspace is reachable by id alone. A
+// non-member's id answers the same 404 as a missing one.
+func (s *Service) scopeCredential(ctx context.Context, id string) (context.Context, error) {
+	var owner core.ResourceOwner
+	if s.Store != nil {
+		owner = func(ctx context.Context) (string, bool, error) {
+			c, err := s.Store.GetRegistryCredentialByID(ctx, id)
+			if errors.Is(err, store.ErrNotFound) {
+				return "", false, nil
+			}
+			return c.WorkspaceID, err == nil, err
+		}
+	}
+	return s.ScopeByID(ctx, "", owner, mapStoreErr(store.ErrNotFound))
+}
+
 // Get returns one credential (secret omitted). Member read. The workspace comes
 // from the context, which every adapter binds from its own optional `ownerId`
 // selector (GraphQL arg, REST query param, MCP middleware) before calling —
-// omitted means the caller's default, as it always has. Binding it is what makes
+// omitted means the credential's own workspace (scopeCredential, w4/m172). Binding it is what makes
 // a credential created with `ownerId: B` reachable in B rather than listable but
 // unreadable, unupdatable and undeletable (w4/128).
 func (s *Service) Get(ctx context.Context, id string) (CredentialView, error) {
+	ctx, err := s.scopeCredential(ctx, id)
+	if err != nil {
+		return CredentialView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return CredentialView{}, err
 	}
@@ -280,6 +302,10 @@ type UpdateRequest struct {
 // secret. Admin-only, matching Create. Workspace-scoped like Get — see its
 // note on the adapter-bound `ownerId`.
 func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (CredentialView, error) {
+	ctx, err := s.scopeCredential(ctx, id)
+	if err != nil {
+		return CredentialView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return CredentialView{}, err
 	}
@@ -348,6 +374,10 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 // credentials", so this verb must be able to reach the workspace whose quota is
 // full, not only the caller's default one (w4/128).
 func (s *Service) Delete(ctx context.Context, id string) error {
+	ctx, err := s.scopeCredential(ctx, id)
+	if err != nil {
+		return err
+	}
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return err
 	}

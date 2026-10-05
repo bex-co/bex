@@ -185,7 +185,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	// DELETE /v1/git/connections/{installationId} — disconnect one installation
-	// (ADR078). Admin-only, scoped to the caller's workspace.
+	// (ADR078). Admin-only, in ?ownerId= or else the workspace the installation
+	// is bound in (w4/m172); 204 also for an id bound nowhere the caller can see.
 	mux.HandleFunc("DELETE /v1/git/connections/{installationId}", func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("installationId"), 10, 64)
 		if err != nil || id <= 0 {

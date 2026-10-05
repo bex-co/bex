@@ -1694,10 +1694,37 @@ func (s *Service) groupsNamed(ctx context.Context, workspace, name, excludeID st
 // workspace but merely a viewer of (or not a member of) the group's actual
 // owner may not read/reveal/mutate it just because they know its id.
 func (s *Service) authorizeGroup(ctx context.Context, relation, gid string) (meta, error) {
+	ctx, err := s.ScopeByID(ctx, "", s.groupOwner(gid), core.ErrNotFound)
+	if err != nil {
+		return meta{}, err
+	}
 	if err := s.Authorize(ctx, relation); err != nil {
 		return meta{}, err
 	}
 	return s.fetchGroup(ctx, relation, gid)
+}
+
+// groupOwner is authorizeGroup's routing read (w4/m172): the workspace a
+// group's legacy meta or locator records, so the leading Authorize — the verb's
+// audit point — checks the group's own workspace instead of the caller's
+// default. Unlike readMeta it never writes (no lazy ownership migration before
+// authorization); anything it cannot place stays on the default path, where
+// fetchGroup answers as before.
+func (s *Service) groupOwner(gid string) core.ResourceOwner {
+	if s.Store == nil || !id.WellFormed(gid) {
+		return nil
+	}
+	return func(ctx context.Context) (string, bool, error) {
+		raw, err := s.Store.Get(legacyCtx(ctx), metaPath(gid))
+		if err != nil {
+			return "", false, err
+		}
+		workspace := raw["workspace"]
+		if workspace == "" || workspace == core.DefaultTenant || !(isLocator(raw) || isEditableMeta(raw)) {
+			return "", false, nil
+		}
+		return workspace, true, nil
+	}
 }
 
 // fetchGroup is authorizeGroup's second half, split out for LinkService/

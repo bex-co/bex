@@ -2855,6 +2855,7 @@ export type QueryDatabaseArgs = {
 
 export type QueryDatabaseActionsArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3073,6 +3074,7 @@ export type QueryKeyValueArgs = {
 
 export type QueryKeyValueActionsArgs = {
   id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

@@ -623,6 +623,30 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	return out, nil
 }
 
+// ServiceEventWorkspaces returns every workspace that indexes an evt-… id,
+// ordered by workspace id, or ErrNotFound. A routing read only (w4/m172): the
+// verb picks one of them, authorizes there and loads the event through the
+// workspace-scoped GetServiceEvent. Event ids are DERIVED from the source row's
+// event key (ids.Derive), not minted per workspace, and the key itself embeds a
+// globally unique source id — but a workspace:default audit row is indexed
+// under every matching owner (migration 0083), so the same id can legitimately
+// resolve to several workspaces. The full, deterministic list is returned so
+// the caller can prefer one it is a member of instead of the store guessing.
+func (s *PGStore) ServiceEventWorkspaces(ctx context.Context, eventID string) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT DISTINCT workspace_id FROM service_event_index WHERE event_id = $1 ORDER BY workspace_id`, eventID)
+	if err != nil {
+		return nil, classify("service event", err)
+	}
+	workspaces, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, classify("service event", err)
+	}
+	if len(workspaces) == 0 {
+		return nil, ErrNotFound
+	}
+	return workspaces, nil
+}
+
 // nullAutoDeployFilter maps AutoDeployFilterNone to SQL NULL so the $10
 // predicate in serviceEventsQuery is a no-op when no discrimination is needed.
 func nullAutoDeployFilter(f AutoDeployFilter) *int16 {

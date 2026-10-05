@@ -412,7 +412,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// databaseActions projects the lifecycle verbs' per-database decisions
 		// (ADR087, w6/m136) — permission tri-state + blocking precondition from
 		// the same predicates setSuspended enforces. A bex extension.
-		"databaseActions":        gqlutil.IDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
+		"databaseActions":        gqlutil.OwnedIDVerb(gqlutil.ActionDecisionsOut, s.ActionCapabilities),
 		"databaseConnectionInfo": gqlutil.IDVerb(connectionInfoGQLType, s.PostgresConnectionInfo),
 		"databaseInstanceTypes": &graphql.Field{ // bex extension backing the create dialog's plan picker
 			Type:    graphql.NewList(databaseInstanceTypeGQLType),

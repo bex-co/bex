@@ -250,6 +250,17 @@ func (s *PGStore) GetWebhookEndpoint(ctx context.Context, tenantID, id string) (
 	return e, nil
 }
 
+// WebhookEndpointWorkspace returns the workspace that owns an endpoint id, or
+// ErrNotFound. A routing read only: the verb still authorizes against that
+// workspace and loads the row through the tenant-scoped reads (w4/m172).
+func (s *PGStore) WebhookEndpointWorkspace(ctx context.Context, id string) (string, error) {
+	var tenantID string
+	if err := s.Pool.QueryRow(ctx, `SELECT tenant_id FROM webhook_endpoints WHERE id = $1`, id).Scan(&tenantID); err != nil {
+		return "", classify("webhook endpoint", err)
+	}
+	return tenantID, nil
+}
+
 // SetWebhookEndpointEnabled flips an endpoint's enabled flag (the caller's
 // manual toggle — also how an auto-disabled endpoint is re-armed). Enabling
 // clears any disabled reason; disabling records the caller's.

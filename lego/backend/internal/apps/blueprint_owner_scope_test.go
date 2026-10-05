@@ -62,3 +62,28 @@ func TestBlueprintByIDVerbsResolveTheOwningWorkspace(t *testing.T) {
 		t.Fatal("a non-member disconnected another workspace's Blueprint")
 	}
 }
+
+// w4/m172: validating a manifest on behalf of an existing Blueprint resolves
+// that Blueprint's own workspace too, so the dry run of a non-default
+// workspace's Blueprint no longer 404s without ownerId.
+func TestValidateBlueprintForAnIDResolvesTheOwningWorkspace(t *testing.T) {
+	fs := newFakeBlueprintStore(store.Blueprint{ID: "blp-b", TenantID: "tea-b", Name: "bravo", Repo: "https://github.com/acme/app", Branch: "main", Status: "active"})
+	svc := newBlueprintService(fs, memberships{"dana": {"tea-a", "tea-b"}, "eve": {"tea-a"}})
+	const manifest = "services:\n  - type: web\n    name: web\n    runtime: image\n    image:\n      url: nginx:1\n"
+
+	if _, err := svc.ValidateBlueprint(ctxAs("dana"), "", manifest, "blp-b"); err != nil {
+		t.Fatalf("ValidateBlueprint without ownerId = %v, want the tea-b Blueprint found", err)
+	}
+	if _, err := svc.ValidateBlueprint(ctxAs("dana"), "tea-a", manifest, "blp-b"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("mismatched ownerId = %v, want not found", err)
+	}
+	_, foreign := svc.ValidateBlueprint(ctxAs("eve"), "", manifest, "blp-b")
+	_, missing := svc.ValidateBlueprint(ctxAs("eve"), "", manifest, "blp-missing")
+	if !errors.Is(foreign, core.ErrNotFound) || foreign.Error() != missing.Error() {
+		t.Fatalf("non-member = %v, missing = %v; want identical not-found answers", foreign, missing)
+	}
+	// A new manifest (no id) still validates in the caller's workspace.
+	if _, err := svc.ValidateBlueprint(ctxAs("eve"), "", manifest, ""); err != nil {
+		t.Fatalf("ValidateBlueprint without an id = %v", err)
+	}
+}

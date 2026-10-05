@@ -1011,8 +1011,13 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	return out, nil
 }
 
-// Get returns one sandbox's status.
+// Get returns one sandbox's status. With no workspace named in ctx it acts in
+// the sandbox's own workspace when the caller is a member there (w4/m172).
 func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
+	ctx, err := s.scopeSandbox(ctx, "", id)
+	if err != nil {
+		return Sandbox{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return Sandbox{}, err
 	}
@@ -1098,6 +1103,10 @@ func (s *Service) clientTerminate(ctx context.Context, key string, raw osSandbox
 }
 
 func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Status, op func(context.Context, string, osSandbox) error) error {
+	ctx, err := s.scopeSandbox(ctx, "", id)
+	if err != nil {
+		return err
+	}
 	if err := s.Authorize(ctx, relation); err != nil {
 		return err
 	}

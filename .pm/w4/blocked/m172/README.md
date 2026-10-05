@@ -1,17 +1,17 @@
 # w4 · m172 — By-id REST verbs resolve the resource's own workspace, not the caller's default
 
-**Worker:** worker4 **Goal:** every by-id verb on every resource family finds the resource in whichever of the caller's workspaces owns it, as services, env groups and projects already do. A multi-workspace user no longer gets a 404/403 for their own resource unless they guess `?ownerId=`. **Status:** todo
+**Worker:** worker4 **Goal:** every by-id verb on every resource family finds the resource in whichever of the caller's workspaces owns it, as services, env groups and projects already do. A multi-workspace user no longer gets a 404/403 for their own resource unless they guess `?ownerId=`. **Status:** blocked — t001–t006 done 2026-10-04; t007 (live DoD replay) waits on the release pipeline
 
 ## Tasks (in order)
 
 | id   | title                                                           | est | depends_on                               |
 | ---- | --------------------------------------------------------------- | --- | ---------------------------------------- |
-| t001 | Webhooks: by-id verbs resolve the endpoint's workspace          | 45m | —                                        |
-| t002 | Sweep the remaining families and fix each that scopes by default | 1h  | —                                        |
-| t003 | Shared guard so a new by-id verb can't regress                  | 30m | w4/m172/t001, w4/m172/t002               |
-| t004 | Render parity across by-id surfaces                             | 30m | w4/m172/t003                             |
-| t005 | Simplify changed code                                           | 20m | w4/m172/t004                             |
-| t006 | Test coverage for shipped behavior                              | 45m | w4/m172/t004                             |
+| t001 | Webhooks: by-id verbs resolve the endpoint's workspace — **DONE**          | 45m | —                                        |
+| t002 | Sweep the remaining families and fix each that scopes by default — **DONE** | 1h  | —                                        |
+| t003 | Shared guard so a new by-id verb can't regress — **DONE**                  | 30m | w4/m172/t001, w4/m172/t002               |
+| t004 | Render parity across by-id surfaces — **DONE**                             | 30m | w4/m172/t003                             |
+| t005 | Simplify changed code — **DONE**                                           | 20m | w4/m172/t004                             |
+| t006 | Test coverage for shipped behavior — **DONE**                              | 45m | w4/m172/t004                             |
 | t007 | Closeout                                                        | 15m | w4/m172/t006                             |
 
 ## Definition of done

@@ -618,13 +618,24 @@ type UpdateBlueprintRequest struct {
 // applying anything. An optional blueprint ID includes owned-resource detachments.
 // Reads current state when available and requires can_view.
 func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML, blueprintID string) (BlueprintValidation, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+	ctx, err := s.blueprintRequestScope(ctx, core.RelCanView, blueprintID, ownerID)
+	if err != nil {
 		return BlueprintValidation{}, err
 	}
 	return s.blueprintValidationFor(ctx, "", "", bexYAML, blueprintID)
+}
+
+// blueprintRequestScope authorizes a validate/preview: on behalf of an existing
+// Blueprint it acts in that Blueprint's own workspace (blueprintScope, w4/m172)
+// unless ownerID names one; for a new manifest, in the named or default one.
+func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, error) {
+	if bpID != "" {
+		return s.blueprintScope(ctx, relation, bpID, ownerID)
+	}
+	if ownerID != "" {
+		ctx = core.WithWorkspace(ctx, ownerID)
+	}
+	return ctx, s.Authorize(ctx, relation)
 }
 
 // blueprintValidationFor is the read-only dry-run core shared by
@@ -863,10 +874,8 @@ func blueprintDisplayPath(pointer string) string {
 // itself (w4/m125), exactly as previewOwnershipConflicts already resolves self
 // for resources.
 func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, filePath, forBlueprintID string) (BlueprintPreview, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	}
-	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
+	ctx, err := s.blueprintRequestScope(ctx, core.RelCanViewSensitive, forBlueprintID, ownerID)
+	if err != nil {
 		return BlueprintPreview{}, err
 	}
 	// RelCanViewSensitive is a read relation, so Authorize uses the decision

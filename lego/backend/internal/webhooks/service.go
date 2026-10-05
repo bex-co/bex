@@ -259,6 +259,7 @@ type EndpointStore interface {
 	CreateWebhookEndpoint(ctx context.Context, tenantID, name, url, secret string, eventTypes []string, enabled bool, createdBy string) (store.WebhookEndpoint, error)
 	ListWebhookEndpoints(ctx context.Context, tenantIDs []string, afterAt time.Time, afterKey string, limit int) ([]store.WebhookEndpoint, error)
 	GetWebhookEndpoint(ctx context.Context, tenantID, id string) (store.WebhookEndpoint, error)
+	WebhookEndpointWorkspace(ctx context.Context, id string) (string, error)
 	SetWebhookEndpointEnabled(ctx context.Context, tenantID, id string, enabled bool, reason string) (store.WebhookEndpoint, error)
 	UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (store.WebhookEndpoint, error)
 	DeleteWebhookEndpoint(ctx context.Context, tenantID, id string) error
@@ -580,13 +581,33 @@ func (s *Service) ListPage(ctx context.Context, ownerIDs []string, cursor string
 	return out, nil
 }
 
+// scopeEndpoint resolves the workspace a by-id endpoint verb acts in: the
+// named one, else the endpoint's own (w4/m172) — a non-member's id answers the
+// same 404 as a missing one.
+func (s *Service) scopeEndpoint(ctx context.Context, ownerID, id string) (context.Context, error) {
+	var owner core.ResourceOwner
+	if s.Store != nil {
+		owner = func(ctx context.Context) (string, bool, error) {
+			workspace, err := s.Store.WebhookEndpointWorkspace(ctx, id)
+			if errors.Is(err, store.ErrNotFound) {
+				return "", false, nil
+			}
+			return workspace, err == nil, err
+		}
+	}
+	return s.ScopeByID(ctx, ownerID, owner, mapStoreErr(store.ErrNotFound))
+}
+
 // Get returns one endpoint (secret never included). ownerID optionally names
 // the workspace to look in (empty = the caller's resolved default — the
 // apikeys convention, so a multi-workspace caller's switcher works); the store
 // lookup is scoped to it, so another workspace's id is a 404, never a leak.
 // Member read.
 func (s *Service) Get(ctx context.Context, ownerID, id string) (EndpointView, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeEndpoint(ctx, ownerID, id)
+	if err != nil {
+		return EndpointView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return EndpointView{}, err
 	}
@@ -604,7 +625,10 @@ func (s *Service) Get(ctx context.Context, ownerID, id string) (EndpointView, er
 // is re-armed after its destination is fixed (Render: disabled "until you
 // re-enable it"). Admin-only, matching Create.
 func (s *Service) SetEnabled(ctx context.Context, ownerID, id string, enabled bool) (EndpointView, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeEndpoint(ctx, ownerID, id)
+	if err != nil {
+		return EndpointView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return EndpointView{}, err
 	}
@@ -621,7 +645,10 @@ func (s *Service) SetEnabled(ctx context.Context, ownerID, id string, enabled bo
 // Delete removes an endpoint and (by cascade) its delivery history.
 // Admin-only, matching Create.
 func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeEndpoint(ctx, ownerID, id)
+	if err != nil {
+		return err
+	}
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return err
 	}
@@ -649,7 +676,10 @@ type DeliveryFilter struct {
 }
 
 func (s *Service) ListDeliveriesFiltered(ctx context.Context, ownerID, endpointID string, filter DeliveryFilter) ([]DeliveryView, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeEndpoint(ctx, ownerID, endpointID)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
@@ -702,7 +732,10 @@ var resendIdempotencyKeyPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-
 // claims this attempt.
 func (s *Service) Resend(ctx context.Context, ownerID, endpointID, sourceAttemptID, idempotencyKey string) (_ DeliveryView, retErr error) {
 	defer func() { s.Metrics.observeResend(retErr) }()
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeEndpoint(ctx, ownerID, endpointID)
+	if err != nil {
+		return DeliveryView{}, err
+	}
 	if err := s.AuthorizeTarget(ctx, core.RelCanManage, core.WebhookAttemptTarget(endpointID, sourceAttemptID)); err != nil {
 		return DeliveryView{}, err
 	}
@@ -763,7 +796,10 @@ type UpdateRequest struct {
 // URL changes are re-validated; EventTypes changes are re-normalised.
 // Admin-only (RelCanManage), matching Create and SetEnabled.
 func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequest) (EndpointView, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
+	ctx, err := s.scopeEndpoint(ctx, ownerID, id)
+	if err != nil {
+		return EndpointView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return EndpointView{}, err
 	}

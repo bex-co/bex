@@ -512,6 +512,10 @@ func (s *Service) ListWorkspace(ctx context.Context, workspaceID string) ([]Envi
 
 // Get returns a single environment by id.
 func (s *Service) Get(ctx context.Context, id string) (EnvironmentView, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -638,6 +642,10 @@ func conflictOrMapError(err error, name string) error {
 
 // Rename renames an environment.
 func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -666,6 +674,10 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 // merge-then-full-replace semantics stay identical to the standalone /acl
 // route.
 func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch) (EnvironmentView, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -786,6 +798,10 @@ func (s *Service) clearMembersForProject(ctx context.Context, projectID string) 
 // Delete clears members' environment membership and inherited rules before
 // removing the environment. Their project membership and own rules survive.
 func (s *Service) Delete(ctx context.Context, id string) error {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return err
 	}
@@ -865,6 +881,10 @@ func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environme
 // environment's networkIsolationEnabled) on services now in it — the
 // operator's signal for environment-scoped NetworkPolicy (t004).
 func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []string) (EnvironmentView, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -955,6 +975,10 @@ func (s *Service) SetEnvGroups(ctx context.Context, id string, envGroupIDs []str
 // before any membership changes; unknown and foreign ids receive the same
 // refusal. The diff then re-stamps only members that actually changed.
 func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id string, wantIDs []string) (EnvironmentView, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -1031,6 +1055,10 @@ func (s *Service) authorizeACLBearingMutation(ctx context.Context, e store.Envir
 //     core.LabelEnvironment (w6/m20) names this environment
 //     (propagateIPAllowList).
 func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) (EnvironmentView, error) {
+	ctx, err := s.scopeEnvironment(ctx, id)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -1115,6 +1143,24 @@ func (s *Service) requireProject(ctx context.Context, relation, projectID string
 		return store.Project{}, err
 	}
 	return p, nil
+}
+
+// scopeEnvironment makes a by-id verb act in the environment's own workspace
+// (w4/m172), so the verb's leading Authorize — its audit point — checks the
+// workspace that owns the environment rather than the caller's default. A
+// non-member's id answers the same 404 as a missing one.
+func (s *Service) scopeEnvironment(ctx context.Context, id string) (context.Context, error) {
+	var owner core.ResourceOwner
+	if s.Store != nil {
+		owner = func(ctx context.Context) (string, bool, error) {
+			e, err := s.Store.GetEnvironment(ctx, ids.EnvironmentStorageID(id))
+			if errors.Is(err, store.ErrNotFound) {
+				return "", false, nil
+			}
+			return e.TenantID, err == nil, err
+		}
+	}
+	return s.ScopeByID(ctx, "", owner, core.NotFound("environment"))
 }
 
 // requireEnvironment fetches an environment and authorizes it against the
