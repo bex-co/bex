@@ -7,6 +7,8 @@ import {
   isDraftValid,
   reidentifyDraft,
   validateEnvironmentDraft,
+  VALID_ENV_KEY,
+  isValidSecretFileName,
   type EnvironmentDraft,
 } from "../environment-draft";
 
@@ -278,5 +280,26 @@ describe("reidentifyDraft", () => {
       () => 0,
     );
     expect(restored).not.toHaveProperty("baseRevision");
+  });
+});
+
+// w4/m168: names cap at 253 characters, Kubernetes' Secret-key limit and
+// bex-api's — a longer name used to be stored and then fail the projection.
+describe("name length cap", () => {
+  it("accepts 253 characters and refuses 254 for env keys and file names", () => {
+    expect(VALID_ENV_KEY.test("A" + "b".repeat(252))).toBe(true);
+    expect(VALID_ENV_KEY.test("A" + "b".repeat(253))).toBe(false);
+    expect(isValidSecretFileName("f".repeat(253))).toBe(true);
+    expect(isValidSecretFileName("f".repeat(254))).toBe(false);
+  });
+
+  it("blocks Save on a 254-character file name and keeps 253", () => {
+    const tooLong = createEnvironmentDraft([], []);
+    addFile(tooLong, "f".repeat(254), "x");
+    expect(isDraftValid(validateEnvironmentDraft(tooLong))).toBe(false);
+
+    const atLimit = createEnvironmentDraft([], []);
+    addFile(atLimit, "f".repeat(253), "x");
+    expect(isDraftValid(validateEnvironmentDraft(atLimit))).toBe(true);
   });
 });

@@ -55,12 +55,27 @@ func SortedKeys(m map[string]string) []string {
 	return out
 }
 
+// MaxConfigKeyLength is the longest environment variable name or secret-file
+// name bex accepts: Kubernetes' own Secret-key limit (IsConfigMapKey). A longer
+// key fails the Secret projection after the store write, which is how one
+// wedged a service's environment (w4/m168).
+const MaxConfigKeyLength = 253
+
+// invalidConfigKey refuses a key a validator rejected, naming the rule it
+// broke. An over-long key is not echoed: the length is the whole story.
+func invalidConfigKey(noun, key string) error {
+	if len(key) > MaxConfigKeyLength {
+		return fmt.Errorf("%w: %s name is longer than %d characters", ErrBadRequest, noun, MaxConfigKeyLength)
+	}
+	return fmt.Errorf("%w: invalid %s name %q", ErrBadRequest, noun, key)
+}
+
 // ValidEnvKey reports whether k is a C-locale environment variable name
 // ([A-Za-z_][A-Za-z0-9_]*): what a shell and Kubernetes' Secret-key validation
 // both accept. Rejecting the rest keeps a bad name from failing the Secret write
 // with a cryptic error later.
 func ValidEnvKey(k string) bool {
-	if k == "" {
+	if k == "" || len(k) > MaxConfigKeyLength {
 		return false
 	}
 	for i, r := range k {
@@ -127,7 +142,7 @@ func ReservedEnvKeyError(k string) error {
 func CheckEnvKey(k string) error {
 	if !ValidEnvKey(k) {
 		// Names only in the error — never the value (docs/ADR013-secrets.md).
-		return fmt.Errorf("%w: invalid environment variable name %q", ErrBadRequest, k)
+		return invalidConfigKey("environment variable", k)
 	}
 	if IsReservedEnvKey(k) {
 		return ReservedEnvKeyError(k)
@@ -139,7 +154,7 @@ func CheckEnvKey(k string) error {
 // ([-._a-zA-Z0-9]+, not "."/".."): the file is mounted at /etc/secrets/<name>, so
 // a name outside this set (a path, in particular) would fail the Secret write.
 func ValidSecretFileName(name string) bool {
-	if name == "" || name == "." || name == ".." {
+	if name == "" || name == "." || name == ".." || len(name) > MaxConfigKeyLength {
 		return false
 	}
 	for _, r := range name {
@@ -151,4 +166,13 @@ func ValidSecretFileName(name string) bool {
 		}
 	}
 	return true
+}
+
+// CheckSecretFileName is CheckEnvKey's twin for secret files: the one refusal
+// every secret-file write returns for a name ValidSecretFileName rejects.
+func CheckSecretFileName(name string) error {
+	if !ValidSecretFileName(name) {
+		return invalidConfigKey("secret file", name)
+	}
+	return nil
 }

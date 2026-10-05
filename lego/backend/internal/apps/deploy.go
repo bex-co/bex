@@ -2100,8 +2100,8 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
 		}
 		if !core.ValidEnvKey(e.Key) {
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit)",
-				core.ErrBadRequest, name, e.Key)
+			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit, at most %d characters)",
+				core.ErrBadRequest, name, e.Key, core.MaxConfigKeyLength)
 		}
 		if core.IsReservedEnvKey(e.Key) {
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
@@ -2342,8 +2342,8 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		// parse error does — the validation surface renders the error string,
 		// not a code (w2/m95 t003).
 		if !core.ValidEnvKey(e.Key) {
-			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit)",
-				core.ErrBadRequest, a.Name, e.Key)
+			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit, at most %d characters)",
+				core.ErrBadRequest, a.Name, e.Key, core.MaxConfigKeyLength)
 		}
 		if core.IsReservedEnvKey(e.Key) {
 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",

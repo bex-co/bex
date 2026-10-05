@@ -1,4 +1,6 @@
-export const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
+// Both name rules cap at 253 characters, Kubernetes' Secret-key limit and
+// bex-api's (core.MaxConfigKeyLength): a longer name fails the projection.
+export const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,252}$/;
 
 /**
  * Names bex owns, mirroring `core.ReservedEnvKeys` in the backend. The operator
@@ -14,7 +16,7 @@ export const RESERVED_ENV_KEYS: readonly string[] = ["PORT"];
 export function isReservedEnvKey(key: string): boolean {
   return RESERVED_ENV_KEYS.includes(key);
 }
-export const VALID_SECRET_FILE_NAME = /^[-._a-zA-Z0-9]+$/;
+export const VALID_SECRET_FILE_NAME = /^[-._a-zA-Z0-9]{1,253}$/;
 /**
  * The upload path's read guard: a file this large is never read into memory.
  * It is not the storage limit — that is MAX_ENVIRONMENT_MAP_BYTES in total.
