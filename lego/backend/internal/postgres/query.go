@@ -97,6 +97,12 @@ type QueryResult struct {
 type queryLimits struct {
 	statementTimeout time.Duration
 	rowCap           int
+	// serverSettings dials without the session startup rails, for the one
+	// fixed pg_settings read: pinned as client parameters they are what that
+	// session's pg_settings reports (statement_timeout 10000 ms, source
+	// client), masking the server's own values (w4/185). BEGIN READ ONLY and
+	// the request deadline still bound it.
+	serverSettings bool
 }
 
 type queryExecutor func(context.Context, string, string, queryLimits, bool) (QueryResult, error)
@@ -330,10 +336,12 @@ func buildQueryConnConfig(connString string, lim queryLimits, readOnly bool) (*p
 	if cfg.RuntimeParams == nil {
 		cfg.RuntimeParams = map[string]string{}
 	}
-	if readOnly {
-		cfg.RuntimeParams["default_transaction_read_only"] = "on"
+	if !lim.serverSettings {
+		if readOnly {
+			cfg.RuntimeParams["default_transaction_read_only"] = "on"
+		}
+		cfg.RuntimeParams["statement_timeout"] = strconv.FormatInt(lim.statementTimeout.Milliseconds(), 10)
 	}
-	cfg.RuntimeParams["statement_timeout"] = strconv.FormatInt(lim.statementTimeout.Milliseconds(), 10)
 	cfg.BuildFrontend = newQueryFrontend
 	return cfg, nil
 }
