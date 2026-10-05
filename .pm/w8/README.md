@@ -76,7 +76,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **053** — [A root directory missing from the repo fails the build with BuildKit's `invalid local: resolve : lstat /source/…`](053.md) (~40m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 8.
 - [ ] **054** — [Blueprint refusal messages ignore the registry's recorded reason (`postgresMajorVersion` 10–12, cron `preDeployCommand`)](054.md) (~30m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweeps 14–15.
 - [ ] **055** — [`blueprints validate` passes `domains: [dashboard.bex.co]`, `api.bex.co` and `*.onbex.co` that apply refuses, and points hostname errors at `services[n].name`](055.md) (~45m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 15.
 - [ ] **056** — [REST create skips the per-type setting gates that update and Blueprints enforce (cron, worker, private and static accept settings that don't apply)](056.md) (~1h, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweeps 15–17.
@@ -84,6 +83,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **058** — [Deploy `trigger` answers `create` and `config_change`, values outside Render's enum, and the conformance test only seeds `api`](058.md) (~40m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 19.
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
 
+- [x] **053** — [A root directory missing from the repo fails the build with BuildKit's `invalid local: resolve : lstat /source/…`](done/053.md) — **DONE 2026-10-05**: the clone step refuses a missing root directory, Docker context or Dockerfile by name as tenant input.
 - [x] **052** — [A failed native build reports bex's internal env-decoding wrapper instead of the user's build command and exit code](done/052.md) — **DONE 2026-10-04**: the env loader moved to a COPY heredoc, and the failure summary reads `build command '<cmd>' exited with code N`.
 - [x] **051** — [`blueprints validate` reports only one dangling `fromDatabase`/`fromService` reference, and which one changes from run to run](done/051.md) — **DONE 2026-10-04**: every dangling reference gets its own located entry, deterministically; apply names the sorted first.
 - [x] **050** — [Platform internals ship as tenant log lines: kubelet "failed to try resolving symlinks" and CNPG's Go TLS-handshake line](done/050.md) — **DONE 2026-10-04**: exact shipper drops on App and Postgres, logger-less instance-manager JSON dropped, pod path re-types the body.
