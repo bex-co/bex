@@ -125,7 +125,8 @@ type DeployView struct {
 	StartedAt      *time.Time
 	FinishedAt     *time.Time
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy (w1/m33):
-	// "" (no step) | "running" | "succeeded" | "failed". A deploy that fails its
+	// "" (no step) | "running" | "succeeded" | "failed" | "canceled" (closed while
+	// still running, w4/187). A deploy that fails its
 	// migration is update_failed with PreDeployStatus "failed"; one that fails its
 	// health check is update_failed with PreDeployStatus "" — the field is how a
 	// client tells the two apart. Its logs are retrievable via the logs surface
