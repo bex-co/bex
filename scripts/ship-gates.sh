@@ -2,11 +2,12 @@
 # ship-gates.sh — the checks /ship runs after committing and before pushing
 # (w5/m112). Exits non-zero when the push must not happen:
 #
-#   1. main is red: the newest completed (not cancelled or skipped)
-#      `deploy (bex via Argo)` run on main failed. Stacking more commits on a
-#      red main is how three changes landed on top of a broken backend suite on
-#      2026-10-05. Pass --fixes-red-main when this push is the fix (say so in
-#      the commit). One read, no waiting: /ship still does not watch CI.
+#   1. main is red: the newest completed (not cancelled, skipped or neutral)
+#      `deploy (bex via Argo)` run on main failed or timed out. Stacking more
+#      commits on a red main is how three changes landed on top of a broken
+#      backend suite on 2026-10-05. Pass --fixes-red-main when this push is
+#      the fix (say so in the commit). One read, no waiting: /ship still does
+#      not watch CI.
 #   2. The push changes lego/backend, lego/types or the seeded authz model and
 #      the backend suite fails against its real Postgres + OpenFGA + OpenBao
 #      (scripts/backend-test-deps.sh), which local `go test` otherwise skips.
@@ -30,19 +31,28 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 
 if [ "$fixes_red_main" = 0 ]; then
-  if runs=$(gh run list --workflow deploy.yml --branch main --limit 20 \
-    --json conclusion,status,headSha,url 2>/dev/null); then
-    latest=$(jq -r '[.[] | select(.status == "completed" and .conclusion != "cancelled" and .conclusion != "skipped")][0]
-      | if . == null then "" else "\(.conclusion) \(.headSha[0:9]) \(.url)" end' <<<"$runs")
+  # No --branch: that filter turns GitHub's run listing into a search, which
+  # can answer with a page of only old runs (it once blocked a green main on a
+  # month-old failure). deploy.yml runs on main pushes and manual dispatches,
+  # so filter the branch here and take the newest verdict by createdAt; the
+  # verdict filter is ci-red-streak.sh's.
+  if runs=$(gh run list --workflow deploy.yml --limit 20 \
+    --json conclusion,status,headSha,headBranch,url,createdAt 2>/dev/null); then
+    latest=$(jq -r 'map(select(.headBranch == "main" and .status == "completed"
+          and .conclusion != "cancelled" and .conclusion != "skipped" and .conclusion != "neutral"))
+      | max_by(.createdAt)
+      | if . == null then "" else "\(.conclusion) \(.headSha[0:9]) \(.createdAt) \(.url)" end' <<<"$runs")
     if [ -z "$latest" ]; then
       echo "ship-gates: warning: no completed deploy run on main to judge; not blocking" >&2
     else
-      read -r conclusion sha url <<<"$latest"
-      if [ "$conclusion" = failure ]; then
-        echo "ship-gates: main is red — deploy run for $sha failed: $url" >&2
-        echo "ship-gates: fix main first, or run with --fixes-red-main if this push is the fix" >&2
-        exit 1
-      fi
+      read -r conclusion sha created url <<<"$latest"
+      case "$conclusion" in
+        failure | timed_out | startup_failure)
+          echo "ship-gates: main is red — deploy run for $sha (created $created) ended $conclusion: $url" >&2
+          echo "ship-gates: fix main first, or run with --fixes-red-main if this push is the fix" >&2
+          exit 1
+          ;;
+      esac
     fi
   else
     echo "ship-gates: warning: could not read main's deploy status (gh unavailable?); not blocking" >&2
