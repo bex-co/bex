@@ -753,12 +753,17 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
 	failureReason, failureCode := deployCloseFailureReason(cur, open, status, matchesObservedRelease)
-	// w4/089: a reconciler cancel is always a supersede-class close (user cancel
-	// goes through deploys.Cancel / CloseDeploy and never reaches here). Stamp a
-	// neutral cancel_reason — never failure_reason — naming the superseding
-	// deploy when we can resolve it.
+	// w4/089: a reconciler cancel is a supersede-class close (user cancel goes
+	// through deploys.Cancel / CloseDeploy and never reaches here), or the end
+	// of a rollout a user suspend interrupted (w4/m171). Stamp a neutral
+	// cancel_reason — never failure_reason — naming the superseding deploy when
+	// we can resolve it.
 	cancelReason := ""
-	if status == DeployCanceled {
+	switch {
+	case status != DeployCanceled:
+	case cur.Status.ReleaseGeneration <= open.Generation && suspendEndsRollout(open, cur):
+		cancelReason = suspendCancelReason
+	default:
 		cancelReason = r.supersededCancelReason(ctx, open, cur)
 	}
 	// w6/m123, w4/m156: a build_failed or live close reached by a phase skip
@@ -1181,8 +1186,12 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	if status, settled := supersededDeployStatus(open, app, timedOut); settled {
 		return status
 	}
+	suspendEnded := suspendEndsRollout(open, app)
 	switch preDeployStatusFor(app) {
 	case PreDeployRunning:
+		if suspendEnded {
+			return DeployCanceled
+		}
 		if timedOut {
 			return DeployPreDeployFailed
 		}
@@ -1194,6 +1203,9 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	// now, with its diagnosis, not at the health-gate timeout (w8/m44).
 	if _, _, ok := recordedRolloutFailure(app, open.Generation); ok {
 		return DeployUpdateFailed
+	}
+	if suspendEnded {
+		return DeployCanceled
 	}
 
 	reason, conditionCurrent := readyReasonForGeneration(app)
@@ -1246,6 +1258,20 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		return ""
 	}
 	return timedOutDeployStatus(open)
+}
+
+// suspendCancelReason is the cancel_reason of a rollout a user suspend ended.
+const suspendCancelReason = "Canceled: the service was suspended"
+
+// suspendEndsRollout reports that a user suspend ended this open row's
+// rollout: the App is suspended (only the Suspend verb writes spec.suspended —
+// an auto-hibernate park never does) and the row's release is not the one
+// serving. The operator parks the App and keeps the served template, so no
+// verdict would ever arrive and the row would sit "in progress" until the
+// health-gate timeout failed it, blaming code that never ran (w4/m171).
+// Auto-hibernate keeps w6/m147's rule: the park defers, the verdict follows.
+func suspendEndsRollout(open Deploy, app *appv1alpha1.App) bool {
+	return app.Spec.Suspended && IsOpenDeployStatus(open.Status) && !releaseIsActive(open, app)
 }
 
 // supersededCancelReason is the neutral cause stamped on a reconciler cancel

@@ -88,9 +88,10 @@ type ServiceEventRow struct {
 	// closes the deploy failed (w1/m138); the ended phase only. Empty on
 	// non-failed deploys — the deploys table stores it that way.
 	FailureReason string
-	// CancelReason is the neutral cause of a non-user cancel (w4/089) — today
-	// "Superseded by dep-…" on deploy_ended and on lifecycle facts joined to
-	// that deploy. Empty for user cancels and non-canceled rows.
+	// CancelReason is the neutral cause of a non-user cancel (w4/089) —
+	// "Superseded by dep-…", or the suspend that ended the rollout (w4/m171) —
+	// on deploy_ended and on lifecycle facts joined to that deploy. Empty for
+	// user cancels and non-canceled rows.
 	CancelReason string
 	// StallReason is why an OPEN deploy is not progressing (w4/m112) — the
 	// operator's live diagnosis of the current revision's pods. The STARTED
