@@ -194,6 +194,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [x] **193** — [Generate Blueprint returns 500 "Internal error" for a plain git/Docker service](done/193.md) ← infinite /qa-find-bugs loop12 2026-10-04 UTC — done 2026-10-04 (cause: missing effective runtime).
+
 - [x] **192** — [Scaling "Recent Metrics" says "No limit configured" for every sleeping or suspended service](done/192.md) ← infinite /qa-find-bugs loop11 2026-10-04 UTC — done 2026-10-04.
 
 - [x] **191** — [Key Value `default` user has `+@all`: tenants can `CONFIG SET` the plan cap and eviction policy, rotate the password, and `SHUTDOWN`](done/191.md) ← infinite /qa-find-bugs loop10 2026-10-04 UTC — done 2026-10-04.

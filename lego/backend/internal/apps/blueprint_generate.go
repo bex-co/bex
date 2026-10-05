@@ -30,6 +30,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"sigs.k8s.io/yaml"
@@ -197,12 +199,50 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 	// is a generator bug, never a user error — fail loudly.
 	source, ir, problems := CompileBlueprintIR(manifest)
 	if len(problems) > 0 {
-		return GenerateBlueprintResult{}, fmt.Errorf("generated Blueprint failed self-validation (%s); this is a bex bug", problems[0].Message)
+		return GenerateBlueprintResult{}, generateSelfCheckError(problems[0].Message, generatedResourceID(problems[0].Path, req))
 	}
 	if _, err := parseCompiledStack(blueprintParseOverrides{}, source, ir); err != nil {
-		return GenerateBlueprintResult{}, fmt.Errorf("generated Blueprint failed self-validation (%v); this is a bex bug", err)
+		return GenerateBlueprintResult{}, generateSelfCheckError(err.Error(), "")
 	}
 	return GenerateBlueprintResult{Manifest: manifest, Filename: CanonicalBlueprintFilename}, nil
+}
+
+// generateSelfCheckError reports a generated manifest the platform's own
+// validator rejected. It is a bex bug, never the caller's input, but it used to
+// surface as a bare "internal error" with no hint of which service blocked the
+// export (w4/193): a coded, value-free 503 names the resource instead, and the
+// message keeps the validator's own finding (a schema path and property).
+func generateSelfCheckError(problem, resourceID string) error {
+	msg := "bex could not export this selection as a Blueprint"
+	if resourceID != "" {
+		msg = fmt.Sprintf("bex could not export %s as a Blueprint", resourceID)
+	}
+	return core.NewUnavailableError("BLUEPRINT_GENERATE_FAILED",
+		fmt.Sprintf("%s: the generated manifest failed its own validation (%s); this is a bex bug, please report it", msg, problem),
+		map[string]any{"resourceId": resourceID})
+}
+
+var generatedServicePath = regexp.MustCompile(`^#?/services/(\d+)`)
+
+// generatedResourceID maps a validation path in the generated manifest back to
+// the selected id it came from: services are emitted in serviceIds order, then
+// the Key Values.
+func generatedResourceID(path string, req GenerateBlueprintRequest) string {
+	m := generatedServicePath.FindStringSubmatch(path)
+	if m == nil {
+		return ""
+	}
+	i, err := strconv.Atoi(m[1])
+	if err != nil {
+		return ""
+	}
+	if i < len(req.ServiceIDs) {
+		return req.ServiceIDs[i]
+	}
+	if i -= len(req.ServiceIDs); i < len(req.KeyValueIDs) {
+		return req.KeyValueIDs[i]
+	}
+	return ""
 }
 
 // exportedEnvGroup is the Blueprint-facing projection of one env group.
@@ -252,14 +292,19 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	}
 	static := svcType == appv1alpha1.TypeStaticSite
 
+	// The read surfaces' runtime (effectiveRuntime), not the raw spec field:
+	// a Dockerfile build commonly leaves spec.runtime empty and says so through
+	// spec.builder, and render.yaml requires a runtime, so emitting only the
+	// raw field failed the self-check for an ordinary git service (w4/193).
+	runtime := effectiveRuntime(a.Spec, svcType)
 	switch {
 	case a.Spec.Image != "":
 		entry["runtime"] = "image"
 		entry["image"] = map[string]any{"url": a.Spec.Image}
 	case static:
 		entry["runtime"] = "static"
-	case a.Spec.Runtime != "":
-		entry["runtime"] = a.Spec.Runtime
+	case runtime != "":
+		entry["runtime"] = runtime
 	}
 	if a.Spec.Repo != "" {
 		entry["repo"] = a.Spec.Repo
@@ -280,7 +325,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["buildCommand"] = a.Spec.BuildCommand
 	}
 	if a.Spec.StartCommand != "" {
-		if a.Spec.Runtime == "docker" {
+		if runtime == "docker" {
 			entry["dockerCommand"] = a.Spec.StartCommand
 		} else if !static {
 			entry["startCommand"] = a.Spec.StartCommand
@@ -294,7 +339,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		// A cron's command override lives in Spec.Command (the PATCH path),
 		// which render.yaml spells startCommand (or dockerCommand for docker).
 		if a.Spec.Command != "" {
-			if a.Spec.Runtime == "docker" {
+			if runtime == "docker" {
 				entry["dockerCommand"] = a.Spec.Command
 			} else {
 				entry["startCommand"] = a.Spec.Command
