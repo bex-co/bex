@@ -86,7 +86,7 @@ spec:
             # ADR047 D1/D3: the separate `agent` sandbox template. deploy.yml
             # builds and publishes this image from lego/agent-image/.
             - name: BEX_AGENT_SESSION_IMAGE
-              value: ghcr.io/bex-co/bex-agent-sandbox@sha256:f4217748d3f1023f2c382309a2ecaa5eb363ad13963203b3702dbb9120991dd5
+              value: ghcr.io/bex-co/bex-agent-sandbox@sha256:2995224bde34f3c86b38848709f223d148673b9981da29b4c1fc99ce985aad8b
             # ADR062 / security round 10: mandatory credential-injecting model
             # proxy. Agent-session sandboxes receive only a session placeholder;
             # the reusable workspace key stays on the gateway→vendor hop.
