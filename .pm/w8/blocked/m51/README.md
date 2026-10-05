@@ -1,6 +1,6 @@
 # w8 · m51 — Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)
 
-**Worker:** worker8 **Goal:** a native-runtime build uses the toolchain version the service asks for, through Render's documented mechanisms, from a reviewed and digest-pinned set of version lines. It narrates which version it chose and why, and refuses an unsupported version by name. **Status:** blocked — t001–t008 done 2026-10-05; t009 waits on release + live production DoD replay
+**Worker:** worker8 **Goal:** a native-runtime build uses the toolchain version the service asks for, through Render's documented mechanisms, from a reviewed and digest-pinned set of version lines. It narrates which version it chose and why, and refuses an unsupported version by name. **Status:** blocked — t001–t008 done 2026-10-05; released and live-verified 2026-10-05 for env-var, engines, unsupported and default cases; t009 waits only on the `.python-version` / `.nvmrc` file-source replay (needs a fixture repo)
 
 ## Tasks (in order)
 
@@ -36,3 +36,20 @@ On production, through the released `bex` CLI:
 - **Expected outcome:** apps pinned to a non-default runtime version (very common: Django on 3.11, older Node LTS) build on the toolchain they declare, or fail loudly, instead of building on the wrong one and breaking at runtime.
 - **Why now:** this is silent. A wrong-major build can pass and then crash or misbehave in production with nothing pointing at the cause. The fix also gets harder the longer tenants depend on the accidental single version.
 - **Render parity included:** the change is tenant-visible (build behavior, build-log narration, possibly a dashboard runtime-version hint), so t006 checks REST/GraphQL/MCP/dashboard and the Blueprint path.
+
+## Live verification (2026-10-05, `/qa-find-bugs-cli` w8 loop, sweep 23)
+
+Production pin `c7afefad5` (contains `dfb81512d`), `bex v0.2.1`, workspace `bex-canary`, human device login. Fixtures (both deleted): native Python `srv-db1nab8ti8qc73bltbcg` (`examples/hello-python`) and native Node `srv-db1nabm7q7bs739ppan0` (`examples/hello-node`). The build command echoes the toolchain version.
+
+| DoD item                         | Result |
+| -------------------------------- | ------ |
+| `PYTHON_VERSION=3.11.9`          | ✅ `==> Using Python 3.11 (from PYTHON_VERSION=3.11.9)`; `python --version` → `Python 3.11.17`; serves 200 |
+| `NODE_VERSION=22`                | ✅ `==> Using Node 22 (from NODE_VERSION=22)`; `node --version` → `v22.23.3`; serves 200 |
+| `engines.node` bounded/unbounded | ✅ (unbounded) `examples/hello-node` `engines.node: ">=20"`, no `NODE_VERSION` → `==> Using Node 26 (from package.json engines.node)`, `v26.10.0`, Render's "unbounded resolves to latest". A bounded range was not exercised. |
+| Unsupported request              | ✅ `PYTHON_VERSION=2.7.18` → `build_failed`: `==> Build failed: build failed in the runtime version selection step: PYTHON_VERSION=2.7.18 is not a supported Python version; supported Python lines are 3.10, 3.11, 3.12, 3.13, 3.14`. The prior release kept serving. |
+| No version signal                | ✅ `==> Using Python 3.13 (default)`; `Python 3.13.15` |
+| `.python-version` file           | ⏳ not exercised: needs a repo containing the file (none of `bex-co/bex`'s examples has one) |
+| `.nvmrc` / `.node-version` file  | ⏳ not exercised, same reason |
+| Freshness `validate`             | not re-run here (CI) |
+
+Remaining before t009: one live build from a repo carrying `.python-version` (e.g. `3.12`) and one carrying `.nvmrc`, ideally on a QA-owned fork or fixture repo.
