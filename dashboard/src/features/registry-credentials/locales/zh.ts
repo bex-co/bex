@@ -155,7 +155,7 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.deleteConfirmBody": {
     message:
-      "已在使用此凭据拉取密钥的服务不会立即受影响，直到其下次部署重新解析凭据。此操作无法撤销。",
+      "只能删除未被任何服务使用的凭据——请先从所有服务中移除它，否则删除会被拒绝。此操作无法撤销。",
     description: "Delete-confirmation dialog body",
   },
   "registryCredentials.deleteCancel": {

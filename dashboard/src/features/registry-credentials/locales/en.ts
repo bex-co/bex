@@ -160,7 +160,7 @@ const enRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.deleteConfirmBody": {
     message:
-      "Services already using this credential's pull secret are unaffected until their next deploy re-resolves it. This can't be undone.",
+      "Only a credential no service uses can be deleted — remove it from every service first, or the delete is refused. This can't be undone.",
     description: "Delete-confirmation dialog body",
   },
   "registryCredentials.deleteCancel": {
