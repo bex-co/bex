@@ -137,17 +137,7 @@ func TestPaidIntentGuardCoversServiceCreatePlanAndBlueprintBeforeWrites(t *testi
 		}
 
 		gate.calls = nil
-		const freeManifest = `services:
-  - name: free-web
-    type: web
-    runtime: image
-    image: {url: nginx:alpine}
-    plan: free
-databases:
-  - name: free-db
-    plan: free
-`
-		if _, err := svc.DeployStack(paidGateContext(), DeployRequest{Manifest: freeManifest}); err != nil {
+		if _, err := svc.DeployStack(paidGateContext(), DeployRequest{Manifest: freeBlueprintStack}); err != nil {
 			t.Fatalf("free Blueprint: %v", err)
 		}
 		if len(gate.calls) != 0 {

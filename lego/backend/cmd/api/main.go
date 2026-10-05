@@ -867,7 +867,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		}
 		if requirePaymentMethod != paymentMethodOff {
 			base.Payment = &billing.PaymentGate{Store: st}
-			// ADR075 D7: "all" widens RequirePlanBilling to the free tier too.
+			// ADR075 D7: "all" widens RequireBillingFor to the free tier too.
 			base.PaymentAllPlans = requirePaymentMethod == paymentMethodAllPlans
 			// Reclaim Customers that never bound a card. Gate-on only —
 			// with the gate off the emitter provisions cardless Customers on
