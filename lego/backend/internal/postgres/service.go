@@ -32,6 +32,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,11 +89,15 @@ type Service struct {
 
 // PostgresView is the Render-shaped "postgres" object.
 type PostgresView struct {
-	ID           string `json:"id"` // immutable dpg-... id
-	Name         string `json:"name"`
-	Plan         string `json:"plan"`
-	Version      string `json:"version,omitempty"`
-	Status       string `json:"status"`       // Render databaseStatus enum
+	ID      string `json:"id"` // immutable dpg-... id
+	Name    string `json:"name"`
+	Plan    string `json:"plan"`
+	Version string `json:"version,omitempty"`
+	Status  string `json:"status"` // Render databaseStatus enum
+	// StatusReason says why an unavailable database is unavailable (bex extra,
+	// w4/m170): a fixed sentence per operator failure, never raw error text.
+	// Omitted for every other status.
+	StatusReason string `json:"statusReason,omitempty"`
 	DatabaseName string `json:"databaseName"` // the actual (normalized) db
 	DatabaseUser string `json:"databaseUser"`
 	DiskSizeGB   int32  `json:"diskSizeGB,omitempty"`
@@ -297,9 +302,23 @@ func validateDatabaseName(name string) error {
 	return nil
 }
 
+// reservedIdentifierError refuses a name PostgreSQL owns (w4/m170), naming the
+// field so every surface can point at it.
+func reservedIdentifierError(field, name string) error {
+	return core.NewBadRequestError(
+		"POSTGRES_IDENTIFIER_RESERVED",
+		fmt.Sprintf("%s %q is reserved by PostgreSQL; choose another name", field, name),
+		map[string]any{"field": field},
+	)
+}
+
 func validatePhysicalIdentifier(field, name string) error {
 	if name == "" {
 		return nil
+	}
+	if (field == "databaseName" && appv1alpha1.ReservedPostgresDatabaseName(name)) ||
+		(field == "databaseUser" && appv1alpha1.ReservedPostgresRole(name)) {
+		return reservedIdentifierError(field, name)
 	}
 	if !appv1alpha1.ValidPostgresIdentifier(name) {
 		return core.NewBadRequestError(
@@ -393,6 +412,36 @@ func dbStatus(d *appv1alpha1.Database) string {
 	}
 }
 
+// unavailableReasons maps the operator's Ready-condition reason for a failed
+// reconcile to a sentence safe for any reader. The condition's own message is
+// raw API-server or CNPG text (it can name Secrets), so it is not published;
+// StorageShrinkRejected's message is operator-authored and is.
+var unavailableReasons = map[string]string{
+	"ClusterFailed":             "The database cluster rejected its configuration, so the latest change could not be applied.",
+	"ClusterReadFailed":         "The database cluster's state could not be read.",
+	"NetworkPolicyFailed":       "The database's network policy could not be applied.",
+	"DiskAutoscalingFailed":     "Disk autoscaling could not be applied.",
+	"ExportFailed":              "The database's log and metric export could not be configured.",
+	"PoolerFailed":              "The connection pooler could not be provisioned.",
+	"PostUpgradeBackupFailed":   "The backup after the version upgrade could not be taken.",
+	"MajorVersionUpgradeFailed": "The major version upgrade failed; the database stays on its current version.",
+}
+
+// statusReason explains an unavailable database from its Ready condition.
+func statusReason(d *appv1alpha1.Database) string {
+	c := meta.FindStatusCondition(d.Status.Conditions, appv1alpha1.ConditionReady)
+	if c == nil || c.Status == metav1.ConditionTrue {
+		return "The database failed to reconcile."
+	}
+	if c.Reason == "StorageShrinkRejected" {
+		return c.Message
+	}
+	if reason, ok := unavailableReasons[c.Reason]; ok {
+		return reason
+	}
+	return fmt.Sprintf("The database failed to reconcile (%s).", c.Reason)
+}
+
 func pgView(d *appv1alpha1.Database) PostgresView {
 	created := ""
 	if !d.CreationTimestamp.IsZero() {
@@ -425,6 +474,10 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if !d.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}
+	reason := ""
+	if status == "unavailable" {
+		reason = statusReason(d)
+	}
 	// ipAllowList is required in Render's schema — an empty stored list
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return PostgresView{
@@ -433,6 +486,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		Plan:                    d.Spec.Plan,
 		Version:                 version,
 		Status:                  status,
+		StatusReason:            reason,
 		DatabaseName:            dbn,
 		DatabaseUser:            dbUser,
 		DiskSizeGB:              DatabaseStorageHighWater(d),

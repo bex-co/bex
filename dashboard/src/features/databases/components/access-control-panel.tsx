@@ -16,6 +16,7 @@ import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAccessControl } from "@/features/databases/hooks/use-access-control";
+import { isReservedPostgresRole } from "@/features/databases/lib/identifiers";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 
 /**
@@ -112,6 +113,10 @@ function UsersSection({ access }: { access: Access }) {
     password: string;
   } | null>(null);
 
+  // A reserved role wedged the database's reconcile (w4/m170); bex-api refuses
+  // it too, but say so before the click.
+  const reserved = isReservedPostgresRole(name.trim());
+
   async function create() {
     const pw = await access.createUser(name.trim());
     if (pw != null) {
@@ -182,13 +187,14 @@ function UsersSection({ access }: { access: Access }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="reporting"
           aria-label={t("databases.accessUserName")}
+          aria-invalid={reserved}
           className="max-w-xs"
         />
         <Button
           variant="outline"
           size="sm"
           onClick={() => void create()}
-          disabled={!name.trim() || access.creatingUser}
+          disabled={!name.trim() || reserved || access.creatingUser}
         >
           {access.creatingUser ? (
             <Loader2 className="animate-spin" />
@@ -198,6 +204,11 @@ function UsersSection({ access }: { access: Access }) {
           {t("databases.accessUserAdd")}
         </Button>
       </div>
+      {reserved ? (
+        <p className="text-sm text-destructive">
+          {t("databases.fieldPhysicalNameReserved", { name: name.trim() })}
+        </p>
+      ) : null}
     </section>
   );
 }

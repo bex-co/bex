@@ -50,6 +50,21 @@ func ValidPostgresIdentifier(name string) bool {
 	return true
 }
 
+// ReservedPostgresDatabaseName reports a database name PostgreSQL itself owns.
+// Accepted, it either collides with the system catalog database or hands the
+// tenant a template it holds no CREATE privilege on (w4/m170).
+func ReservedPostgresDatabaseName(name string) bool {
+	return name == "postgres" || name == "template0" || name == "template1"
+}
+
+// ReservedPostgresRole reports a role bex must never manage: the superuser,
+// CNPG's replication role, and the pg_ prefix PostgreSQL reserves for its own
+// roles. Projected into CNPG's managed roles, any of them fails the reconcile
+// on add and again as a deletion tombstone, wedging the database (w4/m170).
+func ReservedPostgresRole(name string) bool {
+	return name == "postgres" || name == "streaming_replica" || strings.HasPrefix(name, "pg_")
+}
+
 // DefaultPostgresDatabaseName is the stable legacy/default physical database
 // identity derived from the immutable Database metadata.name.
 func DefaultPostgresDatabaseName(resourceID string) string {

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -368,6 +369,45 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 	}
 	if managedRoleIndex(t, overlap)["reporting"]["ensure"] != "present" {
 		t.Fatalf("active role did not override stale tombstone: %v", overlapRoles)
+	}
+}
+
+// w4/m170: a reserved role (postgres, streaming_replica, pg_*) is never
+// projected — not as a user, not as a deletion tombstone — because CNPG refuses
+// it and the whole reconcile fails. A spec that already carries one (an
+// add-user of "postgres", then its delete) heals on the next reconcile.
+func TestManagedRolesNeverProjectReservedRoles(t *testing.T) {
+	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
+	users := []appv1alpha1.DatabaseUser{{Name: "postgres", SecretName: "s1"}, {Name: "pg_monitor_x", SecretName: "s2"}, {Name: "qa_extra", SecretName: "s3"}}
+	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user",
+		users: users, deletedUsers: []string{"postgres", "streaming_replica", "gone"}})
+	roles := managedRoleIndex(t, spec)
+	for _, reserved := range []string{"postgres", "pg_monitor_x", "streaming_replica"} {
+		if r, ok := roles[reserved]; ok {
+			t.Errorf("reserved role %q projected: %v", reserved, r)
+		}
+	}
+	for name, ensure := range map[string]string{"d_user": "present", "qa_extra": "present", "gone": "absent"} {
+		if roles[name]["ensure"] != ensure {
+			t.Errorf("role %q = %v, want ensure:%s", name, roles[name], ensure)
+		}
+	}
+	// Nothing left to manage but reserved names: no managed block at all.
+	only := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "postgres", deletedUsers: []string{"postgres"}})
+	if m, ok := only["managed"]; ok {
+		t.Errorf("only reserved roles => managed block %v, want none", m)
+	}
+
+	db := &appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Users: users, DeletedUsers: []string{"postgres"}}}
+	noteReservedRoles(db, "d_user")
+	c := apimeta.FindStatusCondition(db.Status.Conditions, conditionReservedRolesIgnored)
+	if c == nil || c.Message != "not managed, reserved by PostgreSQL: pg_monitor_x, postgres" {
+		t.Fatalf("reserved-roles condition = %+v", c)
+	}
+	db.Spec.Users, db.Spec.DeletedUsers = users[2:], nil
+	noteReservedRoles(db, "d_user")
+	if apimeta.FindStatusCondition(db.Status.Conditions, conditionReservedRolesIgnored) != nil {
+		t.Fatal("the condition must clear once no reserved role remains")
 	}
 }
 

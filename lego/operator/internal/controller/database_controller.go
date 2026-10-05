@@ -20,6 +20,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -363,6 +364,18 @@ const insightsMonitorRole = "pg_monitor"
 // memberships are bex-owned from here on (ADR009). Returns nil only when there
 // is nothing at all to project.
 func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers []string) []any {
+	// A role PostgreSQL reserves (postgres, streaming_replica, pg_*) is never
+	// projected, present or absent: CNPG refuses to manage it and the whole
+	// reconcile fails, which is how one add-user wedged a database even after
+	// the user was deleted (w4/m170). bex-api refuses new ones; this heals the
+	// specs that already carry one.
+	if appv1alpha1.ReservedPostgresRole(owner) {
+		owner = ""
+	}
+	users = slices.DeleteFunc(slices.Clone(users), func(u appv1alpha1.DatabaseUser) bool {
+		return appv1alpha1.ReservedPostgresRole(u.Name)
+	})
+	deletedUsers = slices.DeleteFunc(slices.Clone(deletedUsers), appv1alpha1.ReservedPostgresRole)
 	if owner == "" && len(users) == 0 && len(deletedUsers) == 0 {
 		return nil
 	}
@@ -398,6 +411,28 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 		roles = append(roles, map[string]any{"name": name, "ensure": "absent"})
 	}
 	return roles
+}
+
+// conditionReservedRolesIgnored records which reserved roles managedRoles left
+// out of the Cluster, so a skipped user is visible rather than silently absent.
+const conditionReservedRolesIgnored = "ReservedRolesIgnored"
+
+func noteReservedRoles(db *appv1alpha1.Database, owner string) {
+	names := append([]string{owner}, db.Spec.DeletedUsers...)
+	for _, u := range db.Spec.Users {
+		names = append(names, u.Name)
+	}
+	reserved := slices.DeleteFunc(names, func(n string) bool { return !appv1alpha1.ReservedPostgresRole(n) })
+	if len(reserved) == 0 {
+		meta.RemoveStatusCondition(&db.Status.Conditions, conditionReservedRolesIgnored)
+		return
+	}
+	slices.Sort(reserved)
+	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+		Type: conditionReservedRolesIgnored, Status: metav1.ConditionTrue, Reason: "ReservedByPostgreSQL",
+		Message:            "not managed, reserved by PostgreSQL: " + strings.Join(slices.Compact(reserved), ", "),
+		ObservedGeneration: db.Generation,
+	})
 }
 
 // cnpgClusterSpec builds the CloudNativePG Cluster .spec for a Database. Pure
@@ -770,6 +805,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if done || err != nil {
 		return result, err
 	}
+	noteReservedRoles(&db, owner)
 	if err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
 		plan: plan, storageGB: storageGB, version: db.Spec.Version,
 		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,

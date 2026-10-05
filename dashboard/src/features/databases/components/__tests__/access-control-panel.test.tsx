@@ -85,6 +85,24 @@ describe("AccessControlPanel database-user creation", () => {
     expect(deleteUser).toHaveBeenLastCalledWith("analytics");
   });
 
+  // w4/m170: adding "postgres" wedged the database; say so before the click.
+  it("refuses a reserved role name before submit", async () => {
+    const user = userEvent.setup();
+    render(<AccessControlPanel id="dpg-source" plan="free" />);
+    await user.type(screen.getByPlaceholderText("reporting"), "postgres");
+    expect(screen.getByRole("button", { name: "Add user" })).toBeDisabled();
+    expect(
+      screen.getByText(
+        "“postgres” is reserved by PostgreSQL. Choose another name.",
+      ),
+    ).toBeInTheDocument();
+    expect(createUser).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByPlaceholderText("reporting"));
+    await user.type(screen.getByPlaceholderText("reporting"), "qa_extra");
+    expect(screen.getByRole("button", { name: "Add user" })).toBeEnabled();
+  });
+
   it("names the allowlist and database-user inputs", () => {
     render(<AccessControlPanel id="dpg-source" plan="free" />);
     expect(
