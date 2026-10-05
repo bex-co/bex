@@ -300,6 +300,16 @@ func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrBadRequest, msg: msg}
 }
 
+// NameResourceIDReservedError refuses a datastore name shaped like a resource
+// ID (`srv-…`, `dpg-…`): a selector could then mean "this ID" or "the thing
+// named this" (w8/049). Services refuse the same shape for display names
+// (DISPLAY_NAME_RESOURCE_ID_RESERVED, w8/034); callers test the shape with
+// id.LooksLikeResourceID.
+func NameResourceIDReservedError(name string) *CodedError {
+	return NewBadRequestError("NAME_RESOURCE_ID_RESERVED",
+		fmt.Sprintf("name %q must not look like a resource ID", name), nil)
+}
+
 // NewForbiddenError returns a machine-readable 403 for a caller class or
 // permission that cannot perform a feature-specific operation.
 func NewForbiddenError(code, msg string, params map[string]any) *CodedError {

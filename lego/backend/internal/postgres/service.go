@@ -299,6 +299,9 @@ func validateDatabaseName(name string) error {
 	if !appv1alpha1.ValidDatabaseName(name) {
 		return fmt.Errorf("%w: name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest)
 	}
+	if id.LooksLikeResourceID(name) {
+		return core.NameResourceIDReservedError(name)
+	}
 	return nil
 }
 
