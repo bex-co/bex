@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { DatastoreLogViewer } from "../datastore-log-viewer";
 import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
@@ -103,6 +103,30 @@ describe("DatastoreLogViewer", () => {
     rerender(<DatastoreLogViewer kind="keyvalue" resource="red-example" />);
     expect(screen.getByText("Access denied")).toBeInTheDocument();
   });
+
+  it.each([
+    ["databases", "dpg-example", "No database logs yet"],
+    ["keyvalue", "red-example", "No log lines"],
+  ] as const)(
+    "titles a filtered-empty %s search as no match, not no logs (w4/195)",
+    (kind, resource, unfilteredTitle) => {
+      render(<DatastoreLogViewer kind={kind} resource={resource} />);
+      expect(screen.getByText(unfilteredTitle)).toBeInTheDocument();
+
+      fireEvent.change(screen.getByRole("textbox"), {
+        target: { value: "PASSWORD" },
+      });
+      expect(screen.getByText("No matching logs")).toBeInTheDocument();
+      expect(screen.queryByText(unfilteredTitle)).toBeNull();
+
+      // The partial-search branch wraps the same empty state (w4/m140).
+      state.hasMore = true;
+      fireEvent.change(screen.getByRole("textbox"), {
+        target: { value: "PASSWORDS" },
+      });
+      expect(screen.getByText("No matching logs")).toBeInTheDocument();
+    },
+  );
 
   it("sends only the datastore filters — no service-only filter (w4/m136)", () => {
     render(<DatastoreLogViewer kind="keyvalue" resource="red-example" />);

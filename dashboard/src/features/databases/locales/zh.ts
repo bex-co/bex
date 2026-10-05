@@ -1404,6 +1404,10 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "没有数据库日志符合当前筛选条件。",
     description: "Managed Postgres logs filtered empty-state body",
   },
+  "databases.logsEmptyFilteredTitle": {
+    message: "没有匹配的日志",
+    description: "Managed Postgres logs filtered empty-state title",
+  },
   "databases.logsUnavailableTitle": {
     message: "尚未配置数据库日志",
     description: "Managed Postgres logs unavailable-state title",

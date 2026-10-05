@@ -664,6 +664,10 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "No log lines match the active filters.",
     description: "Empty state body when filters are active and nothing matches",
   },
+  "keyvalue.logsEmptyFilteredTitle": {
+    message: "No matching logs",
+    description: "Empty state title when filters are active and nothing matches",
+  },
   "keyvalue.logsUnavailableTitle": {
     message: "Logs not available",
     description: "Empty state title when the logs source is not configured",
