@@ -192,7 +192,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.fieldPhysicalNameReserved": {
     message: "“{name}” is reserved by PostgreSQL. Choose another name.",
     description:
-      "Create-database / add-user validation for a name PostgreSQL reserves (postgres, template0/1, streaming_replica, pg_*)",
+      "Create-database / add-user validation for a name the managed PostgreSQL service reserves (postgres, template0/1, streaming_replica, public, none, pg_*, cnpg_*)",
   },
   "databases.fieldPhysicalNameError": {
     message:

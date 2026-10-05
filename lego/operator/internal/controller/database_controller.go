@@ -364,8 +364,8 @@ const insightsMonitorRole = "pg_monitor"
 // memberships are bex-owned from here on (ADR009). Returns nil only when there
 // is nothing at all to project.
 func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers []string) []any {
-	// A role PostgreSQL reserves (postgres, streaming_replica, pg_*) is never
-	// projected, present or absent: CNPG refuses to manage it and the whole
+	// A reserved role (appv1alpha1.ReservedPostgresRole) is never projected,
+	// present or absent: CNPG refuses to manage it and the whole
 	// reconcile fails, which is how one add-user wedged a database even after
 	// the user was deleted (w4/m170). bex-api refuses new ones; this heals the
 	// specs that already carry one.

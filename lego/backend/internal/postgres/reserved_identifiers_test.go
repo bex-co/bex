@@ -39,6 +39,7 @@ func TestReservedPostgresIdentifiersAreRefused(t *testing.T) {
 		`{"name":"res-user","databaseUser":"postgres"}`,
 		`{"name":"res-repl","databaseUser":"streaming_replica"}`,
 		`{"name":"res-pg","databaseUser":"pg_monitor"}`,
+		`{"name":"res-cnpg","databaseUser":"cnpg_reader"}`,
 		`{"name":"res-tpl1","databaseName":"template1"}`,
 		`{"name":"res-tpl0","databaseName":"template0"}`,
 		`{"name":"res-pgdb","databaseName":"postgres"}`,
@@ -54,7 +55,7 @@ func TestReservedPostgresIdentifiersAreRefused(t *testing.T) {
 	}
 
 	seedDatabaseSpec(t, cl, "res-db", appv1alpha1.DatabaseSpec{Plan: "free"}, false)
-	for _, role := range []string{"postgres", "streaming_replica", "pg_signal_backend"} {
+	for _, role := range []string{"postgres", "streaming_replica", "pg_signal_backend", "cnpg_reader"} {
 		if _, err := svc.CreateUser(context.Background(), "res-db", role); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "reserved") {
 			t.Errorf("CreateUser(%q) = %v, want a reserved-name 400", role, err)
 		}
