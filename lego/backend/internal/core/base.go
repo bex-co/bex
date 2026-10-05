@@ -318,7 +318,8 @@ type Base struct {
 	Payment PaymentGate
 	// PaymentAllPlans widens the Payment gate to every billable create/plan
 	// change, free tier included (ADR075 D7, BEX_REQUIRE_PAYMENT_METHOD=all):
-	// RequirePlanBilling then consults the marker regardless of PaidPlan.
+	// RequireBillingFor (behind RequirePlanBilling) then consults the marker
+	// regardless of PaidPlan.
 	// Meaningless while Payment is nil.
 	PaymentAllPlans bool
 	// PlatformClients proves an OAuth client id is one bex provisioned itself;
@@ -516,7 +517,15 @@ func (b *Base) RequirePaymentMethod(ctx context.Context, workspaceID string) err
 // checks in one seam so a new billable resource kind cannot wire only one of
 // them — the drift class this exists to close.
 func (b *Base) RequirePlanBilling(ctx context.Context, workspaceID, plan string) error {
-	if PaidPlan(plan) || (b != nil && b.PaymentAllPlans) {
+	return b.RequireBillingFor(ctx, workspaceID, PaidPlan(plan))
+}
+
+// RequireBillingFor is RequirePlanBilling for a request that carries several
+// plans at once (a Blueprint stack): paidIntent reports whether any of them is
+// paid. The PaymentAllPlans widening and the dunning check live only here, so
+// a path that creates resources without a single plan still cannot skip them.
+func (b *Base) RequireBillingFor(ctx context.Context, workspaceID string, paidIntent bool) error {
+	if paidIntent || (b != nil && b.PaymentAllPlans) {
 		if err := b.RequirePaymentMethod(ctx, workspaceID); err != nil {
 			return err
 		}
