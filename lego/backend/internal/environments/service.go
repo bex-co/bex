@@ -1160,7 +1160,7 @@ func (s *Service) scopeEnvironment(ctx context.Context, id string) (context.Cont
 			return e.TenantID, err == nil, err
 		}
 	}
-	return s.ScopeByID(ctx, "", owner, core.NotFound("environment"))
+	return s.ScopeByID(ctx, "", owner)
 }
 
 // requireEnvironment fetches an environment and authorizes it against the

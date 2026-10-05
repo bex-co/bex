@@ -179,7 +179,7 @@ func (s *Service) scopeCredential(ctx context.Context, id string) (context.Conte
 			return c.WorkspaceID, err == nil, err
 		}
 	}
-	return s.ScopeByID(ctx, "", owner, mapStoreErr(store.ErrNotFound))
+	return s.ScopeByID(ctx, "", owner)
 }
 
 // Get returns one credential (secret omitted). Member read. The workspace comes

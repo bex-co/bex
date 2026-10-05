@@ -303,15 +303,15 @@ func TestGetScopedToWorkspaceCrossTenantIsNotFound(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	// A non-member's id answers exactly like a missing one (w4/m172).
+	// A non-member's typed id is a 403 (ADR072 #8, w4/199); a missing one 404.
 	other := &Service{Base: &core.Base{Namespace: "default", Workspace: soleWorkspaceResolver{"tea-other"}}, Store: st, Secret: kv}
 	_, foreign := other.Get(ctx, created.ID)
 	_, missing := other.Get(ctx, "rgc-missing")
-	if !errors.Is(foreign, core.ErrNotFound) || foreign.Error() != missing.Error() {
-		t.Errorf("cross-workspace get = %v, missing = %v, want identical ErrNotFound", foreign, missing)
+	if !errors.Is(foreign, core.ErrForbidden) || !errors.Is(missing, core.ErrNotFound) {
+		t.Errorf("cross-workspace get = %v, missing = %v, want forbidden vs not found", foreign, missing)
 	}
-	if err := other.Delete(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("cross-workspace delete = %v, want ErrNotFound", err)
+	if err := other.Delete(ctx, created.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("cross-workspace delete = %v, want ErrForbidden", err)
 	}
 }
 

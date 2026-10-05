@@ -875,7 +875,7 @@ func (s *Service) scopeEvent(ctx context.Context, eventID string) (context.Conte
 		workspace, err := s.preferredWorkspace(ctx, workspaces)
 		return workspace, err == nil, err
 	}
-	return s.ScopeByID(ctx, "", owner, eventNotFound(eventID))
+	return s.ScopeByID(ctx, "", owner)
 }
 
 // preferredWorkspace picks among the workspaces one event id is indexed in.

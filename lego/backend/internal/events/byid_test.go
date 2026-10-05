@@ -19,7 +19,6 @@ package events
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -112,8 +111,8 @@ func TestGetRoutesByEventOwnWorkspace(t *testing.T) {
 		t.Fatalf("matching ownerId = %+v, %v", got, err)
 	}
 
-	// Non-member and unknown id: the same not-found, and the non-member's
-	// probe never reads the foreign workspace's event row.
+	// A non-member's typed id is a 403 (ADR072 #8, w4/199) and an unknown id
+	// a 404; the non-member's probe never reads the foreign event row.
 	svc, st = newSvc()
 	foreignErr := func() error { _, err := svc.Get(as("mallory"), eventID); return err }()
 	if len(st.lookups) != 0 {
@@ -121,11 +120,8 @@ func TestGetRoutesByEventOwnWorkspace(t *testing.T) {
 	}
 	svc, _ = newSvc()
 	unknownErr := func() error { _, err := svc.Get(as("mallory"), missing); return err }()
-	if !errors.Is(foreignErr, core.ErrNotFound) || !errors.Is(unknownErr, core.ErrNotFound) {
-		t.Fatalf("non-member = %v, unknown = %v; want not found for both", foreignErr, unknownErr)
-	}
-	if a, b := strings.ReplaceAll(foreignErr.Error(), eventID, "ID"), strings.ReplaceAll(unknownErr.Error(), missing, "ID"); a != b {
-		t.Fatalf("non-member %q and unknown %q must be indistinguishable", a, b)
+	if !errors.Is(foreignErr, core.ErrForbidden) || !errors.Is(unknownErr, core.ErrNotFound) {
+		t.Fatalf("non-member = %v, unknown = %v; want forbidden and not found", foreignErr, unknownErr)
 	}
 }
 

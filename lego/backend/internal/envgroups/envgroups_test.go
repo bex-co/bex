@@ -1148,15 +1148,12 @@ func TestEnvGroup_GetAndRevealRefuseCrossWorkspace(t *testing.T) {
 		t.Fatalf("erin seed var: %v", err)
 	}
 
-	// A non-member's answer is the one a nonexistent id gets (w4/m172) — a
-	// Forbidden would confirm the group exists in a workspace dana can't see.
 	danaSvc, danaCtx := svcAs("dana")
-	_, missing := danaSvc.GetEnvGroup(danaCtx, "evg-d0000000000000000000")
-	if _, err := danaSvc.GetEnvGroup(danaCtx, group.ID); !errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) || (missing != nil && err.Error() != missing.Error()) {
-		t.Errorf("dana GetEnvGroup(bravo's group): want the missing-id not-found (%v), got %v", missing, err)
+	if _, err := danaSvc.GetEnvGroup(danaCtx, group.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("dana GetEnvGroup(bravo's group): want ErrForbidden, got %v", err)
 	}
-	if _, err := danaSvc.GetEnvGroupVar(danaCtx, group.ID, "TOKEN"); !errors.Is(err, core.ErrNotFound) {
-		t.Errorf("dana GetEnvGroupVar(bravo's group): want not found, got %v", err)
+	if _, err := danaSvc.GetEnvGroupVar(danaCtx, group.ID, "TOKEN"); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("dana GetEnvGroupVar(bravo's group): want ErrForbidden, got %v", err)
 	}
 	// Owner can still reach it.
 	if _, err := erinSvc.GetEnvGroup(erinCtx, group.ID); err != nil {

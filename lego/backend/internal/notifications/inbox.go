@@ -182,7 +182,13 @@ func (s *Service) scopeNotification(ctx context.Context, eventID string) (contex
 		}
 		return tenants[0], true, nil
 	}
-	return s.ScopeByID(ctx, "", owner, errNotificationNotFound)
+	// The caller's own notification in a workspace they have left: unreadable,
+	// so mark-read keeps its read=false answer rather than a 403.
+	ctx, err := s.ScopeByID(ctx, "", owner)
+	if errors.Is(err, core.ErrForbidden) {
+		return ctx, errNotificationNotFound
+	}
+	return ctx, err
 }
 
 // inboxExclusions probes the caller's current relations (fail-closed
