@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // rest.go is the events REST fragment: Render's GET /services/{serviceId}/events,
@@ -116,6 +118,42 @@ type renderDetails struct {
 	// autoscaling_config_changed uses nested previous/current objects.
 	Previous *autoscalingState `json:"previous,omitempty"`
 	Current  *autoscalingState `json:"current,omitempty"`
+	// cron_job_run_ended: Render's run id, and its reason object on a run that
+	// failed for an observed cause (w4/m114).
+	CronJobRunID string         `json:"cronJobRunId,omitempty"`
+	Reason       *cronRunReason `json:"reason,omitempty"`
+}
+
+// cronRunReason is the reason object on Render's "Cron Job Run Ended" event.
+// Evicted is required there; every other field is present only for its cause.
+type cronRunReason struct {
+	Evicted         bool              `json:"evicted"`
+	NonZeroExit     *int32            `json:"nonZeroExit,omitempty"`
+	OOMKilled       *cronRunOOMKilled `json:"oomKilled,omitempty"`
+	TimedOutSeconds *int64            `json:"timedOutSeconds,omitempty"`
+}
+
+// cronRunOOMKilled is Render's oomKilled object. bex does not record the limit
+// a run was killed at, so memoryLimit is present (Render requires it) but empty.
+type cronRunOOMKilled struct {
+	MemoryLimit string `json:"memoryLimit"`
+}
+
+// toCronRunReason maps a failed run's closed reason code onto Render's reason
+// object; nil when the run did not fail or its cause was not observed.
+func toCronRunReason(d Details) *cronRunReason {
+	switch d.ReasonCode {
+	case store.EventReasonNonZeroExit:
+		return &cronRunReason{NonZeroExit: d.ExitCode}
+	case store.EventReasonOOMKilled:
+		return &cronRunReason{OOMKilled: &cronRunOOMKilled{}}
+	case store.EventReasonEvicted:
+		return &cronRunReason{Evicted: true}
+	case store.EventReasonTimedOut:
+		timeout := appv1alpha1.CronRunActiveDeadlineSeconds
+		return &cronRunReason{TimedOutSeconds: &timeout}
+	}
+	return nil
 }
 
 // autoscalingState is the per-config snapshot for autoscaling_config_changed
@@ -203,6 +241,9 @@ func toRenderEvent(e Event) renderEvent {
 		// unlike manual scaling's generic from/to pair.
 		d.FromInstances = e.Details.FromCount
 		d.ToInstances = e.Details.ToCount
+	case TypeCronJobRunEnded:
+		d.CronJobRunID = e.Details.CronJobRunID
+		d.Reason = toCronRunReason(e.Details)
 	}
 	return renderEvent{
 		ID:        e.ID,
