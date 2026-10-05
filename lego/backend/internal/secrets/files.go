@@ -120,16 +120,18 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 		return SecretFileView{}, err
 	}
 	name = strings.TrimSpace(name)
-	if !core.ValidSecretFileName(name) {
+	if err := core.CheckSecretFileName(name); err != nil {
 		// Name only in the error — never the content.
-		return SecretFileView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
+		return SecretFileView{}, err
 	}
 	// codex-security round-19 #7: CAS through updateMapCAS (like SetEnvVar)
 	// instead of a bare readMap+storeMap — a concurrent writer's whole-map
 	// replacement between the read and this write could otherwise be silently
 	// discarded (lost update).
 	var quota error
+	var prior map[string]string
 	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		prior = core.CloneStringMap(current)
 		if v, ok := current[name]; ok && v == content {
 			return false // no change
 		}
@@ -150,7 +152,9 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	if quota != nil {
 		return SecretFileView{}, quota
 	}
-	if err := s.materializeFiles(ctx, a, files); err != nil {
+	if err := s.projectOrRestore(ctx, filesPath(service), prior, func() error {
+		return s.materializeFiles(ctx, a, files)
+	}); err != nil {
 		return SecretFileView{}, err
 	}
 	return SecretFileView{Name: name, Content: content}, nil
@@ -170,15 +174,17 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 	}
 	for i := range initial {
 		initial[i].Name = strings.TrimSpace(initial[i].Name)
-		if !core.ValidSecretFileName(initial[i].Name) {
-			return fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, initial[i].Name)
+		if err := core.CheckSecretFileName(initial[i].Name); err != nil {
+			return err
 		}
 	}
 	// codex-security round-19 #7: CAS through updateMapCAS instead of a bare
 	// readMap+storeMap, so a concurrent Set/DeleteSecretFile between the read
 	// and this write can't be clobbered.
 	var quota error
+	var prior map[string]string
 	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		prior = core.CloneStringMap(current)
 		for _, f := range initial {
 			current[f.Name] = f.Content
 		}
@@ -194,7 +200,9 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 	if quota != nil {
 		return quota
 	}
-	return s.materializeFiles(ctx, a, files)
+	return s.projectOrRestore(ctx, filesPath(service), prior, func() error {
+		return s.materializeFiles(ctx, a, files)
+	})
 }
 
 // prepareSecretFiles persists and materializes create-time files before the App
@@ -213,8 +221,8 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 	files := make(map[string]string, len(initial))
 	for _, f := range initial {
 		name := strings.TrimSpace(f.Name)
-		if !core.ValidSecretFileName(name) {
-			return fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
+		if err := core.CheckSecretFileName(name); err != nil {
+			return err
 		}
 		files[name] = f.Content
 	}
@@ -403,7 +411,7 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 		return err
 	}
 	nameFound, err := s.deleteMapKeyAfterProjection(ctx, filesPath(service), name, func(current map[string]string) error {
-		return s.materializeFiles(ctx, a, current)
+		return s.materializeFiles(ctx, a, admissible(current, core.ValidSecretFileName))
 	})
 	if err != nil {
 		return err

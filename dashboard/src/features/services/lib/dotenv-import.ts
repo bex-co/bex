@@ -1,4 +1,4 @@
-const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,252}$/;
 
 export const MAX_DOTENV_FILE_BYTES = 1024 * 1024;
 

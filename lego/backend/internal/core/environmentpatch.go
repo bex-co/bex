@@ -139,7 +139,8 @@ type mapPatchWording struct {
 }
 
 func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp, key, fromKey string, valid func(string) bool, wording mapPatchWording) error {
-	if !valid(fromKey) {
+	// Renaming a stored key away is how an inadmissible name gets fixed.
+	if _, stored := m[fromKey]; !valid(fromKey) && !stored {
 		return fmt.Errorf("%w: invalid source %s name %q", ErrBadRequest, wording.noun, fromKey)
 	}
 	if op.remove || op.hasPayload {
@@ -168,8 +169,10 @@ func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) boo
 	seen := make(map[string]struct{}, len(ops))
 	for _, op := range ops {
 		key := strings.TrimSpace(op.key)
-		if !valid(key) {
-			return fmt.Errorf("%w: invalid %s name %q", ErrBadRequest, wording.noun, key)
+		// A key already stored can always be deleted, even one a later rule
+		// (the 253-character cap) no longer admits — refusing would strand it.
+		if _, stored := m[key]; !valid(key) && !(op.remove && stored) {
+			return invalidConfigKey(wording.noun, key)
 		}
 		if reserved != nil && reserved(key) && !op.remove {
 			return ReservedEnvKeyError(key)

@@ -813,7 +813,8 @@ const enServices: Record<string, TranslationEntry> = {
       "Link from the reserved-PORT refusal when no single service owns the port (an env group can be linked to many)",
   },
   "services.envInvalidKey": {
-    message: "Use letters, digits and underscores; can't start with a digit.",
+    message:
+      "Use up to 253 letters, digits and underscores; can't start with a digit.",
     description:
       "Environment add-variable validation message for an invalid key",
   },
@@ -915,11 +916,13 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Secret-files content input placeholder",
   },
   "services.secretFileInvalidName": {
-    message: "Use letters, digits, dot, dash and underscore; not '.' or '..'.",
+    message:
+      "Use up to 253 letters, digits, dots, dashes and underscores; not '.' or '..'.",
     description: "Secret-files add-file validation message for an invalid name",
   },
   "services.secretFileNameHint": {
-    message: "Use letters, digits, dot, dash and underscore; not '.' or '..'.",
+    message:
+      "Use up to 253 letters, digits, dots, dashes and underscores; not '.' or '..'.",
     description:
       "Neutral file-name rule under a new secret-file row before the user types or blurs — same rule as secretFileInvalidName but helper styling, not an error",
   },

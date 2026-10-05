@@ -670,7 +670,7 @@ describe("ServiceEnvironmentEditor", () => {
 
     const nameInput = screen.getByRole("textbox", { name: "File name" });
     const rule =
-      "Use letters, digits, dot, dash and underscore; not '.' or '..'.";
+      "Use up to 253 letters, digits, dots, dashes and underscores; not '.' or '..'.";
     // Pristine: the rule is visible but neutral — no alert, no aria-invalid.
     expect(screen.getByText(rule)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

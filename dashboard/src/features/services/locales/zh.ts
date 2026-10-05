@@ -796,7 +796,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Link from the reserved-PORT refusal when no single service owns the port (an env group can be linked to many)",
   },
   "services.envInvalidKey": {
-    message: "只能使用字母、数字和下划线，且不能以数字开头。",
+    message: "最多 253 个字符，只能使用字母、数字和下划线，且不能以数字开头。",
     description:
       "Environment add-variable validation message for an invalid key",
   },
@@ -896,11 +896,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Secret-files content input placeholder",
   },
   "services.secretFileInvalidName": {
-    message: "只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
+    message: "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
     description: "Secret-files add-file validation message for an invalid name",
   },
   "services.secretFileNameHint": {
-    message: "只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
+    message: "最多 253 个字符，只能使用字母、数字、点、短横线和下划线；不能为“.”或“..”。",
     description:
       "Neutral file-name rule under a new secret-file row before the user types or blurs — same rule as secretFileInvalidName but helper styling, not an error",
   },

@@ -1886,8 +1886,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 	if len(req.SecretFiles) > 0 {
 		for i := range req.SecretFiles {
 			req.SecretFiles[i].Name = strings.TrimSpace(req.SecretFiles[i].Name)
-			if !core.ValidSecretFileName(req.SecretFiles[i].Name) {
-				return AppView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, req.SecretFiles[i].Name)
+			if err := core.CheckSecretFileName(req.SecretFiles[i].Name); err != nil {
+				return AppView{}, err
 			}
 		}
 		if s.CreateSecrets == nil {

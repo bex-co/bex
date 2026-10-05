@@ -574,6 +574,9 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 			compensation = append(compensation, fmt.Errorf("remove secret-file projection: %w", err))
 		}
 	}
+	if len(compensation) == 0 {
+		return refusedProjection(cause)
+	}
 	return errors.Join(append([]error{cause}, compensation...)...)
 }
 

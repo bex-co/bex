@@ -1,19 +1,19 @@
 # w4 · m168 — Loop6: bound env/secret-file key length so a long name can't wedge a service's environment
 
-**Worker:** worker4 **Goal:** an over-long env key or secret-file name is a clear 400 on every surface, and no failed environment write can leave stored state that differs from what is mounted or that cannot be deleted **Status:** todo
+**Worker:** worker4 **Goal:** an over-long env key or secret-file name is a clear 400 on every surface, and no failed environment write can leave stored state that differs from what is mounted or that cannot be deleted **Status:** blocked — t001–t008 done 2026-10-04; t009 live closeout remains
 
 ## Tasks (in order)
 
 | id   | title                                                          | est | depends_on                 |
 | ---- | -------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Reject env keys and secret-file names over 253 characters      | 1h  | —                          |
-| t002 | Single-key writes restore the store when projection fails      | 1h  | —                          |
-| t003 | Empty-prior environment compensation actually restores         | 45m | —                          |
-| t004 | Break the single-delete deadlock on unprojectable names        | 45m | w4/m168/t002               |
-| t005 | Blast radius of the validator change across all callers        | 30m | w4/m168/t001               |
-| t006 | Render parity across environment write surfaces                | 30m | w4/m168/t003, w4/m168/t004, w4/m168/t005 |
-| t007 | Simplify changed code                                          | 20m | w4/m168/t006               |
-| t008 | Test coverage for shipped behavior                             | 45m | w4/m168/t006               |
+| t001 — **DONE** | Reject env keys and secret-file names over 253 characters      | 1h  | —                          |
+| t002 — **DONE** | Single-key writes restore the store when projection fails      | 1h  | —                          |
+| t003 — **DONE** | Empty-prior environment compensation actually restores         | 45m | —                          |
+| t004 — **DONE** | Break the single-delete deadlock on unprojectable names        | 45m | w4/m168/t002               |
+| t005 — **DONE** | Blast radius of the validator change across all callers        | 30m | w4/m168/t001               |
+| t006 — **DONE** | Render parity across environment write surfaces                | 30m | w4/m168/t003, w4/m168/t004, w4/m168/t005 |
+| t007 — **DONE** | Simplify changed code                                          | 20m | w4/m168/t006               |
+| t008 — **DONE** | Test coverage for shipped behavior                             | 45m | w4/m168/t006               |
 | t009 | Closeout                                                       | 15m | w4/m168/t008               |
 
 ## Definition of done

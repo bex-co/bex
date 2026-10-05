@@ -34,6 +34,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -491,18 +492,24 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := envMapWithinQuota(env); err != nil {
 		return nil, err
 	}
+	prior, err := s.readMap(ctx, envPath(service))
+	if err != nil {
+		return nil, err
+	}
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return nil, err
 	}
 	// A whole-set replace also clears invalid-name debris from spec.Env, or
 	// `PUT []` answered [] while the list still showed it (w8/027).
-	if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
-		if err := s.projectEnv(ctx, a, env); err != nil {
-			return err
-		}
-		dropInvalidSpecEnv(a, func(string) bool { return true })
-		s.bumpRestart(a)
-		return nil
+	if err := s.projectOrRestore(ctx, envPath(service), prior, func() error {
+		return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+			if err := s.projectEnv(ctx, a, env); err != nil {
+				return err
+			}
+			dropInvalidSpecEnv(a, func(string) bool { return true })
+			s.bumpRestart(a)
+			return nil
+		})
 	}); err != nil {
 		return nil, err
 	}
@@ -549,7 +556,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	// re-checked against the fresh map on every retry; a quota breach mutates
 	// nothing (changed=false) and surfaces after the loop.
 	var quota error
+	var prior map[string]string
 	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		prior = core.CloneStringMap(current)
 		if v, ok := current[key]; ok && v == value {
 			return false // no change
 		}
@@ -566,7 +575,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if quota != nil {
 		return EnvVarView{}, quota
 	}
-	if err := s.materializeEnv(ctx, a, env); err != nil {
+	if err := s.projectOrRestore(ctx, envPath(service), prior, func() error {
+		return s.materializeEnv(ctx, a, env)
+	}); err != nil {
 		return EnvVarView{}, err
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVar)
@@ -584,7 +595,9 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 		return err
 	}
 	// An invalid-name literal a pre-w8/027 create left on spec.Env is removed
-	// from the App itself — it was never in the env store.
+	// from the App itself — it was never in the env store. An inadmissible key
+	// that IS in the store (an over-long one stored before the 253-character
+	// cap, w4/m168) falls through to the store delete below.
 	if !core.ValidEnvKey(key) {
 		stripped := false
 		if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
@@ -596,14 +609,13 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 		}); err != nil {
 			return err
 		}
-		if !stripped {
-			return core.NotFound("env var")
+		if stripped {
+			s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
+			return nil
 		}
-		s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteEnvVar)
-		return nil
 	}
 	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, func(current map[string]string) error {
-		return s.materializeEnv(ctx, a, current)
+		return s.materializeEnv(ctx, a, admissible(current, core.ValidEnvKey))
 	})
 	if err != nil {
 		return err
@@ -633,6 +645,7 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	if err != nil {
 		return err
 	}
+	prior := core.CloneStringMap(env)
 	changed := false
 	seed := func(key, value string, generate bool) error {
 		key = strings.TrimSpace(key)
@@ -673,7 +686,9 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return err
 	}
-	if err := s.materializeEnv(ctx, a, env); err != nil {
+	if err := s.projectOrRestore(ctx, envPath(service), prior, func() error {
+		return s.materializeEnv(ctx, a, env)
+	}); err != nil {
 		return err
 	}
 	// Past seed-once's "every key already present" return above, so a blueprint
@@ -718,13 +733,50 @@ func (s *Service) EnvVarValue(ctx context.Context, service, key string) (core.En
 	return core.EnvVar{ID: key, Key: key, Value: value, Revision: revision, ManagedBy: managedBy(owned, key)}, nil
 }
 
-// storeMap writes the whole map to the source of truth at path, deleting the path
-// outright once the set is empty rather than leaving an empty version behind.
+// storeMap writes the whole map to the source of truth at path, an empty set
+// included: never a KV metadata delete, which reported success in production
+// while leaving a failed write's name listed (w4/m168). A data write is the
+// same request PutCAS makes, and that one demonstrably clears the map.
 func (s *Service) storeMap(ctx context.Context, path string, data map[string]string) error {
-	if len(data) == 0 {
-		return s.Store.Delete(ctx, path)
-	}
 	return s.Store.Put(ctx, path, data)
+}
+
+// projectOrRestore runs project over a map just written to path and, if it
+// fails, writes prior back: the store must never list what the service cannot
+// mount (w4/m168). Kubernetes refusing the projected Secret as invalid is the
+// caller's input, a 400; a failed restore is joined to the cause.
+func (s *Service) projectOrRestore(ctx context.Context, path string, prior map[string]string, project func() error) error {
+	err := project()
+	if err == nil {
+		return nil
+	}
+	if restoreErr := s.storeMap(ctx, path, prior); restoreErr != nil {
+		return errors.Join(err, fmt.Errorf("restore secret store: %w", restoreErr))
+	}
+	return refusedProjection(err)
+}
+
+// refusedProjection turns Kubernetes refusing a projected Secret as invalid —
+// the caller's input, already rolled back — into a 400; any other cause is
+// returned unchanged.
+func refusedProjection(err error) error {
+	if apierrors.IsInvalid(err) {
+		return fmt.Errorf("%w: the change cannot be applied to the service, so it was not saved", core.ErrBadRequest)
+	}
+	return err
+}
+
+// admissible returns the keys of m the projection can carry: a name stored
+// before a validation rule existed (an over-long key, w4/m168) can never be
+// mounted, so projecting it would fail every later delete of ANOTHER key too.
+func admissible(m map[string]string, valid func(string) bool) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		if valid(k) {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 // casMaxRetries bounds the optimistic-concurrency retry loop so a continuously
