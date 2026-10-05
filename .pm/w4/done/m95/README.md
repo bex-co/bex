@@ -162,3 +162,13 @@ Resume eventually restored SQL access: `SELECT marker FROM qa_lifecycle;` return
 Deleted the renamed QA database through its typed-confirm dialog. Authenticated `GET https://api.bex.co/v1/postgres/dpg-daf47n7co25s73fkr360` returned HTTP 404 with complete body `{"error":"app not found","id":"not_found","message":"app not found"}`. Dashboard Overview no longer contained the QA name and retained pre-existing `tianpan-v4-web`. No QA resource from this pass remains in the product. Physical PVC/Secret cleanup was not independently inspected.
 
 [PostgreSQL 18 SSL documentation](https://www.postgresql.org/docs/18/libpq-ssl.html) describes the trust-root file requirement for verification and the `sslrootcert` / `PGSSLROOTCERT` configuration. The proposed setup follows that client contract; the runtime error's suggestion to disable verification is not a recommended workaround.
+
+## Deferred live re-probe — passed 2026-10-05 (qa loop58, pin `1128928ce`)
+
+Owned Free PostgreSQL 16 `qa-20261005-l58-pg` (`dpg-db228k23qs4c73c6fja0`, `bex-canary`, IP allowlist = the QA runner's IPv4 /32). Available ~72 s after create; deleted afterwards (`GET` 404, list empty). Secrets travelled through a 0600 loopback file and were never printed.
+
+- The external connection string carries `sslmode=verify-full`. Used as-is from a machine without `~/.postgresql/root.crt`, psql refuses locally ("root certificate file … does not exist"); there is no silent downgrade.
+- `connection-info.serverCaCertificate` is a 684-byte single `CERTIFICATE` block (`subject=OU=tea-daif693dqjvc73e7as3g, CN=dpg-db228k23qs4c73c6fja0`, no `PRIVATE KEY`).
+- With `PGSSLROOTCERT=<that file>` the external URL returns `qa_l58_user | qa_l58 | ssl=t`. A table round trip works.
+- The dashboard Connections panel (after Reveal) shows **Download CA certificate** (`dpg-…-ca.pem`) and the `PGSSLROOTCERT="/path/to/dpg-…-ca.pem"` prefix with `verify-full` kept. Hide works.
+- Side observation, not a defect: from a dual-stack client whose IPv6 source is not allowlisted, libpq picks the AAAA record and gets `SSL error: unexpected eof while reading` with no IPv4 fallback. Allowlisting the /128 fixed it. The opaque close is deliberate: `pg-sni-proxy` treats a disallowed source exactly like an unknown host (`lego/operator/cmd/pg-sni-proxy/main.go:248-252`), so the proxy is not an existence oracle. A dashboard hint that IPv6 clients need their IPv6 address allowlisted would help; not filed.
