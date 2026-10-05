@@ -17,7 +17,7 @@ export type ServiceType = (typeof SERVICE_TYPES)[number];
  *  state and the route's document title resolve the same type. */
 export const DEFAULT_SERVICE_TYPE: ServiceType = "web_service";
 
-function isServiceType(v: unknown): v is ServiceType {
+export function isServiceType(v: unknown): v is ServiceType {
   return (
     typeof v === "string" && (SERVICE_TYPES as readonly string[]).includes(v)
   );

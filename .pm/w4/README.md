@@ -196,7 +196,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **183** — [Unlinking a deleted service's env-group link always 404s, stranding the link](183.md) ← infinite /qa-find-bugs loop3 2026-10-04 UTC, muse.env; tolerate NotFound in `UnlinkService` like `detach` does.
 
-- [ ] **182** — [Unknown `?type=` renders a hybrid create wizard](182.md) ← infinite /qa-find-bugs loop2 2026-10-04 UTC, muse.env; default form init through `isServiceType`, export the guard.
+- [x] **182** — [Unknown `?type=` renders a hybrid create wizard](done/182.md) ← infinite /qa-find-bugs loop2 2026-10-04 UTC, muse.env; default form init through `isServiceType`, export the guard. — done 2026-10-04.
 
 - [ ] **181** — [Key Value metrics sidecar is CPU-starved: production `valkey-instances` scrapes time out](blocked/181.md) — **BLOCKED (ship + release pipeline deploys operator (rolls every Valkey StatefulSet); QA observes 24 h: `up{job="valkey-instances"}` = 1 for every production store, scrape duration well under 10 s, exporter throttling far below 98%, continuous series on `/keyvalue/red-d9p49kdrtmes73c34ovg`)**. Exporter budget 10m → 50m (Guaranteed QoS kept), collectors trimmed to INFO, drift-guard tests done 2026-10-03.
 

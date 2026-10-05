@@ -946,6 +946,23 @@ describe("NewServicePage", () => {
       expect(screen.getByLabelText("Schedule")).toBeInTheDocument();
     });
 
+    // w4/182: a mistyped or legacy ?type= opens the plain web wizard — the Web
+    // radio checked and its Port field present — never a typeless hybrid.
+    it.each(["worker", "bogus123"])(
+      "opens the default web wizard for an unknown ?type=%s",
+      async (type) => {
+        renderPage(`/?type=${type}`);
+        await screen.findAllByRole("radiogroup");
+        expect(
+          screen.getByRole("radio", { name: /Web Service/i }),
+        ).toHaveAttribute("aria-checked", "true");
+        expect(screen.getByLabelText(/^Port/)).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { level: 1, name: "New Web Service" }),
+        ).toBeInTheDocument();
+      },
+    );
+
     it("shows cron-specific chrome and a pre-filled schedule on the cron deep link", async () => {
       renderPage("/?type=cron_job");
       await screen.findAllByRole("radiogroup");
