@@ -35,7 +35,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
-- [ ] **m147** — [A free service that auto-hibernates mid-rollout loses its crash diagnosis (generic health-gate reason) and its header disagrees with its phase](m147/README.md) (8 tasks; t001, t002, t006, t007 done; t003 reopened: parking-pass Deploying write not yet on upstream code) ← w4/m142 live acceptance 2026-10-02 + w8/m44 observation 2 (2026-10-03). Not fixed by `72da96bc6`/`78e410542`. Related: w1/m172.
+- [ ] **m147** — [A free service that auto-hibernates mid-rollout loses its crash diagnosis (generic health-gate reason) and its header disagrees with its phase](m147/README.md) (8 tasks; t001–t003, t006, t007 done; t004 live verification next) ← w4/m142 live acceptance 2026-10-02 + w8/m44 observation 2 (2026-10-03). Not fixed by `72da96bc6`/`78e410542`. Related: w1/m172.
 
 - [ ] **m146** — **BLOCKED (stable local CAPD API and dev-6 auth databases needed for live acceptance + retained-fixture cleanup)** — [Keep service action permissions current through confirmation](blocked/m146/README.md) (8 tasks; t001–t003, t005–t007 done) ← promoted from 074
 

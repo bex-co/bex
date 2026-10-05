@@ -21,6 +21,12 @@ import (
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -103,5 +109,42 @@ func TestDeployWhileAsleepWakesOncePerRelease(t *testing.T) {
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("replicas = %d, want release 3 to wake the service", got)
+	}
+}
+
+// w6/m147 t003: a parking pass of a sleeping service must not write Deploying.
+// rolloutPending is true for any phase but Running, so every reconcile of a
+// Hibernated service stamped Deploying before parkKubernetes wrote Hibernated
+// against the cached App, which skipped it as unchanged: the header read
+// Deploying while the service slept.
+func TestParkingPassNeverWritesDeploying(t *testing.T) {
+	app := activeApp("tea-m147")
+	app.Generation = 1
+	scheme := wakeScheme()
+	var written []appv1alpha1.AppPhase
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).
+		WithInterceptorFuncs(interceptor.Funcs{SubResourceUpdate: func(ctx context.Context, c client.Client, sub string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+			if a, ok := obj.(*appv1alpha1.App); ok {
+				written = append(written, a.Status.Phase)
+			}
+			return c.SubResource(sub).Update(ctx, obj, opts...)
+		}}).Build()
+	r := wakeReconciler(cl, scheme)
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+
+	serveReleaseOne(t, r, cl, nn)
+	parkIdle(t, r, cl, nn)
+	written = nil
+	for range 3 {
+		reconcileTwice(t, r, nn)
+	}
+	for _, phase := range written {
+		if phase == appv1alpha1.PhaseDeploying {
+			t.Fatalf("a parking pass wrote phase Deploying (writes %v)", written)
+		}
+	}
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseHibernated {
+		t.Fatalf("phase = %q, want Hibernated", got)
 	}
 }
