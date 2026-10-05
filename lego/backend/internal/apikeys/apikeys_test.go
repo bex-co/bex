@@ -517,6 +517,68 @@ func TestRevokeAPIKeyRefusesUnboundKey(t *testing.T) {
 	}
 }
 
+// w4/194: with no ownerId, a bound key is revoked in its OWN workspace, not
+// the caller's default — live, a member of three workspaces got a bare 403 for
+// a key minted in their second one and the key stayed usable.
+func TestRevokeAPIKeyWithoutOwnerResolvesKeyWorkspace(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base: &core.Base{Namespace: "default", Workspace: multiWorkspace{
+			"identity-a": {"tea-a", "tea-b"},
+			"identity-c": {"tea-c"},
+			"viewer-b":   {"tea-b"},
+		}, Authz: denySubjectChecker{"viewer-b"}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	dana := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	outsider := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-c", Method: "session"})
+
+	keyB, err := svc.CreateAPIKey(dana, "tea-b", "agent-b")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// A non-member sees an unknown id, never a Forbidden that confirms the key.
+	if err := svc.RevokeAPIKey(outsider, "", keyB.ID); !errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
+		t.Errorf("non-member revoke: want ErrNotFound, got %v", err)
+	}
+	if err := svc.RevokeAPIKey(outsider, "", "no-such-key"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("non-member revoke of unknown id: want ErrNotFound, got %v", err)
+	}
+	// A member without can_manage_keys is refused the same way.
+	viewer := core.WithIdentity(context.Background(), core.Identity{Subject: "viewer-b", Method: "session"})
+	if err := svc.RevokeAPIKey(viewer, "", keyB.ID); !errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
+		t.Errorf("viewer revoke: want ErrNotFound, got %v", err)
+	}
+	if _, ok := store.keys[keyB.ID]; !ok {
+		t.Fatal("refused revoke must not delete the key")
+	}
+
+	// A workspace the request itself names still decides (MCP/GraphQL).
+	if err := svc.RevokeAPIKey(core.WithWorkspace(dana, "tea-a"), "", keyB.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("named mismatched workspace: want ErrForbidden, got %v", err)
+	}
+
+	if err := svc.RevokeAPIKey(dana, "", keyB.ID); err != nil {
+		t.Fatalf("member revoke without ownerId: %v", err)
+	}
+	if _, ok := store.keys[keyB.ID]; ok {
+		t.Error("key still present after revoke")
+	}
+	if len(binder.unbound) != 1 || binder.unbound[0] != keyB.ID {
+		t.Errorf("unbound = %v, want [%s]", binder.unbound, keyB.ID)
+	}
+}
+
+// denySubjectChecker allows every check except those for one subject.
+type denySubjectChecker struct{ denied string }
+
+func (c denySubjectChecker) Check(_ context.Context, subject, _, _ string) (bool, error) {
+	return !strings.Contains(subject, c.denied), nil
+}
+
 func TestCreateAPIKeyNilBindingMintsUnbound(t *testing.T) {
 	// Store off (Binding nil): keys mint unbound, byte-identical to before
 	// tenant onboarding existed — no tenant lookup, no refusal.
