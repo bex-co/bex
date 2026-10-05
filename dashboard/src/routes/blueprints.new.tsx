@@ -37,6 +37,10 @@ import { BlueprintErrorList } from "@/features/blueprints/components/blueprint-e
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 import { isTakeoverOnlyConflict } from "@/features/blueprints/lib/views";
+import {
+  takeoverCopy,
+  type BlueprintTakeover,
+} from "@/features/blueprints/lib/takeover";
 
 export const Route = createFileRoute("/blueprints/new")({
   staticData: { chrome: true },
@@ -61,6 +65,7 @@ export function NewBlueprintPage() {
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
   >(null);
+  const [takeover, setTakeover] = useState<BlueprintTakeover | null>(null);
   // sync:false prompt values, keyed by env var name. Secrets: kept only in
   // this component's memory until submit, never in router state or URLs.
   const [envVarValues, setEnvVarValues] = useState<Record<string, string>>({});
@@ -133,6 +138,7 @@ export function NewBlueprintPage() {
     );
     if (result.status === "confirmation_required") {
       setProtectedConfirmation(result.confirmation);
+      setTakeover(result.takeover ?? null);
       return;
     }
     if (result.status === "success") {
@@ -358,10 +364,16 @@ export function NewBlueprintPage() {
                       )}
                     </AlertTitle>
                     <AlertDescription>
-                      <BlueprintErrorList
-                        errors={validationErrors}
-                        details={preview.validation?.errorDetails ?? []}
-                      />
+                      {previewConflictOnly ? (
+                        // The raw refusal names API verbs (updateBlueprint,
+                        // confirm=…) no dashboard user can act on (w4/189).
+                        t("blueprints.previewConflictBody")
+                      ) : (
+                        <BlueprintErrorList
+                          errors={validationErrors}
+                          details={preview.validation?.errorDetails ?? []}
+                        />
+                      )}
                     </AlertDescription>
                   </Alert>
                 ) : preview ? (
@@ -461,8 +473,13 @@ export function NewBlueprintPage() {
         }
         requiredConfirmation={protectedConfirmation ?? ""}
         actionLabel={t("blueprints.createAction")}
+        {...(takeover ? takeoverCopy(takeover, t) : {})}
         busy={busy}
-        onOpenChange={(open) => !open && setProtectedConfirmation(null)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setProtectedConfirmation(null);
+          setTakeover(null);
+        }}
         onConfirm={async (confirmation) => {
           await handleCreate(confirmation);
         }}

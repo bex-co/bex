@@ -203,6 +203,32 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Retry",
     description: "Review section retry button after a failed manifest fetch",
   },
+  "blueprints.takeoverConnectionTitle": {
+    message: "Replace Blueprint “{name}”?",
+    description:
+      "Takeover dialog title when another Blueprint already tracks this repo and branch (BLUEPRINT_CONNECTION_CONFLICT)",
+  },
+  "blueprints.takeoverConnectionBody": {
+    message:
+      "“{name}” already tracks {path} on {repo}@{branch}. Deploying repoints it to this file and takes over the resources it manages. Type the command below to continue.",
+    description: "Takeover dialog body for a Blueprint connection conflict",
+  },
+  "blueprints.takeoverResourceTitle": {
+    message: "Take over “{name}”?",
+    description:
+      "Takeover dialog title when a resource is managed by another Blueprint (BLUEPRINT_RESOURCE_CONFLICT)",
+  },
+  "blueprints.takeoverResourceBody": {
+    message:
+      "{kind} “{name}” is managed by Blueprint {owner}. Continuing transfers it to this Blueprint. Type the command below to continue.",
+    description: "Takeover dialog body for a Blueprint resource conflict",
+  },
+  "blueprints.previewConflictBody": {
+    message:
+      "Another Blueprint already manages this repo and branch or some of its resources. Deploying replaces it; you'll confirm exactly what is taken over on the next step.",
+    description:
+      "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
+  },
   "blueprints.previewConflict": {
     message: "Already connected — deploying will take it over",
     description:

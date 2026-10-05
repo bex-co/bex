@@ -24,6 +24,10 @@ export interface ProtectedConfirmationDialogProps {
   confirmDisabled?: boolean;
   /** Extra content between the phrase field and the footer. */
   children?: ReactNode;
+  /** Replace the protected-environment title/body for another handshake
+   *  that shares the typed-phrase contract (a Blueprint takeover). */
+  title?: string;
+  description?: ReactNode;
 }
 
 /** Typed retry dialog driven by the exact phrase returned by bex-api. */
@@ -37,6 +41,8 @@ export function ProtectedConfirmationDialog({
   onConfirm,
   confirmDisabled = false,
   children,
+  title,
+  description,
 }: ProtectedConfirmationDialogProps) {
   const { t } = useTranslations();
   const [confirmation, setConfirmation] = useState("");
@@ -51,9 +57,12 @@ export function ProtectedConfirmationDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("common.protectedConfirmationTitle")}</DialogTitle>
+          <DialogTitle>
+            {title ?? t("common.protectedConfirmationTitle")}
+          </DialogTitle>
           <DialogDescription>
-            {t("common.protectedConfirmationBody", { name: resourceName })}
+            {description ??
+              t("common.protectedConfirmationBody", { name: resourceName })}
           </DialogDescription>
         </DialogHeader>
         <SudoCommandField
