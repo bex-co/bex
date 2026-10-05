@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
@@ -61,6 +63,7 @@ func (s *Service) renderPostgres(ctx context.Context, pgs []PostgresView) []rend
 	out := make([]renderPostgres, 0, len(pgs))
 	for _, pg := range pgs {
 		rendered := renderPostgres{PostgresView: pg}
+		rendered.Plan = renderRESTPostgresPlan(pg.Plan)
 		if owner, ok := owners[pg.OwnerID]; ok && owner.Available() {
 			rendered.Owner = &renderOwner{ID: owner.ID, Name: owner.Name, Email: owner.Email, Type: owner.Type}
 		}
@@ -135,11 +138,27 @@ func postgresListFilter(q url.Values) (func(PostgresView) bool, error) {
 // surface uses on a malformed body; reports whether decoding succeeded.
 func decodeOr400(w http.ResponseWriter, r *http.Request, dst any) bool {
 	if err := core.DecodeJSON(r, dst); err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, "bad request body")
+		// DecodeJSON's errors are already safe to echo and name the field
+		// (`unknown field "x"`), as /v1/services reports them (w8/057).
+		core.WriteErrStatus(w, http.StatusBadRequest, "bad request body: "+err.Error())
 		return false
 	}
 	return true
 }
+
+// renderRESTPostgresPlan spells a bex Postgres tier id the way Render's REST
+// enum does (w8/057): Render's Blueprint schema writes `basic-256mb`, its
+// public API `basic_256mb`, and a REST client must read back a value from its
+// own enum. Spec-based ids (`0.1c-256mb`) are hyphenated on both surfaces and
+// stay as they are; input keeps accepting either spelling.
+func renderRESTPostgresPlan(plan string) string {
+	if restPostgresPlanFamily.MatchString(plan) {
+		return strings.ReplaceAll(plan, "-", "_")
+	}
+	return plan
+}
+
+var restPostgresPlanFamily = regexp.MustCompile(`^(basic|pro|accelerated)-\d+(mb|gb)$`)
 
 // respondPostgres writes the Render-enriched view with the given status, or
 // the mapped error — the shared tail of every verb that answers a PostgresView.

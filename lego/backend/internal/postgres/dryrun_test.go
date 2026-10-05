@@ -72,7 +72,7 @@ func TestRESTDryRunCreatePostgres(t *testing.T) {
 	}
 	var got PostgresView
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
-	if !strings.HasPrefix(got.ID, "dpg-") || got.Name != "preview-db" || got.DatabaseName != "preview_data" || got.DatabaseUser != "preview_owner" || got.Plan != "basic-1gb" {
+	if !strings.HasPrefix(got.ID, "dpg-") || got.Name != "preview-db" || got.DatabaseName != "preview_data" || got.DatabaseUser != "preview_owner" || got.Plan != "basic_1gb" { // REST spelling (w8/057)
 		t.Fatalf("preview wrong: %+v", got)
 	}
 	if n := countDatabases(t, cl); n != 0 {
@@ -113,8 +113,8 @@ func TestRESTDryRunPatchPostgresPlan(t *testing.T) {
 	// The preview should reflect the new plan.
 	var preview PostgresView
 	_ = json.Unmarshal(rec.Body.Bytes(), &preview)
-	if preview.Plan != "basic-1gb" {
-		t.Fatalf("preview plan = %v, want basic-1gb", preview.Plan)
+	if preview.Plan != "basic_1gb" { // Render's REST enum spelling (w8/057)
+		t.Fatalf("preview plan = %v, want basic_1gb", preview.Plan)
 	}
 	// CR must still carry the original plan.
 	got := getDatabase(t, cl, "patch-db")

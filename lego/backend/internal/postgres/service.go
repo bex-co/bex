@@ -290,6 +290,9 @@ type CreatePostgresRequest struct {
 	// addressable read-only connection URL. Render's readReplicas: [{name}].
 	// Independent of EnableHighAvailability.
 	ReadReplicas []ReadReplicaInput `json:"readReplicas,omitempty"`
+	// ParameterOverrides is Render's create-time postgresql.conf overrides
+	// (postgresPOSTInput.parameterOverrides), held to the same rule as PATCH.
+	ParameterOverrides map[string]string `json:"parameterOverrides,omitempty"`
 	// DryRun, when true, resolves and returns the spec preview without any k8s
 	// write — zero side effects (w2/m29). Validation still runs.
 	DryRun bool `json:"dryRun,omitempty"`
@@ -659,6 +662,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := req.validatePhysicalIdentifiers(); err != nil {
 		return PostgresView{}, err
 	}
+	if err := checkParameterOverrides(req.ParameterOverrides); err != nil {
+		return PostgresView{}, err
+	}
 	pooler, err := resolvePooler(req.Pooler, req.ConnectionPool)
 	if err != nil {
 		return PostgresView{}, err
@@ -701,6 +707,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			Pooler:           pooler != nil && *pooler,
 			HighAvailability: req.EnableHighAvailability,
 			ReadReplicas:     crReplicas,
+			Parameters:       normalizeParameterOverrides(req.ParameterOverrides),
 		},
 	}
 	if err := CheckDatabaseAdmission(nil, d.Spec); err != nil {
@@ -1046,16 +1053,24 @@ func (patch PostgresPatch) validate() error {
 	}
 	// Operator-owned settings are refused here rather than filtered, so a caller
 	// is told what was rejected instead of believing it landed (w6/m133).
-	// validate() is the single choke point: applyPostgresPatch is the ONLY writer
-	// of d.Spec.Parameters in the codebase, and every surface that reaches it —
+	// validate() is the single choke point for updates: applyPostgresPatch is the
+	// only update-time writer of d.Spec.Parameters (create applies the same
+	// checkParameterOverrides), and every surface that reaches it —
 	// REST PATCH, REST PUT /parameter-overrides, GraphQL
 	// setDatabaseParameterOverrides, MCP update_postgres — goes through
 	// UpdatePostgres, which calls this before applying anything.
 	if patch.ParameterOverrides != nil {
-		if managed := operatorManagedParameterNames(*patch.ParameterOverrides); len(managed) > 0 {
-			return fmt.Errorf("%w: %s %s managed by the platform and cannot be set as a database parameter",
-				core.ErrBadRequest, strings.Join(managed, ", "), pluralIsAre(len(managed)))
-		}
+		return checkParameterOverrides(*patch.ParameterOverrides)
+	}
+	return nil
+}
+
+// checkParameterOverrides refuses operator-owned settings by name — the one
+// rule a create (w8/057) and every update share.
+func checkParameterOverrides(params map[string]string) error {
+	if managed := operatorManagedParameterNames(params); len(managed) > 0 {
+		return fmt.Errorf("%w: %s %s managed by the platform and cannot be set as a database parameter",
+			core.ErrBadRequest, strings.Join(managed, ", "), pluralIsAre(len(managed)))
 	}
 	return nil
 }
