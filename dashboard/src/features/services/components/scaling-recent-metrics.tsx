@@ -46,12 +46,25 @@ export function ScalingRecentMetrics({ serviceId }: { serviceId: string }) {
   // same frozen bounds (the Metrics tab encodes the same decision).
   const window = { ...useLiveRange(RECENT_WINDOW), pollIntervalMs: 0 };
 
+  // Utilization is read as server-side per-instance percentages (w5/m90),
+  // whose points keep each pod's own limit history: the current-limit reads
+  // below are current-pod values, empty for a sleeping or suspended service,
+  // so dividing by them called every such service limitless (w4/192). Those
+  // reads only tell a truly limitless App apart now.
   const memory = useMetrics(serviceId, "memory", window);
+  const memoryPercentage = useMetrics(serviceId, "memory", {
+    ...window,
+    percentage: true,
+  });
   const memoryLimit = useMetrics(serviceId, "memory_limit", {
     ...window,
     aggregateMax: true,
   });
   const cpu = useMetrics(serviceId, "cpu", window);
+  const cpuPercentage = useMetrics(serviceId, "cpu", {
+    ...window,
+    percentage: true,
+  });
   const cpuLimit = useMetrics(serviceId, "cpu_limit", {
     ...window,
     aggregateMax: true,
@@ -78,12 +91,14 @@ export function ScalingRecentMetrics({ serviceId }: { serviceId: string }) {
       <CardContent className="space-y-6">
         <AvgUtilizationSection
           title={t("services.scalingMetricsMemory")}
-          result={memory}
+          usage={memory}
+          percentage={memoryPercentage}
           limit={latestValue(memoryLimit.series)}
         />
         <AvgUtilizationSection
           title={t("services.scalingMetricsCPU")}
-          result={cpu}
+          usage={cpu}
+          percentage={cpuPercentage}
           limit={latestValue(cpuLimit.series)}
         />
         <MetricSection title={t("metrics.totalInstances")} result={instances}>
@@ -123,57 +138,63 @@ function averageAcrossInstances(series: ChartSeries[]): ChartPoint[] {
 }
 
 /**
- * One averaged utilization chart (memory or cpu): the per-instance series
- * averaged into a single line, as % of the App's limit. With no limit
- * configured the percentage is undefined, so the block honestly says so
- * (the metrics page's omit-don't-fake rule) rather than faking a flat line;
- * with no data at all it shows Render's "No data captured…" state.
+ * One averaged utilization chart (memory or cpu): the server's per-instance
+ * percentage series averaged into a single line. With usage but no surviving
+ * percentage point, the block says why — no limit configured at all, or a
+ * limit history the percentage could not be computed from — rather than
+ * faking a line (the Metrics tab's omit-don't-fake rule); with no usage at all
+ * it shows Render's "No data captured…" state.
  */
 function AvgUtilizationSection({
   title,
-  result,
+  usage,
+  percentage,
   limit,
 }: {
   title: string;
-  result: UseMetricsResult;
+  usage: UseMetricsResult;
+  percentage: UseMetricsResult;
   limit: number | null;
 }) {
   const { t } = useTranslations();
-  const hasData = result.series.some((s) => s.points.length > 0);
+  const hasUsage = usage.series.some((s) => s.points.length > 0);
+  const hasPercentage = percentage.series.some((s) => s.points.length > 0);
 
-  // null = no usable limit ⇒ the percentage is undefined.
-  const series = useMemo<LineSeriesInput[] | null>(() => {
-    if (limit == null || limit === 0) return null;
-    return [
+  const series = useMemo<LineSeriesInput[]>(
+    () => [
       {
-        points: averageAcrossInstances(result.series).map((p) => ({
-          ...p,
-          value: (p.value / limit) * 100,
-        })),
+        points: averageAcrossInstances(percentage.series),
         color: "var(--chart-1)",
       },
-    ];
-  }, [result.series, limit]);
+    ],
+    [percentage.series],
+  );
 
-  // One branch per state: loading / no data / no limit / chart.
+  const loading =
+    (usage.loading && usage.series.length === 0) ||
+    (percentage.loading && percentage.series.length === 0);
+
+  // One branch per state: loading / no data / no limit / unavailable / chart.
   return (
     <MetricSection
       title={title}
-      result={result}
+      result={percentage}
       headerExtra={
         <span className="text-xs text-muted-foreground">
           {t("services.scalingMetricsAcross")}
         </span>
       }
     >
-      {result.loading && result.series.length === 0 ? (
+      {loading ? (
         <Skeleton className="h-40 w-full" />
-      ) : !hasData ? (
+      ) : hasPercentage ? (
+        <SvgLineChart unit="percentage" series={series} />
+      ) : !hasUsage ? (
         <EmptyChart message={t("services.scalingMetricsEmpty")} />
-      ) : series == null ? (
+      ) : limit == null || limit === 0 ? (
         <EmptyChart message={t("metrics.noLimitConfigured")} />
       ) : (
-        <SvgLineChart unit="percentage" series={series} />
+        <EmptyChart message={t("metrics.percentageUnavailable")} />
       )}
     </MetricSection>
   );
