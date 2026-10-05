@@ -399,8 +399,8 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"IPAllowList"},
 		present:  func(p ServicePatch) bool { return p.IPAllowList != nil },
 		relation: canOperate,
-		check: func(_ context.Context, _ *Service, _ *appv1alpha1.App, _ string, p ServicePatch) error {
-			return core.ValidateAllowList(*p.IPAllowList)
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			return checkIPAllowList(probe, *p.IPAllowList)
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetIPAllowList(ctx, id, *p.IPAllowList)

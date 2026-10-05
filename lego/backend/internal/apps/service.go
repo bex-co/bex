@@ -2820,6 +2820,18 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 	if err := validateMaxShutdownDelaySeconds(svcType, req.MaxShutdownDelaySeconds); err != nil {
 		return err
 	}
+	// The update checks' applicability rules (settings_check.go), so create
+	// refuses — by type, before any unrelated guard — what update refuses.
+	switch {
+	case strings.TrimSpace(req.HealthCheckPath) != "" && !healthCheckPathApplies(svcType):
+		return errHealthCheckPathNotApplicable(svcType)
+	case strings.TrimSpace(req.PreDeployCommand) != "" && !preDeployCommandApplies(svcType):
+		return errPreDeployCommandNotApplicable(svcType)
+	case strings.TrimSpace(req.SubdomainPolicy) != "" && !appv1alpha1.TypePubliclyRoutable(svcType):
+		return errSubdomainPolicyNotApplicable(svcType)
+	case len(req.IPAllowList) > 0 && !appv1alpha1.TypePubliclyRoutable(svcType):
+		return errIPAllowListNotApplicable(svcType)
+	}
 	if svcType == appv1alpha1.TypeCronJob {
 		sched := strings.TrimSpace(req.Schedule)
 		if sched == "" {
@@ -4385,6 +4397,9 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 	}
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
+		return AppView{}, err
+	}
+	if err := checkIPAllowList(a, entries); err != nil {
 		return AppView{}, err
 	}
 	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {

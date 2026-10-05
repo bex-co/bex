@@ -40,9 +40,54 @@ import (
 // calls its check and then writes the value the check returned, so the two
 // paths cannot drift on either the rule or the normalization.
 
+// Per-type applicability, one rule per setting that create
+// (validateTypeSpecificCreate, and so Blueprints), update and the patch
+// preflight share — so "nothing accepted is ignored" holds on every path
+// (w8/056: create used to store a setting update refuses).
+
+// healthCheckPathApplies: cron jobs and background workers are never probed.
+func healthCheckPathApplies(svcType string) bool {
+	return svcType != appv1alpha1.TypeCronJob && svcType != appv1alpha1.TypeBackgroundWorker
+}
+
+func errHealthCheckPathNotApplicable(svcType string) error {
+	return fmt.Errorf("%w: health check path is not applicable to a %s", core.ErrBadRequest, svcType)
+}
+
+// preDeployCommandApplies: cron jobs and static sites run no pre-deploy phase.
+func preDeployCommandApplies(svcType string) bool {
+	return svcType != appv1alpha1.TypeCronJob && svcType != appv1alpha1.TypeStaticSite
+}
+
+func errPreDeployCommandNotApplicable(svcType string) error {
+	return fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, svcType)
+}
+
+// The platform subdomain and the inbound IP allowlist (a Traefik middleware on
+// the App's Ingress) exist only for a publicly routable type.
+func errSubdomainPolicyNotApplicable(svcType string) error {
+	return fmt.Errorf("%w: renderSubdomainPolicy applies only to web services and static sites; a %s has no platform subdomain to toggle", core.ErrBadRequest, svcType)
+}
+
+func errIPAllowListNotApplicable(svcType string) error {
+	return fmt.Errorf("%w: ipAllowList applies only to web services and static sites; a %s has no public endpoint to restrict", core.ErrBadRequest, svcType)
+}
+
+// checkIPAllowList validates entries for a; clearing stays allowed on any
+// type so a legacy stored list can be removed (w8/056).
+func checkIPAllowList(a *appv1alpha1.App, entries []core.IPAllowListEntry) error {
+	if err := core.ValidateAllowList(entries); err != nil {
+		return err
+	}
+	if len(entries) > 0 && !a.Spec.PubliclyRoutable() {
+		return errIPAllowListNotApplicable(effectiveType(a.Spec.Type))
+	}
+	return nil
+}
+
 func checkHealthCheckPath(a *appv1alpha1.App, path string) (string, error) {
-	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeBackgroundWorker {
-		return "", fmt.Errorf("%w: health check path is not applicable to a %s", core.ErrBadRequest, a.Spec.Type)
+	if !healthCheckPathApplies(a.Spec.Type) {
+		return "", errHealthCheckPathNotApplicable(a.Spec.Type)
 	}
 	return normalizeHealthCheckPath(path)
 }
@@ -113,8 +158,8 @@ func (s *Service) checkPreDeployCommand(ctx context.Context, a *appv1alpha1.App)
 	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
 		return err
 	}
-	if a.Spec.Type == appv1alpha1.TypeCronJob || a.Spec.Type == appv1alpha1.TypeStaticSite {
-		return fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, a.Spec.Type)
+	if !preDeployCommandApplies(a.Spec.Type) {
+		return errPreDeployCommandNotApplicable(a.Spec.Type)
 	}
 	return nil
 }
@@ -161,7 +206,7 @@ func (s *Service) checkSubdomainPolicy(ctx context.Context, a *appv1alpha1.App, 
 	// (which then sends the caller into an add-domain call that itself 400s
 	// because the type has no ingress) and not a silent success (w6/m130).
 	if !a.Spec.PubliclyRoutable() {
-		return "", fmt.Errorf("%w: renderSubdomainPolicy applies only to web services and static sites; a %s has no platform subdomain to toggle", core.ErrBadRequest, effectiveType(a.Spec.Type))
+		return "", errSubdomainPolicyNotApplicable(effectiveType(a.Spec.Type))
 	}
 	if normalized == appv1alpha1.SubdomainPolicyDisabled {
 		if a.Spec.Host == "" && len(a.Spec.Hosts) == 0 {
