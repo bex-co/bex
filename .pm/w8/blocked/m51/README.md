@@ -1,19 +1,19 @@
 # w8 · m51 — Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)
 
-**Worker:** worker8 **Goal:** a native-runtime build uses the toolchain version the service asks for, through Render's documented mechanisms, from a reviewed and digest-pinned set of version lines. It narrates which version it chose and why, and refuses an unsupported version by name. **Status:** todo
+**Worker:** worker8 **Goal:** a native-runtime build uses the toolchain version the service asks for, through Render's documented mechanisms, from a reviewed and digest-pinned set of version lines. It narrates which version it chose and why, and refuses an unsupported version by name. **Status:** blocked — t001–t008 done 2026-10-05; t009 waits on release + live production DoD replay
 
 ## Tasks (in order)
 
 | id   | title                                                                           | est | depends_on                 |
 | ---- | ------------------------------------------------------------------------------- | --- | -------------------------- |
-| t001 | Decide the supported version lines and resolution policy (ADR060 D7-compatible) | 40m | —                          |
-| t002 | Pinned per-line image matrix in the freshness inventory                         | 45m | w8/m51/t001                |
-| t003 | Python and Node resolvers (env var → version files → engines → default)         | 1h  | w8/m51/t002                |
-| t004 | Go, Ruby, Rust, Elixir resolvers                                                 | 1h  | w8/m51/t002                |
-| t005 | Narrate the chosen version and refuse unsupported ones                          | 30m | w8/m51/t003, w8/m51/t004   |
-| t006 | Render parity                                                                   | 30m | w8/m51/t005                |
-| t007 | Simplify                                                                        | 20m | w8/m51/t006                |
-| t008 | Test coverage                                                                   | 45m | w8/m51/t006                |
+| t001 | Decide the supported version lines and resolution policy (ADR060 D7-compatible) — **DONE** | 40m | —                          |
+| t002 | Pinned per-line image matrix in the freshness inventory — **DONE**                         | 45m | w8/m51/t001                |
+| t003 | Python and Node resolvers (env var → version files → engines → default) — **DONE**         | 1h  | w8/m51/t002                |
+| t004 | Go, Ruby, Rust, Elixir resolvers — **DONE**                                                 | 1h  | w8/m51/t002                |
+| t005 | Narrate the chosen version and refuse unsupported ones — **DONE**                          | 30m | w8/m51/t003, w8/m51/t004   |
+| t006 | Render parity — **DONE**                                                                   | 30m | w8/m51/t005                |
+| t007 | Simplify — **DONE**                                                                        | 20m | w8/m51/t006                |
+| t008 | Test coverage — **DONE**                                                                   | 45m | w8/m51/t006                |
 | t009 | Closeout                                                                        | 15m | w8/m51/t007, w8/m51/t008   |
 
 ## Definition of done

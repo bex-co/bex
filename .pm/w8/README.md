@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](m51/README.md) (9 tasks) ← `/qa-find-bugs-cli` w8 loop, 2026-10-04 sweep 12: `PYTHON_VERSION=3.11.9` built on Python 3.13.15.
+- [ ] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](blocked/m51/README.md) (9 tasks) — **BLOCKED (release pipeline deploys the operator image (new `/native-resolve`); QA replays the DoD on production with the released `bex` CLI: `PYTHON_VERSION=3.11.9` and a `.python-version` build on 3.11, `NODE_VERSION=22`/`.nvmrc`/bounded `engines.node` on 22, `PYTHON_VERSION=2.7.18` fails by name, no signal narrates "default"; then cleans up)**. t001–t008 done 2026-10-05: reviewed digest-pinned lines per runtime (ADR060 D7 addendum), an in-cluster `resolve-native-runtime` phase that picks the line from Render's signals, rewrites the FROM and narrates the choice; unsupported requests fail as tenant errors. Verified locally on real BuildKit (`Python 3.11.17 want=3.11.9`).
 - [x] **m50** — [Enforce Postgres tier capacity across write paths](done/m50/README.md) (9 tasks) ← promoted from `035` on 2026-10-02.
 
 - [x] **m49** — [Reject invalid image deploy inputs with actionable errors](done/m49/README.md) (7 tasks) ← promoted from `033` on 2026-10-02. Completed 2026-10-02; full suites/lint and 57 live checks passed.

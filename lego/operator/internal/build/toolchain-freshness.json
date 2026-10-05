@@ -89,7 +89,7 @@
       "upstream": "quay.io/skopeo/stable:v1.22.2",
       "committed": "quay.io/skopeo/stable:v1.22.2@sha256:2b7d76dde38c5924e1945348840c58786fc192201f2fd545832e58b53d26f7b8",
       "resolved_at": "2026-09-30T18:08:55Z",
-      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable — w7/m85)",
+      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable \u2014 w7/m85)",
       "files": ["lego/operator/internal/build/build.go"]
     },
     {
@@ -153,6 +153,96 @@
       "committed": "rust:1-bookworm@sha256:93ce27a88655056a51dbdd8f5f2d7ddc071c7b0070fb288a37b5a285fc83971e",
       "resolved_at": "2026-09-30T18:08:55Z",
       "source": "Docker Hub library/rust:1-bookworm multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python-3-10",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.10-bookworm",
+      "committed": "python:3.10-bookworm@sha256:e1d1d0eb753a9ff331dd8a3f19e41107e5bb452eed9da1410b03318ffe4f8bb8",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/python:3.10-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python-3-11",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.11-bookworm",
+      "committed": "python:3.11-bookworm@sha256:3fd8382c50bae84184460a6e1a8ff4eeac0e3ca6a560691cb56bd84d2b6ec9ca",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/python:3.11-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python-3-12",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.12-bookworm",
+      "committed": "python:3.12-bookworm@sha256:e91fec3d1ac69f04e4eddcd29c327e630ce34658cf31075bfa7e8b0e052bafea",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/python:3.12-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python-3-14",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.14-bookworm",
+      "committed": "python:3.14-bookworm@sha256:b3c121f5b6b446c964c6ea924d9a099e259b29d7b56df82729e33572a31eadcc",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/python:3.14-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-node-22",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:22-bookworm",
+      "committed": "node:22-bookworm@sha256:363e1587494626837fa7f9a23bdb453d13b0ff3c67c705c2805cfc69c2d2fad7",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/node:22-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-node-26",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:26-bookworm",
+      "committed": "node:26-bookworm@sha256:2aaae6d91f99fee84cfc92da9b52c22a185752d247746052bbc3f961e44478c6",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/node:26-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-ruby-3-3",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.3-bookworm",
+      "committed": "ruby:3.3-bookworm@sha256:dba270af6994f64e45ee3dd2b85225a2a0d01f29c04508c7a3c7c8dbf59d2a85",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/ruby:3.3-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-ruby-4-0",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:4.0-bookworm",
+      "committed": "ruby:4.0-bookworm@sha256:119a36c51c7893215202220eabfdcb561638735de4d45bacf2e8619be3de47f2",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/ruby:4.0-bookworm multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-elixir-1-17",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.17",
+      "committed": "elixir:1.17@sha256:a40312b97492ce708d2a1cefee144ec680503ab097f52020299645d174a13a8a",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/elixir:1.17 multi-arch index (w8/m51 version line)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-elixir-1-19",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.19",
+      "committed": "elixir:1.19@sha256:7d0cc07a9814b23c354c5ecae400ef1d8422c56b101940429f31008f8bfad26b",
+      "resolved_at": "2026-10-05T00:00:00Z",
+      "source": "Docker Hub library/elixir:1.19 multi-arch index (w8/m51 version line)",
       "files": ["lego/operator/internal/build/native.go"]
     }
   ]
