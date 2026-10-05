@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -31,7 +32,7 @@ import (
 // hour a full hour.
 func TestInstanceSecondsQueryMeasuresRunningTime(t *testing.T) {
 	q := instanceSecondsQuery(`namespace="tea-a",pod=~"web-.+",container!=""`, 3600)
-	for _, want := range []string{"max by (pod)", "count_over_time(", "[3599s:15s]", `container!=""`} {
+	for _, want := range []string{"max by (pod)", "count_over_time(", "[3599s:15s]", "}[44s]", `container!=""`} {
 		if !strings.Contains(q, want) {
 			t.Errorf("query %q missing %q", q, want)
 		}
@@ -42,24 +43,25 @@ func TestInstanceSecondsQueryMeasuresRunningTime(t *testing.T) {
 }
 
 // TestInstanceSecondsQueryOnPrometheus evaluates the production expression in
-// Prometheus' own engine via `promtool test rules` (skipped when promtool is
-// not on PATH; verified against v2.54.1, the deployed chart's line). The
-// series are 15 s scrapes over one hour, ending in staleness markers the way
-// cAdvisor series end when a pod is deleted.
+// Prometheus' own engine via `promtool test rules` (skipped when promtool is not
+// on PATH). Series end the way a deleted pod's cAdvisor series do: with no
+// staleness marker, because cAdvisor samples carry their own timestamps
+// (w4/m110), so only the query's liveness window stops a terminated pod from
+// counting (w5/m111). Verified on v2.54.1 (closed ranges, the deployed line)
+// and v3.14.0 (left-open ranges): the same values on both.
 func TestInstanceSecondsQueryOnPrometheus(t *testing.T) {
 	promtool, err := exec.LookPath("promtool")
 	if err != nil {
 		t.Skip("promtool not on PATH")
 	}
-	presence := func(from, to int, endStale bool) string {
+	// presence is a 15 s series over the hour: a sample at steps [from, to)
+	// except the missing ones, then nothing — no staleness marker.
+	presence := func(from, to int, missing ...int) string {
 		out := make([]string, 0, 241)
 		for i := 0; i <= 240; i++ {
-			switch {
-			case i >= from && i < to:
+			if i >= from && i < to && !slices.Contains(missing, i) {
 				out = append(out, "1")
-			case endStale && i == to:
-				out = append(out, "stale")
-			default:
+			} else {
 				out = append(out, "_")
 			}
 		}
@@ -67,25 +69,36 @@ func TestInstanceSecondsQueryOnPrometheus(t *testing.T) {
 	}
 	cases := []struct {
 		namespace string
-		series    map[string]string // pod/container -> values
+		series    map[string]string // pod/container[#id] -> values
 		want      int
 	}{
-		// 5 minutes of life: 285, within one scrape (its t=0 sample belongs to the prior hour).
-		{"short", map[string]string{"a-1/app": presence(0, 20, true)}, 285},
+		// 5 minutes of life: its t=0 sample belongs to the prior hour, then 19
+		// steps plus the two its last sample stays live for (44 s).
+		{"short", map[string]string{"a-1/app": presence(0, 20)}, 315},
 		// One pod, two containers (Valkey + exporter): one instance, not two.
-		{"sidecar", map[string]string{"kv-0/valkey": presence(0, 241, false), "kv-0/exporter": presence(0, 241, false)}, 3600},
+		{"sidecar", map[string]string{"kv-0/valkey": presence(0, 241), "kv-0/exporter": presence(0, 241)}, 3600},
 		// Two replicas all hour.
-		{"replicas", map[string]string{"web-1/app": presence(0, 241, false), "web-2/app": presence(0, 241, false)}, 7200},
-		// Rollout: old pod 0–40 min, new pod 38–60 min — only the 2-minute overlap is extra.
-		{"rollout", map[string]string{"web-old/app": presence(0, 160, true), "web-new/app": presence(152, 241, false)}, 3720},
+		{"replicas", map[string]string{"web-1/app": presence(0, 241), "web-2/app": presence(0, 241)}, 7200},
+		// Rollout: old pod 0–40 min, new pod 38–60 min — the 2-minute overlap
+		// and the old pod's two live steps are extra, not the 5-minute lookback.
+		{"rollout", map[string]string{"web-old/app": presence(0, 160), "web-new/app": presence(152, 241)}, 3750},
+		// Gaps of up to 44 s (cAdvisor's housekeeping spacing, missed scrapes)
+		// lose no running time; a 60 s gap loses the one step nothing covers.
+		{"missed", map[string]string{"web-1/app": presence(0, 241, 100)}, 3600},
+		{"missed2", map[string]string{"web-1/app": presence(0, 241, 100, 101)}, 3600},
+		{"missed3", map[string]string{"web-1/app": presence(0, 241, 100, 101, 102)}, 3585},
+		// A restarted container is a new series in the same pod, briefly
+		// overlapping the old one: the pod keeps running, once.
+		{"restart", map[string]string{"web-1/app#first": presence(0, 125), "web-1/app#second": presence(121, 241)}, 3600},
 	}
 	var b strings.Builder
 	b.WriteString("rule_files: []\nevaluation_interval: 15s\ntests:\n  - interval: 15s\n    input_series:\n")
 	for _, c := range cases {
 		for key, values := range c.series {
-			pod, container, _ := strings.Cut(key, "/")
-			fmt.Fprintf(&b, "      - series: 'container_memory_working_set_bytes{namespace=%q,pod=%q,container=%q}'\n        values: '%s'\n",
-				c.namespace, pod, container, values)
+			pod, rest, _ := strings.Cut(key, "/")
+			container, id, _ := strings.Cut(rest, "#")
+			fmt.Fprintf(&b, "      - series: 'container_memory_working_set_bytes{namespace=%q,pod=%q,container=%q,id=%q}'\n        values: '%s'\n",
+				c.namespace, pod, container, id, values)
 		}
 	}
 	b.WriteString("    promql_expr_test:\n")
