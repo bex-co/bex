@@ -1,6 +1,6 @@
 # w4 · m137 — A restarting Key Value or Postgres reports "creating", as if it were brand new
 
-**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** waiting on the existing live acceptance. The `w1/m166/t007` dependency completed 2026-10-02 (`w1/done/m166`: the production timeline on the fixed build is clean); prior completed tasks remain done.
+**Worker:** worker4 **Goal:** a datastore that has been Available, then restarts (a config change, a manual restart, or a rollout), reports Render's restart status instead of `creating` on REST, GraphQL, MCP, and the dashboard, and never reports `available` while its restart is already underway **Status:** blocked — live closeout 2026-10-05 passed every Key Value bullet and the Postgres API bullet, but the dashboard misses a Postgres restart (t010); t007 closeout waits on t010 + a live replay
 
 ## Scope transfer — 2026-09-28
 
@@ -17,7 +17,8 @@ User approved moving t009 implementation to `w1/m166/t007` in w1. Its original f
 | t004 | Render parity across REST / GraphQL / MCP / UI — **DONE** | 20m | t003, t008 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 30m | t004 |
-| t007 | Closeout — **BLOCKED** | 10m | t006, w1/m166/t007 |
+| t010 | Postgres restart: the operator re-marks Ready for the restart generation before CNPG starts the rollout — implemented, live replay pending | 1h30m | — |
+| t007 | Closeout — **BLOCKED** | 10m | t006, t010, w1/m166/t007 |
 
 ## Definition of done
 
@@ -69,3 +70,16 @@ Reachability was polled from the host every 3 s: `redis-cli --tls --sni <host> -
   - Config save on an open page: **PASS**. Changing Persistence Mode (Journal + Snapshot → Snapshot only) on `/keyvalue/<id>` flipped the header to **Restarting** at once, without a reload, and back to **Available** after ~20 s.
 - **Creation still says creating — PASS.** Both stores read `creating` from creation until first Ready: Key Value 13:37:46 → 13:38:41, Postgres 13:37:46 → 13:39:24.
 - **Never "Unknown" — PASS on the detail header.** The Key Value detail page never showed "Unknown" through the restart. List and project rows were not sampled mid-restart.
+
+## Live closeout (2026-10-05, production `24482892a`)
+
+Workspace `bex-canary`; API with the bex CLI's access key, dashboard as the QA user (session revoked afterwards). Fixtures `qa-20261005-m137-kv` `red-db1h4it0e7fs7390d4l0`, `qa-20261005-m137-kv2` `red-db1hi250e7fs7390d5lg`, `qa-20261005-m137-pg` `dpg-db1h4j68inbs73f0v7e0` and project `qa-20261005-m137-prj` `prj-db1hgje8inbs73f0v7v0`, all deleted (`GET` 404, `bex-canary` lists empty). Reachability: `redis-cli --tls --sni` and `psql` with `verify-full`, both allowlist families open.
+
+- **Key Value config change — PASS.** `PATCH maxmemoryPolicy=allkeys_lru` 03:06:42: REST and GraphQL `config_restart` 03:06:47–03:07:14, while `redis-cli` was refused over exactly that window; `available` at 03:07:19, the first sample where the new policy answered. Never `creating`. The t009 early-`available` gap from 2026-09-27 is gone.
+- **Postgres manual restart, API — PASS.** `POST …/restart` 03:11:49: `config_restart` 03:11:51–03:12:13, psql refused 03:11:56–03:12:13, `available` 03:12:19 with psql answering. Never `creating`.
+- **Postgres manual restart, dashboard — FAIL (t010).** Restart Database clicked 03:31:48 on `/databases/<id>`: the header and Details read "Available" throughout, while REST read `config_restart` and psql was refused 03:31:52–03:32:10. A ~200 ms REST poll after a restart reads `available` for ~1.7 s before `config_restart`. Cause and fix shape are in `t010.md`.
+- **Resume — PASS.** `suspended` → `config_restart` 03:15:14–03:15:30 (unreachable) → `available` 03:15:35, the first sample where `redis-cli` answered.
+- **Config save on an open page — PASS.** Maxmemory saved from `/keyvalue/<id>` at 03:18:24: header "Restarting" 03:18:24 → "Available" 03:18:37 with no reload; `redis-cli` refused 03:18:26–03:18:31 and answered 03:18:37.
+- **Creation still says creating — PASS (API).** Create responses read `creating`, then `available` after first Ready. The dashboard did not sample `creating` (the store was Available within ~30 s, inside one poll).
+- **Never "Unknown" — PASS.** Ungrouped list rows read "Restarting" for both stores mid-restart (03:23:25–03:23:38), the project page row read "Restarting" (03:27:53–03:27:58), and the Key Value header read "Restarting". No "Unknown" on any sampled surface.
+

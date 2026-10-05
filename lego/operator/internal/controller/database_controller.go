@@ -1312,7 +1312,8 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
-	if clusterState.ready >= desiredInstances {
+	restarting := r.restartPending(ctx, db, cluster, desiredInstances)
+	if clusterState.ready >= desiredInstances && !restarting {
 		// A major upgrade creates a new PostgreSQL system ID/timeline; pre-upgrade
 		// backups cannot provide PITR into the new major. Start a fresh base backup
 		// as soon as CNPG reports the upgraded cluster healthy.
@@ -1339,15 +1340,64 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		return ctrl.Result{}, nil
 	}
 
+	reason, message, requeue := string(appv1alpha1.DBPhaseProvisioning), "waiting for CloudNativePG", 10*time.Second
+	if restarting {
+		// Nothing watches the CNPG Pods for this reconciler, so poll the
+		// rollout closely: Ready returns within seconds of the last instance.
+		reason, message, requeue = "Restarting", "waiting for CloudNativePG to restart every instance", 3*time.Second
+	}
 	db.Status.Phase = appv1alpha1.DBPhaseProvisioning
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Provisioning",
-		Message: "waiting for CloudNativePG", ObservedGeneration: db.Generation,
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
+		Message: message, ObservedGeneration: db.Generation,
 	})
 	if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{RequeueAfter: soonerRequeue(10*time.Second, exportRequeue)}, nil
+	return ctrl.Result{RequeueAfter: soonerRequeue(requeue, exportRequeue)}, nil
+}
+
+// CloudNativePG's labels on the instance Pods of a Cluster.
+const (
+	cnpgClusterLabel    = "cnpg.io/cluster"
+	cnpgPodRoleLabel    = "cnpg.io/podRole"
+	cnpgPodRoleInstance = "instance"
+)
+
+// restartRolloutBound caps how long a requested restart holds the Database
+// non-Ready, so a CNPG that never acts on the annotation cannot wedge it.
+const restartRolloutBound = 10 * time.Minute
+
+// restartPending reports whether a manual restart (spec.restartedAt) has not yet
+// rolled through every instance. CNPG restarts each instance Pod whose
+// restartAnnotation differs from the Cluster's and stamps the new value on the
+// Pod it brings back, but readyInstances stays at full strength until CNPG
+// starts. Reading Ready in that gap published `available` for a restart that
+// had not happened yet, and a client that re-read once saw no restart at all
+// (w4/m137 t010).
+func (r *DatabaseReconciler) restartPending(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, desiredInstances int64) bool {
+	want := db.Spec.RestartedAt
+	if want == "" || cluster.GetAnnotations()[restartAnnotation] != want {
+		return false
+	}
+	if at, err := time.Parse(time.RFC3339, want); err != nil || r.databaseNow().Sub(at) > restartRolloutBound {
+		return false
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(cluster.GetNamespace()), client.MatchingLabels{
+		cnpgClusterLabel: cluster.GetName(), cnpgPodRoleLabel: cnpgPodRoleInstance,
+	}); err != nil {
+		logf.FromContext(ctx).Error(err, "list CloudNativePG instances for restart", "name", db.Name)
+		return false
+	}
+	var restarted int64
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if pod.DeletionTimestamp == nil && pod.Annotations[restartAnnotation] == want && podReady(pod) {
+			restarted++
+		}
+	}
+	return restarted < desiredInstances
 }
 
 func soonerRequeue(current, candidate time.Duration) time.Duration {
