@@ -70,7 +70,6 @@ export const Route = createFileRoute("/blueprints/$blueprintId")({
           query: BlueprintDocument,
           variables: {
             id: params.blueprintId,
-            ownerId: context.workspaceId,
           },
           fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",

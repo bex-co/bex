@@ -12,9 +12,6 @@ import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 import { useBlueprintSyncs } from "../use-blueprint-syncs";
 import { useSyncBlueprint } from "../use-sync-blueprint";
 
-vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
-}));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
 }));
@@ -36,7 +33,7 @@ function run(id: string, startedAt: string) {
 
 const syncsQuery = {
   query: BlueprintSyncsDocument,
-  variables: { id: "blp-1", ownerId: "tea-1", limit: 20 },
+  variables: { id: "blp-1", limit: 20 },
 };
 
 // w4/m138: a sync the dashboard just ran must appear in Sync History without a
@@ -53,7 +50,6 @@ describe("Blueprint sync → Sync History", () => {
           query: SyncBlueprintDocument,
           variables: {
             id: "blp-1",
-            ownerId: "tea-1",
             commitId: COMMIT,
             path: "render.yaml",
             repo: "https://github.com/bex-co/bex",

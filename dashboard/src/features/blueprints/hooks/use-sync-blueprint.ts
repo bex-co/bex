@@ -3,7 +3,6 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SyncBlueprintDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { SyncBlueprintResult } from "@/features/blueprints/types";
 import { toSyncBlueprintResult } from "@/features/blueprints/lib/views";
 import {
@@ -39,7 +38,6 @@ export interface UseSyncBlueprintResult {
 
 export function useSyncBlueprint(): UseSyncBlueprintResult {
   const { t } = useTranslations();
-  const { currentWorkspaceId } = useWorkspace();
   // A sync records a run and moves the blueprint's status: re-read both, so
   // Sync History gains its new top row without a reload (w4/m138).
   const [mutate] = useMutation(SyncBlueprintDocument, {
@@ -59,7 +57,6 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
           mutate({
             variables: {
               id,
-              ownerId: currentWorkspaceId,
               confirm: opts.confirmation,
               commitId: opts.reviewed.commitId,
               path: opts.reviewed.path,
@@ -103,7 +100,7 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
         setBusy(false);
       }
     },
-    [mutate, paymentGate, t, currentWorkspaceId],
+    [mutate, paymentGate, t],
   );
 
   return { sync, busy };

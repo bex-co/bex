@@ -148,6 +148,21 @@ func (s *PGStore) GetBlueprint(ctx context.Context, id, tenantID string) (Bluepr
 	return out, nil
 }
 
+// BlueprintWorkspace returns the workspace that owns a live (non-disconnected)
+// Blueprint id, or ErrNotFound. It is a routing read only: the caller must
+// still authorize against the returned workspace before revealing anything,
+// exactly as a service or env-group id resolves to its own workspace (w4/m169).
+func (s *PGStore) BlueprintWorkspace(ctx context.Context, id string) (string, error) {
+	var tenantID string
+	err := s.Pool.QueryRow(ctx,
+		`SELECT tenant_id FROM blueprints WHERE id = $1 AND status != 'disconnected'`, id,
+	).Scan(&tenantID)
+	if err != nil {
+		return "", classify("blueprint", err)
+	}
+	return tenantID, nil
+}
+
 // GetBlueprintByRepo fetches the active blueprint for a tenant+repo+branch, used
 // by the push-webhook auto-sync path. Returns ErrNotFound when unregistered —
 // or when the row is disconnected, so webhooks cannot resurrect one (w8/m37).

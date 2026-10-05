@@ -7,10 +7,6 @@ vi.mock("@apollo/client/react", () => ({
   useQuery: vi.fn(),
 }));
 
-vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
-}));
-
 const refetch = vi.fn();
 
 beforeEach(() => {
@@ -19,6 +15,24 @@ beforeEach(() => {
 });
 
 describe("useBlueprint", () => {
+  // w4/m169: the id resolves its own workspace server-side; pinning the
+  // selected workspace as ownerId made a link to another one 404.
+  it("queries by id alone, never pinning the selected workspace", () => {
+    vi.mocked(useQuery).mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch,
+    } as never);
+
+    renderHook(() => useBlueprint("blp-elsewhere"));
+
+    const options = vi.mocked(useQuery).mock.calls[0][1] as {
+      variables: Record<string, unknown>;
+    };
+    expect(options.variables).toEqual({ id: "blp-elsewhere" });
+  });
+
   it("treats an empty adapter object as not found", () => {
     vi.mocked(useQuery).mockReturnValue({
       data: { blueprint: {} },

@@ -8,10 +8,6 @@ vi.mock("@apollo/client/react", () => ({
   useMutation: () => [mutate],
 }));
 
-vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
-}));
-
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
