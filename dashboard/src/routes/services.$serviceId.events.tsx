@@ -509,7 +509,9 @@ function EventSummary({
         ) : null}
         {reasonCode ? (
           <p className="text-muted-foreground mt-2 text-xs">
-            {t(`services.eventsReason.${reasonCode}`, { exitCode })}
+            {t(`services.eventsReason.${reasonCode}`, {
+              exitCode: exitCode ?? "",
+            })}
             {instanceId
               ? ` · ${t("services.eventsInstanceReference", { id: instanceId })}`
               : ""}
