@@ -184,8 +184,8 @@ func (s *Service) checkCronJob(ctx context.Context, a *appv1alpha1.App, name str
 		if trimmed == "" {
 			return fmt.Errorf("%w: schedule is required", core.ErrBadRequest)
 		}
-		if !validCronSchedule(trimmed) {
-			return fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
+		if err := checkCronSchedule(trimmed); err != nil {
+			return err
 		}
 	}
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
