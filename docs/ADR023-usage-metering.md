@@ -6,7 +6,7 @@ bex records month-to-date resource consumption per workspace and exposes it over
 
 | Meter | Unit | Source |
 | --- | --- | --- |
-| `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — pod count × window seconds |
+| `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — per-pod running time: 15 s steps each pod was present (containers collapsed per pod), × 15 s |
 | `egress_bytes` | bytes | loss-detecting sum of exact App HTTP + WebSocket + direct-public sources, or the public datastore proxy response source |
 | `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
@@ -101,6 +101,12 @@ For App services, each meter (`instance_seconds`, `egress_bytes`, and `build_sec
 - **Egress health failure is final, not retryable (w1/m51):** the egress meter gates health PER SOURCE within the hour — a source whose health product fails (in-window counter reset, meter `up` gap, counter loss) is skipped for that hour while the healthy sources' `increase()` still records; every source skipped records a successful zero. Only a transport failure (the previous bullet) defers the hour, because a past hour's samples never improve — under the earlier any-source-unhealthy-defers rule, prod recorded **zero** `egress_bytes` rows for all of July 2026 (`w1/034`). Skipping the unhealthy source keeps its possibly reset-inflated increase out of billing (never invent bytes); the recorded hour undercounts at most by the skipped source's true traffic.
 - The meters advance independently and are collected concurrently. A transient egress failure therefore cannot hold build/instance/storage metering back, and vice versa.
 - The existing 48-hour catch-up bound still applies and is clamped to the App's creation hour, so a new service never gains synthetic pre-creation coverage. Outages longer than 48 hours are visible as gaps rather than silently synthesized as zero.
+
+**Instance running time (w4/m173).** Until this correction, `instance_seconds` was `count(avg_over_time(container_memory_working_set_bytes{…}[1h])) × 3600`. That counted every container series seen at any moment of the hour and billed each one a full hour. A pod alive five minutes read 3600, a Key Value's Valkey plus exporter sidecar read 7200, and each rollout's replacement pod added another 3600. The meter now evaluates `sum(count_over_time((max by (pod) (…))[3599s:15s])) × 15`, which is each pod's own presence at the cAdvisor scrape step, so one pod is one instance.
+
+- **Accuracy.** Within one step per pod. The 3599 s range avoids the aligned left endpoint Prometheus 2.x includes, so consecutive hours partition as (start, end].
+- **Verified** in Prometheus's engine (`TestInstanceSecondsQueryOnPrometheus`): 5 minutes reads 285, a sidecar pod reads 3600, two replicas read 7200, and a rollout with a 2-minute overlap reads 3720.
+- **Cut-over.** Hours metered after the deploy that ships this use the new query. Earlier `usage_hourly` rows keep the over-counted quantities. Whether to recompute paid-tier hours, and to repair Stripe meter events already sent for them through ADR040's reconcile/repair path, is an open decision (w4/m173 t002). Paid exposure must first be quantified with a read-only production query.
 
 Successful zero egress/build rows are coverage anchors in `usage_hourly`; the period aggregation omits their all-zero groups so REST/GraphQL/MCP response semantics remain unchanged. `instance_seconds` retains zero groups for tiered suspended services, as before. Any analysis that needs to prove collection completeness must query raw hourly rows from the deployment time of this corrected contract; older positive-only rows are consumption evidence, not coverage evidence.
 

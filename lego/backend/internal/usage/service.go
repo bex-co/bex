@@ -1107,26 +1107,48 @@ func (s *Service) queryStorageGBSeconds(ctx context.Context, ds datastoreEntry, 
 	return int64(math.Round(usedBytes * float64(windowSecs) / bytesPerDecimalGB)), true
 }
 
-// queryInstanceSecondsByMatcher is the shared cAdvisor instant-query body.
-// It counts pods matching matchers, multiplies by windowSecs, and returns
-// pod-count × window-seconds. ok is false when Prometheus is unavailable.
+// instanceSampleStepSeconds is the resolution instance-seconds are measured
+// at: the kubernetes-cadvisor scrape interval (deploy/gitops/base/prometheus.yaml).
+// Each pod is credited one step per evaluation point it was present at, so a
+// pod's metered time is its lifetime in the window to within one step.
+const instanceSampleStepSeconds = 15
+
+// instanceSecondsQuery is the running-time measure (w4/m173): per POD — the
+// max by (pod) collapses a pod's containers (an App's one, Valkey's server +
+// exporter sidecar, CNPG's instance) into one presence series — count the
+// 15 s steps of the window the pod existed at, sum across pods, and scale by
+// the step. A pod alive 5 minutes reads ~300, a full-hour pod 3600, two
+// replicas 7200, and a rollout adds only the seconds old and new pods
+// actually co-ran. Staleness markers end a deleted pod's series promptly.
+//
+// The previous count(avg_over_time(...))×window counted container SERIES
+// seen at any moment of the hour and billed each a full window, so every
+// short-lived pod, sidecar, and replacement pod was metered as one hour.
+//
+// The range is one second short of the window: Prometheus 2.x subqueries
+// include an aligned left endpoint, so a full [3600s:15s] holds 241 steps and
+// would bill a full-hour pod 3615. [3599s:15s] holds exactly the window's 240
+// steps, (start, end], so consecutive hours partition with no shared step.
+func instanceSecondsQuery(matchers string, windowSecs int64) string {
+	return fmt.Sprintf(
+		`sum(count_over_time((max by (pod) (container_memory_working_set_bytes{%s}))[%ds:%ds]))`,
+		matchers, windowSecs-1, instanceSampleStepSeconds)
+}
+
+// queryInstanceSecondsByMatcher is the shared cAdvisor instant-query body:
+// instanceSecondsQuery evaluated at the window's end. ok is false when
+// Prometheus is unavailable.
 func (s *Service) queryInstanceSecondsByMatcher(ctx context.Context, matchers string, start, end time.Time, logName string) (int64, bool) {
 	if s.PromBase == "" {
 		return 0, false
 	}
-	// Count the average number of running pods over the window, then multiply
-	// by 3600 to get instance-seconds. Using avg_over_time with a range
-	// covering the whole window gives a pod-count average.
 	windowSecs := int64(end.Sub(start) / time.Second)
-	q := fmt.Sprintf(
-		`count(avg_over_time(container_memory_working_set_bytes{%s}[%ds]))`,
-		matchers, windowSecs)
-	v, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, q, end)
+	steps, err := egressquery.Instant(ctx, s.promHTTP, s.PromBase, instanceSecondsQuery(matchers, windowSecs), end)
 	if err != nil {
 		log.Printf("usage: instance_seconds for %s: %v", logName, err)
 		return 0, false
 	}
-	return int64(math.Round(v * float64(windowSecs))), true
+	return int64(math.Round(steps * instanceSampleStepSeconds)), true
 }
 
 // queryEgressBytes composes the applicable App sources atomically: exact-router
