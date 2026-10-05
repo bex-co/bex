@@ -24,6 +24,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 // TestInstanceSecondsQueryMeasuresRunningTime pins w4/m173's shape: running
@@ -52,7 +54,7 @@ func TestInstanceSecondsQueryMeasuresRunningTime(t *testing.T) {
 func TestInstanceSecondsQueryOnPrometheus(t *testing.T) {
 	promtool, err := exec.LookPath("promtool")
 	if err != nil {
-		t.Skip("promtool not on PATH")
+		testenv.Skip(t, "promtool not on PATH")
 	}
 	// presence is a 15 s series over the hour: a sample at steps [from, to)
 	// except the missing ones, then nothing — no staleness marker.

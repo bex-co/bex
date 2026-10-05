@@ -26,13 +26,15 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"github.com/jackc/pgx/v5/pgxpool"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 func TestPGSupersededBuildFactPersists(t *testing.T) {
 	ctx := context.Background()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatal(err)

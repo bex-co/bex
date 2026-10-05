@@ -21,12 +21,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"os"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
 func TestFailureOnlyMigrationPreservesCustomizedRows(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	if err := Migrate(uri); err != nil {
 		t.Fatal(err)

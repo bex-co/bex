@@ -30,6 +30,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/backend/internal/testenv"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -42,7 +43,7 @@ import (
 func TestLiveAcceptance(t *testing.T) {
 	dbURI := os.Getenv("BEX_TEST_DB_URI")
 	if dbURI == "" {
-		t.Skip("BEX_TEST_DB_URI not set")
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
 	}
 	// This drives a REAL App CR against a REAL cluster + operator, so it needs a
 	// KUBECONFIG pointing at a running mock cluster (see the doc comment above).
