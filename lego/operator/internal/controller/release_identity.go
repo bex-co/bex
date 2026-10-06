@@ -239,7 +239,7 @@ func buildRunning(app *appv1alpha1.App) bool {
 // changed fingerprints always request normal artifact/release reconciliation;
 // every retained App has been normalized to the canonical status shape.
 func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
-	if generation, ok := canceledReleaseGeneration(app); ok && generation == requestedReleaseGeneration(app) {
+	if canceledReleaseIsLatest(app) {
 		// Cancel deletes the deterministic build artifact, but reconciliation is
 		// level-triggered. Keep the last successful generation active so this
 		// pass cannot recreate the canceled build or falsely promote its release.
@@ -322,6 +322,33 @@ func canceledReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
 	return generation, err == nil && generation > 0
 }
 
+// canceledReleaseIsLatest reports that the newest release requested is the one
+// the backend canceled. The backend's own release stamp naming it is enough
+// while no later release has been adopted: a suspend that ended a rollout
+// (w5/m114) has already bumped metadata.generation past the release by the
+// time the stamp lands, and requestedReleaseGeneration — which falls back to
+// metadata.generation once the release is adopted — would read that
+// operational write as a newer release and roll the canceled one. A newer
+// deploy restamps the release generation, and a release adopted past the
+// marker through a write that does not restamp it (a direct CR edit) is newer
+// too: neither is canceled.
+func canceledReleaseIsLatest(app *appv1alpha1.App) bool {
+	generation, ok := canceledReleaseGeneration(app)
+	if !ok {
+		return false
+	}
+	stamped, ok := stampedReleaseGeneration(app)
+	return (ok && generation == stamped && app.Status.ReleaseGeneration <= generation) ||
+		generation == requestedReleaseGeneration(app)
+}
+
+// stampedReleaseGeneration is the release generation the backend's deploy
+// verbs last stamped; ok is false when the annotation is absent or unparsable.
+func stampedReleaseGeneration(app *appv1alpha1.App) (int64, bool) {
+	generation, err := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
+	return generation, err == nil
+}
+
 func successfulReleaseGeneration(app *appv1alpha1.App) int64 {
 	if raw, ok := strings.CutPrefix(app.Status.ActiveRevision, "rev-"); ok {
 		if generation, err := strconv.ParseInt(raw, 10, 64); err == nil && generation > 0 {
@@ -375,7 +402,7 @@ func sourceUpdatePending(app *appv1alpha1.App) bool {
 	if err != nil || pending <= 0 {
 		return false
 	}
-	release, _ := strconv.ParseInt(app.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
+	release, _ := stampedReleaseGeneration(app)
 	return release < pending
 }
 
@@ -385,9 +412,7 @@ func sourceUpdatePending(app *appv1alpha1.App) bool {
 // after the deploy request but before this first reconcile. A stale annotation
 // never masks a later direct CR release edit.
 func requestedReleaseGeneration(app *appv1alpha1.App) int64 {
-	raw := app.Annotations[appv1alpha1.AnnotationReleaseGeneration]
-	generation, err := strconv.ParseInt(raw, 10, 64)
-	if err == nil && generation > app.Status.ReleaseGeneration {
+	if generation, ok := stampedReleaseGeneration(app); ok && generation > app.Status.ReleaseGeneration {
 		return generation
 	}
 	return app.Generation

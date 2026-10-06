@@ -187,7 +187,9 @@ const (
 // pre_deploy_status 'failed' (its migration failed) or ” (its health check
 // failed). Empty means no pre-deploy step ran. Canceled is the close's own
 // verdict on a step still running when its deploy ended without going live
-// (superseded or canceled, w4/187): no later observation can settle it.
+// (superseded or canceled, w4/187): no later observation can settle it. A
+// pre_deploy_failed close settles such a step failed instead (w5/m114), and
+// migration 0142's CHECK keeps any closed row from reading running.
 const (
 	PreDeployRunning   = "running"
 	PreDeploySucceeded = "succeeded"
@@ -304,9 +306,10 @@ type Deploy struct {
 	// PreDeployStatus.
 	FailureReason string `json:"failureReason,omitempty"`
 	// CancelReason is the neutral cause of a canceled deploy when the cancel
-	// was not user-initiated (w4/089) — today "Superseded by dep-…" when a
-	// newer release replaced this row. Empty for deploys.Cancel (w6/m52) and
-	// for every non-canceled status. Distinct from FailureReason so the
+	// was not user-initiated (w4/089): "Superseded by dep-…" when a newer
+	// release replaced this row (w5/m114: on every path that cancels it), or
+	// the suspend that ended its rollout (w4/m171). Empty for deploys.Cancel
+	// (w6/m52) and for every non-canceled status. Distinct from FailureReason so the
 	// dashboard can render it without text-destructive treatment.
 	CancelReason string `json:"cancelReason,omitempty"`
 	// StallReason is why an OPEN deploy is not progressing (w4/m112) — the
@@ -606,8 +609,8 @@ type Store interface {
 	// fabricating one; pass nil without evidence.
 	// A stale/repeated/invalid transition returns false without changing data.
 	// cancelReason (w4/089) is stored with the same transition when non-empty —
-	// pass it only alongside DeployCanceled from the reconciler supersede path;
-	// deploys.Cancel / CloseDeploy leave it empty.
+	// pass it only alongside DeployCanceled from the reconciler's supersede or
+	// suspend close; deploys.Cancel / CloseDeploy leave it empty.
 	TransitionDeploy(ctx context.Context, id, status, resolvedImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error)
 	// DeployIDByGeneration returns the deploy id for appID at generation, or
 	// "" when none exists (w4/089 supersede naming). Newest wins if somehow
@@ -1977,17 +1980,17 @@ func (s *PGStore) SetAppImage(ctx context.Context, id string, image string) erro
 func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		status, err := prepareDeployCreate(ctx, tx, appID, generation)
+		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, d.ID)
 		if err != nil {
 			return err
 		}
-		d.Status = status
+		d.Status, d.CancelReason = status, cancelReason
 		d.OverlapPending = status == DeployQueued
 		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END)
+			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END, $13)
 			 RETURNING created_at, updated_at, finished_at`,
-			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled,
+			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason,
 		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 	})
 	if err != nil {
@@ -2020,30 +2023,31 @@ func (s *PGStore) LatestDeployCommit(ctx context.Context, appID string) (CommitI
 
 // prepareDeployCreate serializes creation for one App, then compares App
 // generations before choosing the visible initial status. A delayed request
-// for an older generation records itself canceled without disturbing the
-// higher-generation open row. Otherwise the new generation replaces only the
+// for an older generation records itself canceled, naming the
+// higher-generation open row, without disturbing it. Otherwise the new generation replaces only the
 // previous overlap-pending row: it starts queued while an active deploy is
 // running, or created when the active slot is free. Partial unique indexes are
 // the final one-active-plus-one-pending guard.
-func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64) (string, error) {
+func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64, id string) (status, cancelReason string, err error) {
 	var lockedID string
 	if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
-		return "", err
+		return "", "", err
 	}
-	var superseded bool
-	if err := tx.QueryRow(ctx,
-		`SELECT EXISTS (
-			SELECT 1 FROM deploys
-			WHERE app_id = $1 AND status = ANY($2) AND generation >= $3
-		)`, appID, openDeployStatuses, generation,
-	).Scan(&superseded); err != nil {
-		return "", err
+	var newer string
+	err = tx.QueryRow(ctx,
+		`SELECT id FROM deploys
+		 WHERE app_id = $1 AND status = ANY($2) AND generation >= $3
+		 ORDER BY generation DESC, created_at DESC
+		 LIMIT 1`, appID, openDeployStatuses, generation,
+	).Scan(&newer)
+	if err == nil {
+		return DeployCanceled, supersededByReason(newer), nil
 	}
-	if superseded {
-		return DeployCanceled, nil
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", err
 	}
-	if err := cancelPendingDeploys(ctx, tx, appID); err != nil {
-		return "", err
+	if err := cancelPendingDeploys(ctx, tx, appID, supersededByReason(id)); err != nil {
+		return "", "", err
 	}
 	var active bool
 	if err := tx.QueryRow(ctx,
@@ -2052,28 +2056,40 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 			WHERE app_id = $1 AND status = ANY($2) AND NOT overlap_pending
 		)`, appID, openDeployStatuses,
 	).Scan(&active); err != nil {
-		return "", err
+		return "", "", err
 	}
 	if active {
-		return DeployQueued, nil
+		return DeployQueued, "", nil
 	}
-	return DeployCreated, nil
+	return DeployCreated, "", nil
 }
 
 // cancelPendingDeploys coalesces overlapping triggers into one latest-pending
 // slot without preempting the deploy already executing. Keeping cancellation
 // and insert in one App-row-locked transaction makes concurrent triggers
 // deterministic.
-func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID string) error {
+func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID, cancelReason string) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE deploys
 		 SET status = $2,
+		     cancel_reason = $4,
+		     -- A close settles a running step (TransitionDeploy's rule; migration
+		     -- 0142's CHECK): the reconciler can mark an adopted overlap row's step
+		     -- running just before a newer trigger lands here.
+		     pre_deploy_status = CASE WHEN pre_deploy_status = $5 THEN $6 ELSE pre_deploy_status END,
 		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()),
 		     finished_at = clock_timestamp(),
 		     overlap_pending = false
 		 WHERE app_id = $1 AND status = $3 AND overlap_pending`,
-		appID, DeployCanceled, DeployQueued)
+		appID, DeployCanceled, DeployQueued, cancelReason, PreDeployRunning, PreDeployCanceled)
 	return err
+}
+
+// supersededByReason is the cancel_reason of a deploy a newer one replaced,
+// whichever path closes it: the coalesced pending slot, a late trigger for an
+// older generation, or the reconciler's supersede close.
+func supersededByReason(id string) string {
+	return "Superseded by " + id
 }
 
 // CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10):
@@ -2086,17 +2102,17 @@ func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID string) error {
 func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit CommitInfo, triggeredBy string) (Deploy, error) {
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRollback, Image: image, ResolvedImage: image, RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		status, err := prepareDeployCreate(ctx, tx, appID, generation)
+		status, cancelReason, err := prepareDeployCreate(ctx, tx, appID, generation, d.ID)
 		if err != nil {
 			return err
 		}
-		d.Status = status
+		d.Status, d.CancelReason = status, cancelReason
 		d.OverlapPending = status == DeployQueued
 		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at)
-			 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, $12, CASE WHEN $11 = $13 THEN clock_timestamp() END)
+			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, status, overlap_pending, finished_at, cancel_reason)
+			 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, $12, CASE WHEN $11 = $13 THEN clock_timestamp() END, $14)
 			 RETURNING created_at, updated_at, finished_at`,
-			d.ID, d.AppID, d.Trigger, image, rollbackOf, generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled,
+			d.ID, d.AppID, d.Trigger, image, rollbackOf, generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason,
 		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 	})
 	if err != nil {
@@ -2333,10 +2349,11 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			     stall_reason = CASE WHEN $5 THEN '' ELSE stall_reason END,
 			     -- Likewise a still-running pre-deploy step: SetDeployPreDeployStatus
 			     -- only writes open rows, so nothing else would ever settle it. A
-			     -- release that went live passed its pre-deploy; any other close
-			     -- ended it (w4/187).
+			     -- release that went live passed its pre-deploy, a pre_deploy_failed
+			     -- close (the gate timing the step out) failed it, and any other
+			     -- close ended it (w4/187, w5/m114).
 			     pre_deploy_status = CASE WHEN $5 AND pre_deploy_status = $10
-			                              THEN CASE WHEN $2 = $11 THEN $12 ELSE $13 END
+			                              THEN CASE $2 WHEN $11 THEN $12 WHEN $14 THEN $15 ELSE $13 END
 			                              ELSE pre_deploy_status END,
 			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp())
 			                       ELSE COALESCE(started_at, $9) END,
@@ -2344,7 +2361,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
 			id, status, resolvedImage, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
-			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled); err != nil {
+			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed); err != nil {
 			return err
 		}
 		if status == DeployLive {

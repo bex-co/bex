@@ -1182,3 +1182,105 @@ func TestProductActivitySurfaceMigrationAppliesAndRollsBack(t *testing.T) {
 		t.Error("surface survived the down migration")
 	}
 }
+
+// TestClosedDeployPreDeploySettledMigration pins migration 0142 (w5/m114):
+// rows closed while their pre-deploy step still read 'running' settle by the
+// deploy's own outcome, open rows keep theirs, the CHECK then refuses a closed
+// row that claims a running step, and the down path removes only the CHECK.
+func TestClosedDeployPreDeploySettledMigration(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+	up, err := migrationsFS.ReadFile("migrations/0142_closed_deploy_pre_deploy_settled.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0142_closed_deploy_pre_deploy_settled.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0142_pre_deploy_settled;
+		SET LOCAL search_path TO migration_0142_pre_deploy_settled;
+		CREATE TABLE deploys (
+			id text PRIMARY KEY,
+			status text NOT NULL,
+			pre_deploy_status text NOT NULL DEFAULT '',
+			finished_at timestamptz
+		);
+		-- Stands in for 0114's analytics trigger, recording what it would replay.
+		CREATE TABLE replayed (id text NOT NULL);
+		CREATE FUNCTION record_replay() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN INSERT INTO replayed VALUES (NEW.id); RETURN NEW; END $$;
+		CREATE TRIGGER product_deploy_event AFTER INSERT OR UPDATE ON deploys
+			FOR EACH ROW EXECUTE FUNCTION record_replay();
+		INSERT INTO deploys (id, status, pre_deploy_status, finished_at) VALUES
+			('dep-live', 'live', 'running', now()),
+			('dep-deactivated', 'deactivated', 'running', now()),
+			('dep-gate', 'pre_deploy_failed', 'running', now()),
+			('dep-gate-w4-187', 'pre_deploy_failed', 'canceled', now()),
+			('dep-canceled', 'canceled', 'running', now()),
+			('dep-update-failed', 'update_failed', 'running', now()),
+			('dep-settled', 'update_failed', 'failed', now()),
+			('dep-open', 'pre_deploy_in_progress', 'running', NULL);
+		TRUNCATE replayed;
+	`); err != nil {
+		t.Fatalf("prepare pre-0142 deploys: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply migration 0142 over violating rows: %v", err)
+	}
+	var replayed int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM replayed`).Scan(&replayed); err != nil {
+		t.Fatal(err)
+	}
+	if replayed != 0 {
+		t.Errorf("the backfill fired the analytics trigger %d times; it would resurrect purged events", replayed)
+	}
+	want := map[string]string{
+		"dep-live": "succeeded", "dep-deactivated": "succeeded", "dep-gate": "failed", "dep-gate-w4-187": "failed",
+		"dep-canceled": "canceled", "dep-update-failed": "canceled", "dep-settled": "failed", "dep-open": "running",
+	}
+	for id, status := range want {
+		var got string
+		if err := tx.QueryRow(ctx, `SELECT pre_deploy_status FROM deploys WHERE id = $1`, id).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != status {
+			t.Errorf("%s pre_deploy_status = %q, want %q", id, got, status)
+		}
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT violating`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO deploys (id, status, pre_deploy_status, finished_at) VALUES ('dep-bad', 'canceled', 'running', now())`); err == nil {
+		t.Fatal("a closed deploy with a running pre-deploy step was accepted")
+	}
+	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT violating`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO deploys (id, status) VALUES ('dep-after', 'created')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM replayed WHERE id = 'dep-after'`).Scan(&replayed); err != nil || replayed != 1 {
+		t.Fatalf("analytics trigger after the migration fired %d times (err %v), want it re-enabled", replayed, err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("roll back migration 0142: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO deploys (id, status, pre_deploy_status, finished_at) VALUES ('dep-old-binary', 'canceled', 'running', now())`); err != nil {
+		t.Fatalf("down migration left the CHECK in place: %v", err)
+	}
+}

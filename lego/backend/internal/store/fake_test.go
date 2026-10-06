@@ -661,8 +661,9 @@ func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string,
 		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
 	}
 	now := time.Now()
-	status := m.prepareDeployCreate(appID, generation, now)
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
+	id := ids.New(ids.Deploy)
+	status, cancelReason := m.prepareDeployCreate(appID, generation, id, now)
+	d := Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, TriggeredBy: triggeredBy, Status: status, CancelReason: cancelReason, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
 	}
@@ -699,10 +700,11 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 		return Deploy{}, fmt.Errorf("deploy reference: %w", ErrNotFound)
 	}
 	now := time.Now()
-	status := m.prepareDeployCreate(appID, generation, now)
+	id := ids.New(ids.Deploy)
+	status, cancelReason := m.prepareDeployCreate(appID, generation, id, now)
 	d := Deploy{
-		ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now,
+		ID: id, AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, CancelReason: cancelReason, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now,
 	}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
@@ -711,27 +713,36 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 	return d, nil
 }
 
-func (m *memStore) prepareDeployCreate(appID string, generation int64, now time.Time) string {
+func (m *memStore) prepareDeployCreate(appID string, generation int64, id string, now time.Time) (status, cancelReason string) {
+	var newer *Deploy
 	for _, d := range m.deploys {
-		if d.AppID == appID && IsOpenDeployStatus(d.Status) && d.Generation >= generation {
-			return DeployCanceled
+		if d.AppID == appID && IsOpenDeployStatus(d.Status) && d.Generation >= generation &&
+			(newer == nil || d.Generation > newer.Generation) {
+			newer = &d
 		}
 	}
-	m.cancelPendingDeploys(appID, now)
+	if newer != nil {
+		return DeployCanceled, supersededByReason(newer.ID)
+	}
+	m.cancelPendingDeploys(appID, supersededByReason(id), now)
 	for _, d := range m.deploys {
 		if d.AppID == appID && IsOpenDeployStatus(d.Status) && !d.OverlapPending {
-			return DeployQueued
+			return DeployQueued, ""
 		}
 	}
-	return DeployCreated
+	return DeployCreated, ""
 }
 
-func (m *memStore) cancelPendingDeploys(appID string, now time.Time) {
+func (m *memStore) cancelPendingDeploys(appID, cancelReason string, now time.Time) {
 	for id, d := range m.deploys {
 		if d.AppID != appID || d.Status != DeployQueued || !d.OverlapPending {
 			continue
 		}
 		d.Status = DeployCanceled
+		d.CancelReason = cancelReason
+		if d.PreDeployStatus == PreDeployRunning {
+			d.PreDeployStatus = PreDeployCanceled
+		}
 		d.OverlapPending = false
 		d.UpdatedAt = now
 		d.FinishedAt = &now
@@ -876,9 +887,13 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage
 		d.FinishedAt = &now
 	}
 	if IsTerminalDeployStatus(status) && d.PreDeployStatus == PreDeployRunning {
-		d.PreDeployStatus = PreDeployCanceled
-		if status == DeployLive {
+		switch status {
+		case DeployLive:
 			d.PreDeployStatus = PreDeploySucceeded
+		case DeployPreDeployFailed:
+			d.PreDeployStatus = PreDeployFailed
+		default:
+			d.PreDeployStatus = PreDeployCanceled
 		}
 	}
 	m.deploys[id] = d

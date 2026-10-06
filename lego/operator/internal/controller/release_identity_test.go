@@ -281,6 +281,76 @@ func TestCanceledReleaseKeepsLastSuccessfulGeneration(t *testing.T) {
 	}
 }
 
+// w5/m114: the backend now cancels the release a suspend interrupts, as it
+// does on Cancel. Neither the park nor the wake may get past the stamp: both
+// passes keep the last served generation, so holdUnservedRelease has no newer
+// release to roll after Resume and the canceled release's pre-deploy never
+// starts.
+func TestSuspendedCanceledReleaseStaysCanceledThroughResume(t *testing.T) {
+	// Release 7 was adopted when it started rolling; 6 is what serves.
+	rolling := desiredAppReleaseIdentity(appv1alpha1.AppSpec{Image: "registry.example/app:v7"})
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 8, // release 7's spec write, then the suspend's
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:         "7",
+				appv1alpha1.AnnotationCanceledReleaseGeneration: "7",
+			},
+		},
+		Spec: appv1alpha1.AppSpec{Image: "registry.example/app:v7", Suspended: true},
+		Status: appv1alpha1.AppStatus{
+			Phase:               appv1alpha1.PhaseHibernated,
+			Image:               "registry.example/app:v6",
+			ArtifactFingerprint: rolling.artifact,
+			ReleaseFingerprint:  rolling.release,
+			ReleaseGeneration:   7,
+			ActiveRevision:      "rev-6",
+			ObservedGeneration:  7,
+		},
+	}
+	for _, pass := range []string{"suspended", "resumed"} {
+		if pass == "resumed" {
+			app.Spec.Suspended = false
+			app.Generation++
+		}
+		decision := prepareAppReleaseDecision(app)
+		if !decision.canceled || app.Status.ReleaseGeneration != 6 {
+			t.Fatalf("%s: decision = %+v releaseGeneration = %d, want canceled on the served generation 6", pass, decision, app.Status.ReleaseGeneration)
+		}
+		if newerReleaseUnserved(app) {
+			t.Fatalf("%s: a canceled release reads as a newer unserved one, which holdUnservedRelease would roll", pass)
+		}
+	}
+}
+
+// The release stamp names the canceled release only until a later release is
+// adopted: a release adopted past the marker through a write that does not
+// restamp it (a direct CR edit) is newer than the cancel and keeps rolling.
+func TestReleaseAdoptedPastTheCancelIsNotCanceled(t *testing.T) {
+	adopted := desiredAppReleaseIdentity(appv1alpha1.AppSpec{Image: "registry.example/app:v8"})
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation: 8,
+			Annotations: map[string]string{
+				appv1alpha1.AnnotationReleaseGeneration:         "7",
+				appv1alpha1.AnnotationCanceledReleaseGeneration: "7",
+			},
+		},
+		Spec: appv1alpha1.AppSpec{Image: "registry.example/app:v8"},
+		Status: appv1alpha1.AppStatus{
+			Image:               "registry.example/app:v6",
+			ArtifactFingerprint: adopted.artifact,
+			ReleaseFingerprint:  adopted.release,
+			ReleaseGeneration:   8,
+			ActiveRevision:      "rev-6",
+			ObservedGeneration:  8,
+		},
+	}
+	if decision := prepareAppReleaseDecision(app); decision.canceled || app.Status.ReleaseGeneration != 8 {
+		t.Fatalf("decision = %+v releaseGeneration = %d, want release 8 kept", decision, app.Status.ReleaseGeneration)
+	}
+}
+
 func TestNewReleaseSupersedesCanceledGeneration(t *testing.T) {
 	previous := desiredAppReleaseIdentity(appv1alpha1.AppSpec{Repo: "https://example.invalid/repo.git", RestartedAt: "first"})
 	app := &appv1alpha1.App{

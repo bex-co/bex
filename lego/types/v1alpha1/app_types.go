@@ -54,11 +54,12 @@ const AnnotationReleaseConfigScaled = "app.bex.co/release-config-scaled"
 // saved now; the next deploy consumes it.
 const AnnotationPendingSourceGeneration = "app.bex.co/pending-source-generation"
 
-// AnnotationCanceledReleaseGeneration records a repo-backed release whose
-// build was explicitly canceled. The operator keeps the previous healthy
-// release serving and must not recreate build artifacts for this generation;
-// a later deploy carries a newer AnnotationReleaseGeneration and supersedes
-// this marker.
+// AnnotationCanceledReleaseGeneration records a release that was ended before
+// it served — by a user Cancel, or by a suspend that interrupted its rollout —
+// for repo- and image-backed sources alike. The operator keeps (or restores)
+// the previous healthy release and must neither recreate this generation's
+// build artifacts nor roll it; a later deploy carries a newer
+// AnnotationReleaseGeneration and supersedes this marker.
 const AnnotationCanceledReleaseGeneration = "app.bex.co/canceled-release-generation"
 
 // AnnotationClearCacheReleaseGeneration records a repo-backed release that must
