@@ -964,6 +964,31 @@ func (m *memStore) SetDeployPreDeployStatus(_ context.Context, id, status string
 	return true, nil
 }
 
+// SettleCanceledPreDeploy mirrors PGStore: only a canceled row whose step its
+// close settled as canceled takes the verdict, with its pre_deploy_ended fact.
+func (m *memStore) SettleCanceledPreDeploy(_ context.Context, appID string, generation int64, status string, finishedAt time.Time) (bool, error) {
+	ended, ok := preDeployEndedStatus(status)
+	if !ok {
+		return false, fmt.Errorf("settle canceled pre-deploy: %q is not a verdict", status)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	settled := false
+	for id, d := range m.deploys {
+		if d.AppID != appID || d.Generation != generation || d.Status != DeployCanceled || d.PreDeployStatus != PreDeployCanceled {
+			continue
+		}
+		d.PreDeployStatus = status
+		d.UpdatedAt = time.Now()
+		m.deploys[id] = d
+		if fact := preDeployEndedFact(d, finishedAt, ended); m.eventFacts[fact.SourceKey].SourceKey == "" {
+			m.eventFacts[fact.SourceKey] = fact
+		}
+		settled = true
+	}
+	return settled, nil
+}
+
 func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedServiceState) ([]ServiceEventFact, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

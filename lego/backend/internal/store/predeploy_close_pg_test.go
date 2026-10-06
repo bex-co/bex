@@ -18,11 +18,13 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
@@ -66,24 +68,7 @@ func TestPGTerminalCloseSettlesARunningPreDeploy(t *testing.T) {
 		{"no pre-deploy step", "", DeployCanceled, "user", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			app, err := s.CreateApp(ctx, App{TenantID: ten.ID, Name: fmt.Sprintf("pd-close-%d-%d", run, i),
-				Image: "registry.example/app:v1", Branch: "main", Port: 8080, Replicas: 1, Tier: "starter"})
-			if err != nil {
-				t.Fatalf("create app: %v", err)
-			}
-			deploys, err := s.ListDeploys(ctx, app.ID, DeployFilter{})
-			if err != nil || len(deploys) != 1 {
-				t.Fatalf("deploy fixture = %+v (err %v)", deploys, err)
-			}
-			d := deploys[0]
-			if _, err := s.TransitionDeploy(ctx, d.ID, DeployPreDeployInProgress, "", "", "", "", nil); err != nil {
-				t.Fatalf("dispatch: %v", err)
-			}
-			if tc.preDeploy != "" {
-				if _, err := s.SetDeployPreDeployStatus(ctx, d.ID, tc.preDeploy); err != nil {
-					t.Fatalf("set pre-deploy: %v", err)
-				}
-			}
+			app, d := preDeployingDeploy(t, s, ten.ID, fmt.Sprintf("pd-close-%d-%d", run, i), tc.preDeploy)
 			if won, err := s.TransitionDeploy(ctx, d.ID, tc.close, "", "", "", tc.cancelReason, nil); err != nil || !won {
 				t.Fatalf("close %s = (%v, %v)", tc.close, won, err)
 			}
@@ -183,4 +168,127 @@ func TestPGCoalescedRowSettlesItsRunningStep(t *testing.T) {
 	if got.Status != DeployCanceled || got.PreDeployStatus != PreDeployCanceled || got.CancelReason != "Superseded by "+newest.ID {
 		t.Fatalf("coalesced row = %s step %q reason %q, want canceled, step canceled, naming %s", got.Status, got.PreDeployStatus, got.CancelReason, newest.ID)
 	}
+}
+
+// w5/085: a cancel leaves a running pre-deploy step to finish, so the canceled
+// row's settled "canceled" gives way to the verdict the operator records for
+// that release, together with the pre_deploy_ended fact, in one statement. No
+// other row qualifies, and a repeat changes nothing.
+func TestPGCanceledReleaseStepTakesItsVerdict(t *testing.T) {
+	s := openLifecyclePG(t)
+	ctx := context.Background()
+	run := time.Now().UnixNano()
+	ten, err := s.CreateTenant(ctx, fmt.Sprintf("canceled-step-%d", run), PlanPro)
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	t.Cleanup(func() { _ = s.DeleteTenant(context.Background(), ten.ID) })
+	// closeMidStep opens a deploy with its step running, then closes it as
+	// close ("" leaves it open).
+	closeMidStep := func(name, close string) (App, Deploy) {
+		t.Helper()
+		app, d := preDeployingDeploy(t, s, ten.ID, fmt.Sprintf("%s-%d", name, run), PreDeployRunning)
+		if close != "" {
+			if won, err := s.TransitionDeploy(ctx, d.ID, close, "", "", "", "", nil); err != nil || !won {
+				t.Fatalf("close %s = (%v, %v)", close, won, err)
+			}
+		}
+		return app, d
+	}
+	reread := func(app App, d Deploy) Deploy {
+		t.Helper()
+		got, err := s.GetDeploy(ctx, app.ID, d.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	ended := func(d Deploy) (status string, at time.Time, ok bool) {
+		t.Helper()
+		err := s.Pool.QueryRow(ctx, `SELECT status, at FROM service_event_facts WHERE source_key = $1`,
+			preDeployEndedFact(d, time.Time{}, "").SourceKey).Scan(&status, &at)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", time.Time{}, false
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		return status, at, true
+	}
+	finished := time.Date(2026, 10, 6, 9, 4, 0, 0, time.UTC)
+
+	app, d := closeMidStep("canceled", DeployCanceled)
+	if got := reread(app, d); got.PreDeployStatus != PreDeployCanceled {
+		t.Fatalf("precondition: the close settled the step %q, want canceled", got.PreDeployStatus)
+	}
+	if settled, err := s.SettleCanceledPreDeploy(ctx, app.ID, d.Generation, PreDeploySucceeded, finished); err != nil || !settled {
+		t.Fatalf("settle = (%v, %v), want settled", settled, err)
+	}
+	got := reread(app, d)
+	if got.Status != DeployCanceled || got.PreDeployStatus != PreDeploySucceeded {
+		t.Fatalf("settled row = %s, step %q; want canceled, step succeeded", got.Status, got.PreDeployStatus)
+	}
+	if status, at, ok := ended(d); !ok || status != EventStatusSucceeded || !at.Equal(finished) {
+		t.Fatalf("pre_deploy_ended = %q at %s (recorded %v), want succeeded at %s", status, at, ok, finished)
+	}
+	if settled, err := s.SettleCanceledPreDeploy(ctx, app.ID, d.Generation, PreDeployFailed, finished); err != nil || settled {
+		t.Fatalf("repeat with another verdict = (%v, %v), want a no-op", settled, err)
+	}
+	if again := reread(app, d); again.PreDeployStatus != PreDeploySucceeded || !again.UpdatedAt.Equal(got.UpdatedAt) {
+		t.Fatalf("repeat rewrote the row: step %q, updated_at %s → %s", again.PreDeployStatus, got.UpdatedAt, again.UpdatedAt)
+	}
+
+	for i, tc := range []struct {
+		name, close string
+		generation  int64
+	}{
+		{"an open row", "", 0},
+		{"another close of a running step", DeployUpdateFailed, 0},
+		{"another release", DeployCanceled, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, d := closeMidStep(fmt.Sprintf("untouched-%d", i), tc.close)
+			before := reread(app, d)
+			settled, err := s.SettleCanceledPreDeploy(ctx, app.ID, d.Generation+tc.generation, PreDeploySucceeded, finished)
+			if err != nil || settled {
+				t.Fatalf("settle = (%v, %v), want a no-op", settled, err)
+			}
+			if after := reread(app, d); after.PreDeployStatus != before.PreDeployStatus {
+				t.Fatalf("step %q → %q, want untouched", before.PreDeployStatus, after.PreDeployStatus)
+			}
+			if _, _, ok := ended(d); ok {
+				t.Fatal("pre_deploy_ended recorded for a row that was not settled")
+			}
+		})
+	}
+
+	if _, err := s.SettleCanceledPreDeploy(ctx, app.ID, d.Generation, PreDeployRunning, finished); err == nil {
+		t.Fatal("settling to running was accepted; only a verdict may settle a step")
+	}
+}
+
+// preDeployingDeploy creates an app whose first deploy is in its pre-deploy
+// phase, with the step at step ("" for none).
+func preDeployingDeploy(t *testing.T, s *PGStore, tenantID, name, step string) (App, Deploy) {
+	t.Helper()
+	ctx := context.Background()
+	app, err := s.CreateApp(ctx, App{TenantID: tenantID, Name: name,
+		Image: "registry.example/app:v1", Branch: "main", Port: 8080, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+	deploys, err := s.ListDeploys(ctx, app.ID, DeployFilter{})
+	if err != nil || len(deploys) != 1 {
+		t.Fatalf("deploy fixture = %+v (err %v)", deploys, err)
+	}
+	d := deploys[0]
+	if _, err := s.TransitionDeploy(ctx, d.ID, DeployPreDeployInProgress, "", "", "", "", nil); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if step != "" {
+		if _, err := s.SetDeployPreDeployStatus(ctx, d.ID, step); err != nil {
+			t.Fatalf("set pre-deploy: %v", err)
+		}
+	}
+	return app, d
 }

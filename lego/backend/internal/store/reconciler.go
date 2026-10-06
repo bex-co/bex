@@ -440,12 +440,34 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 	for _, deploy := range open {
 		r.recordDeploy(ctx, d, deploy, cur)
 	}
+	r.recordCanceledPreDeploy(ctx, d.ID, cur)
 	obs := r.guardServiceObservation(ctx, observedServiceStateFor(d.ID, cur, len(open) > 0))
 	if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
 		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
 	}
 	r.recordAutoscalingFacts(ctx, d.ID, cur.Status.Autoscaling)
 	r.recordCronRunFacts(ctx, d.ID, cur.Status.Runs)
+}
+
+// recordCanceledPreDeploy gives a canceled release's deploy the verdict of the
+// pre-deploy step the cancel left running (w5/085). Its close settled the step
+// "canceled", which is true only of a step that stopped; this one ran on, and
+// the operator records how it ended under the release's generation. Only the
+// release the cancel stamp names qualifies: a newer release's step stops an
+// older one, and that row keeps "canceled". Repeats are no-ops in the store.
+func (r *Reconciler) recordCanceledPreDeploy(ctx context.Context, appID string, app *appv1alpha1.App) {
+	generation, ok := canceledReleaseGeneration(app)
+	if !ok {
+		return
+	}
+	status := preDeployStatusAt(app, generation)
+	if _, ended := preDeployEndedStatus(status); !ended {
+		return
+	}
+	_, finished := preDeployTimes(app)
+	if _, err := r.Store.SettleCanceledPreDeploy(ctx, appID, generation, status, finished); err != nil {
+		log.Printf("controlplane: settle canceled pre-deploy %s generation %d: %v", appID, generation, err)
+	}
 }
 
 // recordCronRunFacts projects the operator's level-triggered run history into
@@ -1123,13 +1145,22 @@ func preDeployLifecycleFacts(open Deploy, cur *appv1alpha1.App) []ServiceEventFa
 		At:        started,
 		DeployID:  open.ID,
 	}}
-	switch pds {
-	case PreDeploySucceeded:
-		facts = append(facts, preDeployEndedFact(open, finished, EventStatusSucceeded))
-	case PreDeployFailed:
-		facts = append(facts, preDeployEndedFact(open, finished, EventStatusFailed))
+	if ended, ok := preDeployEndedStatus(pds); ok {
+		facts = append(facts, preDeployEndedFact(open, finished, ended))
 	}
 	return facts
+}
+
+// preDeployEndedStatus is the pre_deploy_ended outcome for a step's
+// pre_deploy_status; ok is false for a step that has not ended.
+func preDeployEndedStatus(step string) (string, bool) {
+	switch step {
+	case PreDeploySucceeded:
+		return EventStatusSucceeded, true
+	case PreDeployFailed:
+		return EventStatusFailed, true
+	}
+	return "", false
 }
 
 func preDeployEndedFact(open Deploy, at time.Time, status string) ServiceEventFact {
@@ -1789,14 +1820,19 @@ func (r *Reconciler) recordAutoscalingFacts(ctx context.Context, appID string, t
 	}
 }
 
-// preDeployStatusFor maps the App CR's pre-deploy step status (status.preDeploy,
-// set by the operator) to the deploy row's lowercase pre_deploy_status
-// vocabulary, but only for the current release generation — a status left over
-// from a superseded release must not be projected onto the open deploy. Empty
-// means no pre-deploy step applies to this rollout.
+// preDeployStatusFor is the current release generation's pre-deploy step
+// status — a status left over from a superseded release must not be projected
+// onto the open deploy. Empty means no pre-deploy step applies to this rollout.
 func preDeployStatusFor(app *appv1alpha1.App) string {
+	return preDeployStatusAt(app, appReleaseGeneration(app))
+}
+
+// preDeployStatusAt maps the App CR's pre-deploy step status (status.preDeploy,
+// set by the operator) to the deploy row's lowercase pre_deploy_status
+// vocabulary when it records generation's step, else "".
+func preDeployStatusAt(app *appv1alpha1.App, generation int64) string {
 	pd := app.Status.PreDeploy
-	if pd == nil || pd.Generation != appReleaseGeneration(app) {
+	if pd == nil || pd.Generation != generation {
 		return ""
 	}
 	switch pd.Status {

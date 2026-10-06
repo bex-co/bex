@@ -636,6 +636,12 @@ type Store interface {
 	// the App CR's status.preDeploy by the reconciler. No-op when unchanged;
 	// returns whether a row was updated.
 	SetDeployPreDeployStatus(ctx context.Context, id, status string) (bool, error)
+	// SettleCanceledPreDeploy gives a canceled release's deploy the verdict
+	// ('succeeded' | 'failed') of the pre-deploy step its close settled as
+	// 'canceled' while it still ran, and records the step's pre_deploy_ended
+	// fact at finishedAt (w5/085). Returns whether a row was settled; a repeat,
+	// or any other row, is a no-op.
+	SettleCanceledPreDeploy(ctx context.Context, appID string, generation int64, status string, finishedAt time.Time) (bool, error)
 	// SetDeployStallReason records why an OPEN deploy is not progressing, or
 	// clears it with "" (w4/m112). Projected from the App CR's Ready condition
 	// each pass; ignored once the row is terminal. Best-effort observation —
@@ -2466,6 +2472,34 @@ func (s *PGStore) SetDeployPreDeployStatus(ctx context.Context, id, status strin
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
+}
+
+// SettleCanceledPreDeploy settles the row and its pre_deploy_ended fact in one
+// statement, so a fact can never be lost to a row that already reads settled.
+func (s *PGStore) SettleCanceledPreDeploy(ctx context.Context, appID string, generation int64, status string, finishedAt time.Time) (bool, error) {
+	ended, ok := preDeployEndedStatus(status)
+	if !ok {
+		return false, fmt.Errorf("settle canceled pre-deploy: %q is not a verdict", status)
+	}
+	var settled int
+	err := s.Pool.QueryRow(ctx,
+		`WITH settled AS (
+		     UPDATE deploys
+		     SET pre_deploy_status = $3,
+		         updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+		     WHERE app_id = $1 AND generation = $2 AND status = $4 AND pre_deploy_status = $5
+		     RETURNING id
+		 ), ended AS (
+		     INSERT INTO service_event_facts (source_key, app_id, fact_type, at, deploy_id, status)
+		     SELECT 'deploy:' || id || ':pre_deploy_ended', $1, $6, $7, id, $8 FROM settled
+		     ON CONFLICT (source_key) DO NOTHING
+		 )
+		 SELECT count(*) FROM settled`,
+		appID, generation, status, DeployCanceled, PreDeployCanceled, EventFactPreDeployEnded, finishedAt, ended).Scan(&settled)
+	if err != nil {
+		return false, err
+	}
+	return settled > 0, nil
 }
 
 // classify maps Postgres errors to the shared taxonomy: unique violations are
