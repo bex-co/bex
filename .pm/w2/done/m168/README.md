@@ -1,6 +1,6 @@
 # w2 · m168 — Email verification is a hard per-request gate
 
-**Worker:** worker2 **Goal:** a human identity whose email is unverified can't use bex through any surface (dashboard, REST/GraphQL/MCP, CLI, SSH, OAuth relying parties) until it verifies. The ADR075 D7 card gate stays the second gate after it. **Status:** in progress (t001–t005, t007, t008 done)
+**Worker:** worker2 **Goal:** a human identity whose email is unverified can't use bex through any surface (dashboard, REST/GraphQL/MCP, CLI, SSH, OAuth relying parties) until it verifies. The ADR075 D7 card gate stays the second gate after it. **Status:** done (2026-10-06; shipped `22180488a`, live-verified on prod and dev-2, see [evidence.md](evidence.md))
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | SSH gateway, web shell and ticket mints honor the gate — **DONE** | 30m | t002 |
 | t004 | OAuth consent refuses unverified subjects for every client — **DONE** | 45m | t001 |
 | t005 | Dashboard verification wall for signed-in unverified sessions — **DONE** | 1h | t002 |
-| t006 | Production rollout and live verification | 30m | t003, t004, t005 |
+| t006 | Production rollout and live verification — **DONE** | 30m | t003, t004, t005 |
 | t007 | Render parity — **DONE** | 20m | t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
-| t009 | Test coverage + dev-N end-to-end acceptance | 45m | t007, t008 |
-| t010 | Closeout | 10m | t009 |
+| t009 | Test coverage + dev-N end-to-end acceptance — **DONE** | 45m | t007, t008 |
+| t010 | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
