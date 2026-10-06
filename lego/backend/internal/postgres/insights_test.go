@@ -630,42 +630,69 @@ func TestMaskedIsCarriedByEveryInsightSurface(t *testing.T) {
 	}
 }
 
-// TestInsightsRedactSecretLiterals pins w4/m167: pg_stat_statements does not
-// normalize utility statements, so the provisioning ALTER ROLE … PASSWORD
-// 'SCRAM-SHA-256$…' sat verbatim in Top queries on every fresh database. Every
-// password value must leave bex-api redacted; everything else stays verbatim.
-func TestInsightsRedactSecretLiterals(t *testing.T) {
+// TestInsightsRedactLiterals pins w4/m167 and w5/075: pg_stat_statements does
+// not normalize utility statements, so the provisioning ALTER ROLE … PASSWORD
+// 'SCRAM-SHA-256$…' sat verbatim in Top queries on every fresh database, and a
+// keyword parser missed four other spellings of a secret. Every string literal
+// leaves bex-api redacted; comments, quoted identifiers and $n parameters stay
+// verbatim.
+func TestInsightsRedactLiterals(t *testing.T) {
 	const verifier = "SCRAM-SHA-256$4096:c2FsdA==$c3RvcmVk:c2VydmVy"
 	for _, tc := range []struct{ name, in, want string }{
 		{"provisioning verifier", `ALTER ROLE "dpg_x_user" WITH PASSWORD '` + verifier + `'`,
 			`ALTER ROLE "dpg_x_user" WITH PASSWORD '<redacted>'`},
 		{"encrypted, mixed case", `create user u encrypted Password 'hunter2' valid until 'infinity'`,
-			`create user u encrypted Password '<redacted>' valid until 'infinity'`},
+			`create user u encrypted Password '<redacted>' valid until '<redacted>'`},
 		{"doubled quote inside", `ALTER ROLE u PASSWORD 'it''s' LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
 		{"escape string", `ALTER ROLE u PASSWORD E'a\'b' LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
 		{"dollar quoted", `ALTER ROLE u PASSWORD $$s3cr3t$$`, `ALTER ROLE u PASSWORD '<redacted>'`},
 		{"tagged dollar quote", `ALTER ROLE u PASSWORD $p$a$$b$p$ LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
 		{"truncated mid-literal", `ALTER ROLE u WITH PASSWORD 'SCRAM-SHA-256$4096:c2Fs`, `ALTER ROLE u WITH PASSWORD '<redacted>'`},
 		{"user mapping option", `CREATE USER MAPPING FOR u SERVER s OPTIONS (user 'a', password 'pw')`,
-			`CREATE USER MAPPING FOR u SERVER s OPTIONS (user 'a', password '<redacted>')`},
+			`CREATE USER MAPPING FOR u SERVER s OPTIONS (user '<redacted>', password '<redacted>')`},
 		{"conninfo value", `CREATE SUBSCRIPTION s CONNECTION 'host=h password=pw dbname=d' PUBLICATION p`,
-			`CREATE SUBSCRIPTION s CONNECTION 'host=h password='<redacted>' dbname=d' PUBLICATION p`},
-		{"conninfo value at literal end", `SELECT dblink_connect('host=h password=pw')`,
-			`SELECT dblink_connect('host=h password='<redacted>'')`},
+			`CREATE SUBSCRIPTION s CONNECTION '<redacted>' PUBLICATION p`},
 		{"two secrets", `ALTER ROLE a PASSWORD 'x'; ALTER ROLE b PASSWORD 'y'`,
 			`ALTER ROLE a PASSWORD '<redacted>'; ALTER ROLE b PASSWORD '<redacted>'`},
-		// Negatives: no value follows the keyword, or it is not the keyword.
+		// w5/075: the spellings the keyword parser missed.
+		{"comment before the value", `ALTER ROLE u PASSWORD /*c*/ 'x'`, `ALTER ROLE u PASSWORD /*c*/ '<redacted>'`},
+		{"unicode escape string", `ALTER ROLE u PASSWORD U&'x' LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
+		{"quoted conninfo value", `CREATE SUBSCRIPTION s CONNECTION 'host=h password=''x'' dbname=d' PUBLICATION p`,
+			`CREATE SUBSCRIPTION s CONNECTION '<redacted>' PUBLICATION p`},
+		{"connection URI", `SELECT dblink_connect('postgresql://u:x@h/db')`, `SELECT dblink_connect('<redacted>')`},
+		{"no space after the keyword", `ALTER ROLE u PASSWORD'x'`, `ALTER ROLE u PASSWORD'<redacted>'`},
+		{"bit and hex strings", `SELECT B'1010', X'1F', N'x'`, `SELECT '<redacted>', '<redacted>', '<redacted>'`},
+		{"function body", `CREATE FUNCTION f() RETURNS int AS $body$ SELECT 'k' $body$ LANGUAGE sql`,
+			`CREATE FUNCTION f() RETURNS int AS '<redacted>' LANGUAGE sql`},
+		{"live query text", `SELECT * FROM users WHERE email = 'a@b.co' AND id = $1`,
+			`SELECT * FROM users WHERE email = '<redacted>' AND id = $1`},
+		{"non-ASCII dollar tag", `ALTER ROLE u PASSWORD $é$s3cr3t$é$ LOGIN`, `ALTER ROLE u PASSWORD '<redacted>' LOGIN`},
+		{"typed literal after a name ending in e", `SELECT date'2026-01-01'`, `SELECT date'<redacted>'`},
+		{"escaped backslash ends an escape string", `SELECT E'a\\', 'x'`, `SELECT '<redacted>', '<redacted>'`},
+		// standard_conforming_strings=off makes \' an escaped quote; the text
+		// cannot say, so the rest is redacted rather than risk a leak.
+		{"backslash before a quote", `ALTER ROLE u PASSWORD 'pa\'ss' LOGIN`, `ALTER ROLE u PASSWORD '<redacted>'`},
+		{"line comment ends at a newline", "SELECT 1 -- don't\nFROM t WHERE p = 'x'",
+			"SELECT 1 -- don't\nFROM t WHERE p = '<redacted>'"},
+		{"line comment ends at a carriage return", "SELECT 1 -- c\rAND pw = 'secret'",
+			"SELECT 1 -- c\rAND pw = '<redacted>'"},
+		// Negatives: nothing a literal opens, or a quote that opens nothing.
 		{"password column", `SELECT password FROM users WHERE id = $1`, `SELECT password FROM users WHERE id = $1`},
 		{"normalized parameter", `UPDATE users SET password = $1 WHERE id = $2`, `UPDATE users SET password = $1 WHERE id = $2`},
 		{"password null", `ALTER ROLE u PASSWORD NULL`, `ALTER ROLE u PASSWORD NULL`},
-		{"identifier containing the word", `SELECT password_hash FROM users`, `SELECT password_hash FROM users`},
 		{"plain ALTER ROLE", `ALTER ROLE u CONNECTION LIMIT 5`, `ALTER ROLE u CONNECTION LIMIT 5`},
 		{"provisioning DDL", `CREATE DATABASE "app" OWNER "app_user"`, `CREATE DATABASE "app" OWNER "app_user"`},
 		{"extension", `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`, `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`},
+		{"quote in a quoted identifier", `SELECT "it's" FROM t WHERE x = $1`, `SELECT "it's" FROM t WHERE x = $1`},
+		{"quote in a line comment", "SELECT 1 -- don't\nFROM t", "SELECT 1 -- don't\nFROM t"},
+		{"quote in a nested block comment", `/* a /* it's */ 'still comment' */ SELECT $1`,
+			`/* a /* it's */ 'still comment' */ SELECT $1`},
+		{"identifier with dollar signs", `SELECT a$b$ FROM t$x$`, `SELECT a$b$ FROM t$x$`},
+		{"prefix letter ending a name", `SELECT name FROM e WHERE e.x = $1`, `SELECT name FROM e WHERE e.x = $1`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := redactSecrets(tc.in); got != tc.want {
-				t.Errorf("redactSecrets(%q)\n got %q\nwant %q", tc.in, got, tc.want)
+			if got := redactLiterals(tc.in); got != tc.want {
+				t.Errorf("redactLiterals(%q)\n got %q\nwant %q", tc.in, got, tc.want)
 			}
 		})
 	}
@@ -681,7 +708,7 @@ func TestInsightsRedactSecretLiterals(t *testing.T) {
 		"top queries": {top[0].Query, top[0].Masked},
 		"processes":   {procs[0].Query, procs[0].Masked},
 	} {
-		if strings.Contains(got.query, "SCRAM") || !strings.Contains(got.query, redactedSecret) {
+		if strings.Contains(got.query, "SCRAM") || !strings.Contains(got.query, redactedLiteral) {
 			t.Errorf("%s published %q, want the verifier redacted", surface, got.query)
 		}
 		if got.masked {
