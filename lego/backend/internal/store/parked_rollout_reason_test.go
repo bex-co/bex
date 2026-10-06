@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -142,7 +143,9 @@ func TestUpdateFailedCloseReasonOrder(t *testing.T) {
 // row closes canceled on the next pass, naming the suspend — not "in progress"
 // for 18 minutes and then update_failed with a health-gate line blaming code
 // that never ran. Auto-hibernate (no spec.suspended) keeps w6/m147's deferral,
-// and a release that already serves is not canceled.
+// and a release that already serves is not canceled. w5/m114: the release is
+// canceled with its row, as a user Cancel cancels it, or Resume would roll it
+// with no open row.
 func TestUserSuspendCancelsTheInterruptedRollout(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
@@ -156,7 +159,7 @@ func TestUserSuspendCancelsTheInterruptedRollout(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			st := newMemStore()
+			rec, st, cl := newTestReconciler(t)
 			tenant, err := st.CreateTenant(ctx, "suspend", PlanHobby)
 			if err != nil {
 				t.Fatal(err)
@@ -177,7 +180,7 @@ func TestUserSuspendCancelsTheInterruptedRollout(t *testing.T) {
 				park = appv1alpha1.ReasonSuspended
 			}
 			app := &appv1alpha1.App{
-				ObjectMeta: metav1.ObjectMeta{Generation: 7},
+				ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-suspend", Generation: 7},
 				Spec:       appv1alpha1.AppSpec{Suspended: tc.userSuspended},
 				Status: appv1alpha1.AppStatus{
 					Phase: appv1alpha1.PhaseHibernated, Image: row.Image, ObservedGeneration: 7,
@@ -188,7 +191,9 @@ func TestUserSuspendCancelsTheInterruptedRollout(t *testing.T) {
 					}},
 				},
 			}
-			rec := NewReconciler(nil, st)
+			if err := cl.Create(ctx, app.DeepCopy()); err != nil {
+				t.Fatal(err)
+			}
 			current, err := st.GetDeploy(ctx, row.ID, open.ID)
 			if err != nil {
 				t.Fatal(err)
@@ -200,6 +205,17 @@ func TestUserSuspendCancelsTheInterruptedRollout(t *testing.T) {
 			}
 			if got.Status != tc.wantStatus {
 				t.Fatalf("deploy = %s, want %s", got.Status, tc.wantStatus)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			marker, wantMarker := stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration], ""
+			if tc.wantStatus == DeployCanceled {
+				wantMarker = "7"
+			}
+			if marker != wantMarker {
+				t.Fatalf("canceled release generation = %q, want %q: the release must end with its row, and only then", marker, wantMarker)
 			}
 			if tc.wantStatus != DeployCanceled {
 				return

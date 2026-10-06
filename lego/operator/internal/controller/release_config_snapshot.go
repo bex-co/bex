@@ -432,8 +432,7 @@ func (r *AppReconciler) releaseSnapshot(ctx context.Context, app *appv1alpha1.Ap
 // not a projection of the current spec. It is the predicate
 // prepareAppReleaseDecision uses to take the canceled branch, plus releaseHasServed.
 func canceledOverServed(app *appv1alpha1.App) bool {
-	gen, ok := canceledReleaseGeneration(app)
-	return ok && gen == requestedReleaseGeneration(app) && releaseHasServed(app)
+	return canceledReleaseIsLatest(app) && releaseHasServed(app)
 }
 
 // recordReleasePodTemplate stores the pod template just applied for the current

@@ -41,6 +41,12 @@ import (
 
 // --- Cancel ------------------------------------------------------------------
 
+// buildJobName is the build Job the operator creates for an App's release
+// generation, named in the contract module both sides share.
+func buildJobName(name string, generation int64) string {
+	return appv1alpha1.BuildJobName(name, appv1alpha1.BuildRevision(generation))
+}
+
 func TestCancelClosesOpenDeployAndIsIdempotentConflict(t *testing.T) {
 	ds := newFakeStore()
 	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
@@ -87,8 +93,8 @@ func TestCancelUnknownDeployIsNotFound(t *testing.T) {
 }
 
 // TestCancelDeletesInFlightBuildJob covers the repo-backed path (t002): a
-// build Job named per the operator's own convention (buildJobName mirrors
-// lego/operator/internal/build.JobName) is deleted when Cancel runs against
+// build Job named per the contract both modules share (appv1alpha1.BuildJobName)
+// is deleted when Cancel runs against
 // a repo-backed App with an open deploy.
 func TestCancelDeletesInFlightBuildJob(t *testing.T) {
 	ds := newFakeStore()

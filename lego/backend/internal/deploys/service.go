@@ -33,11 +33,7 @@ import (
 	"sync"
 	"time"
 
-	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -52,7 +48,7 @@ type DeployStore interface {
 	// CreateDeploy opens a deploy row; generation is the App CR's
 	// metadata.generation this deploy runs under, captured once at open time
 	// (w2/m10) — Cancel derives its build-Job identity from the stored value,
-	// never a fresh re-fetch (see buildJobName). commit is the resolved commit
+	// never a fresh re-fetch (store.CancelRelease). commit is the resolved commit
 	// this deploy runs (w9/001), zero when unresolvable.
 	CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error)
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
@@ -224,15 +220,6 @@ type Service struct {
 // carries no caller identity), then the caller's tenant, then the
 // single-workspace default; the same precedence as apps.Service's
 // deployWorkspace, duplicated because deploys must not import apps.
-
-// buildJobName is the build Job identity the operator creates for this App's
-// generation. Both halves — the revision spelling and the name derivation —
-// live in the contract module because bex-api must never import the operator
-// (operator/backend layering, AGENTS.md) yet must address the exact Job the
-// operator created.
-func buildJobName(name string, generation int64) string {
-	return appv1alpha1.BuildJobName(name, appv1alpha1.BuildRevision(generation))
-}
 
 // openRelease is the one critical section every deploy trigger shares —
 // Trigger (API, deploy hook, restart) and Rollback (w8/m46). Near-simultaneous
@@ -890,21 +877,17 @@ func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref str
 }
 
 // Cancel kills a still-open deploy (Render's POST .../deploys/{id}/cancel,
-// w2/m10). It stamps AnnotationCanceledReleaseGeneration on the App for BOTH
-// repo- and image-backed sources so the level-triggered operator settles the
-// release (settleCanceledRelease): revert to the last successful image, or
-// PhaseCanceled when none exists (w6/m104). For a repo-backed service it also
-// best-effort terminates the in-flight build Job/kpack Image — an image-backed
-// service has none to interrupt — computing the artifact's identity from the
-// deploy row's OWN stored Generation rather than the App's current one — a
-// later, unrelated spec write (a scale, an env change, another trigger) bumps
-// metadata.generation independently of this deploy, and would otherwise make
-// Cancel compute the wrong Job name and silently no-op past the real build.
-// It then closes the row canceled with the same CAS-guarded CloseDeploy the
-// reconciler's write-back uses — whichever of Cancel and a genuinely-
-// converging rollout gets there first wins, so a race can never leave the
-// row half-canceled. A deploy that already reached any terminal status is past
-// the cancelable window: Render's 409, never a silent no-op.
+// w2/m10). store.CancelRelease ends its release — the canceled-release stamp
+// the operator settles from, then a best-effort stop of a repo-backed build —
+// keyed by the deploy row's OWN stored Generation rather than the App's
+// current one: a later, unrelated spec write (a scale, an env change, another
+// trigger) bumps metadata.generation independently of this deploy, and would
+// otherwise name the wrong release and build. It then closes the row canceled
+// with the same CAS-guarded CloseDeploy the reconciler's write-back uses —
+// whichever of Cancel and a genuinely-converging rollout gets there first
+// wins, so a race can never leave the row half-canceled. A deploy that already
+// reached any terminal status is past the cancelable window: Render's 409,
+// never a silent no-op.
 func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
@@ -930,49 +913,8 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if d.FinishedAt != nil {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 	}
-	// Mark the release canceled for BOTH source kinds before touching any build
-	// artifact. The operator is level-triggered and only this stamp makes
-	// prepareAppReleaseDecision take its canceled branch and settle the App CR
-	// (settleCanceledRelease): revert to the last successful image, or
-	// PhaseCanceled when none exists. A repo-backed App would otherwise recreate
-	// the deterministic build Job/kpack Image on its next pass; an image-backed
-	// App — which reaches none of the deletion below — would otherwise never
-	// settle at all, leaving the rollout converging the canceled image forever
-	// with no terminal phase (w6/m104, extending w6/m52 whose settle fix only the
-	// repo-backed path ever reached). A newer deploy stamps a newer
-	// release-generation and naturally supersedes this marker.
-	base := a.DeepCopy()
-	if a.Annotations == nil {
-		a.Annotations = map[string]string{}
-	}
-	a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = strconv.FormatInt(d.Generation, 10)
-	if err := s.Client.Patch(ctx, a, client.MergeFrom(base)); err != nil {
-		return DeployView{}, fmt.Errorf("mark canceled release: %w", err)
-	}
-	if a.Spec.Repo != "" {
-		// Only a repo-backed deploy has a build artifact to tear down; an
-		// image-backed deploy has none to interrupt, so it skips this block — its
-		// cancel is fully expressed by the stamp above.
-		buildNS := a.Namespace
-		if s.BuildNamespace != "" {
-			buildNS = s.BuildNamespace
-		}
-		job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: buildJobName(a.Name, d.Generation), Namespace: buildNS}}
-		if err := s.Client.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
-			return DeployView{}, fmt.Errorf("cancel build job: %w", err)
-		}
-		// A buildpack deploy is represented by a kpack Image with the same
-		// deterministic name as the legacy BuildKit Job. Delete both shapes:
-		// builder=auto may resolve either way and cancellation must not race that
-		// resolution. Unstructured keeps the backend independent of operator/kpack
-		// implementation modules.
-		image := &unstructured.Unstructured{}
-		image.SetGroupVersionKind(schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Image"})
-		image.SetName(buildJobName(a.Name, d.Generation))
-		image.SetNamespace(buildNS)
-		if err := s.Client.Delete(ctx, image, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil && !apierrors.IsNotFound(err) {
-			return DeployView{}, fmt.Errorf("cancel kpack image: %w", err)
-		}
+	if err := store.CancelRelease(ctx, s.Client, a, d.Generation, s.BuildNamespace); err != nil {
+		return DeployView{}, err
 	}
 	won, err := s.Store.CloseDeploy(ctx, deployID, store.DeployCanceled, "")
 	if err != nil {

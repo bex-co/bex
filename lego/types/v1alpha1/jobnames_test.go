@@ -47,6 +47,15 @@ func TestBuildJobNameGoldenVectors(t *testing.T) {
 	}
 }
 
+// TestBuildRevisionSpelling pins the revision both modules derive from a release
+// generation: the operator names the build Job with it, and bex-api deletes
+// that Job by the same name when a release is canceled (store.CancelRelease).
+func TestBuildRevisionSpelling(t *testing.T) {
+	if got, want := BuildJobName("web", BuildRevision(3)), "bld-web-gen-3"; got != want {
+		t.Fatalf("BuildJobName(web, BuildRevision(3)) = %q, want %q", got, want)
+	}
+}
+
 // TestBuildJobNameTruncationKeepsRevisionsDistinct is the property the plain
 // slice broke: past 63 characters a truncating derivation must still separate
 // two revisions of the same App, or one build's Job would answer for another.

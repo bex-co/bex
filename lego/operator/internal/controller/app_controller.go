@@ -653,11 +653,13 @@ func (r *AppReconciler) convergeRegistryCredentials(ctx context.Context, app *ap
 // already deleted: preserve the last healthy release (if any) and acknowledge
 // the current App generation without ever dispatching the canceled build again.
 func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alpha1.App, port int) (ctrl.Result, error) {
-	// Meter the user Cancel once. Reconciliation is level-triggered, so gate on
-	// the first pass that processes this generation (ObservedGeneration is still
-	// the previous release's until this pass acknowledges it below / in dispatch).
-	// This keeps the canceled series a true count of user cancels — the tripwire
-	// that must stay flat under supersede churn (ADR060 §D5).
+	// Meter the cancel once — a user Cancel, or a suspend that ended the
+	// rollout (w5/m114). Reconciliation is level-triggered, so gate on the
+	// first pass that processes this generation (ObservedGeneration is still
+	// the previous release's until this pass acknowledges it below / in
+	// dispatch). This keeps the canceled series a true count of user-ended
+	// releases — the tripwire that must stay flat under supersede churn
+	// (ADR060 §D5).
 	if app.Status.ObservedGeneration != app.Generation {
 		recordBuildOutcome(buildOutcomeCanceled)
 	}
