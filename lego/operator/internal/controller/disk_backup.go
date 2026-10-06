@@ -473,9 +473,9 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 	case job.Status.Succeeded > 0:
 		// Record what was restored, delete the Job, and let the normal reconcile
 		// bring the service back on the restored volume.
-		base := app.DeepCopy()
-		metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotDiskRestored, requested)
-		if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+			metav1.SetMetaDataAnnotation(meta, annotDiskRestored, requested)
+		}); err != nil {
 			return true, err
 		}
 		if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil &&

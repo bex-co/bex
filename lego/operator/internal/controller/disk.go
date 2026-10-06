@@ -336,9 +336,7 @@ func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) e
 	// Clear the marker last: while it is set the cleanup is idempotent and
 	// retried, so a delete that failed halfway is finished by the next pass
 	// instead of leaving a volume nobody is looking for.
-	base := app.DeepCopy()
-	delete(app.Annotations, annotDiskProvisioned)
-	if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+	if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) { delete(meta.Annotations, annotDiskProvisioned) }); err != nil {
 		return err
 	}
 	app.Status.Disk = nil
@@ -351,9 +349,9 @@ func (r *AppReconciler) markDiskProvisioned(ctx context.Context, app *appv1alpha
 	if app.Annotations[annotDiskProvisioned] == diskProvisionedMarker {
 		return nil
 	}
-	base := app.DeepCopy()
-	metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotDiskProvisioned, diskProvisionedMarker)
-	return r.Patch(ctx, app, client.MergeFrom(base))
+	return r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		metav1.SetMetaDataAnnotation(meta, annotDiskProvisioned, diskProvisionedMarker)
+	})
 }
 
 func diskQuantity(sizeGB int32) resource.Quantity {
