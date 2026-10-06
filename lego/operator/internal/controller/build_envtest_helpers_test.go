@@ -49,35 +49,44 @@ func buildJobFor(appName, rev string) (*batchv1.Job, error) {
 
 // failBuildJob marks a dispatched build Job Failed with the tenant-classified
 // reason (exit 90 → PodFailurePolicy), the envtest stand-in for a real broken
-// tenant build. That classification is what faultFromJob keys on. The API
-// server's Job status grammar requires FailureTarget before Failed and no
-// completionTime on a failed Job.
+// tenant build. That classification is what faultFromJob keys on.
 func failBuildJob(appName, rev string) {
 	GinkgoHelper()
 	j, err := buildJobFor(appName, rev)
 	Expect(err).NotTo(HaveOccurred(), "build Job for %s must have been dispatched", rev)
-	now := metav1.Now()
-	j.Status.StartTime = &now
-	j.Status.Conditions = []batchv1.JobCondition{
-		{Type: batchv1.JobFailureTarget, Status: corev1.ConditionTrue,
-			Reason: batchv1.JobReasonPodFailurePolicy, Message: "container exit code 90"},
-		{Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
-			Reason: batchv1.JobReasonPodFailurePolicy, Message: "container exit code 90"},
-	}
-	Expect(k8sClient.Status().Update(context.Background(), j)).To(Succeed())
+	failEnvtestJob(j, batchv1.JobReasonPodFailurePolicy, "container exit code 90")
 }
 
 // completeBuildJob marks a dispatched build Job Complete — the stand-in for a
-// finished in-cluster build. Its grammar mirrors failBuildJob's:
-// SuccessCriteriaMet precedes Complete, and a completed Job carries a
-// completionTime.
+// finished in-cluster build.
 func completeBuildJob(appName, rev string) {
 	GinkgoHelper()
 	j, err := buildJobFor(appName, rev)
 	Expect(err).NotTo(HaveOccurred(), "build Job for %s must have been dispatched", rev)
+	completeEnvtestJob(j, metav1.Now())
+}
+
+// failEnvtestJob writes a Failed Job status. The API server's Job status
+// grammar requires FailureTarget before Failed and no completionTime on a
+// failed Job.
+func failEnvtestJob(j *batchv1.Job, reason, message string) {
+	GinkgoHelper()
 	now := metav1.Now()
 	j.Status.StartTime = &now
-	j.Status.CompletionTime = &now
+	j.Status.Conditions = []batchv1.JobCondition{
+		{Type: batchv1.JobFailureTarget, Status: corev1.ConditionTrue, Reason: reason, Message: message},
+		{Type: batchv1.JobFailed, Status: corev1.ConditionTrue, Reason: reason, Message: message},
+	}
+	Expect(k8sClient.Status().Update(context.Background(), j)).To(Succeed())
+}
+
+// completeEnvtestJob writes a Complete Job status that finished at at. Its
+// grammar mirrors failEnvtestJob's: SuccessCriteriaMet precedes Complete, and a
+// completed Job carries a completionTime.
+func completeEnvtestJob(j *batchv1.Job, at metav1.Time) {
+	GinkgoHelper()
+	j.Status.StartTime = &at
+	j.Status.CompletionTime = &at
 	j.Status.Conditions = []batchv1.JobCondition{
 		{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue},
 		{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
