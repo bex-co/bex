@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 // staleAllowChecker models the codex round-8 #8 window: the cached path (Check)
@@ -44,7 +45,7 @@ func (staleAllowChecker) CheckFresh(context.Context, string, string, string) (bo
 // stale positive must not reveal one last value.
 func TestGetEnvGroupVarFailsClosedOnFreshRevocation(t *testing.T) {
 	svc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"dana": {"tea-a"}}},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-a"}}},
 		Store: newFakeStore(),
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
@@ -74,7 +75,7 @@ func TestGetEnvGroupVarFailsClosedOnFreshRevocation(t *testing.T) {
 // revoked member riding a stale positive must not read one last file either.
 func TestGetEnvGroupFileFailsClosedOnFreshRevocation(t *testing.T) {
 	svc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"dana": {"tea-a"}}},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-a"}}},
 		Store: newFakeStore(),
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
@@ -120,7 +121,7 @@ func TestEnvGroupLinksRequireSensitiveCapability(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			resolver := multiWorkspace{"seed": {"tea-a"}, "writer": {"tea-a"}, "developer": {"tea-a"}}
+			resolver := coretest.Members{"seed": {"tea-a"}, "writer": {"tea-a"}, "developer": {"tea-a"}}
 			svc := &Service{
 				Base:  &core.Base{Client: fakeClient(ownedApp("web", "tea-a")), Namespace: "default", Workspace: resolver},
 				Store: newFakeStore(),

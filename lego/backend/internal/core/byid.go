@@ -16,30 +16,46 @@ limitations under the License.
 
 package core
 
-import "context"
+import (
+	"context"
+	"errors"
+	"slices"
+)
 
-// ResourceOwner reads the workspace a by-id resource belongs to, unscoped:
-// found=false for an id that exists nowhere. It is a routing read only — the
-// verb still authorizes and loads the resource through its usual scoped path.
-type ResourceOwner func(ctx context.Context) (workspace string, found bool, err error)
+// ResourceOwner reads the workspaces a by-id resource belongs to, unscoped:
+// none for an id that exists nowhere. Most resources live in one; a service
+// event, a push notification or a GitHub installation can be recorded in
+// several. It is a routing read only — the verb still authorizes and loads the
+// resource through its usual scoped path.
+type ResourceOwner func(ctx context.Context) ([]string, error)
 
-// ScopeByID picks the workspace a by-id verb acts in (w4/m172). An explicit
-// ownerID, or a workspace the request already names, decides exactly as
-// before. Otherwise the resource's OWN workspace does — so a member of several
-// workspaces reaches their resource by id without guessing ?ownerId=, as
-// Render's by-id endpoints take no owner (services, env groups, Blueprints
-// (w4/m169) and API keys (w4/194) already resolve this way).
+// ScopeByID picks the workspace a by-id verb acts in (w4/m172), per ADR072's
+// by-id matrix (w5/m115). An explicit ownerID, or a workspace the request
+// already names, decides exactly as before. Otherwise the resource's OWN
+// workspace does — so a member of several workspaces reaches their resource by
+// id without guessing ?ownerId=, as Render's by-id endpoints take no owner.
 //
-// A caller who is not a member of the owning workspace gets ErrForbidden: a
-// typed id answers 403 when it exists elsewhere and 404 when it exists
-// nowhere — ADR072 #8 kept that typed-id 403 deliberately (only by-name sweeps
-// collapse to 404), and the w6/m24 e2e pins it (w4/199 corrected w4/m172,
-// which had collapsed both to 404). A member lacking the verb's relation keeps
-// the 403 the caller's own Authorize gives. An unknown id, or no caller
-// identity, stays on the default path, whose scoped lookup answers its own
-// not-found. The store being off (Workspace nil) means one workspace and
-// nothing to route.
+// It only routes. The verb's own Authorize then decides membership and the
+// relation, and writes the audit row: a caller outside the owning workspace
+// gets the typed-id 403 ADR072 #8 keeps (w4/199), recorded once like any other
+// refusal. An unknown id, or no caller identity, stays on the default path,
+// whose scoped lookup answers its own not-found. The store being off
+// (Workspace nil) means one workspace and nothing to route.
 func (b *Base) ScopeByID(ctx context.Context, ownerID string, owner ResourceOwner) (context.Context, error) {
+	return b.scopeByID(ctx, ownerID, owner, false)
+}
+
+// ScopeByVisibleID is ScopeByID for the matrix's named exemptions: only the
+// caller's own workspaces count, so a resource held nowhere they belong stays
+// on the default path and reads not-found. It is for ids a caller could
+// enumerate (GitHub installation numbers), for resources whose owner is only
+// discoverable in the caller's own workspaces (sandboxes), and for the
+// caller's own rows in a workspace they have left (claim selections).
+func (b *Base) ScopeByVisibleID(ctx context.Context, ownerID string, owner ResourceOwner) (context.Context, error) {
+	return b.scopeByID(ctx, ownerID, owner, true)
+}
+
+func (b *Base) scopeByID(ctx context.Context, ownerID string, owner ResourceOwner, visibleOnly bool) (context.Context, error) {
 	if ownerID != "" {
 		return WithWorkspace(ctx, ownerID), nil
 	}
@@ -50,15 +66,52 @@ func (b *Base) ScopeByID(ctx context.Context, ownerID string, owner ResourceOwne
 	if !ok {
 		return ctx, nil
 	}
-	workspace, found, err := owner(ctx)
+	workspaces, err := owner(ctx)
 	if err != nil {
 		return ctx, err
 	}
-	if !found || workspace == "" {
-		return ctx, nil
-	}
-	if err := b.requireMember(ctx, caller, workspace); err != nil {
+	workspace, err := b.pickOwner(ctx, caller, workspaces, visibleOnly)
+	if err != nil || workspace == "" {
 		return ctx, err
 	}
 	return WithWorkspace(ctx, workspace), nil
+}
+
+// pickOwner chooses the workspace among those holding a resource. One decides
+// alone — membership is the verb's question, not the router's. Among several,
+// the caller's default wins, then the only one they belong to; two or more of
+// theirs is ambiguous (ErrConflict: name ownerId), and none of theirs routes
+// to the first, where the verb refuses and audits. visibleOnly drops the
+// workspaces the caller does not belong to before choosing.
+func (b *Base) pickOwner(ctx context.Context, caller Identity, workspaces []string, visibleOnly bool) (string, error) {
+	workspaces = slices.DeleteFunc(slices.Clone(workspaces), func(w string) bool { return w == "" })
+	if len(workspaces) == 1 && !visibleOnly {
+		return workspaces[0], nil
+	}
+	if len(workspaces) == 0 {
+		return "", nil
+	}
+	if def, ok := b.Workspace.Tenant(ctx, caller); ok && slices.Contains(workspaces, def) {
+		return def, nil
+	}
+	var mine []string
+	for _, w := range workspaces {
+		switch err := b.requireMember(ctx, caller, w); {
+		case err == nil:
+			mine = append(mine, w)
+		case !errors.Is(err, ErrForbidden):
+			return "", err
+		}
+		if len(mine) > 1 {
+			return "", NewConflictError("OWNER_AMBIGUOUS",
+				"the resource is in more than one of your workspaces; name the workspace (ownerId, or workspaceId on MCP)", nil)
+		}
+	}
+	switch {
+	case len(mine) == 1:
+		return mine[0], nil
+	case visibleOnly:
+		return "", nil
+	}
+	return workspaces[0], nil
 }

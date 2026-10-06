@@ -24,22 +24,13 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// memberOf resolves the caller's default to its first workspace and makes them
-// a member of every listed one.
-type memberOf []string
-
-func (m memberOf) Tenant(context.Context, core.Identity) (string, bool) { return m[0], true }
-
-func (m memberOf) IsMember(_ context.Context, _ core.Identity, workspaceID string) (bool, error) {
-	return slices.Contains(m, workspaceID), nil
-}
-
 func byIDSvc(st *fakeStore, workspaces ...string) *Service {
 	return &Service{
-		Base:   &core.Base{Namespace: "default", Workspace: memberOf(workspaces)},
+		Base:   &core.Base{Namespace: "default", Workspace: coretest.Workspaces(workspaces)},
 		GitHub: &fakeClient{login: "octo"},
 		Store:  st,
 	}

@@ -104,7 +104,7 @@ func (s *PGStore) ListOwnPushNotifications(ctx context.Context, tenantID, subjec
 }
 
 // PushNotificationWorkspaces returns the workspaces in which subject's own
-// inbox holds eventID, ordered by tenant id, or ErrNotFound. A routing read
+// inbox holds eventID, ordered by tenant id; none for an unknown id. A routing read
 // only (w4/m172): mark-read with no ownerId acts in the item's own workspace,
 // then still authorizes there and updates through the tenant-scoped
 // MarkOwnPushNotificationRead. Keyed by subject, so it can never surface
@@ -119,9 +119,6 @@ func (s *PGStore) PushNotificationWorkspaces(ctx context.Context, subject, event
 	tenants, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
 		return nil, safePushStoreError(ctx, err)
-	}
-	if len(tenants) == 0 {
-		return nil, ErrNotFound
 	}
 	return tenants, nil
 }

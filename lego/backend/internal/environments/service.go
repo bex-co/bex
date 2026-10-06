@@ -526,16 +526,25 @@ func (s *Service) Get(ctx context.Context, id string) (EnvironmentView, error) {
 	return s.toFullView(ctx, e)
 }
 
-// Create creates a new environment under the named project.
+// Create creates a new environment under the named project, authorized once in
+// the project's own workspace (scopeProject).
 func (s *Service) Create(ctx context.Context, projectID, name string) (EnvironmentView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return EnvironmentView{}, err
-	}
-	name, err := validateEnvironmentName(name)
+	ctx, err := s.scopeProject(ctx, projectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	e, err := s.create(ctx, projectID, name)
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return EnvironmentView{}, err
+	}
+	name, err = validateEnvironmentName(name)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	p, err := s.actingProject(ctx, core.RelCanCreate, projectID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	e, err := s.create(ctx, p, name)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -543,10 +552,26 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 }
 
 // CreateWithACL creates an environment and its optional protected-environment
-// ACL in one cross-surface verb. Validation happens before the row is written,
-// so malformed status/CIDR input cannot leave an orphan environment.
+// ACL in one cross-surface verb, authorized in the project's own workspace as
+// Create is. Validation happens before the row is written, so malformed
+// status/CIDR input cannot leave an orphan environment.
 func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentRequest) (EnvironmentView, error) {
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	ctx, err := s.scopeProject(ctx, req.ProjectID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	// round-5 finding 12: the protected-environment ACL (protectedStatus,
+	// networkIsolationEnabled, ipAllowList) is an admin-classified control
+	// (model.fga: admin — "protected envs"), so a create that ALSO arms an ACL
+	// requires can_manage, not just the can_create a plain environment create
+	// takes. It is the verb's one gate, so a denied developer leaves no
+	// environment behind.
+	hasACL := req.hasACL()
+	relation := core.RelCanCreate
+	if hasACL {
+		relation = core.RelCanManage
+	}
+	if err := s.Authorize(ctx, relation); err != nil {
 		return EnvironmentView{}, err
 	}
 	name, err := validateEnvironmentName(req.Name)
@@ -557,7 +582,6 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	if req.ProjectID == "" {
 		return EnvironmentView{}, core.ErrBadRequest
 	}
-	hasACL := req.hasACL()
 	if req.ProtectedStatus == "" {
 		req.ProtectedStatus = ProtectedStatusUnprotected
 	}
@@ -565,17 +589,12 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 		if err := validateACL(req.ProtectedStatus, req.IPAllowList); err != nil {
 			return EnvironmentView{}, err
 		}
-		// round-5 finding 12: the protected-environment ACL (protectedStatus,
-		// networkIsolationEnabled, ipAllowList) is an admin-classified control
-		// (model.fga: admin — "protected envs"), so a create that ALSO arms an
-		// ACL requires can_manage on the project's own workspace — not just the
-		// can_create a plain environment create takes. Checked before the row is
-		// written so a denied developer leaves no environment behind.
-		if _, err := s.requireProject(ctx, core.RelCanManage, req.ProjectID); err != nil {
-			return EnvironmentView{}, err
-		}
 	}
-	e, err := s.create(ctx, req.ProjectID, req.Name)
+	p, err := s.actingProject(ctx, relation, req.ProjectID)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	e, err := s.create(ctx, p, req.Name)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -592,11 +611,7 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 // service/database/key-value/env group — so Create composes its view with
 // newView instead of paying for view's membership fetches (matching
 // projects.Service.Create's own toView(p, nil, nil, nil)).
-func (s *Service) create(ctx context.Context, projectID, name string) (store.Environment, error) {
-	p, err := s.requireProject(ctx, core.RelCanCreate, projectID)
-	if err != nil {
-		return store.Environment{}, err
-	}
+func (s *Service) create(ctx context.Context, p store.Project, name string) (store.Environment, error) {
 	// codex-security round 12, finding 5: direct creates share the Blueprint
 	// grouping quota, counted against the project's OWN workspace. Transactional
 	// (count + insert in one tx) when the store offers the runner; a store
@@ -678,10 +693,18 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	// round-5 finding 12: an ACL-bearing patch mutates admin-only
+	// protected-environment controls, so it takes can_manage; a rename-only
+	// patch stays can_create. One gate, before the rename, so a refused patch
+	// changes nothing.
+	hasACL := patch.hasACL()
+	relation := core.RelCanCreate
+	if hasACL {
+		relation = core.RelCanManage
+	}
+	if err := s.Authorize(ctx, relation); err != nil {
 		return EnvironmentView{}, err
 	}
-	hasACL := patch.hasACL()
 	if patch.Name == nil && !hasACL {
 		return EnvironmentView{}, core.ErrBadRequest
 	}
@@ -693,7 +716,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 		}
 		name = trimmed
 	}
-	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+	e, err := s.requireEnvironment(ctx, relation, id)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
@@ -705,12 +728,6 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	}
 	if !hasACL {
 		return s.toFullView(ctx, e)
-	}
-	// round-5 finding 12: an ACL-bearing patch mutates admin-only protected-env
-	// controls, so require can_manage on the environment's own workspace. The
-	// rename half above stays can_create; only the security half is elevated.
-	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(e.TenantID)); err != nil {
-		return EnvironmentView{}, err
 	}
 	status, isolated, allowList := e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList
 	if status == "" { // pre-ACL-migration rows surface as empty
@@ -1059,16 +1076,16 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	// round-5 finding 12: SetACL is a pure protected-environment mutation, so
+	// its gate is can_manage (admin), not the can_create a developer holds.
+	// scopeEnvironment has routed ctx to the environment's own workspace, so
+	// this is the binding check.
+	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return EnvironmentView{}, err
 	}
 	if err := validateACL(protectedStatus, ipAllowList); err != nil {
 		return EnvironmentView{}, err
 	}
-	// round-5 finding 12: SetACL is a pure protected-environment mutation, so
-	// the authoritative resource-workspace gate is can_manage (admin), not the
-	// can_create a developer holds. The coarse default-workspace gate above stays
-	// can_create; requireEnvironment is the binding check against e.TenantID.
 	e, err := s.requireEnvironment(ctx, core.RelCanManage, id)
 	if err != nil {
 		return EnvironmentView{}, err
@@ -1145,26 +1162,76 @@ func (s *Service) requireProject(ctx context.Context, relation, projectID string
 	return p, nil
 }
 
-// scopeEnvironment makes a by-id verb act in the environment's own workspace
-// (w4/m172), so the verb's leading Authorize — its audit point — checks the
-// workspace that owns the environment rather than the caller's default. A
-// non-member's id answers the same 404 as a missing one.
-func (s *Service) scopeEnvironment(ctx context.Context, id string) (context.Context, error) {
+// scopeProject routes a verb that creates under projectID to the project's own
+// workspace (ADR072's by-id matrix, by parent id): an environment has none of
+// its own to name, and REST and GraphQL create carry no ownerId. The verb's
+// one Authorize then runs there, where a gate on the caller's default
+// workspace refused an admin of the project's workspace who was merely a
+// viewer in their default, and audited the refusal in the wrong place
+// (w5/m115).
+func (s *Service) scopeProject(ctx context.Context, projectID string) (context.Context, error) {
 	var owner core.ResourceOwner
 	if s.Store != nil {
-		owner = func(ctx context.Context) (string, bool, error) {
-			e, err := s.Store.GetEnvironment(ctx, ids.EnvironmentStorageID(id))
-			if errors.Is(err, store.ErrNotFound) {
-				return "", false, nil
-			}
-			return e.TenantID, err == nil, err
+		owner = func(ctx context.Context) ([]string, error) {
+			p, err := s.Store.GetProject(ctx, projectID)
+			return store.OwnerWorkspaces(p.TenantID, err)
 		}
 	}
 	return s.ScopeByID(ctx, "", owner)
 }
 
-// requireEnvironment fetches an environment and authorizes it against the
-// workspace it belongs to (see requireProject).
+// actingProject fetches projectID for a verb that has already authorized
+// relation in the acting workspace (see inActingWorkspace).
+func (s *Service) actingProject(ctx context.Context, relation, projectID string) (store.Project, error) {
+	if s.Store == nil {
+		return store.Project{}, ErrEnvironmentsUnavailable
+	}
+	p, err := s.Store.GetProject(ctx, projectID)
+	if err != nil {
+		return store.Project{}, store.MapError(err)
+	}
+	if err := s.inActingWorkspace(ctx, relation, p.TenantID, "project"); err != nil {
+		return store.Project{}, err
+	}
+	return p, nil
+}
+
+// inActingWorkspace admits a row of workspace tenantID to a verb whose one
+// gate has already authorized relation in the acting workspace. A row
+// elsewhere — one a request named a different workspace for — reads as absent
+// (ADR072's by-id matrix), as does any request whose acting workspace does not
+// resolve. Authorizing the row's workspace again would only repeat the gate
+// and its audit row, except with no workspace resolver wired, where the gate
+// ran on the default object.
+func (s *Service) inActingWorkspace(ctx context.Context, relation, tenantID, kind string) error {
+	if s.Workspace == nil {
+		return s.AuthorizeOn(ctx, relation, core.WorkspaceObject(tenantID))
+	}
+	if acting, ok := s.Tenant(ctx); !ok || acting != tenantID {
+		return core.NotFound(kind)
+	}
+	return nil
+}
+
+// scopeEnvironment makes a by-id verb act in the environment's own workspace
+// (w4/m172), so the verb's leading Authorize — its audit point — checks the
+// workspace that owns the environment rather than the caller's default. A
+// caller outside it gets that Authorize's 403 (ADR072's by-id matrix).
+func (s *Service) scopeEnvironment(ctx context.Context, id string) (context.Context, error) {
+	var owner core.ResourceOwner
+	if s.Store != nil {
+		owner = func(ctx context.Context) ([]string, error) {
+			e, err := s.Store.GetEnvironment(ctx, ids.EnvironmentStorageID(id))
+			return store.OwnerWorkspaces(e.TenantID, err)
+		}
+	}
+	return s.ScopeByID(ctx, "", owner)
+}
+
+// requireEnvironment fetches an environment for a verb that has already
+// authorized relation in the acting workspace (see inActingWorkspace). Every
+// caller routes through scopeEnvironment first, so that workspace is the
+// environment's own unless the request named another.
 func (s *Service) requireEnvironment(ctx context.Context, relation, id string) (store.Environment, error) {
 	if s.Store == nil {
 		return store.Environment{}, ErrEnvironmentsUnavailable
@@ -1173,7 +1240,7 @@ func (s *Service) requireEnvironment(ctx context.Context, relation, id string) (
 	if err != nil {
 		return store.Environment{}, store.MapError(err)
 	}
-	if err := s.AuthorizeOn(ctx, relation, core.WorkspaceObject(e.TenantID)); err != nil {
+	if err := s.inActingWorkspace(ctx, relation, e.TenantID, "environment"); err != nil {
 		return store.Environment{}, err
 	}
 	return e, nil

@@ -63,6 +63,12 @@ func (f *fakeEventStore) ListServiceEvents(_ context.Context, appID, _ string, f
 	return out, nil
 }
 
+// ServiceEventWorkspaces records no routing: these surface tests name the
+// workspace or use the caller's default.
+func (f *fakeEventStore) ServiceEventWorkspaces(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
 func (f *fakeEventStore) GetServiceEvent(_ context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error) {
 	f.gotEventWorkspace = workspaceID
 	if lookup, ok := f.lookups[workspaceID+"\x00"+eventID]; ok {

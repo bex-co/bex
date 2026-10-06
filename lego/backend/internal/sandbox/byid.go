@@ -29,63 +29,68 @@ import (
 // before; otherwise the sandbox's OWN workspace does, so a member of several
 // workspaces reaches a sandbox by id without ?ownerId= (Render's by-id
 // sandbox endpoints take no owner). A non-member's id — like a nonexistent
-// one — answers the same SANDBOX_NOT_FOUND.
+// one — answers the same SANDBOX_NOT_FOUND: ownership is only discoverable in
+// the caller's own workspaces (ADR072's by-id matrix exemption).
 func (s *Service) scopeSandbox(ctx context.Context, ownerID, id string) (context.Context, error) {
-	return s.ScopeByID(ctx, ownerID, s.sandboxOwner(id))
+	return s.ScopeByVisibleID(ctx, ownerID, s.sandboxOwner(id))
 }
 
 // sandboxOwner is the unscoped routing read behind scopeSandbox. bex keeps no
 // sandbox table (OpenSandbox is the source of truth, ADR042 D4), so it probes
-// each of the caller's member workspaces through that workspace's EXISTING
-// tenant key — looked up, never minted (a workspace with no key has never
-// created a sandbox) — and answers the first whose namespace holds the id with
-// matching workspace metadata. It only routes: ownedSandbox still applies the
-// owner/admin boundary in the chosen workspace. Anything it cannot decide
-// (no membership listing, a key provider without a lookup-only seam) answers
-// found=false, which leaves the verb on its default-workspace path.
+// the caller's member workspaces through each one's EXISTING tenant key —
+// looked up, never minted (a workspace with no key has never created a
+// sandbox) — default first, stopping at the first whose namespace holds the id
+// with matching workspace metadata: a sandbox in the caller's default never
+// depends on another member namespace answering. It only routes:
+// ownedSandbox still applies the owner/admin boundary in the chosen workspace.
+// Anything it cannot decide (no membership listing) leaves the verb on its
+// default-workspace path.
 func (s *Service) sandboxOwner(id string) core.ResourceOwner {
-	return func(ctx context.Context) (string, bool, error) {
+	return func(ctx context.Context) ([]string, error) {
 		if id == "" || !s.enabled() || s.MemberWorkspaceIDs == nil {
-			return "", false, nil
+			return nil, nil
 		}
 		caller, ok := core.IdentityFrom(ctx)
 		if !ok {
-			return "", false, nil
+			return nil, nil
 		}
 		members, err := s.MemberWorkspaceIDs(ctx, caller)
 		if err != nil || len(members) == 0 {
-			return "", false, err
+			return nil, err
+		}
+		def, _ := s.Workspace.Tenant(ctx, caller)
+		if len(members) == 1 && members[0] == def {
+			return nil, nil // the verb's default path already looks there
 		}
 		if s.Keys == nil {
 			// Single-tenant OpenSandbox: one keyless namespace holds every
 			// workspace's sandboxes, so one read names the owner.
 			ws, found, err := s.probeSandbox(ctx, "", id)
 			if err != nil || !found || !slices.Contains(members, ws) {
-				return "", false, err
+				return nil, err
 			}
-			return ws, true, nil
+			return []string{ws}, nil
 		}
-		lookup, ok := s.Keys.(PurgeKeyLookup)
-		if !ok {
-			return "", false, nil
+		if i := slices.Index(members, def); i > 0 {
+			members = slices.Concat([]string{def}, members[:i], members[i+1:])
 		}
 		for _, member := range members {
-			key, minted, err := lookup.SandboxKeyLookup(ctx, member)
+			key, minted, err := s.Keys.SandboxKeyLookup(ctx, member)
 			if err != nil {
-				return "", false, err
+				return nil, err
 			}
 			if !minted {
 				continue
 			}
 			ws, found, err := s.probeSandbox(ctx, key, id)
 			if err != nil {
-				return "", false, err
+				return nil, err
 			}
 			if found && ws == member {
-				return member, true, nil
+				return []string{member}, nil
 			}
 		}
-		return "", false, nil
+		return nil, nil
 	}
 }
 

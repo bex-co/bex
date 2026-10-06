@@ -154,7 +154,15 @@ import (
 type EventStore interface {
 	ListServiceEvents(ctx context.Context, appID, ownerWorkspace string, f store.ServiceEventFilter) ([]store.ServiceEventRow, error)
 	GetServiceEvent(ctx context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error)
+	// ServiceEventWorkspaces is Get's routing read (w4/m172): every workspace
+	// an evt- id is indexed under. Required, not an optional assertion, so a
+	// store wrapper cannot drop it and fall back to default-workspace scoping
+	// unnoticed (w5/m115).
+	ServiceEventWorkspaces(ctx context.Context, eventID string) ([]string, error)
 }
+
+// The production store implements every read, routing included.
+var _ EventStore = (*store.PGStore)(nil)
 
 // Render's event types (the subset bex can emit truthfully), spelled exactly as
 // its list-events enum spells them — a Render-trained client switches on these.
@@ -805,23 +813,12 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	return out, nil
 }
 
-// EventWorkspaceRouter is the optional routing read Get uses to find an
-// event's own workspace when the caller names none (w4/m172). *store.PGStore
-// satisfies it; it is kept off EventStore so a store without it (a narrower
-// test double) keeps the caller's default-workspace scoping.
-type EventWorkspaceRouter interface {
-	ServiceEventWorkspaces(ctx context.Context, eventID string) ([]string, error)
-}
-
-// The production store must route; a lost method would silently restore the
-// default-workspace scoping this exists to replace.
-var _ EventWorkspaceRouter = (*store.PGStore)(nil)
-
 // Get returns one globally-addressed event by its stable evt-… id. An explicit
 // ownerId (or a workspace the request already names) scopes the lookup as
 // before. Otherwise the event's OWN workspace does (w4/m172), so a member of
 // several workspaces hydrates a webhook's evt-… id without guessing ownerId.
-// A non-member's id and an id that never existed answer the same 404.
+// A caller outside the event's workspace gets Authorize's 403, and an id that
+// never existed a 404 (ADR072's by-id matrix).
 func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 	kind, ok := ids.KindOf(eventID)
 	validID := ok && kind == ids.Event
@@ -857,53 +854,13 @@ func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 	return event, nil
 }
 
-// scopeEvent routes an unscoped Get to the event's own workspace through
-// core.Base.ScopeByID. The same id can be indexed under several workspaces (a
-// workspace:default audit row is attributed to every matching owner), so the
-// choice is deterministic and membership-aware: the caller's default workspace
-// when it is one of them (today's answer), else the first, by workspace id,
-// the caller belongs to, else the first — which ScopeByID then turns into the
-// not-found a nonexistent id gets.
+// scopeEvent routes an unscoped Get to the event's own workspace. The same id
+// can be indexed under several workspaces (a workspace:default audit row is
+// attributed to every matching owner); core.Base.ScopeByID chooses among them.
 func (s *Service) scopeEvent(ctx context.Context, eventID string) (context.Context, error) {
-	router, ok := s.Store.(EventWorkspaceRouter)
-	if !ok {
-		return ctx, nil
-	}
-	owner := func(ctx context.Context) (string, bool, error) {
-		workspaces, err := router.ServiceEventWorkspaces(ctx, eventID)
-		if errors.Is(err, store.ErrNotFound) || (err == nil && len(workspaces) == 0) {
-			return "", false, nil
-		}
-		if err != nil {
-			return "", false, err
-		}
-		workspace, err := s.preferredWorkspace(ctx, workspaces)
-		return workspace, err == nil, err
-	}
-	return s.ScopeByID(ctx, "", owner)
-}
-
-// preferredWorkspace picks among the workspaces one event id is indexed in.
-// ScopeByID only calls the owner read with a caller identity and a workspace
-// resolver, so both are present here.
-func (s *Service) preferredWorkspace(ctx context.Context, workspaces []string) (string, error) {
-	if len(workspaces) == 1 {
-		return workspaces[0], nil
-	}
-	caller, _ := core.IdentityFrom(ctx)
-	if def, ok := s.Workspace.Tenant(ctx, caller); ok && slices.Contains(workspaces, def) {
-		return def, nil
-	}
-	for _, workspace := range workspaces {
-		member, err := s.Workspace.IsMember(ctx, caller, workspace)
-		if err != nil {
-			return "", core.ErrAuthzUnavailable
-		}
-		if member {
-			return workspace, nil
-		}
-	}
-	return workspaces[0], nil
+	return s.ScopeByID(ctx, "", func(ctx context.Context) ([]string, error) {
+		return s.Store.ServiceEventWorkspaces(ctx, eventID)
+	})
 }
 
 func eventNotFound(eventID string) error {

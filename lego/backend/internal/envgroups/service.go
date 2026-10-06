@@ -1714,16 +1714,16 @@ func (s *Service) groupOwner(gid string) core.ResourceOwner {
 	if s.Store == nil || !id.WellFormed(gid) {
 		return nil
 	}
-	return func(ctx context.Context) (string, bool, error) {
+	return func(ctx context.Context) ([]string, error) {
 		raw, err := s.Store.Get(legacyCtx(ctx), metaPath(gid))
 		if err != nil {
-			return "", false, err
+			return nil, err
 		}
 		workspace := raw["workspace"]
 		if workspace == "" || workspace == core.DefaultTenant || !(isLocator(raw) || isEditableMeta(raw)) {
-			return "", false, nil
+			return nil, nil
 		}
-		return workspace, true, nil
+		return []string{workspace}, nil
 	}
 }
 

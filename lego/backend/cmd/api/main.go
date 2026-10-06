@@ -124,10 +124,6 @@ func (p sandboxKeyProvider) WorkspaceKey(ctx context.Context, workspaceID string
 	return p.st.SandboxKeyForWorkspace(ctx, workspaceID)
 }
 
-// The by-id sandbox routing type-asserts this seam; without it, routing would
-// silently fall back to the caller's default workspace.
-var _ sandbox.PurgeKeyLookup = sandboxKeyProvider{}
-
 // SandboxKeyLookup is the lookup-only seam (never mints) the by-id sandbox
 // verbs use to find which of the caller's workspaces owns a sandbox (w4/m172).
 func (p sandboxKeyProvider) SandboxKeyLookup(ctx context.Context, workspaceID string) (string, bool, error) {

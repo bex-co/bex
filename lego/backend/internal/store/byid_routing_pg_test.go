@@ -18,7 +18,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -49,7 +48,7 @@ func byIDRoutingStore(t *testing.T) (*PGStore, *pgxpool.Pool) {
 }
 
 // TestServiceEventWorkspacesRoutesByID is w4/m172's events routing read: every
-// workspace indexing an evt-… id, ordered, ErrNotFound for an unknown id.
+// workspace indexing an evt-… id, ordered, none for an unknown id.
 func TestServiceEventWorkspacesRoutesByID(t *testing.T) {
 	s, pool := byIDRoutingStore(t)
 	ctx := context.Background()
@@ -90,8 +89,8 @@ func TestServiceEventWorkspacesRoutesByID(t *testing.T) {
 	if got, err := s.ServiceEventWorkspaces(ctx, sharedID); err != nil || !slices.Equal(got, tenants) {
 		t.Fatalf("shared event = %v, %v; want %v", got, err, tenants)
 	}
-	if _, err := s.ServiceEventWorkspaces(ctx, ids.Derive(ids.Event, "byid-missing-"+stamp)); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("unknown id = %v, want ErrNotFound", err)
+	if got, err := s.ServiceEventWorkspaces(ctx, ids.Derive(ids.Event, "byid-missing-"+stamp)); err != nil || len(got) != 0 {
+		t.Fatalf("unknown id = %v, %v; want none", got, err)
 	}
 }
 
@@ -135,11 +134,11 @@ func TestPushNotificationWorkspacesRoutesBySubject(t *testing.T) {
 	if got, err := s.PushNotificationWorkspaces(ctx, alice, aliceB); err != nil || !slices.Equal(got, []string{tenants[1]}) {
 		t.Fatalf("own item = %v, %v; want [%s]", got, err, tenants[1])
 	}
-	if _, err := s.PushNotificationWorkspaces(ctx, alice, malloryB); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("another member's item = %v, want ErrNotFound", err)
+	if got, err := s.PushNotificationWorkspaces(ctx, alice, malloryB); err != nil || len(got) != 0 {
+		t.Fatalf("another member's item = %v, %v; want none", got, err)
 	}
-	if _, err := s.PushNotificationWorkspaces(ctx, alice, ids.Derive(ids.Event, "byid-missing-"+stamp)); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("unknown id = %v, want ErrNotFound", err)
+	if got, err := s.PushNotificationWorkspaces(ctx, alice, ids.Derive(ids.Event, "byid-missing-"+stamp)); err != nil || len(got) != 0 {
+		t.Fatalf("unknown id = %v, %v; want none", got, err)
 	}
 	shared := "byid-shared-" + stamp
 	insert(tenants[0], alice, shared)

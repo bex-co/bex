@@ -127,6 +127,15 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 		t.Fatalf("rotation race result = %+v err=%v", bobOwn, err)
 	}
 
+	// w5/m115: unregister's routing read finds only the subject's own active
+	// device, and forgets it once revoked.
+	if got, err := st.DevicePushSubscriptionWorkspaces(ctx, bob, "bob-ios"); err != nil || len(got) != 1 || got[0] != tenant.ID {
+		t.Fatalf("bob's device workspaces = %v err=%v, want [%s]", got, err, tenant.ID)
+	}
+	if got, err := st.DevicePushSubscriptionWorkspaces(ctx, alice, "bob-ios"); err != nil || len(got) != 0 {
+		t.Fatalf("another subject's device workspaces = %v err=%v, want none", got, err)
+	}
+
 	changed, err := st.RevokeDevicePushSubscription(ctx, tenant.ID, alice, "bob-ios")
 	if err != nil || changed {
 		t.Fatalf("cross-subject revoke changed=%v err=%v", changed, err)
@@ -138,6 +147,9 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 	changed, err = st.RevokeDevicePushSubscription(ctx, tenant.ID, bob, "bob-ios")
 	if err != nil || changed {
 		t.Fatalf("idempotent revoke changed=%v err=%v", changed, err)
+	}
+	if got, err := st.DevicePushSubscriptionWorkspaces(ctx, bob, "bob-ios"); err != nil || len(got) != 0 {
+		t.Fatalf("revoked device workspaces = %v err=%v, want none", got, err)
 	}
 
 	if _, err := st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
