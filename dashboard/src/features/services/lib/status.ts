@@ -285,6 +285,17 @@ export function isSleeping(s: ServiceView): boolean {
 }
 
 /**
+ * False while the service is parked at zero instances: suspended, or asleep
+ * (phase Hibernated). A read of its current pods, such as the limit read, is
+ * then empty without saying anything about the service (w5/m125).
+ */
+export function runsInstances(
+  s: Pick<ServiceView, "suspended" | "phase">,
+): boolean {
+  return !s.suspended && s.phase.toLowerCase() !== "hibernated";
+}
+
+/**
  * True while the service is being torn down (w3/m81). Keyed on the raw phase,
  * NOT `deriveStatus`'s key — `deriveStatus` folds suspension over phase, so a
  * suspended-then-deleting service would resolve to "suspended" and skip the

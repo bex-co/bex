@@ -23,12 +23,13 @@ import {
 import { useMetricsFilterValues } from "@/features/metrics/hooks/use-metrics-filter-values";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatMetricValue } from "@/features/metrics/lib/format";
-import { latestValue } from "@/features/metrics/lib/series";
+import { hasPoints, latestValue } from "@/features/metrics/lib/series";
 import type { ChartEventMarker } from "@/features/metrics/lib/chart-events";
 import {
   summarizeLimits,
   type LimitSummary,
 } from "@/features/metrics/lib/limit-summary";
+import { utilizationEmptyReason } from "@/features/metrics/lib/utilization";
 
 interface ApplicationMetricsCardProps {
   /** The service id — names the metrics resource and the plan/scaling links. */
@@ -37,6 +38,8 @@ interface ApplicationMetricsCardProps {
   window: UseMetricsOptions;
   /** Service events in the window, marked on every chart (route-derived). */
   markers?: ChartEventMarker[];
+  /** The service runs instances now: not suspended or asleep. */
+  runsInstances: boolean;
 }
 
 /**
@@ -60,6 +63,7 @@ export function ApplicationMetricsCard({
   resource,
   window,
   markers,
+  runsInstances,
 }: ApplicationMetricsCardProps) {
   const { t } = useTranslations();
   const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
@@ -248,6 +252,7 @@ export function ApplicationMetricsCard({
           limitUnit="bytes"
           target={latestValue(memoryTarget.series)}
           percentage={percentage}
+          runsInstances={runsInstances}
           markers={markers}
           hasSelection={hasSelection}
         />
@@ -260,6 +265,7 @@ export function ApplicationMetricsCard({
           limitUnit="cpu"
           target={latestValue(cpuTarget.series)}
           percentage={percentage}
+          runsInstances={runsInstances}
           markers={markers}
           hasSelection={hasSelection}
         />
@@ -326,6 +332,8 @@ interface ResourceSectionProps {
    */
   target?: number | null;
   percentage: boolean;
+  /** The service runs instances now, so an empty limit read means no limit. */
+  runsInstances: boolean;
   markers?: ChartEventMarker[];
   /**
    * True when an explicit INSTANCE filter is active. An empty result then says
@@ -353,30 +361,29 @@ function ResourceSection({
   limitUnit,
   target,
   percentage,
+  runsInstances,
   markers,
   hasSelection,
 }: ResourceSectionProps) {
   const { t } = useTranslations();
 
   const hasTarget = target != null;
-  const absoluteHasData = absolute.series.some((s) => s.points.length > 0);
-  const resultHasData = result.series.some((s) => s.points.length > 0);
-  // Percentage over observed usage but no percentage point survived: every
-  // denominator was missing, zero, or otherwise untrustworthy (deleted pods,
-  // predated limit retention, a mid-window rollout gap) — distinct from "no
-  // usage samples" and from a source failure (both handled elsewhere).
-  const percentagesUnavailable =
-    percentage && !resultHasData && absoluteHasData;
-  // No limit configured at all (usage observed, but no percentage point
-  // survived either): the division is undefined, so the chart honestly says
-  // so instead of faking a flat line (same omit-don't-fake rule as bex-api).
-  // Retained percentage points still render when the current-limit read is
-  // empty: bex-api's cpu_limit/memory_limit is a current-pod read (empty for
-  // a suspended/scaled-to-zero service), while the percentage read keeps
-  // own-limit history — and every surviving point already passed the
-  // server-side trustworthiness join, so hiding them would discard usable
-  // history (w5/m90 t008 live walkthrough).
-  const noLimit = percentagesUnavailable && limit.kind === "none";
+  // Percentage mode only: an empty chart says why (utilizationEmptyReason).
+  // With no usage either, the chart's own empty and error states answer.
+  const emptyReason = percentage
+    ? utilizationEmptyReason({
+        percentage: hasPoints(result.series),
+        usage: hasPoints(absolute.series),
+        limit,
+        runsInstances,
+      })
+    : null;
+  const emptyMessage =
+    emptyReason === "no-limit"
+      ? t("metrics.noLimitConfigured")
+      : emptyReason === "percentage-unavailable"
+        ? t("metrics.percentageUnavailable")
+        : null;
   const unit = percentage
     ? "percentage"
     : (result.series[0]?.unit ?? limitUnit);
@@ -432,7 +439,7 @@ function ResourceSection({
               })}
             </span>
           )}
-          {!noLimit && !percentagesUnavailable && (
+          {emptyMessage === null && (
             <LatestValue
               result={result}
               unit={unit}
@@ -442,12 +449,10 @@ function ResourceSection({
         </div>
       }
     >
-      {noLimit ? (
-        <EmptyChart message={t("metrics.noLimitConfigured")} />
-      ) : percentagesUnavailable ? (
-        <EmptyChart message={t("metrics.percentageUnavailable")} />
+      {emptyMessage !== null ? (
+        <EmptyChart message={emptyMessage} />
       ) : hasSelection &&
-        series.every((s) => s.points.length === 0) &&
+        !hasPoints(series) &&
         !result.loading &&
         !result.error &&
         !result.unavailable &&

@@ -381,6 +381,49 @@ describe("NewBlueprintPage", () => {
     expect(router.state.location.pathname).toBe("/blueprints/blp-new1");
   });
 
+  // w4/m125 + w5/m125: a preview whose only problems are takeover conflicts
+  // keeps Deploy reachable (the phrase arrives in the create's refusal), told
+  // apart by code; any other problem blocks it.
+  it.each([
+    {
+      name: "a takeover conflict keeps Deploy enabled",
+      code: "BLUEPRINT_RESOURCE_CONFLICT",
+      enabled: true,
+    },
+    {
+      name: "an ordinary validation error disables Deploy",
+      code: "",
+      enabled: false,
+    },
+    {
+      name: "a coded problem no takeover resolves disables Deploy",
+      code: "BLUEPRINT_DUPLICATE_RESOURCE",
+      enabled: false,
+    },
+  ])("$name", async ({ code, enabled }) => {
+    reposState.repos = [repo()];
+    const error =
+      'service "web" is managed by blueprint blp-db136288mmqc73d4hpug; retry with confirm="takeover blueprint blp-db136288mmqc73d4hpug" to transfer ownership to this blueprint';
+    const preview = validPreview();
+    preview.validation = {
+      ...preview.validation!,
+      valid: false,
+      errors: [error],
+      errorDetails: [{ code, error, line: 0, column: 0, path: "" }],
+    };
+    previewState.preview = preview;
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("acme/hello-go"));
+
+    const deploy = await screen.findByRole("button", {
+      name: /deploy blueprint/i,
+    });
+    if (enabled) expect(deploy).toBeEnabled();
+    else expect(deploy).toBeDisabled();
+  });
+
   it("prompts for sync:false values and sends them as envVarValues", async () => {
     reposState.repos = [repo()];
     const preview = validPreview();

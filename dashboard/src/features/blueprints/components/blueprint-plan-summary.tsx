@@ -7,6 +7,7 @@ import {
 import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EstimatedPricingPanel } from "./estimated-pricing-panel";
+import { blueprintKindLabel } from "@/features/blueprints/lib/kind-labels";
 import type { en } from "@/i18n";
 import type {
   BlueprintEstimatedPricing,
@@ -52,13 +53,6 @@ const OPERATION_VARIANT: Record<
   noop: "outline",
 };
 
-const KIND_LABEL: Record<string, keyof typeof en> = {
-  service: "blueprints.previewKindService",
-  postgres: "blueprints.previewKindPostgres",
-  key_value: "blueprints.previewKindKeyValue",
-  env_var_group: "blueprints.previewKindEnvGroup",
-};
-
 /** One planned resource: its operation, name, kind, and what changes. */
 function PlanActionRow({
   action,
@@ -68,7 +62,7 @@ function PlanActionRow({
   operation: ListedOperation;
 }) {
   const { t } = useTranslations();
-  const kind = KIND_LABEL[action.kind];
+  const kind = blueprintKindLabel(action.kind);
   const fields = (action.changedFields ?? [])
     .map((field) => field.path)
     .filter(Boolean);

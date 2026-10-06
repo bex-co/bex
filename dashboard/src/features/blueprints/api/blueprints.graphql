@@ -62,8 +62,9 @@ query ValidateBlueprint($bexYaml: String!) {
   validateBlueprint(bexYaml: $bexYaml) {
     valid
     errors
-    # Each error's source location (w8/019), rendered beside it (w4/151).
+    # Each error's code and source location (w8/019), rendered beside it (w4/151).
     errorDetails {
+      code
       line
       column
       path
@@ -96,7 +97,9 @@ query BlueprintPreview(
     validation {
       valid
       errors
+      # code tells a takeover conflict from an ordinary problem (w5/m125).
       errorDetails {
+        code
         line
         column
         path

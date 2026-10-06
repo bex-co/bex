@@ -20,7 +20,12 @@ import {
   type UseMetricsResult,
 } from "@/features/metrics/hooks/use-metrics";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
-import { latestValue } from "@/features/metrics/lib/series";
+import {
+  summarizeLimits,
+  type LimitSummary,
+} from "@/features/metrics/lib/limit-summary";
+import { hasPoints } from "@/features/metrics/lib/series";
+import { utilizationEmptyReason } from "@/features/metrics/lib/utilization";
 import type { ChartPoint, ChartSeries } from "@/features/metrics/types";
 import type { RangeWindow } from "@/features/metrics/lib/range";
 
@@ -39,7 +44,14 @@ const RECENT_WINDOW: RangeWindow = {
  * choice, without leaving the page. Reuses the metrics feature's query hook
  * and chart primitives; "View all metrics" links to the full Metrics tab.
  */
-export function ScalingRecentMetrics({ serviceId }: { serviceId: string }) {
+export function ScalingRecentMetrics({
+  serviceId,
+  runsInstances,
+}: {
+  serviceId: string;
+  /** The service runs instances now: not suspended or asleep. */
+  runsInstances: boolean;
+}) {
   const { t } = useTranslations();
   // pollIntervalMs: 0 — the live-range tick is the one refresh schedule;
   // Apollo's default 30s poll would be a second, redundant one re-sending the
@@ -47,18 +59,18 @@ export function ScalingRecentMetrics({ serviceId }: { serviceId: string }) {
   const window = { ...useLiveRange(RECENT_WINDOW), pollIntervalMs: 0 };
 
   // Utilization is read as server-side per-instance percentages (w5/m90),
-  // whose points keep each pod's own limit history: the current-limit reads
-  // below are current-pod values, empty for a sleeping or suspended service,
-  // so dividing by them called every such service limitless (w4/192). Those
-  // reads only tell a truly limitless App apart now.
+  // whose points keep each pod's own limit history. The absolute and
+  // current-limit reads only say why a chart is empty (utilizationEmptyReason):
+  // the percentage read alone cannot tell no usage from a lost limit history.
   const memory = useMetrics(serviceId, "memory", window);
   const memoryPercentage = useMetrics(serviceId, "memory", {
     ...window,
     percentage: true,
   });
+  // Only whether a limit exists is read, and only while instances run.
   const memoryLimit = useMetrics(serviceId, "memory_limit", {
     ...window,
-    aggregateMax: true,
+    skip: !runsInstances,
   });
   const cpu = useMetrics(serviceId, "cpu", window);
   const cpuPercentage = useMetrics(serviceId, "cpu", {
@@ -67,7 +79,7 @@ export function ScalingRecentMetrics({ serviceId }: { serviceId: string }) {
   });
   const cpuLimit = useMetrics(serviceId, "cpu_limit", {
     ...window,
-    aggregateMax: true,
+    skip: !runsInstances,
   });
   const instances = useMetrics(serviceId, "instance_count", window);
 
@@ -93,13 +105,15 @@ export function ScalingRecentMetrics({ serviceId }: { serviceId: string }) {
           title={t("services.scalingMetricsMemory")}
           usage={memory}
           percentage={memoryPercentage}
-          limit={latestValue(memoryLimit.series)}
+          limit={summarizeLimits(memoryLimit.series)}
+          runsInstances={runsInstances}
         />
         <AvgUtilizationSection
           title={t("services.scalingMetricsCPU")}
           usage={cpu}
           percentage={cpuPercentage}
-          limit={latestValue(cpuLimit.series)}
+          limit={summarizeLimits(cpuLimit.series)}
+          runsInstances={runsInstances}
         />
         <MetricSection title={t("metrics.totalInstances")} result={instances}>
           {instances.loading && instances.series.length === 0 ? (
@@ -139,26 +153,30 @@ function averageAcrossInstances(series: ChartSeries[]): ChartPoint[] {
 
 /**
  * One averaged utilization chart (memory or cpu): the server's per-instance
- * percentage series averaged into a single line. With usage but no surviving
- * percentage point, the block says why — no limit configured at all, or a
- * limit history the percentage could not be computed from — rather than
- * faking a line (the Metrics tab's omit-don't-fake rule); with no usage at all
- * it shows Render's "No data captured…" state.
+ * percentage series averaged into a single line. With no line, it says why,
+ * as the Metrics tab does (utilizationEmptyReason): no usage captured, no
+ * limit configured, or percentages unavailable.
  */
 function AvgUtilizationSection({
   title,
   usage,
   percentage,
   limit,
+  runsInstances,
 }: {
   title: string;
   usage: UseMetricsResult;
   percentage: UseMetricsResult;
-  limit: number | null;
+  limit: LimitSummary;
+  runsInstances: boolean;
 }) {
   const { t } = useTranslations();
-  const hasUsage = usage.series.some((s) => s.points.length > 0);
-  const hasPercentage = percentage.series.some((s) => s.points.length > 0);
+  const reason = utilizationEmptyReason({
+    percentage: hasPoints(percentage.series),
+    usage: hasPoints(usage.series),
+    limit,
+    runsInstances,
+  });
 
   const series = useMemo<LineSeriesInput[]>(
     () => [
@@ -174,7 +192,6 @@ function AvgUtilizationSection({
     (usage.loading && usage.series.length === 0) ||
     (percentage.loading && percentage.series.length === 0);
 
-  // One branch per state: loading / no data / no limit / unavailable / chart.
   return (
     <MetricSection
       title={title}
@@ -187,11 +204,11 @@ function AvgUtilizationSection({
     >
       {loading ? (
         <Skeleton className="h-40 w-full" />
-      ) : hasPercentage ? (
+      ) : reason === null ? (
         <SvgLineChart unit="percentage" series={series} />
-      ) : !hasUsage ? (
+      ) : reason === "no-usage" ? (
         <EmptyChart message={t("services.scalingMetricsEmpty")} />
-      ) : limit == null || limit === 0 ? (
+      ) : reason === "no-limit" ? (
         <EmptyChart message={t("metrics.noLimitConfigured")} />
       ) : (
         <EmptyChart message={t("metrics.percentageUnavailable")} />

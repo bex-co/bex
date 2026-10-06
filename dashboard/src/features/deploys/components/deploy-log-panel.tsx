@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { cn } from "@/common/lib/utils/utils.ts";
+import { LogEmptyState } from "@/features/logs/components/log-empty-state";
 import { LogLineList } from "@/features/logs/components/log-line-list";
 import { LogTruncationNotice } from "@/features/logs/components/log-truncation-notice";
 import { stripAnsi } from "@/features/logs/lib/ansi";
@@ -143,10 +144,10 @@ export function DeployLogPanel({
   let body;
   if (error) {
     body = (
-      <EmptyState
-        iconName="AlertCircle"
+      <LogEmptyState
+        reason="failed"
         title={t("logs.errorTitle")}
-        description={error.message}
+        message={error.message}
       />
     );
   } else if ((loading || startTime === undefined) && lines.length === 0) {
@@ -159,14 +160,6 @@ export function DeployLogPanel({
         {t("logs.loading")}
       </div>
     );
-  } else if (narrowed && lines.length > 0 && filtered.length === 0) {
-    body = (
-      <EmptyState
-        iconName="ScrollText"
-        title={t("logs.emptyFilteredTitle")}
-        description={t("logs.emptyFilteredBody")}
-      />
-    );
   } else if (buildStoreUnavailable && lines.length === 0) {
     body = (
       <EmptyState
@@ -176,11 +169,13 @@ export function DeployLogPanel({
       />
     );
   } else if (filtered.length === 0) {
+    // The panel shows its own truncation notice, so no pages are passed.
     body = (
-      <EmptyState
-        iconName="ScrollText"
-        title={t("logs.emptyTitle")}
-        description={t("logs.emptyBody")}
+      <LogEmptyState
+        reason="empty"
+        filtered={narrowed && lines.length > 0}
+        emptyTitle={t("logs.emptyTitle")}
+        emptyBody={t("logs.emptyBody")}
       />
     );
   } else {

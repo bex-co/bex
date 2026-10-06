@@ -6,6 +6,7 @@ import {
   isSuspended,
   isSleeping,
   isConvergingPhase,
+  runsInstances,
 } from "@/features/services/lib/status";
 import type { ServicesQuery, ServerQuery } from "@/graphql/definitions";
 import type { ServiceView } from "@/features/services/types";
@@ -428,6 +429,20 @@ describe("deriveStatus", () => {
       false,
     );
     expect(isSleeping(svc({ phase: "Running" }))).toBe(false);
+  });
+
+  // w5/m125: a parked App has no pod, so a read of its current pods is empty.
+  it("runs instances unless suspended or Hibernated, whatever the type", () => {
+    expect(runsInstances(svc({ phase: "Running" }))).toBe(true);
+    expect(runsInstances(svc({ phase: "Failed" }))).toBe(true);
+    expect(runsInstances(svc({ suspended: true, phase: "Running" }))).toBe(
+      false,
+    );
+    expect(runsInstances(svc({ phase: "hibernated" }))).toBe(false);
+    // Not Sleeping (no wake promise for a worker), yet still parked.
+    expect(
+      runsInstances(svc({ type: "background_worker", phase: "Hibernated" })),
+    ).toBe(false);
   });
 
   it("falls back to unknown for an unrecognized phase", () => {

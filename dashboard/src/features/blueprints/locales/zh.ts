@@ -218,6 +218,12 @@ const zhBlueprints: Record<string, TranslationEntry> = {
       "{kind} “{name}” 由 Blueprint {owner} 管理。继续将把它转移到此 Blueprint。请输入下方命令以继续。",
     description: "Takeover dialog body for a Blueprint resource conflict",
   },
+  "blueprints.takeoverResourceBodyOtherOwner": {
+    message:
+      "{kind} “{name}” 由另一个 Blueprint 管理。继续将把它转移到此 Blueprint。请输入下方命令以继续。",
+    description:
+      "Takeover dialog body for a Blueprint resource conflict whose owning Blueprint bex-api could not name",
+  },
   "blueprints.previewConflictBody": {
     message:
       "另一个 Blueprint 已在管理此仓库和分支或其中的部分资源。部署将替换它；下一步会确认具体接管的内容。",

@@ -5,3 +5,8 @@ export function latestValue(
   const points = series[0]?.points ?? [];
   return points.length > 0 ? points[points.length - 1].value : null;
 }
+
+/** True when any series has a point. */
+export function hasPoints(series: { points: unknown[] }[]): boolean {
+  return series.some((s) => s.points.length > 0);
+}

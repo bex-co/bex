@@ -98,13 +98,17 @@ describe("ApplicationMetricsCard", () => {
 
   // The card's Limit / Manage-scaling header links (w5/m42) need a router
   // around the render — the service-detail-header test's harness pattern.
-  function renderCard(resource = "app") {
+  function renderCard(resource = "app", { runsInstances = true } = {}) {
     const rootRoute = createRootRoute();
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: "/",
       component: () => (
-        <ApplicationMetricsCard resource={resource} window={WINDOW} />
+        <ApplicationMetricsCard
+          resource={resource}
+          window={WINDOW}
+          runsInstances={runsInstances}
+        />
       ),
     });
     const router = createRouter({
@@ -326,6 +330,23 @@ describe("ApplicationMetricsCard", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("never calls a sleeping service limitless: its empty limit read is no pods, not no limit", async () => {
+    // The same reads as the no-limit case above, from a service parked at zero
+    // instances: the current-limit read is empty because no pod runs (w5/m125).
+    mockUseMetrics.mockImplementation((_resource, metric, opts) => {
+      if (metric === "cpu" && opts?.percentage) return emptyResult();
+      if (metric === "cpu") return seriesResult("cpu", [0.5]);
+      return emptyResult();
+    });
+
+    renderCard("app", { runsInstances: false });
+
+    expect(
+      (await screen.findAllByText(/Percentages unavailable/)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/No limit configured/)).not.toBeInTheDocument();
+  });
+
   it("renders retained percentages when the current-limit read is empty (suspended service)", async () => {
     // bex-api's cpu_limit is a current-pod read (empty with 0 pods), while
     // the percentage read keeps own-limit history — the card must not hide
@@ -338,7 +359,7 @@ describe("ApplicationMetricsCard", () => {
       return emptyResult(); // _limit/_target reads: no live pods
     });
 
-    renderCard();
+    renderCard("app", { runsInstances: false });
 
     expect(await screen.findByText("64.4%")).toBeInTheDocument();
     expect(screen.queryByText(/No limit configured/)).not.toBeInTheDocument();
@@ -506,7 +527,12 @@ describe("ApplicationMetricsCard", () => {
             switch-service
           </button>
           {/* key={resource} mirrors the route: navigation remounts the card */}
-          <ApplicationMetricsCard key={res} resource={res} window={WINDOW} />
+          <ApplicationMetricsCard
+            key={res}
+            resource={res}
+            window={WINDOW}
+            runsInstances
+          />
         </>
       );
     }

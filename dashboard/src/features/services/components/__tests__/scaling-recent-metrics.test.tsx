@@ -46,6 +46,7 @@ function errorResult(): UseMetricsResult {
 
 function renderPanel(
   impl: (metric: MetricId, percentage: boolean) => UseMetricsResult,
+  { runsInstances = true } = {},
 ) {
   mockUseMetrics.mockImplementation(
     (_resource: string, metric: MetricId, opts?: { percentage?: boolean }) =>
@@ -55,7 +56,9 @@ function renderPanel(
   const scalingRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    component: () => <ScalingRecentMetrics serviceId="app" />,
+    component: () => (
+      <ScalingRecentMetrics serviceId="app" runsInstances={runsInstances} />
+    ),
   });
   const metricsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -135,33 +138,54 @@ const withSeries = (...values: number[]): UseMetricsResult => ({
 
 // w4/192: a sleeping or suspended service has no current pod, so the current
 // limit reads are empty — but the server-side percentages keep each pod's own
-// limit history. The card must chart those, not call the service limitless.
-describe("ScalingRecentMetrics utilization of a sleeping service", () => {
+// limit history. The card must chart those, not call the service limitless,
+// and say "no limit" only for a running service that has none (w5/m125).
+describe("ScalingRecentMetrics utilization empty states", () => {
   it("charts the server-side percentages when the current limit is empty", async () => {
-    renderPanel((metric, percentage) => {
-      if (metric === "memory_limit" || metric === "cpu_limit")
+    renderPanel(
+      (metric, percentage) => {
+        if (metric === "memory_limit" || metric === "cpu_limit")
+          return emptyResult();
+        if (metric === "memory" || metric === "cpu") {
+          return percentage
+            ? withSeries(0.5, 0.7)
+            : withSeries(2_000_000, 3_000_000);
+        }
         return emptyResult();
-      if (metric === "memory" || metric === "cpu") {
-        return percentage
-          ? withSeries(0.5, 0.7)
-          : withSeries(2_000_000, 3_000_000);
-      }
-      return emptyResult();
-    });
+      },
+      { runsInstances: false },
+    );
 
-    await screen.findAllByText("Across all instances");
+    // Memory and CPU each draw their averaged line.
+    expect(await screen.findAllByRole("img")).toHaveLength(2);
     expect(
       screen.queryByText("No limit configured — percentage is undefined"),
     ).toBeNull();
-    expect(
-      screen.queryByText("No data captured in the past 48 hours"),
-    ).not.toBeNull(); // instances section only
+    // Only Total Instances, which has no points here, is empty.
     expect(
       screen.getAllByText("No data captured in the past 48 hours"),
     ).toHaveLength(1);
   });
 
-  it("says no limit only for usage with neither percentages nor a limit", async () => {
+  it("never calls a sleeping service limitless when its percentages did not survive", async () => {
+    renderPanel(
+      (metric, percentage) =>
+        (metric === "memory" || metric === "cpu") && !percentage
+          ? withSeries(2_000_000)
+          : emptyResult(),
+      { runsInstances: false },
+    );
+    expect(
+      await screen.findAllByText(
+        "Percentages unavailable — no trustworthy limit for this window",
+      ),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByText("No limit configured — percentage is undefined"),
+    ).toBeNull();
+  });
+
+  it("says no limit only for a running service with usage but neither percentages nor a limit", async () => {
     renderPanel((metric, percentage) =>
       (metric === "memory" || metric === "cpu") && !percentage
         ? withSeries(2_000_000)
@@ -170,6 +194,21 @@ describe("ScalingRecentMetrics utilization of a sleeping service", () => {
     expect(
       await screen.findAllByText(
         "No limit configured — percentage is undefined",
+      ),
+    ).toHaveLength(2);
+  });
+
+  it("says percentages are unavailable when a running service has a limit but none survived", async () => {
+    renderPanel((metric, percentage) => {
+      if (metric === "memory_limit") return withSeries(536_870_912);
+      if (metric === "cpu_limit") return withSeries(0.5);
+      return (metric === "memory" || metric === "cpu") && !percentage
+        ? withSeries(2_000_000)
+        : emptyResult();
+    });
+    expect(
+      await screen.findAllByText(
+        "Percentages unavailable — no trustworthy limit for this window",
       ),
     ).toHaveLength(2);
   });

@@ -99,12 +99,14 @@ describe("ValidatePanel", () => {
         errors: ["additional properties 'healthCheckPth' not allowed"],
         errorDetails: [
           {
+            code: "",
             error: "additional properties 'healthCheckPth' not allowed",
             line: 6,
             column: 21,
             path: "services[0].healthCheckPth",
           },
           {
+            code: "",
             error: "Blueprint is not valid YAML",
             line: 2,
             column: 1,

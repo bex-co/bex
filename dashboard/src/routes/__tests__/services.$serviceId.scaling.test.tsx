@@ -55,10 +55,15 @@ const EMPTY_METRIC: UseMetricsResult = {
   degradedSources: [],
   error: undefined,
 };
+// Keyed by metric id, with a "%" suffix for the percentage read.
 const metricsState = new Map<string, UseMetricsResult>();
 vi.mock("@/features/metrics/hooks/use-metrics", () => ({
-  useMetrics: (_resource: string, metric: string) =>
-    metricsState.get(metric) ?? EMPTY_METRIC,
+  useMetrics: (
+    _resource: string,
+    metric: string,
+    opts?: { percentage?: boolean },
+  ) =>
+    metricsState.get(opts?.percentage ? `${metric}%` : metric) ?? EMPTY_METRIC,
 }));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
@@ -368,6 +373,21 @@ describe("ServiceScalingPage (w7/m43)", () => {
         },
       ],
     });
+    metricsState.set("memory%", {
+      ...EMPTY_METRIC,
+      series: [
+        {
+          unit: "percentage",
+          labels: { instance: "a" },
+          points: [{ timestamp: "2026-07-16T00:00:00Z", value: 40 }],
+        },
+        {
+          unit: "percentage",
+          labels: { instance: "b" },
+          points: [{ timestamp: "2026-07-16T00:00:00Z", value: 80 }],
+        },
+      ],
+    });
     metricsState.set("memory_limit", {
       ...EMPTY_METRIC,
       series: [
@@ -381,9 +401,37 @@ describe("ServiceScalingPage (w7/m43)", () => {
     renderScaling();
 
     await screen.findByText("Average Memory Utilization");
-    // Memory has data ⇒ only CPU + Instances show the empty state.
+    // Memory draws its averaged line; CPU and Instances show the empty state.
+    expect(screen.getAllByRole("img")).toHaveLength(1);
     expect(
       screen.getAllByText("No data captured in the past 48 hours"),
     ).toHaveLength(2);
+  });
+
+  // w5/m125: a sleeping service has no pod, so its current-limit reads are
+  // empty. With no surviving percentage either, that is not "no limit".
+  it("never calls a sleeping service limitless", async () => {
+    serverState.service = svc({ plan: "free", phase: "Hibernated" });
+    for (const metric of ["memory", "cpu"])
+      metricsState.set(metric, {
+        ...EMPTY_METRIC,
+        series: [
+          {
+            unit: metric === "memory" ? "bytes" : "cpu",
+            labels: { instance: "a" },
+            points: [{ timestamp: "2026-07-16T00:00:00Z", value: 40 }],
+          },
+        ],
+      });
+    renderScaling();
+
+    expect(
+      await screen.findAllByText(
+        "Percentages unavailable — no trustworthy limit for this window",
+      ),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByText("No limit configured — percentage is undefined"),
+    ).toBeNull();
   });
 });

@@ -117,6 +117,10 @@ describe("DatastoreLogViewer", () => {
         target: { value: "PASSWORD" },
       });
       expect(screen.getByText("No matching logs")).toBeInTheDocument();
+      // The service viewer's copy, shared since w5/m125.
+      expect(
+        screen.getByText("No logs match these filters."),
+      ).toBeInTheDocument();
       expect(screen.queryByText(unfilteredTitle)).toBeNull();
 
       // The partial-search branch wraps the same empty state (w4/m140).

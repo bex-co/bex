@@ -626,10 +626,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "时间范围",
     description: "Accessible label for the log time-range select",
   },
-  "keyvalue.logsInstanceLabel": {
-    message: "实例",
-    description: "Accessible label for the log instance (pod) select",
-  },
   "keyvalue.logsAllInstances": {
     message: "所有实例",
     description: "Default option in the instance filter (no filter applied)",
@@ -651,14 +647,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
       "此时间范围内没有日志。Valkey 会记录键空间事件、慢查询和启动消息。",
     description: "Empty state body when no log lines and no filters active",
   },
-  "keyvalue.logsEmptyFilteredBody": {
-    message: "没有匹配当前过滤条件的日志。",
-    description: "Empty state body when filters are active and nothing matches",
-  },
-  "keyvalue.logsEmptyFilteredTitle": {
-    message: "没有匹配的日志",
-    description: "Empty state title when filters are active and nothing matches",
-  },
   "keyvalue.logsUnavailableTitle": {
     message: "日志不可用",
     description: "Empty state title when the logs source is not configured",
@@ -674,10 +662,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "您没有权限查看此 Key Value 存储的日志。",
     description: "Empty state body for a 403 on the logs query",
-  },
-  "keyvalue.logsErrorTitle": {
-    message: "无法加载日志",
-    description: "Empty state title for an unexpected logs fetch error",
   },
 };
 

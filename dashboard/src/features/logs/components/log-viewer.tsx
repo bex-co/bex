@@ -11,6 +11,7 @@ import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton"
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { EmptyState } from "@/common/components/empty-state";
+import { LogEmptyState } from "./log-empty-state";
 import { useLogHistory } from "../hooks/use-log-history";
 import {
   useLiveLogs,
@@ -178,48 +179,26 @@ export function LogViewer({
       />
     );
   } else if (history.timedOut && history.lines.length === 0) {
-    // The search could not cover any of the range in the server's budget;
-    // the same search would time out again (w4/m140).
-    body = (
-      <EmptyState
-        iconName="AlertCircle"
-        title={t("logs.timeoutTitle")}
-        description={t("logs.timeoutBody")}
-      />
-    );
+    body = <LogEmptyState reason="timeout" />;
   } else if (history.error && history.lines.length === 0) {
     body = (
-      <EmptyState
-        iconName="AlertCircle"
+      <LogEmptyState
+        reason="failed"
         title={t("logs.errorTitle")}
-        description={history.error.message}
+        message={history.error.message}
       />
     );
   } else if (history.loading && history.lines.length === 0) {
     body = <LogPanelSkeleton />;
   } else if (lines.length === 0) {
-    const empty = (
-      <EmptyState
-        iconName="ScrollText"
-        title={filtered ? t("logs.emptyFilteredTitle") : t("logs.emptyTitle")}
-        description={
-          filtered ? t("logs.emptyFilteredBody") : t("logs.emptyBody")
-        }
+    body = (
+      <LogEmptyState
+        reason="empty"
+        filtered={filtered}
+        emptyTitle={t("logs.emptyTitle")}
+        emptyBody={t("logs.emptyBody")}
+        pages={history}
       />
-    );
-    // Nothing in the part searched so far, but the rest of the range is still
-    // unsearched: say so, and offer to keep going (w4/m140).
-    body = history.hasMore ? (
-      <div className="space-y-2">
-        <LogTruncationNotice
-          partial
-          loadingOlder={history.loadingOlder}
-          onLoadOlder={history.loadOlder}
-        />
-        {empty}
-      </div>
-    ) : (
-      empty
     );
   } else {
     body = (

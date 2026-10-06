@@ -1,6 +1,38 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import type { useTranslations } from "@/common/hooks/use-translations";
+import { blueprintKindLabel } from "@/features/blueprints/lib/kind-labels";
 import { protectedConfirmationFromError } from "@/features/services/lib/protected-confirmation";
+import type { BlueprintValidationError } from "@/features/blueprints/types";
+
+/** bex-api's code for a repo+branch a live Blueprint already tracks (w4/m125). */
+const BLUEPRINT_CONNECTION_CONFLICT = "BLUEPRINT_CONNECTION_CONFLICT";
+/** bex-api's code for a resource another Blueprint manages (w8/m23). */
+const BLUEPRINT_RESOURCE_CONFLICT = "BLUEPRINT_RESOURCE_CONFLICT";
+
+/**
+ * True when every validation problem is one an explicit takeover confirmation
+ * resolves — a resource already owned by another blueprint (w8/m23), or a
+ * repo+branch a live blueprint already tracks (w4/m125) — read from each
+ * problem's code, never its wording (w5/m125).
+ *
+ * It is what keeps Deploy reachable in that case. Blocking Deploy on any
+ * invalid preview is right for a manifest that does not parse — there is
+ * nothing to confirm — but for a conflict it is a dead end: the phrase only
+ * arrives in the create's refusal, so a disabled button means the user can
+ * read about a takeover they can never perform.
+ */
+export function isTakeoverOnlyConflict(
+  details: readonly Pick<BlueprintValidationError, "code">[],
+): boolean {
+  return (
+    details.length > 0 &&
+    details.every(
+      ({ code }) =>
+        code === BLUEPRINT_CONNECTION_CONFLICT ||
+        code === BLUEPRINT_RESOURCE_CONFLICT,
+    )
+  );
+}
 
 /**
  * A Blueprint takeover bex-api refused until confirmed, classified from the
@@ -35,7 +67,7 @@ export function blueprintTakeoverFromError(
     if (!phrase) continue;
     const text = (key: string) =>
       typeof ext[key] === "string" ? (ext[key] as string) : "";
-    if (ext["code"] === "BLUEPRINT_CONNECTION_CONFLICT") {
+    if (ext["code"] === BLUEPRINT_CONNECTION_CONFLICT) {
       return {
         kind: "connection",
         phrase,
@@ -45,7 +77,7 @@ export function blueprintTakeoverFromError(
         path: text("path"),
       };
     }
-    if (ext["code"] === "BLUEPRINT_RESOURCE_CONFLICT") {
+    if (ext["code"] === BLUEPRINT_RESOURCE_CONFLICT) {
       return {
         kind: "resource",
         phrase,
@@ -102,12 +134,22 @@ export function takeoverCopy(
       }),
     };
   }
+  const kindLabel = blueprintKindLabel(takeover.resourceKind);
+  const kind = kindLabel ? t(kindLabel) : takeover.resourceKind;
   return {
     title: t("blueprints.takeoverResourceTitle", { name: takeover.resource }),
-    description: t("blueprints.takeoverResourceBody", {
-      kind: takeover.resourceKind,
-      name: takeover.resource,
-      owner: takeover.owningBlueprintId,
-    }),
+    // bex-api names the owner by id, or says "another blueprint" when the
+    // claim has no readable owner: that is copy, not an id, so it is ours to
+    // translate.
+    description: takeover.owningBlueprintId.startsWith("blp-")
+      ? t("blueprints.takeoverResourceBody", {
+          kind,
+          name: takeover.resource,
+          owner: takeover.owningBlueprintId,
+        })
+      : t("blueprints.takeoverResourceBodyOtherOwner", {
+          kind,
+          name: takeover.resource,
+        }),
   };
 }
