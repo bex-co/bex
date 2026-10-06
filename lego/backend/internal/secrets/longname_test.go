@@ -19,6 +19,7 @@ package secrets
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"strings"
 	"testing"
@@ -33,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w4/m168: an over-long env key or secret-file name wedged a service — the
@@ -57,7 +59,7 @@ func refusingClient(objs ...client.Object) client.Client {
 			}
 			if len(problems) > 0 {
 				return apierrors.NewInvalid(schema.GroupKind{Kind: "Secret"}, sec.Name,
-					field.ErrorList{field.Invalid(field.NewPath("data").Key("…"), "…", strings.Join(problems, "; "))})
+					field.ErrorList{field.Invalid(field.NewPath("data").Key(k), k, strings.Join(problems, "; "))})
 			}
 		}
 		return nil
@@ -164,6 +166,66 @@ func TestSingleKeyWritesRestoreTheStoreWhenProjectionIsRefused(t *testing.T) {
 	})
 }
 
+// TestRefusedProjectionNamesTheKeyAndRule (w5/m119): when Kubernetes refuses
+// a projected Secret, the 400 names the refused key once and the rule from the
+// refusal's cause, under the name refusal's code and params. Before, every such
+// refusal read "the change cannot be applied to the service".
+func TestRefusedProjectionNamesTheKeyAndRule(t *testing.T) {
+	ctx := context.Background()
+	for name, tc := range map[string]struct {
+		write      func(*Service) error
+		code, key  string
+		paramField string
+	}{
+		"env var": {func(svc *Service) error {
+			_, err := svc.SetEnvVar(ctx, "web", "POISON", EnvVarWrite{Value: "v"})
+			return err
+		}, "ENVIRONMENT_VARIABLE_INVALID", "POISON", "key"},
+		"secret file": {func(svc *Service) error {
+			_, err := svc.SetSecretFile(ctx, "web", "poison.txt", "c")
+			return err
+		}, "SECRET_FILE_INVALID", "poison.txt", "name"},
+		"batch patch": {func(svc *Service) error {
+			_, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{SaveMode: SaveModeDeploy, EnvVars: []EnvVarPatch{{Key: "POISON", Value: "v"}}})
+			return err
+		}, "ENVIRONMENT_VARIABLE_INVALID", "POISON", "key"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := tc.write(refusingService(newFakeSecretStore()))
+			var coded *core.CodedError
+			if !errors.As(err, &coded) || coded.Code != tc.code || !errors.Is(err, core.ErrBadRequest) || coded.Params["field"] != tc.paramField {
+				t.Fatalf("refused projection = %v (%#v), want a 400 coded %s for field %q", err, coded, tc.code, tc.paramField)
+			}
+			if msg := err.Error(); strings.Count(msg, fmt.Sprintf("%q", tc.key)) != 1 || !strings.Contains(msg, "cannot be applied to the service: poisoned by the test") {
+				t.Fatalf("refused projection says %q, want %q named once, then the rule", msg, tc.key)
+			}
+		})
+	}
+}
+
+// TestRefusedProjectionLeavesOtherRefusalsAlone: only the service's own env and
+// files Secrets name a key. An App refused on a service named x-files is not a
+// secret-file refusal, and x-files-env is that service's env Secret.
+func TestRefusedProjectionLeavesOtherRefusalsAlone(t *testing.T) {
+	refusal := func(gk schema.GroupKind, name string) error {
+		return apierrors.NewInvalid(gk, name, field.ErrorList{field.Invalid(field.NewPath("data").Key("K"), "K", "refused")})
+	}
+	secret := schema.GroupKind{Kind: "Secret"}
+	for _, cause := range []error{
+		refusal(schema.GroupKind{Group: appv1alpha1.SchemeGroupVersion.Group, Kind: "App"}, "x-files"),
+		refusal(secret, "other-env"),
+		errors.New("apiserver unavailable"),
+	} {
+		if got := refusedProjection(cause, "x-files"); got != cause {
+			t.Errorf("refusedProjection(%v) = %v, want the cause unchanged", cause, got)
+		}
+	}
+	var coded *core.CodedError
+	if err := refusedProjection(refusal(secret, "x-files-env"), "x-files"); !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_VARIABLE_INVALID" {
+		t.Errorf("x-files-env refused = %v, want ENVIRONMENT_VARIABLE_INVALID", err)
+	}
+}
+
 func TestEmptyPriorPatchFailureLeavesNoFileListed(t *testing.T) {
 	store := newFakeSecretStore()
 	svc := refusingService(store)
@@ -200,10 +262,7 @@ func TestTwoStoredUnprojectableNamesCanEachBeDeleted(t *testing.T) {
 		t.Fatalf("SetSecretFile(ok.txt) after recovery = %v", err)
 	}
 	stored := store.m[filesPath("web")]
-	projected := map[string]string{}
-	for k, v := range getSecret(t, svc.Client, "web-files").Data {
-		projected[k] = string(v)
-	}
+	projected := secretData(t, svc.Client, "web-files")
 	if !maps.Equal(stored, projected) || !maps.Equal(stored, map[string]string{"ok.txt": "fine"}) {
 		t.Fatalf("store %+v must equal the projected Secret %+v", stored, projected)
 	}
