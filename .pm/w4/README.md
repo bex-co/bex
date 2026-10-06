@@ -202,6 +202,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **208** — [BLOCKER: the dashboard dependency-audit gate now fails every deploy (new seroval/undici/busboy/… advisories)](208.md) ← infinite /qa-find-bugs loop62 2026-10-06 UTC; blocks w4/m174–m176 reaching production.
+
 - [ ] **207** — [A ~50 s outage right after a service's first deploy produced no `server_failed`/`server_available` at all](207.md) ← infinite /qa-find-bugs loop61 2026-10-06 UTC (cause unverified; 1 of 3 runs).
 
 - [ ] **206** — [Blueprint apply creates a service, then 400s on an unknown `fromService` target, leaving it half-configured](206.md) ← infinite /qa-find-bugs loop53 2026-10-05 UTC.
