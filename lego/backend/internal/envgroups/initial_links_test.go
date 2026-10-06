@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -56,13 +57,13 @@ func TestInitialGroupsExistOnFirstAppWrite(t *testing.T) {
 				expectedEnv := []string{envSecretName(ids[0]), envSecretName(ids[1])}
 				expectedFiles := []string{"service-owned-files", filesSecretName(ids[0]), filesSecretName(ids[1])}
 				created, completed := false, false
-				err := svc.WithInitialEnvGroups(ctx, []string{"first", "last"}, "web", app, func() error {
+				err := svc.WithInitialEnvGroups(ctx, []string{"first", "last"}, app, func() error {
 					if !reflect.DeepEqual(app.Spec.EnvFromSecrets, expectedEnv) || !reflect.DeepEqual(app.Spec.FilesFromSecrets, expectedFiles) {
 						t.Fatalf("first observable App lacks ordered full refs: %+v", app.Spec)
 					}
 					for _, gid := range ids {
 						m, err := svc.readMeta(ctx, gid)
-						if err != nil || !reflect.DeepEqual(m.links, []string{"web"}) {
+						if err != nil || !reflect.DeepEqual(m.links, []string{core.AppPublicID(app)}) {
 							t.Fatalf("membership not reserved before create: %+v err=%v", m, err)
 						}
 					}

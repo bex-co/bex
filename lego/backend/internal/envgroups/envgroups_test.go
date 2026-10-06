@@ -1606,33 +1606,41 @@ func TestCreateEnvGroupPerWorkspaceQuota(t *testing.T) {
 	}
 }
 
-// w4/183: deleting a linked service must not strand its row in the group —
-// unlink drops a link whose service is gone, like DeleteEnvGroup's detach.
+// w4/183: deleting a linked service must not strand its row in the group.
+// A link is the service's id (w5/m120), so unlinking that id once the service
+// is gone drops the row.
 func TestEnvGroup_UnlinkDropsALinkWhoseServiceWasDeleted(t *testing.T) {
-	svc := newService(newFakeStore(), sampleApp("web"))
+	appID := id.New(id.Service)
+	svc := newService(newFakeStore(), apiApp("web", appID))
 	ctx := context.Background()
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
 		t.Fatalf("LinkService: %v", err)
 	}
+	if got, _ := svc.GetEnvGroup(ctx, g.ID); !slices.Equal(got.ServiceLinks, []string{appID}) {
+		t.Fatalf("linking by name stored %v, want the service id %s", got.ServiceLinks, appID)
+	}
 	if err := svc.Client.Delete(ctx, getApp(t, svc.Client, "web")); err != nil {
 		t.Fatalf("delete service: %v", err)
 	}
 
-	if err := svc.UnlinkService(ctx, g.ID, "web"); err != nil {
+	if err := svc.UnlinkService(ctx, g.ID, appID); err != nil {
 		t.Fatalf("UnlinkService after the service was deleted = %v, want nil", err)
 	}
 	if got, _ := svc.GetEnvGroup(ctx, g.ID); len(got.ServiceLinks) != 0 {
 		t.Fatalf("group should forget the deleted service: %+v", got.ServiceLinks)
 	}
-	// A name the group never linked still reports not found.
-	if err := svc.UnlinkService(ctx, g.ID, "never-linked"); !errors.Is(err, core.ErrNotFound) {
-		t.Fatalf("unlink of an unknown, unlinked service = %v, want ErrNotFound", err)
+	// A service the group never linked still reports not found.
+	for _, never := range []string{id.New(id.Service), "never-linked"} {
+		if err := svc.UnlinkService(ctx, g.ID, never); !errors.Is(err, core.ErrNotFound) {
+			t.Fatalf("unlink of %q, never linked = %v, want ErrNotFound", never, err)
+		}
 	}
 }
 
-// The stale-link path trusts only true absence: AuthorizeApp also answers not
-// found for a service hidden from the caller, and such a link must survive.
+// The stale-link path drops only a service id. A hand-applied service has no
+// id and is linked by its name, which another caller may be unable to see:
+// such a link survives a not-found.
 func TestEnvGroup_StaleUnlinkKeepsALinkWhoseServiceStillExists(t *testing.T) {
 	svc := newService(newFakeStore(), sampleApp("web"))
 	ctx := context.Background()
@@ -1641,7 +1649,7 @@ func TestEnvGroup_StaleUnlinkKeepsALinkWhoseServiceStillExists(t *testing.T) {
 		t.Fatalf("LinkService: %v", err)
 	}
 
-	err := svc.unlinkDeletedService(ctx, g.ID, "web", core.ErrNotFound)
+	err := svc.dropDeletedLink(ctx, g.ID, "web", core.ErrNotFound)
 	if !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("stale unlink of a live service = %v, want the not-found answer kept", err)
 	}

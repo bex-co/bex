@@ -21,6 +21,7 @@ import (
 	"errors"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // WorkspacePurger removes environment groups from the out-of-cascade OpenBao
@@ -75,6 +76,33 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 			return err
 		}
 		if err := p.deleteGroupArtifacts(ctx, tenantID, gid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// UnlinkApp removes a service being deleted from every group its spec mounts
+// (w5/m120). It is a step of a delete the caller was already authorized for,
+// like secrets.WorkspacePurger.PurgeApp, so it checks nothing again. A group
+// already gone, or another workspace's, is skipped; a group listing the
+// service without mounting it is pruned by its next patch.
+func (p *WorkspacePurger) UnlinkApp(ctx context.Context, a *appv1alpha1.App) error {
+	if p.Store == nil {
+		return nil
+	}
+	for _, gid := range mountedGroups(a) {
+		m, err := p.readMeta(ctx, gid)
+		if errors.Is(err, core.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if m.workspace != a.Labels[core.LabelTenant] {
+			continue
+		}
+		if err := p.dropLinks(ctx, gid, m.workspace, linkAliases(a)...); err != nil && !errors.Is(err, core.ErrNotFound) {
 			return err
 		}
 	}

@@ -221,8 +221,12 @@ func filesSecretName(gid string) string { return gid + "-files" }
 // group created (or never re-read) while the control-plane store is off; see
 // readMeta's migration for how a pre-attribution group gets one.
 type meta struct {
-	name        string
+	name string
+	// links are the linked services' ids (links.go). linksByID marks a group
+	// whose links were written as ids, at create or by migrateLinks; a group
+	// without it may still hold names stored before w5/m120.
 	links       []string
+	linksByID   bool
 	workspace   string
 	environment string
 	createdAt   string
@@ -291,6 +295,7 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 	if len(matched) > maxHydratedEnvGroups {
 		matched = matched[:maxHydratedEnvGroups]
 	}
+	matched = s.migrateListedLinks(ctx, matched)
 	out := make([]EnvGroupView, 0, len(matched))
 	for _, group := range matched {
 		view, err := s.viewFromMeta(ctx, group.id, group.meta)
@@ -312,6 +317,38 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 		out = append(out, view)
 	}
 	return out, nil
+}
+
+// migrateListedLinks runs migrateLinks over a list read's groups, listing each
+// workspace's Apps once. A group deleted meanwhile leaves the list; any other
+// failure keeps the group's stored links, and a later read migrates it.
+func (s *Service) migrateListedLinks(ctx context.Context, groups []scopedMeta) []scopedMeta {
+	candidates := map[string][]appv1alpha1.App{}
+	out := groups[:0]
+	for _, group := range groups {
+		if needsLinkMigration(group.meta) {
+			apps, listed := candidates[group.workspace]
+			var err error
+			if !listed {
+				apps, err = s.linkCandidates(ctx, group.workspace)
+				if err == nil {
+					candidates[group.workspace] = apps
+				}
+			}
+			var migrated meta
+			if err == nil {
+				migrated, err = s.migrateLinks(ctx, group.id, group.meta, apps)
+			}
+			switch {
+			case errors.Is(err, core.ErrNotFound):
+				continue
+			case err == nil:
+				group.meta = migrated
+			}
+		}
+		out = append(out, group)
+	}
+	return out
 }
 
 func availabilityFromConflict(err error) string {
@@ -570,19 +607,20 @@ func (s *Service) prepareCreateServices(
 		if serviceID == "" {
 			return nil, nil, fmt.Errorf("%w: serviceId is required", core.ErrBadRequest)
 		}
-		if _, ok := seen[serviceID]; ok {
-			continue
-		}
 		a, err := s.findCreateService(ctx, serviceID, workspace)
 		if err != nil {
 			return nil, nil, fmt.Errorf("serviceId %q: %w", serviceID, err)
 		}
-		if err := validateGroupServiceEnvironment(environmentID, serviceID, a.Labels); err != nil {
+		key := core.AppPublicID(a)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		if err := validateGroupServiceEnvironment(environmentID, key, a.Labels); err != nil {
 			return nil, nil, err
 		}
-		seen[serviceID] = struct{}{}
+		seen[key] = struct{}{}
 		apps = append(apps, a)
-		links = append(links, serviceID)
+		links = append(links, key)
 	}
 	return apps, links, nil
 }
@@ -687,7 +725,7 @@ func (s *Service) persistCreate(
 			return nil, rollback(err)
 		}
 		if skipped {
-			pending = append(pending, a.Name)
+			pending = append(pending, core.AppPublicID(a))
 		}
 		patched = append(patched, before)
 	}
@@ -1074,7 +1112,7 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 	if err != nil {
 		return err
 	}
-	return s.linkFetched(ctx, gid, service, a)
+	return s.linkFetched(ctx, gid, a)
 }
 
 // linkFetched is LinkService's post-authorize body, shared with LinkEnvGroup (the
@@ -1082,7 +1120,7 @@ func (s *Service) LinkService(ctx context.Context, gid, service string) error {
 // appends the group's Secret refs to the already-fetched App, rolls it, and
 // records the service in the group's link set via CAS so a concurrent link to
 // another service is preserved (w4/m97).
-func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1alpha1.App) error {
+func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.App) error {
 	m, err := s.fetchGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return err
@@ -1102,10 +1140,11 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 	// Blueprint re-apply may already control an App linked by an earlier caller;
 	// returning before this check would let a write-only caller retain the link
 	// while replacing the workload with exfiltration code.
-	if slices.Contains(m.links, service) {
+	key := core.AppPublicID(a)
+	if slices.Contains(m.links, key) {
 		return nil
 	}
-	if err := validateGroupServiceEnvironment(m.environment, service, a.Labels); err != nil {
+	if err := validateGroupServiceEnvironment(m.environment, key, a.Labels); err != nil {
 		return err
 	}
 	if _, err := s.rollLinked(ctx, a, s.now(), func(a *appv1alpha1.App) {
@@ -1115,10 +1154,11 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 		return err
 	}
 	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
-		if err := validateGroupServiceEnvironment(cur.environment, service, a.Labels); err != nil {
+		if err := validateGroupServiceEnvironment(cur.environment, key, a.Labels); err != nil {
 			return meta{}, err
 		}
-		cur.links = addString(cur.links, service)
+		cur.linksByID = cur.linksByID || len(cur.links) == 0
+		cur.links = addString(cur.links, key)
 		cur.updatedAt = s.now()
 		return cur, nil
 	})
@@ -1192,7 +1232,8 @@ func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp stri
 }
 
 // UnlinkService reverses LinkService: drop the group's Secret refs from the
-// service, roll it, and remove it from the group's link set. Idempotent.
+// service, roll it, and remove it from the group's link set. Idempotent: a
+// service the group neither lists nor mounts is left alone, and not restarted.
 func (s *Service) UnlinkService(ctx context.Context, gid, service string) error {
 	// Authorize+fetch against the service's OWN workspace (w6/m17) — reused
 	// below via detachFetched, so this is the only fetch of `service` UnlinkService
@@ -1201,7 +1242,7 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	// bare GetApp: it must not fan out into one audit event per linked service.
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
 	if errors.Is(err, core.ErrNotFound) {
-		return s.unlinkDeletedService(ctx, gid, service, err)
+		return s.dropDeletedLink(ctx, gid, service, err)
 	}
 	if err != nil {
 		return err
@@ -1217,14 +1258,17 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	if a.Labels[core.LabelTenant] != m.workspace {
 		return core.ErrForbidden
 	}
-	if err := s.detachFetched(ctx, gid, a); err != nil {
-		return err
+	mounted := mountsGroup(a, gid)
+	aliases := linkAliases(a)
+	if !mounted && len(removeString(m.links, aliases...)) == len(m.links) {
+		return nil
 	}
-	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
-		cur.links = removeString(cur.links, service)
-		cur.updatedAt = s.now()
-		return cur, nil
-	})
+	if mounted {
+		if err := s.detachFetched(ctx, gid, a); err != nil {
+			return err
+		}
+	}
+	err = s.dropLinks(ctx, gid, m.workspace, aliases...)
 	if errors.Is(err, core.ErrNotFound) {
 		// Group already deleted — App detach is the durable outcome.
 		s.RecordAppConfigChanged(ctx, a, core.AuditVerbUnlinkService)
@@ -1237,14 +1281,17 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	return nil
 }
 
-// unlinkDeletedService drops a link whose service no longer exists (w4/183) —
-// the per-service twin of detach's tolerance, without which a deleted service
-// leaves a row only deleting the whole group can clear. The group's own
-// authorization is the gate and only its metadata is written. AuthorizeApp
-// also answers not-found for a service the caller may not see, so the link is
-// dropped only when no App in the group's workspace still answers to that
-// identifier; otherwise notFound is returned unchanged.
-func (s *Service) unlinkDeletedService(ctx context.Context, gid, service string, notFound error) error {
+// dropDeletedLink drops a link whose service no longer exists (w4/183), on the
+// group's own authorization, without which only deleting the whole group could
+// clear the row. Ids are never reused, and AuthorizeApp answers a service id
+// it finds but the caller may not touch with a refusal, not not-found: a link
+// equal to an id no service answers to is a deleted service's. A name keeps
+// the not-found answer, since it may be a live service's the caller cannot
+// see; a group patch prunes one no service mounting the group answers to.
+func (s *Service) dropDeletedLink(ctx context.Context, gid, service string, notFound error) error {
+	if !isServiceID(service) {
+		return notFound
+	}
 	m, err := s.fetchGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return err
@@ -1252,27 +1299,7 @@ func (s *Service) unlinkDeletedService(ctx context.Context, gid, service string,
 	if !slices.Contains(m.links, service) {
 		return notFound
 	}
-	// Only a stale unlink reaches here, so a full list is affordable; an
-	// unlabeled (legacy) App may still be the group's.
-	var apps appv1alpha1.AppList
-	if err := s.Client.List(ctx, &apps); err != nil {
-		return err
-	}
-	for i := range apps.Items {
-		l := apps.Items[i].Labels
-		if tenant := l[core.LabelTenant]; tenant != "" && tenant != m.workspace {
-			continue
-		}
-		if apps.Items[i].Name == service || l[core.LabelAppID] == service || l[core.LabelServiceName] == service {
-			return notFound
-		}
-	}
-	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
-		cur.links = removeString(cur.links, service)
-		cur.updatedAt = s.now()
-		return cur, nil
-	})
-	return err
+	return s.dropLinks(ctx, gid, m.workspace, service)
 }
 
 // detach removes the group's Secret refs from a service and rolls it, tolerating a
@@ -1284,6 +1311,9 @@ func (s *Service) detach(ctx context.Context, gid, service string) error {
 	}
 	if err != nil {
 		return err
+	}
+	if !mountsGroup(a, gid) {
+		return nil // whatever the link named, this service does not mount the group
 	}
 	return s.detachFetched(ctx, gid, a)
 }
@@ -1299,20 +1329,15 @@ func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.
 	return err
 }
 
-// rollOne bumps spec.restartedAt on one linked service so it picks up the
-// group's changed Secret data (the Secret refs are already on the spec from the
-// link). It returns core.ErrNotFound for a since-deleted service, which
-// PatchEnvironment's rollout loop tolerates and self-heals.
+// rollOne bumps spec.restartedAt on one fetched linked service so it picks up
+// the group's changed Secret data (the Secret refs are already on the spec from
+// the link).
 //
 // A service with Auto-Deploy off is left entirely alone: the group's Secret
 // already holds the new values, and not touching spec.restartedAt is exactly
 // what keeps the running pod on its current release until the owner deploys.
 // It reports whether it skipped for that reason.
-func (s *Service) rollOne(ctx context.Context, service, stamp string) (bool, error) {
-	a, err := s.GetApp(ctx, core.RelCanCreate, service)
-	if err != nil {
-		return false, err
-	}
+func (s *Service) rollOne(ctx context.Context, a *appv1alpha1.App, stamp string) (bool, error) {
 	if autoDeployGated(a) {
 		return true, nil
 	}
@@ -1498,6 +1523,9 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 	if len(writes) == 0 {
 		return nil
 	}
+	if m, err = s.migrateGroupLinks(ctx, gid, m); err != nil {
+		return err
+	}
 	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
 	return err
 }
@@ -1527,7 +1555,7 @@ func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error 
 	if !found {
 		return fmt.Errorf("%w: env group %q does not exist", core.ErrBadRequest, name)
 	}
-	return s.linkFetched(ctx, gid, service, a)
+	return s.linkFetched(ctx, gid, a)
 }
 
 // findGroupByName resolves an env group by its display name WITHIN THE ACTING
@@ -1743,7 +1771,7 @@ func (s *Service) fetchGroup(ctx context.Context, relation, gid string) (meta, e
 	if err := s.AuthorizeLabeled(ctx, relation, map[string]string{core.LabelTenant: m.workspace}); err != nil {
 		return meta{}, err
 	}
-	return m, nil
+	return s.migrateGroupLinks(ctx, gid, m)
 }
 
 // authorizeGroupSensitiveFresh is the sink-adjacent, uncached authorization
@@ -1923,6 +1951,7 @@ func decodeMeta(raw map[string]string) meta {
 		environment: raw["environment"],
 		createdAt:   raw["createdAt"],
 		updatedAt:   raw["updatedAt"],
+		linksByID:   raw["linksByID"] == "1",
 	}
 	if l := strings.TrimSpace(raw["links"]); l != "" {
 		m.links = strings.Split(l, ",")
@@ -1934,6 +1963,7 @@ func decodeMeta(raw map[string]string) meta {
 // go through mutateMetaCAS so concurrent writers cannot silently replace each
 // other's committed fields (w4/m97).
 func (s *Service) writeMeta(ctx context.Context, gid string, m meta) error {
+	m.linksByID = true
 	return s.writeMetaCreate(ctx, gid, m)
 }
 
@@ -2059,9 +2089,9 @@ func addString(list []string, s string) []string {
 	return append(list, s)
 }
 
-// removeString returns list without any occurrence of s. It clones rather than
-// compacting in place so no caller's retained slice is mutated behind its back
-// (the same contract secrets.removeString keeps).
-func removeString(list []string, s string) []string {
-	return slices.DeleteFunc(slices.Clone(list), func(v string) bool { return v == s })
+// removeString returns list without any occurrence of the drop values. It
+// clones rather than compacting in place so no caller's retained slice is
+// mutated behind its back (the same contract secrets.removeString keeps).
+func removeString(list []string, drop ...string) []string {
+	return slices.DeleteFunc(slices.Clone(list), func(v string) bool { return slices.Contains(drop, v) })
 }

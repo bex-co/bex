@@ -148,7 +148,7 @@ type DeployRequest struct {
 type EnvGroupApplier interface {
 	// WithInitialEnvGroups prepares ordered refs and membership around first
 	// creation. complete publishes durable creation only after links commit.
-	WithInitialEnvGroups(ctx context.Context, names []string, service string, a *appv1alpha1.App, create, complete func() error) error
+	WithInitialEnvGroups(ctx context.Context, names []string, a *appv1alpha1.App, create, complete func() error) error
 	// GroupNames returns every existing env group's name, for pre-flighting an
 	// unknown fromGroup reference before any write (all-or-nothing).
 	GroupNames(ctx context.Context) ([]string, error)

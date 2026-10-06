@@ -30,6 +30,10 @@ import (
 // group surfaces ENV_GROUP_METADATA_CONFLICT instead of spinning.
 const metaCASRetries = 3
 
+// errMetaUnchanged is what a mutateMetaCAS mutate returns when it has nothing
+// to write: the call returns the current metadata without a write.
+var errMetaUnchanged = errors.New("env group metadata unchanged")
+
 func envGroupMetadataConflict() error {
 	return core.NewConflictError(
 		"ENV_GROUP_METADATA_CONFLICT",
@@ -39,7 +43,7 @@ func envGroupMetadataConflict() error {
 }
 
 func encodeMeta(m meta) map[string]string {
-	return map[string]string{
+	raw := map[string]string{
 		"name":        m.name,
 		"links":       strings.Join(m.links, ","),
 		"workspace":   m.workspace,
@@ -47,6 +51,10 @@ func encodeMeta(m meta) map[string]string {
 		"createdAt":   m.createdAt,
 		"updatedAt":   m.updatedAt,
 	}
+	if m.linksByID {
+		raw["linksByID"] = "1"
+	}
+	return raw
 }
 
 // isEditableMeta reports whether raw is a full group metadata map (not a
@@ -111,6 +119,9 @@ func (s *Service) mutateMetaCAS(ctx context.Context, gid, workspace string, muta
 			return meta{}, core.ErrNotFound
 		}
 		next, err := mutate(current)
+		if errors.Is(err, errMetaUnchanged) {
+			return current, nil
+		}
 		if err != nil {
 			return meta{}, err
 		}

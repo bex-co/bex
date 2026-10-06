@@ -1301,7 +1301,7 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 			}
 		}
 		// A namespace migration may temporarily leave two CRs for one public id.
-		key := tenant + "/" + appPublicID(a)
+		key := tenant + "/" + AppPublicID(a)
 		if !seen[key] {
 			matches = append(matches, a)
 			seen[key] = true
@@ -1315,7 +1315,7 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 	}
 	ids := make([]string, len(matches))
 	for i, m := range matches {
-		ids[i] = appPublicID(m)
+		ids[i] = AppPublicID(m)
 	}
 	return nil, NewConflictError("SERVICE_NAME_AMBIGUOUS",
 		fmt.Sprintf("several visible services are named %q (%s); select a workspace or address it by id", name, strings.Join(ids, ", ")),
@@ -1357,7 +1357,7 @@ func (b *Base) refuseAmbiguousName(ctx context.Context, name string, chosen *app
 	if err := b.Client.List(ctx, &list, client.MatchingLabels{LabelServiceName: name}); err != nil {
 		return err
 	}
-	ids := []string{appPublicID(chosen)}
+	ids := []string{AppPublicID(chosen)}
 	for i := range list.Items {
 		other := &list.Items[i]
 		tenant := other.Labels[LabelTenant]
@@ -1370,7 +1370,7 @@ func (b *Base) refuseAmbiguousName(ctx context.Context, name string, chosen *app
 			}
 			return err
 		}
-		ids = append(ids, appPublicID(other))
+		ids = append(ids, AppPublicID(other))
 	}
 	if len(ids) == 1 {
 		return nil
@@ -1380,9 +1380,9 @@ func (b *Base) refuseAmbiguousName(ctx context.Context, name string, chosen *app
 		map[string]any{"name": name, "serviceIds": ids})
 }
 
-// appPublicID is an App's srv- id, falling back to the CR name for a legacy
+// AppPublicID is an App's srv- id, falling back to the CR name for a legacy
 // App that predates the id label.
-func appPublicID(a *appv1alpha1.App) string {
+func AppPublicID(a *appv1alpha1.App) string {
 	if id := a.Labels[LabelAppID]; id != "" {
 		return id
 	}
@@ -1413,7 +1413,7 @@ func NotFoundIfDeleting(obj client.Object) error {
 // its name is reused before the audit insert completes. Hand-applied CRs have
 // no control-plane id and retain the namespace-unique name fallback.
 func canonicalAppTarget(a *appv1alpha1.App) string {
-	return ServiceTarget(appPublicID(a))
+	return ServiceTarget(AppPublicID(a))
 }
 
 // AuthorizeDatabase is AuthorizeApp for a managed Postgres Database — same

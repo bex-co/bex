@@ -304,9 +304,16 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	affected := make([]string, 0, len(m.links))
 	var stale []string
 	for _, serviceID := range m.links {
-		var actionErr error
+		a, actionErr := s.GetApp(ctx, core.RelCanCreate, serviceID)
+		if actionErr == nil && !mountsGroup(a, gid) {
+			// Not the service this link named: a name stored before links
+			// were ids can answer for an unrelated, newer service (w5/m120).
+			actionErr = core.ErrNotFound
+		}
 		var skipped bool
-		if patch.SaveMode == SaveModeRebuild {
+		switch {
+		case actionErr != nil:
+		case patch.SaveMode == SaveModeRebuild:
 			// An explicit rebuild is the caller's deliberate choice, not the
 			// implicit fan-out Render gates on Auto-Deploy, so it is ungated.
 			if s.RebuildService == nil {
@@ -314,8 +321,8 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 			} else {
 				actionErr = s.RebuildService(ctx, serviceID)
 			}
-		} else {
-			skipped, actionErr = s.rollOne(ctx, serviceID, s.now())
+		default:
+			skipped, actionErr = s.rollOne(ctx, a, s.now())
 		}
 		if errors.Is(actionErr, core.ErrNotFound) {
 			stale = append(stale, serviceID)
@@ -335,33 +342,20 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	return result, nil
 }
 
-// pruneStaleLinks removes since-deleted services (surfaced as core.ErrNotFound
-// while rolling) from the group's persisted link set. It runs after the content
-// commit has already succeeded and the revision was released, so it is
-// best-effort self-heal: a failure to persist the pruned set must never turn a
-// successful rollout into an error response (the exact false-failure this
-// milestone removes) — the write error is swallowed and the next patch
-// re-discovers and re-prunes. Removals apply to the *current* link set so a
-// concurrently added valid link is preserved (w4/m97).
+// pruneStaleLinks removes stale links from the group's persisted link set:
+// since-deleted services, and entries answering for a service that does not
+// mount the group (both surfaced as core.ErrNotFound while rolling). It runs
+// after the content commit has already succeeded and the revision was
+// released, so it is best-effort self-heal: a failure to persist the pruned
+// set must never turn a successful rollout into an error response (the exact
+// false-failure this milestone removes) — the write error is swallowed and the
+// next patch re-discovers and re-prunes. Removals apply to the *current* link
+// set so a concurrently added valid link is preserved (w4/m97).
 func (s *Service) pruneStaleLinks(ctx context.Context, gid string, m meta, stale []string) {
 	if len(stale) == 0 {
 		return
 	}
-	remove := map[string]struct{}{}
-	for _, serviceID := range stale {
-		remove[serviceID] = struct{}{}
-	}
-	_, _ = s.mutateMetaCAS(context.WithoutCancel(ctx), gid, m.workspace, func(cur meta) (meta, error) {
-		next := make([]string, 0, len(cur.links))
-		for _, id := range cur.links {
-			if _, drop := remove[id]; !drop {
-				next = append(next, id)
-			}
-		}
-		cur.links = next
-		cur.updatedAt = s.now()
-		return cur, nil
-	})
+	_ = s.dropLinks(context.WithoutCancel(ctx), gid, m.workspace, stale...)
 }
 
 func (s *Service) releaseGroupPatch(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, claimVersion, generation uint64, state string) (uint64, error) {
