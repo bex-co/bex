@@ -173,24 +173,28 @@ type CreateEnvGroupRequest struct {
 	ServiceIDs    []string            `json:"serviceIds,omitempty"`
 }
 
-// EnvGroupView is the Render-shaped env-group object. EnvVars/SecretFiles carry
-// keys/names only (no secret material) — a list/get never leaks values; the
-// per-var / per-file reveal verbs return them under the sensitive scope.
+// EnvGroupView is the env-group object every surface starts from: REST and MCP
+// answer it as Render's envGroup (renderEnvGroup), GraphQL field by field.
+// EnvVars/SecretFiles carry keys/names only (no secret material) — a list/get
+// never leaks values; the per-var / per-file reveal verbs return them under the
+// sensitive scope.
 // OwnerID/CreatedAt/UpdatedAt (w6/m24, Render's `ownerId`/timestamps) are sourced
 // from the group's own stored meta, never faked when unknown (omitempty) —
 // AppView.OwnerID's own convention. EnvironmentID is the optional Render-shaped
 // Environment membership added by w6/m24/t011.
 type EnvGroupView struct {
-	ID            string           `json:"id"`
-	Name          string           `json:"name"`
-	OwnerID       string           `json:"ownerId,omitempty"`
-	EnvironmentID string           `json:"environmentId,omitempty"`
-	ServiceLinks  []string         `json:"serviceLinks"`
-	EnvVars       []EnvVarView     `json:"envVars"`
-	SecretFiles   []SecretFileView `json:"secretFiles"`
-	CreatedAt     string           `json:"createdAt,omitempty"`
-	UpdatedAt     string           `json:"updatedAt,omitempty"`
-	Revision      string           `json:"revision,omitempty"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	OwnerID       string `json:"ownerId,omitempty"`
+	EnvironmentID string `json:"environmentId,omitempty"`
+	// ServiceLinks is the stored link set, linked services' srv- ids. GraphQL
+	// lists them; REST and MCP name each service instead (w5/092).
+	ServiceLinks []string         `json:"-"`
+	EnvVars      []EnvVarView     `json:"envVars"`
+	SecretFiles  []SecretFileView `json:"secretFiles"`
+	CreatedAt    string           `json:"createdAt,omitempty"`
+	UpdatedAt    string           `json:"updatedAt,omitempty"`
+	Revision     string           `json:"revision,omitempty"`
 	// Availability is empty for a healthy idle group. "busy" means an active
 	// content/clone lease; "repair_required" means automatic recovery failed.
 	// When set, EnvVars/SecretFiles/Revision describe only what is safe to show

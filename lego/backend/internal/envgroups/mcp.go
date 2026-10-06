@@ -110,7 +110,7 @@ type linkEnvGroupArgs struct {
 }
 
 type listEnvGroupsResult struct {
-	EnvGroups []EnvGroupView `json:"envGroups"`
+	EnvGroups []renderEnvGroup `json:"envGroups"`
 }
 
 type okResult struct {
@@ -124,29 +124,30 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List one workspace's environment groups with cursor paging (names, linked services, and env-var keys / secret-file names — no values); Render's name, environment, and timestamp filters are REST-only.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
 		groups, err := s.ListEnvGroups(ctx, core.NamedWorkspace(ctx))
-		if err == nil {
-			groups = pageEnvGroups(groups, in.Cursor, in.Limit, in.Cursor != "" || in.Limit != 0)
+		if err != nil {
+			return nil, listEnvGroupsResult{}, err
 		}
-		return nil, listEnvGroupsResult{EnvGroups: groups}, err
+		page, err := s.renderEnvGroups(ctx, pageEnvGroups(groups, in.Cursor, in.Limit, in.Cursor != "" || in.Limit != 0))
+		return nil, listEnvGroupsResult{EnvGroups: page}, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_env_group",
 		Description: "Get one environment group by id (keys/names + linked services, no values).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		g, err := s.GetEnvGroup(ctx, in.ID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupArgs) (*mcp.CallToolResult, renderEnvGroup, error) {
+		g, err := s.rendered(ctx)(s.GetEnvGroup(ctx, in.ID))
 		return nil, g, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_env_group",
 		Description: "Create an environment group, optionally with initial variables, secret files, and service links in one atomic operation.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		g, err := s.CreateEnvGroup(ctx, CreateEnvGroupRequest{
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, renderEnvGroup, error) {
+		g, err := s.committed(ctx)(s.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 			Name: in.Name, OwnerID: core.NamedWorkspace(ctx),
 			EnvironmentID: in.EnvironmentID, EnvVars: in.EnvVars,
 			SecretFiles: in.SecretFiles, ServiceIDs: in.ServiceIDs,
-		})
+		}))
 		return nil, g, err
 	})
 
@@ -161,30 +162,30 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "rename_env_group",
 		Description: "Rename an environment group without changing its id, contents, or service links.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		g, err := s.RenameEnvGroup(ctx, in.ID, in.Name)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvGroupArgs) (*mcp.CallToolResult, renderEnvGroup, error) {
+		g, err := s.committed(ctx)(s.RenameEnvGroup(ctx, in.ID, in.Name))
 		return nil, g, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "move_env_group",
 		Description: "Move an environment group to a compatible Environment or back to workspace scope without changing sibling memberships.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in moveEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
-		group, err := s.MoveEnvGroup(ctx, in.ID, in.EnvironmentID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in moveEnvGroupArgs) (*mcp.CallToolResult, renderEnvGroup, error) {
+		group, err := s.committed(ctx)(s.MoveEnvGroup(ctx, in.ID, in.EnvironmentID))
 		return nil, group, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "clone_env_group",
 		Description: "Clone variables and secret files server-side into a new group in the selected workspace without copying service links or returning values.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cloneEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cloneEnvGroupArgs) (*mcp.CallToolResult, renderEnvGroup, error) {
 		ownerID := in.OwnerID
 		if ownerID == "" {
 			ownerID = core.NamedWorkspace(ctx)
 		}
-		group, err := s.CloneEnvGroup(ctx, in.ID, CloneEnvGroupRequest{
+		group, err := s.committed(ctx)(s.CloneEnvGroup(ctx, in.ID, CloneEnvGroupRequest{
 			Name: in.Name, OwnerID: ownerID, EnvironmentID: in.EnvironmentID,
-		})
+		}))
 		return nil, group, err
 	})
 

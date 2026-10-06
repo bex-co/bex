@@ -1758,7 +1758,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 		if err := s.Client.List(ctx, &appList, opts...); err == nil {
 			for i := range appList.Items {
 				a := &appList.Items[i]
-				appByName[appServiceName(a)] = a
+				appByName[core.AppPublicName(a)] = a
 			}
 		}
 

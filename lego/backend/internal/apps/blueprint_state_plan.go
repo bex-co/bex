@@ -109,7 +109,7 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		// the plan diffs against; refuse, the way the datastore loops below do,
 		// so the plan never describes a different object than apply touches
 		// (w6/m125).
-		name := appServiceName(app)
+		name := core.AppPublicName(app)
 		if _, duplicate := resolver.services[name]; duplicate {
 			return nil, fmt.Errorf("%w: service name %q is already used more than once in this workspace", core.ErrConflict, name)
 		}
