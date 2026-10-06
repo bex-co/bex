@@ -684,6 +684,61 @@ func gqlInt32Ptr(args map[string]any, key string) *int32 {
 	return &value
 }
 
+// gqlCreateRequest maps createService's arguments onto the neutral
+// CreateRequest: GraphQL's twin of REST's decodeCreateService and MCP's
+// createRequest, so one guard drives every create transport
+// (TestCreateWireFieldsReachTheRequest).
+func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
+	env, err := gqlEnvVarInputs(args, "envVars")
+	if err != nil {
+		return CreateRequest{}, err
+	}
+	_, entriesSet := args["ipAllowListEntries"]
+	_, cidrsSet := args["ipAllowList"]
+	allowList, err := core.ResolveAllowListInputs(
+		gqlutil.AllowList(args["ipAllowListEntries"]), entriesSet,
+		gqlutil.StringList(args["ipAllowList"]), cidrsSet,
+	)
+	if err != nil {
+		return CreateRequest{}, err
+	}
+	return CreateRequest{
+		OwnerID:                 gqlutil.Str(args, "ownerId"),
+		EnvironmentID:           gqlutil.Str(args, "environmentId"),
+		Name:                    args["name"].(string),
+		Type:                    gqlutil.Str(args, "type"),
+		Schedule:                gqlutil.Str(args, "schedule"),
+		Command:                 gqlutil.Str(args, "command"),
+		Repo:                    gqlutil.Str(args, "repo"),
+		Image:                   gqlutil.Str(args, "image"),
+		RegistryCredentialID:    gqlutil.StrPtr(args, "registryCredentialId"),
+		Branch:                  gqlutil.Str(args, "branch"),
+		RootDir:                 gqlutil.Str(args, "rootDir"),
+		BuildFilter:             gqlBuildFilterInput(args, "buildFilter"),
+		Runtime:                 gqlutil.Str(args, "runtime"),
+		BuildCommand:            gqlutil.Str(args, "buildCommand"),
+		StartCommand:            gqlutil.Str(args, "startCommand"),
+		DockerfilePath:          gqlutil.Str(args, "dockerfilePath"),
+		Builder:                 gqlutil.Str(args, "builder"),
+		Plan:                    gqlutil.Str(args, "plan"),
+		AutoDeploy:              gqlutil.BoolPtr(args, "autoDeploy"),
+		NotifyOnFail:            gqlutil.Str(args, "notifyOnFail"),
+		Port:                    int32(gqlutil.Int(args, "port")),
+		Replicas:                int32(gqlutil.Int(args, "replicas")),
+		Env:                     env,
+		SecretFiles:             gqlSecretFileInputs(args, "secretFiles"),
+		PublishPath:             gqlutil.Str(args, "publishPath"),
+		Routes:                  gqlRouteInputs(args, "routes"),
+		Headers:                 gqlHeaderInputs(args, "headers"),
+		HealthCheckPath:         gqlutil.Str(args, "healthCheckPath"),
+		MaxShutdownDelaySeconds: gqlInt32Ptr(args, "maxShutdownDelaySeconds"),
+		PreDeployCommand:        gqlutil.Str(args, "preDeployCommand"),
+		MaintenanceMode:         gqlMaintenanceModeInput(args, "maintenanceMode"),
+		IPAllowList:             allowList,
+		DryRun:                  gqlutil.Bool(args, "dryRun"),
+	}, nil
+}
+
 // customDomainGQLType renders a DomainView as Render's CustomDomain shape.
 // Field names match Render's dashboard operations for custom domains.
 // dnsRecordGQLType renders a DNSRecordView — the DNS record a tenant creates to
@@ -1345,55 +1400,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"dryRun": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				dryRun := gqlutil.Bool(p.Args, "dryRun")
-				env, err := gqlEnvVarInputs(p.Args, "envVars")
+				req, err := gqlCreateRequest(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				_, entriesSet := p.Args["ipAllowListEntries"]
-				_, cidrsSet := p.Args["ipAllowList"]
-				allowList, err := core.ResolveAllowListInputs(
-					gqlutil.AllowList(p.Args["ipAllowListEntries"]), entriesSet,
-					gqlutil.StringList(p.Args["ipAllowList"]), cidrsSet,
-				)
-				if err != nil {
-					return nil, err
-				}
-				return s.Create(p.Context, CreateRequest{
-					OwnerID:                 gqlutil.Str(p.Args, "ownerId"),
-					EnvironmentID:           gqlutil.Str(p.Args, "environmentId"),
-					Name:                    p.Args["name"].(string),
-					Type:                    gqlutil.Str(p.Args, "type"),
-					Schedule:                gqlutil.Str(p.Args, "schedule"),
-					Command:                 gqlutil.Str(p.Args, "command"),
-					Repo:                    gqlutil.Str(p.Args, "repo"),
-					Image:                   gqlutil.Str(p.Args, "image"),
-					RegistryCredentialID:    gqlutil.StrPtr(p.Args, "registryCredentialId"),
-					Branch:                  gqlutil.Str(p.Args, "branch"),
-					RootDir:                 gqlutil.Str(p.Args, "rootDir"),
-					BuildFilter:             gqlBuildFilterInput(p.Args, "buildFilter"),
-					Runtime:                 gqlutil.Str(p.Args, "runtime"),
-					BuildCommand:            gqlutil.Str(p.Args, "buildCommand"),
-					StartCommand:            gqlutil.Str(p.Args, "startCommand"),
-					DockerfilePath:          gqlutil.Str(p.Args, "dockerfilePath"),
-					Builder:                 gqlutil.Str(p.Args, "builder"),
-					Plan:                    gqlutil.Str(p.Args, "plan"),
-					AutoDeploy:              gqlutil.BoolPtr(p.Args, "autoDeploy"),
-					NotifyOnFail:            gqlutil.Str(p.Args, "notifyOnFail"),
-					Port:                    int32(gqlutil.Int(p.Args, "port")),
-					Replicas:                int32(gqlutil.Int(p.Args, "replicas")),
-					Env:                     env,
-					SecretFiles:             gqlSecretFileInputs(p.Args, "secretFiles"),
-					PublishPath:             gqlutil.Str(p.Args, "publishPath"),
-					Routes:                  gqlRouteInputs(p.Args, "routes"),
-					Headers:                 gqlHeaderInputs(p.Args, "headers"),
-					HealthCheckPath:         gqlutil.Str(p.Args, "healthCheckPath"),
-					MaxShutdownDelaySeconds: gqlInt32Ptr(p.Args, "maxShutdownDelaySeconds"),
-					PreDeployCommand:        gqlutil.Str(p.Args, "preDeployCommand"),
-					MaintenanceMode:         gqlMaintenanceModeInput(p.Args, "maintenanceMode"),
-					IPAllowList:             allowList,
-					DryRun:                  dryRun,
-				})
+				return s.Create(p.Context, req)
 			},
 		},
 		// deleteService: delete a service (the delete half of the lifecycle).

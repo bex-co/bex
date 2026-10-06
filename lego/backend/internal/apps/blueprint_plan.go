@@ -103,8 +103,9 @@ func blueprintServiceOmission(name string) BlueprintOmission {
 // blueprintServiceFieldAppliers maps declared Blueprint fields to the
 // presence-gated spec copy each performs. Grouped names apply once when any
 // member is declared (domains|domain, autoDeploy|autoDeployTrigger). Fields
-// whose omission or interplay carries meaning (buildFilter, scaling and
-// numInstances) stay inline in ApplyBlueprintServiceSpec.
+// whose omission or interplay carries meaning (runtime and builder,
+// buildFilter, scaling and numInstances) stay inline in
+// ApplyBlueprintServiceSpec.
 // canonicalSlice keeps a projected list's ZERO VALUE canonical: nil, never an
 // empty non-nil slice.
 //
@@ -156,7 +157,6 @@ var blueprintServiceFieldAppliers = []struct {
 	apply func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec)
 }{
 	{names: []string{"type"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Type = want.Type }},
-	{names: []string{"runtime"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Runtime = want.Runtime }},
 	{names: []string{"schedule"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Schedule = want.Schedule }},
 	{names: []string{"repo"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Repo = want.Repo }},
 	{names: []string{"image"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
@@ -169,7 +169,6 @@ var blueprintServiceFieldAppliers = []struct {
 		}
 	}},
 	{names: []string{"branch"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Branch = want.Branch }},
-	{names: []string{"builder"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Builder = want.Builder }},
 	{names: []string{"rootDir"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.RootDir = want.RootDir }},
 	{names: []string{"buildCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.BuildCommand = want.BuildCommand }},
 	// A cron job's command lives in Spec.Command, not Spec.StartCommand —
@@ -294,6 +293,26 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	for _, field := range blueprintServiceFieldAppliers {
 		if anyPresent(fields, field.names...) {
 			field.apply(dst, want)
+		}
+	}
+
+	// runtime and x-bex.builder are one build strategy with several
+	// spellings, and an export writes a service's effective one (w4/193): a
+	// Dockerfile build with no spec.runtime as runtime docker, a prebuilt
+	// image as runtime image. Judged after every other field, against the
+	// source and build inputs the sync leaves, declaring the strategy the
+	// service builds with keeps its spelling, so bex's own export re-plans as
+	// noop (w5/m117). An omitted builder is preserved, as before.
+	if present("runtime") || present("builder") {
+		next := *dst
+		if present("runtime") {
+			next.Runtime = want.Runtime
+		}
+		if present("builder") {
+			next.Builder = want.Builder
+		}
+		if buildStrategy(next) != buildStrategy(*dst) {
+			dst.Runtime, dst.Builder = next.Runtime, next.Builder
 		}
 	}
 

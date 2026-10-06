@@ -297,6 +297,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	// spec.builder, and render.yaml requires a runtime, so emitting only the
 	// raw field failed the self-check for an ordinary git service (w4/193).
 	runtime := effectiveRuntime(a.Spec, svcType)
+	builder := exportedBuilder(a.Spec)
 	switch {
 	case a.Spec.Image != "":
 		entry["runtime"] = "image"
@@ -305,6 +306,11 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["runtime"] = "static"
 	case runtime != "":
 		entry["runtime"] = runtime
+	case builder == buildBuildpack:
+		entry["runtime"] = blueprintBuildpackRuntime
+	}
+	if builder != "" {
+		entry["x-bex"] = map[string]any{"builder": builder}
 	}
 	if a.Spec.Repo != "" {
 		entry["repo"] = a.Spec.Repo
@@ -315,19 +321,25 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	if a.Spec.RootDir != "" {
 		entry["rootDir"] = a.Spec.RootDir
 	}
+	if filter := buildFilterView(a.Spec.BuildFilter); filter != nil {
+		entry["buildFilter"] = filter
+	}
 	if a.Spec.DockerfilePath != "" {
 		entry["dockerfilePath"] = a.Spec.DockerfilePath
 	}
 	if a.Spec.DockerContext != "" {
 		entry["dockerContext"] = a.Spec.DockerContext
 	}
-	if a.Spec.BuildCommand != "" {
+	// Only a native build runs a build command, and render.yaml refuses one
+	// beside any other runtime: a Dockerfile or buildpack build's would fail
+	// the export's own check.
+	if a.Spec.BuildCommand != "" && strings.HasPrefix(buildStrategy(a.Spec), buildNative) {
 		entry["buildCommand"] = a.Spec.BuildCommand
 	}
-	if a.Spec.StartCommand != "" {
+	if a.Spec.StartCommand != "" && !static {
 		if runtime == "docker" {
 			entry["dockerCommand"] = a.Spec.StartCommand
-		} else if !static {
+		} else {
 			entry["startCommand"] = a.Spec.StartCommand
 		}
 	}
@@ -351,6 +363,27 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	}
 	if static && a.Spec.PublishPath != "" {
 		entry["staticPublishPath"] = a.Spec.PublishPath
+	}
+	if routes := staticRouteViews(a.Spec.Routes); static && len(routes) > 0 {
+		entry["routes"] = routes
+	}
+	if headers := staticHeaderViews(a.Spec.Headers); static && len(headers) > 0 {
+		entry["headers"] = headers
+	}
+	if a.Spec.MaxShutdownDelaySeconds != nil {
+		entry["maxShutdownDelaySeconds"] = *a.Spec.MaxShutdownDelaySeconds
+	}
+	if m := a.Spec.MaintenanceMode; m != nil {
+		entry["maintenanceMode"] = maintenanceModeView(m)
+	}
+	if disk := serviceDiskView(a.Spec.Disk); disk != nil {
+		entry["disk"] = disk
+	}
+	if entries := a.Spec.EffectiveIPAllowListEntries(); len(entries) > 0 {
+		entry["ipAllowList"] = allowListEntries(entries)
+	}
+	if a.Spec.SubdomainPolicy == appv1alpha1.SubdomainPolicyDisabled {
+		entry["renderSubdomainPolicy"] = appv1alpha1.SubdomainPolicyDisabled
 	}
 	switch {
 	case a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled &&
@@ -511,6 +544,23 @@ func datastoreReference(key string, ref *appv1alpha1.SecretKeySelector, dbDispla
 	}, true
 }
 
+// exportedBuilder is the x-bex.builder an export carries: the builder its
+// runtime cannot spell. That is a buildpack build, and a static site built
+// from its Dockerfile, since render.yaml spells every static site runtime:
+// static. A prebuilt image builds nothing, and every other builder follows
+// from the runtime the export writes.
+func exportedBuilder(spec appv1alpha1.AppSpec) string {
+	switch {
+	case spec.Image != "":
+		return ""
+	case spec.Builder == buildBuildpack:
+		return buildBuildpack
+	case spec.Type == appv1alpha1.TypeStaticSite && (spec.Builder == buildDockerfile || strings.EqualFold(spec.Runtime, "docker")):
+		return buildDockerfile
+	}
+	return ""
+}
+
 // appDomains is the primary custom domain plus the additional ones.
 func appDomains(a *appv1alpha1.App) []string { return blueprintDomainList(a.Spec) }
 
@@ -590,6 +640,11 @@ func datastoreAllowListEntries(public bool, entries []appv1alpha1.IPAllowEntry) 
 	} else if len(entries) == 0 {
 		entries = []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "::/0"}}
 	}
+	return allowListEntries(entries)
+}
+
+// allowListEntries spells allow-list rules as render.yaml's ipAllowList.
+func allowListEntries(entries []appv1alpha1.IPAllowEntry) []map[string]any {
 	out := make([]map[string]any, 0, len(entries))
 	for _, e := range entries {
 		entry := map[string]any{"source": e.CIDR}

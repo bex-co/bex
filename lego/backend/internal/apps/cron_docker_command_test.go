@@ -126,9 +126,11 @@ func TestRESTCreateDockerCronPrefersDockerCommandWhenBothSent(t *testing.T) {
 	}
 }
 
-// A docker WEB service keeps the exact prior rule: its command is the docker
-// spelling, and a stray native startCommand is not promoted into one.
-func TestRESTCreateDockerWebServiceIgnoresNativeStartCommand(t *testing.T) {
+// A docker WEB service keeps a startCommand sent without a dockerCommand, as
+// PATCH, GraphQL and MCP always have: envSpecificDetails maps the same way for
+// every service type (w5/m117; before, only a cron kept it, and a web
+// service's start command was silently dropped).
+func TestRESTCreateDockerWebServiceKeepsItsStartCommand(t *testing.T) {
 	svc, cl := newService(nil)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -141,9 +143,9 @@ func TestRESTCreateDockerWebServiceIgnoresNativeStartCommand(t *testing.T) {
 		t.Fatalf("POST docker web = %d: %s", rec.Code, rec.Body.String())
 	}
 	app := getApp(t, cl, "web")
-	if app.Spec.StartCommand != "" || app.Spec.Command != "" {
-		t.Errorf("docker web service commands = start %q / command %q, want both empty (unchanged behavior)",
-			app.Spec.StartCommand, app.Spec.Command)
+	if app.Spec.StartCommand != "echo native" || app.Spec.Command != "" {
+		t.Errorf("docker web service commands = start %q / command %q, want start %q and no cron command",
+			app.Spec.StartCommand, app.Spec.Command, "echo native")
 	}
 }
 
