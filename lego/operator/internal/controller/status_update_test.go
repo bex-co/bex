@@ -28,21 +28,6 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// laggingCache serves an App from a snapshot taken before the pass, as an
-// informer cache that has not yet seen the pass's own writes does.
-type laggingCache struct {
-	client.Client
-	frozen *appv1alpha1.App
-}
-
-func (c laggingCache) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	if app, ok := obj.(*appv1alpha1.App); ok && key == client.ObjectKeyFromObject(c.frozen) {
-		c.frozen.DeepCopyInto(app)
-		return nil
-	}
-	return c.Client.Get(ctx, key, obj, opts...)
-}
-
 // w5/074: a pass that writes an intermediate status and then wants its
 // pre-pass status back must store it, though the cache it compares against has
 // not seen its own write. A suspended cron job's poll wrote Deploying, found
@@ -57,7 +42,7 @@ func TestStatusRestoreLandsDespiteALaggingCache(t *testing.T) {
 	store := fake.NewClientBuilder().WithScheme(newTestScheme(t)).WithObjects(app).WithStatusSubresource(&appv1alpha1.App{}).Build()
 	var pass appv1alpha1.App
 	g.Expect(store.Get(ctx, client.ObjectKeyFromObject(app), &pass)).To(Succeed())
-	cl := laggingCache{Client: store, frozen: pass.DeepCopy()}
+	cl := &laggingClient{Client: store, seen: map[client.ObjectKey]*appv1alpha1.App{client.ObjectKeyFromObject(app): pass.DeepCopy()}}
 
 	pass.Status.Phase = appv1alpha1.PhaseDeploying
 	g.Expect(cl.Status().Update(ctx, &pass)).To(Succeed())

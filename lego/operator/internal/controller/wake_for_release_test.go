@@ -21,10 +21,7 @@ import (
 	"testing"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -34,7 +31,7 @@ import (
 
 func TestDeployWhileAsleepGoesLiveWithoutARequest(t *testing.T) {
 	app := activeApp("tea-076")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	parkIdle(t, r, cl, nn)
@@ -45,12 +42,12 @@ func TestDeployWhileAsleepGoesLiveWithoutARequest(t *testing.T) {
 	}
 
 	// The served pod is ready, then release 2 rolls over it and goes live.
-	markServedPodReady(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusServedPodReady)
 	reconcileTwice(t, r, nn)
-	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-2" {
 		t.Fatalf("template revision = %q, want release 2 rolling", got)
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	live := liveApp(t, cl, nn)
 	if live.Status.ActiveRevision != "rev-2" || live.Status.Phase != appv1alpha1.PhaseRunning {
@@ -60,7 +57,7 @@ func TestDeployWhileAsleepGoesLiveWithoutARequest(t *testing.T) {
 
 func TestDeployWhileSuspendedDoesNotWake(t *testing.T) {
 	app := activeApp("tea-076")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	live := liveApp(t, cl, nn)
@@ -84,7 +81,7 @@ func TestDeployWhileSuspendedDoesNotWake(t *testing.T) {
 // again) cannot keep a free service awake by waking it on every park.
 func TestDeployWhileAsleepWakesOncePerRelease(t *testing.T) {
 	app := activeApp("tea-076")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	parkIdle(t, r, cl, nn)
@@ -116,35 +113,30 @@ func TestDeployWhileAsleepWakesOncePerRelease(t *testing.T) {
 // rolloutPending is true for any phase but Running, so every reconcile of a
 // Hibernated service stamped Deploying before parkKubernetes wrote Hibernated
 // against the cached App, which skipped it as unchanged: the header read
-// Deploying while the service slept.
+// Deploying while the service slept. The reconciler reads through a cache that
+// lags its own writes (w5/074): what is stored after every pass is Hibernated.
 func TestParkingPassNeverWritesDeploying(t *testing.T) {
 	app := activeApp("tea-m147")
-	app.Generation = 1
-	scheme := wakeScheme()
 	var written []appv1alpha1.AppPhase
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).
-		WithInterceptorFuncs(interceptor.Funcs{SubResourceUpdate: func(ctx context.Context, c client.Client, sub string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-			if a, ok := obj.(*appv1alpha1.App); ok {
-				written = append(written, a.Status.Phase)
-			}
-			return c.SubResource(sub).Update(ctx, obj, opts...)
-		}}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app, withLaggingCache(), withInterceptor(interceptor.Funcs{SubResourceUpdate: func(ctx context.Context, c client.Client, sub string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+		if a, ok := obj.(*appv1alpha1.App); ok {
+			written = append(written, a.Status.Phase)
+		}
+		return c.SubResource(sub).Update(ctx, obj, opts...)
+	}}))
 
 	serveReleaseOne(t, r, cl, nn)
 	parkIdle(t, r, cl, nn)
 	written = nil
-	for range 3 {
-		reconcileTwice(t, r, nn)
+	for pass := range 6 {
+		reconcileOnce(t, r, nn)
+		if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseHibernated {
+			t.Fatalf("after parking pass %d the stored phase is %q, want Hibernated", pass, got)
+		}
 	}
 	for _, phase := range written {
 		if phase == appv1alpha1.PhaseDeploying {
 			t.Fatalf("a parking pass wrote phase Deploying (writes %v)", written)
 		}
-	}
-	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseHibernated {
-		t.Fatalf("phase = %q, want Hibernated", got)
 	}
 }

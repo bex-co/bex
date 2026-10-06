@@ -254,11 +254,16 @@ func BuildIsRunningReason(reason string) bool {
 // service is excluded from the "unhealthy" verdict, and PriorReleaseServing is
 // the w6/m124 terminal — a failed build whose previously released image keeps
 // serving, which must read as a serving service, not a failing instance.
+// ServedReleaseCannotStart is a newer release's stall while the release that
+// served is started first on a wake or resume: the Deployment reports pods its
+// ReplicaSet cannot create, and bex-api shows the message as the deploy's stall
+// reason (w5/m123).
 const (
-	ReasonSuspended           = "Suspended"
-	ReasonAutoHibernated      = "AutoHibernated"
-	ReasonRolloutSettling     = "RolloutSettling"
-	ReasonPriorReleaseServing = "PriorReleaseServing"
+	ReasonSuspended                = "Suspended"
+	ReasonAutoHibernated           = "AutoHibernated"
+	ReasonRolloutSettling          = "RolloutSettling"
+	ReasonPriorReleaseServing      = "PriorReleaseServing"
+	ReasonServedReleaseCannotStart = "ServedReleaseCannotStart"
 )
 
 // DefaultBranch is the git branch a repo-backed App tracks when none is

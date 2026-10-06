@@ -21,13 +21,10 @@ import (
 	"testing"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -39,73 +36,6 @@ import (
 // Deployment and Ingress writes, so replicas stayed 0 and the public route stayed
 // on the activator while the service read Running.
 
-// markDeploymentRolledOut reports the Deployment's current revision fully rolled
-// out and ready, the state deploymentRolloutReady waits for before markRunning
-// records a release as active. markDeploymentReady stops short of that (no
-// updated replicas), which is enough for routing but never activates a release.
-func markDeploymentRolledOut(t *testing.T, cl client.Client, nn types.NamespacedName) {
-	t.Helper()
-	var dep appsv1.Deployment
-	if err := cl.Get(context.Background(), nn, &dep); err != nil {
-		t.Fatal(err)
-	}
-	dep.Status.ObservedGeneration = dep.Generation
-	dep.Status.Replicas = 1
-	dep.Status.UpdatedReplicas = 1
-	dep.Status.ReadyReplicas = 1
-	dep.Status.AvailableReplicas = 1
-	if err := cl.Status().Update(context.Background(), &dep); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func stampLastActiveAt(t *testing.T, cl client.Client, nn types.NamespacedName, at time.Time) {
-	t.Helper()
-	var live appv1alpha1.App
-	if err := cl.Get(context.Background(), nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	live.Annotations[annotLastActive] = at.UTC().Format(time.RFC3339)
-	if err := cl.Update(context.Background(), &live); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func appPhase(t *testing.T, cl client.Client, nn types.NamespacedName) appv1alpha1.AppPhase {
-	t.Helper()
-	var live appv1alpha1.App
-	if err := cl.Get(context.Background(), nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	return live.Status.Phase
-}
-
-func deploymentTemplateRevision(t *testing.T, cl client.Client, nn types.NamespacedName) string {
-	t.Helper()
-	var dep appsv1.Deployment
-	if err := cl.Get(context.Background(), nn, &dep); err != nil {
-		t.Fatal(err)
-	}
-	return dep.Spec.Template.Labels[labelRevision]
-}
-
-// serveReleaseOne reconciles the fixture's prebuilt release until it is the
-// active release, and returns its pod template revision and image.
-func serveReleaseOne(t *testing.T, r *AppReconciler, cl client.Client, nn types.NamespacedName) (string, string) {
-	t.Helper()
-	reconcileTwice(t, r, nn)
-	markDeploymentRolledOut(t, cl, nn)
-	reconcileTwice(t, r, nn)
-	var live appv1alpha1.App
-	if err := cl.Get(context.Background(), nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	if live.Status.ActiveRevision == "" || live.Status.Phase != appv1alpha1.PhaseRunning {
-		t.Fatalf("setup: release 1 never became active (phase %q, activeRevision %q)", live.Status.Phase, live.Status.ActiveRevision)
-	}
-	return deploymentTemplateRevision(t, cl, nn), live.Status.Image
-}
-
 // jobsIn lists the Jobs in namespace: pre-deploy steps in these tests.
 func jobsIn(t *testing.T, cl client.Client, namespace string) []batchv1.Job {
 	t.Helper()
@@ -114,16 +44,6 @@ func jobsIn(t *testing.T, cl client.Client, namespace string) []batchv1.Job {
 		t.Fatal(err)
 	}
 	return jobs.Items
-}
-
-// heldWorkerApp is a background worker: no Service, Ingress or auto-sleep, and
-// no plan instance cap, so a manual scale takes effect.
-func heldWorkerApp(namespace string) *appv1alpha1.App {
-	app := activeApp(namespace)
-	app.Spec.Type = appv1alpha1.TypeBackgroundWorker
-	app.Spec.Tier = ""
-	app.Spec.Expose = false
-	return app
 }
 
 // storeFailedPreDeploy makes release 2 add a pre-deploy command whose step
@@ -152,27 +72,10 @@ func storeFailedPreDeploy(t *testing.T, cl client.Client, nn types.NamespacedNam
 	}
 }
 
-func setSuspendedAt(t *testing.T, cl client.Client, nn types.NamespacedName, suspended bool, generation int64) {
-	t.Helper()
-	var live appv1alpha1.App
-	if err := cl.Get(context.Background(), nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	live.Spec.Suspended = suspended
-	live.Generation = generation
-	if err := cl.Update(context.Background(), &live); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m156")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	// Release 1 serves.
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
@@ -185,9 +88,7 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	// It goes idle: the route moves to the activator, then the pods drain. The
 	// pre-deploy gate is skipped while auto-hibernating, so this half always worked.
 	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
-	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	reconcileOnce(t, r, nn)
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 0 {
 		t.Fatalf("setup: replicas = %d, want 0 once hibernated", got)
@@ -208,7 +109,7 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseRunning {
 		t.Fatalf("phase on the wake pass = %q, want Running: settle from the scale this pass wrote", got)
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("woken backend = %q, want the App's own Service %q once a pod is ready", got, app.Name)
@@ -236,21 +137,15 @@ func TestWakeOverFailedPreDeployRestoresPriorRelease(t *testing.T) {
 // so the next wake started it. After the fix the wake starts the step while the
 // prior release serves, and the new release rolls only once the step passes.
 func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m156")
 	app.UID = "uid-web" // the fake client assigns none; the pre-deploy Job is keyed on it
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}, &batchv1.Job{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	// Release 1 serves, then goes idle and parks.
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
 	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
-	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	reconcileOnce(t, r, nn)
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 0 {
 		t.Fatalf("setup: replicas = %d, want 0 once parked", got)
@@ -280,7 +175,7 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 	if len(jobs) != 1 {
 		t.Fatalf("jobs = %d, want the release 2 pre-deploy Job", len(jobs))
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("backend = %q, want the prior release's Service %q while the step runs", got, app.Name)
@@ -313,12 +208,8 @@ func TestParkedPendingPreDeployServesPriorReleaseUntilTheStepPasses(t *testing.T
 // restored. Suspend and resume now move only replicas and routing, and the
 // prior release's template stays.
 func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m156")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 
 	// Release 1 serves; release 2's pre-deploy step failed.
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
@@ -341,7 +232,7 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("resumed replicas = %d, want 1: a failed pre-deploy verdict must not block resume", got)
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("resumed backend = %q, want the App's own Service %q", got, app.Name)
@@ -360,12 +251,8 @@ func TestSuspendAndResumeOverFailedPreDeployKeepPriorRelease(t *testing.T) {
 // waited behind the stored failed verdict and stayed at 0 until a new release
 // shipped.
 func TestSuspendAndResumeWorkerOverFailedPreDeployKeepPriorRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := heldWorkerApp("tea-m158")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
 	storeFailedPreDeploy(t, cl, nn)
@@ -402,14 +289,10 @@ func TestSuspendAndResumeWorkerOverFailedPreDeployKeepPriorRelease(t *testing.T)
 // A worker's manual scale while its newer release's pre-deploy step runs takes
 // effect on the prior release, and the new release rolls once the step passes.
 func TestWorkerScaleWhilePreDeployRunsTakesEffect(t *testing.T) {
-	scheme := wakeScheme()
 	app := heldWorkerApp("tea-m158")
 	app.UID = "uid-worker" // the fake client assigns none; the pre-deploy Job is keyed on it
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}, &batchv1.Job{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
 	var live appv1alpha1.App

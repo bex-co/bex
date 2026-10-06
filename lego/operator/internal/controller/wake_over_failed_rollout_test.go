@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -30,8 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -44,113 +41,6 @@ import (
 // read Running from the desired scale.
 
 const failingImage = "memcached:1.6-alpine"
-
-// deployImageAt requests a new release that changes the image.
-func deployImageAt(t *testing.T, cl client.Client, nn types.NamespacedName, image string, generation int64) {
-	t.Helper()
-	var live appv1alpha1.App
-	if err := cl.Get(context.Background(), nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	live.Spec.Image = image
-	live.Generation = generation
-	live.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(generation, 10)
-	if err := cl.Update(context.Background(), &live); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// markRolloutFailed reports the Deployment's newest template past its progress
-// deadline with none of its pods updated, and ready pods of the old ReplicaSet:
-// 1 while the service stayed awake through the rollout, 0 when it rolled from
-// parked. The fake client runs no Deployment controller.
-func markRolloutFailed(t *testing.T, cl client.Client, nn types.NamespacedName, ready int32) {
-	t.Helper()
-	markRolloutFailedAt(t, cl, nn, ready, time.Now())
-}
-
-// markRolloutFailedAt is markRolloutFailed with the deadline reached at at.
-func markRolloutFailedAt(t *testing.T, cl client.Client, nn types.NamespacedName, ready int32, at time.Time) {
-	t.Helper()
-	var dep appsv1.Deployment
-	if err := cl.Get(context.Background(), nn, &dep); err != nil {
-		t.Fatal(err)
-	}
-	dep.Status = appsv1.DeploymentStatus{
-		ObservedGeneration: dep.Generation, Replicas: ready, ReadyReplicas: ready, AvailableReplicas: ready,
-		Conditions: []appsv1.DeploymentCondition{{
-			Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: "ProgressDeadlineExceeded",
-			LastTransitionTime: metav1.NewTime(at),
-		}},
-	}
-	if err := cl.Status().Update(context.Background(), &dep); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// markServedPodReady reports one ready pod that is not of the Deployment's newest
-// template: the served release's pod while a newer release rolls, or once it
-// alone has been started.
-func markServedPodReady(t *testing.T, cl client.Client, nn types.NamespacedName) {
-	t.Helper()
-	var dep appsv1.Deployment
-	if err := cl.Get(context.Background(), nn, &dep); err != nil {
-		t.Fatal(err)
-	}
-	dep.Status = appsv1.DeploymentStatus{ObservedGeneration: dep.Generation, Replicas: 1, ReadyReplicas: 1, AvailableReplicas: 1}
-	if err := cl.Status().Update(context.Background(), &dep); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// markDeploymentDrained reports the parked Deployment with no pods.
-func markDeploymentDrained(t *testing.T, cl client.Client, nn types.NamespacedName) {
-	t.Helper()
-	var dep appsv1.Deployment
-	if err := cl.Get(context.Background(), nn, &dep); err != nil {
-		t.Fatal(err)
-	}
-	dep.Status = appsv1.DeploymentStatus{ObservedGeneration: dep.Generation}
-	if err := cl.Status().Update(context.Background(), &dep); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func deploymentTemplate(t *testing.T, cl client.Client, nn types.NamespacedName) corev1.PodTemplateSpec {
-	t.Helper()
-	var dep appsv1.Deployment
-	if err := cl.Get(context.Background(), nn, &dep); err != nil {
-		t.Fatal(err)
-	}
-	return dep.Spec.Template
-}
-
-func liveApp(t *testing.T, cl client.Client, nn types.NamespacedName) appv1alpha1.App {
-	t.Helper()
-	var live appv1alpha1.App
-	if err := cl.Get(context.Background(), nn, &live); err != nil {
-		t.Fatal(err)
-	}
-	return live
-}
-
-// parkIdle lets the service go idle: the route moves to the activator, then the
-// pods drain.
-func parkIdle(t *testing.T, r *AppReconciler, cl client.Client, nn types.NamespacedName) {
-	t.Helper()
-	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
-	if _, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: nn}); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
-	reconcileTwice(t, r, nn)
-	if got := deploymentReplicas(t, cl, nn); got != 0 {
-		t.Fatalf("setup: replicas = %d, want 0 once hibernated", got)
-	}
-	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseHibernated {
-		t.Fatalf("parked phase = %q, want Hibernated", got)
-	}
-	markDeploymentDrained(t, cl, nn)
-}
 
 // assertServedReleaseHeld checks the state a failed rollout over release 1 must
 // leave: release 1's template, release 1 active, release 2's verdict kept.
@@ -170,29 +60,18 @@ func assertServedReleaseHeld(t *testing.T, cl client.Client, nn types.Namespaced
 	}
 }
 
-func failedRolloutFixture(t *testing.T, app *appv1alpha1.App) (*AppReconciler, client.Client, types.NamespacedName) {
-	t.Helper()
-	// The fake client assigns no generation, and a release is recorded under its
-	// own: start at 1 so release 1 has a record to restore.
-	app.Generation = 1
-	scheme := wakeScheme()
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	return wakeReconciler(cl, scheme), cl, types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
-}
-
 // The filed ordering minus the park: the rollout fails while the service is
 // awake, the service then sleeps, and a request wakes it.
 func TestWakeAfterFailedRolloutServesPriorRelease(t *testing.T) {
 	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	served := deploymentTemplate(t, cl, nn)
 
 	// Release 2 rolls an image that never becomes healthy; the old pod serves on.
 	deployImageAt(t, cl, nn, failingImage, 2)
-	markRolloutFailed(t, cl, nn, 1)
+	setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(1, time.Now()))
 	reconcileTwice(t, r, nn)
 	assertServedReleaseHeld(t, cl, nn, served, "after the rollout failed")
 	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseRunning {
@@ -215,7 +94,7 @@ func TestWakeAfterFailedRolloutServesPriorRelease(t *testing.T) {
 		t.Fatalf("woken replicas = %d, want 1", got)
 	}
 	assertServedReleaseHeld(t, cl, nn, served, "woken")
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("woken backend = %q, want the App's own Service %q once the prior release's pod is ready", got, app.Name)
@@ -234,7 +113,7 @@ func TestWakeAfterFailedRolloutServesPriorRelease(t *testing.T) {
 // starts the served release, and only then does the new release roll over it.
 func TestFailedRolloutStartedWhileParkedServesPriorRelease(t *testing.T) {
 	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	served := deploymentTemplate(t, cl, nn)
@@ -258,15 +137,15 @@ func TestFailedRolloutStartedWhileParkedServesPriorRelease(t *testing.T) {
 	}
 
 	// Its pod is ready: release 2 rolls over it, and fails.
-	markServedPodReady(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusServedPodReady)
 	reconcileTwice(t, r, nn)
-	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-2" {
 		t.Fatalf("template revision = %q, want release 2 rolling over the ready served pod", got)
 	}
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("backend = %q, want the App's own Service %q while the served pod is ready", got, app.Name)
 	}
-	markRolloutFailed(t, cl, nn, 1)
+	setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(1, time.Now()))
 	reconcileTwice(t, r, nn)
 
 	assertServedReleaseHeld(t, cl, nn, served, "after the rollout failed")
@@ -285,9 +164,9 @@ func rollFailingReleaseTwo(t *testing.T, r *AppReconciler, cl client.Client, nn 
 	serveReleaseOne(t, r, cl, nn)
 	served := deploymentTemplate(t, cl, nn)
 	deployImageAt(t, cl, nn, failingImage, 2)
-	markServedPodReady(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusServedPodReady)
 	reconcileTwice(t, r, nn)
-	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-2" {
 		t.Fatalf("setup: template revision = %q, want release 2 rolling", got)
 	}
 	return served
@@ -337,7 +216,7 @@ func TestIdleMidRolloutWaitsForItsVerdict(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := activeApp("tea-m147")
-			r, cl, nn := failedRolloutFixture(t, app)
+			r, cl, nn := lifecycleFixture(t, app)
 
 			served := rollFailingReleaseTwo(t, r, cl, nn)
 			rolloutPod(t, cl, nn, tc.status)
@@ -349,7 +228,7 @@ func TestIdleMidRolloutWaitsForItsVerdict(t *testing.T) {
 			if got := deploymentReplicas(t, cl, nn); got != 1 {
 				t.Fatalf("replicas = %d, want the rollout kept running until its verdict", got)
 			}
-			if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
+			if got := deploymentTemplateRevision(t, cl, nn); got != "rev-2" {
 				t.Fatalf("template revision = %q, want release 2 still rolling", got)
 			}
 			if got := appPhase(t, cl, nn); got == appv1alpha1.PhaseHibernated {
@@ -357,7 +236,7 @@ func TestIdleMidRolloutWaitsForItsVerdict(t *testing.T) {
 			}
 
 			// The deadline lands: the verdict carries the diagnosis, then it parks.
-			markRolloutFailed(t, cl, nn, 1)
+			setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(1, time.Now()))
 			reconcileTwice(t, r, nn)
 			reconcileTwice(t, r, nn)
 			rollout := meta.FindStatusCondition(liveApp(t, cl, nn).Status.Conditions, appv1alpha1.ConditionRollout)
@@ -376,16 +255,31 @@ func TestIdleMidRolloutWaitsForItsVerdict(t *testing.T) {
 }
 
 // The deferral is bounded: a deadline that passed rolloutVerdictGrace ago with
-// no verdict recorded no longer keeps a free service awake.
+// no verdict recorded no longer keeps a free service awake, and it parks on the
+// served release.
 func TestIdleMidRolloutDeferralIsBounded(t *testing.T) {
 	app := activeApp("tea-m147")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
-	rollFailingReleaseTwo(t, r, cl, nn)
-	markRolloutFailedAt(t, cl, nn, 1, time.Now().Add(-rolloutVerdictGrace-time.Minute))
+	served := rollFailingReleaseTwo(t, r, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(1, time.Now().Add(-rolloutVerdictGrace-time.Minute)))
+	// Release 2 already had its one wake (w6/076): only the deferral could keep
+	// the service up.
 	live := liveApp(t, cl, nn)
-	if r.rolloutAwaitingVerdict(context.Background(), &live) {
-		t.Fatal("a deadline past the grace with no verdict still defers the park")
+	live.Annotations[annotReleaseWakeGeneration] = "2"
+	if err := cl.Update(context.Background(), &live); err != nil {
+		t.Fatal(err)
+	}
+	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("replicas = %d, want parked: a deadline past the grace with no verdict no longer defers the park", got)
+	}
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseHibernated {
+		t.Fatalf("phase = %q, want Hibernated", got)
+	}
+	if got := deploymentTemplate(t, cl, nn); !equality.Semantic.DeepEqual(got, served) {
+		t.Fatalf("parked template = revision %q, want the served release's", got.Labels[labelRevision])
 	}
 }
 
@@ -393,7 +287,7 @@ func TestIdleMidRolloutDeferralIsBounded(t *testing.T) {
 // resume does not start the unsettled release alone (w1/m172).
 func TestSuspendMidRolloutPutsServedTemplateBack(t *testing.T) {
 	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	served := rollFailingReleaseTwo(t, r, cl, nn)
 
@@ -414,54 +308,113 @@ func TestSuspendMidRolloutPutsServedTemplateBack(t *testing.T) {
 	}
 }
 
-// A served release that can no longer start must not block the release that
-// might fix it: past servedWakeBudget the new release rolls anyway.
-func TestWakeRollsNewReleaseWhenServedPodStaysUnready(t *testing.T) {
-	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
-	ctx := context.Background()
-
+// wakeOntoServedRelease serves release 1, parks it, and deploys release 2, which
+// wakes the service onto release 1's template first: the served release starts
+// before the newer one rolls.
+func wakeOntoServedRelease(t *testing.T, r *AppReconciler, cl client.Client, nn types.NamespacedName) {
+	t.Helper()
 	serveReleaseOne(t, r, cl, nn)
 	parkIdle(t, r, cl, nn)
 	deployImageAt(t, cl, nn, "nginx:2", 2)
 	reconcileTwice(t, r, nn)
 	stampLastActiveAt(t, cl, nn, time.Now())
 	reconcileTwice(t, r, nn)
-	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-1" {
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-1" {
 		t.Fatalf("setup: template revision = %q, want the served release starting first", got)
 	}
+}
 
-	var dep appsv1.Deployment
-	if err := cl.Get(ctx, nn, &dep); err != nil {
-		t.Fatal(err)
-	}
-	stuck := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-		Name: "web-stuck", Namespace: nn.Namespace, Labels: dep.Spec.Template.Labels,
-		CreationTimestamp: metav1.NewTime(time.Now().Add(-servedWakeBudget - time.Minute)),
-	}}
-	if err := cl.Create(ctx, stuck); err != nil {
-		t.Fatal(err)
-	}
+// A served release that can no longer start must not block the release that
+// might fix it: once it has been unavailable for servedWakeBudget the new release
+// rolls anyway. The wait counts from when the Deployment lost availability, so a
+// pod that was just replaced does not restart it (w5/m123).
+func TestWakeRollsNewReleaseWhenServedPodStaysUnready(t *testing.T) {
+	app := activeApp("tea-m172")
+	r, cl, nn := lifecycleFixture(t, app)
+	wakeOntoServedRelease(t, r, cl, nn)
+
+	setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-time.Minute), ""))
 	reconcileTwice(t, r, nn)
-	if got := deploymentTemplate(t, cl, nn).Labels[labelRevision]; got != "rev-2" {
-		t.Fatalf("template revision = %q, want release 2 to roll once the served pod overran its budget", got)
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-1" {
+		t.Fatalf("template revision = %q, want the served release given its budget", got)
+	}
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseDeploying {
+		t.Fatalf("phase while the served release starts = %q, want Deploying", got)
+	}
+
+	rolloutPod(t, cl, nn, corev1.ContainerStatus{}) // replaced just now
+	setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-servedWakeBudget-time.Minute), ""))
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-2" {
+		t.Fatalf("template revision = %q, want release 2 to roll once the served release overran its budget", got)
+	}
+}
+
+// Pods the served release's ReplicaSet cannot create (the workspace quota, the
+// image-signature check after a key rotation) never exist to age. Ready names
+// the cause while the newer release waits, and the wait ends with the budget
+// (w5/m123).
+func TestServedReleaseThatCannotCreatePodsIsDiagnosedThenRolledOver(t *testing.T) {
+	app := activeApp("tea-m123")
+	r, cl, nn := lifecycleFixture(t, app)
+	wakeOntoServedRelease(t, r, cl, nn)
+
+	const forbidden = `pods "web-5d8f9-" is forbidden: exceeded quota: tenant-quota, requested: pods=1, used: pods=20, limited: pods=20`
+	setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-time.Minute), forbidden))
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-1" {
+		t.Fatalf("template revision = %q, want the served release given its budget", got)
+	}
+	ready := meta.FindStatusCondition(liveApp(t, cl, nn).Status.Conditions, appv1alpha1.ConditionReady)
+	if ready == nil || ready.Reason != appv1alpha1.ReasonServedReleaseCannotStart || !strings.Contains(ready.Message, forbidden) {
+		t.Fatalf("Ready = %+v, want %s naming the ReplicaSet's failure", ready, appv1alpha1.ReasonServedReleaseCannotStart)
+	}
+
+	setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-servedWakeBudget-time.Minute), forbidden))
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-2" {
+		t.Fatalf("template revision = %q, want release 2 to roll once the budget passed", got)
+	}
+}
+
+// The wait is a paid service's too: a newer release, perhaps the hotfix, waits
+// for a service with no ready pod at most servedWakeBudget after it lost
+// availability, however young its pod (w5/m123).
+func TestHotfixWaitsAtMostTheBudgetFromLostAvailability(t *testing.T) {
+	app := activeApp("tea-m123")
+	app.Spec.Tier = "starter"
+	r, cl, nn := lifecycleFixture(t, app)
+	serveReleaseOne(t, r, cl, nn)
+
+	setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-time.Minute), ""))
+	deployImageAt(t, cl, nn, "nginx:2", 2)
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-1" {
+		t.Fatalf("template revision = %q, want the hotfix to wait while the served release has its budget", got)
+	}
+
+	rolloutPod(t, cl, nn, corev1.ContainerStatus{}) // replaced just now
+	setDeploymentStatus(t, cl, nn, statusUnavailableSince(time.Now().Add(-servedWakeBudget-time.Minute), ""))
+	reconcileTwice(t, r, nn)
+	if got := deploymentTemplateRevision(t, cl, nn); got != "rev-2" {
+		t.Fatalf("template revision = %q, want the hotfix to roll once the service was unavailable past the budget", got)
 	}
 }
 
 // The hold ends with the next release: a later deploy rolls and is promoted.
 func TestDeployAfterFailedRolloutRollsNormally(t *testing.T) {
 	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	served := deploymentTemplate(t, cl, nn)
 	deployImageAt(t, cl, nn, failingImage, 2)
-	markRolloutFailed(t, cl, nn, 1)
+	setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(1, time.Now()))
 	reconcileTwice(t, r, nn)
 	assertServedReleaseHeld(t, cl, nn, served, "after the rollout failed")
 
 	deployImageAt(t, cl, nn, "nginx:2", 3)
-	markServedPodReady(t, cl, nn) // the served pod serves; release 3's is not up yet
+	setDeploymentStatus(t, cl, nn, statusServedPodReady) // the served pod serves; release 3's is not up yet
 	reconcileTwice(t, r, nn)
 	got := deploymentTemplate(t, cl, nn)
 	if got.Labels[labelRevision] != "rev-3" || got.Spec.Containers[0].Image != "nginx:2" {
@@ -470,7 +423,7 @@ func TestDeployAfterFailedRolloutRollsNormally(t *testing.T) {
 	if phase := appPhase(t, cl, nn); phase != appv1alpha1.PhaseDeploying {
 		t.Fatalf("phase while release 3 rolls = %q, want Deploying", phase)
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	live := liveApp(t, cl, nn)
 	if live.Status.ActiveRevision != "rev-3" || live.Status.Phase != appv1alpha1.PhaseRunning {
@@ -490,7 +443,7 @@ func deleteServedRecord(t *testing.T, cl client.Client, nn types.NamespacedName)
 // restored from the ReplicaSet the Deployment still retains for it.
 func TestFailedRolloutWithoutRecordRestoresFromServedReplicaSet(t *testing.T) {
 	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
 
 	serveReleaseOne(t, r, cl, nn)
@@ -526,7 +479,7 @@ func TestFailedRolloutWithoutRecordRestoresFromServedReplicaSet(t *testing.T) {
 
 	deployImageAt(t, cl, nn, failingImage, 2)
 	deleteServedRecord(t, cl, nn)
-	markRolloutFailed(t, cl, nn, 1)
+	setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(1, time.Now()))
 	reconcileTwice(t, r, nn)
 
 	assertServedReleaseHeld(t, cl, nn, served, "restored from the ReplicaSet")
@@ -539,14 +492,14 @@ func TestFailedRolloutWithoutRecordRestoresFromServedReplicaSet(t *testing.T) {
 // the phase must say so instead of reading Running from the desired scale.
 func TestFailedRolloutWithNothingToRestoreSettlesFailed(t *testing.T) {
 	app := activeApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	deployImageAt(t, cl, nn, failingImage, 2)
-	markServedPodReady(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusServedPodReady)
 	reconcileTwice(t, r, nn) // release 2 rolls over the served pod
 	deleteServedRecord(t, cl, nn)
-	markRolloutFailed(t, cl, nn, 0)
+	setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(0, time.Now()))
 	reconcileTwice(t, r, nn)
 
 	live := liveApp(t, cl, nn)
@@ -570,12 +523,12 @@ func TestFailedRolloutWithNothingToRestoreSettlesFailed(t *testing.T) {
 // route at all: its replicas alone must come back on the served release.
 func TestSuspendAndResumeWorkerOverFailedRolloutKeepsPriorRelease(t *testing.T) {
 	app := heldWorkerApp("tea-m172")
-	r, cl, nn := failedRolloutFixture(t, app)
+	r, cl, nn := lifecycleFixture(t, app)
 
 	serveReleaseOne(t, r, cl, nn)
 	served := deploymentTemplate(t, cl, nn)
 	deployImageAt(t, cl, nn, failingImage, 2)
-	markRolloutFailed(t, cl, nn, 1)
+	setDeploymentStatus(t, cl, nn, statusRolloutFailedAt(1, time.Now()))
 	reconcileTwice(t, r, nn)
 	assertServedReleaseHeld(t, cl, nn, served, "after the rollout failed")
 

@@ -1503,7 +1503,9 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 // workspace ResourceQuota rejects the surge pod, so no pod object ever exists
 // and every pod-state diagnosis stays blind — but the ReplicaSet's FailedCreate
 // verdict already names the quota, and the operator stamps it on the App
-// condition (lego/operator reportRolloutProgress).
+// condition (lego/operator reportRolloutProgress). ServedReleaseCannotStart is
+// the same verdict one step earlier, while a wake or resume starts the release
+// that served before the newer one rolls (w5/m123).
 //
 // RegistryCredsPending and BuildQueued are the third instance of the same gap
 // (w6/m95). Both park an App in PhaseBuilding with a message that already names
@@ -1527,20 +1529,17 @@ func currentFailureReason(app *appv1alpha1.App) (string, string, bool) {
 		if c.Type != appv1alpha1.ConditionReady || c.ObservedGeneration != app.Generation {
 			continue
 		}
-		switch c.Reason {
-		case "ImagePullBackOff":
+		switch {
+		case c.Reason == "ImagePullBackOff":
 			return c.Message, EventReasonImagePullBackoff, true
-		case "CrashLoopBackOff", "CreateContainerConfigError", "RolloutBlockedByQuota",
-			"HealthCheckFailing", appv1alpha1.ReasonPreDeployFailed:
+		case stallDiagnosis(c.Reason) || c.Reason == appv1alpha1.ReasonPreDeployFailed:
 			return c.Message, "", true
-		case appv1alpha1.ReasonBuildQueued, appv1alpha1.ReasonRegistryCredsPending:
+		case c.Reason == appv1alpha1.ReasonBuildQueued || c.Reason == appv1alpha1.ReasonRegistryCredsPending:
 			if c.Message != "" {
 				return "the build never started: " + c.Message, "", true
 			}
-		default:
-			if appv1alpha1.IsBuildFailureReason(c.Reason) {
-				return c.Message, "", true
-			}
+		case appv1alpha1.IsBuildFailureReason(c.Reason):
+			return c.Message, "", true
 		}
 		if app.Status.Phase == appv1alpha1.PhaseFailed && c.Message != "" {
 			return c.Message, "", true
@@ -1596,7 +1595,7 @@ func parkReason(reason string) bool {
 func stallDiagnosis(reason string) bool {
 	switch reason {
 	case "HealthCheckFailing", "CrashLoopBackOff", "ImagePullBackOff",
-		"CreateContainerConfigError", "RolloutBlockedByQuota":
+		"CreateContainerConfigError", "RolloutBlockedByQuota", appv1alpha1.ReasonServedReleaseCannotStart:
 		return true
 	}
 	return false

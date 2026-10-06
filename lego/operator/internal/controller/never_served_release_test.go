@@ -22,9 +22,7 @@ import (
 	"testing"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -102,16 +100,12 @@ func TestCancelOverNeverServedReleaseSettlesCanceled(t *testing.T) {
 // reading metrics again (w1/105).
 func TestAutoscaledWorkerEndsScalingTransition(t *testing.T) {
 	ctx := context.Background()
-	scheme := wakeScheme()
 	app := heldWorkerApp("tea-m160")
 	app.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{Enabled: true, MinReplicas: 1, MaxReplicas: 3}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 
 	reconcileTwice(t, r, nn)
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 
 	var live appv1alpha1.App
 	if err := cl.Get(ctx, nn, &live); err != nil {
