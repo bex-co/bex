@@ -260,6 +260,8 @@ type AppSecretsEraser interface {
 // already carries them. *secrets.Service's adapter satisfies it structurally,
 // avoiding an apps -> secrets dependency cycle.
 type CreateSecretsSeeder interface {
+	// CheckCreateSecrets is PrepareCreateSecrets' refusals without its writes.
+	CheckCreateSecrets(files []core.SecretFile, env map[string]string) error
 	PrepareCreateSecrets(ctx context.Context, service string, app *appv1alpha1.App, files []core.SecretFile, env map[string]string) error
 	CommitCreateSecrets(ctx context.Context, service string, app *appv1alpha1.App) error
 	AbortCreateSecrets(ctx context.Context, service string, app *appv1alpha1.App) error
@@ -274,6 +276,11 @@ type IntentStore interface {
 	// moment the public-surface create returns (unified create path, w2/m11).
 	// ErrConflict if (tenant_id, name) already exists.
 	CreateApp(ctx context.Context, a store.App) (store.App, error)
+	// ServiceNameTaken and DomainHostsClaimed are the refusals CreateApp and
+	// ReplaceDomainClaims make, read ahead of them so a create's plan meets
+	// them before its first write (w5/m116).
+	ServiceNameTaken(ctx context.Context, tenantID, selfID, name string) (bool, error)
+	DomainHostsClaimed(ctx context.Context, hosts []string) ([]string, error)
 	// CreateDeploy opens a new deploy row (created when idle, queued behind an
 	// active release) — called on redeploy of a store-managed App so the deploys
 	// API reflects the push.
@@ -1891,7 +1898,13 @@ func stampEnvironmentMembership(a *appv1alpha1.App, environment core.Environment
 // against one workspace and land in another.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	// A dry-run writes nothing, its audit row included (w5/m116); a refusal
+	// is still recorded.
+	authCtx := ctx
+	if req.DryRun {
+		authCtx = core.WithDeferredAllowedWriteAudit(ctx)
+	}
+	if err := s.Authorize(authCtx, core.RelCanCreate); err != nil {
 		return AppView{}, err
 	}
 	if len(req.SecretFiles) > 0 {
@@ -1913,6 +1926,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 // the deploy/restart verbs and the stack path's applyCreate (deploy.go, an
 // idempotent upsert by design) are for.
 func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error) {
+	// One sweep of the platform's Apps serves the plan's host check and the
+	// write's (allApps).
+	ctx = withRequestMemo(ctx)
 	desired, err := specFromCreate(req)
 	if err != nil {
 		return AppView{}, err
@@ -1956,7 +1972,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		return AppView{}, err
 	}
 	if taken {
-		return AppView{}, core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", req.Name), nil)
+		return AppView{}, errServiceNameInUse(req.Name)
 	}
 
 	// Refuse a reserved key at create for the same reason every other write
@@ -1987,37 +2003,6 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		}
 	}
 
-	// Dry-run: the read-only gates on the preview, then return it without
-	// any k8s, store, or secret write (w2/m29). The preview keeps the bare
-	// request name (no tenant-prefixed object name, no minted id) so its id
-	// reads back as the requested name, as it always has.
-	if req.DryRun {
-		a := &appv1alpha1.App{}
-		a.Name = req.Name
-		a.Namespace = s.AppNamespace(tenantID)
-		a.Spec = desired
-		if tenantID != "" {
-			a.Labels = map[string]string{core.LabelTenant: tenantID}
-		}
-		stampEnvironmentMembership(a, environment)
-		// The two read-only gates the real create runs inside
-		// materializeNewApp, in the same order: the custom-domain gate, then
-		// the registry credential's applicability (the write-free half of
-		// ensureExternalRegistryPullSecret).
-		if err := s.previewHostsClaimable(ctx, a); err != nil {
-			return AppView{}, err
-		}
-		if err := s.validateExternalRegistryCredential(ctx, a); err != nil {
-			return AppView{}, err
-		}
-		// Then the plan's service count cap, which the real create meets at
-		// ResourceQuota admission (w8/046).
-		if err := s.CheckQuotaCap(ctx, tenantID, store.AppsQuotaCountKey, "service"); err != nil {
-			return AppView{}, err
-		}
-		return s.view(a), nil
-	}
-
 	a := &appv1alpha1.App{}
 	a.Name = req.Name
 	if tenantID != "" {
@@ -2031,14 +2016,88 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
 	}
 	a.Namespace = s.AppNamespace(tenantID)
-	a.Spec = desired
+	a.Spec = *desired.DeepCopy()
 	stampEnvironmentMembership(a, environment)
 	seed := createSeed{files: req.SecretFiles}
 	// A nil seeder (OpenBao off) keeps the pre-w6/m45 spec-only behavior.
 	if s.CreateSecrets != nil {
 		seed.env = takeCreateEnvLiterals(&a.Spec)
 	}
+	if err := s.planNewApp(ctx, req, a, tenantID, seed); err != nil {
+		return AppView{}, err
+	}
+	// Dry-run: the plan above is every refusal the real create meets, so stop
+	// here, before its first write (w2/m29, w5/m116). The preview keeps the
+	// bare request name (no tenant-prefixed object name, no minted id) so its
+	// id reads back as the requested name, as it always has.
+	if req.DryRun {
+		preview := &appv1alpha1.App{}
+		preview.Name = req.Name
+		preview.Namespace = s.AppNamespace(tenantID)
+		preview.Spec = desired
+		if tenantID != "" {
+			preview.Labels = map[string]string{core.LabelTenant: tenantID}
+		}
+		stampEnvironmentMembership(preview, environment)
+		return s.view(preview), nil
+	}
 	return s.materializeNewApp(ctx, req, a, tenantID, environment, seed)
+}
+
+// planNewApp is every refusal a create meets, run before its first write: the
+// real create commits afterwards, and a dry-run stops here (w5/m116). The
+// checks come in the order the writes meet them — the service row (a name
+// another service was created or is displayed as), the custom-domain gate,
+// the domain claims (a host some service claims, verified or still pending),
+// the registry credential, the create-time secrets — and end in admission of
+// the App the create writes: its schema and CEL rules, and the plan's cap.
+// The writes keep their own constraints as the backstop for a race.
+func (s *Service) planNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, seed createSeed) error {
+	managed := s.Store != nil && tenantID != ""
+	if managed {
+		taken, err := s.Store.ServiceNameTaken(ctx, tenantID, "", req.Name)
+		if err != nil {
+			return fmt.Errorf("checking service name: %w", err)
+		}
+		if taken {
+			return errServiceNameInUse(req.Name)
+		}
+	}
+	if err := s.previewHostsClaimable(ctx, a, req.Name); err != nil {
+		return err
+	}
+	if managed {
+		declarations := domainDeclarations(a.Spec.Host, a.Spec.Hosts, a.Spec.HostRedirects)
+		hosts := make([]string, 0, len(declarations))
+		for _, declaration := range declarations {
+			hosts = append(hosts, declaration.Host)
+		}
+		claimed, err := s.Store.DomainHostsClaimed(ctx, hosts)
+		if err != nil {
+			return errClaimServiceDomains(err)
+		}
+		if len(claimed) > 0 {
+			return errClaimServiceDomains(store.ErrConflict)
+		}
+	}
+	if err := s.validateExternalRegistryCredential(ctx, a); err != nil {
+		return err
+	}
+	if s.CreateSecrets != nil && !seed.empty() {
+		if err := s.CreateSecrets.CheckCreateSecrets(seed.files, seed.env); err != nil {
+			return err
+		}
+	}
+	// The App as the create writes it, with a stand-in for the store row's id,
+	// which does not exist yet.
+	probe := a.DeepCopy()
+	stampAppIdentity(probe, tenantID, ids.New(ids.Service), managed)
+	stampReleaseGeneration(probe, store.FirstDeployGeneration)
+	resourcemeta.Touch(probe, s.Now())
+	if err := s.DryRunCreate(ctx, probe); err != nil {
+		return serviceCountCap.CreateError(err)
+	}
+	return nil
 }
 
 // createSeed is what a new service is born with that does NOT live on its App
@@ -2142,12 +2201,16 @@ func (s *Service) nameTaken(ctx context.Context, tenantID, name string) (bool, e
 	return a != nil && a.Labels[core.LabelTenant] == tenantID, nil
 }
 
-// createNewApp writes a brand-new App CR (the not-found path both create and the
-// stack applyCreate share): stamps the tenant + store labels, opens the store
-// row + its first deploy record when the store is on, mints a clone secret for a
-// private repo, and creates the CR. Shared so the stack path creates services
-// identically to the interactive create (w1/m24).
+// createNewApp writes a brand-new App CR for the stack path's applyCreate (its
+// not-found branch): it stamps the tenant labels, runs the interactive create's
+// plan (planNewApp, w5/m116), then shares its write tail — the store row and
+// first deploy record when the store is on, a clone secret for a private repo,
+// and the CR — so the stack path creates services identically to the
+// interactive create (w1/m24).
 func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
+	// Per create, not per stack: a later service's sweep must see the Apps
+	// this stack has already created (allApps).
+	ctx = withRequestMemo(ctx)
 	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
 		return AppView{}, err
 	}
@@ -2194,7 +2257,11 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	// store would make two writers of the same key and revert a dashboard edit
 	// on the next sync — which is exactly what render.yaml's `sync: false` (and
 	// bex's existing EnvSeeder for it) exists to opt out of.
-	return s.materializeNewApp(ctx, req, a, tenantID, environment, createSeed{files: req.SecretFiles})
+	seed := createSeed{files: req.SecretFiles}
+	if err := s.planNewApp(ctx, req, a, tenantID, seed); err != nil {
+		return AppView{}, err
+	}
+	return s.materializeNewApp(ctx, req, a, tenantID, environment, seed)
 }
 
 // materializeNewApp is the shared write tail of create and createNewApp, run
@@ -2251,16 +2318,14 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		})
 		if err != nil {
 			if errors.Is(err, store.ErrConflict) {
-				return "", "", core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", req.Name), nil)
+				return "", "", errServiceNameInUse(req.Name)
 			}
 			return "", "", fmt.Errorf("creating service record: %w", err)
 		}
 		// Stamp the managed-by + app-id labels so the projector's byID index
 		// finds this CR on its next pass (avoiding a duplicate create) and
 		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
-		a.Labels[store.LabelManagedBy] = store.ManagedByValue
-		a.Labels[store.LabelAppID] = row.ID
-		a.Labels[store.LabelWorkspace] = tenantID
+		stampAppIdentity(a, tenantID, row.ID, true)
 		// The globally-unique slug (w4/m19) drives the platform host
 		// (operator effectiveHosts) — never req.Name, which is only
 		// workspace-unique and can collide across tenants.
@@ -2271,7 +2336,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 	// API create has no row, so persist an equally Render-shaped service id on
 	// the CR; all later reads and lifecycle verbs can resolve it by label.
 	if a.Labels[core.LabelAppID] == "" {
-		a.Labels[core.LabelAppID] = ids.New(ids.Service)
+		stampAppIdentity(a, tenantID, ids.New(ids.Service), false)
 	}
 	return createdRowID, firstDeployID, nil
 }
@@ -2347,17 +2412,11 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 			declarations := domainDeclarations(a.Spec.Host, a.Spec.Hosts, a.Spec.HostRedirects)
 			rows, err := claims.ReplaceDomainClaims(ctx, createdRowID, declarations)
 			if err != nil {
-				if errors.Is(err, store.ErrConflict) {
-					err = errDomainInUse()
-				}
-				return AppView{}, rollbackStoreRow(fmt.Errorf("claim service domains: %w", err))
+				return AppView{}, rollbackStoreRow(errClaimServiceDomains(err))
 			}
 			applyVerifiedDomainClaims(&a.Spec, rows)
 		} else if err := s.Store.ReplaceDomains(ctx, createdRowID, a.Spec.Host, a.Spec.Hosts); err != nil {
-			if errors.Is(err, store.ErrConflict) {
-				err = errDomainInUse()
-			}
-			return AppView{}, rollbackStoreRow(fmt.Errorf("claim service domains: %w", err))
+			return AppView{}, rollbackStoreRow(errClaimServiceDomains(err))
 		}
 	}
 	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
@@ -2397,6 +2456,37 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 	return v, nil
 }
 
+// stampAppIdentity stamps the labels a new App's CR is written with: its app id,
+// and — when the store manages it — the managed-by and workspace labels the
+// projector's byID index and the lifecycle verbs key on.
+func stampAppIdentity(a *appv1alpha1.App, tenantID, appID string, managed bool) {
+	if a.Labels == nil {
+		a.Labels = map[string]string{}
+	}
+	if managed {
+		a.Labels[store.LabelManagedBy] = store.ManagedByValue
+		a.Labels[store.LabelWorkspace] = tenantID
+	}
+	a.Labels[core.LabelAppID] = appID
+}
+
+// errServiceNameInUse is the refusal of a name another service in the
+// workspace was created as or is displayed as — one wording for a create's
+// plan, its store write and a rename, so a dry-run answers what the call does.
+func errServiceNameInUse(name string) error {
+	return core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", name), nil)
+}
+
+// errClaimServiceDomains wraps a failure to claim a new service's hosts; a
+// host another service holds is errDomainInUse. The create's plan and its
+// claim write answer with it alike.
+func errClaimServiceDomains(err error) error {
+	if errors.Is(err, store.ErrConflict) {
+		err = errDomainInUse()
+	}
+	return fmt.Errorf("claim service domains: %w", err)
+}
+
 // stampReleaseGeneration pins an App's open deploy to the release generation
 // whose work it represents, so the operator adopts that identity instead of
 // inferring one from whatever metadata generation it observes first (see
@@ -2406,22 +2496,12 @@ func stampReleaseGeneration(a *appv1alpha1.App, generation int64) {
 		strconv.FormatInt(generation, 10))
 }
 
-// mapServiceCapError translates a per-namespace ResourceQuota rejection of an
-// App CR create (the count/apps.app.bex.co cap that replaced the app-code
-// BEX_MAX_SERVICES check, ADR043 D3, w3/m34) into the same Render-shaped cap
-// error the deleted check used to return (docs/ADR006-bex-api.md § Per-
-// workspace resource caps), so create-past-cap stays a 400 with a readable
-// message instead of a raw Kubernetes admission error leaking through as a 500.
-// Any other error (including an unrelated Forbidden) passes through unchanged.
-func mapServiceCapError(err error) error {
-	if err == nil {
-		return nil
-	}
-	if mapped, ok := core.QuotaCapError(err, store.AppsQuotaCountKey, "service"); ok {
-		return mapped
-	}
-	return err
-}
+// serviceCountCap is the plan's cap on services per workspace (the
+// count/apps.app.bex.co quota that replaced the app-code BEX_MAX_SERVICES
+// check, ADR043 D3, w3/m34). Its refusal, like an invalid field's, maps to the
+// Render-shaped error docs/ADR006-bex-api.md § Per-workspace resource caps
+// names, instead of a raw Kubernetes admission error surfacing as a 500.
+var serviceCountCap = core.CountCap{Key: store.AppsQuotaCountKey, Noun: "service"}
 
 // writeInitialApp keeps group attachment inside the create compensation
 // boundary. Existing Apps never enter this path; their normal link/rollout
@@ -2561,7 +2641,7 @@ func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *app
 // OpenBao paths.
 func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1alpha1.App, seed createSeed) error {
 	if seed.empty() {
-		return mapServiceCapError(s.Client.Create(ctx, a))
+		return serviceCountCap.CreateError(s.Client.Create(ctx, a))
 	}
 	if s.CreateSecrets == nil {
 		return core.ErrSecretsUnavailable
@@ -2576,7 +2656,7 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 		return cause
 	}
 	if err := s.Client.Create(ctx, a); err != nil {
-		return abort(mapServiceCapError(err))
+		return abort(serviceCountCap.CreateError(err))
 	}
 	if err := s.CreateSecrets.CommitCreateSecrets(ctx, publicName, a); err != nil {
 		cause := fmt.Errorf("commit create secrets: %w", err)
@@ -3556,7 +3636,7 @@ func (s *Service) Resume(ctx context.Context, name string) (AppView, error) {
 // Deployment rollout — the same restart-shaped cost as Render's own plan
 // changes.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, error) {
-	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
+	_, a, err := s.authorizeToChange(ctx, name, false, core.RelCanOperate)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3582,33 +3662,36 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	return result, nil
 }
 
-// PreviewSetPlan returns what SetPlan would produce — the same validation and
-// in-memory spec update — without writing to Kubernetes or the store (w2/m29
-// dry-run). Requires can_view on the named service (no audit event, no write).
-func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
-	if err != nil {
-		return AppView{}, err
+// SetPlanDryRun is SetPlan stopped before its first write (w5/m116): a service
+// patch that changes only the plan, run as a dry-run.
+func (s *Service) SetPlanDryRun(ctx context.Context, name, plan string) (AppView, error) {
+	return s.applyServicePatchDryRun(ctx, name, ServicePatch{Plan: &plan})
+}
+
+// authorizeToChange is AuthorizeApp for a verb that changes name. The real
+// call authorizes each of relations, deferring its allowed audit row to the
+// write. Its dry-run authorizes can_view, so a viewer can still preview, and
+// shows billing refusals only to a caller who holds them all (core.PreviewOf).
+// The context it returns is the one the verb's checks run under.
+func (s *Service) authorizeToChange(ctx context.Context, name string, dryRun bool, relations ...string) (context.Context, *appv1alpha1.App, error) {
+	if dryRun {
+		a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+		if err != nil {
+			return ctx, nil, err
+		}
+		return s.PreviewOf(ctx, a.Labels, relations...), a, nil
 	}
-	t, ok := tiers.Compute.ByRenderPlan(plan)
-	if !ok {
-		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+	var a *appv1alpha1.App
+	for _, relation := range relations {
+		fetched, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), relation, name)
+		if err != nil {
+			return ctx, nil, err
+		}
+		if a == nil {
+			a = fetched
+		}
 	}
-	if paidOnlyServiceType(a.Spec.Type) && !core.PaidPlan(t.ID) {
-		return AppView{}, errFreePlanForType(a.Spec.Type)
-	}
-	if err := diskPlanError(a, t.ID); err != nil {
-		return AppView{}, err
-	}
-	if t.ID == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
-		return AppView{}, fmt.Errorf("%w: disable maintenance mode before changing to the free plan", core.ErrBadRequest)
-	}
-	if err := planDowngradeError(a, t.ID, plan); err != nil {
-		return AppView{}, err
-	}
-	preview := a.DeepCopy()
-	preview.Spec.Tier = t.ID
-	return s.view(preview), nil
+	return ctx, a, nil
 }
 
 // diskPlanError mirrors the paid-tier disk constraint before any intent write.
@@ -3971,12 +4054,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	// patchFetched's rollout tracker; the pending marker above tells the operator
 	// to keep the active artifact until a later deploy verb stamps
 	// AnnotationReleaseGeneration at this generation or newer.
-	updated, err := s.patchUntracked(ctx, a, func(a *appv1alpha1.App) {
-		next.applyTo(a)
-		if repoChanged {
-			a.Spec.CloneSecret = "" // clear stale token; reminted on next deploy
-		}
-	})
+	updated, err := s.patchUntracked(ctx, a, next.applySourceChange)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -4012,6 +4090,16 @@ type sourceFields struct {
 // probe, and the real patch — because "these four move together" is the whole
 // reason the type exists; a fifth source field added to sourceFields must not
 // be able to reach the write while the two probes still validate the old four.
+// applySourceChange moves a to f: the source fields and, when the repository
+// origin changes, the clone token scoped to the old origin (codex #5), reminted
+// on the next deploy.
+func (f sourceFields) applySourceChange(a *appv1alpha1.App) {
+	if f.repo != a.Spec.Repo {
+		a.Spec.CloneSecret = ""
+	}
+	f.applyTo(a)
+}
+
 func (f sourceFields) applyTo(a *appv1alpha1.App) {
 	a.Spec.Repo = f.repo
 	a.Spec.Image = f.image
@@ -4498,7 +4586,7 @@ func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) 
 			// The store refuses a name another service in the workspace was
 			// created as or is displayed as (w8/m47) — create's rule and answer.
 			if err := s.Store.SetAppDisplayName(ctx, id, trimmed); errors.Is(err, store.ErrConflict) {
-				return core.NewConflictError("CONFLICT", fmt.Sprintf("name %q is already in use", trimmed), nil)
+				return errServiceNameInUse(trimmed)
 			} else if err != nil {
 				return err
 			}
@@ -4671,6 +4759,9 @@ func (s *Service) patchTracked(ctx context.Context, a *appv1alpha1.App, trigger 
 		resourcemeta.Touch(a, s.Now())
 		return nil
 	})
+	if mapped, ok := core.InvalidFieldsError(err); ok {
+		return AppView{}, mapped
+	}
 	if err != nil {
 		return AppView{}, err
 	}
@@ -4685,7 +4776,7 @@ func (s *Service) patchUntracked(ctx context.Context, a *appv1alpha1.App, mutate
 	base := client.MergeFrom(a.DeepCopy())
 	mutate(a)
 	resourcemeta.Touch(a, s.Now())
-	if err := s.Client.Patch(ctx, a, base); err != nil {
+	if err := s.PatchObject(ctx, a, base, false); err != nil {
 		return AppView{}, err
 	}
 	return s.view(a), nil

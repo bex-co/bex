@@ -128,7 +128,7 @@ func TestAllowListIntentMatrixAndPreview(t *testing.T) {
 					if tc.want != nil {
 						expected = *tc.want
 					}
-					preview, err := svc.PreviewUpdateKeyValue(context.Background(), original.Name, tc.patch)
+					preview, err := svc.UpdateKeyValueDryRun(context.Background(), original.Name, tc.patch)
 					if err != nil || preview.Public != expected {
 						t.Fatalf("preview=%+v err=%v", preview, err)
 					}

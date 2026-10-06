@@ -19,7 +19,6 @@ package apps
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -87,12 +86,9 @@ type updateServiceArgs struct {
 	// (w1/m74) because REST carries it in the same PATCH body; the payment and
 	// plan-billing gates in the Service layer are unchanged by the fold.
 	Plan *string `json:"plan,omitempty" jsonschema:"the instance plan/size, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra. Changing it resizes the pod, rolls the service, and CHANGES WHAT THE WORKSPACE IS BILLED. Pass dryRun:true to preview it without any writes"`
-	// DryRun mirrors PATCH /v1/services/{id}: it previews a PLAN change with
-	// zero writes. Unlike REST, which silently drops the rest of a dry-run body,
-	// this refuses a dryRun call carrying any other settable field — an agent
-	// that asked to preview a command change should be told the tool cannot,
-	// not handed back an unchanged object that implies it did.
-	DryRun                  bool                     `json:"dryRun,omitempty" jsonschema:"if true, preview the plan change without any writes (zero side effects). Valid alone or with plan only"`
+	// DryRun mirrors PATCH /v1/services/{id}: the whole patch's checks with zero
+	// writes, answered with the service as the patch would leave it (w5/m116).
+	DryRun                  bool                     `json:"dryRun,omitempty" jsonschema:"if true, check the whole update and return the service as it would leave it, without any writes (zero side effects)"`
 	IdleTTLSeconds          *int32                   `json:"idleTTLSeconds,omitempty" jsonschema:"seconds a free-tier service may go without traffic (HTTP requests it served, or WebSocket frames it sent) before it auto-sleeps; 0 (or unset) selects the platform default window of 15 minutes, a positive value overrides it"`
 	PublishPath             *string                  `json:"publishPath,omitempty" jsonschema:"static sites only: the built output directory served as the site root, e.g. dist, build, or public"`
 	Schedule                *string                  `json:"schedule,omitempty" jsonschema:"cron jobs only: the 5-field crontab expression, e.g. '0 0 * * *'"`
@@ -840,51 +836,11 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_service",
-		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). Setting repo or image switches source kind without deploying; the next deploy uses the new source. rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to preview it (valid alone or with plan only). Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
+		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). Setting repo or image switches source kind without deploying; the next deploy uses the new source. rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to check any update and preview its result without writes. Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(s.applyServicePatch(core.WithConfirm(ctx, in.Confirm), in))
 	})
 
-}
-
-// nonPlanFields names the settable arguments present besides plan, so a dryRun
-// call that cannot honour them fails with a message that says which ones.
-func (in updateServiceArgs) nonPlanFields() string {
-	present := map[string]bool{
-		"displayName":             in.DisplayName != nil,
-		"repo":                    in.Repo != nil,
-		"image":                   in.Image != nil,
-		"branch":                  in.Branch != nil,
-		"registryCredentialId":    in.RegistryCredentialID != nil,
-		"rootDir":                 in.RootDir != nil,
-		"buildCommand":            in.BuildCommand != nil,
-		"startCommand":            in.StartCommand != nil,
-		"dockerfilePath":          in.DockerfilePath != nil,
-		"healthCheckPath":         in.HealthCheckPath != nil,
-		"preDeployCommand":        in.PreDeployCommand != nil,
-		"maxShutdownDelaySeconds": in.MaxShutdownDelaySeconds != nil,
-		"autoDeploy":              in.AutoDeploy != nil,
-		"buildFilter":             in.BuildFilter != nil,
-		"notifyOnFail":            in.NotifyOnFail != nil,
-		"notificationsToSend":     in.NotificationsToSend != nil,
-		"maintenanceMode":         in.MaintenanceMode != nil,
-		"renderSubdomainPolicy":   in.RenderSubdomainPolicy != nil,
-		"ipAllowList":             in.IPAllowList != nil,
-		"ipAllowListCidrs":        in.IPAllowListCidrs != nil,
-		"autoscaling":             in.Autoscaling != nil,
-		"idleTTLSeconds":          in.IdleTTLSeconds != nil,
-		"publishPath":             in.PublishPath != nil,
-		"schedule":                in.Schedule != nil,
-		"command":                 in.Command != nil,
-	}
-	names := make([]string, 0, len(present))
-	for name, ok := range present {
-		if ok {
-			names = append(names, name)
-		}
-	}
-	slices.Sort(names)
-	return strings.Join(names, ", ")
 }
 
 // applyServicePatch maps update_service's tool arguments onto the neutral
@@ -897,19 +853,6 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 	allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 	if err != nil {
 		return AppView{}, err
-	}
-
-	// Dry run previews the PLAN change and writes nothing — PATCH
-	// /v1/services/{id}'s rule. Anything else in the same call is refused rather
-	// than silently dropped (the one deliberate divergence from REST here).
-	if in.DryRun {
-		if other := in.nonPlanFields(); other != "" {
-			return AppView{}, fmt.Errorf("%w: dryRun previews a plan change only; remove %s or drop dryRun", core.ErrBadRequest, other)
-		}
-		if in.Plan == nil {
-			return s.Get(ctx, in.ServiceID) // no plan to preview => reflect current state
-		}
-		return s.PreviewSetPlan(ctx, in.ServiceID, *in.Plan)
 	}
 
 	p := ServicePatch{
@@ -956,6 +899,11 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 			TargetCPUPercent:    in.Autoscaling.TargetCPUPercent,
 			TargetMemoryPercent: in.Autoscaling.TargetMemoryPercent,
 		}
+	}
+	// A dry-run is the same patch stopped before its first write (w5/m116),
+	// exactly as PATCH /v1/services/{id} runs it.
+	if in.DryRun {
+		return s.ApplyServicePatchDryRun(ctx, in.ServiceID, p)
 	}
 	return s.ApplyServicePatch(ctx, in.ServiceID, p)
 }

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -73,6 +74,13 @@ type initialReleaseClient struct {
 }
 
 func (c *initialReleaseClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	var options client.CreateOptions
+	options.ApplyOptions(opts)
+	if slices.Contains(options.DryRun, metav1.DryRunAll) {
+		// A dry-run persists and publishes nothing — the create plan's
+		// admission check (w5/m116).
+		return c.Client.Create(ctx, obj, opts...)
+	}
 	a, ok := obj.(*appv1alpha1.App)
 	if ok {
 		a.Generation = 1
@@ -98,8 +106,10 @@ func (c *initialReleaseClient) Delete(ctx context.Context, obj client.Object, op
 }
 
 func (c *initialReleaseClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	var options client.PatchOptions
+	options.ApplyOptions(opts)
 	a, ok := obj.(*appv1alpha1.App)
-	if !ok {
+	if !ok || slices.Contains(options.DryRun, metav1.DryRunAll) {
 		return c.Client.Patch(ctx, obj, patch, opts...)
 	}
 	before := &appv1alpha1.App{}

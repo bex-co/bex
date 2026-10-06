@@ -65,23 +65,33 @@ type PullSecretSource interface {
 // ensureExternalRegistryPullSecret, but leaves the active release's deterministic
 // pull Secret untouched. The next deploy materializes the validated binding.
 func (s *Service) validateExternalRegistryCredential(ctx context.Context, a *appv1alpha1.App) error {
-	credentialSet := a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != ""
-	if a.Spec.Image == "" && !credentialSet {
-		return nil
-	}
-	if a.Spec.Image == "" && !isDockerfileBuild(a.Spec) {
-		return fmt.Errorf("%w: registryCredentialId only applies to an image-backed or Dockerfile-built service", core.ErrBadRequest)
-	}
-	if s.RegistryCreds == nil {
-		if credentialSet {
-			return core.ErrRegistryCredentialsUnavailable
-		}
-		return nil
+	if resolve, err := s.registryCredentialApplies(a); !resolve || err != nil {
+		return err
 	}
 	if err := s.RegistryCreds.ValidatePullSecret(ctx, s.AppWorkspace(ctx, a), a.Spec.Image, a.Spec.RegistryCredentialID); err != nil {
 		return fmt.Errorf("validating registry pull secret for %s: %w", a.Spec.Image, err)
 	}
 	return nil
+}
+
+// registryCredentialApplies is the applicability check validation and
+// materialization share: whether a has a registry credential to resolve, and
+// the refusal when it binds one it cannot use or the platform cannot resolve.
+func (s *Service) registryCredentialApplies(a *appv1alpha1.App) (bool, error) {
+	credentialSet := a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != ""
+	if a.Spec.Image == "" && !credentialSet {
+		return false, nil
+	}
+	if a.Spec.Image == "" && !isDockerfileBuild(a.Spec) {
+		return false, fmt.Errorf("%w: registryCredentialId only applies to an image-backed or Dockerfile-built service", core.ErrBadRequest)
+	}
+	if s.RegistryCreds == nil {
+		if credentialSet {
+			return false, core.ErrRegistryCredentialsUnavailable
+		}
+		return false, nil
+	}
+	return true, nil
 }
 
 // ensureExternalRegistryPullSecret resolves and materializes the docker-config
@@ -98,18 +108,8 @@ func (s *Service) validateExternalRegistryCredential(ctx context.Context, a *app
 // and buildpack runtimes reject an explicit binding by name rather than
 // accepting authentication they cannot use.
 func (s *Service) ensureExternalRegistryPullSecret(ctx context.Context, a *appv1alpha1.App) (string, error) {
-	credentialSet := a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) != ""
-	if a.Spec.Image == "" && !credentialSet {
-		return "", nil
-	}
-	if a.Spec.Image == "" && !isDockerfileBuild(a.Spec) {
-		return "", fmt.Errorf("%w: registryCredentialId only applies to an image-backed or Dockerfile-built service", core.ErrBadRequest)
-	}
-	if s.RegistryCreds == nil {
-		if credentialSet {
-			return "", core.ErrRegistryCredentialsUnavailable
-		}
-		return "", nil
+	if resolve, err := s.registryCredentialApplies(a); !resolve || err != nil {
+		return "", err
 	}
 	name, ok, err := s.RegistryCreds.MaterializePullSecret(ctx, s.AppWorkspace(ctx, a), a, a.Spec.Image, a.Spec.RegistryCredentialID)
 	if err != nil {

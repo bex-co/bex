@@ -927,8 +927,8 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 // an idle-timeout change (serviceDetails.idleTTLSeconds), and/or a root
 // directory change (rootDir); an unknown plan or a rootDir on an image-backed
 // App is core.ErrBadRequest => 400.
-// Pass `dryRun: true` in the body or `?dryRun=true` to preview the plan
-// change without writing; returns 200 with the resolved spec (w2/m29).
+// Pass `dryRun: true` in the body or `?dryRun=true` to run the whole patch's
+// checks without writing; returns 200 with the resolved spec (w2/m29, w5/m116).
 func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
 	var req patchServiceRequest
 	if err := core.DecodeJSON(r, &req); err != nil {
@@ -943,21 +943,6 @@ func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
 	f, err := req.resolveFields(r)
 	if err != nil {
 		core.WriteErr(w, err)
-		return
-	}
-
-	// Dry-run: preview plan change only; no writes at all (w2/m29).
-	if f.dryRun {
-		if f.plan == "" {
-			s.getService(w, r) // no plan => reflect current state unchanged
-			return
-		}
-		app, err := s.PreviewSetPlan(r.Context(), id, f.plan)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
 		return
 	}
 
@@ -978,9 +963,14 @@ func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
 	// environment guards — source repointing, the build/run commands, and
 	// enabling maintenance mode (w4/m126) — the same query parameter the
 	// delete and suspend routes already take, and a harmless no-op for the
-	// rest of the table.
+	// rest of the table. A dry-run is the same patch stopped before its first
+	// write (w5/m116), so it meets the same guards.
 	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
-	app, err := s.ApplyServicePatch(ctx, id, req.toServicePatch(f, maintenanceMode))
+	apply := s.ApplyServicePatch
+	if f.dryRun {
+		apply = s.ApplyServicePatchDryRun
+	}
+	app, err := apply(ctx, id, req.toServicePatch(f, maintenanceMode))
 	if err != nil {
 		core.WriteErr(w, err)
 		return

@@ -453,10 +453,11 @@ func TestUpdateServiceCarriesTheSecondFoldsFields(t *testing.T) {
 	})
 }
 
-// TestUpdateServiceDryRunPreviewsThePlanOnly pins the rule w1/m74 took from
-// PATCH /v1/services/{id}, including the one place MCP deliberately diverges:
-// REST silently drops the other fields of a dry-run body, this refuses.
-func TestUpdateServiceDryRunPreviewsThePlanOnly(t *testing.T) {
+// TestUpdateServiceDryRunChecksTheWholePatch pins update_service's dry-run to
+// PATCH /v1/services/{id}'s (w5/m116): every field is checked and previewed,
+// and nothing is written. Before, a dry-run could only preview a plan, so MCP
+// refused the other fields rather than drop them silently as REST did.
+func TestUpdateServiceDryRunChecksTheWholePatch(t *testing.T) {
 	svc, _ := populatedService(t)
 	ctx := context.Background()
 	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
@@ -482,18 +483,37 @@ func TestUpdateServiceDryRunPreviewsThePlanOnly(t *testing.T) {
 		t.Fatalf("dry run wrote the plan: %q", got)
 	}
 
-	// A dry run carrying another field is refused, and names it.
+	// A dry run carrying another field previews it too, and still writes nothing.
 	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
 		"serviceId": "web", "plan": "standard", "dryRun": true, "startCommand": "bin/other",
 	}})
-	if err != nil {
-		t.Fatalf("transport error: %v", err)
+	if err != nil || res.IsError {
+		t.Fatalf("dry-run with startCommand: err=%v isError=%v", err, res != nil && res.IsError)
 	}
-	if !res.IsError {
-		t.Fatal("dryRun with a non-plan field should be refused, not silently dropped")
+	var preview struct {
+		ServiceDetails struct {
+			EnvSpecificDetails map[string]any `json:"envSpecificDetails"`
+		} `json:"serviceDetails"`
+	}
+	b, _ := json.Marshal(res.StructuredContent)
+	if err := json.Unmarshal(b, &preview); err != nil {
+		t.Fatalf("decode preview: %v", err)
+	}
+	if details := preview.ServiceDetails.EnvSpecificDetails; details["startCommand"] != "bin/other" && details["dockerCommand"] != "bin/other" {
+		t.Fatalf("preview command = %#v, want the proposed bin/other", details)
 	}
 	if got := getApp(t, svc.Client, "web").Spec.StartCommand; got != "bin/original" {
-		t.Fatalf("refused dry run still wrote startCommand: %q", got)
+		t.Fatalf("dry run wrote startCommand: %q", got)
+	}
+
+	// An invalid field fails the dry-run exactly as it fails the real call.
+	for _, dryRun := range []bool{true, false} {
+		res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
+			"serviceId": "web", "dryRun": dryRun, "notifyOnFail": "sometimes",
+		}})
+		if err != nil || !res.IsError {
+			t.Fatalf("dryRun=%v with an invalid notifyOnFail: err=%v isError=%v, want a refusal", dryRun, err, res != nil && res.IsError)
+		}
 	}
 
 	// A dry run with no plan at all is a read-only reflect, as REST does.

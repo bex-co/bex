@@ -44,7 +44,7 @@ func TestDiskInvariantRefusalsPrecedeIntentAndBilling(t *testing.T) {
 	}{
 		{"free plan", func(s *Service) error { _, err := s.SetPlan(context.Background(), "disk-web", "free"); return err }},
 		{"preview free plan", func(s *Service) error {
-			_, err := s.PreviewSetPlan(context.Background(), "disk-web", "free")
+			_, err := s.SetPlanDryRun(context.Background(), "disk-web", "free")
 			return err
 		}},
 		{"multiple instances", func(s *Service) error { _, err := s.Scale(context.Background(), "disk-web", 2); return err }},
@@ -80,7 +80,7 @@ func TestDiskInvariantAllowedTransitions(t *testing.T) {
 	t.Run("paid plan and preview", func(t *testing.T) {
 		svc, rec := diskInvariantService(t)
 		before := getApp(t, svc.Client, "disk-web")
-		if _, err := svc.PreviewSetPlan(context.Background(), "disk-web", "standard"); err != nil {
+		if _, err := svc.SetPlanDryRun(context.Background(), "disk-web", "standard"); err != nil {
 			t.Fatal(err)
 		}
 		if len(rec.tierCalls) != 0 || !reflect.DeepEqual(before, getApp(t, svc.Client, "disk-web")) {

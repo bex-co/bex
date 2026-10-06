@@ -1912,19 +1912,58 @@ func lockServiceNames(ctx context.Context, tx pgx.Tx, tenantID string) error {
 	return err
 }
 
+// ServiceNameTaken reports whether another service in tenantID than selfID
+// ("" for one not created yet) was created as, or is displayed as, name: the
+// refusal CreateApp and SetAppDisplayName make under the workspace's name lock
+// (refuseTakenServiceName), read ahead of them so a create's plan and a
+// patch's preflight meet it before anything is written (w5/m116).
+func (s *PGStore) ServiceNameTaken(ctx context.Context, tenantID, selfID, name string) (bool, error) {
+	taken, err := serviceNameTaken(ctx, s.Pool, tenantID, selfID, name)
+	if err != nil {
+		return false, classify("app", err)
+	}
+	return taken, nil
+}
+
+// DomainHostsClaimed returns which of hosts some service already claims,
+// verified or still pending verification — exactly the hosts the unique
+// domains.host constraint refuses a new service (w5/m116).
+func (s *PGStore) DomainHostsClaimed(ctx context.Context, hosts []string) ([]string, error) {
+	if len(hosts) == 0 {
+		return nil, nil
+	}
+	rows, err := s.Pool.Query(ctx, `SELECT host FROM domains WHERE host = ANY($1) ORDER BY host`, hosts)
+	if err != nil {
+		return nil, classify("domain", err)
+	}
+	claimed, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, classify("domain", err)
+	}
+	return claimed, nil
+}
+
 // refuseTakenServiceName is ErrConflict when another service in the workspace
 // (not selfID) was created as, or is displayed as, name.
 func refuseTakenServiceName(ctx context.Context, tx pgx.Tx, tenantID, selfID, name string) error {
-	var taken bool
-	if err := tx.QueryRow(ctx,
-		`SELECT EXISTS (SELECT 1 FROM apps WHERE tenant_id = $1 AND id <> $2 AND (name = $3 OR display_name = $3))`,
-		tenantID, selfID, name).Scan(&taken); err != nil {
+	taken, err := serviceNameTaken(ctx, tx, tenantID, selfID, name)
+	if err != nil {
 		return err
 	}
 	if taken {
 		return fmt.Errorf("service name %q: %w", name, ErrConflict)
 	}
 	return nil
+}
+
+// serviceNameTaken is the one query behind refuseTakenServiceName and
+// ServiceNameTaken, on a transaction or the pool.
+func serviceNameTaken(ctx context.Context, q queryRower, tenantID, selfID, name string) (bool, error) {
+	var taken bool
+	err := q.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM apps WHERE tenant_id = $1 AND id <> $2 AND (name = $3 OR display_name = $3))`,
+		tenantID, selfID, name).Scan(&taken)
+	return taken, err
 }
 
 // SetAppSource atomically updates repo/image/branch and the explicit registry

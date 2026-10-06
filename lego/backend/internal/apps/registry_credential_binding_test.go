@@ -73,8 +73,10 @@ func TestRegistryCredentialCoreCreateSetAndClear(t *testing.T) {
 	if got.Spec.ExternalRegistryPullSecret != "web-registry-pull" {
 		t.Fatalf("source save changed the active release pull secret to %q", got.Spec.ExternalRegistryPullSecret)
 	}
-	if rc.calls != 1 || rc.validateCalls != 2 {
-		t.Fatalf("materializations=%d validations=%d, want create-only materialization plus two read-only updates", rc.calls, rc.validateCalls)
+	// Create validates in its plan before materializing (w5/m116); each update
+	// only validates.
+	if rc.calls != 1 || rc.validateCalls != 3 {
+		t.Fatalf("materializations=%d validations=%d, want create's validation and materialization plus two read-only updates", rc.calls, rc.validateCalls)
 	}
 }
 
@@ -194,8 +196,8 @@ func TestRESTRegistryCredentialCreatePatchAndClear(t *testing.T) {
 	if got.Spec.RegistryCredentialID == nil || *got.Spec.RegistryCredentialID != "rgc-two" || got.Spec.Image != "ghcr.io/acme/private:2" {
 		t.Fatalf("PATCH set spec = %+v", got.Spec)
 	}
-	if rc.validateCalls != 1 || rc.calls != 1 {
-		t.Fatalf("PATCH source credential: validations=%d materializations=%d, want 1 validation and only create's materialization", rc.validateCalls, rc.calls)
+	if rc.validateCalls != 2 || rc.calls != 1 {
+		t.Fatalf("PATCH source credential: validations=%d materializations=%d, want create's and the PATCH's validations and only create's materialization", rc.validateCalls, rc.calls)
 	}
 
 	rc.ok = false

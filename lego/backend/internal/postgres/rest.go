@@ -496,7 +496,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 	// The protected-environment phrase for a rename or version upgrade (w4/m127).
 	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
 	if core.DryRunRequested(r, req.DryRun) {
-		pg, err := s.PreviewUpdatePostgres(ctx, id, patch)
+		pg, err := s.UpdatePostgresDryRun(ctx, id, patch)
 		s.respondPostgres(w, r, http.StatusOK, pg, err)
 		return
 	}

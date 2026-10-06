@@ -590,12 +590,20 @@ func TestCreateWritesStoreRowWhenStoreAndTenantResolved(t *testing.T) {
 	}
 }
 
+// createErrorClient fails the real App create after a create's plan has
+// passed — a race, or a transient API failure. The plan's own dry-run create
+// persists nothing and goes through, as admission would have accepted it.
 type createErrorClient struct {
 	client.Client
 	err error
 }
 
-func (c createErrorClient) Create(context.Context, client.Object, ...client.CreateOption) error {
+func (c createErrorClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	var options client.CreateOptions
+	options.ApplyOptions(opts)
+	if slices.Contains(options.DryRun, metav1.DryRunAll) {
+		return c.Client.Create(ctx, obj, opts...)
+	}
 	return c.err
 }
 
@@ -722,8 +730,13 @@ type recordingStore struct {
 	// an id absent from the map reports "unprotected", matching the store's
 	// own default for an App outside any environment.
 	protectedStatus map[string]string
-	// takenDisplayNames are names SetAppDisplayName refuses as already in use.
+	// takenDisplayNames are names SetAppDisplayName refuses as already in use,
+	// and a create's plan finds taken (ServiceNameTaken).
 	takenDisplayNames map[string]bool
+	// claimedHosts are hosts another service already claims, verified or
+	// pending: DomainHostsClaimed reports them, and ReplaceDomains refuses
+	// them as the unique domains.host constraint does.
+	claimedHosts map[string]bool
 	// protectedCalls counts GetAppProtectedStatus round trips, so a test can
 	// assert the per-request memo (requestmemo.go) actually collapses them.
 	protectedCalls int
@@ -763,6 +776,9 @@ func (r *recordingStore) CreateApp(_ context.Context, a store.App) (store.App, e
 	}
 	a.ID = "srv-test"
 	a.FirstDeployID = "dep-test"
+	if a.Slug == "" {
+		a.Slug = a.Name // store.CreateApp's first choice
+	}
 	if disk := a.InitialDisk; disk != nil {
 		if _, err := r.CreateDisk(context.Background(), a.TenantID, a.ID, disk.Name, disk.MountPath, disk.SizeGB); err != nil {
 			return store.App{}, err
@@ -770,6 +786,22 @@ func (r *recordingStore) CreateApp(_ context.Context, a store.App) (store.App, e
 	}
 	r.appCreates = append(r.appCreates, a)
 	return a, nil
+}
+
+// ServiceNameTaken and DomainHostsClaimed are reads: err stands for a failed
+// row write, so they do not consult it.
+func (r *recordingStore) ServiceNameTaken(_ context.Context, _, _, name string) (bool, error) {
+	return r.takenDisplayNames[name], nil
+}
+
+func (r *recordingStore) DomainHostsClaimed(_ context.Context, hosts []string) ([]string, error) {
+	var claimed []string
+	for _, host := range hosts {
+		if r.claimedHosts[host] {
+			claimed = append(claimed, host)
+		}
+	}
+	return claimed, nil
 }
 
 func (r *recordingStore) CreateDeploy(_ context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
@@ -895,6 +927,11 @@ func (r *recordingStore) AddDomain(_ context.Context, id, host, redirectForName 
 func (r *recordingStore) ReplaceDomains(_ context.Context, id, primary string, hosts []string) error {
 	if r.err != nil {
 		return r.err
+	}
+	for _, host := range hosts {
+		if r.claimedHosts[host] {
+			return store.ErrConflict
+		}
 	}
 	r.domainReplaces = append(r.domainReplaces, struct {
 		id      string

@@ -220,24 +220,24 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
-		"updateKeyValuePlan": gqlutil.PlanMutation(keyValueGQLType, s.SetPlan, s.PreviewSetPlan),
+		"updateKeyValuePlan": gqlutil.PlanMutation(keyValueGQLType, s.SetPlan, s.SetPlanDryRun),
 		// setKeyValueMaxmemoryPolicy is the GraphQL/MCP mirror of the REST PATCH's
 		// maxmemoryPolicy field (w7/m45): the per-field verb pattern updateKeyValuePlan
 		// / setKeyValueIpAllowList already follow, routed through the shared
 		// UpdateKeyValue so all surfaces normalize + validate the policy identically.
 		"setKeyValueMaxmemoryPolicy": gqlutil.PatchMutation(keyValueGQLType, "maxmemoryPolicy",
 			func(policy string) KeyValuePatch { return KeyValuePatch{MaxmemoryPolicy: &policy} },
-			s.UpdateKeyValue, s.PreviewUpdateKeyValue),
+			s.UpdateKeyValue, s.UpdateKeyValueDryRun),
 		// setKeyValuePersistenceMode is the sibling of setKeyValueMaxmemoryPolicy
 		// (w6/m127): persistenceMode becomes updatable post-create through the same
 		// shared UpdateKeyValue, so a store created on `off` can reach durable
 		// persistence without being recreated. Render's PATCH input carries it too.
 		"setKeyValuePersistenceMode": gqlutil.PatchMutation(keyValueGQLType, "persistenceMode",
 			func(mode string) KeyValuePatch { return KeyValuePatch{PersistenceMode: &mode} },
-			s.UpdateKeyValue, s.PreviewUpdateKeyValue),
+			s.UpdateKeyValue, s.UpdateKeyValueDryRun),
 		"renameKeyValue": gqlutil.PatchMutation(keyValueGQLType, "name",
 			func(name string) KeyValuePatch { return KeyValuePatch{Name: &name} },
-			s.UpdateKeyValue, s.PreviewUpdateKeyValue),
+			s.UpdateKeyValue, s.UpdateKeyValueDryRun),
 		"suspendKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{

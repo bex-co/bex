@@ -20,7 +20,7 @@ package apps
 // a worker never lands on the free tier. An omitted plan defaults to the
 // cheapest paid rung, an explicit free plan is refused on create and on every
 // plan-change path (all surfaces funnel through specFromCreate and
-// SetPlan/PreviewSetPlan), and the Blueprint billing/pricing probes price the
+// SetPlan/SetPlanDryRun), and the Blueprint billing/pricing probes price the
 // paid default rather than free. Other service types keep their free
 // eligibility — pinned by TestSpecFromCreateDefaults and the instance-cap
 // family.
@@ -84,8 +84,8 @@ func TestSetPlanWorkerFreeRefused(t *testing.T) {
 		t.Errorf("a refused downgrade must not change spec.tier, got %q", got)
 	}
 
-	if _, err := svc.PreviewSetPlan(context.Background(), "worker", "free"); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "requires a paid plan") {
-		t.Errorf("PreviewSetPlan worker -> free = %v, want the paid-only refusal", err)
+	if _, err := svc.SetPlanDryRun(context.Background(), "worker", "free"); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "requires a paid plan") {
+		t.Errorf("SetPlanDryRun worker -> free = %v, want the paid-only refusal", err)
 	}
 
 	if _, err := svc.SetPlan(context.Background(), "worker", "starter"); err != nil {

@@ -254,8 +254,8 @@ func ArgMutation[T any](out graphql.Output, argName string,
 }
 
 // PatchMutation is the one shape a "change this one field of a resource"
-// mutation takes: `(id, <field>, dryRun)`, where dryRun routes to the PREVIEW
-// verb — which resolves the identical spec and writes nothing (w2/m29).
+// mutation takes: `(id, <field>, dryRun)`, where dryRun routes to the verb's
+// dry-run — the same call stopped before its first write (w2/m29, w5/m116).
 //
 // Shared because the dryRun branch is a rule, not boilerplate. Six mutations
 // across three features carry it (updateServicePlan, updateDatabasePlan,
@@ -265,7 +265,7 @@ func ArgMutation[T any](out graphql.Output, argName string,
 // preview — the response looks the same either way, so nothing would surface it.
 //
 // `patch` lifts the single string argument into the feature's patch struct;
-// apply and preview are that feature's write and preview verbs, which share a
+// apply and preview are that feature's verb and its dry-run, which share a
 // signature and are therefore swappable at the call site. Each feature's
 // TestGraphQLDryRun* pins its own wiring in both directions.
 func PatchMutation[P, T any](out graphql.Output, argName string, patch func(string) P,
@@ -293,8 +293,9 @@ func PatchMutation[P, T any](out graphql.Output, argName string, patch func(stri
 	}
 }
 
-// PlanMutation is PatchMutation for the plan-bearing resources, whose set and
-// preview verbs take the plan string directly rather than a patch struct.
+// PlanMutation is PatchMutation for the plan-bearing resources, whose plan
+// verbs and their dry-runs take the plan string directly rather than a patch
+// struct.
 func PlanMutation[T any](out graphql.Output, set, preview func(ctx context.Context, id, plan string) (T, error)) *graphql.Field {
 	return PatchMutation(out, "plan", func(plan string) string { return plan }, set, preview)
 }
