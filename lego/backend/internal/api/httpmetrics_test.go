@@ -485,7 +485,6 @@ func TestOriginMetricsExcludesStreamsFromTheHistogram(t *testing.T) {
 func TestStatusWriterKeepsHijackerAndReaderFrom(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	metrics := NewOriginMetrics(reg)
-	hijacked := make(chan struct{}, 1)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /upgrade", func(w http.ResponseWriter, _ *http.Request) {
 		hijacker, ok := w.(http.Hijacker)
@@ -500,9 +499,16 @@ func TestStatusWriterKeepsHijackerAndReaderFrom(t *testing.T) {
 		}
 		_, _ = conn.Write([]byte("HTTP/1.1 101 Switching Protocols\r\n\r\n"))
 		_ = conn.Close()
-		hijacked <- struct{}{}
 	})
-	server := httptest.NewServer(metrics.InternalMiddleware(mux))
+	// The middleware records a request only after its handler returns, so wait
+	// for the middleware, not the hijack: reading samples once the handler had
+	// closed the connection flaked a deploy (w4/210).
+	metered := metrics.InternalMiddleware(mux)
+	recorded := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metered.ServeHTTP(w, r)
+		recorded <- struct{}{}
+	}))
 	defer server.Close()
 
 	conn, err := net.Dial("tcp", strings.TrimPrefix(server.URL, "http://"))
@@ -520,7 +526,7 @@ func TestStatusWriterKeepsHijackerAndReaderFrom(t *testing.T) {
 	if !strings.Contains(status, "101") {
 		t.Fatalf("upgrade response = %q, want 101", status)
 	}
-	<-hijacked
+	<-recorded
 
 	samples := gatherSamples(t, reg)
 	if !hasSample(samples, "bex_api_http_requests_total",
