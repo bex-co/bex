@@ -81,12 +81,16 @@ func (d dockerDetails) build() string {
 	return buildStrategy(appv1alpha1.AppSpec{Runtime: d.runtime, Builder: d.builder, Image: d.image})
 }
 
-// commandApplies reports whether the build reads a dockerCommand: a
-// Dockerfile build and a prebuilt image do. A native runtime and buildpacks
-// take their command elsewhere, so there it is inert, as on Render, and a
-// call Render accepts keeps its native commands.
+// commandApplies reports whether the build reads a dockerCommand. A native
+// runtime and buildpacks take their command elsewhere, so there it is inert,
+// as on Render, and a call Render accepts keeps its native commands.
 func (d dockerDetails) commandApplies() bool {
-	build := d.build()
+	return readsDockerCommand(d.build())
+}
+
+// readsDockerCommand reports whether a build runs a container command, the one
+// render.yaml spells dockerCommand: a Dockerfile build and a prebuilt image do.
+func readsDockerCommand(build string) bool {
 	return build == buildDockerfile || build == buildImage
 }
 

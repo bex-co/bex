@@ -290,8 +290,13 @@ func TestParseBlueprintServiceMapsDockerAndStaticFields(t *testing.T) {
 	if err != nil || static.SubdomainPolicy != "disabled" || len(static.Hosts) != 1 || len(static.Routes) != 1 || len(static.Headers) != 1 {
 		t.Fatalf("static fields = %#v, err %v", static, err)
 	}
-	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "api", Type: "web", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, DockerCommand: "bad"}); err == nil {
-		t.Fatal("dockerCommand outside docker runtime was accepted")
+	// w5/080: a prebuilt image's command is a container command too.
+	image, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "api", Type: "web", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, DockerCommand: "nginx -g 'daemon off;'"})
+	if err != nil || image.StartCommand != "nginx -g 'daemon off;'" {
+		t.Fatalf("image dockerCommand = %#v, err %v", image, err)
+	}
+	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "api", Type: "web", Runtime: "node", Repo: "https://example.test/api.git", DockerCommand: "npm start"}); err == nil {
+		t.Fatal("dockerCommand on a native runtime was accepted")
 	}
 	if _, _, err := parseService(blueprintParseOverrides{}, bexService{Name: "worker", Type: "worker", Runtime: "image", Image: &bexImage{URL: "nginx:1"}, IPAllowList: []bexIPEntry{{Source: "192.0.2.0/24"}}}); err == nil {
 		t.Fatal("worker ipAllowList was accepted even though it has no ingress")

@@ -521,8 +521,9 @@ type AppSpec struct {
 	BuildCommand string `json:"buildCommand,omitempty"`
 
 	// StartCommand is Render's runtime launch command. For a native runtime it
-	// becomes the generated image's CMD; for docker it is dockerCommand and
-	// overrides the image command on Deployments/CronJobs when non-empty.
+	// becomes the generated image's CMD; for docker or a prebuilt image it is
+	// dockerCommand and overrides the image command on Deployments/CronJobs
+	// when non-empty.
 	// +optional
 	// +kubebuilder:validation:MaxLength=4096
 	StartCommand string `json:"startCommand,omitempty"`
