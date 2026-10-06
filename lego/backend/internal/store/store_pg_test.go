@@ -3438,12 +3438,26 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 	if k1 == "" {
 		t.Fatal("empty key")
 	}
+	// Every sandbox verb asks for the key, so a repeat reads it without
+	// rewriting the row (w5/087): the row version is unchanged.
+	rowVersion := func() string {
+		t.Helper()
+		var xmin string
+		if err := pool.QueryRow(ctx, `SELECT xmin::text FROM sandbox_tenant_keys WHERE workspace_id = $1`, tenA.ID).Scan(&xmin); err != nil {
+			t.Fatal(err)
+		}
+		return xmin
+	}
+	minted := rowVersion()
 	k2, err := s.SandboxKeyForWorkspace(ctx, tenA.ID)
 	if err != nil {
-		t.Fatalf("second mint: %v", err)
+		t.Fatalf("repeat call: %v", err)
 	}
 	if k1 != k2 {
 		t.Errorf("repeat mint diverged: %q vs %q", k1, k2)
+	}
+	if again := rowVersion(); again != minted {
+		t.Errorf("repeat call rewrote the key row: xmin %s → %s", minted, again)
 	}
 
 	// A different workspace gets a distinct key.
@@ -3475,8 +3489,9 @@ func TestSandboxKeyMintIdempotentAndResolves(t *testing.T) {
 		t.Errorf("SandboxKeyLookup(unknown) = %q found=%v err=%v, want \"\" false nil", gotKey, found, err)
 	}
 
-	// Concurrent first-mints for a fresh workspace converge to one key (the
-	// UNIQUE(workspace_id) constraint, not a check-then-insert).
+	// Concurrent first-mints for a fresh workspace converge to one key: they can
+	// all miss the read-first check, and UNIQUE(workspace_id) + ON CONFLICT
+	// converges them.
 	tenRace, err := s.CreateWorkspace(ctx, "sbxkey-race", PlanPro, "sbxkey-owner-race")
 	if err != nil {
 		t.Fatalf("create workspace race: %v", err)

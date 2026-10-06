@@ -47,13 +47,21 @@ func newSandboxKey() (string, error) {
 }
 
 // SandboxKeyForWorkspace returns the workspace's OpenSandbox tenant key, minting
-// one on first use. Idempotent and race-safe: the UNIQUE(workspace_id) constraint
-// collapses concurrent first-mints to a single key — ON CONFLICT returns the
-// already-stored key rather than a second one. This is the KeyProvider the
-// sandbox feature calls to stamp each request's OPEN-SANDBOX-API-KEY.
+// one on first use. It is the KeyProvider behind every sandbox request, so it
+// reads a stored key first: the upsert writes a new row version even when it
+// changes nothing (w5/087). Race-safe: first-mints that all miss the read
+// collapse on UNIQUE(workspace_id), and DO UPDATE (where DO NOTHING would return
+// no row on conflict) hands each loser the stored key.
 func (s *PGStore) SandboxKeyForWorkspace(ctx context.Context, workspaceID string) (string, error) {
 	if workspaceID == "" {
 		return "", fmt.Errorf("%w: empty workspace", ErrInvalid)
+	}
+	stored, found, err := s.SandboxKeyLookup(ctx, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	if found {
+		return stored, nil
 	}
 	key, err := newSandboxKey()
 	if err != nil {
