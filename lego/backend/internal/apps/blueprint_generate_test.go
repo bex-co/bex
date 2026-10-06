@@ -449,15 +449,18 @@ func TestGenerateBlueprintDockerfileServiceWithoutExplicitRuntime(t *testing.T) 
 	}
 }
 
-// A shape the generator still cannot express fails with a coded error naming
-// the service, never an anonymous "internal error".
+// A shape the generator cannot express fails with a coded error naming the
+// service, never an anonymous "internal error". Buildpack builds and stored
+// build commands were such shapes until w5/m117; no App a create or the CRD
+// accepts is known to fail now, so this stores a runtime the CRD's enum would
+// refuse (the fake client runs no CRD validation).
 func TestGenerateBlueprintSelfCheckFailureNamesTheService(t *testing.T) {
-	const appID = "srv-buildpack-norun"
+	const appID = "srv-unknown-runtime"
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "bp", Namespace: "default", Labels: map[string]string{
 			core.LabelServiceName: "bp", core.LabelAppID: appID,
 		}},
-		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: "https://github.com/acme/app", Builder: "buildpack"},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: "https://github.com/acme/app", Runtime: "cobol"},
 	}
 	svc := &Service{Base: &core.Base{Client: fakeClient(app), Namespace: "default"}}
 	_, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{ServiceIDs: []string{appID}})

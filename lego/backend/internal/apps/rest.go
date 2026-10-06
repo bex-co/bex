@@ -462,6 +462,10 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	var maxShutdownDelaySeconds *int32
 	var maintenanceMode *MaintenanceModeView
 	var disk *ServiceDiskView
+	imagePath := ""
+	if r.Image != nil {
+		imagePath = r.Image.ImagePath
+	}
 	if r.ServiceDetails != nil {
 		var err error
 		if maintenanceMode, err = decodeMaintenanceMode(ctx, r.ServiceDetails.MaintenanceMode); err != nil {
@@ -475,35 +479,23 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		if runtime == "" {
 			runtime = r.ServiceDetails.Env
 		}
-		if r.ServiceDetails.EnvSpecificDetails != nil {
-			buildCommand = r.ServiceDetails.EnvSpecificDetails.BuildCommand
-			startCommand = r.ServiceDetails.EnvSpecificDetails.StartCommand
-			nestedRegistryCredentialID = r.ServiceDetails.EnvSpecificDetails.RegistryCredentialID
-			if strings.EqualFold(runtime, "docker") {
-				// A CRON's command arrives in the NATIVE spelling even on the
-				// docker runtime: the pinned CLI's cron builder emits
-				// envSpecificDetails.startCommand for every runtime, with no
-				// docker branch (pkg/service/create.go buildCronEnvSpecificDetails).
-				// Overwriting unconditionally discarded it and defeated the cron
-				// bridge below, so a docker cron was created with no command at
-				// all (w9/m165). Accept either spelling for a cron, dockerCommand
-				// first; every other docker service keeps the exact prior rule.
-				if cmd := r.ServiceDetails.EnvSpecificDetails.DockerCommand; cmd != "" || r.Type != appv1alpha1.TypeCronJob {
-					startCommand = cmd
-				}
-				dockerfilePath = r.ServiceDetails.EnvSpecificDetails.DockerfilePath
-				// dockerContext is its own spec field (repo-root-relative,
-				// independent of rootDir) — the pre-w8/m19 rootDir fold was a
-				// lossy approximation.
-				dockerContext = r.ServiceDetails.EnvSpecificDetails.DockerContext
-			} else if strings.EqualFold(runtime, "image") {
-				// A prebuilt image's CMD override travels as dockerCommand: the
-				// pinned spec's envSpecificDetailsPOST is docker-or-native
-				// details, and only the docker variant carries a command for a
-				// runtime with no build. Update already maps it (w4/188).
-				if cmd := r.ServiceDetails.EnvSpecificDetails.DockerCommand; cmd != "" {
-					startCommand = cmd
-				}
+		if d := r.ServiceDetails.EnvSpecificDetails; d != nil {
+			buildCommand = d.BuildCommand
+			nestedRegistryCredentialID = d.RegistryCredentialID
+			// Render's envSpecificDetails is docker-or-native details, read
+			// the same way for every service type. startCommand stays the
+			// command unless the build reads a dockerCommand: the pinned
+			// CLI's cron builder sends a cron's command as startCommand on
+			// every runtime (pkg/service/create.go
+			// buildCronEnvSpecificDetails, w9/m165), and a prebuilt image's
+			// CMD override travels as dockerCommand (w4/188). dockerContext
+			// is its own spec field (repo-root-relative, independent of
+			// rootDir); the pre-w8/m19 rootDir fold was a lossy approximation.
+			docker := dockerDetails{runtime: runtime, builder: r.Builder, image: imagePath,
+				startCommand: d.StartCommand, dockerCommand: d.DockerCommand, dockerContext: d.DockerContext}
+			startCommand, _, dockerContext = docker.resolve()
+			if docker.build() == buildDockerfile {
+				dockerfilePath = d.DockerfilePath
 			}
 		}
 		if r.ServiceDetails.BuildCommand != "" {
@@ -529,10 +521,8 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			disk = &ServiceDiskView{Name: d.Name, MountPath: d.MountPath, SizeGB: d.SizeGB}
 		}
 	}
-	image := ""
 	var imageRegistryCredentialID json.RawMessage
 	if r.Image != nil {
-		image = r.Image.ImagePath
 		imageRegistryCredentialID = r.Image.RegistryCredentialID
 	}
 	registryCredentialID, err := oneRegistryCredentialID(imageRegistryCredentialID, nestedRegistryCredentialID)
@@ -566,7 +556,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		Schedule:                schedule,
 		Command:                 command,
 		Repo:                    r.Repo,
-		Image:                   image,
+		Image:                   imagePath,
 		RegistryCredentialID:    registryCredentialID,
 		Branch:                  r.Branch,
 		Builder:                 r.Builder,
@@ -1043,23 +1033,12 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 // Pass `dryRun: true` in the body or `?dryRun=true` in the query to preview
 // the resolved spec without any writes; response is 200 (not 201) (w2/m29).
 func (s *Service) createService(w http.ResponseWriter, r *http.Request) {
-	var req createServiceRequest
-	if err := core.DecodeJSON(r, &req); err != nil {
-		core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
-		return
-	}
-	if field := req.unsupportedField(); field != "" {
-		core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
-		return
-	}
-	req.DryRun = core.DryRunRequested(r, req.DryRun)
-	defaultOwnerID, _ := s.Tenant(r.Context())
-	createReq, err := req.toCreateRequest(r.Context(), defaultOwnerID)
+	req, err := s.decodeCreateService(r)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
 	}
-	app, err := s.Create(r.Context(), createReq)
+	app, err := s.Create(r.Context(), req)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -1070,6 +1049,22 @@ func (s *Service) createService(w http.ResponseWriter, r *http.Request) {
 	}
 	// Render: create => 201, body wraps the service under serviceAndDeploy.
 	core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: s.restService(r.Context(), app), DeployID: app.LatestDeployID})
+}
+
+// decodeCreateService is POST /v1/services' whole wire-to-request step: the
+// body's refusals, then toCreateRequest (TestCreateWireFieldsReachTheRequest
+// drives it).
+func (s *Service) decodeCreateService(r *http.Request) (CreateRequest, error) {
+	var req createServiceRequest
+	if err := core.DecodeJSON(r, &req); err != nil {
+		return CreateRequest{}, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+	}
+	if field := req.unsupportedField(); field != "" {
+		return CreateRequest{}, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field)
+	}
+	req.DryRun = core.DryRunRequested(r, req.DryRun)
+	defaultOwnerID, _ := s.Tenant(r.Context())
+	return req.toCreateRequest(r.Context(), defaultOwnerID)
 }
 
 // registerCronRunRoutes mounts the cron-job run routes, under both Render's
