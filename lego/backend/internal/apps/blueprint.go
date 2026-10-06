@@ -1646,30 +1646,22 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 }
 
 // blueprintScope scopes ctx to the workspace that owns Blueprint bpID and
-// authorizes relation there. An explicit ownerID (or a workspace already named
-// on ctx) keeps the caller's choice. Without one the id resolves its own
-// workspace, so a caller who belongs to several needs no ownerId, as Render's
-// owner-less GET /blueprints/{id} implies (w4/m169). A non-member gets the same
-// not-found as a missing id, so the id is no existence oracle; a member whose
-// role falls short keeps the 403.
+// authorizes relation there (core.Base.ScopeByID, ADR072's by-id matrix). An
+// explicit ownerID (or a workspace already named on ctx) keeps the caller's
+// choice. Without one the id resolves its own workspace, so a caller who
+// belongs to several needs no ownerId, as Render's owner-less
+// GET /blueprints/{id} implies (w4/m169). A caller outside that workspace gets
+// the typed-id 403, audited once like any refusal (w5/m115).
 func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, error) {
-	if ownerID != "" {
-		ctx = core.WithWorkspace(ctx, ownerID)
-	} else if _, named := core.WorkspaceFrom(ctx); !named && s.Blueprints != nil {
-		owner, err := s.Blueprints.BlueprintWorkspace(ctx, bpID)
-		switch {
-		case err == nil:
-			scoped := core.WithWorkspace(ctx, owner)
-			if err := s.Authorize(scoped, relation); err != nil {
-				if errors.Is(err, core.ErrForbidden) && !s.isMember(ctx, owner) {
-					return ctx, core.NotFound("blueprint")
-				}
-				return ctx, err
-			}
-			return scoped, nil
-		case !errors.Is(err, store.ErrNotFound):
-			return ctx, store.MapError(err)
+	var owner core.ResourceOwner
+	if s.Blueprints != nil {
+		owner = func(ctx context.Context) ([]string, error) {
+			return store.OwnerWorkspaces(s.Blueprints.BlueprintWorkspace(ctx, bpID))
 		}
+	}
+	ctx, err := s.ScopeByID(ctx, ownerID, owner)
+	if err != nil {
+		return ctx, store.MapError(err)
 	}
 	if err := s.Authorize(ctx, relation); err != nil {
 		return ctx, err
@@ -1678,17 +1670,6 @@ func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID st
 		return ctx, ErrBlueprintsUnavailable
 	}
 	return ctx, nil
-}
-
-// isMember reports whether the caller belongs to workspace. Unknown (no
-// identity, no resolver, a lookup error) is not membership.
-func (s *Service) isMember(ctx context.Context, workspace string) bool {
-	id, ok := core.IdentityFrom(ctx)
-	if !ok || s.Workspace == nil {
-		return false
-	}
-	member, err := s.Workspace.IsMember(ctx, id, workspace)
-	return err == nil && member
 }
 
 // resolveTenantID returns the effective tenant id.

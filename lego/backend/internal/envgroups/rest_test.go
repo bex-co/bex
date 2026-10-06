@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
@@ -203,7 +204,7 @@ func filterTestService(t *testing.T) *Service {
 		}
 	}
 	return &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"filter-user": {"tea-a", "tea-b"}}},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"filter-user": {"tea-a", "tea-b"}}},
 		Store: store,
 	}
 }
@@ -301,7 +302,7 @@ func TestREST_EnvGroupLegacyEmptyTimestampPassesTimeFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"filter-user": {"tea-a"}}},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"filter-user": {"tea-a"}}},
 		Store: store,
 	}
 	// A createdBefore filter that excludes all known-created groups must still

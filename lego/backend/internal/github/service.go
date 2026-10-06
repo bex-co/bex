@@ -576,30 +576,25 @@ func selectionOffers(sel store.GitHubClaimSelection, installationID int64) bool 
 // so a claim begun in a non-default workspace completes without ?ownerId=. Only
 // the initiating subject's own selection routes; any other (unknown, expired,
 // foreign subject) stays on the default path, where loadSelection refuses it
-// with the same errClaimSelectionGone. A caller no longer a member of the
-// selection's workspace gets that same refusal. Peek only: routing never
-// consumes.
+// with the same errClaimSelectionGone; so does one in a workspace the caller
+// has left (ScopeByVisibleID). Peek only: routing never consumes.
 func (s *Service) scopeSelection(ctx context.Context, ownerID, selectionID string) (context.Context, error) {
 	var owner core.ResourceOwner
 	if s.configured() {
-		owner = func(ctx context.Context) (string, bool, error) {
+		owner = func(ctx context.Context) ([]string, error) {
 			sel, err := s.Store.GetGitHubClaimSelection(ctx, selectionID)
-			if errors.Is(err, store.ErrNotFound) {
-				return "", false, nil
-			}
 			if err != nil {
-				return "", false, err
+				return store.OwnerWorkspaces("", err)
 			}
 			if ident, ok := core.IdentityFrom(ctx); !ok || ident.Subject == "" || sel.Subject != ident.Subject {
-				return "", false, nil
+				return nil, nil
 			}
-			return sel.WorkspaceID, true, nil
+			return []string{sel.WorkspaceID}, nil
 		}
 	}
-	// A selection is the caller's own short-lived row: one they can no longer
-	// reach (they left its workspace) reads as gone, like an expired one.
-	ctx, err := s.ScopeByID(ctx, ownerID, owner)
-	return ctx, forbiddenAs(err, errClaimSelectionGone)
+	// A selection is the caller's own short-lived row: one in a workspace they
+	// have left is out of their sight and reads as gone, like an expired one.
+	return s.ScopeByVisibleID(ctx, ownerID, owner)
 }
 
 // loadSelection is the shared guard of both selection verbs — one copy so the
@@ -736,9 +731,6 @@ func (s *Service) ListConnections(ctx context.Context, ownerID string) ([]Connec
 // Admin-only.
 func (s *Service) Disconnect(ctx context.Context, ownerID string, installationID int64) error {
 	ctx, err := s.scopeInstallation(ctx, ownerID, installationID)
-	if errors.Is(err, errInstallationNotVisible) {
-		return nil // indistinguishable from never connected
-	}
 	if err != nil {
 		return err
 	}
@@ -770,58 +762,29 @@ func (s *Service) Disconnect(ctx context.Context, ownerID string, installationID
 	return err
 }
 
-// errInstallationNotVisible is scopeInstallation's not-found: the caller is not
-// a member of the binding's workspace. Disconnect folds it into its idempotent
-// no-op, the answer an installation bound nowhere gets.
-var errInstallationNotVisible = errors.New("github: installation not bound in a workspace the caller belongs to")
-
 // scopeInstallation picks the workspace a by-installation verb acts in
 // (w4/m172). An installation may be bound in several workspaces (ADR078 §2,
-// N:N), so its "own" workspace is chosen among the bindings the caller can see:
-// the caller's default when it holds one (today's behavior), else the single
-// binding in a workspace the caller is a member of. Bindings only in foreign
-// workspaces stay unrouted — the default path then finds nothing, exactly as for
-// an installation bound nowhere. Several visible non-default bindings are
-// ambiguous: refused with ErrConflict naming ownerId rather than guessed.
+// N:N); core.Base.ScopeByVisibleID chooses among the bindings the caller can
+// see. A GitHub installation id is not a bex id but GitHub's enumerable
+// integer, so bindings only in foreign workspaces stay unrouted: the default
+// path then finds nothing, exactly as for an installation bound nowhere — the
+// idempotent no-op rather than ADR072's typed-id 403.
 func (s *Service) scopeInstallation(ctx context.Context, ownerID string, installationID int64) (context.Context, error) {
 	var owner core.ResourceOwner
 	if s.configured() && installationID > 0 {
-		owner = func(ctx context.Context) (string, bool, error) {
+		owner = func(ctx context.Context) ([]string, error) {
 			rows, err := s.Store.GitConnectionsByInstallation(ctx, installationID)
 			if err != nil {
-				return "", false, err
+				return nil, err
 			}
-			ident, _ := core.IdentityFrom(ctx)
-			def := s.WorkspaceOrDefault(ctx)
-			visible := []string{}
+			workspaces := make([]string, 0, len(rows))
 			for _, row := range rows {
-				if row.WorkspaceID == def {
-					return def, true, nil
-				}
-				member, err := s.Workspace.IsMember(ctx, ident, row.WorkspaceID)
-				if err != nil {
-					log.Printf("github: workspace membership unavailable: %v", err)
-					return "", false, core.ErrAuthzUnavailable
-				}
-				if member {
-					visible = append(visible, row.WorkspaceID)
-				}
+				workspaces = append(workspaces, row.WorkspaceID)
 			}
-			switch len(visible) {
-			case 0:
-				return "", false, nil
-			case 1:
-				return visible[0], true, nil
-			default:
-				return "", false, fmt.Errorf("%w: this GitHub installation is connected to several of your workspaces; specify ownerId", core.ErrConflict)
-			}
+			return workspaces, nil
 		}
 	}
-	// A GitHub installation id is not a bex id: one connected only in
-	// workspaces the caller is not in stays indistinguishable from an absent
-	// one (the idempotent no-op), rather than ADR072's typed-id 403.
-	ctx, err := s.ScopeByID(ctx, ownerID, owner)
-	return ctx, forbiddenAs(err, errInstallationNotVisible)
+	return s.ScopeByVisibleID(ctx, ownerID, owner)
 }
 
 // ListRepos returns the repositories across ALL of ownerID's connected
@@ -1524,11 +1487,3 @@ func classifyBlueprintCommitLookup(err error) error {
 	return fmt.Errorf("%w: %w", ErrRepoNotFoundOrNoAccess, err)
 }
 
-// forbiddenAs maps ScopeByID's non-member refusal (ErrForbidden) to a verb's
-// own answer, for ids that are not typed bex resource ids (w4/199).
-func forbiddenAs(err, instead error) error {
-	if errors.Is(err, core.ErrForbidden) {
-		return instead
-	}
-	return err
-}

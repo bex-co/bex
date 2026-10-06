@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/graphql-go/graphql"
@@ -33,7 +34,7 @@ import (
 
 func TestNotificationGraphQLSelectedWorkspace(t *testing.T) {
 	svc, st, ctx, defaultID, _ := inboxFixture(t)
-	svc.Base.Workspace = multiWorkspace{"alice": {"tea-a", "tea-b"}, "bob": {"tea-b"}}
+	svc.Base.Workspace = coretest.Members{"alice": {"tea-a", "tea-b"}, "bob": {"tea-b"}}
 	selectedID := ids.Derive(ids.Event, "selected-workspace")
 	row := st.push[[2]string{"tea-a", "alice"}][0]
 	row.TenantID, row.EventID = "tea-b", selectedID
@@ -82,11 +83,12 @@ func TestNotificationGraphQLSelectedWorkspace(t *testing.T) {
 	if len(data["selected"].([]any)) != 1 || len(data["defaultDevices"].([]any)) != 0 {
 		t.Fatalf("device workspace mismatch: %v", data)
 	}
-	if run(ctx, `mutation { unregisterNotificationDeviceSubscription(deviceId:"phone-b") }`)["unregisterNotificationDeviceSubscription"] != false {
-		t.Fatal("default unregister changed selected registration")
+	if run(ctx, `mutation { unregisterNotificationDeviceSubscription(ownerId:"tea-a", deviceId:"phone-b") }`)["unregisterNotificationDeviceSubscription"] != false {
+		t.Fatal("an explicit other workspace changed the tea-b registration")
 	}
-	if run(ctx, `mutation { unregisterNotificationDeviceSubscription(ownerId:"tea-b", deviceId:"phone-b") }`)["unregisterNotificationDeviceSubscription"] != true {
-		t.Fatal("selected registration not removed")
+	// No ownerId: the device's own workspace (w5/m115).
+	if run(ctx, `mutation { unregisterNotificationDeviceSubscription(deviceId:"phone-b") }`)["unregisterNotificationDeviceSubscription"] != true {
+		t.Fatal("unregister without ownerId did not reach the tea-b registration")
 	}
 	for _, query := range []string{
 		`{ pushNotificationsAvailable(ownerId:%q) }`,
@@ -109,7 +111,7 @@ func TestNotificationGraphQLSelectedWorkspace(t *testing.T) {
 
 func TestNotificationRESTSelectedWorkspace(t *testing.T) {
 	svc, st, ctx, defaultID, _ := inboxFixture(t)
-	svc.Base.Workspace = multiWorkspace{"alice": {"tea-a", "tea-b"}}
+	svc.Base.Workspace = coretest.Members{"alice": {"tea-a", "tea-b"}}
 	selectedID := ids.Derive(ids.Event, "rest-selected-workspace")
 	row := st.push[[2]string{"tea-a", "alice"}][0]
 	row.TenantID, row.EventID = "tea-b", selectedID
@@ -152,9 +154,9 @@ func TestNotificationRESTSelectedWorkspace(t *testing.T) {
 	request("POST", "/v1/notification-device-subscriptions?ownerId=tea-b", body, 201)
 	assertRows("/v1/notification-device-subscriptions?ownerId=tea-b", "", 1)
 	assertRows("/v1/notification-device-subscriptions", "", 0)
-	request("DELETE", "/v1/notification-device-subscriptions/phone-b", "", 200)
+	request("DELETE", "/v1/notification-device-subscriptions/phone-b?ownerId=tea-a", "", 200)
 	assertRows("/v1/notification-device-subscriptions?ownerId=tea-b", "", 1)
-	request("DELETE", "/v1/notification-device-subscriptions/phone-b?ownerId=tea-b", "", 200)
+	request("DELETE", "/v1/notification-device-subscriptions/phone-b", "", 200) // its own workspace (w5/m115)
 	assertRows("/v1/notification-device-subscriptions?ownerId=tea-b", "", 0)
 	for _, route := range []struct{ method, path, body string }{
 		{"GET", "/v1/notifications", ""},

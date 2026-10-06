@@ -140,6 +140,19 @@ func (f *fakeStore) RevokeDevicePushSubscription(_ context.Context, tenantID, su
 	return true, nil
 }
 
+func (f *fakeStore) DevicePushSubscriptionWorkspaces(_ context.Context, subject, deviceID string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var tenants []string
+	for key := range f.devices {
+		if key[1] == subject && key[2] == deviceID {
+			tenants = append(tenants, key[0])
+		}
+	}
+	slices.Sort(tenants)
+	return tenants, nil
+}
+
 func (f *fakeStore) RevokeAllDevicePushSubscriptions(_ context.Context, tenantID, subject string) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -260,9 +273,6 @@ func (f *fakeStore) PushNotificationWorkspaces(_ context.Context, subject, event
 				break
 			}
 		}
-	}
-	if len(tenants) == 0 {
-		return nil, store.ErrNotFound
 	}
 	slices.Sort(tenants)
 	return tenants, nil

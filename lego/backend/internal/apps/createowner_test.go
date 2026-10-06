@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -37,32 +38,11 @@ import (
 // does not belong to is refused rather than silently swapped for their own.
 // (ownerid_test.go covers the read half — the list filter, w6/m2.)
 
-// twoWorkspaces is the multi-workspace caller this milestone exists for: dana
-// belongs to tea-1 (older — her default) and tea-2.
-type twoWorkspaces map[string][]string
-
-func (w twoWorkspaces) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	ws := w[id.Subject]
-	if len(ws) == 0 {
-		return "", false
-	}
-	return ws[0], true
-}
-
-func (w twoWorkspaces) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	for _, t := range w[id.Subject] {
-		if t == tenantID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func danaService(objs ...client.Object) *Service {
 	return &Service{Base: &core.Base{
 		Client:    fakeClient(objs...),
 		Namespace: "default",
-		Workspace: twoWorkspaces{"dana": {"tea-1", "tea-2"}},
+		Workspace: coretest.Members{"dana": {"tea-1", "tea-2"}},
 		Authz:     &fakeChecker{allow: true},
 	}}
 }

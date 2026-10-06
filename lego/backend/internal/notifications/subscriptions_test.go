@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -44,29 +45,6 @@ func (r *auditRecorder) Record(_ context.Context, ev core.AuditEvent) error {
 	defer r.mu.Unlock()
 	r.events = append(r.events, ev)
 	return nil
-}
-
-type multiWorkspace map[string][]string
-
-func (m multiWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	ids := m[id.Subject]
-	return first(ids), len(ids) > 0
-}
-
-func (m multiWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	for _, candidate := range m[id.Subject] {
-		if candidate == tenantID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func first(values []string) string {
-	if len(values) == 0 {
-		return ""
-	}
-	return values[0]
 }
 
 func subscriptionService(st NotificationsStore, ws core.WorkspaceResolver, audit core.AuditSink) *Service {
@@ -134,7 +112,7 @@ func TestDeviceSubscriptionRegisterReplaceAndLogoutRevocation(t *testing.T) {
 
 func TestDeviceSubscriptionsIsolateSubjectAndWorkspace(t *testing.T) {
 	st := newFakeStore()
-	ws := multiWorkspace{"alice": {"tea-a", "tea-b"}, "bob": {"tea-a"}}
+	ws := coretest.Members{"alice": {"tea-a", "tea-b"}, "bob": {"tea-a"}}
 	svc := subscriptionService(st, ws, nil)
 	alice := identity("alice")
 	bob := identity("bob")
@@ -168,6 +146,30 @@ func TestDeviceSubscriptionsIsolateSubjectAndWorkspace(t *testing.T) {
 		t.Fatalf("cross-subject revoke changed=%v err=%v", changed, err)
 	}
 	assertDevices(alice, "alice-a")
+}
+
+// w5/m115: unregistering by device id with no ownerId reaches the device the
+// caller registered in a workspace other than their default, instead of
+// answering false and leaving it active. Another subject's device stays out of
+// reach either way.
+func TestUnregisterDeviceRoutesToTheDevicesOwnWorkspace(t *testing.T) {
+	st := newFakeStore()
+	svc := subscriptionService(st, coretest.Members{"alice": {"tea-a", "tea-b"}, "bob": {"tea-b"}}, nil)
+	alice := identity("alice") // default tea-a
+	if _, err := svc.RegisterDeviceSubscription(core.WithWorkspace(alice, "tea-b"), RegisterDeviceInput{
+		DeviceID: "alice-phone", SessionID: "session-a", Provider: "expo", Platform: "ios", Token: "ExponentPushToken[alice-phone]",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if changed, err := svc.UnregisterDeviceSubscription(identity("bob"), "alice-phone"); err != nil || changed {
+		t.Fatalf("another subject's unregister = %v, %v; want false", changed, err)
+	}
+	if changed, err := svc.UnregisterDeviceSubscription(alice, "alice-phone"); err != nil || !changed {
+		t.Fatalf("unregister without ownerId = %v, %v; want the tea-b device revoked", changed, err)
+	}
+	if got, _ := svc.ListDeviceSubscriptions(core.WithWorkspace(alice, "tea-b")); len(got) != 0 {
+		t.Fatalf("tea-b devices after unregister = %+v", got)
+	}
 }
 
 func TestDeviceTokenAccountSwitchRevokesPriorOwner(t *testing.T) {

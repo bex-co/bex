@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS device_push_subscriptions_subject_device_idx;

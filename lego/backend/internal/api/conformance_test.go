@@ -99,6 +99,11 @@ func (s *conformEventStore) ListServiceEvents(_ context.Context, _, _ string, _ 
 	return s.rows, nil
 }
 
+// ServiceEventWorkspaces records no routing: conformance runs in one workspace.
+func (s *conformEventStore) ServiceEventWorkspaces(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
 func (s *conformEventStore) GetServiceEvent(_ context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error) {
 	if workspaceID == core.DefaultTenant {
 		for _, row := range s.rows {

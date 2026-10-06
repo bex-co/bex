@@ -47,6 +47,31 @@ The severity profile keeps falling (round 5: 8 high / 7 medium; round 6: 2 high 
 - **5 (metrics-server `--kubelet-insecure-tls` in prod) — Closed by `w2/m81` (2026-08-19).** Was: real and confirmed — the flag sat in the shared GitOps base for CAPD compatibility and the prod overlay inherited it with no patch, and every prod kubelet already ran `rotate-server-certificates: "true"` with **no kubelet-serving CSR approver**, so serving certs stayed self-signed. `w2/m81` deployed a digest-pinned `postfinance/kubelet-csr-approver` Application (`deploy/gitops/base/kubelet-csr-approver.yaml`, tight `providerRegex`/`allowedDnsNames: 1`/no bypass, verified in an isolated kind cluster: matching node names Approved,Issued, an impersonated node name Denied), added `--kubelet-certificate-authority` to the base metrics-server Application (mounted from the per-namespace `kube-root-ca.crt` ConfigMap, no hostPath), and retired the local-only `--kubelet-insecure-tls` overlay patch now that CAPD kubelets (`rotate-server-certificates: "true"` added to `infra/clusterapi/overlays/local-capd/cluster.yaml`) present real approved serving certs too. That aligns the cluster with what ADR036 §92 already claims. **Residual, documented rather than forced:** already-running prod nodes keep their self-signed serving certs until a kubelet restart or the next ADR053 immutable-template rotation requests a fresh CSR — this milestone does not force-rotate production nodes; rollout order on `hetzner-prod` is approver Healthy → confirm platform nodes hold approved certs → ship the CA flag (`w2/m81` t004).
 - **10 (remainder)** — the six `nativeRuntimeImages` language bases and `keyvalue_backup.go`'s `busybox:1.37` join the ADR055 F7 / ADR057 #12 digest-pinning inventory, whose blocker remains the reviewed-digest update automation (multi-arch resolution + bump workflow) so pins don't rot; the language bases legitimately float patch versions (`node:24-bookworm`), so a static pin without automation trades an upstream-compromise risk for a stale-image risk. This ADR's inventory amendment completes the deferred scope: `nativePreparerImage` (now pinned), `elixir/golang/node/python/ruby/rust` bases, `keyvalue_backup.go` busybox, plus the original BuildKit/git/cosign/skopeo/AWS-CLI set.
 
+## By-id resolution matrix (amendment, w5/m115, 2026-10-05)
+
+#8's typed-id rule, generalized to every verb that takes a resource id on REST, GraphQL and MCP. `core.Base.ScopeByID` picks the workspace and only routes; the verb's own `Authorize` decides membership and the relation, and writes the audit row. That makes every refusal recorded exactly once, in the workspace that owns the resource.
+
+| Request | Answer |
+| --- | --- |
+| `ownerId` / `workspaceId` names W | acts in W; not a member of W → 403, audited in W |
+| W is named and the id lives in another workspace | 403 from Apps, Postgres, Key Value and API keys, whose seams fetch by id and refuse the cross-workspace reach (w6/m14); 404 from the store-backed families, whose lookups search only W (an environment's row is checked against W) |
+| No owner named; the id lives in W; the caller holds the verb's relation in W | acts in W |
+| No owner named; the caller is a member of W without the relation | 403, audited in W |
+| No owner named; the caller is not a member of W | 403, audited in W |
+| No owner named; the id exists nowhere | 404 |
+| The id lives in several workspaces (a service event, a push notification) | the caller's default if among them, else the only one they belong to; two or more of theirs → 409 `OWNER_AMBIGUOUS` (name the workspace); none of theirs → the first, where the verb refuses with 403 |
+| A by-parent-id create (an environment under a project) | the parent's workspace, authorized once there; a named workspace that does not hold the parent → 404 |
+
+**The 403 discloses existence, and that is accepted.** A caller outside W learns that the id exists somewhere they cannot reach. Typed ids are xids (time, machine, process and a counter), so an id is no secret once a neighbour of it is known. Nothing beyond existence is disclosed, and #8's reason stands: the 403 tells a member of several workspaces that access, not existence, is the problem. Hydra API-key ids get the same treatment.
+
+**Named exemptions**, which answer a resource outside the caller's reach exactly like a missing one (`core.Base.ScopeByVisibleID`, or an owner read that only ever names the caller's own workspaces):
+
+- **GitHub installations.** GitHub's installation ids are enumerable integers, so a 403 would confirm a binding exists.
+- **Sandboxes.** OpenSandbox keys are per workspace and bex keeps no sandbox table, so ownership is only discoverable within the caller's own workspaces.
+- **Caller-owned rows.** Push notifications, device subscriptions, GitHub claim selections and SSH keys exist only for their own subject.
+
+`internal/api/byid_resolution_guard_test.go` enforces the routing. Each by-id REST family's routing helper must itself call its resolver. The source is parsed, so neither a comment nor another family's call satisfies the check. Every id kind must name the family that resolves it, or say why none does.
+
 ## Verification
 
 - Backend: `cd lego/backend && go build ./... && go test ./...` (all packages pass, including the new regression tests).

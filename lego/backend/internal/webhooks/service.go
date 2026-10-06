@@ -582,27 +582,23 @@ func (s *Service) ListPage(ctx context.Context, ownerIDs []string, cursor string
 }
 
 // scopeEndpoint resolves the workspace a by-id endpoint verb acts in: the
-// named one, else the endpoint's own (w4/m172) — a non-member's id answers the
-// same 404 as a missing one.
+// named one, else the endpoint's own (w4/m172). A caller outside it gets the
+// verb's own 403 (ADR072's by-id matrix).
 func (s *Service) scopeEndpoint(ctx context.Context, ownerID, id string) (context.Context, error) {
 	var owner core.ResourceOwner
 	if s.Store != nil {
-		owner = func(ctx context.Context) (string, bool, error) {
-			workspace, err := s.Store.WebhookEndpointWorkspace(ctx, id)
-			if errors.Is(err, store.ErrNotFound) {
-				return "", false, nil
-			}
-			return workspace, err == nil, err
+		owner = func(ctx context.Context) ([]string, error) {
+			return store.OwnerWorkspaces(s.Store.WebhookEndpointWorkspace(ctx, id))
 		}
 	}
 	return s.ScopeByID(ctx, ownerID, owner)
 }
 
 // Get returns one endpoint (secret never included). ownerID optionally names
-// the workspace to look in (empty = the caller's resolved default — the
-// apikeys convention, so a multi-workspace caller's switcher works); the store
-// lookup is scoped to it, so another workspace's id is a 404, never a leak.
-// Member read.
+// the workspace to look in; empty means the endpoint's own (scopeEndpoint).
+// The store lookup is scoped to the acting workspace, so a named workspace
+// without the endpoint reads 404, and one the caller is outside 403 (ADR072's
+// by-id matrix). Member read.
 func (s *Service) Get(ctx context.Context, ownerID, id string) (EndpointView, error) {
 	ctx, err := s.scopeEndpoint(ctx, ownerID, id)
 	if err != nil {
@@ -660,7 +656,8 @@ func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 
 // ListDeliveries returns one endpoint's immutable attempt history, newest
 // first and keyset-paged. The endpoint is fetched (workspace-scoped) first, so
-// a cross-workspace endpoint id 404s before any history is read. Member read.
+// an endpoint outside the acting workspace is refused before any history is
+// read. Member read.
 func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, cursor string, limit int) ([]DeliveryView, error) {
 	return s.ListDeliveriesFiltered(ctx, ownerID, endpointID, DeliveryFilter{Cursor: cursor, Limit: limit})
 }

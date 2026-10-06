@@ -402,6 +402,9 @@ func TestOwnerBoundaryAndWorkspaceAdminOverride(t *testing.T) {
 type staticKey string
 
 func (k staticKey) WorkspaceKey(context.Context, string) (string, error) { return string(k), nil }
+func (k staticKey) SandboxKeyLookup(context.Context, string) (string, bool, error) {
+	return string(k), true, nil
+}
 
 // TestStaleAdminOverrideUsesFreshDecision (round-11 #5): a demoted admin whose
 // can_manage positive is still live in another replica's cache must NOT retain

@@ -40,6 +40,15 @@ func (r *recordingSink) Record(_ context.Context, ev core.AuditEvent) error {
 	return nil
 }
 
+// resources is every recorded event's authorized object, in order.
+func (r *recordingSink) resources() []string {
+	out := make([]string, 0, len(r.events))
+	for _, ev := range r.events {
+		out = append(out, ev.Resource)
+	}
+	return out
+}
+
 func (r *recordingSink) moveRows(verb string) []core.AuditEvent {
 	var out []core.AuditEvent
 	for _, ev := range r.events {

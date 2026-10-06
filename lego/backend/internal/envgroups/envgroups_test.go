@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -444,7 +445,7 @@ func TestCreateEnvGroupInvalidContentsLeaveZeroSideEffects(t *testing.T) {
 
 func TestCreateEnvGroupRefusesCrossWorkspaceServiceWithoutOrphan(t *testing.T) {
 	store := newFakeStore()
-	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(ownedApp("bravo-web", "tea-b")), Namespace: "default", Workspace: resolver},
 		Store: store,
@@ -1007,35 +1008,13 @@ func TestEnvGroup_Unconfigured503(t *testing.T) {
 
 // --- w6/m24: workspace attribution + cross-tenant scoping ---------------------
 
-// multiWorkspace is a core.WorkspaceResolver for callers who belong to MULTIPLE
-// workspaces (mirrors apikeys' own multiWorkspace, w6/m18) — memberships[0] is
-// the default (what Tenant returns absent an explicit core.WithWorkspace).
-type multiWorkspace map[string][]string
-
-func (f multiWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	m := f[id.Subject]
-	if len(m) == 0 {
-		return "", false
-	}
-	return m[0], true
-}
-
-func (f multiWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	for _, tid := range f[id.Subject] {
-		if tid == tenantID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func TestEnvGroup_CreateStampsOwnerAndListScopesToTargetWorkspace(t *testing.T) {
 	// dana belongs to both tea-a (her default) and tea-b. Before this
 	// milestone ListEnvGroups had no workspace filter at all and returned
 	// every group in the shared store to any caller who could can_view their
 	// own workspace.
 	svc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"dana": {"tea-a", "tea-b"}}},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-a", "tea-b"}}},
 		Store: newFakeStore(),
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
@@ -1066,7 +1045,7 @@ func TestEnvGroup_CreateStampsOwnerAndListScopesToTargetWorkspace(t *testing.T) 
 }
 
 func TestEnvGroup_EnvironmentMembershipValidatesWorkspaceAndPersists(t *testing.T) {
-	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
@@ -1133,7 +1112,7 @@ func TestEnvGroup_CreateWithEnvironmentRequiresEnvironmentService(t *testing.T) 
 
 func TestEnvGroup_GetAndRevealRefuseCrossWorkspace(t *testing.T) {
 	store := newFakeStore()
-	resolver := multiWorkspace{"dana": {"tea-a"}, "erin": {"tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a"}, "erin": {"tea-b"}}
 	svcAs := func(subject string) (*Service, context.Context) {
 		s := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver}, Store: store}
 		return s, core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
@@ -1166,7 +1145,7 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 	// owner with two workspaces). Linking tea-b's group into tea-a's service
 	// must still be refused: membership+relation in both workspaces does not
 	// license moving a workspace's secret values into another's Secrets.
-	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(ownedApp("web", "tea-a")), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
@@ -1194,7 +1173,7 @@ func TestEnvGroup_LinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T
 }
 
 func TestEnvGroup_UnlinkRefusesForeignWorkspaceGroupEvenForDualMember(t *testing.T) {
-	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
 	app := ownedApp("web", "tea-a")
 	store := newFakeStore()
 	svc := &Service{
@@ -1236,7 +1215,7 @@ func TestEnvGroup_MutationProjectsIntoOwningWorkspaceNotCallers(t *testing.T) {
 	// tea-b-owned group from her default-workspace context authorizes against
 	// the OWNING workspace — and the projection Secret must land there too,
 	// never in the caller's resolved (tea-a/default) namespace.
-	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
@@ -1269,7 +1248,7 @@ func TestEnvGroup_DeleteRemovesOwningWorkspaceProjectionOnly(t *testing.T) {
 	// Deleting a tea-b-owned group from dana's tea-a-defaulted context removes
 	// tea-b's projection Secrets; a same-named Secret in the caller's own
 	// workspace must survive untouched.
-	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: newFakeStore(),
@@ -1314,7 +1293,7 @@ func TestEnvGroup_MigratesLegacyOwnerlessGroupOnceStoreIsLive(t *testing.T) {
 	// A caller in the platform's default (bootstrap) workspace can reach it —
 	// the deterministic migration target — and the store now records it.
 	defaultSvc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"boot": {core.DefaultTenant}}, Audit: audit},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"boot": {core.DefaultTenant}}, Audit: audit},
 		Store: store,
 	}
 	defaultCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "boot", Method: "session"})
@@ -1349,7 +1328,7 @@ func TestEnvGroup_MigratesLegacyOwnerlessGroupOnceStoreIsLive(t *testing.T) {
 	// A caller in an unrelated real workspace still can't reach it — the
 	// migration assigns a real owner, it doesn't strand it open to everyone.
 	otherSvc := &Service{
-		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"outsider": {"tea-z"}}},
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"outsider": {"tea-z"}}},
 		Store: store,
 	}
 	otherCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "outsider", Method: "session"})
@@ -1386,7 +1365,7 @@ func TestEnvGroup_StoreOffOmitsOwnerID(t *testing.T) {
 // another workspace's group names into A's validation. All four now scope
 // through boundWorkspace, matching ListEnvGroups.
 func TestEnvGroup_BlueprintSeamScopesToActingWorkspace(t *testing.T) {
-	resolver := multiWorkspace{"dana": {"tea-a"}, "erin": {"tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a"}, "erin": {"tea-b"}}
 	store := newFakeStore()
 	svcAs := func(subject string) (*Service, context.Context) {
 		s := &Service{Base: &core.Base{Client: fakeClient(ownedApp("web-a", "tea-a")), Namespace: "default", Workspace: resolver}, Store: store}
@@ -1550,7 +1529,7 @@ func TestListEnvGroupsWalkIsPerCallNotCached(t *testing.T) {
 func TestListEnvGroupsScopedListNeverTouchesAnotherWorkspaceTenant(t *testing.T) {
 	inner := newFakeStore()
 	store := &countingStore{fakeStore: inner}
-	resolver := multiWorkspace{"dana": {"tea-a"}, "erin": {"tea-b"}}
+	resolver := coretest.Members{"dana": {"tea-a"}, "erin": {"tea-b"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: store,
@@ -1701,8 +1680,8 @@ func (c onlyWorkspaceChecker) Check(_ context.Context, _, _, object string) (boo
 // refused by the leading default-workspace check.
 func TestEnvGroup_ByIDVerbAuthorizesInTheGroupsWorkspace(t *testing.T) {
 	store := newFakeStore()
-	resolver := multiWorkspace{"dana": {"tea-a", "tea-b"}}
-	creator := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"dana": {"tea-b"}}}, Store: store}
+	resolver := coretest.Members{"dana": {"tea-a", "tea-b"}}
+	creator := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: coretest.Members{"dana": {"tea-b"}}}, Store: store}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
 	group, err := creator.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "bravo"})
 	if err != nil {

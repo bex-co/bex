@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 // w6013_regression_test.go is the set-env-vars leg of the w6/013 permanent
@@ -29,27 +30,6 @@ import (
 // See apps/w6013_regression_test.go for the fuller writeup (restart/suspend/
 // delete) — this is the same bug, same fix (core.Base.AuthorizeApp), the one
 // remaining verb the source note names explicitly.
-
-// twoWorkspaces is a multi-workspace caller: subject -> workspaces, oldest
-// (default) first.
-type twoWorkspaces map[string][]string
-
-func (w twoWorkspaces) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	ws := w[id.Subject]
-	if len(ws) == 0 {
-		return "", false
-	}
-	return ws[0], true
-}
-
-func (w twoWorkspaces) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	for _, t := range w[id.Subject] {
-		if t == tenantID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
 
 // denyWorkspaceChecker denies one relation on one workspace object and allows
 // everything else — a caller who is, say, admin of one workspace but only a
@@ -69,7 +49,7 @@ func TestW6013_InvitedViewerCanSetEnvVarsOnTheirOwnWorkspacesService(t *testing.
 			// bob's oldest (default) membership is tea-team — where he was
 			// invited as a viewer; he separately owns tea-mine, where
 			// "mine-web" actually lives.
-			Workspace: twoWorkspaces{"bob": {"tea-team", "tea-mine"}},
+			Workspace: coretest.Members{"bob": {"tea-team", "tea-mine"}},
 			// bob is a viewer of tea-team (can_create denied there) and
 			// admin of tea-mine (can_create allowed there).
 			Authz: denyWorkspaceChecker{relation: core.RelCanCreate, object: core.WorkspaceObject("tea-team")},

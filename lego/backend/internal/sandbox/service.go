@@ -66,6 +66,10 @@ const (
 // which case the server must run single-tenant.
 type KeyProvider interface {
 	WorkspaceKey(ctx context.Context, workspaceID string) (string, error)
+	// PurgeKeyLookup's never-minting read is also the by-id verbs' routing
+	// probe (w4/m172). Required, so a provider cannot drop by-id routing by
+	// lacking it (w5/m115).
+	PurgeKeyLookup
 }
 
 // Template fixes a sandbox's image, entrypoint, and resource limits at

@@ -638,7 +638,7 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 }
 
 // ServiceEventWorkspaces returns every workspace that indexes an evt-… id,
-// ordered by workspace id, or ErrNotFound. A routing read only (w4/m172): the
+// ordered by workspace id; none for an unknown id. A routing read only (w4/m172): the
 // verb picks one of them, authorizes there and loads the event through the
 // workspace-scoped GetServiceEvent. Event ids are DERIVED from the source row's
 // event key (ids.Derive), not minted per workspace, and the key itself embeds a
@@ -654,9 +654,6 @@ func (s *PGStore) ServiceEventWorkspaces(ctx context.Context, eventID string) ([
 	workspaces, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
 		return nil, classify("service event", err)
-	}
-	if len(workspaces) == 0 {
-		return nil, ErrNotFound
 	}
 	return workspaces, nil
 }

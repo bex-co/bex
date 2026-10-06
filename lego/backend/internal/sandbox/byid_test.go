@@ -27,25 +27,11 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 )
-
-// multiWorkspace models callers belonging to several workspaces: the first
-// listed is the default Tenant resolves to.
-type multiWorkspace map[string][]string
-
-func (m multiWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	if ws := m[id.Subject]; len(ws) > 0 {
-		return ws[0], true
-	}
-	return "", false
-}
-
-func (m multiWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	return slices.Contains(m[id.Subject], tenantID), nil
-}
 
 // byIDKeys is a tenant-key provider with the lookup-only seam. It records
 // every mint so the test can prove routing never mints a key.
@@ -115,7 +101,9 @@ func byIDFixture(t *testing.T) (*Service, *byIDKeys, *[]string) {
 		http.NotFound(w, r)
 	}))
 	t.Cleanup(srv.Close)
-	members := multiWorkspace{"id-a": {"tea-a", "tea-b"}, "id-x": {"tea-x"}}
+	// tea-c has never created a sandbox, so it has no tenant key: the probe
+	// passes it on the way to tea-b, and must not mint one there.
+	members := coretest.Members{"id-a": {"tea-a", "tea-c", "tea-b"}, "id-x": {"tea-x"}}
 	keys := &byIDKeys{keys: map[string]string{"tea-a": "key-tea-a", "tea-b": "key-tea-b", "tea-x": "key-tea-x"}}
 	svc := &Service{
 		Base: &core.Base{
@@ -169,11 +157,9 @@ func TestByIDVerbsReachNonDefaultWorkspaceSandbox(t *testing.T) {
 		t.Fatalf("deletes = %v, want [os-b]", *deletes)
 	}
 	// The verb's own scoped path resolves the EXISTING tea-b key; routing never
-	// minted one for a workspace that lacked it.
-	for _, ws := range keys.minted {
-		if _, ok := keys.keys[ws]; !ok {
-			t.Fatalf("minted a key for %s", ws)
-		}
+	// minted one for tea-c, the member workspace it probed that has none.
+	if slices.Contains(keys.minted, "tea-c") {
+		t.Fatalf("minted a key for tea-c while routing: %v", keys.minted)
 	}
 }
 
