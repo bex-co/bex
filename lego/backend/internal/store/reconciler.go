@@ -1731,11 +1731,32 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				obs.AvailabilityObserved = true
 				obs.ReasonCode = EventReasonReadinessFailed
 				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
+				if hasOpenDeploy {
+					// Ready went False when the rollout began, which dates a crash
+					// later in a RollingUpdate too early; the serving revision
+					// stopped when Serving went False. Never earlier than the
+					// rollout: a Serving stop carried over from before it says
+					// nothing about this one, and with no stop recorded Ready's
+					// time keeps the stale guard a real clock (w5/083).
+					if stopped := servingStoppedAt(serving, app.Generation); stopped.After(obs.ReadyTransitionAt) {
+						obs.ReadyTransitionAt = stopped
+					}
+				}
 			}
 		}
 		break
 	}
 	return obs
+}
+
+// servingStoppedAt is when the serving revision stopped serving: the
+// transition of a Serving=False condition the operator wrote for generation,
+// or zero when there is none to trust.
+func servingStoppedAt(serving *metav1.Condition, generation int64) time.Time {
+	if serving == nil || serving.Status != metav1.ConditionFalse || serving.ObservedGeneration != generation {
+		return time.Time{}
+	}
+	return serving.LastTransitionTime.Time
 }
 
 func (r *Reconciler) recordAutoscalingFacts(ctx context.Context, appID string, transition *appv1alpha1.AutoscalingStatus) {
