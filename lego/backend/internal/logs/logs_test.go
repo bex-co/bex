@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -2120,39 +2121,71 @@ func TestSubscribeRefusesWhenAnyResourceIsUnknown(t *testing.T) {
 	}
 }
 
-// w8/025: after an eviction the kubelet answers the pod-log read with its own
-// untimestamped "unable to retrieve container logs for containerd://<id>",
-// which was served as the tenant's `app` output with the internal id in it.
-func TestKubeletLogsGonePlaceholderIsAPlatformLine(t *testing.T) {
-	got := parseContainerLogLine("web", "web-1", "app", LogTypeApp,
-		"unable to retrieve container logs for containerd://4336b7cbe0f1")
-	if got.Message != logsGoneMessage || got.Labels["container"] != progressContainer || strings.Contains(got.Message, "containerd") {
-		t.Errorf("placeholder = %+v, want the platform line without the containerd id", got)
+// w8/025, w8/050, w5/m122: once a container's log is gone the kubelet answers
+// the pod-log read with an untimestamped body naming its containerd id or its
+// /var/log/pods path, which was served as the tenant's output. A line without
+// the Timestamps:true stamp is the kubelet's, whatever it says, and becomes the
+// platform line; the same words timestamped are the tenant's own. The bodies
+// come from the table the shipper is tested against.
+func TestTheKubeletsOwnAnswerIsAPlatformLine(t *testing.T) {
+	raw, err := os.ReadFile("testdata/tenant-log-lines.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	// The tenant's own timestamped line with the same words stays theirs.
-	own := parseContainerLogLine("web", "web-1", "app", LogTypeApp,
-		"2026-09-26T19:05:33.351680017Z unable to retrieve container logs for containerd://mine")
-	if own.Labels["container"] != "app" || own.Message != "unable to retrieve container logs for containerd://mine" {
-		t.Errorf("tenant line = %+v, want it untouched", own)
+	var table struct{ Kubelet []string }
+	if err := json.Unmarshal(raw, &table); err != nil || len(table.Kubelet) == 0 {
+		t.Fatalf("read the shared table: %v", err)
+	}
+	for _, body := range append(table.Kubelet, "some other untimestamped kubelet answer") {
+		got := parseContainerLogLine("web", "web-1", "app", LogTypeApp, body)
+		if got.Message != logsGoneMessage || got.Labels["container"] != progressContainer {
+			t.Errorf("%q = %+v, want the platform line", body, got)
+		}
+		own := parseContainerLogLine("web", "web-1", "app", LogTypeApp, "2026-10-03T22:00:25Z "+body)
+		if own.Labels["container"] != "app" || own.Message != body {
+			t.Errorf("timestamped %q = %+v, want the tenant's line untouched", body, own)
+		}
 	}
 }
 
-// w8/050: once the pod's whole log directory is gone the kubelet answers with
-// a /var/log/pods path instead; it is the same platform line.
-func TestKubeletPodLogDirGoneIsAPlatformLine(t *testing.T) {
-	body := `failed to try resolving symlinks in path "/var/log/pods/tea-a_web-1_c2c5039f/app/0.log": lstat /var/log/pods/tea-a_web-1_c2c5039f/app/0.log: no such file or directory`
-	got := parseContainerLogLine("web", "web-1", "app", LogTypeApp, body)
-	if got.Message != logsGoneMessage || got.Labels["container"] != progressContainer {
-		t.Errorf("gone-directory body = %+v, want the platform line", got)
-	}
-	own := parseContainerLogLine("web", "web-1", "app", LogTypeApp, "2026-10-03T22:00:25Z "+body)
-	if own.Labels["container"] != "app" || own.Message != body {
-		t.Errorf("tenant line = %+v, want it untouched", own)
+// w5/m122: a follow starts at its since second, and the kubelet stamps nothing
+// on the rest of a split line whose first chunk it skipped as older. An
+// unstamped first line is therefore the tenant's text when more output
+// follows, and the kubelet's own answer when the stream ends there.
+func TestFollowHoldsAnUnstampedFirstLine(t *testing.T) {
+	for name, tc := range map[string]struct {
+		stream     []string
+		messages   []string
+		containers []string
+	}{
+		"split line continued": {
+			stream:     []string{"…the tail of a long line", "2026-10-05T01:00:00Z next"},
+			messages:   []string{"…the tail of a long line", "next"},
+			containers: []string{"app", "app"},
+		},
+		"the kubelet's answer": {
+			stream:     []string{"unable to retrieve container logs for containerd://4336b7cbe0f1"},
+			messages:   []string{logsGoneMessage},
+			containers: []string{progressContainer},
+		},
+	} {
+		svc := &Service{PodLogsFollow: staticLogStream(map[string][]string{"web-1": tc.stream})}
+		ch := make(chan LogEntry, len(tc.stream)+1)
+		svc.streamContainerLogs(context.Background(), "default", "web", "web-1", "app", LogTypeApp, time.Time{}, ch, nil)
+		close(ch)
+		var messages, containers []string
+		for e := range ch {
+			messages, containers = append(messages, e.Message), append(containers, e.Labels["container"])
+		}
+		if !slices.Equal(messages, tc.messages) || !slices.Equal(containers, tc.containers) {
+			t.Errorf("%s: followed %q in %q, want %q in %q", name, messages, containers, tc.messages, tc.containers)
+		}
 	}
 }
 
 // w8/030: the direct-pod Postgres read unwraps CNPG's envelope and drops the
-// instance manager's chatter, like the shipper does for history.
+// instance manager's chatter, like the shipper does for history, and the
+// kubelet's own answer, like datastorelogs.ParseLine (w5/m122).
 func TestManagedPostgresPodLogsUnwrapCNPG(t *testing.T) {
 	pod := postgresID + "-1"
 	svc := newService(map[string][]string{
@@ -2161,6 +2194,9 @@ func TestManagedPostgresPodLogsUnwrapCNPG(t *testing.T) {
 			`2026-07-05T00:00:01Z {"level":"info","msg":"startup probe failing","logging_pod":"dpg-test-1"}`,
 			`2026-07-05T00:00:01Z {"logger":"postgres","msg":"Starting log pipe"}`,
 			`2026-07-05T00:00:02Z {"logger":"postgres","msg":"record","record":{"log_time":"2026-07-05 00:00:02.000 UTC","process_id":"7","error_severity":"FATAL","message":"password authentication failed for user \"app\""}}`,
+			// The kubelet's own answer: a datastore read drops it, as the
+			// datastorelogs fallback does (w5/m122).
+			`unable to retrieve container logs for containerd://4336b7cbe0f1`,
 		},
 	}, sampleDatabase(postgresID), databasePod(postgresID, pod))
 

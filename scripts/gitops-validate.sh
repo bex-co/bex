@@ -1322,17 +1322,22 @@ if [ -f "$LOGSHIP" ]; then
   echo "$vals" | grep -qF 'field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")' \
     || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
 
-  # Tenant App file tailing (w4/m174; rationale in the log-shipper header,
-  # "TENANT APP PODS TAIL FILES TOO"). Behavior test: scripts/test_log_shipper.py.
-  echo "==> $LOGSHIP tenant App pods tail CRI files (w4/m174)"
-  echo "$vals" | grep -q 'loki.source.kubernetes "app_pods"' \
-    && { echo "FAIL: log-shipper.yaml tails App pods through loki.source.kubernetes again — it drops out-of-order CRI lines (w4/m174)" >&2; fail=1; }
-  echo "$vals" | grep -qF 'loki.source.file "app_pods"' \
-    || { echo "FAIL: log-shipper.yaml lost loki.source.file \"app_pods\" (w4/m174)" >&2; fail=1; }
-  app_logs_block="$(echo "$vals" | awk '/loki.process "app_logs" \{/{on=1; match($0, /^ */); end=substr($0, 1, RLENGTH) "}"} on{print} on&&$0==end{exit}')"
-  for required in 'stage.cri { }' 'values = ["filename", "stream"]'; do
-    echo "$app_logs_block" | grep -qF "$required" \
-      || { echo "FAIL: log-shipper.yaml app_logs lost required stage: $required (w4/m174)" >&2; fail=1; }
+  # Tenant pipelines tail CRI files (w4/m174 apps, w5/m122 Postgres and Key
+  # Value; rationale in the log-shipper header). Behavior test:
+  # scripts/test_log_shipper.py.
+  echo "==> $LOGSHIP tenant pods tail CRI files (w4/m174, w5/m122)"
+  for pods in app_pods database_pods keyvalue_pods; do
+    echo "$vals" | grep -q "loki.source.kubernetes \"$pods\"" \
+      && { echo "FAIL: log-shipper.yaml tails $pods through loki.source.kubernetes again — it drops out-of-order CRI lines and ships the kubelet's own answers as tenant lines" >&2; fail=1; }
+    echo "$vals" | grep -qF "loki.source.file \"$pods\"" \
+      || { echo "FAIL: log-shipper.yaml lost loki.source.file \"$pods\"" >&2; fail=1; }
+  done
+  for logs in app_logs database_logs keyvalue_logs; do
+    block="$(echo "$vals" | awk -v name="$logs" '$0 ~ "loki.process \"" name "\" \\{" {on=1; match($0, /^ */); end=substr($0, 1, RLENGTH) "}"} on{print} on&&$0==end{exit}')"
+    for required in 'stage.cri {' 'max_partial_line_size_truncate = true' 'values = ["filename", "stream"]'; do
+      echo "$block" | grep -qF "$required" \
+        || { echo "FAIL: log-shipper.yaml $logs lost required stage: $required" >&2; fail=1; }
+    done
   done
   [ "$(echo "$vals" | yq '.alloy.storagePath')" = "/var/lib/alloy" ] \
     && [ "$(echo "$vals" | yq '.controller.volumes.extra[] | select(.name == "alloy-storage") | .hostPath.path')" = "/var/lib/bex-log-shipper" ] \

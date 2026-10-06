@@ -36,8 +36,9 @@
 # (Grafana's supported successor is Alloy), so a new install ships on Alloy. And
 # within Alloy the API-based `loki.source.kubernetes` is the simplest *static*
 # config — it reads the pod-log API directly, with no host-path mounts or
-# /var/log/pods file-glob templating a file-based tailer needs. The trade is a
-# little more apiserver read load, acceptable at platform scale.
+# /var/log/pods file-glob templating a file-based tailer needs. It now feeds
+# only the platform and Traefik pipelines: every tenant pipeline tails files,
+# for the reasons below.
 #
 # EXCEPTION — build pods tail FILES, not the API (w6/m123): the API tailer
 # opens its follow stream per discovered container, and a container that has
@@ -70,6 +71,24 @@
 # slight disorder within a stream). Positions live on the node (STORAGE
 # below) so an Alloy restart resumes each file where it stopped instead of
 # re-reading it.
+#
+# CRI LINE CAP (w5/m122): the kubelet writes a line longer than 16 KiB as
+# partial chunks, and stage.cri reassembles them. Uncapped, each chunk rebuilds
+# the whole line so far, so the work grows with the line's square: a 50 MiB
+# line cost 5.7 s and 176 GiB of allocation, holding up every pipeline on the
+# node, and Loki drops anything past 256 KiB anyway. Every stage.cri therefore
+# caps the reassembled line at 200000 bytes and truncates the rest. A
+# truncated CNPG record is no longer JSON and ships as text.
+#
+# TENANT DATASTORE PODS TAIL FILES TOO (w5/m122): a tenant pipeline reads only
+# what its containers wrote. The API tailer also ships the kubelet's own
+# answers once a container's log is gone ("unable to retrieve container
+# logs…", "failed to try resolving symlinks in path /var/log/pods/…"), which
+# reached Postgres and Key Value history as tenant lines; the message-text
+# drops added for them (w8/050) never covered Key Value. A file holds only container output,
+# so no tenant pipeline needs a kubelet filter. bex-api's direct reads apply
+# the same rule by source: every container line carries the timestamp the
+# kubelet stamps, and its own answers carry none.
 #
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
 # name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app),
@@ -165,8 +184,8 @@ spec:
                   path: /var/lib/bex-log-shipper
                   type: DirectoryOrCreate
         alloy:
-          # Build logs are tailed from the node's own pod log files — see the
-          # "EXCEPTION — build pods tail FILES" note at the top of this file —
+          # Every tenant pipeline (build, app, Postgres, Key Value) tails the
+          # node's own pod log files — see the notes at the top of this file —
           # so every replica mounts the kubelet's /var/log read-only.
           mounts:
             varlog: true
@@ -259,7 +278,11 @@ spec:
                 // "unable to retrieve container logs" / "failed to try resolving
                 // symlinks" placeholders (w8/050) were answers from the log API
                 // and never appear in the file, so their drops went with it.
-                stage.cri { }
+                // Split-line reassembly is capped: see CRI LINE CAP above.
+                stage.cri {
+                  max_partial_line_size          = 200000
+                  max_partial_line_size_truncate = true
+                }
                 // The file source labels each entry with its node path, and
                 // stage.cri with its stream. Neither is in bex's label vocabulary
                 // (ADR010), and keeping today's stream identity means a line
@@ -525,10 +548,22 @@ spec:
                   source_labels = ["__meta_kubernetes_pod_container_name"]
                   target_label  = "container"
                 }
+                // FILE-BASED tailing (w5/m122) — see "TENANT DATASTORE PODS
+                // TAIL FILES TOO" at the top of this file.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  separator     = "/"
+                  target_label  = "__path__"
+                  replacement   = "/var/log/pods/*$1/*.log"
+                }
               }
 
-              loki.source.kubernetes "database_pods" {
-                targets    = discovery.relabel.database_pods.output
+              local.file_match "database_pods" {
+                path_targets = discovery.relabel.database_pods.output
+              }
+
+              loki.source.file "database_pods" {
+                targets    = local.file_match.database_pods.targets
                 forward_to = [loki.process.database_logs.receiver]
               }
 
@@ -538,28 +573,33 @@ spec:
                   expression          = "^$"
                   drop_counter_reason = "missing_database_id"
                 }
-
-                // Once the pod's whole log directory is gone the kubelet
-                // answers with this body instead (w8/050); exact, as above.
-                stage.drop {
-                  expression          = "^failed to try resolving symlinks in path \"/var/log/pods/[^\"]+/[^/\"]+/[0-9]+\\.log\": lstat /var/log/pods/\\S+: no such file or directory\\r?\\n?$"
-                  drop_counter_reason = "kubelet_pod_log_dir_gone"
+                // CRI-framed file lines, as in app_logs.
+                // Split-line reassembly is capped: see CRI LINE CAP above.
+                stage.cri {
+                  max_partial_line_size          = 200000
+                  max_partial_line_size_truncate = true
+                }
+                stage.label_drop {
+                  values = ["filename", "stream"]
                 }
 
                 // In CNPG the postgres container's PID 1 is the instance
                 // manager: it logs its own JSON (controller start-up, leases,
-                // config reloads) and re-emits PostgreSQL's csvlog as
-                // logger=postgres msg=record with the line under record.*
-                // (w8/030). Only PostgreSQL's output is the tenant's log: the
-                // operator chatter is dropped, and each record is rewritten to
-                // PostgreSQL's own stderr shape with its severity as `level`.
-                // A line that is not JSON passes through verbatim.
+                // probes, its net/http server's TLS errors) and re-emits
+                // PostgreSQL's csvlog as logger=postgres msg=record with the
+                // line under record.* (w8/030). Only PostgreSQL's output is the
+                // tenant's log, so this is an allow-list (w5/m122): a record is
+                // rewritten to PostgreSQL's own stderr shape with its severity
+                // as `level`, a line that is not a JSON object passes verbatim,
+                // and every other JSON object is the manager's and is dropped.
+                // CNPG omits empty record fields, so the templates default each
+                // to nothing rather than Go's "<no value>". datastorelogs.CNPGLine
+                // applies the same rule to direct reads, and both are tested
+                // against one fixture file.
                 stage.json {
                   expressions = {
-                    cnpg_logger = "logger",
-                    cnpg_record = "msg == 'record'",
-                    cnpg_probe  = "logging_pod != null && logging_pod != ''",
-                    cnpg_server = "level != null && ts != null && msg != null && record == null",
+                    cnpg_json   = "`true`",
+                    cnpg_record = "logger == 'postgres' && msg == 'record' && type(record) == 'object'",
                     pg_time     = "record.log_time",
                     pg_pid      = "record.process_id",
                     pg_severity = "record.error_severity",
@@ -570,44 +610,24 @@ spec:
                 }
                 stage.labels {
                   values = {
-                    cnpg_logger = "",
+                    cnpg_json   = "",
                     cnpg_record = "",
-                    cnpg_probe  = "",
-                    cnpg_server = "",
                   }
                 }
                 stage.match {
-                  selector            = "{cnpg_logger=~\".+\", cnpg_logger!=\"postgres\"}"
+                  selector            = "{cnpg_json=\"true\", cnpg_record!=\"true\"}"
                   action              = "drop"
                   drop_counter_reason = "cnpg_instance_manager"
                 }
                 stage.match {
-                  selector            = "{cnpg_logger=\"\", cnpg_probe=\"true\"}"
-                  action              = "drop"
-                  drop_counter_reason = "cnpg_instance_manager"
-                }
-                // Logger-less {level, ts, msg} JSON is the instance manager's
-                // Go net/http server error log ("http: TLS handshake error
-                // from <pod ip>…", w8/050), never PostgreSQL's own output.
-                stage.match {
-                  selector            = "{cnpg_logger=\"\", cnpg_server=\"true\"}"
-                  action              = "drop"
-                  drop_counter_reason = "cnpg_instance_manager"
-                }
-                stage.match {
-                  selector            = "{cnpg_logger=\"postgres\", cnpg_record!=\"true\"}"
-                  action              = "drop"
-                  drop_counter_reason = "cnpg_non_record"
-                }
-                stage.match {
-                  selector = "{cnpg_logger=\"postgres\", cnpg_record=\"true\"}"
+                  selector = "{cnpg_record=\"true\"}"
                   stage.template {
                     source   = "pg_line"
-                    template = "{{ "{{" }} .pg_time {{ "}}" }} [{{ "{{" }} .pg_pid {{ "}}" }}] {{ "{{" }} .pg_severity {{ "}}" }}:  {{ "{{" }} .pg_message {{ "}}" }}{{ "{{" }} if .pg_detail {{ "}}" }} DETAIL:  {{ "{{" }} .pg_detail {{ "}}" }}{{ "{{" }} end {{ "}}" }}{{ "{{" }} if .pg_hint {{ "}}" }} HINT:  {{ "{{" }} .pg_hint {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
+                    template = "{{ "{{" }} or .pg_time \"\" {{ "}}" }} [{{ "{{" }} or .pg_pid \"\" {{ "}}" }}] {{ "{{" }} or .pg_severity \"\" {{ "}}" }}:  {{ "{{" }} or .pg_message \"\" {{ "}}" }}{{ "{{" }} if .pg_detail {{ "}}" }} DETAIL:  {{ "{{" }} .pg_detail {{ "}}" }}{{ "{{" }} end {{ "}}" }}{{ "{{" }} if .pg_hint {{ "}}" }} HINT:  {{ "{{" }} .pg_hint {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
                   }
                   stage.template {
                     source   = "level"
-                    template = "{{ "{{" }} $s := .pg_severity {{ "}}" }}{{ "{{" }} if or (eq $s \"ERROR\") (eq $s \"FATAL\") (eq $s \"PANIC\") {{ "}}" }}error{{ "{{" }} else if eq $s \"WARNING\" {{ "}}" }}warning{{ "{{" }} else if or (eq $s \"LOG\") (eq $s \"INFO\") (eq $s \"NOTICE\") {{ "}}" }}info{{ "{{" }} else {{ "}}" }}debug{{ "{{" }} end {{ "}}" }}"
+                    template = "{{ "{{" }} $s := or .pg_severity \"\" {{ "}}" }}{{ "{{" }} if or (eq $s \"ERROR\") (eq $s \"FATAL\") (eq $s \"PANIC\") {{ "}}" }}error{{ "{{" }} else if eq $s \"WARNING\" {{ "}}" }}warning{{ "{{" }} else if or (eq $s \"LOG\") (eq $s \"INFO\") (eq $s \"NOTICE\") {{ "}}" }}info{{ "{{" }} else {{ "}}" }}debug{{ "{{" }} end {{ "}}" }}"
                   }
                   stage.labels {
                     values = { level = "level" }
@@ -617,7 +637,7 @@ spec:
                   }
                 }
                 stage.label_drop {
-                  values = ["cnpg_logger", "cnpg_record", "cnpg_probe", "cnpg_server"]
+                  values = ["cnpg_json", "cnpg_record"]
                 }
 
                 stage.static_labels {
@@ -663,10 +683,22 @@ spec:
                   source_labels = ["__meta_kubernetes_pod_container_name"]
                   target_label  = "container"
                 }
+                // FILE-BASED tailing (w5/m122) — see "TENANT DATASTORE PODS
+                // TAIL FILES TOO" at the top of this file.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  separator     = "/"
+                  target_label  = "__path__"
+                  replacement   = "/var/log/pods/*$1/*.log"
+                }
               }
 
-              loki.source.kubernetes "keyvalue_pods" {
-                targets    = discovery.relabel.keyvalue_pods.output
+              local.file_match "keyvalue_pods" {
+                path_targets = discovery.relabel.keyvalue_pods.output
+              }
+
+              loki.source.file "keyvalue_pods" {
+                targets    = local.file_match.keyvalue_pods.targets
                 forward_to = [loki.process.keyvalue_logs.receiver]
               }
 
@@ -675,6 +707,14 @@ spec:
                   source              = "keyvalue"
                   expression          = "^$"
                   drop_counter_reason = "missing_keyvalue_id"
+                }
+                // Split-line reassembly is capped: see CRI LINE CAP above.
+                stage.cri {
+                  max_partial_line_size          = 200000
+                  max_partial_line_size_truncate = true
+                }
+                stage.label_drop {
+                  values = ["filename", "stream"]
                 }
                 stage.static_labels {
                   values = { type = "keyvalue" }
@@ -777,7 +817,11 @@ spec:
                 // <line>"); this restores the message and its ORIGINAL
                 // timestamp, which is what keeps a late-attached tail
                 // time-accurate instead of stamping lines at read time.
-                stage.cri { }
+                // Split-line reassembly is capped: see CRI LINE CAP above.
+                stage.cri {
+                  max_partial_line_size          = 200000
+                  max_partial_line_size_truncate = true
+                }
                 // Drop pods that somehow lack a service attribution label
                 // (defensive guard — both build and predeploy sources set `app`).
                 stage.drop {

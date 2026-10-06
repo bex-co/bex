@@ -590,14 +590,15 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 // "qa-cron-success" keyed as two records and rendered twice on overlap (w4/m96).
 //
 // The live and fallback pod readers scan with bufio.Scanner (service.go), whose
-// ScanLines drops the record's trailing "\n" and a single preceding "\r". Every
-// log-shipper pipeline reads pod stdout through loki.source.kubernetes, which
-// KEEPS that "\n" (Alloy's parseKubernetesLog returns the timestamp-stripped
-// remainder including the LF), so history must apply the same drop to match.
-// The sole exception is type=build, tailed from the node's CRI files via
-// loki.source.file + stage.cri (deploy/gitops/base/log-shipper.yaml), whose
-// records are already terminator-free — it is left byte-for-byte untouched so a
-// framing we have not established is never rewritten.
+// ScanLines drops the record's trailing "\n" and a single preceding "\r". A
+// record shipped through loki.source.kubernetes KEEPS that "\n" (Alloy's
+// parseKubernetesLog returns the timestamp-stripped remainder including the
+// LF), so history applies the same drop to match. The tenant pipelines (app
+// since w4/m174, postgres and keyvalue since w5/m122) tail the node's CRI files
+// instead (loki.source.file + stage.cri, deploy/gitops/base/log-shipper.yaml):
+// their records carry no "\n", and the drop removes at most the "\r" ScanLines
+// drops too. type=build, file-tailed as well, is left byte-for-byte untouched
+// so a framing we have not established is never rewritten.
 //
 // This mirrors ScanLines exactly and is deliberately NOT a TrimSpace/TrimRight:
 // it removes at most one "\n" then one "\r" (LF, CRLF, and ScanLines' EOF dropCR
