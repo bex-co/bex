@@ -17,6 +17,7 @@ limitations under the License.
 package envgroups
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 
@@ -48,11 +49,11 @@ func envGroupListFilter(q url.Values) (EnvGroupListFilter, error) {
 // currently misdeclares the live response as []envGroupMeta, but its official
 // pagination contract and live API return the cursor beside the resource.
 type envGroupWithCursor struct {
-	EnvGroup EnvGroupView `json:"envGroup"`
-	Cursor   string       `json:"cursor"`
+	EnvGroup renderEnvGroup `json:"envGroup"`
+	Cursor   string         `json:"cursor"`
 }
 
-func envGroupList(groups []EnvGroupView) []envGroupWithCursor {
+func envGroupList(groups []renderEnvGroup) []envGroupWithCursor {
 	out := make([]envGroupWithCursor, 0, len(groups))
 	for _, group := range groups {
 		out = append(out, envGroupWithCursor{EnvGroup: group, Cursor: group.ID})
@@ -62,7 +63,8 @@ func envGroupList(groups []EnvGroupView) []envGroupWithCursor {
 
 // rest.go is the env-groups REST fragment (Render's /v1/env-groups): group CRUD,
 // its env vars + secret files, and service link/unlink. Behavior lives in the
-// Service, so GraphQL and MCP stay identical.
+// Service, so GraphQL and MCP stay identical; REST and MCP answer a group as
+// Render's envGroup (render.go).
 
 // RegisterREST mounts the env-groups endpoints. Store unconfigured => the Service
 // returns core.ErrSecretsUnavailable => 503 on these routes only.
@@ -78,16 +80,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return nil, err
 		}
 		after, limit := core.PageParams(q)
-		return envGroupList(pageEnvGroups(out, after, limit, true)), nil
+		page, err := s.renderEnvGroups(r.Context(), pageEnvGroups(out, after, limit, true))
+		if err != nil {
+			return nil, err
+		}
+		return envGroupList(page), nil
 	}))
 	mux.HandleFunc("POST /v1/env-groups", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[CreateEnvGroupRequest](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.CreateEnvGroup(r.Context(), req) // Render: create => 201
+		return s.committed(r.Context())(s.CreateEnvGroup(r.Context(), req)) // Render: create => 201
 	}))
-	mux.HandleFunc("GET /v1/env-groups/{id}", core.HandleByID(s.GetEnvGroup))
+	mux.HandleFunc("GET /v1/env-groups/{id}", core.HandleByID(func(ctx context.Context, id string) (renderEnvGroup, error) {
+		return s.rendered(ctx)(s.GetEnvGroup(ctx, id))
+	}))
 	mux.HandleFunc("PATCH /v1/env-groups/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[struct {
 			Name string `json:"name"`
@@ -95,7 +103,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.RenameEnvGroup(r.Context(), r.PathValue("id"), req.Name)
+		return s.committed(r.Context())(s.RenameEnvGroup(r.Context(), r.PathValue("id"), req.Name))
 	}))
 	mux.HandleFunc("DELETE /v1/env-groups/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteEnvGroup(r.Context(), r.PathValue("id"))
@@ -105,7 +113,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.CloneEnvGroup(r.Context(), r.PathValue("id"), request)
+		return s.committed(r.Context())(s.CloneEnvGroup(r.Context(), r.PathValue("id"), request))
 	}))
 	mux.HandleFunc("PATCH /v1/env-groups/{id}/contents", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		patch, err := core.DecodeBody[EnvironmentPatch](r)
@@ -121,7 +129,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.MoveEnvGroup(r.Context(), r.PathValue("id"), request.EnvironmentID)
+		return s.committed(r.Context())(s.MoveEnvGroup(r.Context(), r.PathValue("id"), request.EnvironmentID))
 	}))
 
 	// Group env vars: replace-all plus Render's per-key reveal/upsert/delete.

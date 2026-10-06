@@ -319,11 +319,11 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		// overruns ValidResourceName's 30-char cap (so the create boundary
 		// validateBlueprint runs would reject the file this exporter tells the
 		// user to commit) and writes the workspace's tenant id into that repo.
-		// appServiceName reads LabelServiceName, falling back to a.Name only for
-		// the legacy hand-applied App that has no such label (its object name IS
-		// the public name). Datastore entries already emit Spec.Name; this
-		// aligns services with them. (w6/m114)
-		"name": appServiceName(a),
+		// core.AppPublicName reads LabelServiceName, falling back to a.Name
+		// only for the legacy hand-applied App that has no such label (its
+		// object name IS the public name). Datastore entries already emit
+		// Spec.Name; this aligns services with them. (w6/m114)
+		"name": core.AppPublicName(a),
 		"type": blueprintTypeSpelling[svcType],
 	}
 	static := svcType == appv1alpha1.TypeStaticSite

@@ -991,7 +991,7 @@ func effectiveRuntime(spec appv1alpha1.AppSpec, svcType string) string {
 }
 
 func view(a *appv1alpha1.App) AppView {
-	name := publicName(a)
+	name := core.AppPublicName(a)
 	appID := publicID(a)
 	created := ""
 	if !a.CreationTimestamp.IsZero() {
@@ -1209,7 +1209,7 @@ func publicID(a *appv1alpha1.App) string {
 	if appID := a.Labels[core.LabelAppID]; appID != "" {
 		return appID
 	}
-	return publicName(a)
+	return core.AppPublicName(a)
 }
 
 func sshEligible(v AppView) bool {

@@ -148,10 +148,7 @@ func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, ve
 	if !protected {
 		return nil
 	}
-	name := a.Labels[core.LabelServiceName]
-	if name == "" {
-		name = a.Name
-	}
+	name := core.AppPublicName(a)
 	if want := ProtectedConfirmation(verb, name); core.ConfirmFrom(ctx) != want {
 		return fmt.Errorf("%w: %q is a member of a protected environment; retry with confirm=%q to %s it", core.ErrBadRequest, name, want, verb)
 	}

@@ -180,7 +180,8 @@ func TestEnvGroupReadSideOwnerIDTargetingE2E(t *testing.T) {
 }
 
 // envGroupCursorPage mirrors the envgroups REST fragment's unexported
-// envGroupWithCursor list envelope (Render's pagination contract, w6/m32).
+// envGroupWithCursor list envelope (Render's pagination contract, w6/m32), as
+// far as the fields this test reads.
 type envGroupCursorPage struct {
 	EnvGroup envgroups.EnvGroupView `json:"envGroup"`
 	Cursor   string                 `json:"cursor"`
