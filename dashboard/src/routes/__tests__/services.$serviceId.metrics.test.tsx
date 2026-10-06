@@ -9,7 +9,9 @@ import type { UseServerResult } from "@/features/services/hooks/use-server";
 // chart rendering) are covered by their own tests — stub them so this test
 // stays about the w5/m48 type-gating decision: which cards a type gets.
 vi.mock("@/features/metrics/components/application-metrics-card", () => ({
-  ApplicationMetricsCard: () => <p>application card</p>,
+  ApplicationMetricsCard: ({ runsInstances }: { runsInstances: boolean }) => (
+    <p>application card{runsInstances ? "" : " (parked)"}</p>
+  ),
 }));
 vi.mock("@/features/metrics/components/network-metrics-card", () => ({
   NetworkMetricsCard: () => <p>network card</p>,
@@ -70,11 +72,30 @@ describe("metrics range search contract (w6/065)", () => {
 
 describe("ServiceMetricsPage (w5/m48 — static sites get no pod metrics)", () => {
   it("shows both cards for a web service", () => {
-    serverState.service = { id: "srv-1", type: "web_service" } as ServiceView;
+    serverState.service = {
+      id: "srv-1",
+      type: "web_service",
+      suspended: false,
+      phase: "Running",
+    } as ServiceView;
     render(<ServiceMetricsPage serviceId="srv-1" />);
 
     expect(screen.getByText("application card")).toBeInTheDocument();
     expect(screen.getByText("network card")).toBeInTheDocument();
+  });
+
+  // w5/m125: a parked service's current-limit read is empty for want of a pod,
+  // so the card must not read it as "no limit configured".
+  it("tells the Application card when the service is parked", () => {
+    serverState.service = {
+      id: "srv-1",
+      type: "web_service",
+      suspended: false,
+      phase: "Hibernated",
+    } as ServiceView;
+    render(<ServiceMetricsPage serviceId="srv-1" />);
+
+    expect(screen.getByText("application card (parked)")).toBeInTheDocument();
   });
 
   it("hides the Application (CPU/memory) card for a static site", () => {

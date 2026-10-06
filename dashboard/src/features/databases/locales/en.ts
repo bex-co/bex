@@ -1448,14 +1448,6 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Postgres output in this time range will appear here.",
     description: "Managed Postgres logs empty-state body",
   },
-  "databases.logsEmptyFilteredBody": {
-    message: "No database logs match the current filters.",
-    description: "Managed Postgres logs filtered empty-state body",
-  },
-  "databases.logsEmptyFilteredTitle": {
-    message: "No matching logs",
-    description: "Managed Postgres logs filtered empty-state title",
-  },
   "databases.logsUnavailableTitle": {
     message: "Database logs aren't configured",
     description: "Managed Postgres logs unavailable-state title",

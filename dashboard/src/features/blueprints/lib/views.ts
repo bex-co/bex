@@ -111,6 +111,7 @@ function toErrorDetails(
   details: ValidationData["errorDetails"],
 ): BlueprintValidationError[] {
   return (details ?? []).filter(nonNull).map((d) => ({
+    code: d.code ?? "",
     error: d.error ?? "",
     line: d.line ?? 0,
     column: d.column ?? 0,
@@ -209,23 +210,4 @@ export function toSyncBlueprintResult(
       .filter(nonNull)
       .map(toBlueprintResource),
   };
-}
-
-/**
- * True when every validation problem is one an explicit takeover confirmation
- * resolves — a resource already owned by another blueprint (w8/m23), or a
- * repo+branch a live blueprint already tracks (w4/m125).
- *
- * It is what keeps Deploy reachable in that case. Blocking Deploy on any
- * invalid preview is right for a manifest that does not parse — there is
- * nothing to confirm — but for a conflict it is a dead end: the phrase only
- * arrives in the create's refusal, so a disabled button means the user can
- * read about a takeover they can never perform. Detected from the phrase the
- * server issues, never from a code the client reconstructs.
- */
-export function isTakeoverOnlyConflict(errors: string[]): boolean {
-  return (
-    errors.length > 0 &&
-    errors.every((e) => e.includes('retry with confirm="takeover blueprint'))
-  );
 }

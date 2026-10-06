@@ -635,10 +635,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Time range",
     description: "Accessible label for the log time-range select",
   },
-  "keyvalue.logsInstanceLabel": {
-    message: "Instance",
-    description: "Accessible label for the log instance (pod) select",
-  },
   "keyvalue.logsAllInstances": {
     message: "All instances",
     description: "Default option in the instance filter (no filter applied)",
@@ -660,14 +656,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
       "No log lines in this time range. Valkey logs key-space events, slow queries, and startup messages.",
     description: "Empty state body when no log lines and no filters active",
   },
-  "keyvalue.logsEmptyFilteredBody": {
-    message: "No log lines match the active filters.",
-    description: "Empty state body when filters are active and nothing matches",
-  },
-  "keyvalue.logsEmptyFilteredTitle": {
-    message: "No matching logs",
-    description: "Empty state title when filters are active and nothing matches",
-  },
   "keyvalue.logsUnavailableTitle": {
     message: "Logs not available",
     description: "Empty state title when the logs source is not configured",
@@ -684,10 +672,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.logsUnauthorizedBody": {
     message: "You don't have permission to view logs for this Key Value store.",
     description: "Empty state body for a 403 on the logs query",
-  },
-  "keyvalue.logsErrorTitle": {
-    message: "Couldn't load logs",
-    description: "Empty state title for an unexpected logs fetch error",
   },
 };
 

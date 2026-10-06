@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Loader2, Search } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
+import { isForbiddenError } from "@/common/lib/graphql-error";
 import { Input } from "@/common/components/ui/input.tsx";
 import {
   Select,
@@ -11,6 +12,7 @@ import {
 } from "@/common/components/ui/select.tsx";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { LogEmptyState } from "./log-empty-state";
 import { LogLineList } from "./log-line-list";
 import { LogTruncationNotice } from "./log-truncation-notice";
 import { useLogLabelValues } from "../hooks/use-log-label-values";
@@ -32,6 +34,60 @@ const ALL_INSTANCES = "all";
 // differs only by namespace.
 export type DatastoreLogKind = "databases" | "keyvalue";
 
+type Translate = ReturnType<typeof useTranslations>["t"];
+
+type DatastoreLogCopy = Record<
+  | "unavailableTitle"
+  | "unavailableBody"
+  | "unauthorizedTitle"
+  | "unauthorizedBody"
+  | "errorTitle"
+  | "loading"
+  | "emptyTitle"
+  | "emptyBody"
+  | "rangeLabel"
+  | "instanceLabel"
+  | "allInstances"
+  | "searchPlaceholder",
+  string
+>;
+
+// One literal t("…") per key, so translation-keys-exist checks every one.
+function datastoreLogCopy(
+  kind: DatastoreLogKind,
+  t: Translate,
+): DatastoreLogCopy {
+  return kind === "databases"
+    ? {
+        unavailableTitle: t("databases.logsUnavailableTitle"),
+        unavailableBody: t("databases.logsUnavailableBody"),
+        unauthorizedTitle: t("databases.logsUnauthorizedTitle"),
+        unauthorizedBody: t("databases.logsUnauthorizedBody"),
+        errorTitle: t("databases.logsErrorTitle"),
+        loading: t("databases.logsLoading"),
+        emptyTitle: t("databases.logsEmptyTitle"),
+        emptyBody: t("databases.logsEmptyBody"),
+        rangeLabel: t("databases.logsRangeLabel"),
+        instanceLabel: t("databases.logsInstanceLabel"),
+        allInstances: t("databases.logsAllInstances"),
+        searchPlaceholder: t("databases.logsSearchPlaceholder"),
+      }
+    : {
+        unavailableTitle: t("keyvalue.logsUnavailableTitle"),
+        unavailableBody: t("keyvalue.logsUnavailableBody"),
+        unauthorizedTitle: t("keyvalue.logsUnauthorizedTitle"),
+        unauthorizedBody: t("keyvalue.logsUnauthorizedBody"),
+        errorTitle: t("logs.errorTitle"),
+        loading: t("keyvalue.logsLoading"),
+        emptyTitle: t("keyvalue.logsEmptyTitle"),
+        emptyBody: t("keyvalue.logsEmptyBody"),
+        rangeLabel: t("keyvalue.logsRangeLabel"),
+        instanceLabel: t("logs.instanceLabel"),
+        allInstances: t("keyvalue.logsAllInstances"),
+        searchPlaceholder: t("keyvalue.logsSearchPlaceholder"),
+      };
+}
+
 // `range`/`onRangeChange` are the URL-persisted selection threaded down from
 // the hosting route (`databases.$databaseId` / `keyvalue.$keyValueId`, w6/065)
 // — this is a component, not a route, so persistence has to come from its
@@ -48,6 +104,7 @@ export function DatastoreLogViewer({
   onRangeChange?: (range: RangeSelection) => void;
 }) {
   const { t } = useTranslations();
+  const copy = datastoreLogCopy(kind, t);
   const [localRange, setLocalRange] = useState<RangeSelection>(
     DEFAULT_DATASTORE_LOG_RANGE,
   );
@@ -64,9 +121,10 @@ export function DatastoreLogViewer({
   // Paged exactly like the service Logs tab (w4/m107): scrolling to the top
   // loads older pages until `hasMore` is false (w4/m136).
   const history = useLogHistory(resource, queryFilters, win);
-  const message = history.error?.message.toLowerCase() ?? "";
-  const unavailable = message.includes("logs source not configured");
-  const unauthorized = message.includes("forbidden");
+  // bex-api's no-source refusal carries no code yet.
+  const unavailable =
+    history.error?.message.includes("logs source not configured") ?? false;
+  const unauthorized = isForbiddenError(history.error);
   const instances = useLogLabelValues(resource, "instance");
 
   let body: ReactNode;
@@ -74,74 +132,44 @@ export function DatastoreLogViewer({
     body = (
       <EmptyState
         iconName="Database"
-        title={t(`${kind}.logsUnavailableTitle`)}
-        description={t(`${kind}.logsUnavailableBody`)}
+        title={copy.unavailableTitle}
+        description={copy.unavailableBody}
       />
     );
   } else if (unauthorized) {
     body = (
       <EmptyState
         iconName="LockKeyhole"
-        title={t(`${kind}.logsUnauthorizedTitle`)}
-        description={t(`${kind}.logsUnauthorizedBody`)}
+        title={copy.unauthorizedTitle}
+        description={copy.unauthorizedBody}
       />
     );
   } else if (history.timedOut) {
-    // The search could not cover any of the range in the server's budget;
-    // the same search would time out again (w4/m140).
-    body = (
-      <EmptyState
-        iconName="AlertCircle"
-        title={t("logs.timeoutTitle")}
-        description={t("logs.timeoutBody")}
-      />
-    );
+    body = <LogEmptyState reason="timeout" />;
   } else if (history.error) {
     body = (
-      <EmptyState
-        iconName="AlertCircle"
-        title={t(`${kind}.logsErrorTitle`)}
-        description={history.error.message}
+      <LogEmptyState
+        reason="failed"
+        title={copy.errorTitle}
+        message={history.error.message}
       />
     );
   } else if (history.loading) {
     body = (
       <div className="flex h-64 items-center justify-center rounded-md border text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        {t(`${kind}.logsLoading`)}
+        {copy.loading}
       </div>
     );
   } else if (history.lines.length === 0) {
-    // A search that matched nothing is not an empty store (w4/195).
-    const filtered = Boolean(text || instance);
-    const empty = (
-      <EmptyState
-        iconName="ScrollText"
-        title={
-          filtered
-            ? t(`${kind}.logsEmptyFilteredTitle`)
-            : t(`${kind}.logsEmptyTitle`)
-        }
-        description={
-          filtered
-            ? t(`${kind}.logsEmptyFilteredBody`)
-            : t(`${kind}.logsEmptyBody`)
-        }
+    body = (
+      <LogEmptyState
+        reason="empty"
+        filtered={Boolean(text || instance)}
+        emptyTitle={copy.emptyTitle}
+        emptyBody={copy.emptyBody}
+        pages={history}
       />
-    );
-    // Nothing in the part searched so far, but the rest of the range is still
-    // unsearched (w4/m140).
-    body = history.hasMore ? (
-      <div className="space-y-2">
-        <LogTruncationNotice
-          partial
-          loadingOlder={history.loadingOlder}
-          onLoadOlder={history.loadOlder}
-        />
-        {empty}
-      </div>
-    ) : (
-      empty
     );
   } else {
     body = (
@@ -169,7 +197,7 @@ export function DatastoreLogViewer({
         <RangeSelect
           range={range}
           onRangeChange={setRange}
-          ariaLabel={t(`${kind}.logsRangeLabel`)}
+          ariaLabel={copy.rangeLabel}
         />
 
         <Select
@@ -181,14 +209,12 @@ export function DatastoreLogViewer({
           <SelectTrigger
             className="w-56"
             size="sm"
-            aria-label={t(`${kind}.logsInstanceLabel`)}
+            aria-label={copy.instanceLabel}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_INSTANCES}>
-              {t(`${kind}.logsAllInstances`)}
-            </SelectItem>
+            <SelectItem value={ALL_INSTANCES}>{copy.allInstances}</SelectItem>
             {instances.map((inst) => (
               <SelectItem key={inst} value={inst}>
                 {inst}
@@ -202,8 +228,8 @@ export function DatastoreLogViewer({
           <Input
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder={t(`${kind}.logsSearchPlaceholder`)}
-            aria-label={t(`${kind}.logsSearchPlaceholder`)}
+            placeholder={copy.searchPlaceholder}
+            aria-label={copy.searchPlaceholder}
             className="pl-8"
           />
         </div>

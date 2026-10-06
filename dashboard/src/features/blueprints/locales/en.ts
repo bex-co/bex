@@ -223,6 +223,12 @@ const enBlueprints: Record<string, TranslationEntry> = {
       "{kind} “{name}” is managed by Blueprint {owner}. Continuing transfers it to this Blueprint. Type the command below to continue.",
     description: "Takeover dialog body for a Blueprint resource conflict",
   },
+  "blueprints.takeoverResourceBodyOtherOwner": {
+    message:
+      "{kind} “{name}” is managed by another Blueprint. Continuing transfers it to this Blueprint. Type the command below to continue.",
+    description:
+      "Takeover dialog body for a Blueprint resource conflict whose owning Blueprint bex-api could not name",
+  },
   "blueprints.previewConflictBody": {
     message:
       "Another Blueprint already manages this repo and branch or some of its resources. Deploying replaces it; you'll confirm exactly what is taken over on the next step.",

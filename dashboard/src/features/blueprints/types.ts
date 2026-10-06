@@ -32,6 +32,8 @@ export interface BlueprintSyncView {
 /** One validation error with its source location (w8/019). line/column are 0
  *  when the position is unknown; path is "" for a document-level error. */
 export interface BlueprintValidationError {
+  /** bex-api's code for the problem, "" when it has none (w5/m125). */
+  code: string;
   error: string;
   line: number;
   column: number;

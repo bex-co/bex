@@ -41,7 +41,16 @@ const BUILD_RETRY_MS = 5000;
 const STORE_UNAVAILABLE_MARKER = "durable log store";
 
 /** The deploy viewer's type buckets; Application is everything but build. */
-export type LogBucket = "build" | "app";
+type LogBucket = "build" | "app";
+
+// A record's buckets as bits: a pre-deploy line the durable build leg also
+// carries is in both.
+const IN_BUILD = 1;
+const IN_OTHER = 2;
+
+function bucketBit(type: string): number {
+  return type === LOG_TYPE_BUILD ? IN_BUILD : IN_OTHER;
+}
 
 export interface UseDeployLogsResult {
   /** build + predeploy + app lines inside the deploy's window, chronological. */
@@ -187,7 +196,7 @@ export function useDeployLogs(
   // History is the expensive leg — mapping, sorting, and deduping three
   // windowed query results. Memoize it on the query data identities so a
   // streamed live line never re-maps or re-sorts it.
-  const { history, firstTypes, otherTypes } = useMemo(() => {
+  const { history, bucketsByKey } = useMemo(() => {
     const merged = [
       build.pages.older,
       predeploy.pages.older,
@@ -197,23 +206,16 @@ export function useDeployLogs(
       ),
     ].flat();
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    // Dedupe keeps the first copy of a record two legs returned; remember the
-    // other legs' types for the bucket filter.
-    const first = new Map<string, string>();
-    const others = new Map<string, Set<string>>();
+    // Keep one copy of a record two legs returned (a pre-deploy line the
+    // durable build leg also carries), in the bucket of every type it came as.
+    const lines: LogLine[] = [];
+    const buckets = new Map<string, number>();
     for (const line of merged) {
-      const type = first.get(line.key);
-      if (type === undefined) first.set(line.key, line.type);
-      else if (type !== line.type) {
-        const set = others.get(line.key) ?? new Set<string>();
-        others.set(line.key, set.add(line.type));
-      }
+      const seen = buckets.get(line.key);
+      if (seen === undefined) lines.push(line);
+      buckets.set(line.key, (seen ?? 0) | bucketBit(line.type));
     }
-    return {
-      history: dedupeLogLines(merged),
-      firstTypes: first,
-      otherTypes: others,
-    };
+    return { history: lines, bucketsByKey: buckets };
   }, [
     build.data,
     predeploy.data,
@@ -236,27 +238,14 @@ export function useDeployLogs(
     loadApp();
   }, [loadBuild, loadPredeploy, loadApp]);
 
-  const liveKeys = useMemo(
-    () => new Set(liveBuild.lines.map((line) => line.key)),
-    [liveBuild.lines],
-  );
-  // A history line whose live build twin was folded into it is build output too.
+  // A live line is build output (the live tail reads only build pods), and a
+  // history line is in every bucket one of its copies belongs to.
   const inLogBucket = useCallback(
     (line: LogLine, bucket: LogBucket): boolean => {
-      const isBuild = (type: string) => type === LOG_TYPE_BUILD;
-      const others = otherTypes.get(line.key);
-      if (bucket === "build") {
-        return (
-          isBuild(line.type) ||
-          liveKeys.has(line.key) ||
-          (others?.has(LOG_TYPE_BUILD) ?? false)
-        );
-      }
-      if (!isBuild(line.type)) return true;
-      for (const type of others ?? []) if (!isBuild(type)) return true;
-      return false;
+      const buckets = bucketsByKey.get(line.key) ?? bucketBit(line.type);
+      return (buckets & (bucket === "build" ? IN_BUILD : IN_OTHER)) !== 0;
     },
-    [otherTypes, liveKeys],
+    [bucketsByKey],
   );
 
   const lines = useMemo(() => {
@@ -268,14 +257,17 @@ export function useDeployLogs(
     // so merging is an append plus a key filter for the poll/stream straddle
     // — O(live) per flush, no re-sort of history per streamed line.
     if (!last || live[0].timestamp >= last.timestamp) {
-      return [...history, ...live.filter((line) => !firstTypes.has(line.key))];
+      return [
+        ...history,
+        ...live.filter((line) => !bucketsByKey.has(line.key)),
+      ];
     }
     // Correctness fallback: a live line predates the tail of history (the
     // query won the race against the stream) — full chronological merge.
     const merged = [...history, ...live];
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return dedupeLogLines(merged);
-  }, [history, firstTypes, liveBuild.lines]);
+  }, [history, bucketsByKey, liveBuild.lines]);
 
   return {
     lines,
