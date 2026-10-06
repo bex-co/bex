@@ -379,6 +379,13 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		projectInstanceLabels(q.Resource, series)
 		return series, err
 	default:
-		return nil, fmt.Errorf("%w: unknown metric %q", core.ErrBadRequest, q.Metric)
+		return nil, fmt.Errorf("%w: metric %q is not served for %s %s", core.ErrBadRequest, q.Metric, datastoreNoun(q.Kind), q.Resource)
 	}
+}
+
+func datastoreNoun(kind string) string {
+	if kind == DatastoreKeyValue {
+		return "Key Value"
+	}
+	return "Postgres"
 }

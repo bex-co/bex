@@ -76,9 +76,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **061** — [Render's `/metrics/{memory,cpu,…}` answers a bare `404 not found` for a live Key Value or Postgres](061.md) (~40m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-05 sweep 38.
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
 
+- [x] **061** — [Render's `/metrics/{memory,cpu,…}` answers a bare `404 not found` for a live Key Value or Postgres](done/061.md) — **DONE 2026-10-05**: Key Value `memory` serves `kv_memory`; other datastore pairs are a coded 400 naming the pair; a missing id stays 404.
 - [x] **060** — [Service events answer `service_hibernated`/`service_woken` on the Render REST feed, outside Render's event-type enum](done/060.md) — **DONE 2026-10-05**: kept as declared bex extensions per ADR018; a gate now fails on any REST event type outside Render's enum that is not declared with a reason.
 - [x] **059** — [Every Render-route 400 for an unknown query parameter says "request contains an unsupported query parameter" without naming it](done/059.md) — **DONE 2026-10-05**: the refusal names every undeclared parameter (sorted, quoted, capped) and the operation.
 - [x] **058** — [Deploy `trigger` answers `create` and `config_change`, values outside Render's enum](done/058.md) — **DONE 2026-10-05**: REST/MCP map onto Render's enum (`bexTrigger` keeps bex's value); conformance seeds every trigger.

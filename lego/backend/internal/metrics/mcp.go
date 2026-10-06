@@ -223,6 +223,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				var series []MetricSeries
 				if metricType == renderActiveConnections {
 					series, err = s.activeConnections(ctx, id, q.Start, q.End, q.Resolution)
+				} else if isDatastoreResource(id) {
+					series, err = s.datastoreAppMetric(ctx, metricIDFor(metricType), id, q.Start, q.End, q.Resolution)
 				} else {
 					q.App, q.Metric = id, metricIDFor(metricType)
 					// MetricsWithQuantiles fans http_latency out over q.Quantiles (the
