@@ -16,6 +16,7 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
 }));
 
 import { useAuditLog } from "@/features/audit/hooks/use-audit-log";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 /** The `ownerId` the hook most recently asked Apollo to query with. */
 function lastOwnerId(): unknown {
@@ -116,7 +117,7 @@ describe("useAuditLog", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: false,
-      error: new Error("forbidden"),
+      error: codedGraphQLError("FORBIDDEN"),
     });
 
     const { result } = renderHook(() => useAuditLog());
@@ -130,7 +131,7 @@ describe("useAuditLog", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: false,
-      error: new Error("audit log store not configured"),
+      error: codedGraphQLError("AUDIT_LOG_UNAVAILABLE"),
     });
 
     const { result } = renderHook(() => useAuditLog());

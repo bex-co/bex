@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 const mutate = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -35,9 +35,9 @@ beforeEach(() => {
 describe("useSyncBlueprint", () => {
   it("returns the protected override phrase without showing a generic error", async () => {
     mutate.mockRejectedValue(
-      new Error(
-        'service is in a protected environment; retry with confirm="sudo deploy service api"',
-      ),
+      codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
+        confirm: "sudo deploy service api",
+      }),
     );
     const { result } = renderHook(() => useSyncBlueprint());
 
@@ -54,17 +54,7 @@ describe("useSyncBlueprint", () => {
   });
 
   it("shows the retry toast on BLUEPRINT_SYNC_BUSY instead of generic failure", async () => {
-    mutate.mockRejectedValue(
-      new CombinedGraphQLErrors({
-        data: null,
-        errors: [
-          {
-            message: "another sync is already running",
-            extensions: { code: "BLUEPRINT_SYNC_BUSY" },
-          },
-        ],
-      }),
-    );
+    mutate.mockRejectedValue(codedGraphQLError("BLUEPRINT_SYNC_BUSY"));
     const { result } = renderHook(() => useSyncBlueprint());
 
     let outcome;
@@ -79,17 +69,7 @@ describe("useSyncBlueprint", () => {
   });
 
   it("surfaces BLUEPRINT_SOURCE_CHANGED for renewed review", async () => {
-    mutate.mockRejectedValue(
-      new CombinedGraphQLErrors({
-        data: null,
-        errors: [
-          {
-            message: "blueprint path no longer matches",
-            extensions: { code: "BLUEPRINT_SOURCE_CHANGED" },
-          },
-        ],
-      }),
-    );
+    mutate.mockRejectedValue(codedGraphQLError("BLUEPRINT_SOURCE_CHANGED"));
     const { result } = renderHook(() => useSyncBlueprint());
 
     let outcome;

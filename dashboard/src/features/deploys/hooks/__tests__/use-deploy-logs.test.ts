@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useDeployLogs } from "@/features/deploys/hooks/use-deploy-logs";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import type { EventSourceLike } from "@/features/logs/hooks/use-live-logs";
 
 const mockUseQuery = vi.fn();
@@ -258,7 +259,7 @@ describe("useDeployLogs", () => {
           return {
             data: undefined,
             loading: false,
-            error: new Error("logs: the durable log store is not configured"),
+            error: codedGraphQLError("LOG_STORE_UNAVAILABLE"),
           };
         }
         return {

@@ -257,21 +257,3 @@ export function useEnvVarMutations(
 
   return { setVar, deleteVar, busy };
 }
-
-/**
- * Classifies an env-vars GraphQL error into the states the tab renders
- * differently: the store being unconfigured (503-equivalent) and a permission
- * denial (403-equivalent) both come back as GraphQL errors whose message carries
- * bex-api's sentinel text.
- */
-export type EnvVarErrorKind = "unavailable" | "forbidden" | "generic";
-
-export function classifyEnvVarError(
-  error: Error | undefined,
-): EnvVarErrorKind | null {
-  if (!error) return null;
-  const msg = error.message.toLowerCase();
-  if (msg.includes("secret store")) return "unavailable";
-  if (msg.includes("forbidden")) return "forbidden";
-  return "generic";
-}

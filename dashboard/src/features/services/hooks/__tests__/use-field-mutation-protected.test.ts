@@ -22,13 +22,15 @@ vi.mock("@/common/providers/protected-retry-context", () => ({
 
 import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 import { SetImageDocument } from "@/graphql/definitions";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 const keys = { success: "services.sourceUpdateSuccess", error: "x" };
 
-// The refusal bex-api returns for a protected member, verbatim in shape: the
-// dashboard must read the phrase out of it rather than rebuild it (ADR032).
-const REFUSAL = new Error(
-  '"web" is a member of a protected environment; retry with confirm="sudo repoint service web" to repoint it',
+// The refusal bex-api returns for a protected member: the dashboard must read
+// the phrase out of its extensions rather than rebuild it (ADR032).
+const REFUSAL = codedGraphQLError(
+  "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
+  { confirm: "sudo repoint service web" },
 );
 
 beforeEach(() => {

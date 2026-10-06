@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import { LogsDocument } from "@/graphql/definitions";
 import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
+import { isLogStoreUnavailable } from "../lib/log-store";
 import { dedupeLogLines, toLogLines } from "../lib/map";
 import { logReadAccessDenied, useOlderLogPages } from "./use-older-log-pages";
 import {
@@ -16,11 +17,6 @@ import {
 // historical panel is as full as the contract allows before the live tail takes
 // over.
 const HISTORY_LIMIT = LOG_PAGE_SIZE;
-
-// The message bex-api returns when a request-log / structured-filter query hits
-// a deployment with no durable store wired (core.ErrLogStoreUnavailable → 503).
-// The viewer renders this as an explanatory state, not a generic error toast.
-const STORE_UNAVAILABLE_MARKER = "durable log store";
 
 // bex-api's code for a read that ran out of its time budget (w4/m140).
 const QUERY_TIMEOUT = "QUERY_TIMEOUT";
@@ -170,8 +166,7 @@ export function useLogHistory(
     [blocked, pages.older, head.lines],
   );
 
-  const storeUnavailable =
-    !!readError && readError.message.includes(STORE_UNAVAILABLE_MARKER);
+  const storeUnavailable = isLogStoreUnavailable(readError);
   const timedOut = hasGraphQLErrorCode(readError, QUERY_TIMEOUT);
 
   return {

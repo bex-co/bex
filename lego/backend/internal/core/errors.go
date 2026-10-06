@@ -55,17 +55,17 @@ var (
 	// ErrLogsUnavailable is returned by the logs verbs when no pod-log source is
 	// wired (adapters surface it as 503, not 404 — the App exists, the source
 	// doesn't).
-	ErrLogsUnavailable = Unavailable("logs source not configured")
+	ErrLogsUnavailable error = NewUnavailableError("LOGS_UNAVAILABLE", "logs source not configured", nil)
 	// ErrLogStoreUnavailable is returned by the logs verbs when a caller asks for
 	// something only the durable log store can answer — request logs, or a
 	// structured filter (level/statusCode/method/path/host) — while bex-api runs
 	// in pod-log fallback mode (BEX_LOKI_URL unset). Adapters surface it as 503:
 	// refusing beats silently ignoring the filter and returning unfiltered lines
 	// (docs/ADR010-observability.md § Log filters).
-	ErrLogStoreUnavailable = Unavailable("request logs and structured log filters require the durable log store")
+	ErrLogStoreUnavailable error = NewUnavailableError("LOG_STORE_UNAVAILABLE", "request logs and structured log filters require the durable log store", nil)
 	// ErrMetricsUnavailable is returned by the metrics verbs when the backend a
 	// metric needs isn't wired (adapters surface it as 503).
-	ErrMetricsUnavailable = Unavailable("metrics source not configured")
+	ErrMetricsUnavailable error = NewUnavailableError("METRICS_UNAVAILABLE", "metrics source not configured", nil)
 	// ErrAPIKeysUnavailable is returned by the api-key verbs when no store is wired.
 	ErrAPIKeysUnavailable = Unavailable("api-key store not configured")
 	// ErrSSHKeysUnavailable is returned by the SSH-key verbs when the control-plane
@@ -74,7 +74,7 @@ var (
 	ErrSSHKeysUnavailable = Unavailable("ssh-key store not configured")
 	// ErrSecretsUnavailable is returned by the env-vars verbs when no secret store
 	// is wired (BEX_OPENBAO_URL unset); adapters surface it as 503.
-	ErrSecretsUnavailable = Unavailable("secret store not configured")
+	ErrSecretsUnavailable error = NewUnavailableError("SECRETS_UNAVAILABLE", "secret store not configured", nil)
 	// ErrWorkspacesUnavailable is returned by the workspace verbs when the
 	// control-plane store isn't wired (bex-api running without BEX_CP_DB_URI);
 	// adapters surface it as 503 (the owners read API exists, the backing store
@@ -93,7 +93,7 @@ var (
 	// errors.Is target, but do not use it for a configured dependency outage or
 	// snapshot-store fault: callers need to tell operator action from retryable
 	// failure without matching human copy (w4/m89).
-	ErrAgentSessionsUnavailable = NewUnavailableError(
+	ErrAgentSessionsUnavailable error = NewUnavailableError(
 		AgentSessionNotConfiguredCode,
 		"agent sessions are not configured",
 		nil,
@@ -101,8 +101,11 @@ var (
 	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 	ErrBadRequest = errors.New("bad request")
 	// ErrForbidden is returned when the caller lacks the permission a verb requires
-	// (adapters map it to 403; distinct from the auth gate's 401).
-	ErrForbidden = errors.New("forbidden")
+	// (adapters map it to 403; distinct from the auth gate's 401). It carries the
+	// code FORBIDDEN on every surface, so a client can branch on the code rather
+	// than the wording (w5/m128). A more specific refusal (NewForbiddenError)
+	// wraps it and keeps its own code.
+	ErrForbidden error = &CodedError{Code: "FORBIDDEN", msg: "forbidden"}
 	// ErrConflict is returned when a verb refuses because of the resource's
 	// current state (e.g. triggering a deploy on a suspended service); adapters
 	// map it to 409.
@@ -133,7 +136,7 @@ var (
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).
-	ErrAuditUnavailable = Unavailable("audit log store not configured")
+	ErrAuditUnavailable error = NewUnavailableError("AUDIT_LOG_UNAVAILABLE", "audit log store not configured", nil)
 	// ErrGitHubUnavailable is returned by the git-connect verbs when the GitHub
 	// App is not configured (BEX_GITHUB_APP_* unset) or the control-plane store
 	// isn't wired (BEX_CP_DB_URI unset) — adapters surface it as 503

@@ -20,10 +20,11 @@ import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
+import type { RefusalKind } from "@/common/lib/graphql-error";
+import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import {
   useEnvGroups,
   useEnvGroupMutations,
-  classifyEnvGroupError,
 } from "@/features/env-groups/hooks/use-env-groups";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
@@ -83,7 +84,7 @@ export function EnvGroupsPanel({
   const createOpen = createOpenProp ?? internalCreateOpen;
   const setCreateOpen = onCreateOpenChange ?? setInternalCreateOpen;
 
-  const errorKind = classifyEnvGroupError(error);
+  const errorKind = classifySecretStoreError(error);
   const initialLoading = loading && groups.length === 0 && !error;
   const gated = errorKind === "unavailable" || errorKind === "forbidden";
   // Precedence order, not list order. spec.envFromSecrets records the order
@@ -420,11 +421,7 @@ function ListSkeleton() {
 }
 
 /** The unavailable (503) / forbidden (403) / generic error states. */
-function StatePanel({
-  kind,
-}: {
-  kind: "unavailable" | "forbidden" | "generic";
-}) {
+function StatePanel({ kind }: { kind: RefusalKind }) {
   const { t } = useTranslations();
   const copy = {
     unavailable: {

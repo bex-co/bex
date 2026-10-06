@@ -20,9 +20,11 @@ vi.mock("@/common/providers/protected-retry-context", () => ({
 }));
 
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
-const REFUSAL = new Error(
-  '"web" is a member of a protected environment; retry with confirm="sudo repoint service web" to repoint it',
+const REFUSAL = codedGraphQLError(
+  "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
+  { confirm: "sudo repoint service web" },
 );
 
 beforeEach(() => {

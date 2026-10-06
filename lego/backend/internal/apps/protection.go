@@ -19,7 +19,6 @@ package apps
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -149,8 +148,5 @@ func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, ve
 		return nil
 	}
 	name := core.AppPublicName(a)
-	if want := ProtectedConfirmation(verb, name); core.ConfirmFrom(ctx) != want {
-		return fmt.Errorf("%w: %q is a member of a protected environment; retry with confirm=%q to %s it", core.ErrBadRequest, name, want, verb)
-	}
-	return nil
+	return core.RequireProtectedConfirmation(ctx, name, verb, ProtectedConfirmation(verb, name))
 }

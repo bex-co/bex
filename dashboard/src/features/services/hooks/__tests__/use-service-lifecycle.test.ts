@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import type { ServiceView } from "@/features/services/types";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 // --- mocks ---------------------------------------------------------------
 
@@ -173,8 +174,9 @@ describe("useServiceLifecycle", () => {
   });
 
   it("returns the exact protected phrase and sends it on the retry", async () => {
-    rejectNext = new Error(
-      'service is in a protected environment; retry with confirm="sudo suspend service app"',
+    rejectNext = codedGraphQLError(
+      "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
+      { confirm: "sudo suspend service app" },
     );
     const refetch = vi.fn(async () => [
       svc({ suspended: true, phase: "Hibernated" }),

@@ -1,27 +1,53 @@
 import { describe, it, expect } from "vitest";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import {
   protectedConfirmationFromError,
   protectedServiceName,
 } from "../protected-confirmation";
 
+const REFUSAL = "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED";
+
 describe("protectedConfirmationFromError", () => {
-  it("extracts the protected-environment phrase", () => {
-    const err = new Error(
-      '"api" is a member of a protected environment; retry with confirm="sudo deploy service api" to deploy it',
-    );
+  it("reads the phrase from the protected-environment refusal's extensions", () => {
+    const err = codedGraphQLError(REFUSAL, {
+      confirm: "sudo deploy service api",
+      verb: "deploy",
+      name: "api",
+    });
     expect(protectedConfirmationFromError(err)).toBe("sudo deploy service api");
   });
 
-  // Blueprint takeovers share the confirm-phrase convention but carry a code,
-  // so blueprintTakeoverFromError classifies them first; this helper answers
-  // only the protected-environment refusal (w5/m125).
-  it("leaves Blueprint takeover refusals to their own classifier", () => {
+  // The code decides, never the wording (w5/m128): the refusal's own text
+  // without its code, and a Blueprint takeover sharing the confirm= convention
+  // (blueprintTakeoverFromError classifies those, w5/m125), are not this
+  // refusal.
+  it("ignores a confirm= phrase that arrives without the code", () => {
     for (const message of [
+      '"api" is a member of a protected environment; retry with confirm="sudo deploy service api" to deploy it',
       'service "web" is managed by blueprint blp-abc; retry with confirm="takeover blueprint blp-abc" to transfer ownership to this blueprint',
-      'blueprint blp-1 ("bpA") already tracks https://github.com/o/r@main from "a.yaml"; update it with updateBlueprint to change its path, or retry with confirm="takeover blueprint blp-1" to replace it',
     ]) {
-      expect(protectedConfirmationFromError(new Error(message))).toBeNull();
+      expect(
+        protectedConfirmationFromError(uncodedGraphQLError(message)),
+      ).toBeNull();
     }
+  });
+
+  it("ignores a takeover's confirm, which is another code's", () => {
+    const takeover = codedGraphQLError("BLUEPRINT_RESOURCE_CONFLICT", {
+      confirm: "takeover blueprint blp-abc",
+    });
+    expect(protectedConfirmationFromError(takeover)).toBeNull();
+  });
+
+  it("asks for nothing when the refusal carries no phrase", () => {
+    expect(
+      protectedConfirmationFromError(codedGraphQLError(REFUSAL)),
+    ).toBeNull();
+    expect(
+      protectedConfirmationFromError(
+        codedGraphQLError(REFUSAL, { confirm: "" }),
+      ),
+    ).toBeNull();
   });
 
   it("ignores unrelated errors", () => {

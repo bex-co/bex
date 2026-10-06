@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { CombinedGraphQLErrors } from "@apollo/client/errors";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
-import { METRICS_UNAVAILABLE_MESSAGE } from "@/features/metrics/hooks/use-metrics";
 
 const mockUseQuery = vi.fn();
 
@@ -132,9 +131,7 @@ describe("useDatastoreMetrics", () => {
   });
 
   it("reports unavailable (not a generic error) when bex-api has no source wired", () => {
-    const unavailableError = new CombinedGraphQLErrors({
-      errors: [{ message: METRICS_UNAVAILABLE_MESSAGE }],
-    } as never);
+    const unavailableError = codedGraphQLError("METRICS_UNAVAILABLE");
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: false,

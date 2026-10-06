@@ -49,22 +49,21 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import {
   hasGraphQLErrorCode,
   mutationErrorMessage,
+  type RefusalKind,
 } from "@/common/lib/graphql-error";
 import { useReauthDraft } from "@/common/hooks/use-reauth-draft";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
-  classifyEnvVarError,
   useEnvVarKeys,
   useRevealEnvVar,
-  type EnvVarErrorKind,
 } from "@/features/services/hooks/use-env-vars";
 import {
-  classifySecretFileError,
   useRevealSecretFile,
   useSecretFileNames,
 } from "@/features/services/hooks/use-secret-files";
 import { useEnvironmentDraftSave } from "@/features/services/hooks/use-environment-draft-save";
+import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { useTriggerDeploy } from "@/features/services/hooks/use-trigger-deploy";
 import {
   MAX_SECRET_FILE_BYTES,
@@ -100,19 +99,18 @@ import { SecretFileContentDialog } from "./secret-file-content-dialog";
 type SaveChoice = "only" | "deploy" | "rebuild";
 
 // Spelled out rather than assembled from the kind, so every key is greppable
-// and a new EnvVarErrorKind fails to compile instead of rendering its own key.
-const ENV_ERROR_COPY: Record<EnvVarErrorKind, { title: string; body: string }> =
-  {
-    generic: { title: "services.envErrorTitle", body: "services.envErrorBody" },
-    forbidden: {
-      title: "services.envForbiddenTitle",
-      body: "services.envForbiddenBody",
-    },
-    unavailable: {
-      title: "services.envUnavailableTitle",
-      body: "services.envUnavailableBody",
-    },
-  };
+// and a new RefusalKind fails to compile instead of rendering its own key.
+const ENV_ERROR_COPY: Record<RefusalKind, { title: string; body: string }> = {
+  generic: { title: "services.envErrorTitle", body: "services.envErrorBody" },
+  forbidden: {
+    title: "services.envForbiddenTitle",
+    body: "services.envForbiddenBody",
+  },
+  unavailable: {
+    title: "services.envUnavailableTitle",
+    body: "services.envUnavailableBody",
+  },
+};
 
 export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   const env = useEnvVarKeys(serviceId);
@@ -138,7 +136,8 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
         (files.loading && files.names.length === 0)
       }
       errorKind={
-        classifyEnvVarError(env.error) ?? classifySecretFileError(files.error)
+        classifySecretStoreError(env.error) ??
+        classifySecretStoreError(files.error)
       }
       revealEnv={revealEnv}
       revealFile={revealFile}
@@ -189,7 +188,7 @@ export interface EnvironmentEditorProps {
   envKeysPending?: boolean;
   secretFileNames: Array<{ id: string; name: string }>;
   loading: boolean;
-  errorKind: EnvVarErrorKind | null;
+  errorKind: RefusalKind | null;
   revealEnv: (key: string) => Promise<string>;
   revealFile: (name: string) => Promise<string>;
   /**

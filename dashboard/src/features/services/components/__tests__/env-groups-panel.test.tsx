@@ -3,8 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
-// Control the data/behavior the panel sees by mocking the feature hooks; keep the
-// real classifyEnvGroupError so the error-state routing is exercised for real.
+// Control the data/behavior the panel sees by mocking the feature hooks.
 const mockUseEnvGroups = vi.fn();
 const mockCreateGroup = vi.fn();
 const mockDeleteGroup = vi.fn();
@@ -424,7 +423,9 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
     expect(strikeText).toContain("MESSAGE");
     expect(strikeText).toContain("qa.txt");
     expect(
-      document.querySelectorAll('[title="Overridden by alpha, which is linked later"]'),
+      document.querySelectorAll(
+        '[title="Overridden by alpha, which is linked later"]',
+      ),
     ).toHaveLength(2);
     // The winner is not marked.
     expect(strikeText).toHaveLength(2);

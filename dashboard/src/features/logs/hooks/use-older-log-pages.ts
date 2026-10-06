@@ -21,7 +21,7 @@ export function logReadAccessDenied(error: Error | undefined): boolean {
     isUnauthenticatedError(error) ||
     isForbiddenError(error) ||
     (ServerError.is(error) && [403, 404].includes(error.statusCode)) ||
-    ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND"].some((code) =>
+    ["UNAUTHENTICATED", "NOT_FOUND"].some((code) =>
       hasGraphQLErrorCode(error, code),
     ) ||
     /not found|unauthenticated|unauthorized|session expired/i.test(

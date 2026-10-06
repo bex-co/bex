@@ -244,21 +244,3 @@ export function useSecretFileMutations(
 
   return { setFile, deleteFile, busy };
 }
-
-/**
- * Classifies a secret-files GraphQL error into the states the tab renders
- * differently: the store being unconfigured (503-equivalent) and a permission
- * denial (403-equivalent) both come back as GraphQL errors whose message carries
- * bex-api's sentinel text. Same logic as classifyEnvVarError.
- */
-export type SecretFileErrorKind = "unavailable" | "forbidden" | "generic";
-
-export function classifySecretFileError(
-  error: Error | undefined,
-): SecretFileErrorKind | null {
-  if (!error) return null;
-  const msg = error.message.toLowerCase();
-  if (msg.includes("secret store")) return "unavailable";
-  if (msg.includes("forbidden")) return "forbidden";
-  return "generic";
-}

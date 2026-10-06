@@ -106,7 +106,13 @@ func (m *Metrics) observeResend(err error) {
 	if err != nil {
 		result = "error"
 		var coded *core.CodedError
+		// The class sentinels go first: ErrForbidden is itself coded (w5/m128),
+		// so the code branch would otherwise take a denial.
 		switch {
+		case errors.Is(err, core.ErrForbidden):
+			result = "denied"
+		case errors.Is(err, core.ErrUnavailable):
+			result = "unavailable"
 		case errors.As(err, &coded):
 			switch coded.Code {
 			case WebhookResendIdempotencyKeyInvalidCode:
@@ -118,10 +124,6 @@ func (m *Metrics) observeResend(err error) {
 			case WebhookDeliveryPendingCode:
 				result = "pending"
 			}
-		case errors.Is(err, core.ErrForbidden):
-			result = "denied"
-		case errors.Is(err, core.ErrUnavailable):
-			result = "unavailable"
 		}
 	}
 	m.resends.WithLabelValues(result).Inc()

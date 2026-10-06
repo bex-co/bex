@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
 
@@ -73,7 +74,7 @@ describe("RegistryCredentialsPanel", () => {
   });
 
   it("shows a forbidden state and not the table when the query 403s", () => {
-    state.error = new Error("forbidden");
+    state.error = codedGraphQLError("FORBIDDEN");
     render(<RegistryCredentialsPanel />);
     expect(screen.getByText("Not authorized")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();

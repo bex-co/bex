@@ -24,7 +24,6 @@ import {
   useEnvVarKeys,
   useRevealEnvVar,
   useEnvVarMutations,
-  classifyEnvVarError,
 } from "@/features/services/hooks/use-env-vars";
 
 beforeEach(() => {
@@ -193,16 +192,5 @@ describe("useEnvVarMutations", () => {
         generateValue: true,
       },
     });
-  });
-});
-
-describe("classifyEnvVarError", () => {
-  it("classifies the store-unavailable, forbidden, and generic errors, and null", () => {
-    expect(classifyEnvVarError(undefined)).toBeNull();
-    expect(classifyEnvVarError(new Error("secret store not configured"))).toBe(
-      "unavailable",
-    );
-    expect(classifyEnvVarError(new Error("forbidden"))).toBe("forbidden");
-    expect(classifyEnvVarError(new Error("boom"))).toBe("generic");
   });
 });

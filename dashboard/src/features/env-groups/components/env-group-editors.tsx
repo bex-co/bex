@@ -1,7 +1,7 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { EnvironmentEditor } from "@/features/services/components/service-environment-editor";
 import {
-  classifyEnvGroupError,
   envVarKeys,
   secretFileNames,
   useEnvGroupEnvironmentPatch,
@@ -32,7 +32,7 @@ export function EnvGroupEditors({
       envKeys={envVarKeys(group)}
       secretFileNames={secretFileNames(group)}
       loading={loading}
-      errorKind={classifyEnvGroupError(error)}
+      errorKind={classifySecretStoreError(error)}
       revealEnv={revealEnv}
       revealFile={revealFile}
       revision={group.revision}

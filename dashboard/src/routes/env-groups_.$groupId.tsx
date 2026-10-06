@@ -25,11 +25,11 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import {
-  classifyEnvGroupError,
   isEnvGroupNotFound,
   useEnvGroup,
   useEnvGroupMutations,
 } from "@/features/env-groups/hooks/use-env-groups";
+import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { EnvGroupDocument } from "@/graphql/definitions";
@@ -108,7 +108,7 @@ export function EnvGroupDetailPage() {
     if (!deleted) setDeleteInFlight(false);
     return deleted;
   };
-  const errorKind = classifyEnvGroupError(error);
+  const errorKind = classifySecretStoreError(error);
   const notFound = isEnvGroupNotFound(error);
   const environmentLabel = group?.environmentId
     ? (scope.byId.get(group.environmentId)?.name ??

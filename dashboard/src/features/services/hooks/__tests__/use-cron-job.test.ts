@@ -22,6 +22,7 @@ vi.mock("@/common/providers/protected-retry-context", () => ({
 }));
 
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 beforeEach(() => {
   mockUseMutation.mockReset();
@@ -176,8 +177,9 @@ describe("useCronJob", () => {
 // clear intent were lost anywhere it would be lost here too — the retry is the
 // call that actually persists.
 describe("useCronJob protected retry preserves an explicit clear", () => {
-  const REFUSAL = new Error(
-    '"nightly" is a member of a protected environment; retry with confirm="sudo repoint service nightly" to repoint it',
+  const REFUSAL = codedGraphQLError(
+    "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
+    { confirm: "sudo repoint service nightly" },
   );
 
   it("retries the empty command with only the confirmation added", async () => {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { DatastoreLogViewer } from "../datastore-log-viewer";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { EMPTY_LOG_FILTERS, type LogLine } from "../../types";
 import {
   scrollViewport,
@@ -77,13 +78,13 @@ describe("DatastoreLogViewer", () => {
     );
     expect(screen.getByText("No database logs yet")).toBeInTheDocument();
 
-    state.error = new Error("logs source not configured");
+    state.error = codedGraphQLError("LOGS_UNAVAILABLE");
     rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
     expect(
       screen.getByText("Database logs aren't configured"),
     ).toBeInTheDocument();
 
-    state.error = new Error("forbidden: no access");
+    state.error = codedGraphQLError("FORBIDDEN");
     rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
     expect(screen.getByText("You can't view these logs")).toBeInTheDocument();
 
@@ -91,6 +92,11 @@ describe("DatastoreLogViewer", () => {
     rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
     expect(screen.getByText("Couldn't load database logs")).toBeInTheDocument();
     expect(screen.getByText("Loki is unavailable")).toBeInTheDocument();
+
+    // The server's wording without its code decides nothing (w5/m128).
+    state.error = uncodedGraphQLError("forbidden: logs source not configured");
+    rerender(<DatastoreLogViewer kind="databases" resource="dpg-example" />);
+    expect(screen.getByText("Couldn't load database logs")).toBeInTheDocument();
   });
 
   it("uses Key Value copy for a red- resource", () => {
@@ -99,7 +105,7 @@ describe("DatastoreLogViewer", () => {
     );
     expect(screen.getByText("No log lines")).toBeInTheDocument();
 
-    state.error = new Error("forbidden");
+    state.error = codedGraphQLError("FORBIDDEN");
     rerender(<DatastoreLogViewer kind="keyvalue" resource="red-example" />);
     expect(screen.getByText("Access denied")).toBeInTheDocument();
   });

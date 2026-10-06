@@ -1,4 +1,4 @@
-import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { graphQLErrorExtensions } from "@/common/lib/graphql-error";
 
 export type ProtectedActionResult =
   | { status: "success" }
@@ -11,13 +11,11 @@ export type ProtectedActionResult =
  * service name; the dashboard deliberately does not duplicate that rule.
  */
 export function protectedConfirmationFromError(err: unknown): string | null {
-  const message = graphQLErrorMessage(err);
-  // bex-api's protected-environment refusal carries no code. The Blueprint
-  // takeovers that share its confirm-phrase convention are classified by code
-  // first (blueprintTakeoverFromError), so they never reach this match.
-  if (!message?.includes("protected environment")) return null;
-  const match = message.match(/retry with confirm=(?:"([^"]+)"|'([^']+)')/i);
-  return match?.[1] ?? match?.[2] ?? null;
+  const confirm = graphQLErrorExtensions(
+    err,
+    "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
+  )?.["confirm"];
+  return typeof confirm === "string" && confirm !== "" ? confirm : null;
 }
 
 /** Best-effort display name; authorization still relies on the full phrase. */

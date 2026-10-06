@@ -168,7 +168,7 @@ func TestHandleMappedMapsAServiceErrorWithoutViewing(t *testing.T) {
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", w.Code)
 	}
-	want := `{"error":"forbidden","id":"forbidden","message":"forbidden"}` + "\n"
+	want := `{"code":"FORBIDDEN","error":"forbidden","id":"forbidden","message":"forbidden","params":null}` + "\n"
 	if got := w.Body.String(); got != want {
 		t.Fatalf("body = %q, want %q", got, want)
 	}

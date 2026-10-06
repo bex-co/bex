@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useLogHistory } from "../use-log-history";
 import { EMPTY_LOG_FILTERS, type LogFilters } from "../../types";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const mockUseQuery = vi.fn();
 const mockClientQuery = vi.fn();
@@ -170,5 +171,38 @@ describe("useLogHistory paging (w4/m107, w4/m136)", () => {
     expect(mockClientQuery.mock.calls[1][0].variables.endTime).toBe(
       "2026-09-26T00:20:00Z",
     );
+  });
+});
+
+// The Logs tab explains a missing durable store instead of erroring: it reads
+// bex-api's code, never the refusal's wording (w5/m128).
+describe("useLogHistory without a durable log store", () => {
+  const failWith = (error: Error) =>
+    mockUseQuery.mockImplementation(() => ({
+      data: undefined,
+      loading: false,
+      error,
+    }));
+
+  it("reports the store missing from LOG_STORE_UNAVAILABLE", () => {
+    failWith(codedGraphQLError("LOG_STORE_UNAVAILABLE"));
+    const { result } = renderHook(() =>
+      useLogHistory("srv-x", EMPTY_LOG_FILTERS, WINDOW),
+    );
+    expect(result.current.storeUnavailable).toBe(true);
+    expect(result.current.timedOut).toBe(false);
+  });
+
+  it("does not read the store's absence from the wording", () => {
+    failWith(
+      uncodedGraphQLError(
+        "request logs and structured log filters require the durable log store",
+      ),
+    );
+    const { result } = renderHook(() =>
+      useLogHistory("srv-x", EMPTY_LOG_FILTERS, WINDOW),
+    );
+    expect(result.current.storeUnavailable).toBe(false);
+    expect(result.current.error).toBeInstanceOf(Error);
   });
 });

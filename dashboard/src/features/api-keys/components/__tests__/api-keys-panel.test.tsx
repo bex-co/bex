@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import { ApiKeysPanel } from "@/features/api-keys/components/api-keys-panel";
 import type { ApiKeyView } from "@/features/api-keys/types";
 
@@ -76,7 +77,7 @@ describe("ApiKeysPanel", () => {
   });
 
   it("shows a forbidden state and not the table when the query 403s", () => {
-    apiKeysState.error = new Error("forbidden");
+    apiKeysState.error = codedGraphQLError("FORBIDDEN");
     render(<ApiKeysPanel />);
     expect(screen.getByText("Not authorized")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();

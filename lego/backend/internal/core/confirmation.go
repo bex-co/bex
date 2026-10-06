@@ -95,8 +95,19 @@ func RequireEnvironmentConfirmation(
 	if !protected {
 		return nil
 	}
-	if ConfirmFrom(ctx) != required {
-		return fmt.Errorf("%w: %q is a member of a protected environment; retry with confirm=%q to %s it", ErrBadRequest, name, required, verb)
+	return RequireProtectedConfirmation(ctx, name, verb, required)
+}
+
+// RequireProtectedConfirmation refuses verb on name, a member of a protected
+// environment, unless the caller sent confirm. The refusal is 400
+// PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED with params confirm (the phrase a
+// retry must send), verb and name, so a client asks for the phrase without
+// parsing the message (w5/m128).
+func RequireProtectedConfirmation(ctx context.Context, name, verb, confirm string) error {
+	if ConfirmFrom(ctx) == confirm {
+		return nil
 	}
-	return nil
+	return NewBadRequestError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
+		fmt.Sprintf("%q is a member of a protected environment; retry with confirm=%q to %s it", name, confirm, verb),
+		map[string]any{"confirm": confirm, "verb": verb, "name": name})
 }
