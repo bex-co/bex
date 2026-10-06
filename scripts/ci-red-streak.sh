@@ -50,11 +50,19 @@ else
   # cancels and other workflows' runs fell outside it and read as a streak of
   # one (2026-09-22: five straight deploy failures, issue #73 listed only
   # `test (mobile)`). One list call per active workflow.
-  workflows="$(gh workflow list --limit 200 --json id --jq '.[].id' 2>/dev/null)" \
+  #
+  # Never `--branch main`: GitHub answers a branch filter by searching runs,
+  # and its search lags, so newer runs can be missing from it (cli/cli#7341).
+  # List the workflow's newest runs and keep main's in the filter below; other
+  # branches were at most 2 of any workflow's newest 30 (measured 2026-10-06).
+  # GitHub's own dynamic workflows (Copilot, Dependabot, CodeQL) never run a
+  # push or schedule event, so they are not listed.
+  workflows="$(gh workflow list --limit 200 --json id,path \
+      --jq '.[] | select(.path | startswith(".github/")) | .id' 2>/dev/null)" \
     || unusable "could not list workflows"
   runs="$(for wf in $workflows; do
-      gh run list --workflow "$wf" --branch main --limit "$LIMIT" \
-        --json name,conclusion,status,event,headSha,createdAt,url 2>/dev/null || exit 1
+      gh run list --workflow "$wf" --limit "$LIMIT" \
+        --json name,conclusion,status,event,headBranch,headSha,createdAt,url 2>/dev/null || exit 1
     done | jq -s 'add // []')" \
     || unusable "could not list workflow runs"
 fi
@@ -69,6 +77,7 @@ echo "$runs" | jq -e 'type == "array"' >/dev/null 2>&1 \
 report="$(echo "$runs" | jq -r --argjson threshold "$THRESHOLD" '
   [ .[]
     | select(.status == "completed")
+    | select(.headBranch == "main")
     | select(.event == "push" or .event == "schedule")
     | select(.conclusion != "cancelled" and .conclusion != "skipped" and .conclusion != "neutral")
   ]

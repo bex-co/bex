@@ -18,12 +18,12 @@ fails=0
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# run <name> <conclusion> <n> — n runs, newest first by construction.
+# runs_json <mk output> — the runs as one JSON array, in the order given.
 runs_json() { printf '[%s]\n' "$(printf '%s' "$1" | sed 's/,$//')"; }
 
-mk() { # mk <name> <conclusion> <sha> <minute> [event] [status]
-  printf '{"name":"%s","conclusion":"%s","status":"%s","event":"%s","headSha":"%s","createdAt":"2026-09-%02dT00:00","url":"https://x/%s"},' \
-    "$1" "$2" "${6:-completed}" "${5:-push}" "$3" "$4" "$3"
+mk() { # mk <name> <conclusion> <sha> <day> [event] [status] [branch]
+  printf '{"name":"%s","conclusion":"%s","status":"%s","event":"%s","headBranch":"%s","headSha":"%s","createdAt":"2026-09-%02dT00:00","url":"https://x/%s"},' \
+    "$1" "$2" "${6:-completed}" "${5:-push}" "${7:-main}" "$3" "$4" "$3"
 }
 
 check() { # check <label> <json> <want_exit> [want_substring]
@@ -73,6 +73,18 @@ check "ignores pull_request and in-progress" \
   "$(runs_json "$(mk w failure a 4 pull_request)$(mk w failure b 3 pull_request)$(mk w failure c 2 push in_progress)$(mk w success d 1)")" \
   0
 
+# (e2) Another branch's push runs are not main's either: without `--branch`
+# (w5/082) the listing holds them, and the filter must drop them.
+check "ignores other branches" \
+  "$(runs_json "$(mk w failure a 4 push completed feature)$(mk w failure b 3 push completed feature)$(mk w failure c 2 push completed feature)$(mk w success d 1)")" \
+  0
+
+# (e3) Listing order is not trusted: a stale run listed first must not hide
+# the newer failures behind it.
+check "listing order does not hide a streak" \
+  "$(runs_json "$(mk w success old 1)$(mk w failure a 4)$(mk w failure b 3)$(mk w failure c 2)")" \
+  1 "3 consecutive failures"
+
 # (f) Never passed in the inspected window — the gitops case. Must report the
 # full window as the streak and say so, not silently read "0 failures since the
 # last success" off an empty list.
@@ -115,25 +127,28 @@ fi
 # `gh`. deploy's three failures are spread among supersession cancels and other
 # workflows' runs, so the newest $LIMIT runs across ALL workflows hold only one
 # of them. The old global `gh run list --limit N` read a streak of 1 and stayed
-# silent; fetching per workflow sees all three.
+# silent; fetching per workflow sees all three. The stub answers `--branch`
+# with a stale page, as GitHub's search can, so a detector that filters by
+# branch again fails here too (w5/082).
 stub="$tmp/stub"
 mkdir -p "$stub"
 {
   printf '['
   m=59
   for c in failure cancelled cancelled cancelled cancelled failure cancelled cancelled cancelled cancelled failure success; do
-    printf '{"name":"deploy","conclusion":"%s","status":"completed","event":"push","headSha":"d%02d","createdAt":"2026-09-22T00:%02d","url":"https://x/d%02d"},' "$c" "$m" "$m" "$m"
+    printf '{"name":"deploy","conclusion":"%s","status":"completed","event":"push","headBranch":"main","headSha":"d%02d","createdAt":"2026-09-22T00:%02d","url":"https://x/d%02d"},' "$c" "$m" "$m" "$m"
     m=$((m - 1))
     for _ in 1 2 3; do
-      printf '{"name":"busy","conclusion":"success","status":"completed","event":"push","headSha":"b%02d","createdAt":"2026-09-22T00:%02d","url":"https://x/b%02d"},' "$m" "$m" "$m"
+      printf '{"name":"busy","conclusion":"success","status":"completed","event":"push","headBranch":"main","headSha":"b%02d","createdAt":"2026-09-22T00:%02d","url":"https://x/b%02d"},' "$m" "$m" "$m"
       m=$((m - 1))
     done
   done
-  printf '{"name":"busy","conclusion":"success","status":"completed","event":"push","headSha":"b00","createdAt":"2026-09-22T00:00","url":"https://x/b00"}]'
+  printf '{"name":"busy","conclusion":"success","status":"completed","event":"push","headBranch":"main","headSha":"b00","createdAt":"2026-09-22T00:00","url":"https://x/b00"}]'
 } >"$stub/runs.json"
 cat >"$stub/gh" <<'STUB'
 #!/usr/bin/env bash
-# Minimal `gh` for the fetch path: `workflow list [--jq F]` and `run list [--workflow W] --limit N`.
+# Minimal `gh` for the fetch path: `workflow list [--jq F]` and
+# `run list [--workflow W] [--branch B] --limit N`.
 set -euo pipefail
 runs="$(dirname "$0")/runs.json"
 case "$1 $2" in
@@ -146,21 +161,31 @@ case "$1 $2" in
         *) shift ;;
       esac
     done
-    jq -r "$filter" <<<'[{"id":"deploy","name":"deploy"},{"id":"busy","name":"busy"}]'
+    jq -r "$filter" <<<'[{"id":"deploy","name":"deploy","path":".github/workflows/deploy.yml"},{"id":"busy","name":"busy","path":".github/workflows/busy.yml"},{"id":"copilot","name":"Copilot","path":"dynamic/copilot-swe-agent/copilot"}]'
     ;;
   "run list")
     shift 2
-    wf="" limit=20
+    wf="" limit=20 branch=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --workflow) wf="$2"; shift 2 ;;
         --limit) limit="$2"; shift 2 ;;
-        --json | --branch) shift 2 ;;
+        --branch) branch="$2"; shift 2 ;;
+        --json) shift 2 ;;
         *) shift ;;
       esac
     done
-    jq --arg wf "$wf" --argjson n "$limit" \
-      '[.[] | select($wf == "" or .name == $wf)] | sort_by(.createdAt) | reverse | .[:$n]' "$runs"
+    # GitHub lists a workflow's runs newest first, in the order runs.json
+    # holds them. A branch filter turns that into a search, which can answer
+    # with a page of only old runs (cli/cli#7341): played here as the older
+    # half, so a detector that filters by branch misses the newest failures.
+    if [ -n "$branch" ]; then
+      jq --arg wf "$wf" --argjson n "$limit" \
+        '[.[] | select($wf == "" or .name == $wf)] | .[(length / 2 | floor):] | .[:$n]' "$runs"
+    else
+      jq --arg wf "$wf" --argjson n "$limit" \
+        '[.[] | select($wf == "" or .name == $wf)] | .[:$n]' "$runs"
+    fi
     ;;
   *) echo "stub gh: unexpected $*" >&2; exit 1 ;;
 esac
