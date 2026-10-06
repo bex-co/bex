@@ -1088,12 +1088,12 @@ func (r *AppReconciler) consumeClearCacheAnnotation(ctx context.Context, app *ap
 	if !clearCacheApplies(app) {
 		return
 	}
-	patch := client.MergeFrom(app.DeepCopy())
-	delete(app.Annotations, appv1alpha1.AnnotationClearCacheReleaseGeneration)
-	if len(app.Annotations) == 0 {
-		app.Annotations = nil
-	}
-	if err := r.Patch(ctx, app, patch); err != nil {
+	if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		delete(meta.Annotations, appv1alpha1.AnnotationClearCacheReleaseGeneration)
+		if len(meta.Annotations) == 0 {
+			meta.Annotations = nil
+		}
+	}); err != nil {
 		logf.FromContext(ctx).Error(err, "clearing spent clear-cache annotation", "app", app.Name)
 	}
 }
@@ -2086,13 +2086,9 @@ func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv
 		if err := r.PerAppRegistry.RotateCredsFor(ctx, appIdentity(app), app.Namespace); err != nil {
 			return fmt.Errorf("rotate registry creds: %w", err)
 		}
-		patch := app.DeepCopy()
-		delete(patch.Annotations, annotRotateRegistryCreds)
-		if err := r.Patch(ctx, patch, client.MergeFrom(app)); err != nil {
+		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) { delete(meta.Annotations, annotRotateRegistryCreds) }); err != nil {
 			return fmt.Errorf("clear rotate annotation: %w", err)
 		}
-		// Update in-memory copy so downstream logic sees cleared annotation.
-		delete(app.Annotations, annotRotateRegistryCreds)
 		logf.FromContext(ctx).Info("rotated per-app registry credentials", "app", app.Name)
 	}
 
@@ -6328,9 +6324,9 @@ func (r *AppReconciler) recordTLSSecretHistory(ctx context.Context, app *appv1al
 	if err != nil {
 		return err
 	}
-	before := client.MergeFrom(app.DeepCopy())
-	metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotTLSSecretHistory, string(raw))
-	return r.Patch(ctx, app, before)
+	return r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		metav1.SetMetaDataAnnotation(meta, annotTLSSecretHistory, string(raw))
+	})
 }
 
 func tlsSecretHistory(app *appv1alpha1.App) []string {

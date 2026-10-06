@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -302,9 +301,9 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 		stamped := app.Annotations[annotAutoscaleScaleDown]
 		if stamped == "" {
 			// First downward signal — stamp now and hold.
-			base := app.DeepCopy()
-			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotAutoscaleScaleDown, now.Format(time.RFC3339))
-			_ = r.Patch(ctx, app, client.MergeFrom(base))
+			_ = r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+				metav1.SetMetaDataAnnotation(meta, annotAutoscaleScaleDown, now.Format(time.RFC3339))
+			})
 			return current, true
 		}
 		t, err := time.Parse(time.RFC3339, stamped)
@@ -312,15 +311,11 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 			return current, true // window not yet elapsed — hold
 		}
 		// Clear the annotation now that we're committing the downscale.
-		base := app.DeepCopy()
-		delete(app.Annotations, annotAutoscaleScaleDown)
-		_ = r.Patch(ctx, app, client.MergeFrom(base))
+		_ = r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) { delete(meta.Annotations, annotAutoscaleScaleDown) })
 	} else if want > current {
 		// Scale-up: clear any pending scale-down annotation.
 		if app.Annotations[annotAutoscaleScaleDown] != "" {
-			base := app.DeepCopy()
-			delete(app.Annotations, annotAutoscaleScaleDown)
-			_ = r.Patch(ctx, app, client.MergeFrom(base))
+			_ = r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) { delete(meta.Annotations, annotAutoscaleScaleDown) })
 		}
 	}
 
@@ -331,9 +326,9 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	// on the next reconcile pass so a metrics-failure pass doesn't revert to
 	// spec.replicas (the user's static count).
 	if strconv.Itoa(int(want)) != app.Annotations[annotAutoscaleReplicas] {
-		base := app.DeepCopy()
-		metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotAutoscaleReplicas, strconv.Itoa(int(want)))
-		if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
+		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+			metav1.SetMetaDataAnnotation(meta, annotAutoscaleReplicas, strconv.Itoa(int(want)))
+		}); err != nil {
 			return current, true
 		}
 	}
