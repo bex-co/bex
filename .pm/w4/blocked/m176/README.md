@@ -47,3 +47,14 @@ Live on an owned Free `traefik/whoami` web service in a fresh project whose envi
 - **Render parity:** included (t004). REST/GraphQL/MCP/UI semantics change on protected members. Render limits protected-environment actions to admins rather than a typed phrase; bex's phrase model is ADR032's documented divergence.
 - **Unverified:** `commitId` on a repo-backed service (reasoned from the same branch); the GraphQL/MCP trigger and rollback entry points and the dashboard dialogs (REST probed only); the Blueprint stack-apply override (`applyCreate`), already guarded per ADR032, not re-probed.
 - **Severity:** major (a safety guard is bypassable; no data loss observed).
+
+## Production replay — passed 2026-10-06 (qa loop63, pin `e2e4d0d7e` ⊇ `a206084ee`)
+
+Owned Free `qa-20261006-l63-web` (`srv-db269mc20ers738obg20`, `traefik/whoami`) in `qa-20261006-l63-proj` / `production` (`evm-db269mvd12os73f2iojg`) set `protectedStatus: protected`. It had two prior deploys; everything was deleted afterwards.
+
+- `POST /v1/services/<id>/deploys {"imageUrl":"docker.io/traefik/whoami:v1.10.1"}` without a phrase → **400** `"qa-20261006-l63-web" is a member of a protected environment; retry with confirm="sudo repoint service qa-20261006-l63-web" to repoint it`. The same 400 came back with a wrong phrase (`sudo delete service …`).
+- `POST /v1/services/<id>/rollback {"deployId":"dep-db269mc20ers738obg2g"}` without a phrase → the same **400**.
+- Bare `POST /v1/services/<id>/deploys {}` → **201**, still unguarded as specified.
+- The override with `?confirm=sudo%20repoint%20service%20qa-20261006-l63-web` → **201** `dep-db26befd12os73f2iosg`, **live** on `docker.io/traefik/whoami:v1.10.1`. The rollback with the same phrase → **201** `dep-db26eic20ers738obge0`, **live** on `traefik/whoami:latest`.
+- GraphQL `deployActions` → `rollback` `outcome: allowed`, `precondition: "protected_confirmation_required"`.
+- Not exercised: `commitId` on a repo-backed service, the GraphQL/MCP trigger/rollback mutations, the dashboard Rollback dialog, and the unprotected-service control.
