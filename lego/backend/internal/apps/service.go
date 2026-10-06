@@ -2090,7 +2090,9 @@ func (s *Service) planNewApp(ctx context.Context, req CreateRequest, a *appv1alp
 			return errClaimServiceDomains(err)
 		}
 		if len(claimed) > 0 {
-			return errClaimServiceDomains(store.ErrConflict)
+			// Names the caller's own host, as the host gate does, so a
+			// Blueprint preview locates it at its domains entry (w5/m126).
+			return fmt.Errorf("%w: %q", errDomainInUse(), claimed[0])
 		}
 	}
 	if err := s.validateExternalRegistryCredential(ctx, a); err != nil {
@@ -2214,18 +2216,29 @@ func (s *Service) nameTaken(ctx context.Context, tenantID, name string) (bool, e
 	return a != nil && a.Labels[core.LabelTenant] == tenantID, nil
 }
 
-// createNewApp writes a brand-new App CR for the stack path's applyCreate (its
-// not-found branch): it stamps the tenant labels, runs the interactive create's
-// plan (planNewApp, w5/m116), then shares its write tail — the store row and
-// first deploy record when the store is on, a clone secret for a private repo,
-// and the CR — so the stack path creates services identically to the
-// interactive create (w1/m24).
-func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
-	// Per create, not per stack: a later service's sweep must see the Apps
-	// this stack has already created (allApps).
-	ctx = withRequestMemo(ctx)
+// stackAppPlan is a stack create that passed its plan: the App as the create
+// writes it, with the workspace, environment and seed its write tail needs.
+type stackAppPlan struct {
+	app         *appv1alpha1.App
+	tenantID    string
+	environment core.EnvironmentAssignment
+	seed        createSeed
+}
+
+// planStackApp is a stack create up to its first write: it stamps the tenant
+// labels and runs the interactive create's plan (planNewApp, w5/m116). A
+// Blueprint preview runs it for each service the apply would create (w5/m126).
+func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (stackAppPlan, error) {
+	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
+		return stackAppPlan{}, err
+	}
+	// initialDeployHook: use the one-time command as preDeployCommand on first
+	// create so the operator runs it on the first deploy (w2/m45).
+	if req.InitialDeployHook != "" {
+		desired.PreDeployCommand = req.InitialDeployHook
+	}
 	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
-		return AppView{}, err
+		return stackAppPlan{}, err
 	}
 	a := &appv1alpha1.App{}
 	a.Name = req.Name
@@ -2252,12 +2265,12 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	}
 	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
-		return AppView{}, err
+		return stackAppPlan{}, err
 	}
 	stampEnvironmentMembership(a, environment)
 	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
 	// The ran-once annotation is added by applyCreate once the first pre-deploy
-	// Job succeeds; createNewApp only stores the command.
+	// Job succeeds; planStackApp only stores the command.
 	if req.InitialDeployHook != "" {
 		if a.Annotations == nil {
 			a.Annotations = map[string]string{}
@@ -2272,12 +2285,12 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	// bex's existing EnvSeeder for it) exists to opt out of.
 	seed := createSeed{files: req.SecretFiles}
 	if err := s.planNewApp(ctx, req, a, tenantID, seed); err != nil {
-		return AppView{}, err
+		return stackAppPlan{}, err
 	}
-	return s.materializeNewApp(ctx, req, a, tenantID, environment, seed)
+	return stackAppPlan{app: a, tenantID: tenantID, environment: environment, seed: seed}, nil
 }
 
-// materializeNewApp is the shared write tail of create and createNewApp, run
+// materializeNewApp is the shared write tail of create and createFromStack, run
 // once the caller has shaped the CR (object name, namespace, spec, tenant +
 // environment labels, and any annotations): the store row + its first deploy
 // record when the store is on — with the UNIQUE(tenant_id, name) ErrConflict

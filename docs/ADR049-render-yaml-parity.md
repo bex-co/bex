@@ -105,6 +105,14 @@ The same compiler and plan feed:
 
 No mutation occurs when parsing, schema validation, semantic validation, authorization, current-state resolution, or planning fails. Once execution begins, failures are recorded against the planned action and are retryable; this ADR does not pretend Kubernetes and Postgres writes form one distributed transaction.
 
+**Validate and preview run each create's plan (w5/m126).** For every resource the plan would create, validate and preview run the plan its apply runs before that create's first write, so a refusal shows up before any partial apply:
+
+- a new service runs `planNewApp`;
+- a new Postgres or Key Value is dry-run through admission exactly as the apply creates it;
+- the workspace count cap is checked across every resource the stack creates, which no single create's dry-run can see.
+
+Each refusal carries the apply's message and code. The protected-environment confirmation, the payment gate and `fromGroup` stay apply-only (ADR018's Blueprint row).
+
 ### D5 — Sync is presence-aware and field-specific
 
 The compiler carries a presence bit for every field through planning. A zero value is never used as a proxy for omission.
