@@ -63,6 +63,16 @@ func errPreDeployCommandNotApplicable(svcType string) error {
 	return fmt.Errorf("%w: a pre-deploy command does not apply to a %s", core.ErrBadRequest, svcType)
 }
 
+// startCommandApplies: a static site serves files and runs no start command
+// (create used to store one, w5/090).
+func startCommandApplies(svcType string) bool {
+	return svcType != appv1alpha1.TypeStaticSite
+}
+
+func errStartCommandNotApplicable(svcType string) error {
+	return fmt.Errorf("%w: start command is not applicable to a %s", core.ErrBadRequest, svcType)
+}
+
 // The platform subdomain and the inbound IP allowlist (a Traefik middleware on
 // the App's Ingress) exist only for a publicly routable type.
 func errSubdomainPolicyNotApplicable(svcType string) error {
@@ -136,7 +146,7 @@ func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, n
 	runtime := strings.ToLower(strings.TrimSpace(a.Spec.Runtime))
 	builder := strings.ToLower(strings.TrimSpace(a.Spec.Builder))
 	if (runtime != "" && runtime != "docker") || builder == "native" || builder == "buildpack" {
-		return "", fmt.Errorf("%w: dockerfile path only applies to a Dockerfile-built service", core.ErrBadRequest)
+		return "", errDockerfileBuildOnly("dockerfile path")
 	}
 	dockerfilePath = strings.TrimSpace(dockerfilePath)
 	if dockerfilePath != "" && !store.ValidRootDir(dockerfilePath) {
@@ -170,10 +180,16 @@ func (s *Service) checkCommands(ctx context.Context, a *appv1alpha1.App, startCo
 	if err := s.requireUnprotected(ctx, a, "redefine"); err != nil {
 		return err
 	}
-	if a.Spec.Type == appv1alpha1.TypeStaticSite && startCommand != nil {
-		return fmt.Errorf("%w: start command is not applicable to a static_site", core.ErrBadRequest)
+	if startCommand != nil && !startCommandApplies(a.Spec.Type) {
+		return errStartCommandNotApplicable(a.Spec.Type)
 	}
 	return nil
+}
+
+// errDockerfileBuildOnly refuses a Dockerfile-build setting on a service whose
+// build reads no Dockerfile. Create and update answer alike (w5/090).
+func errDockerfileBuildOnly(setting string) error {
+	return fmt.Errorf("%w: %s only applies to a Dockerfile-built service", core.ErrBadRequest, setting)
 }
 
 func checkPublishPath(a *appv1alpha1.App, name, publishPath string) error {

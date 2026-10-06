@@ -45,6 +45,8 @@ func TestResolveBuildStrategy(t *testing.T) {
 		{name: "runtime and builder both selecting", req: CreateRequest{Runtime: "docker", Builder: "buildpack"}, wantErr: "runtime and builder cannot both select a build strategy"},
 		{name: "runtime image", req: CreateRequest{Runtime: "image", Image: "nginx:1"}, wantBuilder: "auto", wantRuntime: "image"},
 		{name: "runtime image without image", req: CreateRequest{Runtime: "image"}, wantErr: "runtime image requires image and no repo"},
+		// It would store a Dockerfile builder on an image that builds nothing (w5/090).
+		{name: "runtime docker with an image", req: CreateRequest{Runtime: "docker", Image: "nginx:1"}, wantErr: "runtime docker requires repo and no image"},
 		{name: "runtime image with repo", req: CreateRequest{Runtime: "image", Image: "nginx:1", Repo: "https://github.com/acme/web"}, wantErr: "runtime image requires image and no repo"},
 		{name: "native runtime", req: CreateRequest{Runtime: "node", Repo: repoReq.Repo, BuildCommand: repoReq.BuildCommand, StartCommand: repoReq.StartCommand}, wantBuilder: "native", wantRuntime: "node"},
 		{name: "native runtime without repo", req: CreateRequest{Runtime: "go", BuildCommand: "make", StartCommand: "./x"}, wantErr: "native runtime go requires repo"},
@@ -53,7 +55,7 @@ func TestResolveBuildStrategy(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			runtime, builder, err := resolveBuildStrategy(tc.req)
+			runtime, builder, err := resolveBuildStrategy(effectiveType(tc.req.Type), tc.req)
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("err = %v, want %q", err, tc.wantErr)

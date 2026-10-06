@@ -2809,9 +2809,21 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err := checkInstanceCap(tier, replicas); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	runtime, builder, err := resolveBuildStrategy(req)
+	runtime, builder, err := resolveBuildStrategy(svcType, req)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
+	}
+	// The Dockerfile-build settings, refused as update refuses them where no
+	// Dockerfile is built (w5/090). A static site's dockerfilePath is what
+	// makes it a Dockerfile build, so buildStrategy reads it too.
+	if buildStrategy(appv1alpha1.AppSpec{Type: svcType, Repo: req.Repo, Image: req.Image, Runtime: runtime,
+		Builder: builder, DockerfilePath: req.DockerfilePath, BuildCommand: req.BuildCommand}) != buildDockerfile {
+		switch {
+		case strings.TrimSpace(req.DockerfilePath) != "":
+			return appv1alpha1.AppSpec{}, errDockerfileBuildOnly("dockerfile path")
+		case strings.TrimSpace(req.DockerContext) != "":
+			return appv1alpha1.AppSpec{}, errDockerfileBuildOnly("docker context")
+		}
 	}
 	// A static site that declares buildCommand builds through the native
 	// toolchain so the declared command actually runs (Render's static build
@@ -2945,6 +2957,8 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 		return errSubdomainPolicyNotApplicable(svcType)
 	case len(req.IPAllowList) > 0 && !appv1alpha1.TypePubliclyRoutable(svcType):
 		return errIPAllowListNotApplicable(svcType)
+	case strings.TrimSpace(req.StartCommand) != "" && !startCommandApplies(svcType):
+		return errStartCommandNotApplicable(svcType)
 	}
 	if svcType == appv1alpha1.TypeCronJob {
 		sched := strings.TrimSpace(req.Schedule)
@@ -3021,7 +3035,7 @@ func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch st
 // effective builder: runtime wins (docker → dockerfile, image → auto, a
 // Blueprint-native runtime → native with its command requirements), and a
 // bare builder value is validated as-is.
-func resolveBuildStrategy(req CreateRequest) (string, string, error) {
+func resolveBuildStrategy(svcType string, req CreateRequest) (string, string, error) {
 	builder := req.Builder
 	runtime := strings.ToLower(strings.TrimSpace(req.Runtime))
 	if runtime != "" && builder != "" && builder != "auto" {
@@ -3033,6 +3047,11 @@ func resolveBuildStrategy(req CreateRequest) (string, string, error) {
 			return "", "", fmt.Errorf("%w: builder must be auto, buildpack, or dockerfile", core.ErrBadRequest)
 		}
 	case "docker":
+		// It builds the repo's Dockerfile: beside an image it would store a
+		// builder the image never uses (w5/090).
+		if req.Image != "" {
+			return "", "", fmt.Errorf("%w: runtime docker requires repo and no image", core.ErrBadRequest)
+		}
 		builder = "dockerfile"
 	case "image":
 		if req.Image == "" || req.Repo != "" {
@@ -3046,8 +3065,14 @@ func resolveBuildStrategy(req CreateRequest) (string, string, error) {
 		if req.Repo == "" {
 			return "", "", fmt.Errorf("%w: native runtime %s requires repo", core.ErrBadRequest, runtime)
 		}
-		if strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == "" {
-			return "", "", fmt.Errorf("%w: native runtime %s requires buildCommand and startCommand", core.ErrBadRequest, runtime)
+		required, missing := "buildCommand and startCommand", strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == ""
+		// A static site serves its build's files and runs no start command,
+		// which create refuses there (w5/090).
+		if svcType == appv1alpha1.TypeStaticSite {
+			required, missing = "buildCommand", strings.TrimSpace(req.BuildCommand) == ""
+		}
+		if missing {
+			return "", "", fmt.Errorf("%w: native runtime %s requires %s", core.ErrBadRequest, runtime, required)
 		}
 		builder = "native"
 	}
