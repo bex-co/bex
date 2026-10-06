@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { DeployActions } from "../deploy-actions";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 const cancelDeploy = vi.fn();
 const rollbackService = vi.fn();
@@ -207,9 +208,9 @@ describe("DeployActions", () => {
   it("retries a protected rollback with the server-issued phrase", async () => {
     rollbackService
       .mockRejectedValueOnce(
-        new Error(
-          '"web" is a member of a protected environment; retry with confirm="sudo repoint service web" to repoint it',
-        ),
+        codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
+          confirm: "sudo repoint service web",
+        }),
       )
       .mockResolvedValueOnce({
         data: {
@@ -244,9 +245,9 @@ describe("DeployActions", () => {
 
   it("stays quiet when the protected phrase is dismissed", async () => {
     rollbackService.mockRejectedValueOnce(
-      new Error(
-        '"web" is a member of a protected environment; retry with confirm="sudo repoint service web" to repoint it',
-      ),
+      codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
+        confirm: "sudo repoint service web",
+      }),
     );
     ask.mockResolvedValue(null);
     const user = userEvent.setup();

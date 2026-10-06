@@ -10,14 +10,9 @@ import {
 } from "@/features/metrics/types";
 import {
   isMetricsUnavailable,
-  isLogStoreUnavailable,
   toChartSeries,
-  METRICS_UNAVAILABLE_MESSAGE,
 } from "@/features/metrics/lib/graphql-series";
-
-// Re-exported for existing importers (this hook's own message constant lived
-// here before it was shared with useDatastoreMetrics).
-export { METRICS_UNAVAILABLE_MESSAGE };
+import { isLogStoreUnavailable } from "@/features/logs/lib/log-store";
 
 export interface UseMetricsOptions {
   startTime?: string;

@@ -11,6 +11,7 @@ import {
 import { useOlderLogPages } from "@/features/logs/hooks/use-older-log-pages";
 import { LOG_TYPE_BUILD } from "@/features/logs/types";
 import type { LogLine } from "@/features/logs/types";
+import { isLogStoreUnavailable } from "@/features/logs/lib/log-store";
 
 // bex-api caps a single logs() page at 100 rows (Render's paging range,
 // internal/logs/service.go) — same limit the Logs-tab history hook uses.
@@ -34,11 +35,6 @@ const SETTLE_MS = 15000;
 // can race the build Job's pod into existence — so while the deploy is still
 // build_in_progress a dead tail retries instead of staying silent.
 const BUILD_RETRY_MS = 5000;
-
-// The message bex-api returns when a type=build query hits a deployment with
-// no durable store wired (core.ErrLogStoreUnavailable → 503) — build logs are
-// store-only for historical queries; the live SSE path reads pod stdout.
-const STORE_UNAVAILABLE_MARKER = "durable log store";
 
 /** The deploy viewer's type buckets; Application is everything but build. */
 type LogBucket = "build" | "app";
@@ -183,14 +179,11 @@ export function useDeployLogs(
     createEventSource,
   });
 
-  const buildStoreUnavailable = !!(
-    build.error &&
-    build.error.message.toLowerCase().includes(STORE_UNAVAILABLE_MARKER)
-  );
+  // Build-log history lives only in the durable store; the live SSE tail reads
+  // the build pod's stdout, so a store-less deployment still streams it.
+  const buildStoreUnavailable = isLogStoreUnavailable(build.error);
   const queryError = [build.error, predeploy.error, app.error].find(
-    (candidate) =>
-      candidate &&
-      !candidate.message.toLowerCase().includes(STORE_UNAVAILABLE_MARKER),
+    (candidate) => candidate && !isLogStoreUnavailable(candidate),
   );
 
   // History is the expensive leg — mapping, sorting, and deduping three

@@ -1,13 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
+  classifyRefusal,
   hasGraphQLErrorCode,
+  isForbiddenError,
   isNameConflictError,
   isThrottledError,
   mutationErrorMessage,
   planLimitExtensions,
   refusalReason,
 } from "@/common/lib/graphql-error";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
 /**
  * Build the kind of error Apollo throws when a GraphQL mutation returns errors.
@@ -83,6 +86,45 @@ describe("isThrottledError", () => {
   it("does not match other codes or plain Errors", () => {
     expect(isThrottledError(gqlError({ code: "PLAN_LIMIT" }))).toBe(false);
     expect(isThrottledError(new Error("rate limit exceeded"))).toBe(false);
+  });
+});
+
+// w5/m128: bex-api codes its forbidden and store-unavailable refusals, so these
+// decisions read the code and the wording stays the server's to change.
+describe("isForbiddenError", () => {
+  it("matches the FORBIDDEN code", () => {
+    expect(isForbiddenError(codedGraphQLError("FORBIDDEN"))).toBe(true);
+  });
+
+  it("does not match the word without the code", () => {
+    expect(isForbiddenError(uncodedGraphQLError("forbidden"))).toBe(false);
+    expect(
+      isForbiddenError(codedGraphQLError("CONFLICT", {}, "forbidden")),
+    ).toBe(false);
+    expect(isForbiddenError(undefined)).toBe(false);
+  });
+});
+
+describe("classifyRefusal", () => {
+  it("routes a store-backed read's refusals by code", () => {
+    const classify = (error: unknown) =>
+      classifyRefusal(error, "SECRETS_UNAVAILABLE");
+    expect(classify(undefined)).toBeNull();
+    expect(classify(codedGraphQLError("SECRETS_UNAVAILABLE"))).toBe(
+      "unavailable",
+    );
+    expect(classify(codedGraphQLError("FORBIDDEN"))).toBe("forbidden");
+    expect(classify(codedGraphQLError("AUDIT_LOG_UNAVAILABLE"))).toBe(
+      "generic",
+    );
+  });
+
+  it("treats the refusals' wording without a code as any other failure", () => {
+    for (const message of ["secret store not configured", "forbidden"]) {
+      expect(
+        classifyRefusal(uncodedGraphQLError(message), "SECRETS_UNAVAILABLE"),
+      ).toBe("generic");
+    }
   });
 });
 
