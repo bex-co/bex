@@ -27,7 +27,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **073** — [MCP create drops `dockerCommand` for image services](done/073.md) (~40m) ← REST fixed in `4fe79515b` (w4/188); MCP not — **DONE 2026-10-05**: MCP applies `dockerCommand` on image (and bridges an image cron's command) exactly as REST.
 - [x] **m112** — [Test gates: no silent skips in CI, the real-DB backend suite runs locally, and /ship won't push onto a red main](done/m112/README.md) (8 tasks; 4h25m total) ← process; the w4/m172 red-main incident — **DONE 2026-10-05**: `testenv.Skip` + strict backend CI, `scripts/backend-test-deps.sh`, `/ship` gates (red main, real-DB suite).
 - [x] **m113** — [Availability failure edges carry the Ready transition time (re-scopes w4/200)](done/m113/README.md) (8 tasks; 3h25m total) ← gap in `44a612e8d` (w4/196); cause of w4/200 — **DONE 2026-10-05**: a guard-suppressed pass no longer lifts the edge floor. The dev-5 replay stamps `server_failed` at the pod's readiness drop (0 s, was ~40 s). Service and datastore PG replays; w4/200 closed. Follow-ups w5/083 and w5/084.
-- [ ] **m114** — [Suspend ends the release it interrupts, not just its deploy row](m114/README.md) (10 tasks; 4h50m total) ← gap in `60ae617b3` (w4/m171)
+- [ ] **m114** — [Suspend ends the release it interrupts, not just its deploy row](blocked/m114/README.md) (10 tasks; 4h50m total) ← gap in `60ae617b3` (w4/m171) — **BLOCKED (t006's resume half: after the release pipeline deploys the operator change, replay a suspend during a running pre-deploy, then resume, on an owned `qa-` service in `bex-canary`, or on dev-5 once the local operator is current. Expect A to serve, B never to activate even after its pre-deploy completes, and a later deploy to go live)**; t001–t005 and t007–t009 done 2026-10-05: `store.CancelRelease` ends the release for Cancel and suspend alike; the operator honors the stamp after a suspend; truthful pre-deploy steps and cancel reasons; migration 0142's CHECK.
 - [ ] **m115** — [By-id verbs: one resolver, one 403/404 rule, and a guard that checks types instead of source text](m115/README.md) (10 tasks; 6h total) ← consolidates w4/m169, w4/194, w4/m172, w4/199
 - [ ] **m116** — [Dry-run is the real call stopped before its first write, for create and update of every kind](m116/README.md) (8 tasks; 5h15m total) ← follow-up to w8/045 and w8/046
 - [ ] **m117** — [Every create field reaches the service through REST, GraphQL and MCP, and Blueprint export round-trips](m117/README.md) (8 tasks; 4h30m total) ← follow-up to w4/188 and w4/193
@@ -50,6 +50,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **082** — [ci-red-streak reads main through the runs API's branch search, which can return stale pages](082.md) (~30m) ← found in w5/m112's review
 - [ ] **083** — [A crash under an open deploy can be dated from the rollout start](083.md) (~45m) ← found in w5/m113's review
 - [ ] **084** — [The local mock cluster has no `bex-build` namespace, so every App deletion on a dev-N stack stalls](084.md) (~30m) ← found in w5/m113's dev-5 replay
+- [ ] **085** — [A canceled release's in-flight pre-deploy finishes while its row reads canceled](085.md) (~45m) ← found in w5/m114's dev-5 replay
 
 ## Approved queue — 2026-10-01
 

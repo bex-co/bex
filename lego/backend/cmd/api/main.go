@@ -305,6 +305,8 @@ func main() {
 			apps.ObserveProductApp(ctx, st, cl, desired, app)
 		}
 		rec.Metrics = store.NewReconcilerMetrics(metricRegistry)
+		// A release a suspend ended has its build deleted where Cancel's is.
+		rec.BuildNamespace = cfg.BuildNamespace
 		if cfg.CPResyncSet {
 			rec.Resync = cfg.CPResync
 		}

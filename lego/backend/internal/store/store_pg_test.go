@@ -615,6 +615,13 @@ func assertConcurrentDeployTriggers(ctx context.Context, t *testing.T, s *PGStor
 	if open.ID == "" {
 		t.Fatalf("race history = %+v, want highest App generation 3 queued", history)
 	}
+	// Whichever request lost — coalesced out of the pending slot, or arrived
+	// late and canceled itself — its row names the deploy that replaced it.
+	for _, d := range history {
+		if d.Status == DeployCanceled && d.CancelReason != "Superseded by "+open.ID {
+			t.Fatalf("skipped trigger cancel_reason = %q, want it to name %s", d.CancelReason, open.ID)
+		}
+	}
 
 	// Cancel and convergence use the same row-locked transition writer. Let
 	// them race and prove exactly one terminal fact wins without a rewrite.

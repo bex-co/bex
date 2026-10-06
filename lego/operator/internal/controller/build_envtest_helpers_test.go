@@ -21,12 +21,15 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Shared build-Job fixtures for the envtest suites that drive a build to a
@@ -80,4 +83,34 @@ func completeBuildJob(appName, rev string) {
 		{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
 	}
 	Expect(k8sClient.Status().Update(context.Background(), j)).To(Succeed())
+}
+
+// envtestApp and envtestDeployment read an App and its Deployment by name.
+func envtestApp(nn types.NamespacedName) *appv1alpha1.App {
+	GinkgoHelper()
+	app := &appv1alpha1.App{}
+	Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+	return app
+}
+
+func envtestDeployment(nn types.NamespacedName) *appsv1.Deployment {
+	GinkgoHelper()
+	dep := &appsv1.Deployment{}
+	Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+	return dep
+}
+
+// markEnvtestDeploymentReady writes the status a kubelet and the Deployment
+// controller would: every desired replica updated and ready.
+func markEnvtestDeploymentReady(nn types.NamespacedName) {
+	GinkgoHelper()
+	dep := envtestDeployment(nn)
+	replicas := int32(1)
+	if dep.Spec.Replicas != nil {
+		replicas = *dep.Spec.Replicas
+	}
+	dep.Status.ObservedGeneration = dep.Generation
+	dep.Status.Replicas, dep.Status.UpdatedReplicas = replicas, replicas
+	dep.Status.ReadyReplicas, dep.Status.AvailableReplicas = replicas, replicas
+	Expect(k8sClient.Status().Update(ctx, dep)).To(Succeed())
 }

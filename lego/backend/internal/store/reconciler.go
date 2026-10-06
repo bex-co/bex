@@ -212,6 +212,10 @@ type Reconciler struct {
 	// stamped on every App CR this projector owns and scopes its delete-by-
 	// absence pass. Empty is read as DefaultControlPlaneIdentity.
 	Identity string
+	// BuildNamespace is BEX_BUILD_NAMESPACE: where a release a suspend ended
+	// has its build artifacts deleted (CancelRelease). Empty means the App's
+	// own namespace.
+	BuildNamespace string
 	// DeployGateTimeout bounds how long a deploy may stay open before
 	// recordDeploy closes it as failed even though the CR's phase never
 	// reached Failed on its own (see defaultDeployGateTimeout).
@@ -707,6 +711,18 @@ func (r *Reconciler) settleAbandonedDeploys(ctx context.Context, d DesiredApp, o
 // logged, not fatal: deploy bookkeeping must never block App CR reconciliation.
 func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App) {
 	status := observedDeployStatus(open, cur, r.deployTimedOut(d, open))
+	// A suspend ends the release, not just its row (w5/m114): without the
+	// stamp, Resume rolls it with no open row and its pre-deploy runs. Stamped
+	// before anything records this close — the build_ended fact included — so
+	// a stamp that fails leaves the pass nothing to undo; it tries again next
+	// pass while the suspension lasts.
+	suspendEnded := status == DeployCanceled && cur.Status.ReleaseGeneration <= open.Generation && suspendEndsRollout(open, cur)
+	if suspendEnded {
+		if err := CancelRelease(ctx, r.Client, cur, open.Generation, r.BuildNamespace); err != nil {
+			log.Printf("controlplane: cancel suspended release %s: %v", open.ID, err)
+			return
+		}
+	}
 	observedGeneration := appReleaseGeneration(cur)
 	matchesObservedRelease := observedGeneration == 0 || open.Generation == 0 || observedGeneration == open.Generation
 	if matchesObservedRelease {
@@ -727,9 +743,10 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		// stall must not page anyone, fire a server_failed webhook, or push a
 		// notification. It is an observation on the row, cleared by
 		// TransitionDeploy the moment the row goes terminal.
-		// A park (auto-hibernate, suspend) says nothing about the rollout, so it
-		// keeps the last diagnosis rather than clearing it: that diagnosis is
-		// what the row closes with when no verdict follows (w6/m147).
+		// An auto-hibernate park says nothing about the rollout, so it keeps the
+		// last diagnosis rather than clearing it: that diagnosis is what the row
+		// closes with when no verdict follows (w6/m147). A user suspend ends the
+		// rollout instead (suspendEndsRollout).
 		if stall, ok := deployStallObservation(cur); ok {
 			if err := r.Store.SetDeployStallReason(ctx, open.ID, stall); err != nil {
 				log.Printf("controlplane: set stall reason %s: %v", open.ID, err)
@@ -778,15 +795,18 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// terminal state; deployCloseFailureReason owns the sourcing order.
 	failureReason, failureCode := deployCloseFailureReason(cur, open, status, matchesObservedRelease)
 	// w4/089: a reconciler cancel is a supersede-class close (user cancel goes
-	// through deploys.Cancel / CloseDeploy and never reaches here), or the end
-	// of a rollout a user suspend interrupted (w4/m171). Stamp a neutral
-	// cancel_reason — never failure_reason — naming the superseding deploy when
-	// we can resolve it.
+	// through deploys.Cancel / CloseDeploy, reaching here only to heal a close
+	// that failed after its stamp), or the end of a rollout a user suspend
+	// interrupted (w4/m171). Stamp a neutral cancel_reason — never
+	// failure_reason — naming the superseding deploy when we can resolve it.
 	cancelReason := ""
 	switch {
 	case status != DeployCanceled:
-	case cur.Status.ReleaseGeneration <= open.Generation && suspendEndsRollout(open, cur):
+	case suspendEnded:
 		cancelReason = suspendCancelReason
+	case releaseCanceledFor(open, cur):
+		// A cancel whose stamp landed but whose row did not close (deploys.Cancel
+		// failing after CancelRelease): a user cancel carries no reason.
 	default:
 		cancelReason = r.supersededCancelReason(ctx, open, cur)
 	}
@@ -1207,6 +1227,12 @@ func (r *Reconciler) deployTimedOut(d DesiredApp, open Deploy) bool {
 // building or rolling; status.releaseGeneration keeps that harmless churn from
 // orphaning the deploy row. Legacy operators fall back to metadata generation.
 func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) string {
+	// The App's cancel stamp naming this row's release is the row's verdict
+	// (w5/m114). Once the operator settles from it the release generation
+	// rewinds, and nothing below would ever close the row again.
+	if releaseCanceledFor(open, app) {
+		return DeployCanceled
+	}
 	if status, settled := supersededDeployStatus(open, app, timedOut); settled {
 		return status
 	}
@@ -1292,7 +1318,8 @@ const suspendCancelReason = "Canceled: the service was suspended"
 // an auto-hibernate park never does) and the row's release is not the one
 // serving. The operator parks the App and keeps the served template, so no
 // verdict would ever arrive and the row would sit "in progress" until the
-// health-gate timeout failed it, blaming code that never ran (w4/m171).
+// health-gate timeout failed it, blaming code that never ran (w4/m171). The
+// release ends with its row (CancelRelease, w5/m114).
 // Auto-hibernate keeps w6/m147's rule: the park defers, the verdict follows.
 func suspendEndsRollout(open Deploy, app *appv1alpha1.App) bool {
 	return app.Spec.Suspended && IsOpenDeployStatus(open.Status) && !releaseIsActive(open, app)
@@ -1312,7 +1339,7 @@ func (r *Reconciler) supersededCancelReason(ctx context.Context, open Deploy, ap
 	if err != nil || id == "" {
 		return fallback
 	}
-	return "Superseded by " + id
+	return supersededByReason(id)
 }
 
 // supersededDeployStatus decides the open row's fate when the CR's release
