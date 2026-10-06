@@ -32,7 +32,7 @@ import (
 // own managed Apps. A missing/old Ready condition is not current hosting proof.
 // TLS uses the same certificate evidence as the product domain view; it does
 // not probe customer URLs or claim that their DNS points at us.
-func ObserveProductApp(ctx context.Context, st *store.PGStore, cl client.Client, desired store.DesiredApp, app *appv1alpha1.App) {
+func ObserveProductApp(ctx context.Context, st *store.PGStore, cl client.Client, baseDomain string, desired store.DesiredApp, app *appv1alpha1.App) {
 	bounded, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	at := time.Now().UTC()
@@ -58,7 +58,7 @@ func ObserveProductApp(ctx context.Context, st *store.PGStore, cl client.Client,
 		tlsReady := false
 		if domain.ClaimState == "verified" {
 			var err error
-			tlsReady, err = domainCertificateReady(bounded, cl, app, domain.Host)
+			tlsReady, err = domainCertificateReady(bounded, cl, app, baseDomain, domain.Host)
 			if err != nil {
 				log.Printf("product analytics: certificate sample unavailable")
 				continue

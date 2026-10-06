@@ -43,6 +43,8 @@ func TestBlueprintValidateRefusesUnclaimableDomains(t *testing.T) {
 		"onbex.co":          "reserved platform hostname",
 		"10.0.0.1":          `invalid hostname "10.0.0.1"`,
 		"localhost":         `invalid hostname "localhost"`,
+		"co.uk":             "it is a public suffix",
+		"github.io":         "it is a public suffix",
 		"'*.example.com'":   "wildcard hostnames are not allowed",
 		"taken.example.com": "this domain already exists on another site",
 	}
