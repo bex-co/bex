@@ -514,8 +514,8 @@ func TestCreate_Guards(t *testing.T) {
 	}
 	// Bad name / bad plan → bad request (allow-all checker).
 	svc := allowSvc(st, &fakeGranter{}, nil, nil)
-	if _, err := svc.Create(ctxAs("user-a"), "Bad Name", "hobby"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("bad name: want bad request, got %v", err)
+	if _, err := svc.Create(ctxAs("user-a"), "Bad Name", "hobby"); !isResourceNameInvalid(err) {
+		t.Fatalf("bad name: want 400 RESOURCE_NAME_INVALID, got %v", err)
 	}
 	if _, err := svc.Create(ctxAs("user-a"), "acme", "platinum"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("bad plan: want bad request, got %v", err)
@@ -549,6 +549,24 @@ func TestRename_AdminOnly(t *testing.T) {
 	denied := &Service{Base: &core.Base{Authz: &fakeChecker{allow: false}}, Store: st}
 	if _, err := denied.Rename(ctxAs("user-b"), w.ID, "x"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("non-admin rename: want forbidden, got %v", err)
+	}
+}
+
+// isResourceNameInvalid reports whether err is the coded 400 refusing a name
+// outside the resource-name rule.
+func isResourceNameInvalid(err error) bool {
+	var coded *core.CodedError
+	return errors.Is(err, core.ErrBadRequest) && errors.As(err, &coded) && coded.Code == "RESOURCE_NAME_INVALID" && coded.Params["field"] == "name"
+}
+
+func TestRename_RefusesAnInvalidName(t *testing.T) {
+	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
+	w, err := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Rename(ctxAs("user-a"), w.ID, "Acme_2"); !isResourceNameInvalid(err) {
+		t.Fatalf("rename to an invalid name: want 400 RESOURCE_NAME_INVALID, got %v", err)
 	}
 }
 

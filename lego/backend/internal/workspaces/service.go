@@ -48,10 +48,7 @@ import (
 // enforces (store/api.go). The divergence from Render's freeform names is
 // recorded as parity drift (w6/m1/t007).
 func validWorkspaceName(name string) error {
-	if !appv1alpha1.ValidResourceName(name) {
-		return fmt.Errorf("%w: name %s", core.ErrBadRequest, core.ResourceNameRule)
-	}
-	return nil
+	return core.CheckResourceName("name", name)
 }
 
 // Service holds the workspace lifecycle logic once. It embeds *core.Base for the

@@ -762,6 +762,8 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
 			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
 				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
+			} else if field, ok := blueprintCodedField(problem.err, resource); ok {
+				pointer = resource.SourcePath + "/" + field
 			}
 			entry = blueprintLocatedError(source, msg, pointer)
 		} else {
@@ -781,6 +783,22 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 		return *out[i].Line < *out[j].Line
 	})
 	return out
+}
+
+// blueprintCodedField is the declared field a coded refusal names. It locates
+// the refusal where the message alone can mislead: a Key Value named
+// Plan_Cache is refused for its name, not its plan.
+func blueprintCodedField(err error, resource BlueprintResourceIR) (string, bool) {
+	var coded *core.CodedError
+	if !errors.As(err, &coded) {
+		return "", false
+	}
+	field, ok := coded.Params["field"].(string)
+	if !ok {
+		return "", false
+	}
+	_, declared := resource.Fields[field]
+	return field, declared
 }
 
 // blueprintRefusalCode is the code the apply's own refusal carries, so

@@ -145,7 +145,8 @@ Environment variable and secret-file names are checked by Kubernetes' own Secret
 - `ENVIRONMENT_VARIABLE_INVALID` and `SECRET_FILE_INVALID`, with params `field` and `maxLength`;
 - `CUSTOM_DOMAIN_INVALID`, `CUSTOM_DOMAIN_RESERVED`, and the 409 `CUSTOM_DOMAIN_IN_USE`;
 - `POSTGRES_IDENTIFIER_INVALID` and `POSTGRES_IDENTIFIER_RESERVED` on create and on add-user, with param `field`;
-- `NAME_RESOURCE_ID_RESERVED` for datastore names and service display names alike, with param `field` (`DISPLAY_NAME_RESOURCE_ID_RESERVED` is retired).
+- `NAME_RESOURCE_ID_RESERVED` for datastore names and service display names alike, with param `field` (`DISPLAY_NAME_RESOURCE_ID_RESERVED` is retired);
+- `RESOURCE_NAME_INVALID` for a service, Postgres, Key Value or workspace name outside the resource-name rule, with params `field` and `maxLength` (w5/093). One check, `core.CheckResourceName`, makes it on create, rename, the service name-availability check and a Blueprint's declarations, where it used to be a bare 400. The dashboard's rename dialogs branch on it.
 
 Services, Postgres, Key Values and workspaces share one name rule, `appv1alpha1.ValidResourceName`, worded once as `core.ResourceNameRule`. Postgres and Key Value names pass one check on every way in (`resourcename.CheckDatastore`), so Blueprint validation now checks a Key Value name too. GraphQL keeps the code of a coded error a resolver wrapped, as REST and MCP always did.
 

@@ -18,7 +18,6 @@ package apps
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,8 +46,8 @@ func (s *Service) NameAvailable(ctx context.Context, name string) (NameAvailabil
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return NameAvailability{}, err
 	}
-	if !appv1alpha1.ValidResourceName(name) {
-		return NameAvailability{}, fmt.Errorf("%w: name %s", core.ErrBadRequest, core.ResourceNameRule)
+	if err := core.CheckResourceName("name", name); err != nil {
+		return NameAvailability{}, err
 	}
 	taken, err := s.tenantNames(ctx)
 	if err != nil {

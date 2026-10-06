@@ -62,17 +62,15 @@ func TestDatastoreNamesPassOneRule(t *testing.T) {
 				"srv-db1e4vnhb1uc73ebifi0": "NAME_RESOURCE_ID_RESERVED",
 				"dpg-zzzzzzzzzzzzzzzzzzzz": "NAME_RESOURCE_ID_RESERVED",
 				"red-aaaaaaaaaaaaaaaaaaaa": "NAME_RESOURCE_ID_RESERVED",
-				"Billing":                  "invalid",
-				"cache_1":                  "invalid",
+				"Billing":                  "RESOURCE_NAME_INVALID",
+				"cache_1":                  "RESOURCE_NAME_INVALID",
 			} {
 				err := call(name)
 				var coded *core.CodedError
 				switch {
 				case code == "" && err != nil:
 					t.Errorf("%s %s %q = %v, want accepted", kind, verb, name, err)
-				case code == "invalid" && !errors.Is(err, core.ErrBadRequest):
-					t.Errorf("%s %s %q = %v, want a 400", kind, verb, name, err)
-				case code != "" && code != "invalid" && (!errors.As(err, &coded) || coded.Code != code || coded.Params["field"] != "name"):
+				case code != "" && (!errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != code || coded.Params["field"] != "name"):
 					t.Errorf("%s %s %q = %v, want %s for field name", kind, verb, name, err, code)
 				}
 			}

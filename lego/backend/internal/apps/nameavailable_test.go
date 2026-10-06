@@ -90,8 +90,9 @@ func TestNameAvailable_InvalidNameIsBadRequest(t *testing.T) {
 	ctx := ctxAs("identity-a")
 
 	_, err := svc.NameAvailable(ctx, "Not_Valid!")
-	if !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("invalid name: got %v, want ErrBadRequest", err)
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != "RESOURCE_NAME_INVALID" || coded.Params["field"] != "name" {
+		t.Fatalf("invalid name: got %v, want 400 RESOURCE_NAME_INVALID, as create answers (w5/093)", err)
 	}
 }
 
