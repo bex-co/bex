@@ -183,6 +183,7 @@ verify_substrate() {
   check "a default StorageClass exists" default_storageclass
   check "cert-manager Available" wl kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=15s
   check "metrics API serving (metrics.k8s.io)" wl kubectl get --raw /apis/metrics.k8s.io/v1beta1
+  check "build boundary (bex-build RBAC for the operator)" wl kubectl -n bex-build get rolebinding bex-build-credentials
   check "cluster-autoscaler Available (mgmt)" kubectl --context "$MGMT" -n kube-system wait deploy --all --for=condition=Available --timeout=15s
 
   if [ "$failures" -ne 0 ]; then
@@ -419,6 +420,15 @@ KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install metrics-server \
 require "metrics-server availability" \
   env KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system wait deploy/metrics-server \
   --for=condition=Available --timeout=180s
+
+# The build boundary: the operator runs builds in bex-build
+# (BEX_BUILD_NAMESPACE) and reclaims a deleted App's build credentials there,
+# which needs the namespace and its RBAC. Production gets both from
+# deploy/gitops/base/build-boundary.yaml through Argo CD, which this mock does
+# not install, so without it every App deletion on a dev-N stack stalls on its
+# finalizer (w5/084). The same manifest, applied as is (idempotent).
+require "build boundary (bex-build)" \
+  env KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f deploy/gitops/base/build-boundary.yaml
 
 # 5. cluster-autoscaler beside CAPI (w1/m3) — same installer as prod CI.
 #    Why on the mgmt cluster: infra/clusterapi/autoscaler-values.yaml.
