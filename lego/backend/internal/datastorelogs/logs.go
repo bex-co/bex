@@ -21,9 +21,10 @@ limitations under the License.
 // only in which container carries the process log and which type label the
 // entries are stamped with.
 //
-// This is the fallback path. In production both features delegate to the
-// generic durable logs core (Loki); this is what serves isolated tests and any
-// deployment without a durable store.
+// Collect is the adapters' own fallback: in production both features delegate
+// to the generic logs core, which reads Loki or, without it, the same pods
+// through ParseLine. Collect serves isolated tests and a Key Value addressed
+// by a name rather than its id.
 package datastorelogs
 
 import (
@@ -33,6 +34,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -135,16 +137,15 @@ func Collect(ctx context.Context, in Instance, q Query) ([]Entry, error) {
 	return out, nil
 }
 
-// within reports whether an entry's timestamp falls inside the query window.
-// An unparseable timestamp is kept: dropping it would silently hide a line the
-// datastore emitted without a leading RFC3339 stamp.
+// within reports whether an entry's timestamp, which parseLine parsed, falls
+// inside the query window.
 func (q Query) within(timestamp string) bool {
 	if q.Since.IsZero() && q.End.IsZero() {
 		return true
 	}
 	t, err := time.Parse(time.RFC3339Nano, timestamp)
 	if err != nil {
-		return true
+		return false
 	}
 	if !q.Since.IsZero() && t.Before(q.Since) {
 		return false
@@ -170,81 +171,84 @@ func (in Instance) readPod(ctx context.Context, pod string, tail int64) ([]Entry
 	return entries, sc.Err()
 }
 
-// parseLine splits kubelet's "<RFC3339Nano> <message>" prefix off a raw line.
-// A line with no parseable leading stamp keeps its full text as the message.
-// A Postgres line is unwrapped by CNPGLine; keep is false for CNPG's own
-// operational chatter.
-func (in Instance) parseLine(pod, line string) (Entry, bool) {
-	ts, msg := "", line
-	if i := strings.IndexByte(line, ' '); i > 0 {
-		if t, err := time.Parse(time.RFC3339Nano, line[:i]); err == nil {
-			ts = t.UTC().Format(time.RFC3339Nano)
-			msg = line[i+1:]
+// ParseLine reads one raw line of a datastore pod's log, the rule both direct
+// reads apply, this package's and the logs service's (w5/m122): its stamp and
+// message, unwrapped by CNPGLine for Postgres with its level. keep is false for
+// a line without the kubelet's stamp, which is the kubelet's own answer, and
+// for CNPG's operational chatter.
+func ParseLine(kind, line string) (ts, msg, level string, keep bool) {
+	ts, msg, ok := core.SplitPodLogLine(line)
+	if !ok {
+		return "", "", "", false
+	}
+	if kind == KindPostgres {
+		if msg, level, keep = CNPGLine(msg); !keep {
+			return "", "", "", false
 		}
+	}
+	return ts, msg, level, true
+}
+
+func (in Instance) parseLine(pod, line string) (Entry, bool) {
+	ts, msg, level, keep := ParseLine(in.Kind, line)
+	if !keep {
+		return Entry{}, false
 	}
 	labels := map[string]string{
 		"service":  in.Name,
 		"instance": pod,
 		"type":     in.Kind,
 	}
-	if in.Kind == KindPostgres {
-		unwrapped, level, keep := CNPGLine(msg)
-		if !keep {
-			return Entry{}, false
-		}
-		msg = unwrapped
-		if level != "" {
-			labels["level"] = level
-		}
+	if level != "" {
+		labels["level"] = level
 	}
 	return Entry{Timestamp: ts, Message: msg, Labels: labels}, true
 }
 
-// CNPGLine unwraps one line of a CNPG postgres container (w8/030) — the same
-// rule the log shipper's type=postgres pipeline applies. That container's PID 1
-// is CNPG's instance manager: it logs its own JSON and re-emits PostgreSQL's
-// csvlog as logger=postgres msg=record with the line under record. A record
-// becomes PostgreSQL's own stderr shape with its severity as the level. Other
-// logger output and logger-less logging_pod probes are instance-manager chatter
-// and are dropped (keep=false); a line that is not CNPG JSON passes unchanged.
+// CNPGLine unwraps one line of a CNPG postgres container (w8/030), by the
+// allow-list the log shipper's type=postgres pipeline applies (w5/m122; one
+// fixture file tests both). That container's PID 1 is CNPG's instance
+// manager: it logs its own JSON and re-emits PostgreSQL's csvlog as
+// logger=postgres msg=record with the line under record. A record becomes
+// PostgreSQL's own stderr shape with its severity as the level; a line that is
+// not a JSON object passes unchanged; any other JSON is the manager's and is
+// dropped (keep=false). It reads the line as the shipper's JSON stage does:
+// exact keys, any value types.
 func CNPGLine(line string) (message, level string, keep bool) {
-	if !strings.HasPrefix(strings.TrimSpace(line), "{") {
+	var entry map[string]any
+	if json.Unmarshal([]byte(line), &entry) != nil {
 		return line, "", true
 	}
-	var wrapped struct {
-		Logger     string `json:"logger"`
-		Message    string `json:"msg"`
-		LoggingPod string `json:"logging_pod"`
-		Record     *struct {
-			LogTime       string `json:"log_time"`
-			ProcessID     any    `json:"process_id"`
-			ErrorSeverity string `json:"error_severity"`
-			Message       string `json:"message"`
-			Detail        string `json:"detail"`
-			Hint          string `json:"hint"`
-		} `json:"record"`
-	}
-	if err := json.Unmarshal([]byte(line), &wrapped); err != nil {
-		return line, "", true
-	}
-	if wrapped.Logger == "" && wrapped.LoggingPod == "" {
-		return line, "", true
-	}
-	if wrapped.Logger != "postgres" || wrapped.Message != "record" {
+	record, isRecord := entry["record"].(map[string]any)
+	if entry["logger"] != "postgres" || entry["msg"] != "record" || !isRecord {
 		return "", "", false
 	}
-	r := wrapped.Record
-	if r == nil || r.Message == "" {
-		return line, "", true
+	severity := field(record["error_severity"])
+	message = fmt.Sprintf("%s [%s] %s:  %s", field(record["log_time"]), field(record["process_id"]), severity, field(record["message"]))
+	if detail := field(record["detail"]); detail != "" {
+		message += " DETAIL:  " + detail
 	}
-	message = fmt.Sprintf("%s [%v] %s:  %s", r.LogTime, r.ProcessID, r.ErrorSeverity, r.Message)
-	if r.Detail != "" {
-		message += " DETAIL:  " + r.Detail
+	if hint := field(record["hint"]); hint != "" {
+		message += " HINT:  " + hint
 	}
-	if r.Hint != "" {
-		message += " HINT:  " + r.Hint
+	return message, postgresLevel(severity), true
+}
+
+// field renders one record value as the shipper's template does: absent or
+// null as nothing, a string as itself, a number in plain decimal, and any
+// other value as its JSON.
+func field(v any) string {
+	switch v := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return v
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	default:
+		b, _ := json.Marshal(v)
+		return string(b)
 	}
-	return message, postgresLevel(r.ErrorSeverity), true
 }
 
 // postgresLevel maps a PostgreSQL error_severity onto the shipper's level

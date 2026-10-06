@@ -75,6 +75,22 @@ const (
 // wires it via logs.NewPodLogSource; nil => log verbs report ErrLogsUnavailable.
 type PodLogSource func(ctx context.Context, namespace, pod, container string, tail int64) (io.ReadCloser, error)
 
+// SplitPodLogLine splits the "<RFC3339Nano> <message>" prefix the kubelet
+// stamps on every container line read with Timestamps: true, returning the
+// stamp in UTC. ok is false for a line without one, which is the kubelet's own
+// answer, such as its body once a container's log is gone (w5/m122).
+func SplitPodLogLine(line string) (ts, msg string, ok bool) {
+	i := strings.IndexByte(line, ' ')
+	if i <= 0 {
+		return "", line, false
+	}
+	t, err := time.Parse(time.RFC3339Nano, line[:i])
+	if err != nil {
+		return "", line, false
+	}
+	return t.UTC().Format(time.RFC3339Nano), line[i+1:], true
+}
+
 // Checker is the feature services' seam to the authorization service
 // (docs/ADR012-auth.md): may `subject` act with `relation` on `object`? OpenFGA in
 // production (internal/authz), a fake in tests. nil Base.Authz => every verb is

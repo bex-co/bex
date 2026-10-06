@@ -36,7 +36,7 @@ import (
 func TestBuildTailParksWhileTheDeployIsQueuedWithNoPod(t *testing.T) {
 	const podName = "bld-web-gen-1-late"
 	app := waitingApp("web", appv1alpha1.ReasonRegistryCredsPending, "Waiting for the registry")
-	svc := newService(map[string][]string{podName: {"#1 real build line"}}, app)
+	svc := newService(map[string][]string{podName: {"2026-07-05T00:00:01Z #1 real build line"}}, app)
 	svc.BuildNamespace = "builds"
 	svc.BuildPodWaitInterval = 5 * time.Millisecond
 	polls := 0

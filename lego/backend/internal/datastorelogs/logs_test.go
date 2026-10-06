@@ -18,9 +18,11 @@ package datastorelogs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -97,23 +99,20 @@ func TestCollectParsesAndLabels(t *testing.T) {
 	}
 }
 
-// TestCollectKeepsUnstampedLine covers a line the datastore emitted without a
-// parseable leading stamp: it must survive with its full text as the message,
-// never be silently dropped.
-func TestCollectKeepsUnstampedLine(t *testing.T) {
+// TestCollectDropsAnUnstampedLine: every line a datastore wrote carries the
+// kubelet's leading stamp, so a line without one is the kubelet's own answer,
+// whatever it says, and is not the datastore's log (w5/m122).
+func TestCollectDropsAnUnstampedLine(t *testing.T) {
 	in, _ := instance(t, map[string]string{
-		"db-1-0": "no leading timestamp here\n",
+		"db-1-0": "no leading timestamp here\n2026-10-05T01:02:03Z stamped\n",
 	}, "db-1-0")
 
 	got, err := Collect(context.Background(), in, Query{})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
-	if len(got) != 1 || got[0].Message != "no leading timestamp here" {
-		t.Fatalf("got %+v; want the raw line preserved", got)
-	}
-	if got[0].Timestamp != "" {
-		t.Errorf("timestamp = %q; want empty for an unstamped line", got[0].Timestamp)
+	if len(got) != 1 || got[0].Message != "stamped" {
+		t.Fatalf("got %+v; want only the stamped line", got)
 	}
 }
 
@@ -332,52 +331,70 @@ func equal(got, want []string) bool {
 	return true
 }
 
-// w8/030: a CNPG postgres container is ~85% instance-manager chatter, and
-// PostgreSQL's own lines arrive wrapped as logger=postgres msg=record. The
-// fallback read unwraps them the way the shipper does.
-func TestCNPGLine(t *testing.T) {
-	for name, tc := range map[string]struct {
-		in, want, level string
-		keep            bool
-	}{
-		"instance manager dropped": {
-			in: `{"level":"info","ts":"2026-09-27T01:00:00Z","logger":"instance-manager","msg":"Starting EventSource"}`,
-		},
-		"cluster resource dropped": {
-			in: `{"level":"info","logger":"cluster-resource","msg":"Defaulting for Cluster"}`,
-		},
-		"logger-less probe dropped": {
-			in: `{"level":"info","msg":"startup probe failing","logging_pod":"dpg-test-1"}`,
-		},
-		"empty logger probe dropped": {
-			in: `{"level":"info","logger":"","logging_pod":"dpg-test-1","msg":"readiness probe failing"}`,
-		},
-		"non-record postgres dropped": {
-			in: `{"logger":"postgres","msg":"Starting log pipe"}`,
-		},
-		"record fields without record message dropped": {
-			in: `{"logger":"postgres","record":{"log_time":"t","process_id":"9","error_severity":"LOG","message":"not a record without msg=record"}}`,
-		},
-		"record unwrapped": {
-			in:   `{"logger":"postgres","msg":"record","logging_pod":"dpg-test-1","record":{"log_time":"2026-09-27 01:00:02.123 UTC","process_id":"42","error_severity":"LOG","message":"database system is ready to accept connections"}}`,
-			want: "2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections", level: "info", keep: true,
-		},
-		"failed login is an error with its detail": {
-			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":77,"error_severity":"FATAL","message":"password authentication failed for user \"app\"","detail":"Connection matched pg_hba.conf line 5"}}`,
-			want: `t [77] FATAL:  password authentication failed for user "app" DETAIL:  Connection matched pg_hba.conf line 5`, level: "error", keep: true,
-		},
-		"warning with hint": {
-			in:   `{"logger":"postgres","msg":"record","record":{"log_time":"t","process_id":"1","error_severity":"WARNING","message":"checkpoints are occurring too frequently","hint":"Consider increasing max_wal_size."}}`,
-			want: "t [1] WARNING:  checkpoints are occurring too frequently HINT:  Consider increasing max_wal_size.", level: "warning", keep: true,
-		},
-		"plain line verbatim":        {in: "plain line", want: "plain line", keep: true},
-		"other JSON verbatim":        {in: `{"msg":"logging_pod is only mentioned in this message"}`, want: `{"msg":"logging_pod is only mentioned in this message"}`, keep: true},
-		"empty logging pod verbatim": {in: `{"msg":"no logger","logging_pod":""}`, want: `{"msg":"no logger","logging_pod":""}`, keep: true},
-		"null logging pod verbatim":  {in: `{"msg":"no logger","logging_pod":null}`, want: `{"msg":"no logger","logging_pod":null}`, keep: true},
-	} {
-		got, level, keep := CNPGLine(tc.in)
-		if keep != tc.keep || got != tc.want || level != tc.level {
-			t.Errorf("%s: CNPGLine = (%q, %q, %v), want (%q, %q, %v)", name, got, level, keep, tc.want, tc.level, tc.keep)
+// tenantLogLines is the classification table the log shipper's pipelines are
+// tested against too (scripts/test_log_shipper.py), so the two cannot drift
+// (w5/m122). An entry with a message is kept with it; one without is dropped.
+type tenantLogLines struct {
+	Postgres, KeyValue []struct {
+		Name, Line, Message, Level string
+	}
+	Kubelet []string
+}
+
+func readTenantLogLines(t *testing.T) tenantLogLines {
+	t.Helper()
+	raw, err := os.ReadFile("../logs/testdata/tenant-log-lines.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lines tenantLogLines
+	if err := json.Unmarshal(raw, &lines); err != nil {
+		t.Fatal(err)
+	}
+	return lines
+}
+
+// w8/030, w5/m122: a CNPG postgres container is mostly instance-manager JSON,
+// and PostgreSQL's own lines arrive wrapped as logger=postgres msg=record. The
+// fallback read keeps exactly what the shipper keeps: records, unwrapped, and
+// lines that are not JSON objects.
+func TestCNPGLineFollowsTheSharedTable(t *testing.T) {
+	for _, tc := range readTenantLogLines(t).Postgres {
+		got, level, keep := CNPGLine(tc.Line)
+		if keep != (tc.Message != "") || got != tc.Message || level != tc.Level {
+			t.Errorf("%s: CNPGLine = (%q, %q, %v), want (%q, %q, %v)", tc.Name, got, level, keep, tc.Message, tc.Level, tc.Message != "")
+		}
+	}
+}
+
+// The kubelet's own answers carry no timestamp: the fallback read drops them
+// for every kind, while a Key Value's timestamped lines are its own.
+func TestCollectDropsTheKubeletsOwnAnswers(t *testing.T) {
+	lines := readTenantLogLines(t)
+	var stream strings.Builder
+	for _, body := range lines.Kubelet {
+		stream.WriteString(body + "\n")
+	}
+	for _, tc := range lines.KeyValue {
+		stream.WriteString("2026-10-05T01:02:03Z " + tc.Line + "\n")
+	}
+	source := func(context.Context, string, string, string, int64) (io.ReadCloser, error) {
+		return io.NopCloser(strings.NewReader(stream.String())), nil
+	}
+	for _, kind := range []string{KindPostgres, KindKeyValue} {
+		entries, err := Collect(context.Background(), Instance{Name: "x", Kind: kind, Pods: []string{"x-1"}, PodLogs: source}, Query{Limit: 50})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range entries {
+			for _, body := range lines.Kubelet {
+				if e.Message == body {
+					t.Errorf("%s: the kubelet's answer %q was served as the tenant's log", kind, body)
+				}
+			}
+		}
+		if kind == KindKeyValue && len(entries) != len(lines.KeyValue) {
+			t.Errorf("keyvalue entries = %+v, want the server's %d lines", entries, len(lines.KeyValue))
 		}
 	}
 }

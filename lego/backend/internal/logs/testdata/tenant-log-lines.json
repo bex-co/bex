@@ -1,0 +1,160 @@
+{
+  "_comment": "One classification table for tenant logs (w5/m122), read by scripts/test_log_shipper.py (the shipper's own pipelines, in its Alloy image) and by the Go direct reads (logs, datastorelogs). An entry with a message is kept with that message (and level, when set); one without is dropped. kubelet lists the kubelet's own answers once a container's log is gone: they reach no tenant pipeline, because the shipper reads containers' files and the direct reads treat an untimestamped line as the kubelet's.",
+  "postgres": [
+    {
+      "name": "instance manager",
+      "line": "{\"level\":\"info\",\"ts\":\"2026-09-27T01:00:00Z\",\"logger\":\"instance-manager\",\"msg\":\"Starting EventSource\"}"
+    },
+    {
+      "name": "cluster resource",
+      "line": "{\"level\":\"info\",\"logger\":\"cluster-resource\",\"msg\":\"Defaulting for Cluster\"}"
+    },
+    {
+      "name": "logger-less probe",
+      "line": "{\"level\":\"info\",\"msg\":\"startup probe failing\",\"logging_pod\":\"dpg-test-1\"}"
+    },
+    {
+      "name": "empty-logger probe",
+      "line": "{\"level\":\"info\",\"logger\":\"\",\"logging_pod\":\"dpg-test-1\",\"msg\":\"readiness probe failing\"}"
+    },
+    {
+      "name": "postgres logger, not a record",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"Starting log pipe\"}"
+    },
+    {
+      "name": "record fields without msg=record",
+      "line": "{\"logger\":\"postgres\",\"record\":{\"log_time\":\"t\",\"process_id\":\"9\",\"error_severity\":\"LOG\",\"message\":\"not a record without msg=record\"}}"
+    },
+    {
+      "name": "record that is not an object",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":\"plain\"}"
+    },
+    {
+      "name": "net/http TLS handshake error (w8/050)",
+      "line": "{\"level\":\"info\",\"ts\":\"2026-10-05T01:28:20.987818348Z\",\"msg\":\"http: TLS handshake error from 10.244.1.2:42270: tls: no certificates configured\\n\"}"
+    },
+    {
+      "name": "other manager JSON",
+      "line": "{\"msg\":\"logging_pod is only mentioned in this message\"}"
+    },
+    {
+      "name": "logger-less JSON without ts",
+      "line": "{\"level\":\"info\",\"msg\":\"no ts, still the manager's\"}"
+    },
+    {
+      "name": "record",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"logging_pod\":\"dpg-test-1\",\"record\":{\"log_time\":\"2026-09-27 01:00:02.123 UTC\",\"process_id\":\"42\",\"error_severity\":\"LOG\",\"message\":\"database system is ready to accept connections\"}}",
+      "message": "2026-09-27 01:00:02.123 UTC [42] LOG:  database system is ready to accept connections",
+      "level": "info"
+    },
+    {
+      "name": "fatal with detail",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":77,\"error_severity\":\"FATAL\",\"message\":\"password authentication failed for user \\\"app\\\"\",\"detail\":\"Connection matched pg_hba.conf line 5\"}}",
+      "message": "t [77] FATAL:  password authentication failed for user \"app\" DETAIL:  Connection matched pg_hba.conf line 5",
+      "level": "error"
+    },
+    {
+      "name": "warning with hint",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":\"1\",\"error_severity\":\"WARNING\",\"message\":\"checkpoints are occurring too frequently\",\"hint\":\"Consider increasing max_wal_size.\"}}",
+      "message": "t [1] WARNING:  checkpoints are occurring too frequently HINT:  Consider increasing max_wal_size.",
+      "level": "warning"
+    },
+    {
+      "name": "error severity",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":79,\"error_severity\":\"ERROR\",\"message\":\"level control\"}}",
+      "message": "t [79] ERROR:  level control",
+      "level": "error"
+    },
+    {
+      "name": "panic severity",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":80,\"error_severity\":\"PANIC\",\"message\":\"level control\"}}",
+      "message": "t [80] PANIC:  level control",
+      "level": "error"
+    },
+    {
+      "name": "info severity",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":81,\"error_severity\":\"INFO\",\"message\":\"level control\"}}",
+      "message": "t [81] INFO:  level control",
+      "level": "info"
+    },
+    {
+      "name": "notice severity",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":82,\"error_severity\":\"NOTICE\",\"message\":\"level control\"}}",
+      "message": "t [82] NOTICE:  level control",
+      "level": "info"
+    },
+    {
+      "name": "debug severity",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":83,\"error_severity\":\"DEBUG1\",\"message\":\"level control\"}}",
+      "message": "t [83] DEBUG1:  level control",
+      "level": "debug"
+    },
+    {
+      "name": "plain line",
+      "line": "plain line kept verbatim",
+      "message": "plain line kept verbatim"
+    },
+    {
+      "name": "JSON that is not an object",
+      "line": "[\"an\",\"array\"]",
+      "message": "[\"an\",\"array\"]"
+    },
+    {
+      "name": "invalid JSON",
+      "line": "{not json",
+      "message": "{not json"
+    },
+    {
+      "name": "record without a message (CNPG omits empty fields)",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":\"1\",\"error_severity\":\"WARNING\"}}",
+      "message": "t [1] WARNING:  ",
+      "level": "warning"
+    },
+    {
+      "name": "empty record",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{}}",
+      "message": " [] :  ",
+      "level": "debug"
+    },
+    {
+      "name": "numeric process id",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":1048576,\"error_severity\":\"LOG\",\"message\":\"x\"}}",
+      "message": "t [1048576] LOG:  x",
+      "level": "info"
+    },
+    {
+      "name": "object detail",
+      "line": "{\"logger\":\"postgres\",\"msg\":\"record\",\"record\":{\"log_time\":\"t\",\"process_id\":\"2\",\"error_severity\":\"ERROR\",\"message\":\"x\",\"detail\":{\"a\":1}}}",
+      "message": "t [2] ERROR:  x DETAIL:  {\"a\":1}",
+      "level": "error"
+    },
+    {
+      "name": "non-string logger",
+      "line": "{\"logger\":5,\"msg\":\"x\"}"
+    },
+    {
+      "name": "capitalised keys",
+      "line": "{\"Logger\":\"postgres\",\"Msg\":\"record\",\"Record\":{\"log_time\":\"t\",\"process_id\":\"3\",\"error_severity\":\"LOG\",\"message\":\"x\"}}"
+    },
+    {
+      "name": "bare null",
+      "line": "null"
+    }
+  ],
+  "keyvalue": [
+    {
+      "name": "server ready",
+      "line": "1:M 05 Oct 2026 01:02:03.456 * Ready to accept connections tcp",
+      "message": "1:M 05 Oct 2026 01:02:03.456 * Ready to accept connections tcp"
+    },
+    {
+      "name": "JSON is the server's own",
+      "line": "{\"msg\":\"a Key Value has no instance manager\"}",
+      "message": "{\"msg\":\"a Key Value has no instance manager\"}"
+    }
+  ],
+  "kubelet": [
+    "unable to retrieve container logs for containerd://4336b7cbe0f1",
+    "failed to try resolving symlinks in path \"/var/log/pods/tea-daif693dqjvc73e7as3g_dpg-test-1_c2c5039f-1b2c-4d5e-8f90-123456789abc/postgres/0.log\": lstat /var/log/pods/tea-daif693dqjvc73e7as3g_dpg-test-1_c2c5039f-1b2c-4d5e-8f90-123456789abc/postgres/0.log: no such file or directory"
+  ]
+}
