@@ -17,4 +17,15 @@ package v1alpha1
 
 // ConditionServing reports a live observation of the active revision's pods
 // during a Deployment rollout. Ready continues to describe rollout progress.
+//
+// True (ReasonPriorReleaseServing): at least one active-revision pod is
+// ready. False (ReasonServingRevisionUnavailable): the pods were listed and
+// none is ready, so the condition's transition is when the serving revision
+// stopped, which bex-api dates a crash under an open deploy by (w5/083).
+// Unknown (ReasonServingUnobserved): not observed, or nothing to observe.
 const ConditionServing = "Serving"
+
+const (
+	ReasonServingRevisionUnavailable = "ServingRevisionUnavailable"
+	ReasonServingUnobserved          = "ServingUnobserved"
+)

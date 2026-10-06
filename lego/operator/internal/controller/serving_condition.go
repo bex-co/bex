@@ -31,7 +31,7 @@ import (
 // never a healthy observation retained from a previous reconcile.
 func (r *AppReconciler) observeServingRevision(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32) {
 	condition := metav1.Condition{Type: appv1alpha1.ConditionServing, Status: metav1.ConditionUnknown,
-		Reason: "ServingUnobserved", Message: "serving revision has not been observed", ObservedGeneration: app.Generation}
+		Reason: appv1alpha1.ReasonServingUnobserved, Message: "serving revision has not been observed", ObservedGeneration: app.Generation}
 	defer func() { meta.SetStatusCondition(&app.Status.Conditions, condition) }()
 	if app.Status.ActiveRevision == "" || replicas <= 0 || dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
 		return
@@ -51,5 +51,10 @@ func (r *AppReconciler) observeServingRevision(ctx context.Context, app *appv1al
 		condition.Status = metav1.ConditionTrue
 		condition.Reason = appv1alpha1.ReasonPriorReleaseServing
 		condition.Message = "the active revision's pods remain ready during the rollout"
+		return
 	}
+	// Observed, and nothing serves: the transition dates the stop (w5/083).
+	condition.Status = metav1.ConditionFalse
+	condition.Reason = appv1alpha1.ReasonServingRevisionUnavailable
+	condition.Message = "no pod of the active revision is ready"
 }
