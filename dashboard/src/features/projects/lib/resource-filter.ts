@@ -39,17 +39,20 @@ export function parseProjectResourceKind(value: unknown): ProjectResourceKind {
     : "all";
 }
 
-/** Sanitizes the project route's shareable environment/search/type state. */
+/** Sanitizes the project route's shareable environment/search/type state. A
+ *  rejected key is undefined, not omitted: the router merges this over the raw
+ *  search, so an omitted `?q=123` would reach readers as a number (w5/078). */
 export function parseProjectResourceSearch(
   search: Record<string, unknown>,
 ): ProjectResourceSearch {
   const kind = parseProjectResourceKind(search.kind);
   return {
-    ...(typeof search.env === "string" && search.env
-      ? { env: canonicalEnvironmentLinkId(search.env) }
-      : {}),
-    ...(typeof search.q === "string" && search.q ? { q: search.q } : {}),
-    ...(kind !== "all" ? { kind } : {}),
+    env:
+      typeof search.env === "string" && search.env
+        ? canonicalEnvironmentLinkId(search.env)
+        : undefined,
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    kind: kind !== "all" ? kind : undefined,
   };
 }
 

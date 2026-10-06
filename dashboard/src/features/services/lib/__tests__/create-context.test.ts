@@ -15,10 +15,18 @@ describe("parseNewServiceSearch", () => {
     }
   });
 
-  it("drops an unknown or non-string type", () => {
-    expect(parseNewServiceSearch({ type: "bogus" })).toEqual({});
-    expect(parseNewServiceSearch({ type: 42 })).toEqual({});
-    expect(parseNewServiceSearch({})).toEqual({});
+  // w5/078: undefined, not omitted — the router spreads the validated search
+  // over the raw one, so an omitted key would keep its raw value.
+  const NONE = {
+    type: undefined,
+    projectId: undefined,
+    environmentId: undefined,
+  };
+
+  it("sets an unknown or non-string type to undefined", () => {
+    expect(parseNewServiceSearch({ type: "bogus" })).toStrictEqual(NONE);
+    expect(parseNewServiceSearch({ type: 42 })).toStrictEqual(NONE);
+    expect(parseNewServiceSearch({})).toStrictEqual(NONE);
   });
 
   it("keeps nonempty projectId / environmentId and drops empties", () => {
@@ -29,9 +37,9 @@ describe("parseNewServiceSearch", () => {
         environmentId: "env-1",
       }),
     ).toEqual({ type: "cron_job", projectId: "prj-1", environmentId: "env-1" });
-    expect(parseNewServiceSearch({ projectId: "", environmentId: 0 })).toEqual(
-      {},
-    );
+    expect(
+      parseNewServiceSearch({ projectId: "", environmentId: 0 }),
+    ).toStrictEqual(NONE);
   });
 });
 
@@ -84,12 +92,9 @@ describe("serviceTypeCreateCopy", () => {
     );
   });
 
-  // w4/102: the route's `head` resolver reads the RAW `match.search?.type`, not
-  // the validated search, so an unknown value reached this function. Defaulting
-  // only on nullish indexed the copy table to undefined and threw on
-  // `.titleKey` — a hand-edited or bookmarked `/services/new?type=worker` took
-  // the entire create wizard to the error boundary, where the validator two
-  // files over already promises "unknown values dropped".
+  // w4/102: defaulting only on nullish once threw on `.titleKey` for a
+  // hand-edited `/services/new?type=worker` and took the create wizard to the
+  // error boundary. The function stays total whatever its callers pass.
   it("resolves an unknown type to the default instead of throwing", () => {
     const fallback = serviceTypeCreateCopy(DEFAULT_SERVICE_TYPE);
     for (const unknown of [

@@ -8,7 +8,7 @@ import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 import {
   DEFAULT_SERVICE_TYPE,
-  isServiceType,
+  type NewServiceSearch,
   type ServiceType,
 } from "@/features/services/lib/create-context";
 import type { NewServiceForm } from "@/features/services/lib/create-service-input";
@@ -52,18 +52,10 @@ interface PlainFields {
  * chain (useServiceNameDraft) — and this composes them into the single
  * `NewServiceForm` the submit rules read, so the page holds no field state.
  */
-export function useNewServiceForm(search: {
-  type?: ServiceType;
-  projectId?: string;
-  environmentId?: string;
-}) {
+export function useNewServiceForm(search: NewServiceSearch) {
   const { instanceTypes } = useInstanceTypes();
   const build = useBuildRuntimeFields();
-  // The route validator drops an unknown `?type=`, but raw search can still
-  // reach here; a non-member must open the default wizard, not a typeless one.
-  const initialType = isServiceType(search.type)
-    ? search.type
-    : DEFAULT_SERVICE_TYPE;
+  const initialType = search.type ?? DEFAULT_SERVICE_TYPE;
   const [fields, setFields] = useState<PlainFields>(() => ({
     serviceType: initialType,
     tab: "github",

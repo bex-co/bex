@@ -8,13 +8,13 @@ export const Route = createFileRoute("/services/$serviceId/deploys/$deployId")({
   pendingComponent: DeployDetailSkeleton,
   // `?r=<range>` (w9/003) is the log viewer's shareable relative time window
   // (Render's own deploy-page param): absent => the deploy's own
-  // createdAt..finishedAt window. Optional, not `r: undefined`, so other
-  // navigations to this route never have to supply it; an unrecognized value
-  // just falls back to the deploy window.
-  validateSearch: (search: Record<string, unknown>): { r?: LogRange } => {
-    const r = parseLogRange(search.r);
-    return r ? { r } : {};
-  },
+  // createdAt..finishedAt window. The annotated `r?` keeps it optional for
+  // other navigations. An unrecognized value is undefined rather than omitted,
+  // since the router merges this over the raw search: an omitted `?r=12h`
+  // reached the log viewer and threw on its range (w5/078).
+  validateSearch: (search: Record<string, unknown>): { r?: LogRange } => ({
+    r: parseLogRange(search.r),
+  }),
 });
 
 // The per-deploy page (w9/m1): Render's `/web/srv-…/deploys/dep-…` twin.

@@ -11,10 +11,9 @@ import { DeployDetailSkeleton } from "@/common/components/route-skeletons";
 export const Route = createFileRoute("/static/$serviceId/deploys/$deployId")({
   component: RouteComponent,
   pendingComponent: DeployDetailSkeleton,
-  validateSearch: (search: Record<string, unknown>): { r?: LogRange } => {
-    const r = parseLogRange(search.r);
-    return r ? { r } : {};
-  },
+  validateSearch: (search: Record<string, unknown>): { r?: LogRange } => ({
+    r: parseLogRange(search.r),
+  }),
 });
 
 function RouteComponent() {
