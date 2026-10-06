@@ -1,16 +1,16 @@
 # w4 · m174 — Fast-exiting App containers intermittently lose stderr lines from their logs
 
-**Worker:** worker4 **Goal:** every line a tenant App container writes, on stdout or stderr, reaches `GET /v1/logs` (and GraphQL/MCP/dashboard Logs), including containers that exit within a second: every cron run and every fast crash. **Status:** todo
+**Worker:** worker4 **Goal:** every line a tenant App container writes, on stdout or stderr, reaches `GET /v1/logs` (and GraphQL/MCP/dashboard Logs), including containers that exit within a second: every cron run and every fast crash. **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on   |
 | ---- | ---------------------------------------------------------------------- | --- | ------------ |
-| t001 | Pin the mechanism: why the API tailer drops stderr from a fast exit    | 30m | —            |
+| t001 | Pin the mechanism: why the API tailer drops stderr from a fast exit — **DONE**    | 30m | —            |
 | t002 | Ship tenant App container logs from the node's CRI files               | 1h  | w4/m174/t001 |
 | t003 | Render parity                                                          | 20m | w4/m174/t002 |
-| t004 | Simplify                                                               | 15m | w4/m174/t003 |
-| t005 | Test coverage                                                          | 45m | w4/m174/t003 |
+| t004 | Simplify — **DONE**                                                               | 15m | w4/m174/t003 |
+| t005 | Test coverage — **DONE**                                                          | 45m | w4/m174/t003 |
 | t006 | Closeout                                                               | 10m | w4/m174/t005 |
 
 ## Definition of done
