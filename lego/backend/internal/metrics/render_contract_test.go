@@ -189,6 +189,75 @@ func TestRESTDatastorePathsInferTheKindFromTheID(t *testing.T) {
 	}
 }
 
+// TestRenderAppMetricPathsAnswerForDatastores is w8/061: Render scopes its
+// cpu/memory/... paths to Postgres and Key Value too. A Key Value's memory is
+// the dashboard's kv_memory series; every other datastore pair is a coded
+// refusal naming the metric, and only a missing id is 404.
+func TestRenderAppMetricPathsAnswerForDatastores(t *testing.T) {
+	const kvID, pgID = "red-c185th5c2rvvnhbfiltg", "dpg-c185th5c2rvvnhbfiltg"
+	svc := newService(nil, nil, sampleKeyValue(kvID), sampleDatabase(pgID, false))
+	var asked KeyValueStatsRequest
+	svc.KeyValueStats = func(_ context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
+		asked = req
+		return []MetricSeries{{Labels: map[string]string{}, Unit: unitBytes, Points: []MetricPoint{{Value: 4096}}}}, nil
+	}
+
+	rec := serveREST(svc, "/v1/metrics/memory?resource="+kvID)
+	got := seriesFrom(t, rec.Body.Bytes())
+	if rec.Code != http.StatusOK || len(got) != 1 || got[0].Unit != unitBytes || got[0].Values[0].Value != 4096 || asked.Dimension != "memory" {
+		t.Fatalf("Key Value memory = %d %s (asked %+v), want the kv_memory series", rec.Code, rec.Body, asked)
+	}
+
+	for seg := range metricPaths {
+		for _, id := range []string{kvID, pgID} {
+			if seg == "memory" && id == kvID {
+				continue
+			}
+			rec := serveREST(svc, "/v1/metrics/"+seg+"?resource="+id)
+			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "is not served for") || !strings.Contains(rec.Body.String(), id) {
+				t.Errorf("%s on %s = %d %s, want a coded 400 naming the pair", seg, id, rec.Code, rec.Body)
+			}
+		}
+	}
+
+	for _, id := range []string{"red-zzzzzzzzzzzzzzzzzzzz", "dpg-zzzzzzzzzzzzzzzzzzzz"} {
+		if rec := serveREST(svc, "/v1/metrics/memory?resource="+id); rec.Code != http.StatusNotFound {
+			t.Errorf("memory on nonexistent %s = %d %s, want 404", id, rec.Code, rec.Body)
+		}
+		if rec := serveREST(svc, "/v1/metrics/cpu?resource="+id); rec.Code != http.StatusNotFound {
+			t.Errorf("cpu on nonexistent %s = %d %s, want 404", id, rec.Code, rec.Body)
+		}
+	}
+}
+
+func TestMCPGetMetricsAnswersForDatastores(t *testing.T) {
+	const kvID = "red-c185th5c2rvvnhbfiltg"
+	svc := newService(nil, nil, sampleKeyValue(kvID))
+	svc.KeyValueStats = func(context.Context, KeyValueStatsRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Labels: map[string]string{}, Unit: unitBytes, Points: []MetricPoint{{Value: 4096}}}}, nil
+	}
+	cs := mcpSession(t, svc)
+	call := func(metricType string) *mcp.CallToolResult {
+		t.Helper()
+		result, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
+			Name:      "get_metrics",
+			Arguments: map[string]any{"resourceId": kvID, "metricTypes": []string{metricType}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return result
+	}
+	if result := call("memory_usage"); result.IsError {
+		t.Fatalf("memory_usage on a Key Value: %+v", result.Content)
+	}
+	result := call("cpu_usage")
+	raw, _ := json.Marshal(result.Content)
+	if !result.IsError || !strings.Contains(string(raw), "is not served for Key Value") {
+		t.Errorf("cpu_usage on a Key Value = %s, want a refusal naming the pair", raw)
+	}
+}
+
 func TestRESTBandwidthSourcesIsACodedRefusal(t *testing.T) {
 	rec := serveREST(newService(nil, nil), "/v1/metrics/bandwidth-sources?resource=web")
 	if rec.Code != http.StatusNotImplemented || !strings.Contains(rec.Body.String(), "monthToDateBandwidth") {
