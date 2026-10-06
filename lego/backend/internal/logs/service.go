@@ -1503,19 +1503,20 @@ func (s *Service) readContainerLogs(ctx context.Context, namespace, service, pod
 	sc := bufio.NewScanner(rc)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // allow long lines
 	for sc.Scan() {
-		entry := parseContainerLogLine(service, pod, container, logType, sc.Text())
-		// A CNPG postgres container wraps PostgreSQL's output in its instance
-		// manager's JSON; unwrap it and drop the manager's own chatter, the
-		// rule the shipper applies to history (w8/030).
-		if logType == datastorelogs.KindPostgres {
-			message, level, keep := datastorelogs.CNPGLine(entry.Message)
-			if !keep {
-				continue
-			}
-			entry.Message = message
-			if level != "" {
-				entry.Labels[LabelLevel] = level
-			}
+		if logType != datastorelogs.KindPostgres && logType != datastorelogs.KindKeyValue {
+			entries = append(entries, parseContainerLogLine(service, pod, container, logType, sc.Text()))
+			continue
+		}
+		// A datastore line follows the rule its own fallback reader applies:
+		// the kubelet's answers and CNPG's chatter are dropped, and a Postgres
+		// record is unwrapped, as the shipper does for history (w8/030).
+		ts, msg, level, keep := datastorelogs.ParseLine(logType, sc.Text())
+		if !keep {
+			continue
+		}
+		entry := newLogEntry(service, pod, container, logType, ts, msg)
+		if level != "" {
+			entry.Labels[LabelLevel] = level
 		}
 		entries = append(entries, entry)
 	}
@@ -1573,14 +1574,40 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 		opened.Store(true)
 	}
 
-	sc := bufio.NewScanner(rc)
-	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for sc.Scan() {
+	send := func(entry LogEntry) bool {
 		select {
 		case <-ctx.Done():
-			return
-		case ch <- parseContainerLogLine(service, pod, container, logType, sc.Text()):
+			return false
+		case ch <- entry:
+			return true
 		}
+	}
+	// A follow starts at its since second, and the kubelet stamps nothing on
+	// the rest of a split line whose first chunk it skipped as older. So an
+	// unstamped first line is held: the kubelet's own answer when the stream
+	// ends there, the tenant's text when more output follows.
+	var held *string
+	sc := bufio.NewScanner(rc)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for first := true; sc.Scan(); first = false {
+		line := sc.Text()
+		entry := parseContainerLogLine(service, pod, container, logType, line)
+		if first && entry.Timestamp == "" {
+			held = &line
+			continue
+		}
+		if held != nil {
+			if !send(newLogEntry(service, pod, container, logType, "", *held)) {
+				return
+			}
+			held = nil
+		}
+		if !send(entry) {
+			return
+		}
+	}
+	if held != nil {
+		send(parseContainerLogLine(service, pod, container, logType, *held))
 	}
 }
 
@@ -1593,42 +1620,29 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 // marker never rides a split rune.
 const maxLogMessageBytes = 64 * 1024
 
-// kubeletLogsGonePrefixes open the kubelet's own 200 bodies when a container's
-// log file no longer exists (the container was evicted or collected): one
-// untimestamped line naming the internal containerd id, or — once the pod's
-// whole log directory is gone — its /var/log/pods path (w8/050).
-var kubeletLogsGonePrefixes = []string{
-	"unable to retrieve container logs for ",
-	`failed to try resolving symlinks in path "/var/log/pods/`,
-}
-
-// logsGoneMessage is the platform line that stands in for that placeholder.
+// logsGoneMessage is the platform line that stands in for the kubelet's own
+// answer: the untimestamped body, naming the internal containerd id or the
+// /var/log/pods path, it returns once a container's log file no longer exists
+// because the container was evicted or collected (w8/025, w8/050).
 const logsGoneMessage = "==> logs for this instance are no longer available: its container was removed"
 
-func kubeletLogsGone(line string) bool {
-	for _, prefix := range kubeletLogsGonePrefixes {
-		if strings.HasPrefix(line, prefix) {
-			return true
-		}
-	}
-	return false
-}
-
 func parseContainerLogLine(service, pod, container, logType, line string) LogEntry {
-	ts, msg := "", line
-	if i := strings.IndexByte(line, ' '); i > 0 {
-		if t, err := time.Parse(time.RFC3339Nano, line[:i]); err == nil {
-			ts = t.UTC().Format(time.RFC3339Nano)
-			msg = line[i+1:]
-		}
-	}
-	// Every real line carries the Timestamps:true prefix; the kubelet's
-	// logs-gone placeholder does not. It is platform text, not the tenant's
-	// output, so it is re-typed as a platform line and never shows the
-	// containerd id (w8/025).
-	if ts == "" && kubeletLogsGone(line) {
+	ts, msg, stamped := core.SplitPodLogLine(line)
+	// Every line a container wrote carries the Timestamps:true prefix, so a
+	// line without one is the kubelet's own answer, never the tenant's output.
+	// It is re-typed as a platform line and never shows the containerd id or
+	// the node's paths (w8/025). The rule is the line's source, not its words
+	// (w5/m122): the shipper reads containers' files, which hold only what
+	// they wrote.
+	if !stamped {
 		container, msg = progressContainer, logsGoneMessage
 	}
+	return newLogEntry(service, pod, container, logType, ts, msg)
+}
+
+// newLogEntry is one container record, its message capped at
+// maxLogMessageBytes.
+func newLogEntry(service, pod, container, logType, ts, msg string) LogEntry {
 	if len(msg) > maxLogMessageBytes {
 		msg = strings.ToValidUTF8(msg[:maxLogMessageBytes], "") + " …[truncated]"
 	}
