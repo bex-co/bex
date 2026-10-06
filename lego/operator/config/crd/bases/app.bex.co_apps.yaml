@@ -842,8 +842,9 @@ spec:
               startCommand:
                 description: |-
                   StartCommand is Render's runtime launch command. For a native runtime it
-                  becomes the generated image's CMD; for docker it is dockerCommand and
-                  overrides the image command on Deployments/CronJobs when non-empty.
+                  becomes the generated image's CMD; for docker or a prebuilt image it is
+                  dockerCommand and overrides the image command on Deployments/CronJobs
+                  when non-empty.
                 maxLength: 4096
                 type: string
               subdomain:

@@ -241,8 +241,8 @@ func TestGenerateBlueprintDomainsCronAndWorkerScaling(t *testing.T) {
 	}
 	for _, want := range []string{
 		"www.example.com", "example.com", // primary + additional domains
-		"startCommand: bin/report", // cron command from Spec.Command
-		"numInstances: 4",          // worker autoscaling → fixed upper bound
+		"dockerCommand: bin/report", // an image cron's command from Spec.Command (w5/080)
+		"numInstances: 4",           // worker autoscaling → fixed upper bound
 	} {
 		if !strings.Contains(out.Manifest, want) {
 			t.Errorf("manifest missing %q:\n%s", want, out.Manifest)

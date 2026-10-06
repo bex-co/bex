@@ -200,6 +200,8 @@ func roundTripCreates(t *testing.T) []CreateRequest {
 		// Commands a build never runs, which create accepts (w5/090).
 		CreateRequest{Name: "rt-docker-build-command", Repo: "https://github.com/acme/app", Runtime: "docker", BuildCommand: "make"},
 		CreateRequest{Name: "rt-buildpack-commands", Repo: "https://github.com/acme/app", Builder: "buildpack", BuildCommand: "make", StartCommand: "./serve"},
+		// An image's command round-trips (w5/080).
+		CreateRequest{Name: "rt-image-command", Image: "nginx:1.27", StartCommand: "nginx -g 'daemon off;'"},
 	)
 	types := []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite}
 	sources := []struct {

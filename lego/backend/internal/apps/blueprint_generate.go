@@ -337,25 +337,16 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["buildCommand"] = a.Spec.BuildCommand
 	}
 	if a.Spec.StartCommand != "" && !static {
-		if runtime == "docker" {
-			entry["dockerCommand"] = a.Spec.StartCommand
-		} else {
-			entry["startCommand"] = a.Spec.StartCommand
-		}
+		entry[blueprintCommandField(a.Spec)] = a.Spec.StartCommand
 	}
 	if !static && a.Spec.Tier != "" && a.Spec.Tier != tiers.Compute.Default().ID {
 		entry["plan"] = blueprintPlanSpelling(a.Spec.Tier)
 	}
 	if svcType == appv1alpha1.TypeCronJob {
 		entry["schedule"] = a.Spec.Schedule
-		// A cron's command override lives in Spec.Command (the PATCH path),
-		// which render.yaml spells startCommand (or dockerCommand for docker).
+		// A cron's command override lives in Spec.Command (the PATCH path).
 		if a.Spec.Command != "" {
-			if runtime == "docker" {
-				entry["dockerCommand"] = a.Spec.Command
-			} else {
-				entry["startCommand"] = a.Spec.Command
-			}
+			entry[blueprintCommandField(a.Spec)] = a.Spec.Command
 		}
 	}
 	if a.Spec.HealthCheckPath != "" && svcType == appv1alpha1.TypeWebService {
@@ -654,4 +645,14 @@ func allowListEntries(entries []appv1alpha1.IPAllowEntry) []map[string]any {
 		out = append(out, entry)
 	}
 	return out
+}
+
+// blueprintCommandField is how render.yaml spells a service's command: a
+// container's (readsDockerCommand) is dockerCommand, a native runtime's is
+// startCommand (w5/080).
+func blueprintCommandField(spec appv1alpha1.AppSpec) string {
+	if readsDockerCommand(buildStrategy(spec)) {
+		return "dockerCommand"
+	}
+	return "startCommand"
 }

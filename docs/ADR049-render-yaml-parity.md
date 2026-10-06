@@ -153,6 +153,8 @@ Fields backed by existing bex mechanisms are implementation work for `w1/m63`, i
 - environment-scoped env groups, nested/ungrouped resource inventory, `sync: false` value collection, and documented references to existing workspace resources;
 - exact plan spellings, defaults, omission behavior, and deprecated-field precedence.
 
+A container's command is `dockerCommand` for `runtime: docker` and `runtime: image` alike (w5/080). Render's schema allows it on any server or cron service, and REST, GraphQL and MCP already set an image service's command this way. It becomes the spec's start command, and Generate Blueprint exports an image service's command as `dockerCommand`. A native runtime uses `startCommand`, and declaring both is refused.
+
 Prebuilt-image services accept explicit `autoDeploy: false` and `autoDeployTrigger: off`, matching direct-create disabled values (`autoDeploy: "no"` in the Render CLI/REST contract). Omission and explicit disablement both leave image automation off. Enabled automation (`true` / `commit`), mixed Git/image sources, and Git-only build settings remain incompatible. This is neutral-value compatibility, not image auto-deployment support (w4/m99).
 
 Fields whose semantics bex cannot truthfully provide are rejected. In particular:

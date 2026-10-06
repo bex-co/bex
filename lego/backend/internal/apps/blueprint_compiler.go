@@ -296,8 +296,8 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 		},
 		{
 			field:   "dockerCommand",
-			invalid: runtime != "docker",
-			message: "dockerCommand requires runtime: docker",
+			invalid: runtime != "docker" && runtime != "image",
+			message: "dockerCommand requires runtime: docker or image",
 		},
 	} {
 		if _, declared := object[rule.field]; !declared || !rule.invalid {
