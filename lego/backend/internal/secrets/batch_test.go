@@ -40,8 +40,11 @@ import (
 
 type patchCountingClient struct {
 	client.Client
-	patches         int
-	fail            error
+	patches int
+	fail    error
+	// beforeFail runs once inside the first failing patch, with failures off:
+	// a concurrent call landing between a write's projection and its App patch.
+	beforeFail      func()
 	secretGets      int
 	beforeSecretGet func()
 }
@@ -127,6 +130,12 @@ func (f *versionedFakeSecretStore) PutCAS(ctx context.Context, path string, data
 func (c *patchCountingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	c.patches++
 	if c.fail != nil {
+		if hook := c.beforeFail; hook != nil {
+			fail := c.fail
+			c.fail, c.beforeFail = nil, nil
+			hook()
+			c.fail = fail
+		}
 		return c.fail
 	}
 	return c.Client.Patch(ctx, obj, patch, opts...)
@@ -664,34 +673,51 @@ func TestPatchEnvironmentCASRollbackDoesNotClobberProjectionLandedAfterSourceRes
 	}
 }
 
+// A failed App patch puts both maps back and their Secrets with them: over a
+// restored map the Secret holds that map, never the failed write's value, and
+// one the patch created over an empty map is removed. Deleting a Secret over a
+// non-empty map could break a concurrent first write that references it.
 func TestPatchEnvironmentCompensatesStoreAndProjectionsWhenAppPatchFails(t *testing.T) {
-	store := newFakeSecretStore()
-	store.m[envPath("web")] = map[string]string{"OLD": "env-before"}
-	store.m[filesPath("web")] = map[string]string{"old.pem": "file-before"}
-	failing := &patchCountingClient{Client: fakeClient(sampleApp("web")), fail: errors.New("injected App patch failure")}
-	svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+	for name, prior := range map[string]struct{ env, files map[string]string }{
+		"over stored maps": {map[string]string{"OLD": "env-before"}, map[string]string{"old.pem": "file-before"}},
+		"over empty maps":  {map[string]string{}, map[string]string{}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := newFakeSecretStore()
+			store.m[envPath("web")] = prior.env
+			store.m[filesPath("web")] = prior.files
+			failing := &patchCountingClient{Client: fakeClient(sampleApp("web")), fail: errors.New("injected App patch failure")}
+			svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
 
-	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
-		SaveMode:    SaveModeDeploy,
-		EnvVars:     []EnvVarPatch{{Key: "NEW", Value: "env-after"}},
-		SecretFiles: []SecretFilePatch{{Name: "new.pem", Content: "file-after"}},
-	})
-	if err == nil || !strings.Contains(err.Error(), "injected App patch failure") {
-		t.Fatalf("patch error = %v", err)
-	}
-	if !maps.Equal(store.m[envPath("web")], map[string]string{"OLD": "env-before"}) ||
-		!maps.Equal(store.m[filesPath("web")], map[string]string{"old.pem": "file-before"}) {
-		t.Fatalf("source compensation failed: env=%#v files=%#v", store.m[envPath("web")], store.m[filesPath("web")])
-	}
-	for _, name := range []string{"web-env", "web-files"} {
-		var obj corev1.Secret
-		err := failing.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &obj)
-		if err == nil || !apierrors.IsNotFound(err) {
-			t.Fatalf("projection %s remained after compensation: %v", name, err)
-		}
-	}
-	if app := getApp(t, failing, "web"); app.Spec.RestartedAt != "" || app.Spec.EnvFromSecret != "" || len(app.Spec.FilesFromSecrets) != 0 {
-		t.Fatalf("App changed despite failed patch: %#v", app.Spec)
+			_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+				SaveMode:    SaveModeDeploy,
+				EnvVars:     []EnvVarPatch{{Key: "NEW", Value: "env-after"}},
+				SecretFiles: []SecretFilePatch{{Name: "new.pem", Content: "file-after"}},
+			})
+			if err == nil || !strings.Contains(err.Error(), "injected App patch failure") {
+				t.Fatalf("patch error = %v", err)
+			}
+			if !maps.Equal(store.m[envPath("web")], prior.env) || !maps.Equal(store.m[filesPath("web")], prior.files) {
+				t.Fatalf("source compensation failed: env=%#v files=%#v", store.m[envPath("web")], store.m[filesPath("web")])
+			}
+			for name, want := range map[string]map[string]string{"web-env": prior.env, "web-files": prior.files} {
+				var obj corev1.Secret
+				err := failing.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &obj)
+				switch {
+				case len(want) == 0:
+					if !apierrors.IsNotFound(err) {
+						t.Fatalf("projection %s the patch created remained after compensation: %v", name, err)
+					}
+				case err != nil:
+					t.Fatalf("projection %s: %v", name, err)
+				case !equalSecretData(obj.Data, want):
+					t.Fatalf("projection %s = %q, want the restored map %v", name, obj.Data, want)
+				}
+			}
+			if app := getApp(t, failing, "web"); app.Spec.RestartedAt != "" || app.Spec.EnvFromSecret != "" || len(app.Spec.FilesFromSecrets) != 0 {
+				t.Fatalf("App changed despite failed patch: %#v", app.Spec)
+			}
+		})
 	}
 }
 

@@ -29,12 +29,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -492,26 +492,31 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	if err := envMapWithinQuota(env); err != nil {
 		return nil, err
 	}
-	prior, err := s.readMap(ctx, envPath(service))
+	// Render's PUT replaces the whole set, last writer wins; the CAS write is
+	// what lets a failed projection's restore tell a later write apart.
+	_, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		if maps.Equal(current, env) {
+			return false
+		}
+		clear(current)
+		maps.Copy(current, env)
+		return true
+	})
 	if err != nil {
 		return nil, err
 	}
-	if err := s.storeMap(ctx, envPath(service), env); err != nil {
-		return nil, err
-	}
+	original := a.DeepCopy()
 	// A whole-set replace also clears invalid-name debris from spec.Env, or
 	// `PUT []` answered [] while the list still showed it (w8/027).
-	if err := s.projectOrRestore(ctx, envPath(service), prior, func() error {
-		return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
-			if err := s.projectEnv(ctx, a, env); err != nil {
-				return err
-			}
-			dropInvalidSpecEnv(a, func(string) bool { return true })
-			s.bumpRestart(a)
-			return nil
-		})
+	if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+		if err := s.projectEnv(ctx, a, env); err != nil {
+			return err
+		}
+		dropInvalidSpecEnv(a, func(string) bool { return true })
+		s.bumpRestart(a)
+		return nil
 	}); err != nil {
-		return nil, err
+		return nil, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVars)
 	// No manifest keys can be present: SetEnvVars refuses a write that names
@@ -556,9 +561,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	// re-checked against the fresh map on every retry; a quota breach mutates
 	// nothing (changed=false) and surfaces after the loop.
 	var quota error
-	var prior map[string]string
-	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
-		prior = core.CloneStringMap(current)
+	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
 		if v, ok := current[key]; ok && v == value {
 			return false // no change
 		}
@@ -575,10 +578,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if quota != nil {
 		return EnvVarView{}, quota
 	}
-	if err := s.projectOrRestore(ctx, envPath(service), prior, func() error {
-		return s.materializeEnv(ctx, a, env)
-	}); err != nil {
-		return EnvVarView{}, err
+	original := a.DeepCopy()
+	if err := s.materializeEnv(ctx, a, env); err != nil {
+		return EnvVarView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVar)
 	return EnvVarView{Key: key, Value: value}, nil
@@ -641,55 +643,61 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	if err != nil {
 		return err
 	}
-	env, err := s.readMap(ctx, envPath(service))
-	if err != nil {
-		return err
-	}
-	prior := core.CloneStringMap(env)
+	var seedErr, quota error
 	changed := false
-	seed := func(key, value string, generate bool) error {
-		key = strings.TrimSpace(key)
-		if err := core.CheckEnvKey(key); err != nil {
-			return err
+	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		changed, seedErr, quota = false, nil, nil
+		seed := func(key, value string, generate bool) error {
+			key = strings.TrimSpace(key)
+			if err := core.CheckEnvKey(key); err != nil {
+				return err
+			}
+			if _, ok := current[key]; ok {
+				return nil // seed-once: an already-set key keeps its live value
+			}
+			v, err := resolveValue(key, value, generate)
+			if err != nil {
+				return err
+			}
+			current[key] = v
+			changed = true
+			return nil
 		}
-		if _, ok := env[key]; ok {
-			return nil // seed-once: an already-set key keeps its live value
+		// Sort keys so a rand.Read failure (or a bad name) is deterministic across runs.
+		for _, key := range core.SortedKeys(literals) {
+			if seedErr = seed(key, literals[key], false); seedErr != nil {
+				return false
+			}
 		}
-		v, err := resolveValue(key, value, generate)
-		if err != nil {
-			return err
+		for _, key := range generates {
+			if seedErr = seed(key, "", true); seedErr != nil {
+				return false
+			}
 		}
-		env[key] = v
-		changed = true
+		if !changed {
+			return false // every key already seeded — no Secret write, no roll
+		}
+		// Round-11 #6: the merged map must fit the aggregate quota (a
+		// blueprint seeding onto an already-large map is the same
+		// amplification a per-key write is).
+		if quota = envMapWithinQuota(current); quota != nil {
+			return false
+		}
+		return true
+	})
+	switch {
+	case err != nil:
+		return err
+	case seedErr != nil:
+		return seedErr
+	case quota != nil:
+		return quota
+	case !changed:
 		return nil
 	}
-	// Sort keys so a rand.Read failure (or a bad name) is deterministic across runs.
-	for _, key := range core.SortedKeys(literals) {
-		if err := seed(key, literals[key], false); err != nil {
-			return err
-		}
-	}
-	for _, key := range generates {
-		if err := seed(key, "", true); err != nil {
-			return err
-		}
-	}
-	if !changed {
-		return nil // every key already seeded — no Secret write, no roll
-	}
-	// Round-11 #6: the merged map must fit the aggregate quota (a blueprint
-	// seeding onto an already-large map is the same amplification a per-key
-	// write is).
-	if err := envMapWithinQuota(env); err != nil {
-		return err
-	}
-	if err := s.storeMap(ctx, envPath(service), env); err != nil {
-		return err
-	}
-	if err := s.projectOrRestore(ctx, envPath(service), prior, func() error {
-		return s.materializeEnv(ctx, a, env)
-	}); err != nil {
-		return err
+	original := a.DeepCopy()
+	if err := s.materializeEnv(ctx, a, env); err != nil {
+		return s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	// Past seed-once's "every key already present" return above, so a blueprint
 	// re-apply that seeded nothing records nothing.
@@ -741,29 +749,37 @@ func (s *Service) storeMap(ctx context.Context, path string, data map[string]str
 	return s.Store.Put(ctx, path, data)
 }
 
-// projectOrRestore runs project over a map just written to path and, if it
-// fails, writes prior back: the store must never list what the service cannot
-// mount (w4/m168). Kubernetes refusing the projected Secret as invalid is the
-// caller's input, a 400; a failed restore is joined to the cause.
-func (s *Service) projectOrRestore(ctx context.Context, path string, prior map[string]string, project func() error) error {
-	err := project()
-	if err == nil {
-		return nil
+// refusedProjection turns Kubernetes refusing one of app's projected Secrets
+// as invalid — the caller's input, already rolled back — into the coded 400 for
+// the key and rule its cause names. Any other cause, an App's own refusal
+// included, is returned unchanged.
+func refusedProjection(cause error, app string) error {
+	details, ok := core.InvalidDetails(cause)
+	if !ok || details.Kind != "Secret" {
+		return cause
 	}
-	if restoreErr := s.storeMap(ctx, path, prior); restoreErr != nil {
-		return errors.Join(err, fmt.Errorf("restore secret store: %w", restoreErr))
+	var refused func(key, rule string) error
+	switch details.Name {
+	case envSecretName(app):
+		refused = core.EnvKeyProjectionRefused
+	case filesSecretName(app):
+		refused = core.SecretFileProjectionRefused
+	default:
+		return cause
 	}
-	return refusedProjection(err)
-}
-
-// refusedProjection turns Kubernetes refusing a projected Secret as invalid —
-// the caller's input, already rolled back — into a 400; any other cause is
-// returned unchanged.
-func refusedProjection(err error) error {
-	if apierrors.IsInvalid(err) {
-		return fmt.Errorf("%w: the change cannot be applied to the service, so it was not saved", core.ErrBadRequest)
+	var key, rule string
+	for _, c := range details.Causes {
+		if k, ok := strings.CutPrefix(c.Field, "data["); ok && strings.HasSuffix(k, "]") {
+			key = strings.TrimSuffix(k, "]")
+			// The cause repeats the key ahead of the rule.
+			rule = strings.TrimPrefix(c.Message, fmt.Sprintf("Invalid value: %q: ", key))
+			break
+		}
+		if rule == "" {
+			rule = c.Message
+		}
 	}
-	return err
+	return refused(key, rule)
 }
 
 // admissible returns the keys of m the projection can carry: a name stored
@@ -853,8 +869,9 @@ func mapBytes(m map[string]string) int {
 // it reads the current map with its version, applies mutate, and writes back with
 // check-and-set. On a CAS conflict it re-reads and retries up to casMaxRetries
 // times. Stores that do not implement VersionedSecretKV (test doubles) fall back
-// to the unconditional storeMap path. Returns the final map and whether it
-// changed (false + nil delete means the path was already empty/no-op).
+// to the unconditional storeMap path. It returns the final map and the write
+// it made, which a failed projection undoes (restoreMap); mutate reporting no
+// change writes nothing.
 //
 // codex-security round-19 #5: an empty result is written back through the same
 // PutCAS as every other mutation rather than an unconditional metadata Delete.
@@ -863,43 +880,70 @@ func mapBytes(m map[string]string) int {
 // its write — the stale delete removed the path (and every retained version)
 // out from under it. PutCAS with an empty map conflicts exactly like any other
 // racing write and retries instead of destroying data.
-func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(current map[string]string) (changed bool)) (map[string]string, error) {
+func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(current map[string]string) (changed bool)) (map[string]string, mapWrite, error) {
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
 		// Non-versioned store (test double): unconditional read-modify-write.
 		current, err := s.readMap(ctx, path)
 		if err != nil {
-			return nil, err
+			return nil, mapWrite{}, err
 		}
+		prior := core.CloneStringMap(current)
 		if !mutate(current) {
-			return current, nil
+			return current, mapWrite{}, nil
 		}
 		if err := s.storeMap(ctx, path, current); err != nil {
-			return nil, err
+			return nil, mapWrite{}, err
 		}
-		return current, nil
+		return current, mapWrite{prior: prior, changed: true}, nil
 	}
 	for attempt := 0; attempt <= casMaxRetries; attempt++ {
 		snapshot, err := versioned.GetVersioned(ctx, path)
 		if err != nil {
-			return nil, envSourceUnavailable()
+			return nil, mapWrite{}, envSourceUnavailable()
 		}
-		current := snapshot.Data
-		if current == nil {
-			current = map[string]string{}
-		}
+		current := core.CloneStringMap(snapshot.Data)
 		if !mutate(current) {
-			return current, nil
+			return current, mapWrite{}, nil
 		}
-		if _, err := versioned.PutCAS(ctx, path, current, snapshot.Version); err != nil {
+		version, err := versioned.PutCAS(ctx, path, current, snapshot.Version)
+		if err != nil {
 			if errors.Is(err, core.ErrConflict) && attempt < casMaxRetries {
 				continue // re-read and retry
 			}
-			return nil, err
+			return nil, mapWrite{}, err
 		}
-		return current, nil
+		return current, mapWrite{prior: snapshot.Data, version: version, changed: true}, nil
 	}
-	return nil, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+	return nil, mapWrite{}, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+}
+
+// mapWrite is what a write did to one source map, for compensation to undo:
+// the map it replaced, the store version it wrote, and whether it changed the
+// map at all.
+type mapWrite struct {
+	prior   map[string]string
+	version uint64
+	changed bool
+}
+
+// restoreMap puts back the map a failed write replaced, only while that write
+// is still the store's latest: PutCAS against the version it wrote. A write
+// another caller committed since is never erased (w5/m119): restoreMap leaves
+// the map to it and reports it superseded. A store without versions (a test
+// double) is written back unconditionally.
+func (s *Service) restoreMap(ctx context.Context, path string, w mapWrite) (superseded bool, err error) {
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return false, s.storeMap(ctx, path, w.prior)
+	}
+	if _, err := versioned.PutCAS(ctx, path, w.prior, w.version); err != nil {
+		if errors.Is(err, core.ErrConflict) {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
 }
 
 // deleteMapKeyAfterProjection makes deletion converge in the opposite order

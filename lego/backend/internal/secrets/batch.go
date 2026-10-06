@@ -78,7 +78,9 @@ type EnvironmentPatchResult struct {
 // the complete request. It writes both OpenBao maps, projects both Kubernetes
 // Secrets, and persists one App patch with either zero or one restartedAt bump.
 // If a later write or projection fails, already-written source/projection state
-// is restored best-effort and the compensation error is joined to the cause.
+// is restored best-effort and a compensation error is joined to the cause. A
+// write a newer one superseded is left to it instead, and the call answers
+// ENVIRONMENT_RESTORATION_FAILED, since its change may survive in that write.
 func (s *Service) PatchEnvironment(ctx context.Context, service string, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
 	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
@@ -103,17 +105,15 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 }
 
 // envPatchTxn carries what compensation needs to restore the state a failed
-// patch already wrote: the pre-patch App and source maps, which maps changed,
-// and — for revision-aware patches — the CAS write and its projection.
+// write already wrote: the App before its projection, each source map's write,
+// and — for a revision-aware patch (cas), whose env write always advances the
+// revision — the projection it claimed.
 type envPatchTxn struct {
-	service         string
-	originalApp     *appv1alpha1.App
-	oldEnv          map[string]string
-	oldFiles        map[string]string
-	envChanged      bool
-	filesChanged    bool
-	casWriteVersion *uint64
-	casProjection   casEnvProjection
+	service       string
+	originalApp   *appv1alpha1.App
+	env, files    mapWrite
+	cas           bool
+	casProjection casEnvProjection
 }
 
 // patchEnvironmentCAS is the revision-aware protocol: exactly one ordinary
@@ -171,11 +171,10 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 	revision := encodeEnvRevision(newVersion)
 	result.Revision = &revision
 	txn := envPatchTxn{
-		service:         service,
-		originalApp:     a.DeepCopy(),
-		oldEnv:          oldEnv,
-		envChanged:      envChanged,
-		casWriteVersion: &newVersion,
+		service:     service,
+		originalApp: a.DeepCopy(),
+		env:         mapWrite{prior: oldEnv, version: newVersion, changed: envChanged},
+		cas:         true,
 	}
 	// A compare-and-set of an unchanged value still advances the opaque
 	// revision, which is what makes two submissions from one observed revision
@@ -207,25 +206,22 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 // contract (no ExpectedEnvRevision, no conflict surfaced to the caller) while
 // closing the lost-update race; only patchEnvironmentCAS exposes revisions.
 func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a *appv1alpha1.App, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
-	var oldEnv, oldFiles map[string]string
-	var envChanged, filesChanged bool
 	var applyErr error
 
 	// Each mutate checks the quota on the map it is about to write, so the check
 	// re-runs against the latest committed map on every CAS retry (ADR066 #6).
 	// A refused map is not written: the mutate reports "unchanged".
-	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
-		oldEnv = core.CloneStringMap(current)
+	env, envWrite, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		before := core.CloneStringMap(current)
 		if err := applyEnvPatch(current, patch.EnvVars); err != nil {
 			applyErr = err
 			return false
 		}
-		if err := patchWithinQuota(oldEnv, current, envMapWithinQuota); err != nil {
+		if err := patchWithinQuota(before, current, envMapWithinQuota); err != nil {
 			applyErr = err
 			return false
 		}
-		envChanged = !maps.Equal(oldEnv, current)
-		return envChanged
+		return !maps.Equal(before, current)
 	})
 	if err != nil {
 		return EnvironmentPatchResult{}, err
@@ -234,38 +230,46 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 		return EnvironmentPatchResult{}, applyErr
 	}
 
-	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
-		oldFiles = core.CloneStringMap(current)
+	files, filesWrite, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		before := core.CloneStringMap(current)
 		if err := applyFilePatch(current, patch.SecretFiles); err != nil {
 			applyErr = err
 			return false
 		}
-		if err := patchWithinQuota(oldFiles, current, filesMapWithinQuota); err != nil {
+		if err := patchWithinQuota(before, current, filesMapWithinQuota); err != nil {
 			applyErr = err
 			return false
 		}
-		filesChanged = !maps.Equal(oldFiles, current)
-		return filesChanged
+		return !maps.Equal(before, current)
 	})
+	// The files write failed after the env write committed, before anything
+	// was projected: put the env map back. A newer write that superseded it
+	// keeps this patch's env change, so the call cannot say nothing was saved.
+	undoEnv := func(cause error) error {
+		if !envWrite.changed {
+			return cause
+		}
+		superseded, err := s.restoreMap(ctx, envPath(service), envWrite)
+		switch {
+		case err != nil:
+			return errors.Join(cause, err)
+		case superseded:
+			return envRestorationFailed()
+		}
+		return cause
+	}
 	if err != nil {
-		return EnvironmentPatchResult{}, errors.Join(err, s.restoreSourceMaps(ctx, service, oldEnv, nil, envChanged, false))
+		return EnvironmentPatchResult{}, undoEnv(err)
 	}
 	if applyErr != nil {
-		return EnvironmentPatchResult{}, errors.Join(applyErr, s.restoreSourceMaps(ctx, service, oldEnv, nil, envChanged, false))
+		return EnvironmentPatchResult{}, undoEnv(applyErr)
 	}
 
 	result := environmentPatchResult(env, files, false)
-	if !envChanged && !filesChanged {
+	if !envWrite.changed && !filesWrite.changed {
 		return result, nil
 	}
-	txn := envPatchTxn{
-		service:      service,
-		originalApp:  a.DeepCopy(),
-		oldEnv:       oldEnv,
-		oldFiles:     oldFiles,
-		envChanged:   envChanged,
-		filesChanged: filesChanged,
-	}
+	txn := envPatchTxn{service: service, originalApp: a.DeepCopy(), env: envWrite, files: filesWrite}
 	return s.finalizeEnvironmentPatch(ctx, a, txn, patch.SaveMode, env, files, result)
 }
 
@@ -275,10 +279,10 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.App, txn envPatchTxn, saveMode SaveMode, env, files map[string]string, result EnvironmentPatchResult) (EnvironmentPatchResult, error) {
 	before := rollout.Before(a)
 	base := client.MergeFrom(txn.originalApp)
-	if txn.envChanged {
+	if txn.env.changed {
 		var err error
-		if txn.casWriteVersion != nil {
-			txn.casProjection, err = s.projectCASEnv(ctx, txn.service, a, env, *txn.casWriteVersion)
+		if txn.cas {
+			txn.casProjection, err = s.projectCASEnv(ctx, txn.service, a, env, txn.env.version)
 		} else {
 			err = s.projectEnv(ctx, a, env)
 		}
@@ -286,7 +290,7 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
-	if txn.filesChanged {
+	if txn.files.changed {
 		if err := s.projectFiles(ctx, a, files); err != nil {
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
@@ -296,7 +300,7 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		activatePendingProjectionReferences(a)
 		s.bumpRestart(a)
 	} else {
-		stagePendingProjectionReferences(a, txn.originalApp, env, files, txn.envChanged, txn.filesChanged)
+		stagePendingProjectionReferences(a, txn.originalApp, env, files, txn.env.changed, txn.files.changed)
 		if a.Annotations == nil {
 			a.Annotations = map[string]string{}
 		}
@@ -538,39 +542,61 @@ func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
 	return core.ApplySecretFilePatch(files, writes)
 }
 
+// compensateEnvironment undoes a write whose projection or App patch failed:
+// the batch patch's and each single-map setter's (w5/m119). A changed map goes
+// back to what the write replaced only while the write is still the store's
+// latest (restoreMap), and its Secret then goes back with it. A map a newer
+// committed write superseded is left to that write, and the call answers
+// ENVIRONMENT_RESTORATION_FAILED: its own change may survive there. Which
+// projection lands last in that race is w5/091.
 func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, cause error) error {
-	if txn.casWriteVersion != nil {
-		return s.compensateCASEnvironment(ctx, txn.service, txn.originalApp, txn.oldEnv, *txn.casWriteVersion, txn.casProjection)
+	app := txn.originalApp
+	if txn.cas {
+		return s.compensateCASEnvironment(ctx, txn.service, app, txn.env.prior, txn.env.version, txn.casProjection)
 	}
-	originalApp := txn.originalApp
+	envSecret, filesSecret := envSecretName(app.Name), filesSecretName(app.Name)
 	var compensation []error
-	if err := s.restoreSourceMaps(ctx, txn.service, txn.oldEnv, txn.oldFiles, txn.envChanged, txn.filesChanged); err != nil {
-		compensation = append(compensation, fmt.Errorf("restore secret store: %w", err))
-	}
-	if txn.envChanged {
-		name := envSecretName(originalApp.Name)
-		if originalApp.Spec.EnvFromSecret == name || originalApp.Annotations[appv1alpha1.PendingEnvSecretAnnotation] == name {
-			if err := s.upsertSecret(ctx, originalApp, name, txn.oldEnv); err != nil {
-				compensation = append(compensation, fmt.Errorf("restore environment projection: %w", err))
+	superseded := false
+	for _, m := range []struct {
+		write               mapWrite
+		path, secret, label string
+		referenced          bool
+	}{{
+		write: txn.env, path: envPath(txn.service), secret: envSecret, label: "environment",
+		referenced: app.Spec.EnvFromSecret == envSecret || app.Annotations[appv1alpha1.PendingEnvSecretAnnotation] == envSecret,
+	}, {
+		write: txn.files, path: filesPath(txn.service), secret: filesSecret, label: "secret-file",
+		referenced: slices.Contains(app.Spec.FilesFromSecrets, filesSecret) || app.Annotations[appv1alpha1.PendingFilesSecretAnnotation] == filesSecret,
+	}} {
+		if !m.write.changed {
+			continue
+		}
+		gone, err := s.restoreMap(ctx, m.path, m.write)
+		switch {
+		case err != nil:
+			compensation = append(compensation, fmt.Errorf("restore secret store: %w", err))
+		case gone:
+			superseded = true
+		// Only a Secret this write created for an empty map is removed. The App
+		// this call read decides no more than that: a concurrent first write may
+		// have referenced the Secret since, and the restored map is its own.
+		case len(m.write.prior) > 0 || m.referenced:
+			if err := s.upsertSecret(ctx, app, m.secret, m.write.prior); err != nil {
+				compensation = append(compensation, fmt.Errorf("restore %s projection: %w", m.label, err))
 			}
-		} else if err := s.deleteSecret(ctx, originalApp.Namespace, name); err != nil {
-			compensation = append(compensation, fmt.Errorf("remove environment projection: %w", err))
+		default:
+			if err := s.deleteSecret(ctx, app.Namespace, m.secret); err != nil {
+				compensation = append(compensation, fmt.Errorf("remove %s projection: %w", m.label, err))
+			}
 		}
 	}
-	if txn.filesChanged {
-		name := filesSecretName(originalApp.Name)
-		if slices.Contains(originalApp.Spec.FilesFromSecrets, name) || originalApp.Annotations[appv1alpha1.PendingFilesSecretAnnotation] == name {
-			if err := s.upsertSecret(ctx, originalApp, name, txn.oldFiles); err != nil {
-				compensation = append(compensation, fmt.Errorf("restore secret-file projection: %w", err))
-			}
-		} else if err := s.deleteSecret(ctx, originalApp.Namespace, name); err != nil {
-			compensation = append(compensation, fmt.Errorf("remove secret-file projection: %w", err))
-		}
+	switch {
+	case len(compensation) > 0:
+		return errors.Join(append([]error{cause}, compensation...)...)
+	case superseded:
+		return envRestorationFailed()
 	}
-	if len(compensation) == 0 {
-		return refusedProjection(cause)
-	}
-	return errors.Join(append([]error{cause}, compensation...)...)
+	return refusedProjection(cause, app.Name)
 }
 
 // compensateCASEnvironment restores source first, then rolls the projection
@@ -643,21 +669,6 @@ func patchWithinQuota(before, after map[string]string, within func(map[string]st
 		return nil
 	}
 	return err
-}
-
-func (s *Service) restoreSourceMaps(ctx context.Context, service string, oldEnv, oldFiles map[string]string, envChanged, filesChanged bool) error {
-	var errs []error
-	if envChanged {
-		if err := s.storeMap(ctx, envPath(service), oldEnv); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if filesChanged {
-		if err := s.storeMap(ctx, filesPath(service), oldFiles); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
 }
 
 func environmentPatchResult(env, files map[string]string, rolledOut bool) EnvironmentPatchResult {

@@ -129,9 +129,7 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	// replacement between the read and this write could otherwise be silently
 	// discarded (lost update).
 	var quota error
-	var prior map[string]string
-	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
-		prior = core.CloneStringMap(current)
+	files, filesWrite, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
 		if v, ok := current[name]; ok && v == content {
 			return false // no change
 		}
@@ -152,10 +150,9 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	if quota != nil {
 		return SecretFileView{}, quota
 	}
-	if err := s.projectOrRestore(ctx, filesPath(service), prior, func() error {
-		return s.materializeFiles(ctx, a, files)
-	}); err != nil {
-		return SecretFileView{}, err
+	original := a.DeepCopy()
+	if err := s.materializeFiles(ctx, a, files); err != nil {
+		return SecretFileView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
 	}
 	return SecretFileView{Name: name, Content: content}, nil
 }
@@ -182,9 +179,7 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 	// readMap+storeMap, so a concurrent Set/DeleteSecretFile between the read
 	// and this write can't be clobbered.
 	var quota error
-	var prior map[string]string
-	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
-		prior = core.CloneStringMap(current)
+	files, filesWrite, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
 		for _, f := range initial {
 			current[f.Name] = f.Content
 		}
@@ -200,9 +195,11 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 	if quota != nil {
 		return quota
 	}
-	return s.projectOrRestore(ctx, filesPath(service), prior, func() error {
-		return s.materializeFiles(ctx, a, files)
-	})
+	original := a.DeepCopy()
+	if err := s.materializeFiles(ctx, a, files); err != nil {
+		return s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
+	}
+	return nil
 }
 
 // prepareSecretFiles persists and materializes create-time files before the App
