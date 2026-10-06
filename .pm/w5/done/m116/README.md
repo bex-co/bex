@@ -134,3 +134,14 @@ Replaced: the three `dryrun_quota_test.go` files, the two `TestDryRunCreate*Runs
 
 - The full backend suite on fresh Postgres 17, OpenFGA and OpenBao is green (68 packages). The first run caught two things. The events vocabulary guard needed the six dry-run verbs excused (read-only `can_view`, they write nothing). And the Blueprint lifecycle test's emulated API server treated the plan's dry-run Create as a real one; it now honours `dryRun` as a real API server does.
 - `make lint`: 0 issues in all four modules.
+
+## Live check — 2026-10-06 (w4 `/qa-find-bugs` loop66, pin `a5011ed13`)
+
+`POST https://api.bex.co/v1/services` (`bex-canary`, Free `traefik/whoami` image body), each case with and without `?dryRun=true`. Status and message were identical in every pair:
+
+- name `hello-go` (in use) → **409** `CONFLICT` "name \"hello-go\" is already in use";
+- `port: 70000` → **400** "port must be 1024-65535 — …";
+- `healthCheckPath: "no-slash"` → **400** "health check path must start with /";
+- name `Qa Bad/Name!!` → **400** "name must be a DNS label of 1-30 chars ([a-z0-9-])".
+
+A valid dry run (`qa-20261006-l66-ok`) → **200** preview, and the service list afterwards contained no `l66` service. Not exercised: the count cap, unpaid-plan billing, a protected environment, a pending-verification host, Postgres/Key Value dry runs and GraphQL/MCP. Side note: the valid preview's `id` is the requested name (`"id":"qa-20261006-l66-ok"`), not a `srv-` id; a client that treats `id` as a resource id should not use it.
