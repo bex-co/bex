@@ -111,7 +111,7 @@ No mutation occurs when parsing, schema validation, semantic validation, authori
 - a new Postgres or Key Value is dry-run through admission exactly as the apply creates it;
 - the workspace count cap is checked across every resource the stack creates, which no single create's dry-run can see.
 
-Each refusal carries the apply's message and code. The protected-environment confirmation, the payment gate and `fromGroup` stay apply-only (ADR018's Blueprint row).
+Each refusal carries the apply's message and code. A coded refusal whose `field` param names a declared field is located there rather than by its message, so a Key Value named `Plan_Cache` is refused at its `name`, not its `plan` (w5/093). The protected-environment confirmation, the payment gate and `fromGroup` stay apply-only (ADR018's Blueprint row).
 
 ### D5 — Sync is presence-aware and field-specific
 

@@ -177,14 +177,15 @@ func assertBlueprintDatastorePlan(t *testing.T, svc *Service, manifest string, o
 func TestBlueprintKeyValueNameIsValidated(t *testing.T) {
 	t.Parallel()
 	svc, _ := newService(nil)
-	for _, name := range []string{"Cache_1", "cache-cache-cache-cache-cache-31"} {
+	for _, name := range []string{"Cache_1", "cache-cache-cache-cache-cache-31", "Plan_Cache"} {
 		manifest := fmt.Sprintf("services:\n  - type: keyvalue\n    name: %s\n    plan: free\n    ipAllowList: []\n", name)
 		v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
 		if err != nil {
 			t.Fatalf("%s: ValidateBlueprint = %v, want a validation result", name, err)
 		}
-		if v.Valid || len(v.Errors) == 0 || !strings.Contains(v.Errors[0].Error, core.ResourceNameRule) {
-			t.Errorf("%s: validation = %+v, want the name refused", name, v)
+		if v.Valid || len(v.Errors) == 0 || !strings.Contains(v.Errors[0].Error, core.ResourceNameRule) ||
+			v.Errors[0].Code != "RESOURCE_NAME_INVALID" || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].name" {
+			t.Errorf("%s: validation = %+v, want the name refused with RESOURCE_NAME_INVALID at services[0].name (w5/093)", name, v)
 		}
 	}
 }

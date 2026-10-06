@@ -21,19 +21,16 @@ limitations under the License.
 package resourcename
 
 import (
-	"fmt"
-
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // CheckDatastore refuses a name a Postgres or Key Value cannot take: one
-// outside appv1alpha1.ValidResourceName, or one shaped like a resource ID,
-// which a selector could read as that ID (w8/049).
+// outside the resource-name rule (core.CheckResourceName), or one shaped like a
+// resource ID, which a selector could read as that ID (w8/049).
 func CheckDatastore(name string) error {
-	if !appv1alpha1.ValidResourceName(name) {
-		return fmt.Errorf("%w: name %s", core.ErrBadRequest, core.ResourceNameRule)
+	if err := core.CheckResourceName("name", name); err != nil {
+		return err
 	}
 	if id.LooksLikeResourceID(name) {
 		return core.NameResourceIDReservedError("name", name)
