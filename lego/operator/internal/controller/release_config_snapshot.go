@@ -233,11 +233,13 @@ func (r *AppReconciler) ensureSavedReleaseConfigSnapshot(ctx context.Context, ap
 			return fmt.Errorf("snapshot %s for generation %d: %w", source, gen, err)
 		}
 	}
+	prior := app.Status.ConfigSnapshotGeneration
 	app.Status.ConfigSnapshotGeneration = gen
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
-		// Roll the in-memory flip back so this pass projects the mutable names it
-		// can still resolve, instead of snapshot names the stored status denies.
-		app.Status.ConfigSnapshotGeneration = 0
+		// Roll the in-memory flip back to the generation the stored status still
+		// records, so this pass projects names it can resolve and a failure written
+		// after it does not drop the served release's snapshot (w5/095).
+		app.Status.ConfigSnapshotGeneration = prior
 		return fmt.Errorf("record config snapshot generation %d: %w", gen, err)
 	}
 	return nil
