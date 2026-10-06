@@ -73,10 +73,12 @@ func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID st
 // direct GraphQL schema call in place of the generic HTTP auth middleware
 // (already covered by the auth tests).
 //
-// Hermetic-by-default: skipped unless BOTH point at throwaway infra:
+// Hermetic-by-default: skipped unless all of them point at throwaway infra,
+// as scripts/backend-test-deps.sh and backend CI provide:
 //
 //	BEX_TEST_DB_URI=postgres://postgres:pw@localhost:55432/bex?sslmode=disable \
 //	BEX_TEST_OPENFGA_URL=http://127.0.0.1:58080 \
+//	BEX_TEST_OPENBAO_KV_URL=http://127.0.0.1:8200 BEX_TEST_OPENBAO_KV_TOKEN=<dev root token> \
 //	  go test ./internal/api/ -run TestWorkspaceLifecycleE2E -v
 //
 // The OpenFGA at that URL must have a store named "bex" carrying
@@ -85,8 +87,9 @@ func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID st
 func TestWorkspaceLifecycleE2E(t *testing.T) {
 	dbURI := os.Getenv("BEX_TEST_DB_URI")
 	fgaURL := os.Getenv("BEX_TEST_OPENFGA_URL")
-	if dbURI == "" || fgaURL == "" {
-		testenv.Skip(t, "BEX_TEST_DB_URI and BEX_TEST_OPENFGA_URL not both set")
+	baoURL, baoToken := os.Getenv("BEX_TEST_OPENBAO_KV_URL"), os.Getenv("BEX_TEST_OPENBAO_KV_TOKEN")
+	if dbURI == "" || fgaURL == "" || baoURL == "" || baoToken == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI, BEX_TEST_OPENFGA_URL, BEX_TEST_OPENBAO_KV_URL and BEX_TEST_OPENBAO_KV_TOKEN not all set")
 	}
 	ctx := context.Background()
 
@@ -357,23 +360,32 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	mustListCount(`query($o:String!){ databases(ownerId:$o){ id } }`, "databases", map[string]any{"o": dsID}, 1)
 	mustListCount(`query($o:String!){ keyValues(ownerId:$o){ id } }`, "keyValues", map[string]any{"o": dsID}, 1)
 
-	// Secrets: only when a test OpenBao is available (BEX_TEST_OPENBAO_URL) — the
-	// purge assertion needs a real KV v2 store, hermetic-by-default like DB/FGA
-	// above.
-	var secretsStore core.SecretKV
-	var envGroupID string
-	if baoURL := os.Getenv("BEX_TEST_OPENBAO_URL"); baoURL != "" {
-		secretsStore = secrets.NewOpenBaoStore(baoURL, os.Getenv("BEX_OPENBAO_JWT_PATH"))
-		secretsSvc := &secrets.Service{Base: base, Store: secretsStore}
-		aliceCtx := core.WithIdentity(ctx, core.Identity{Subject: "alice", Method: "session"})
-		if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", secrets.EnvVarWrite{Value: "bar"}); err != nil {
-			t.Fatalf("seed secret: %v", err)
-		}
-		group, err := (&envgroups.Service{Base: base, Store: secretsStore}).CreateEnvGroup(aliceCtx, envgroups.CreateEnvGroupRequest{Name: "workspace-delete"})
-		if err != nil {
-			t.Fatalf("seed env group: %v", err)
-		}
-		envGroupID = group.ID
+	// Secrets: a real KV v2 store on a fresh mount of the dev OpenBao, so the
+	// purge is asserted against what bex-api actually wrote (w5/081).
+	secretsStore, removeMount, err := secrets.NewOpenBaoTestStore(ctx, baoURL, baoToken)
+	if err != nil {
+		t.Fatalf("OpenBao test store: %v", err)
+	}
+	t.Cleanup(removeMount)
+	secretsSvc := &secrets.Service{Base: base, Store: secretsStore}
+	aliceCtx := core.WithIdentity(ctx, core.Identity{Subject: "alice", Method: "session"})
+	if _, err := secretsSvc.SetEnvVar(aliceCtx, "worker", "FOO", secrets.EnvVarWrite{Value: "bar"}); err != nil {
+		t.Fatalf("seed secret: %v", err)
+	}
+	group, err := (&envgroups.Service{Base: base, Store: secretsStore}).CreateEnvGroup(aliceCtx, envgroups.CreateEnvGroupRequest{Name: "workspace-delete"})
+	if err != nil {
+		t.Fatalf("seed env group: %v", err)
+	}
+	envGroupID := group.ID
+	// A service's secrets live under its own workspace's prefix (w7/m70), env
+	// group metadata under the legacy root. Both seeds must read back at the
+	// paths checked below, so a purge check can never pass on an empty path.
+	tenantCtx := secrets.WithTenant(ctx, dsID)
+	if env, err := secretsStore.Get(tenantCtx, "services/worker/env"); err != nil || len(env) == 0 {
+		t.Fatalf("seeded secret not at its path before delete: %v, %v", env, err)
+	}
+	if meta, err := secretsStore.Get(ctx, "env-groups/"+envGroupID+"/meta"); err != nil || len(meta) == 0 {
+		t.Fatalf("seeded env group not at its path before delete: %v, %v", meta, err)
 	}
 
 	// Wire the pre-cascade purgers exactly as cmd/api/main.go does (t005) —
@@ -403,21 +415,19 @@ func TestWorkspaceLifecycleE2E(t *testing.T) {
 	if len(kvList.Items) != 0 {
 		t.Fatalf("KeyValue CR not purged on workspace delete: %+v", kvList.Items)
 	}
-	if secretsStore != nil {
-		env, err := secretsStore.Get(ctx, "services/worker/env")
-		if err != nil {
-			t.Fatalf("read purged secret: %v", err)
-		}
-		if len(env) != 0 {
-			t.Fatalf("secret not purged on workspace delete: %+v", env)
-		}
-		meta, err := secretsStore.Get(ctx, "env-groups/"+envGroupID+"/meta")
-		if err != nil {
-			t.Fatalf("read purged env-group meta: %v", err)
-		}
-		if len(meta) != 0 {
-			t.Fatalf("env group not purged on workspace delete: %+v", meta)
-		}
+	env, err := secretsStore.Get(tenantCtx, "services/worker/env")
+	if err != nil {
+		t.Fatalf("read purged secret: %v", err)
+	}
+	if len(env) != 0 {
+		t.Fatalf("secret not purged on workspace delete: %+v", env)
+	}
+	meta, err := secretsStore.Get(ctx, "env-groups/"+envGroupID+"/meta")
+	if err != nil {
+		t.Fatalf("read purged env-group meta: %v", err)
+	}
+	if len(meta) != 0 {
+		t.Fatalf("env group not purged on workspace delete: %+v", meta)
 	}
 }
 

@@ -23,7 +23,6 @@ import (
 	"maps"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -40,40 +39,12 @@ func realBatchBao(t *testing.T) *openBaoStore {
 	if addr == "" || token == "" {
 		testenv.Skip(t, "requires BEX_TEST_OPENBAO_KV_URL and BEX_TEST_OPENBAO_KV_TOKEN")
 	}
-	mount := fmt.Sprintf("batch-test-%d", time.Now().UnixNano())
 	httpClient := &http.Client{Timeout: 10 * time.Second, Transport: batchBaoTrace{t: t}}
-	mountURL := strings.TrimRight(addr, "/") + "/v1/sys/mounts/" + mount
-	bao := &openBaoStore{addr: strings.TrimRight(addr, "/"), mount: mount, client: httpClient, token: token, tokenExp: time.Now().Add(time.Hour)}
-	requestMount := func(method string, body []byte) {
-		t.Helper()
-		if err := bao.do(context.Background(), method, mountURL, token, body, nil); err != nil {
-			t.Fatal("test KV mount request failed")
-		}
+	bao, remove, err := newTokenOpenBaoStore(context.Background(), addr, token, httpClient)
+	if err != nil {
+		t.Fatalf("test KV store: %v", err)
 	}
-	requestMount(http.MethodPost, []byte(`{"type":"kv","options":{"version":"2"}}`))
-	t.Cleanup(func() { requestMount(http.MethodDelete, nil) })
-	// Enabling KV v2 returns before its initial version upgrade finishes.
-	// Check the read-only config endpoint before the first fixture CAS; never
-	// retry a tested write, which would hide real revision conflicts.
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		err := bao.do(ctx, http.MethodGet, bao.addr+"/v1/"+mount+"/config", token, nil, nil)
-		if err == nil {
-			break
-		}
-		var status *core.HTTPStatusError
-		if !errors.As(err, &status) || status.Code != http.StatusBadRequest {
-			t.Fatal("test KV mount readiness check failed")
-		}
-		select {
-		case <-ctx.Done():
-			t.Fatal("test KV mount upgrade did not finish")
-		case <-ticker.C:
-		}
-	}
+	t.Cleanup(remove)
 	return bao
 }
 
