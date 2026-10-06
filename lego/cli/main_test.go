@@ -906,6 +906,58 @@ func TestBexOptOutSuppressesLauncherNativeTelemetry(t *testing.T) {
 	}
 }
 
+// TestBexCompletionBranding: upstream registers the Postgres/Key Value children
+// after branding.Apply, and successful completion prints their Short without
+// HelpFunc/UsageFunc (w2/043). A real launcher subprocess exercises the actual
+// initialization order a preconstructed cobra tree would mask.
+func TestBexCompletionBranding(t *testing.T) {
+	values := []string{"create", "delete", "get", "list", "resume", "suspend", "update"}
+	for _, tc := range []struct{ selector, product string }{
+		{"postgres", "Bex Postgres"}, {"pg", "Bex Postgres"},
+		{"keyvalues", "Bex Key Value"}, {"kv", "Bex Key Value"},
+	} {
+		t.Run(tc.selector, func(t *testing.T) {
+			stdout, stderr := runBex(t, "__complete", tc.selector, "")
+			lines := strings.Split(strings.TrimSuffix(stdout, "\n"), "\n")
+			if len(lines) != len(values)+1 || lines[len(lines)-1] != ":4" {
+				t.Fatalf("completion protocol changed:\n%s", stdout)
+			}
+			for i, value := range values {
+				name, description, ok := strings.Cut(lines[i], "\t")
+				if !ok || name != value || !strings.Contains(description, tc.product) || strings.Contains(description, "Render") {
+					t.Errorf("line %d = %q, want %s with a %s description", i, lines[i], value, tc.product)
+				}
+			}
+			if stderr != "Completion ended with directive: ShellCompDirectiveNoFileComp\n" {
+				t.Errorf("stderr = %q", stderr)
+			}
+		})
+	}
+	stdout, _ := runBex(t, "__completeNoDesc", "pg", "")
+	if want := strings.Join(append(values, ":4"), "\n") + "\n"; stdout != want {
+		t.Errorf("__completeNoDesc = %q, want %q", stdout, want)
+	}
+}
+
+// runBex runs the launcher in a fresh process with update checks and analytics
+// off, failing the test on a non-zero exit.
+func runBex(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+	command := exec.Command(buildBex(), args...)
+	for _, item := range updateTestEnv(t.TempDir()) {
+		if !strings.HasPrefix(item, "BEX_") {
+			command.Env = append(command.Env, item)
+		}
+	}
+	command.Env = append(command.Env, "BEX_NO_UPDATE_NOTIFIER=1", "BEX_CLI_DISABLE_ANALYTICS=1")
+	var stdout, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &stdout, &stderr
+	if err := command.Run(); err != nil {
+		t.Fatalf("%v failed: %v\n%s", args, err, stderr.String())
+	}
+	return stdout.String(), stderr.String()
+}
+
 // Exercise the imported tree in fresh processes, including commands registered
 // after branding.Apply and flag descriptions rendered by upstream's template.
 func TestBexNestedHelp(t *testing.T) {
@@ -938,22 +990,11 @@ func TestBexNestedHelp(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.command, func(t *testing.T) {
-			command := exec.Command(buildBex(), append(strings.Fields(tc.command), "--help")...)
-			for _, item := range updateTestEnv(t.TempDir()) {
-				if !strings.HasPrefix(item, "BEX_") {
-					command.Env = append(command.Env, item)
-				}
+			stdout, stderr := runBex(t, append(strings.Fields(tc.command), "--help")...)
+			if stderr != "" {
+				t.Errorf("unexpected stderr: %s", stderr)
 			}
-			command.Env = append(command.Env, "BEX_NO_UPDATE_NOTIFIER=1", "BEX_CLI_DISABLE_ANALYTICS=1")
-			var stdout, stderr bytes.Buffer
-			command.Stdout, command.Stderr = &stdout, &stderr
-			if err := command.Run(); err != nil {
-				t.Fatalf("help failed: %v\n%s", err, stderr.String())
-			}
-			if stderr.Len() != 0 {
-				t.Errorf("unexpected stderr: %s", stderr.String())
-			}
-			text := strings.Join(strings.Fields(stdout.String()), " ")
+			text := strings.Join(strings.Fields(stdout), " ")
 			for _, want := range tc.want {
 				if !strings.Contains(text, want) {
 					t.Errorf("help missing %q:\n%s", want, text)
