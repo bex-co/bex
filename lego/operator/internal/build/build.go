@@ -704,18 +704,24 @@ func failureDetail(ctx context.Context, o Options, jobName string) (step, tail s
 // complete successfully: exit code: N`.
 var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process ("(?:[^"\\]|\\.)*") did not complete successfully: exit code: ([0-9]+)`)
 
-// buildkitNativeRunStep is BuildKit's progress header for the native RUN,
-// mount flags and all; BuildKit prints the exec form without re-escaping.
+// buildkitNativeRunStep is BuildKit's step header for the native RUN, mount
+// flags and all. The dockerfile frontend prints the exec form after its own
+// unquoting, so it is not JSON: quotes and backslashes come out bare and a
+// newline stays a literal \n, which a \n the command itself contains reads the
+// same as. Group 1 is the command as printed. BuildKit's error summary ends
+// the header with a colon (` > [stage-0 5/5] RUN …:`) and its progress log
+// does not; group 2 keeps it.
 var buildkitNativeRunStep = regexp.MustCompile(`(?m)RUN --mount=type=secret,id=render-env,target=` +
 	regexp.QuoteMeta(nativeEnvSecretPath) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
-	regexp.QuoteMeta(strings.ReplaceAll(nativeEnvLoaderPrefix, "\n", `\n`)) + `(.*)"\](:?)$`)
+	regexp.QuoteMeta(strings.ReplaceAll(nativeEnvLoaderPrefix, "\n", `\n`)) + `(.*)"\](:)?$`)
 
 // nativeCommandFailure rewrites BuildKit's verdict on a native build's RUN
 // into the tenant's own terms — "build command '<cmd>' exited with code N",
 // and the step header to "RUN build command '<cmd>'" — so the failure summary
-// names their command, not bex's env loader or secret mounts (w8/052).
-// The pre-w8/052 inline loader is recognized too, for builds generated before
-// the rollout. Any other process (a Dockerfile build's own RUN) is untouched.
+// names their command, not bex's env loader or secret mounts (w8/052). The
+// verdict quotes the process with Go %q, so it names the command exactly; the
+// header names it as BuildKit printed it. Any other process (a Dockerfile
+// build's own RUN) is untouched.
 func nativeCommandFailure(msg string) string {
 	msg = buildkitNativeRunStep.ReplaceAllString(msg, "RUN build command '$1'$2")
 	return buildkitProcessFailure.ReplaceAllStringFunc(msg, func(match string) string {
@@ -729,11 +735,6 @@ func nativeCommandFailure(msg string) string {
 			return match
 		}
 		command, ok := strings.CutPrefix(script, nativeEnvLoaderPrefix)
-		if !ok {
-			if _, after, inline := strings.Cut(script, "done < "+nativeEnvSecretPath+"\n"); inline && strings.HasPrefix(script, ": bex-native-env-rev=") {
-				command, ok = after, true
-			}
-		}
 		if !ok {
 			return match
 		}

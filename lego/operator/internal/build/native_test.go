@@ -689,10 +689,22 @@ ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-e
 		t.Errorf("error header = %q", got)
 	}
 
-	// The pre-w8/052 inline loader, as production reported it.
-	legacy := `error: failed to solve: process "/bin/bash -c : bex-native-env-rev=1\nwhile IFS= read -r record; do\n  [ -n \"$record\" ] || continue\n  export \"$key=${value%.}\"\ndone < /run/secrets/render-env\necho qa7-build-445879; exit 3" did not complete successfully: exit code: 3`
-	if got := nativeCommandFailure(legacy); got != "error: build command 'echo qa7-build-445879; exit 3' exited with code 3" {
-		t.Fatalf("legacy rewrite = %q", got)
+	// w5/077: captured from the pinned BuildKit (dockerfile:1.7) on a command
+	// with quotes, a backslash and a newline. The header is the frontend's own
+	// unquoting of the exec form, not JSON, so it names the command as printed;
+	// the verdict, Go %q, names it exactly. Neither keeps bex's internals.
+	captured := `#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\necho "done" && echo 'a\b' $HOME $BEX_UNSET_X\nexit 3"]
+#12 ERROR: process "/bin/bash -c . /opt/bex/load-env\necho \"done\" && echo 'a\\b' $HOME $BEX_UNSET_X\nexit 3" did not complete successfully: exit code: 3
+ > [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\necho "done" && echo 'a\b' $HOME $BEX_UNSET_X\nexit 3"]:
+error: failed to solve: process "/bin/bash -c . /opt/bex/load-env\necho \"done\" && echo 'a\\b' $HOME $BEX_UNSET_X\nexit 3" did not complete successfully: exit code: 3`
+	const printed = `echo "done" && echo 'a\b' $HOME $BEX_UNSET_X\nexit 3`
+	const exact = "echo \"done\" && echo 'a\\b' $HOME $BEX_UNSET_X\nexit 3"
+	want := "#12 [stage-0 5/5] RUN build command '" + printed + "'\n" +
+		"#12 ERROR: build command '" + exact + "' exited with code 3\n" +
+		" > [stage-0 5/5] RUN build command '" + printed + "':\n" +
+		"error: build command '" + exact + "' exited with code 3"
+	if got := nativeCommandFailure(captured); got != want {
+		t.Errorf("captured failure\n got %q\nwant %q", got, want)
 	}
 
 	// A Dockerfile build's own RUN, and anything unparseable, are untouched.
