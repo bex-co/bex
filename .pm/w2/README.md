@@ -15,7 +15,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m168** — [Email verification is a hard per-request gate](m168/README.md) (10 tasks) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
+- [x] **m168** — [Email verification is a hard per-request gate](done/m168/README.md) (10 tasks; **DONE 2026-10-06**, shipped `22180488a`; prod: REST/GraphQL/MCP 403, dashboard wall, OAuth refused; dev-2: refuse→verify→admit, consent deny path live) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
 
 - [x] **m167** — [Preserve every requested log text filter](done/m167/README.md) (6 tasks; **DONE 2026-10-02**, 17 local acceptance cases and full backend suite passed) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major silent omission across CLI, REST and MCP.
 
