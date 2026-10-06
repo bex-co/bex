@@ -12,6 +12,9 @@ on:
       - "lego/backend/**"
       - "lego/agent-image/**"
       - "lego/types/**"
+      # Read by internal/logs' shipper and access-log field guards.
+      - "deploy/gitops/base/log-shipper.yaml"
+      - "deploy/gitops/base/values/traefik.values.yaml"
       - "scripts/stripe-billing-*.sh"
       - "scripts/stripe_billing_*.py"
       - "scripts/test_stripe_billing_*.py"
