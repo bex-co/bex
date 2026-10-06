@@ -642,6 +642,9 @@ func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, own
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
 func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML, blueprintID string) (BlueprintValidation, error) {
+	// One memo for the whole validation: it writes nothing, so every sweep of
+	// the workspace's Apps (host claims, maintenance URIs) reads the same set.
+	ctx = withRequestMemo(ctx)
 	if blueprintID != "" {
 		if s.Blueprints == nil {
 			return BlueprintValidation{}, ErrBlueprintsUnavailable
@@ -713,6 +716,13 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 			msg := blueprintManifestCreateMessage(blueprintValidationMessage(planErr))
 			return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, msg)}}, nil
 		} else if available {
+			creates, createErr := s.previewStackCreates(ctx, st, actionPlan)
+			if createErr != nil {
+				return BlueprintValidation{}, createErr
+			}
+			if len(creates) > 0 {
+				return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, creates)}, nil
+			}
 			plan.Mode = "current_state"
 			plan.Actions = actionPlan.Actions
 			plan.TotalActions = len(actionPlan.Actions)
@@ -745,18 +755,20 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 	out := make([]BlueprintValidationError, 0, len(refused))
 	for _, problem := range refused {
 		msg := blueprintManifestCreateMessage(blueprintValidationMessage(problem.err))
-		resource, ok := blueprintIRResource(ir, problem.kind, problem.name)
-		if !ok {
-			out = append(out, blueprintValidationError(ir, msg))
-			continue
+		var entry BlueprintValidationError
+		if resource, ok := blueprintIRResource(ir, problem.kind, problem.name); ok {
+			pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
+			if i, ok := blueprintEnvVarIndex(resource, msg); ok {
+				pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
+			} else if i, ok := blueprintDomainIndex(resource, msg); ok {
+				pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
+			}
+			entry = blueprintLocatedError(source, msg, pointer)
+		} else {
+			entry = blueprintValidationError(ir, msg)
 		}
-		pointer := resource.SourcePath + strings.ReplaceAll(blueprintErrorField(msg), ".", "/")
-		if i, ok := blueprintEnvVarIndex(resource, msg); ok {
-			pointer = fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
-		} else if i, ok := blueprintDomainIndex(resource, msg); ok {
-			pointer = fmt.Sprintf("%s/domains/%d", resource.SourcePath, i)
-		}
-		out = append(out, blueprintLocatedError(source, msg, pointer))
+		entry.Code = blueprintRefusalCode(problem.err)
+		out = append(out, entry)
 	}
 	// Parsing visits resource kinds separately; present refusals in source order.
 	sort.SliceStable(out, func(i, j int) bool {
@@ -769,6 +781,16 @@ func blueprintResourceValidationErrors(source *BlueprintSource, ir BlueprintIR, 
 		return *out[i].Line < *out[j].Line
 	})
 	return out
+}
+
+// blueprintRefusalCode is the code the apply's own refusal carries, so
+// preview and apply name a refusal alike (w5/m126).
+func blueprintRefusalCode(err error) string {
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		return coded.Code
+	}
+	return ""
 }
 
 var blueprintEnvKeyRE = regexp.MustCompile(`envVars\["([^"]+)"\]`)

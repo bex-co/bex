@@ -388,7 +388,7 @@ func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID st
 // tenantApp mirrors what a store-managed create actually produces under
 // per-tenant namespaces (ADR043): the App lives in its own workspace's `<ws>`
 // namespace (== tenantID, store.WorkspaceNamespace) and carries LabelServiceName
-// alongside LabelTenant (service.go's createNewApp) — both are load-bearing:
+// alongside LabelTenant (service.go's planStackApp) — both are load-bearing:
 // List scopes InNamespace(tenantID), while GetApp's cluster-wide by-name
 // fallback keys on LabelServiceName regardless of namespace.
 func tenantApp(name, tenantID string) *appv1alpha1.App {
