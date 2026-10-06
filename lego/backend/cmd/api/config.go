@@ -84,6 +84,10 @@ type Config struct {
 	// Kratos-verified email. Secure by DEFAULT (true); BEX_REQUIRE_VERIFIED_INVITE_EMAIL=0
 	// only for local dev without a verification UX (docs/ADR024-members.md).
 	RequireVerifiedInviteEmail bool
+	// RequireVerifiedEmail gates every human caller on a Kratos-verified email
+	// (ADR075 D8 revision, w2/m168). Secure by DEFAULT (true);
+	// BEX_REQUIRE_VERIFIED_EMAIL=0 only for a local stack without a courier.
+	RequireVerifiedEmail bool
 
 	// Push transports (ADR048): validated at construction in main, which runs
 	// before any side effect.
@@ -296,8 +300,8 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.APIPublicURL = getenv("BEX_API_PUBLIC_URL")
 	cfg.SSHHost = getenv("BEX_SSH_HOST")
 	cfg.SandboxExecSecret = getenv("BEX_SANDBOX_EXEC_SECRET")
-	verifiedInvite := getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL")
-	cfg.RequireVerifiedInviteEmail = verifiedInvite != "0" && !strings.EqualFold(verifiedInvite, "false")
+	cfg.RequireVerifiedInviteEmail = defaultOnFlag(getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL"))
+	cfg.RequireVerifiedEmail = defaultOnFlag(getenv("BEX_REQUIRE_VERIFIED_EMAIL"))
 
 	// Push transports.
 	cfg.PushProvider = getenv("BEX_PUSH_PROVIDER")
@@ -353,7 +357,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.OpsWorkspace = getenv("BEX_OPS_WORKSPACE")
 	cfg.OpsRoleToken = getenv("BEX_OPS_ROLE_TOKEN")
 	if (cfg.OpsWorkspace == "") != (cfg.OpsRoleToken == "") {
-		p.warnf("WARNING: exactly one of BEX_OPS_WORKSPACE/BEX_OPS_ROLE_TOKEN is set — the internal ops-role verb (docs/ADR088-platform-observability-ui.md §4) stays disabled until both are; the ops-workspace lifecycle guards key on BEX_OPS_WORKSPACE alone")
+		p.warnf("WARNING: exactly one of BEX_OPS_WORKSPACE/BEX_OPS_ROLE_TOKEN is set — the internal ops-role verb (docs/ADR088-platform-observability-ui.md §4) stays disabled until both are (BEX_OPS_ROLE_TOKEN alone still mounts the identity-claims verb); the ops-workspace lifecycle guards key on BEX_OPS_WORKSPACE alone")
 	}
 
 	// Secrets.
@@ -764,4 +768,10 @@ func (p *parser) rateLimit(limitVar, limitDef, burstVar, burstDef string) (float
 		p.errorf("bad %s %q: %v", limitVar, raw, err)
 	}
 	return rpm, p.quietInt(burstVar, burstDef)
+}
+
+// defaultOnFlag parses a secure-by-default switch: only an explicit 0/false
+// turns it off.
+func defaultOnFlag(v string) bool {
+	return v != "0" && !strings.EqualFold(v, "false")
 }

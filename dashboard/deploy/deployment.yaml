@@ -96,6 +96,10 @@ spec:
               value: bex-obs
             - name: BEX_OPS_ROLE_URL
               value: http://bex-api.bex-system.svc:8091/internal/ops-role
+            # Verified-email consent gate (ADR075 D8 revision, w2/m168); fails
+            # closed, so every consent is rejected if this or the token is unset.
+            - name: BEX_IDENTITY_CLAIMS_URL
+              value: http://bex-api.bex-system.svc:8091/internal/identity-claims
             - name: BEX_OPS_ROLE_TOKEN
               valueFrom:
                 secretKeyRef:

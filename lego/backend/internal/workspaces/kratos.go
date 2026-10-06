@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // kratos.go is the IdentityReader implementation over Kratos' admin API
@@ -46,8 +47,13 @@ func (k *KratosIdentities) client() *http.Client {
 	if k.Client != nil {
 		return k.Client
 	}
-	return http.DefaultClient
+	return defaultKratosClient
 }
+
+// defaultKratosClient bounds every admin lookup: the auth gate now calls one on
+// the request path (w2/m168), where http.DefaultClient's missing timeout would
+// let a hung Kratos hold the introspection singleflight indefinitely.
+var defaultKratosClient = &http.Client{Timeout: 5 * time.Second}
 
 // kratosIdentity is the subset of Kratos' identity schema this reader needs:
 // the `email` trait plus the optional `name` display-name trait (w4/m25; ""
@@ -58,6 +64,12 @@ type kratosIdentity struct {
 		Email string `json:"email"`
 		Name  string `json:"name"`
 	} `json:"traits"`
+	// VerifiableAddresses carries Kratos' own verification state per address;
+	// only the entry matching the email trait decides EmailVerified.
+	VerifiableAddresses []struct {
+		Value    string `json:"value"`
+		Verified bool   `json:"verified"`
+	} `json:"verifiable_addresses"`
 	Credentials map[string]struct {
 		Type   string `json:"type"`
 		Config struct {
@@ -97,5 +109,14 @@ func (k *KratosIdentities) Lookup(ctx context.Context, subject string) (Identity
 	// (w4/020).
 	_, totp := id.Credentials["totp"]
 	webauthn := len(id.Credentials["webauthn"].Config.Credentials) > 0
-	return IdentityAttrs{Email: id.Traits.Email, Name: id.Traits.Name, MFAEnabled: totp || webauthn}, true
+	// Kratos lowercases verifiable address values, so compare case-insensitively
+	// against the trait as entered.
+	verified := false
+	for _, a := range id.VerifiableAddresses {
+		if a.Verified && strings.EqualFold(a.Value, id.Traits.Email) {
+			verified = true
+			break
+		}
+	}
+	return IdentityAttrs{Email: id.Traits.Email, EmailVerified: verified, Name: id.Traits.Name, MFAEnabled: totp || webauthn}, true
 }

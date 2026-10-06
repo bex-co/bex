@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   buildLoginRedirectHref,
+  handleEmailVerificationRequired,
   handleUnauthenticated,
   resetAuthRedirectForTests,
 } from "../auth-redirect";
-import { fetchSession, invalidateSessionCache } from "@/common/server-fn/session";
+import {
+  fetchSession,
+  invalidateSessionCache,
+} from "@/common/server-fn/session";
 
 vi.mock("@/common/server-fn/session", () => ({
   fetchSession: vi.fn(),
@@ -113,5 +117,64 @@ describe("handleUnauthenticated (w3/m80 t001)", () => {
 
     expect(mockFetchSession).not.toHaveBeenCalled();
     expect(assign).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleEmailVerificationRequired (ADR075 D8 revision, w2/m168)", () => {
+  let assign: ReturnType<typeof vi.fn>;
+
+  function at(pathname: string, search = "") {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { pathname, search, hash: "", assign },
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetAuthRedirectForTests();
+    assign = vi.fn();
+    at("/services/srv-1", "?tab=env");
+  });
+
+  afterEach(() => {
+    resetAuthRedirectForTests();
+  });
+
+  it("hard-navigates to the wall carrying the current href as next", () => {
+    handleEmailVerificationRequired();
+
+    expect(mockInvalidate).toHaveBeenCalled();
+    expect(assign).toHaveBeenCalledWith(
+      "/auth/verification?next=%2Fservices%2Fsrv-1%3Ftab%3Denv",
+    );
+    // The server's code is definitive: no session re-check.
+    expect(mockFetchSession).not.toHaveBeenCalled();
+  });
+
+  it("navigates once across a burst of refused queries", () => {
+    handleEmailVerificationRequired();
+    handleEmailVerificationRequired();
+    handleEmailVerificationRequired();
+
+    expect(assign).toHaveBeenCalledTimes(1);
+  });
+
+  it("never fires on an auth page (the wall itself lives under /auth/)", () => {
+    at("/auth/verification", "?next=%2F");
+
+    handleEmailVerificationRequired();
+
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("routes a refusal on a bare onboarding route to the wall too", () => {
+    at("/setup/payment");
+
+    handleEmailVerificationRequired();
+
+    expect(assign).toHaveBeenCalledWith(
+      "/auth/verification?next=%2Fsetup%2Fpayment",
+    );
   });
 });

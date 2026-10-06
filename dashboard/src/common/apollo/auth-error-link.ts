@@ -20,6 +20,52 @@ export function isUnauthenticatedError(error: unknown): boolean {
   return cause != null && cause !== error && isUnauthenticatedError(cause);
 }
 
+/** bex-api's refusal of a human whose email is not verified (ADR075 D8
+ * revision 2026-10-06, w2/m168). */
+const EMAIL_VERIFICATION_REQUIRED = "EMAIL_VERIFICATION_REQUIRED";
+
+/** True when a parsed bex-api error body (`{error,message,id,code,params}`)
+ * carries the verification refusal. */
+function bodyHasVerificationCode(bodyText: string): boolean {
+  try {
+    const body: unknown = JSON.parse(bodyText);
+    return (
+      typeof body === "object" &&
+      body !== null &&
+      (body as { code?: unknown }).code === EMAIL_VERIFICATION_REQUIRED
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether an error is bex-api's `EMAIL_VERIFICATION_REQUIRED` refusal. The
+ * auth middleware writes it as a REST-shaped 403 body BEFORE GraphQL runs, so
+ * on `/graphql` it arrives as a transport `ServerError` (status 403, JSON
+ * `bodyText`), not a GraphQL error. Keyed on the stable `code`, never the
+ * message, and unwraps a `cause` chain like `isUnauthenticatedError`.
+ */
+export function isEmailVerificationRequiredError(error: unknown): boolean {
+  if (ServerError.is(error)) {
+    return error.statusCode === 403 && bodyHasVerificationCode(error.bodyText);
+  }
+  const cause = (error as { cause?: unknown } | null)?.cause;
+  return (
+    cause != null && cause !== error && isEmailVerificationRequiredError(cause)
+  );
+}
+
+/** A GraphQL result that carries the code as `extensions.code` instead (the
+ * shape bex-api uses for errors raised inside resolvers). */
+function resultHasVerificationCode(result: {
+  errors?: ReadonlyArray<{ extensions?: Record<string, unknown> }>;
+}): boolean {
+  return (result.errors ?? []).some(
+    (item) => item.extensions?.["code"] === EMAIL_VERIFICATION_REQUIRED,
+  );
+}
+
 /**
  * Front-of-chain link that reacts to a 401 on an already-mounted page (w3/m80
  * t001). The only redirect-to-login path used to live in the root route's
@@ -33,14 +79,29 @@ export function isUnauthenticatedError(error: unknown): boolean {
  * session, and re-auth is the right response to either. Whether the session is
  * *truly* gone (vs. a transient bex-api auth-upstream blip) is `onUnauthorized`'s
  * call, not this link's.
+ *
+ * The same link routes bex-api's `EMAIL_VERIFICATION_REQUIRED` refusal to
+ * `onEmailVerificationRequired` (ADR075 D8 revision, w2/m168). This is the
+ * backstop behind `EmailVerificationGate` for the cases the session check
+ * cannot see: a bare route's queries, or a session that turned unverified
+ * after it was memoized. As with 401, the error still surfaces.
  */
-export function createAuthErrorLink(onUnauthorized: () => void): ApolloLink {
+export function createAuthErrorLink(
+  onUnauthorized: () => void,
+  onEmailVerificationRequired: () => void = () => {},
+): ApolloLink {
   return new ApolloLink((operation, forward) => {
     return new Observable((observer) => {
       const sub = forward(operation).subscribe({
-        next: (result) => observer.next(result),
+        next: (result) => {
+          if (resultHasVerificationCode(result)) onEmailVerificationRequired();
+          observer.next(result);
+        },
         error: (error: ErrorLike) => {
           if (isUnauthenticatedError(error)) onUnauthorized();
+          else if (isEmailVerificationRequiredError(error)) {
+            onEmailVerificationRequired();
+          }
           observer.error(error);
         },
         complete: () => observer.complete(),

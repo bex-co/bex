@@ -15,6 +15,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m168** — [Email verification is a hard per-request gate](m168/README.md) (10 tasks) ← promoted from w2/045 (forum.bex.co OIDC setup, 2026-10-05); user decision 2026-10-06 un-defers ADR075 Option B.
+
 - [x] **m167** — [Preserve every requested log text filter](done/m167/README.md) (6 tasks; **DONE 2026-10-02**, 17 local acceptance cases and full backend suite passed) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major silent omission across CLI, REST and MCP.
 
 - [x] **m166** — [Clearing a datastore allowlist must block external access](done/m166/README.md) (6 tasks; **DONE 2026-10-02**, local protocol acceptance; managed provisioning limitations recorded) ← live `$qa-find-bugs-cli` loop, 2026-10-02; major Key Value/Postgres network-intent mismatch.
