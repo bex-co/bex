@@ -24,8 +24,9 @@ const MASKED_DEPLOY_HOOK = "•••••••••••••••••�
 /**
  * Settings control for the service's secret Deploy Hook URL (w2/m33): masked by
  * default, reveal/copy on demand, and destructive rotation behind a warning.
- * Standalone card used for image-backed services; repo-backed services render
- * {@link DeployHookRows} inside the Build & Deploy "Deploy" card (w5/m52).
+ * Standalone card for a cron job, whose Deploy section is its schedule; every
+ * other type renders {@link DeployHookRows} inside its Deploy card (w5/m52,
+ * w5/m124).
  */
 export function DeployHookSection({ serviceId }: DeployHookSectionProps) {
   const { t } = useTranslations();
@@ -43,7 +44,7 @@ export function DeployHookSection({ serviceId }: DeployHookSectionProps) {
 }
 
 /** The Deploy Hook control's inner rows (URL + reveal/copy + rotate), without a
- *  Card wrapper — embedded in the Deploy card for repo-backed services (w5/m52). */
+ *  Card wrapper — embedded in the Deploy card (w5/m52). */
 export function DeployHookRows({ serviceId }: DeployHookSectionProps) {
   const { t } = useTranslations();
   const { url, loading, error, regenerate, regenerating } =

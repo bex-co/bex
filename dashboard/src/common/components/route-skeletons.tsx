@@ -26,6 +26,23 @@ import {
   SERVICE_TYPES,
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
+import {
+  autoSleepEligibleType,
+  planSleeps,
+} from "@/features/services/lib/idle-timeout";
+import {
+  isCronType,
+  isDockerBuild,
+  isStaticSiteType,
+  publiclyRoutable,
+  supportsMaxShutdownDelay,
+} from "@/features/services/lib/service-type";
+import {
+  navigableSettingsSections,
+  serviceSettingsSections,
+  type ServiceSettingsSectionId,
+  type SettingsSectionsService,
+} from "@/features/services/lib/settings-sections";
 
 /**
  * Route-pending frames for m79. Each exported component names one real page
@@ -364,7 +381,7 @@ function SettingsFormCardSkeleton({
   className?: string;
 }) {
   return (
-    <Card className={className}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="space-y-2">
         <Skeleton className="h-5 w-40" />
         {description ? <Skeleton className="h-4 w-4/5" /> : null}
@@ -386,7 +403,7 @@ function SettingsActionCardSkeleton({
   className?: string;
 }) {
   return (
-    <Card className={className}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="space-y-2">
         <Skeleton className="h-5 w-36" />
         {description ? <Skeleton className="h-4 w-4/5" /> : null}
@@ -1543,164 +1560,287 @@ export function ServiceEnvironmentSkeleton() {
   );
 }
 
-export function ServiceSettingsSkeleton({
-  staticSite = false,
-  sourceKind,
-}: {
-  staticSite?: boolean;
-  sourceKind?: "repo" | "image";
-}) {
+// A service whose Settings page is not known yet (its parent is still loading):
+// the common shapes, a repo-backed web service and a static site.
+const REPRESENTATIVE_SERVICE: SettingsSkeletonService = {
+  type: "web_service",
+  repo: "https://github.com/example/app",
+  runtime: "node",
+};
+const REPRESENTATIVE_STATIC_SITE: SettingsSkeletonService = {
+  type: "static_site",
+  repo: "https://github.com/example/site",
+};
+
+/** What the Settings skeleton reads from a service. */
+type SettingsSkeletonService = SettingsSectionsService & {
+  region?: string | null;
+  plan?: string | null;
+  suspended?: boolean;
+};
+
+// Each card reserves its ready card's exact height, measured on dev-5 at
+// narrow mobile (390px) and desktop (1440px) with an empty service (w5/m124),
+// so the swap does not move the page. The classes are literal so Tailwind
+// sees them; the skeleton rows inside are clipped to the card.
+type PlainSettingsSection =
+  | "static-site"
+  | "domains"
+  | "networking"
+  | "outbound-ips"
+  | "registry-credential"
+  | "notifications"
+  | "port"
+  | "health-checks"
+  | "maintenance"
+  | "deploy-hook";
+
+const SETTINGS_CARD: Record<
+  PlainSettingsSection,
+  { fields: number; height: string }
+> = {
+  "static-site": { fields: 2, height: "h-[342px] sm:h-[238px]" },
+  domains: { fields: 2, height: "h-[611px] sm:h-[447px]" },
+  networking: { fields: 1, height: "h-[302px] sm:h-[182px]" },
+  "outbound-ips": { fields: 1, height: "h-[198px] sm:h-[138px]" },
+  "registry-credential": { fields: 1, height: "h-[268px] sm:h-[232px]" },
+  notifications: { fields: 1, height: "h-[246px] sm:h-[186px]" },
+  port: { fields: 1, height: "h-[286px] sm:h-[206px]" },
+  "health-checks": { fields: 1, height: "h-[346px] sm:h-[226px]" },
+  maintenance: { fields: 2, height: "h-[346px] sm:h-[266px]" },
+  "deploy-hook": { fields: 1, height: "h-[262px] sm:h-[222px]" },
+};
+
+function isPlainSettingsSection(
+  section: ServiceSettingsSectionId,
+): section is PlainSettingsSection {
+  return section in SETTINGS_CARD;
+}
+
+/**
+ * General's height: its rows are the name, the instance type, the idle timeout
+ * (a free web service's select, a paid one's shorter always-on notice), the
+ * max shutdown delay (web, private, worker) and Region when the install sets
+ * one. Region is 128px at narrow mobile and 88px at desktop plus a 24px gap; a
+ * static site never shows it.
+ */
+function generalHeight(service: SettingsSkeletonService): string {
+  const region = Boolean(service.region) && !isStaticSiteType(service.type);
+  switch (service.type) {
+    case "web_service":
+      if (!planSleeps(service.plan ?? null)) {
+        return region ? "h-[698px] sm:h-[546px]" : "h-[546px] sm:h-[434px]";
+      }
+      return region ? "h-[782px] sm:h-[566px]" : "h-[630px] sm:h-[454px]";
+    case "cron_job":
+      return region ? "h-[498px] sm:h-[366px]" : "h-[346px] sm:h-[254px]";
+    case "static_site":
+      return "h-[246px] sm:h-[186px]";
+    default:
+      return region ? "h-[630px] sm:h-[478px]" : "h-[478px] sm:h-[366px]";
+  }
+}
+
+function generalRows(service: SettingsSkeletonService): number {
+  const { type } = service;
+  if (isStaticSiteType(type)) return 1;
+  return (
+    2 +
+    (autoSleepEligibleType(type) ? 1 : 0) +
+    (supportsMaxShutdownDelay(service) ? 1 : 0) +
+    (service.region ? 1 : 0)
+  );
+}
+
+/**
+ * Suspend's height: a running publicly routed service's card says what its
+ * visitors will see; a suspended service's card offers Resume, which a cron job
+ * words more briefly.
+ */
+function suspendHeight(service: SettingsSkeletonService): string {
+  if (service.suspended) {
+    return isCronType(service.type)
+      ? "h-[134px] sm:h-[134px]"
+      : "h-[154px] sm:h-[134px]";
+  }
+  return publiclyRoutable(service.type)
+    ? "h-[194px] sm:h-[154px]"
+    : "h-[174px] sm:h-[134px]";
+}
+
+function SettingsSourceCardSkeleton({ repo }: { repo: boolean }) {
   const { t } = useTranslations();
-  // An Existing Image service has no build; its ready page shows a one-row
-  // Deploy card (Docker Command) where a repo service shows Build & Deploy.
-  const imageSource = !staticSite && sourceKind === "image";
-  const sections = staticSite
-    ? [
-        "general",
-        "build",
-        "static-site",
-        "domains",
-        "networking",
-        "notifications",
-        "suspend",
-        "danger-zone",
-      ]
-    : [
-        "general",
-        "source",
-        imageSource ? "deploy" : "build",
-        "domains",
-        "networking",
-        "registry-credential",
-        "notifications",
-        "health-checks",
-        "maintenance",
-        "suspend",
-        "danger-zone",
-      ];
+  return (
+    <Card
+      className={cn(
+        repo ? "h-[272px] sm:h-[192px]" : "h-[232px] sm:h-[192px]",
+        "overflow-hidden",
+      )}
+    >
+      <CardHeader className="flex-row items-start justify-between gap-4">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-20" />
+          <CardDescription className="relative">
+            <span className="invisible">
+              {t(
+                repo
+                  ? "services.sourceRepoDescription"
+                  : "services.sourceImageDescription",
+              )}
+            </span>
+            <Skeleton className="absolute inset-0" />
+          </CardDescription>
+        </div>
+        <Skeleton className="h-8 w-full" />
+      </CardHeader>
+      <CardContent>
+        <div
+          className="grid gap-4 text-sm sm:grid-cols-2"
+          data-skeleton-region="source-fields"
+        >
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-4/5" />
+          </div>
+          {repo ? (
+            <div className="space-y-1">
+              <Skeleton className="h-5 w-14" />
+              <Skeleton className="h-5 w-2/5" />
+            </div>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The skeleton of one Settings section's card or cards. */
+function SettingsSectionSkeleton({
+  section,
+  service,
+}: {
+  section: ServiceSettingsSectionId;
+  service: SettingsSkeletonService;
+}) {
+  const { type } = service;
+  if (isPlainSettingsSection(section)) {
+    const card = SETTINGS_CARD[section];
+    return (
+      <SettingsFormCardSkeleton fields={card.fields} className={card.height} />
+    );
+  }
+  switch (section) {
+    case "general":
+      return (
+        <SettingsFormCardSkeleton
+          fields={generalRows(service)}
+          className={generalHeight(service)}
+        />
+      );
+    case "source":
+      return <SettingsSourceCardSkeleton repo={Boolean(service.repo)} />;
+    case "deploy":
+      // A cron job's schedule and command, or an image's Deploy card:
+      // Pre-Deploy, Docker Command and the Deploy Hook.
+      return isCronType(type) ? (
+        <SettingsFormCardSkeleton
+          fields={2}
+          className="h-[368px] sm:h-[328px]"
+        />
+      ) : (
+        <SettingsFormCardSkeleton
+          fields={3}
+          className="h-[650px] sm:h-[530px]"
+        />
+      );
+    case "build": {
+      // A cron job's Build card alone, with Auto-Deploy folded in. Every other
+      // build shows Build and Deploy cards; a Dockerfile build shows Dockerfile
+      // Path and a Docker Command where a native one shows Build and Start
+      // Commands.
+      if (isCronType(type)) {
+        return (
+          <SettingsFormCardSkeleton
+            fields={7}
+            className="h-[1078px] sm:h-[886px]"
+          />
+        );
+      }
+      const docker = isDockerBuild(service);
+      return (
+        <>
+          <SettingsFormCardSkeleton
+            fields={7}
+            className={
+              docker ? "h-[796px] sm:h-[664px]" : "h-[816px] sm:h-[664px]"
+            }
+          />
+          {isStaticSiteType(type) ? (
+            <SettingsFormCardSkeleton
+              fields={2}
+              className="h-[494px] sm:h-[394px]"
+            />
+          ) : (
+            <SettingsFormCardSkeleton
+              fields={4}
+              className={
+                docker ? "h-[802px] sm:h-[642px]" : "h-[800px] sm:h-[640px]"
+              }
+            />
+          )}
+        </>
+      );
+    }
+    case "suspend":
+      return <SettingsActionCardSkeleton className={suspendHeight(service)} />;
+    case "danger-zone":
+      return <SettingsActionCardSkeleton className="h-[154px] sm:h-[134px]" />;
+    default: {
+      const unrendered: never = section;
+      return unrendered;
+    }
+  }
+}
+
+/**
+ * A service's Settings page while it loads: one region per section of
+ * serviceSettingsSections, the list the page renders and its navigation links,
+ * so the three cannot drift apart (w5/m124). service is the parent route's
+ * service when it has loaded; otherwise the common shape of the route's base
+ * stands in (staticSite).
+ */
+export function ServiceSettingsSkeleton({
+  service,
+  staticSite = false,
+}: {
+  service?: SettingsSkeletonService;
+  staticSite?: boolean;
+}) {
+  const shape =
+    service ??
+    (staticSite ? REPRESENTATIVE_STATIC_SITE : REPRESENTATIVE_SERVICE);
+  const sections = serviceSettingsSections(shape);
 
   return (
     <PendingFrame
-      route={staticSite ? "static-settings" : "service-settings"}
+      route={
+        isStaticSiteType(shape.type) ? "static-settings" : "service-settings"
+      }
       className="service-settings-layout grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10"
     >
-      <ResponsiveSectionNavigationSkeleton count={sections.length} />
+      <ResponsiveSectionNavigationSkeleton
+        count={navigableSettingsSections(sections).length}
+      />
       <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
-        <Region name="general">
-          <SettingsFormCardSkeleton
-            fields={staticSite ? 1 : 5}
-            className={staticSite ? undefined : "min-h-[698px] sm:min-h-0"}
-          />
-        </Region>
-        {!staticSite ? (
-          <Region name="source">
-            <Card>
-              <CardHeader className="flex-row items-start justify-between gap-4">
-                <div className="space-y-1.5">
-                  <Skeleton className="h-4 w-20" />
-                  <CardDescription className="relative">
-                    <span className="invisible">
-                      {t(
-                        sourceKind === "image"
-                          ? "services.sourceImageDescription"
-                          : "services.sourceRepoDescription",
-                      )}
-                    </span>
-                    <Skeleton className="absolute inset-0" />
-                  </CardDescription>
-                </div>
-                <Skeleton className="h-8 w-full" />
-              </CardHeader>
-              <CardContent>
-                <div
-                  className="grid gap-4 text-sm sm:grid-cols-2"
-                  data-skeleton-region="source-fields"
-                >
-                  <div className="space-y-1">
-                    <Skeleton className="h-5 w-16" />
-                    <Skeleton className="h-5 w-4/5" />
-                  </div>
-                  {sourceKind !== "image" ? (
-                    <div className="space-y-1">
-                      <Skeleton className="h-5 w-14" />
-                      <Skeleton className="h-5 w-2/5" />
-                    </div>
-                  ) : null}
-                </div>
-              </CardContent>
-            </Card>
-          </Region>
-        ) : null}
-        {imageSource ? (
-          <Region name="deploy">
-            <SettingsFormCardSkeleton fields={1} />
-          </Region>
-        ) : (
+        {sections.map((section) => (
           <Region
-            name="build"
-            className={`space-y-6 ${staticSite ? "" : "min-h-[2018px] sm:min-h-0"}`}
+            key={section}
+            name={section}
+            className={section === "build" ? "space-y-6" : undefined}
           >
-            <SettingsFormCardSkeleton fields={staticSite ? 7 : 8} />
-            <SettingsFormCardSkeleton fields={staticSite ? 3 : 6} />
+            <SettingsSectionSkeleton section={section} service={shape} />
           </Region>
-        )}
-        {staticSite ? (
-          <Region name="static-site">
-            <SettingsFormCardSkeleton fields={2} />
-          </Region>
-        ) : null}
-        <Region name="domains">
-          <SettingsFormCardSkeleton
-            fields={2}
-            className={staticSite ? undefined : "min-h-[387px] sm:min-h-0"}
-          />
-        </Region>
-        <Region name="networking">
-          <SettingsFormCardSkeleton
-            fields={1}
-            className={staticSite ? undefined : "min-h-[302px] sm:min-h-0"}
-          />
-        </Region>
-        {!staticSite ? (
-          <Region name="registry-credential">
-            <SettingsFormCardSkeleton
-              fields={1}
-              className="min-h-[284px] sm:min-h-0"
-            />
-          </Region>
-        ) : null}
-        <Region name="notifications">
-          <SettingsFormCardSkeleton
-            fields={1}
-            className={staticSite ? undefined : "min-h-[246px] sm:min-h-0"}
-          />
-        </Region>
-        {!staticSite ? (
-          <>
-            <Region name="health-checks">
-              <SettingsFormCardSkeleton
-                fields={1}
-                className="min-h-[346px] sm:min-h-0"
-              />
-            </Region>
-            <Region name="maintenance">
-              <SettingsFormCardSkeleton
-                fields={2}
-                className="min-h-[346px] sm:min-h-0"
-              />
-            </Region>
-          </>
-        ) : null}
-        <Region name="suspend">
-          <SettingsActionCardSkeleton
-            className={staticSite ? undefined : "min-h-[194px] sm:min-h-0"}
-          />
-        </Region>
-        <Region name="danger-zone">
-          <SettingsActionCardSkeleton
-            className={staticSite ? undefined : "min-h-[154px] sm:min-h-0"}
-          />
-        </Region>
+        ))}
       </div>
     </PendingFrame>
   );

@@ -231,7 +231,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
 
   it("omits the branch region for a known image source", () => {
     const { container } = render(
-      <ServiceSettingsSkeleton sourceKind="image" />,
+      <ServiceSettingsSkeleton service={{ type: "web_service", repo: null }} />,
     );
     const fields = container.querySelector(
       '[data-skeleton-region="source-fields"]',
@@ -247,9 +247,9 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(fields?.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(2);
   });
 
-  it("previews an image service's one-row Deploy card, not Build & Deploy", () => {
+  it("previews an image service's Deploy card, not Build & Deploy", () => {
     const { container } = render(
-      <ServiceSettingsSkeleton sourceKind="image" />,
+      <ServiceSettingsSkeleton service={{ type: "web_service", repo: null }} />,
     );
     expect(
       container.querySelector('[data-skeleton-region="build"]'),
@@ -259,7 +259,9 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     ).not.toBeNull();
 
     const { container: repo } = render(
-      <ServiceSettingsSkeleton sourceKind="repo" />,
+      <ServiceSettingsSkeleton
+        service={{ type: "web_service", repo: "https://github.com/acme/app" }}
+      />,
     );
     expect(repo.querySelector('[data-skeleton-region="build"]')).not.toBeNull();
     expect(repo.querySelector('[data-skeleton-region="deploy"]')).toBeNull();
