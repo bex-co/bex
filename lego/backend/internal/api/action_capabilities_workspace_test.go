@@ -36,30 +36,42 @@ func (c actionWorkspaceChecker) Check(_ context.Context, _, relation, object str
 		(object == core.WorkspaceObject("tea-b") && (relation == core.RelCanView || c.sharedAllowed)), nil
 }
 
+// TestActionCapabilitiesGraphQLWorkspaceSelection pins every per-resource
+// action projection (gqlutil.OwnedIDVerb, ADR087): an explicit ownerId binds
+// the acting workspace, and without one the projection stays on the caller's
+// default rather than following the resource (w4/m172).
 func TestActionCapabilitiesGraphQLWorkspaceSelection(t *testing.T) {
 	home, shared := ownedApp("home", "tea-a"), ownedApp("shared", "tea-b")
 	home.Labels[core.LabelAppID], shared.Labels[core.LabelAppID] = ids.New(ids.Service), ids.New(ids.Service)
+	homeDB, sharedDB := ownedDB(ids.New(ids.Postgres), "tea-a"), ownedDB(ids.New(ids.Postgres), "tea-b")
+	homeKV, sharedKV := ownedKV(ids.New(ids.KeyValue), "tea-a"), ownedKV(ids.New(ids.KeyValue), "tea-b")
 	base := &core.Base{
-		Client: fakeClient(home, shared), Namespace: "default",
+		Client: fakeClient(home, shared, homeDB, sharedDB, homeKV, sharedKV), Namespace: "default",
 		Workspace: twoWorkspaceResolver{}, Authz: actionWorkspaceChecker{},
 	}
 	handler, _ := serverWith(t, base, Deps{DeployStore: &conformDeployStore{}})
-	for _, projection := range []struct{ field, key, action string }{
-		{"serverActions", "id", core.ActionSuspend},
-		{"deployActions", "serviceId", core.ActionDeploy},
+	for _, projection := range []struct {
+		field, key, action string
+		home, shared       string
+		kind               ids.Kind
+	}{
+		{"serverActions", "id", core.ActionSuspend, home.Labels[core.LabelAppID], shared.Labels[core.LabelAppID], ids.Service},
+		{"deployActions", "serviceId", core.ActionDeploy, home.Labels[core.LabelAppID], shared.Labels[core.LabelAppID], ids.Service},
+		{"databaseActions", "id", core.ActionSuspend, homeDB.Name, sharedDB.Name, ids.Postgres},
+		{"keyValueActions", "id", core.ActionSuspend, homeKV.Name, sharedKV.Name, ids.KeyValue},
 	} {
 		t.Run(projection.field, func(t *testing.T) {
 			for _, tc := range []struct {
 				name, target, owner, outcome, wantError string
 				sharedAllowed                           bool
 			}{
-				{name: "omitted owner keeps personal default", target: home.Labels[core.LabelAppID], outcome: core.DecisionAllowed},
-				{name: "selected shared viewer", target: shared.Labels[core.LabelAppID], owner: "tea-b", outcome: core.DecisionDenied},
-				{name: "selected shared operator", target: shared.Labels[core.LabelAppID], owner: "tea-b", outcome: core.DecisionAllowed, sharedAllowed: true},
-				{name: "omitted owner cannot imply shared workspace", target: shared.Labels[core.LabelAppID], wantError: core.ErrNotFound.Error()},
-				{name: "wrong selected workspace cannot read accessible target", target: shared.Labels[core.LabelAppID], owner: "tea-a", wantError: core.ErrForbidden.Error()},
-				{name: "missing target has same absence", target: ids.New(ids.Service), owner: "tea-a", wantError: core.ErrNotFound.Error()},
-				{name: "nonmember selection never falls back", target: home.Labels[core.LabelAppID], owner: "tea-foreign", wantError: core.ErrForbidden.Error()},
+				{name: "omitted owner keeps personal default", target: projection.home, outcome: core.DecisionAllowed},
+				{name: "selected shared viewer", target: projection.shared, owner: "tea-b", outcome: core.DecisionDenied},
+				{name: "selected shared operator", target: projection.shared, owner: "tea-b", outcome: core.DecisionAllowed, sharedAllowed: true},
+				{name: "omitted owner cannot imply shared workspace", target: projection.shared, wantError: core.ErrNotFound.Error()},
+				{name: "wrong selected workspace cannot read accessible target", target: projection.shared, owner: "tea-a", wantError: core.ErrForbidden.Error()},
+				{name: "missing target has same absence", target: ids.New(projection.kind), owner: "tea-a", wantError: core.ErrNotFound.Error()},
+				{name: "nonmember selection never falls back", target: projection.home, owner: "tea-foreign", wantError: core.ErrForbidden.Error()},
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					base.Authz = actionWorkspaceChecker{sharedAllowed: tc.sharedAllowed}

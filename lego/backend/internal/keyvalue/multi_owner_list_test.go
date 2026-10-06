@@ -17,7 +17,6 @@ limitations under the License.
 package keyvalue
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -26,23 +25,11 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w1/m168: Render's GET /v1/key-value takes ownerId as an array.
-
-type memberships map[string][]string
-
-func (m memberships) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	if ws := m[id.Subject]; len(ws) > 0 {
-		return ws[0], true
-	}
-	return "", false
-}
-
-func (m memberships) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	return slices.Contains(m[id.Subject], tenantID), nil
-}
 
 func tenantKeyValue(id, tenant string) *appv1alpha1.KeyValue {
 	kv := sampleKeyValue(id)
@@ -58,7 +45,7 @@ func TestKeyValueListHonorsOwnerArrays(t *testing.T) {
 		tenantKeyValue("red-cccccccccccccccccccc", "tea-3"),
 	)
 	svc.Authz = &fakeChecker{allow: true}
-	svc.Workspace = memberships{"user-a": {"tea-1", "tea-2"}}
+	svc.Workspace = coretest.Members{"user-a": {"tea-1", "tea-2"}}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	list := func(query string) (int, []string, string) {

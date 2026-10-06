@@ -18,10 +18,8 @@ package notifications
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"strings"
 	"time"
 
@@ -128,14 +126,10 @@ func (s *Service) MarkPushNotificationRead(ctx context.Context, eventID string) 
 	kind, ok := ids.KindOf(eventID)
 	validID := ok && kind == ids.Event
 	if validID && s.Store != nil {
-		scoped, err := s.scopeNotification(ctx, eventID)
-		if errors.Is(err, errNotificationNotFound) {
-			return false, nil
-		}
-		if err != nil {
+		var err error
+		if ctx, err = s.scopeNotification(ctx, eventID); err != nil {
 			return false, err
 		}
-		ctx = scoped
 	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return false, err
@@ -153,42 +147,19 @@ func (s *Service) MarkPushNotificationRead(ctx context.Context, eventID string) 
 	return s.Store.MarkOwnPushNotificationRead(ctx, tenantID, subject, eventID, s.Now().UTC())
 }
 
-// errNotificationNotFound is ScopeByID's not-found for mark-read: the verb
-// answers it as read=false, exactly like an unknown id.
-var errNotificationNotFound = errors.New("notification not found")
-
 // scopeNotification routes an unscoped mark-read to the workspace whose inbox
 // holds the caller's own item. The routing read is keyed by the caller's
-// subject, so it never consults another member's rows; ScopeByID still
-// re-checks membership. One (subject, event id) can sit in several of the
-// caller's inboxes, so the choice is deterministic: the caller's default
-// workspace when it is one of them (today's answer), else the first by
-// workspace id.
+// subject, so it never consults another member's rows, and those rows go with
+// the membership (migration 0063). One (subject, event id) can sit in several
+// of the caller's inboxes; core.Base.ScopeByID chooses among them.
 func (s *Service) scopeNotification(ctx context.Context, eventID string) (context.Context, error) {
 	identity, ok := core.IdentityFrom(ctx)
 	if !ok || strings.TrimSpace(identity.Subject) == "" {
 		return ctx, nil
 	}
-	owner := func(ctx context.Context) (string, bool, error) {
-		tenants, err := s.Store.PushNotificationWorkspaces(ctx, identity.Subject, eventID)
-		if errors.Is(err, store.ErrNotFound) || (err == nil && len(tenants) == 0) {
-			return "", false, nil
-		}
-		if err != nil {
-			return "", false, err
-		}
-		if def, ok := s.Workspace.Tenant(ctx, identity); ok && slices.Contains(tenants, def) {
-			return def, true, nil
-		}
-		return tenants[0], true, nil
-	}
-	// The caller's own notification in a workspace they have left: unreadable,
-	// so mark-read keeps its read=false answer rather than a 403.
-	ctx, err := s.ScopeByID(ctx, "", owner)
-	if errors.Is(err, core.ErrForbidden) {
-		return ctx, errNotificationNotFound
-	}
-	return ctx, err
+	return s.ScopeByID(ctx, "", func(ctx context.Context) ([]string, error) {
+		return s.Store.PushNotificationWorkspaces(ctx, identity.Subject, eventID)
+	})
 }
 
 // inboxExclusions probes the caller's current relations (fail-closed

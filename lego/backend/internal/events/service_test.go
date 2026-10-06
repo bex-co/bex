@@ -81,6 +81,12 @@ func (f *fakeStore) GetServiceEvent(_ context.Context, workspaceID, eventID stri
 	return f.lookup, f.lookupErr
 }
 
+// ServiceEventWorkspaces records no routing: these tests scope by the
+// caller's own workspace.
+func (f *fakeStore) ServiceEventWorkspaces(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
 func newService(st EventStore, objs ...client.Object) *Service {
 	return &Service{Base: &core.Base{Client: fakeClient(objs...), Namespace: "default", Clock: func() time.Time { return now }}, Store: st}
 }

@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 func TestInitialBlueprintGroupsRefuseUnauthorizedComposition(t *testing.T) {
@@ -86,7 +87,7 @@ func TestInitialBlueprintGroupsKeepWorkspaceAndEnvironmentBoundaries(t *testing.
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := newService(newFakeStore())
-			svc.Workspace = multiWorkspace{"owner": {"tea-a", "tea-b"}}
+			svc.Workspace = coretest.Members{"owner": {"tea-a", "tea-b"}}
 			svc.EnvironmentWorkspace = func(context.Context, string) (string, error) { return tc.groupWorkspace, nil }
 			group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", OwnerID: tc.groupWorkspace, EnvironmentID: tc.groupEnvironment})
 			if err != nil {
@@ -273,7 +274,7 @@ func TestInitialBlueprintGroupsRollbackPostCommitLocatorFailure(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
 	st := &initialMembershipFailureStore{fakeStore: newFakeStore(), failure: errors.New("locator write failed")}
 	svc := newService(st)
-	svc.Workspace = multiWorkspace{"owner": {"tea-a"}}
+	svc.Workspace = coretest.Members{"owner": {"tea-a"}}
 	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
 	if err != nil {
 		t.Fatal(err)

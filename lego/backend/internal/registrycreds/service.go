@@ -166,17 +166,14 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]CredentialView, e
 
 // scopeCredential resolves the workspace a by-id credential verb acts in: the
 // one the adapter named from `ownerId`, else the credential's own (w4/m172), so
-// a credential in a non-default workspace is reachable by id alone. A
-// non-member's id answers the same 404 as a missing one.
+// a credential in a non-default workspace is reachable by id alone. A caller
+// outside it gets the verb's own 403 (ADR072's by-id matrix).
 func (s *Service) scopeCredential(ctx context.Context, id string) (context.Context, error) {
 	var owner core.ResourceOwner
 	if s.Store != nil {
-		owner = func(ctx context.Context) (string, bool, error) {
+		owner = func(ctx context.Context) ([]string, error) {
 			c, err := s.Store.GetRegistryCredentialByID(ctx, id)
-			if errors.Is(err, store.ErrNotFound) {
-				return "", false, nil
-			}
-			return c.WorkspaceID, err == nil, err
+			return store.OwnerWorkspaces(c.WorkspaceID, err)
 		}
 	}
 	return s.ScopeByID(ctx, "", owner)

@@ -32,6 +32,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 // fakeKeyStore is the in-memory APIKeyStore for verb/adapter tests.
@@ -184,29 +185,6 @@ func TestAccountTeardownUnbindsOwnedKeysBeforeDelete(t *testing.T) {
 	if _, ok := keys.keys[other.ID]; !ok {
 		t.Fatal("another subject's key was deleted")
 	}
-}
-
-// multiWorkspace is a core.WorkspaceResolver for a caller who belongs to
-// MULTIPLE workspaces (w6/m18's List/Revoke scoping tests need this — plain
-// fakeWorkspace only ever resolves one tenant per identity). memberships[0] is
-// the default (what Tenant returns absent an explicit core.WithWorkspace).
-type multiWorkspace map[string][]string
-
-func (f multiWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	m := f[id.Subject]
-	if len(m) == 0 {
-		return "", false
-	}
-	return m[0], true
-}
-
-func (f multiWorkspace) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	for _, tid := range f[id.Subject] {
-		if tid == tenantID {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // --- Key→tenant binding (w1/m9) ---
@@ -424,7 +402,7 @@ func TestListAPIKeysScopedToTargetWorkspace(t *testing.T) {
 	store := newFakeKeyStore()
 	binder := newFakeBinder()
 	svc := &Service{
-		Base:    &core.Base{Namespace: "default", Workspace: multiWorkspace{"identity-a": {"tea-a", "tea-b"}}},
+		Base:    &core.Base{Namespace: "default", Workspace: coretest.Members{"identity-a": {"tea-a", "tea-b"}}},
 		APIKeys: store,
 		Binding: binder,
 	}
@@ -465,7 +443,7 @@ func TestRevokeAPIKeyRefusesCrossWorkspaceTarget(t *testing.T) {
 	store := newFakeKeyStore()
 	binder := newFakeBinder()
 	svc := &Service{
-		Base:    &core.Base{Namespace: "default", Workspace: multiWorkspace{"identity-a": {"tea-a", "tea-b"}}},
+		Base:    &core.Base{Namespace: "default", Workspace: coretest.Members{"identity-a": {"tea-a", "tea-b"}}},
 		APIKeys: store,
 		Binding: binder,
 	}
@@ -497,7 +475,7 @@ func TestRevokeAPIKeyRefusesUnboundKey(t *testing.T) {
 	store := newFakeKeyStore()
 	binder := newFakeBinder()
 	svc := &Service{
-		Base:    &core.Base{Namespace: "default", Workspace: multiWorkspace{"identity-a": {"tea-a", "tea-b"}}},
+		Base:    &core.Base{Namespace: "default", Workspace: coretest.Members{"identity-a": {"tea-a", "tea-b"}}},
 		APIKeys: store,
 		Binding: binder,
 	}
@@ -517,18 +495,27 @@ func TestRevokeAPIKeyRefusesUnboundKey(t *testing.T) {
 	}
 }
 
+// countingAudit counts the audit rows the verbs write.
+type countingAudit struct{ rows int }
+
+func (a *countingAudit) Record(context.Context, core.AuditEvent) error {
+	a.rows++
+	return nil
+}
+
 // w4/194: with no ownerId, a bound key is revoked in its OWN workspace, not
 // the caller's default — live, a member of three workspaces got a bare 403 for
 // a key minted in their second one and the key stayed usable.
 func TestRevokeAPIKeyWithoutOwnerResolvesKeyWorkspace(t *testing.T) {
 	store := newFakeKeyStore()
 	binder := newFakeBinder()
+	audit := &countingAudit{}
 	svc := &Service{
-		Base: &core.Base{Namespace: "default", Workspace: multiWorkspace{
+		Base: &core.Base{Namespace: "default", Workspace: coretest.Members{
 			"identity-a": {"tea-a", "tea-b"},
 			"identity-c": {"tea-c"},
 			"viewer-b":   {"tea-b"},
-		}, Authz: denySubjectChecker{"viewer-b"}},
+		}, Authz: denySubjectChecker{"viewer-b"}, Audit: audit},
 		APIKeys: store,
 		Binding: binder,
 	}
@@ -540,17 +527,19 @@ func TestRevokeAPIKeyWithoutOwnerResolvesKeyWorkspace(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	// A non-member sees an unknown id, never a Forbidden that confirms the key.
-	if err := svc.RevokeAPIKey(outsider, "", keyB.ID); !errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
-		t.Errorf("non-member revoke: want ErrNotFound, got %v", err)
+	// ADR072's by-id matrix (w5/m115): a key outside the caller's reach is a
+	// 403, written once to the audit log; only an unknown id is a 404.
+	audit.rows = 0
+	if err := svc.RevokeAPIKey(outsider, "", keyB.ID); !errors.Is(err, core.ErrForbidden) || audit.rows != 1 {
+		t.Errorf("non-member revoke = %v with %d audit rows, want ErrForbidden recorded once", err, audit.rows)
 	}
 	if err := svc.RevokeAPIKey(outsider, "", "no-such-key"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("non-member revoke of unknown id: want ErrNotFound, got %v", err)
 	}
-	// A member without can_manage_keys is refused the same way.
+	// A member without can_manage_keys is told so, not that the key is missing.
 	viewer := core.WithIdentity(context.Background(), core.Identity{Subject: "viewer-b", Method: "session"})
-	if err := svc.RevokeAPIKey(viewer, "", keyB.ID); !errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
-		t.Errorf("viewer revoke: want ErrNotFound, got %v", err)
+	if err := svc.RevokeAPIKey(viewer, "", keyB.ID); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("viewer revoke: want ErrForbidden, got %v", err)
 	}
 	if _, ok := store.keys[keyB.ID]; !ok {
 		t.Fatal("refused revoke must not delete the key")
@@ -561,8 +550,12 @@ func TestRevokeAPIKeyWithoutOwnerResolvesKeyWorkspace(t *testing.T) {
 		t.Errorf("named mismatched workspace: want ErrForbidden, got %v", err)
 	}
 
+	audit.rows = 0
 	if err := svc.RevokeAPIKey(dana, "", keyB.ID); err != nil {
 		t.Fatalf("member revoke without ownerId: %v", err)
+	}
+	if audit.rows != 1 {
+		t.Errorf("ownerless revoke wrote %d audit rows, want exactly one", audit.rows)
 	}
 	if _, ok := store.keys[keyB.ID]; ok {
 		t.Error("key still present after revoke")

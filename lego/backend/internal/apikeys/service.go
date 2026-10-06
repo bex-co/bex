@@ -490,32 +490,26 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 	return nil
 }
 
-// revokeScope picks the workspace RevokeAPIKey authorizes in (w4/194). A named
-// workspace (ownerId or the request's own) decides, as before. Otherwise a
-// bound key resolves its OWN workspace — not the caller's default — so a
-// multi-workspace member revokes a key without naming where it lives, as env
-// groups and Blueprints (w4/m169) already do. A caller who may not manage keys
-// there gets the same not-found as an unknown id: Forbidden would confirm the
-// key exists in a workspace they cannot see.
+// revokeScope picks the workspace RevokeAPIKey authorizes in (w4/194) through
+// core.Base.ScopeByID (ADR072's by-id matrix): a named workspace (ownerId or
+// the request's own) decides; otherwise a bound key resolves its OWN workspace
+// — not the caller's default — so a multi-workspace member revokes a key
+// without naming where it lives. It only routes: RevokeAPIKey's one Authorize
+// then answers a caller outside that workspace, or one who may not manage keys
+// there, with 403, audited once (w5/m115). A Hydra client id is a random UUID,
+// as unguessable as a typed bex id, so the 403 confirms nothing a caller could
+// probe for; an unbound or unknown key stays a 404.
 func (s *Service) revokeScope(ctx context.Context, ownerID, id string) (context.Context, error) {
-	if ownerID != "" {
-		return core.WithWorkspace(ctx, ownerID), nil
-	}
-	if _, named := core.WorkspaceFrom(ctx); named || s.Binding == nil {
-		return ctx, nil
-	}
-	owner, ok := s.Binding.TenantForKey(ctx, id)
-	if !ok {
-		return ctx, nil
-	}
-	scoped := core.WithWorkspace(ctx, owner)
-	if err := s.Authorize(scoped, core.RelCanManageKeys); err != nil {
-		if errors.Is(err, core.ErrForbidden) {
-			return ctx, core.ErrNotFound
+	var owner core.ResourceOwner
+	if s.Binding != nil {
+		owner = func(ctx context.Context) ([]string, error) {
+			if workspace, ok := s.Binding.TenantForKey(ctx, id); ok {
+				return []string{workspace}, nil
+			}
+			return nil, nil
 		}
-		return ctx, err
 	}
-	return scoped, nil
+	return s.ScopeByID(ctx, ownerID, owner)
 }
 
 // hydraAPIKeys implements APIKeyStore over Hydra's admin API.

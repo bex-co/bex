@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -32,7 +33,7 @@ func byIDInboxFixture(t *testing.T) (*Service, *fakeStore, string, string) {
 	t.Helper()
 	now := time.Date(2026, 10, 4, 12, 0, 0, 0, time.UTC)
 	st := newFakeStore()
-	svc := newTestService(st, multiWorkspace{"alice": {"tea-a", "tea-b"}, "mallory": {"tea-b"}}, nil, nil)
+	svc := newTestService(st, coretest.Members{"alice": {"tea-a", "tea-b"}, "mallory": {"tea-b"}}, nil, nil)
 	svc.Clock = func() time.Time { return now }
 	aliceB := ids.Derive(ids.Event, "byid-alice-b")
 	malloryB := ids.Derive(ids.Event, "byid-mallory-b")
@@ -45,6 +46,9 @@ func byIDInboxFixture(t *testing.T) (*Service, *fakeStore, string, string) {
 	}
 	st.push[[2]string{"tea-b", "alice"}] = []store.PushNotification{item("tea-b", "alice", aliceB)}
 	st.push[[2]string{"tea-b", "mallory"}] = []store.PushNotification{item("tea-b", "mallory", malloryB)}
+	// One unread item in alice's default inbox, so a routed read that strays
+	// into tea-a is observable.
+	st.push[[2]string{"tea-a", "alice"}] = []store.PushNotification{item("tea-a", "alice", ids.Derive(ids.Event, "byid-alice-a"))}
 	return svc, st, aliceB, malloryB
 }
 
@@ -91,9 +95,9 @@ func TestMarkReadRoutesToTheNotificationsOwnWorkspace(t *testing.T) {
 		t.Fatal("tea-b item still unread")
 	}
 	// The default workspace's inbox is untouched by the routed read.
-	count, err := svc.UnreadPushNotificationCount(core.WithWorkspace(alice, "tea-b"))
-	if err != nil || count != 0 {
-		t.Fatalf("tea-b unread = %d, %v; want 0", count, err)
+	count, err := svc.UnreadPushNotificationCount(core.WithWorkspace(alice, "tea-a"))
+	if err != nil || count != 1 {
+		t.Fatalf("tea-a unread = %d, %v; want its one item still unread", count, err)
 	}
 }
 

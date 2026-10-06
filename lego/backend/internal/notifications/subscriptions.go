@@ -135,7 +135,17 @@ func (s *Service) ListDeviceSubscriptions(ctx context.Context) ([]DeviceSubscrip
 
 // UnregisterDeviceSubscription idempotently revokes one caller-owned device.
 // A foreign or unknown id returns false without revealing which case it was.
+// With no ownerId it acts in the workspace the caller registered the device
+// in (w5/m115), as mark-read does for an inbox item (w4/m172), instead of
+// answering false for a device registered outside their default.
 func (s *Service) UnregisterDeviceSubscription(ctx context.Context, deviceID string) (bool, error) {
+	deviceID = strings.TrimSpace(deviceID)
+	if s.Store != nil && deviceIDPattern.MatchString(deviceID) {
+		var err error
+		if ctx, err = s.scopeDevice(ctx, deviceID); err != nil {
+			return false, err
+		}
+	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return false, err
 	}
@@ -146,7 +156,6 @@ func (s *Service) UnregisterDeviceSubscription(ctx context.Context, deviceID str
 	if err != nil {
 		return false, err
 	}
-	deviceID = strings.TrimSpace(deviceID)
 	if !deviceIDPattern.MatchString(deviceID) {
 		return false, fmt.Errorf("%w: deviceId must be a safe opaque identifier", core.ErrBadRequest)
 	}
@@ -178,6 +187,20 @@ func (s *Service) RevokeDeviceSubscriptions(ctx context.Context) (int64, error) 
 	}
 	s.recordDeviceAudit(ctx, tenantID, auditRevokeDevices, "all")
 	return count, nil
+}
+
+// scopeDevice routes an unscoped unregister to the workspace holding the
+// caller's own device. The routing read is keyed by the caller's subject, so
+// it never consults another member's devices; core.Base.ScopeByID chooses
+// among several.
+func (s *Service) scopeDevice(ctx context.Context, deviceID string) (context.Context, error) {
+	identity, ok := core.IdentityFrom(ctx)
+	if !ok || strings.TrimSpace(identity.Subject) == "" {
+		return ctx, nil
+	}
+	return s.ScopeByID(ctx, "", func(ctx context.Context) ([]string, error) {
+		return s.Store.DevicePushSubscriptionWorkspaces(ctx, identity.Subject, deviceID)
+	})
 }
 
 func (s *Service) deviceOwner(ctx context.Context) (tenantID, subject string, err error) {

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -235,18 +236,6 @@ func (f *fakeEndpointStore) QueueWebhookResend(_ context.Context, request store.
 	return attempt, nil
 }
 
-// fakeWorkspaceResolver resolves every caller to a fixed tenant, for the
-// cross-workspace scoping test.
-type fakeWorkspaceResolver struct{ tenant string }
-
-func (f fakeWorkspaceResolver) Tenant(context.Context, core.Identity) (string, bool) {
-	return f.tenant, true
-}
-
-func (f fakeWorkspaceResolver) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
-	return tenantID == f.tenant, nil
-}
-
 func newTestService() (*Service, *fakeEndpointStore) {
 	st := newFakeEndpointStore()
 	return &Service{Base: &core.Base{Namespace: "default"}, Store: st}, st
@@ -327,10 +316,10 @@ func TestDestinationURLRedactedForNonAdminReaders(t *testing.T) {
 	const exact = "https://hooks.slack.com/services/T000/B000/0123456789abcdef"
 	st := newFakeEndpointStore()
 	viewer := &Service{Base: &core.Base{
-		Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+		Namespace: "default", Workspace: coretest.Workspaces{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
 	}, Store: st}
 	admin := &Service{Base: &core.Base{
-		Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+		Namespace: "default", Workspace: coretest.Workspaces{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
 	}, Store: st}
 	adminCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-admin", Method: "session"})
 	viewerCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-viewer", Method: "session"})
@@ -374,7 +363,7 @@ func TestDestinationURLRedactedForReadOnlyOAuthAdmin(t *testing.T) {
 	const redacted = "https://hooks.slack.com/…"
 	st := newFakeEndpointStore()
 	s := &Service{Base: &core.Base{
-		Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+		Namespace: "default", Workspace: coretest.Workspaces{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
 	}, Store: st}
 	oauthAdmin := func(scopes string) context.Context {
 		return core.WithIdentity(context.Background(), core.Identity{
@@ -749,8 +738,8 @@ func TestCreateDeduplicatesEventTypesInCanonicalOrder(t *testing.T) {
 // silent miss in their own workspace; listing still shows only their own.
 func TestCrossWorkspaceAccessIsForbidden(t *testing.T) {
 	st := newFakeEndpointStore()
-	mine := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-mine"}}, Store: st}
-	other := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-other"}}, Store: st}
+	mine := &Service{Base: &core.Base{Namespace: "default", Workspace: coretest.Workspaces{"tea-mine"}}, Store: st}
+	other := &Service{Base: &core.Base{Namespace: "default", Workspace: coretest.Workspaces{"tea-other"}}, Store: st}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
 
 	created, err := mine.Create(ctx, CreateRequest{Name: "mine", URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}, Enabled: true})
@@ -1017,31 +1006,19 @@ func TestResendReturnsStableSafeRefusals(t *testing.T) {
 	assertCode(err, WebhookDeliveryPendingCode, core.ErrConflict)
 }
 
-// multiWorkspaceResolver: the caller's default is the first workspace, and
-// they are a member of every listed one.
-type multiWorkspaceResolver []string
-
-func (m multiWorkspaceResolver) Tenant(context.Context, core.Identity) (string, bool) {
-	return m[0], true
-}
-
-func (m multiWorkspaceResolver) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
-	return slices.Contains(m, tenantID), nil
-}
-
 // w4/m172: a member of several workspaces reaches an endpoint in a
 // non-default one by id alone, as Render's by-id routes take no owner. A
 // mismatched ownerId is a 404; a non-member's id is a 403 (ADR072 #8).
 func TestByIDVerbsResolveTheEndpointsOwnWorkspace(t *testing.T) {
 	st := newFakeEndpointStore()
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
-	creator := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-b"}}, Store: st}
+	creator := &Service{Base: &core.Base{Namespace: "default", Workspace: coretest.Workspaces{"tea-b"}}, Store: st}
 	created, err := creator.Create(ctx, CreateRequest{Name: "b", URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}, Enabled: true})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	member := &Service{Base: &core.Base{Namespace: "default", Workspace: multiWorkspaceResolver{"tea-a", "tea-b"}}, Store: st}
+	member := &Service{Base: &core.Base{Namespace: "default", Workspace: coretest.Workspaces{"tea-a", "tea-b"}}, Store: st}
 	if v, err := member.Get(ctx, "", created.ID); err != nil || v.ID != created.ID {
 		t.Fatalf("Get without ownerId = %+v, %v", v, err)
 	}
@@ -1060,7 +1037,7 @@ func TestByIDVerbsResolveTheEndpointsOwnWorkspace(t *testing.T) {
 	}
 
 	// ADR072 #8 (w4/199): a non-member's typed id is a 403, a missing one 404.
-	outsider := &Service{Base: &core.Base{Namespace: "default", Workspace: multiWorkspaceResolver{"tea-c"}}, Store: st}
+	outsider := &Service{Base: &core.Base{Namespace: "default", Workspace: coretest.Workspaces{"tea-c"}}, Store: st}
 	_, missing := outsider.Get(ctx, "", "whk-missing")
 	_, foreign := outsider.Get(ctx, "", created.ID)
 	if !errors.Is(missing, core.ErrNotFound) || !errors.Is(foreign, core.ErrForbidden) {

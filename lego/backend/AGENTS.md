@@ -23,9 +23,9 @@ One package per feature: service (business logic) + models + REST/GraphQL/MCP fr
 - **Never import `operator/`**. Cross via `types/` + App CR only.
 - **Ids via `internal/id` only** (`id.New(kind)`), hyphen-separated; depguard forbids `xid` elsewhere. [ADR020](../../docs/ADR020-identifiers.md)
 - **One service per feature, three thin fragments, Render-consistent.** Verbs live in `service.go`; fragments map wire formats onto single roots (one schema/router/registry). See `internal/api/AGENTS.md`.
-- **Authz seam:** single-resource verbs start `a, err := s.AuthorizeApp(ctx, core.Rel…, name)` (or `Database/KeyValue`) — fetches + authorizes against resource's OWN `LabelTenant`. Bare `s.Authorize` only for `List`/create. Swept by `TestAuthzGuardsEveryVerb` + `TestFetchByNameUsesTheVerbsOwnRelation`. Never split into two gates.
+- **Authz seam:** single-resource verbs start `a, err := s.AuthorizeApp(ctx, core.Rel…, name)` (or `Database/KeyValue`) — fetches + authorizes against resource's OWN `LabelTenant`. Other by-id verbs route first with `ctx, err = s.ScopeByID(ctx, ownerID, owner)` (the resource's own workspace), then make their one `s.Authorize`; answers follow [ADR072's by-id matrix](../../docs/ADR072-security-review-round7.md#by-id-resolution-matrix-amendment-w5m115-2026-10-05). Bare `s.Authorize` with no routing only for `List` and for creates that take no parent id. Swept by `TestAuthzGuardsEveryVerb`, `TestFetchByNameUsesTheVerbsOwnRelation` and `byid_resolution_guard_test.go`. Never split into two gates.
 - Target always recorded (`ServiceTarget/DatabaseTarget/KeyValueTarget`) for events feed; write relations always emit, read only on denial. `TestEveryTargetedVerbIsNamedOrExcused` enforces vocabulary.
-- **Workspace from request context** (REST `ownerId`, GraphQL `ownerId`, MCP `workspaceId`). Empty → default workspace; non-member → `ErrForbidden`.
+- **Workspace from request context** (REST `ownerId`, GraphQL `ownerId`, MCP `workspaceId`). Empty → the default workspace for `List`, the resource's own for a by-id verb (ADR072's by-id matrix); non-member → `ErrForbidden`.
 - Store opt-in `BEX_CP_DB_URI`; unset → bex-api alone.
 
 ## Environment variables — compact reference

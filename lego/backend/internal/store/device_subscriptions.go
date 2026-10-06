@@ -189,6 +189,25 @@ func (s *PGStore) RevokeDevicePushSubscription(ctx context.Context, tenantID, su
 	return result.RowsAffected() == 1, nil
 }
 
+// DevicePushSubscriptionWorkspaces is the by-id routing read for unregister
+// (w5/m115): the workspaces where subject's own deviceID is registered and
+// active. Keyed by the caller's subject, so it never reads another member's
+// devices.
+func (s *PGStore) DevicePushSubscriptionWorkspaces(ctx context.Context, subject, deviceID string) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT tenant_id FROM device_push_subscriptions
+		WHERE subject = $1 AND device_id = $2 AND revoked_at IS NULL
+		ORDER BY tenant_id`, subject, deviceID)
+	if err != nil {
+		return nil, classifyPushSubscriptionError(err)
+	}
+	tenants, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, classifyPushSubscriptionError(err)
+	}
+	return tenants, nil
+}
+
 // RevokeAllDevicePushSubscriptions removes every active destination for the
 // caller in this workspace, used by explicit all-device logout/revocation.
 func (s *PGStore) RevokeAllDevicePushSubscriptions(ctx context.Context, tenantID, subject string) (int64, error) {

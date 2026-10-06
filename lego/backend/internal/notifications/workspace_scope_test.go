@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 // workspace_scope_test.go is w4/m128: notification_settings is UNIQUE (tenant_id,
@@ -32,11 +33,11 @@ import (
 
 func multiWorkspaceService() (*Service, *fakeStore) {
 	st := newFakeStore()
-	// multiWorkspace (subscriptions_test.go) is the caller-in-several-
+	// coretest.Members (subscriptions_test.go) is the caller-in-several-
 	// workspaces fake; its first entry is the default. fakeWorkspace cannot
 	// express this — it maps a subject to exactly one tenant, which is the
 	// shape that hid this defect for as long as it did.
-	ws := multiWorkspace{"alice": {"tea-bex", "tea-personal", "tea-canary"}}
+	ws := coretest.Members{"alice": {"tea-bex", "tea-personal", "tea-canary"}}
 	return newTestService(st, ws, nil, nil), st
 }
 

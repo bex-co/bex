@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -304,7 +305,7 @@ func TestGetScopedToWorkspaceCrossTenantIsNotFound(t *testing.T) {
 	}
 
 	// A non-member's typed id is a 403 (ADR072 #8, w4/199); a missing one 404.
-	other := &Service{Base: &core.Base{Namespace: "default", Workspace: soleWorkspaceResolver{"tea-other"}}, Store: st, Secret: kv}
+	other := &Service{Base: &core.Base{Namespace: "default", Workspace: coretest.Workspaces{"tea-other"}}, Store: st, Secret: kv}
 	_, foreign := other.Get(ctx, created.ID)
 	_, missing := other.Get(ctx, "rgc-missing")
 	if !errors.Is(foreign, core.ErrForbidden) || !errors.Is(missing, core.ErrNotFound) {
@@ -313,17 +314,6 @@ func TestGetScopedToWorkspaceCrossTenantIsNotFound(t *testing.T) {
 	if err := other.Delete(ctx, created.ID); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("cross-workspace delete = %v, want ErrForbidden", err)
 	}
-}
-
-// soleWorkspaceResolver is a caller who belongs to exactly one workspace.
-type soleWorkspaceResolver struct{ tenant string }
-
-func (f soleWorkspaceResolver) Tenant(context.Context, core.Identity) (string, bool) {
-	return f.tenant, true
-}
-
-func (f soleWorkspaceResolver) IsMember(_ context.Context, _ core.Identity, tenantID string) (bool, error) {
-	return tenantID == f.tenant, nil
 }
 
 func TestUpdateUsernameAndExpiryAndRotateSecret(t *testing.T) {

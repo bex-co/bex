@@ -17,7 +17,6 @@ limitations under the License.
 package postgres
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -28,23 +27,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w1/m168: Render's GET /v1/postgres takes ownerId as an array.
-
-type memberships map[string][]string
-
-func (m memberships) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	if ws := m[id.Subject]; len(ws) > 0 {
-		return ws[0], true
-	}
-	return "", false
-}
-
-func (m memberships) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	return slices.Contains(m[id.Subject], tenantID), nil
-}
 
 func tenantDatabase(id, tenant string) *appv1alpha1.Database {
 	return &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{
@@ -80,7 +67,7 @@ func listPostgresIDs(t *testing.T, svc *Service, query string) (int, []string, s
 func TestPostgresListHonorsOwnerArrays(t *testing.T) {
 	svc, _ := newService(tenantDatabase("dpg-1", "tea-1"), tenantDatabase("dpg-2", "tea-2"), tenantDatabase("dpg-3", "tea-3"))
 	svc.Authz = &fakeChecker{allow: true}
-	svc.Workspace = memberships{"user-a": {"tea-1", "tea-2"}}
+	svc.Workspace = coretest.Members{"user-a": {"tea-1", "tea-2"}}
 
 	for _, query := range []string{"ownerId=tea-1&ownerId=tea-2", "ownerId=tea-1,tea-2", "ownerId=tea-1,tea-2&limit=5"} {
 		if code, got, body := listPostgresIDs(t, svc, query); code != http.StatusOK || !slices.Equal(got, []string{"dpg-1", "dpg-2"}) {

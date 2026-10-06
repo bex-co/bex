@@ -17,7 +17,6 @@ limitations under the License.
 package apps
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -26,27 +25,12 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // multi_owner_list_test.go is w1/m168: Render's GET /v1/services takes ownerId
 // as an array (repeated or comma-separated), and bex read one value.
-
-// memberships is a caller that belongs to several workspaces (the first is
-// its default).
-type memberships map[string][]string
-
-func (m memberships) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	ws := m[id.Subject]
-	if len(ws) == 0 {
-		return "", false
-	}
-	return ws[0], true
-}
-
-func (m memberships) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	return slices.Contains(m[id.Subject], tenantID), nil
-}
 
 func withAppID(a *appv1alpha1.App, id string) *appv1alpha1.App {
 	a.Labels[core.LabelAppID] = id
@@ -78,7 +62,7 @@ func listServices(t *testing.T, svc *Service, subject, query string) (int, []lis
 	return rec.Code, out, rec.Body.String()
 }
 
-func multiOwnerService(ws memberships) *Service {
+func multiOwnerService(ws coretest.Members) *Service {
 	svc, _ := newTenantService(ws,
 		withAppID(tenantApp("web", "tea-1"), "srv-1"),
 		withAppID(tenantApp("api", "tea-1"), "srv-2"),
@@ -99,7 +83,7 @@ func listedIDs(items []listedService) []string {
 }
 
 func TestServiceListUnionsEveryRequestedWorkspace(t *testing.T) {
-	svc := multiOwnerService(memberships{"user-a": {"tea-1", "tea-2"}})
+	svc := multiOwnerService(coretest.Members{"user-a": {"tea-1", "tea-2"}})
 	want := []string{"srv-1", "srv-2", "srv-3"}
 	for _, query := range []string{"ownerId=tea-1&ownerId=tea-2", "ownerId=tea-1,tea-2", "ownerId=tea-2,tea-1&ownerId=tea-1"} {
 		code, got, body := listServices(t, svc, "user-a", query)
@@ -116,7 +100,7 @@ func TestServiceListUnionsEveryRequestedWorkspace(t *testing.T) {
 // A workspace the caller cannot see fails the whole request: nothing from the
 // workspaces it CAN see leaks out alongside the refusal.
 func TestServiceListFailsClosedOnAnyForbiddenWorkspace(t *testing.T) {
-	svc := multiOwnerService(memberships{"user-a": {"tea-1", "tea-2"}})
+	svc := multiOwnerService(coretest.Members{"user-a": {"tea-1", "tea-2"}})
 	for _, query := range []string{"ownerId=tea-1,tea-3", "ownerId=tea-3&ownerId=tea-1"} {
 		code, _, body := listServices(t, svc, "user-a", query)
 		if code != http.StatusForbidden {
@@ -131,7 +115,7 @@ func TestServiceListFailsClosedOnAnyForbiddenWorkspace(t *testing.T) {
 // Names are unique within a workspace, not across them. Walking a
 // multi-workspace list one item per page must visit every service exactly once.
 func TestServiceListPagesAcrossEqualNamesWithoutGapsOrDuplicates(t *testing.T) {
-	svc := multiOwnerService(memberships{"user-a": {"tea-1", "tea-2"}})
+	svc := multiOwnerService(coretest.Members{"user-a": {"tea-1", "tea-2"}})
 	var seen []string
 	cursor := ""
 	for range 10 {
@@ -156,7 +140,7 @@ func TestServiceListPagesAcrossEqualNamesWithoutGapsOrDuplicates(t *testing.T) {
 
 // A single or omitted owner keeps its existing name cursor and order.
 func TestServiceListSingleOwnerPagingUnchanged(t *testing.T) {
-	svc := multiOwnerService(memberships{"user-a": {"tea-1", "tea-2"}})
+	svc := multiOwnerService(coretest.Members{"user-a": {"tea-1", "tea-2"}})
 	for _, query := range []string{"ownerId=tea-1&limit=1", "limit=1"} {
 		_, page, body := listServices(t, svc, "user-a", query)
 		if len(page) != 1 || page[0].Cursor != page[0].Service.Name {

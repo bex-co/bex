@@ -22,28 +22,10 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
-
-// byIDMembers resolves each subject's workspaces; the first is the default.
-type byIDMembers map[string][]string
-
-func (m byIDMembers) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	if ws := m[id.Subject]; len(ws) > 0 {
-		return ws[0], true
-	}
-	return "", false
-}
-
-func (m byIDMembers) IsMember(_ context.Context, id core.Identity, workspace string) (bool, error) {
-	for _, w := range m[id.Subject] {
-		if w == workspace {
-			return true, nil
-		}
-	}
-	return false, nil
-}
 
 // byIDStore indexes each event id under a set of workspaces and answers
 // GetServiceEvent only in one of them, like service_event_index's PK.
@@ -64,16 +46,13 @@ func (s *byIDStore) GetServiceEvent(ctx context.Context, workspace, eventID stri
 }
 
 func (s *byIDStore) ServiceEventWorkspaces(_ context.Context, eventID string) ([]string, error) {
-	if ws := s.owners[eventID]; len(ws) > 0 {
-		return ws, nil
-	}
-	return nil, store.ErrNotFound
+	return s.owners[eventID], nil
 }
 
 // TestGetRoutesByEventOwnWorkspace is w4/m172 for GET /v1/events/{eventId}: a
 // member of [tea-a (default), tea-b] reaches a tea-b event with no ownerId; a
-// non-member's id and an unknown id answer the same 404; an explicit ownerId
-// keeps scoping the lookup exactly as before.
+// non-member's id answers 403 and an unknown id 404 (ADR072 #8); an explicit
+// ownerId keeps scoping the lookup exactly as before.
 func TestGetRoutesByEventOwnWorkspace(t *testing.T) {
 	row := store.ServiceEventRow{Key: "fact:byid-route", At: now, Source: store.EventSourceFact, FactType: TypePostgresUnavailable}
 	eventID := ids.Derive(ids.Event, row.Key)
@@ -84,7 +63,7 @@ func TestGetRoutesByEventOwnWorkspace(t *testing.T) {
 			owners:    map[string][]string{eventID: {"tea-b"}},
 		}
 		svc := newService(st)
-		svc.Workspace = byIDMembers{"alice": {"tea-a", "tea-b"}, "mallory": {"tea-m"}}
+		svc.Workspace = coretest.Members{"alice": {"tea-a", "tea-b"}, "mallory": {"tea-m"}}
 		return svc, st
 	}
 	as := func(subject string) context.Context {
@@ -128,7 +107,7 @@ func TestGetRoutesByEventOwnWorkspace(t *testing.T) {
 // TestGetPrefersAWorkspaceTheCallerBelongsTo covers an evt-… id indexed under
 // several workspaces (a workspace:default audit row is attributed to every
 // matching owner): the caller's default wins when it is one of them, else the
-// first member workspace by id.
+// only one they belong to; two of theirs is a 409.
 func TestGetPrefersAWorkspaceTheCallerBelongsTo(t *testing.T) {
 	row := store.ServiceEventRow{Key: "fact:byid-shared", At: now, Source: store.EventSourceFact, FactType: TypePostgresUnavailable}
 	eventID := ids.Derive(ids.Event, row.Key)
@@ -138,7 +117,7 @@ func TestGetPrefersAWorkspaceTheCallerBelongsTo(t *testing.T) {
 		want    string
 	}{
 		{"default among owners", []string{"tea-c", "tea-a"}, "tea-c"},
-		{"first member owner", []string{"tea-x", "tea-c", "tea-b"}, "tea-b"},
+		{"the only owner the caller belongs to", []string{"tea-x", "tea-b"}, "tea-b"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			st := &byIDStore{
@@ -146,7 +125,7 @@ func TestGetPrefersAWorkspaceTheCallerBelongsTo(t *testing.T) {
 				owners:    map[string][]string{eventID: {"tea-a", "tea-b", "tea-c"}},
 			}
 			svc := newService(st)
-			svc.Workspace = byIDMembers{"alice": tc.members}
+			svc.Workspace = coretest.Members{"alice": tc.members}
 			ctx := core.WithIdentity(t.Context(), core.Identity{Subject: "alice", Method: "session"})
 			if _, err := svc.Get(ctx, eventID); err != nil {
 				t.Fatal(err)
@@ -155,5 +134,17 @@ func TestGetPrefersAWorkspaceTheCallerBelongsTo(t *testing.T) {
 				t.Fatalf("lookup workspaces = %v, want [%s]", st.lookups, tc.want)
 			}
 		})
+	}
+	// Two non-default owners the caller belongs to: ADR072's by-id matrix asks
+	// for ownerId rather than guessing (w5/m115).
+	st := &byIDStore{
+		fakeStore: &fakeStore{lookup: store.ServiceEventLookup{Event: row, ServiceID: ids.New(ids.Postgres)}},
+		owners:    map[string][]string{eventID: {"tea-a", "tea-b", "tea-c"}},
+	}
+	svc := newService(st)
+	svc.Workspace = coretest.Members{"alice": {"tea-x", "tea-c", "tea-b"}}
+	ctx := core.WithIdentity(t.Context(), core.Identity{Subject: "alice", Method: "session"})
+	if _, err := svc.Get(ctx, eventID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("ambiguous owners = %v, want ErrConflict naming ownerId", err)
 	}
 }

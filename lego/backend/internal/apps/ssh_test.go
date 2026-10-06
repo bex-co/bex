@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -131,7 +132,7 @@ func TestResolveSSHSessionAuthorizesCanViewSensitiveOnTargetWorkspace(t *testing
 	service := &Service{Base: &core.Base{
 		Client:    fakeClient(app, sshPod("web-rs-pod01", "example/web:v2", true)),
 		Namespace: "default",
-		Workspace: twoWorkspaces{"user-a": {"tea-home", "tea-workspace"}},
+		Workspace: coretest.Members{"user-a": {"tea-home", "tea-workspace"}},
 		Authz:     recorder,
 	}}
 

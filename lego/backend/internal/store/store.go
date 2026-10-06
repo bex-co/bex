@@ -69,6 +69,18 @@ var (
 	ErrWorkspaceGone = errors.New("workspace no longer exists")
 )
 
+// OwnerWorkspaces adapts a by-id routing read that finds one workspace to
+// core.ResourceOwner's shape: a missing row is no owner, not an error.
+func OwnerWorkspaces(workspace string, err error) ([]string, error) {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		return nil, nil
+	case err != nil:
+		return nil, err
+	}
+	return []string{workspace}, nil
+}
+
 // MapError translates this taxonomy into core's, so a feature service can
 // return a store error straight out of a verb and have every surface map it to
 // the right status. The store error stays in the message (%v, not %w) — the

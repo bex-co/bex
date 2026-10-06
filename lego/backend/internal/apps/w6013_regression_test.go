@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
 
 // w6013_regression_test.go is the permanent regression test for w6/013,
@@ -48,7 +49,7 @@ func TestW6013_InvitedViewerCanOperateTheirOwnWorkspacesService(t *testing.T) {
 		// bob's oldest (default) membership is tea-team — where he was
 		// invited as a viewer; he separately owns tea-mine, where "mine-web"
 		// actually lives.
-		Workspace: twoWorkspaces{"bob": {"tea-team", "tea-mine"}},
+		Workspace: coretest.Members{"bob": {"tea-team", "tea-mine"}},
 		// bob is a viewer of tea-team (can_operate denied there) and admin
 		// of tea-mine (can_operate allowed there).
 		Authz: &fakeChecker{deny: core.WorkspaceObject("tea-team")},
@@ -70,7 +71,7 @@ func TestW6013_InvitedViewerCanSuspendDeleteAndConfigureTheirOwnWorkspacesServic
 		return &Service{Base: &core.Base{
 			Client:    cl,
 			Namespace: "default",
-			Workspace: twoWorkspaces{"bob": {"tea-team", "tea-mine"}},
+			Workspace: coretest.Members{"bob": {"tea-team", "tea-mine"}},
 			Authz:     &fakeChecker{deny: core.WorkspaceObject("tea-team")},
 		}}
 	}

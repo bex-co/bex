@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -184,26 +185,6 @@ func TestListPostgres_OmittedOwnerUsesDefaultWorkspace(t *testing.T) {
 
 // --- w6/m14: the fetch-by-name workspace gate ---
 
-// twoWorkspaces is a multi-workspace caller: subject -> workspaces, oldest first.
-type twoWorkspaces map[string][]string
-
-func (w twoWorkspaces) Tenant(_ context.Context, id core.Identity) (string, bool) {
-	ws := w[id.Subject]
-	if len(ws) == 0 {
-		return "", false
-	}
-	return ws[0], true
-}
-
-func (w twoWorkspaces) IsMember(_ context.Context, id core.Identity, tenantID string) (bool, error) {
-	for _, t := range w[id.Subject] {
-		if t == tenantID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func ownedDatabase(name, tenantID string) *appv1alpha1.Database {
 	d := sampleDatabase(name)
 	d.Labels = map[string]string{core.LabelTenant: tenantID}
@@ -266,7 +247,7 @@ func TestCreatePostgresAllowsSameDisplayNameInDifferentWorkspaces(t *testing.T) 
 // other than Apps).
 func TestGetPostgres_OwnersOtherWorkspaceIsReachable(t *testing.T) {
 	svc, _ := newService(ownedDatabase("db-b", "tea-2"))
-	svc.Workspace = twoWorkspaces{"dana": {"tea-1", "tea-2"}} // default = tea-1
+	svc.Workspace = coretest.Members{"dana": {"tea-1", "tea-2"}} // default = tea-1
 	svc.Authz = &fakeChecker{allow: true}
 
 	v, err := svc.GetPostgres(ctxAs("dana"), "db-b")
@@ -283,7 +264,7 @@ func TestGetPostgres_OwnersOtherWorkspaceIsReachable(t *testing.T) {
 // are in their own.
 func TestDeletePostgres_RoleDoesNotLeakAcrossWorkspaces(t *testing.T) {
 	svc, _ := newService(ownedDatabase("db-b", "tea-2"))
-	svc.Workspace = twoWorkspaces{"dana": {"tea-1", "tea-2"}}
+	svc.Workspace = coretest.Members{"dana": {"tea-1", "tea-2"}}
 	svc.Authz = &fakeChecker{deny: core.WorkspaceObject("tea-2")} // not allowed to act in tea-2
 
 	if err := svc.DeletePostgres(ctxAs("dana"), "db-b"); !errors.Is(err, core.ErrForbidden) {

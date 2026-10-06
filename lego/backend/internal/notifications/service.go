@@ -58,6 +58,7 @@ type NotificationsStore interface {
 	UpsertDevicePushSubscription(ctx context.Context, sub store.DevicePushSubscription) (store.DevicePushSubscription, error)
 	ListOwnDevicePushSubscriptions(ctx context.Context, tenantID, subject string) ([]store.DevicePushSubscription, error)
 	RevokeDevicePushSubscription(ctx context.Context, tenantID, subject, deviceID string) (bool, error)
+	DevicePushSubscriptionWorkspaces(ctx context.Context, subject, deviceID string) ([]string, error)
 	RevokeAllDevicePushSubscriptions(ctx context.Context, tenantID, subject string) (int64, error)
 	UpsertWebPushSubscription(ctx context.Context, sub store.WebPushSubscription) (store.WebPushSubscription, error)
 	ListOwnWebPushSubscriptions(ctx context.Context, tenantID, subject string) ([]store.WebPushSubscription, error)

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 )
 
@@ -31,7 +32,7 @@ import (
 
 func TestCreateEnvGroupLandsUnderWorkspaceTenant(t *testing.T) {
 	store := newFakeStore()
-	resolver := multiWorkspace{"dana": {"tea-a"}}
+	resolver := coretest.Members{"dana": {"tea-a"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: store,
@@ -113,7 +114,7 @@ func TestGetGroupMapDualReadsLegacyFallback(t *testing.T) {
 // dual-read path, with no locator involved.
 func TestLegacySeededGroupStillReadableViaGetEnvGroup(t *testing.T) {
 	store := newFakeStore()
-	resolver := multiWorkspace{"dana": {"tea-a"}}
+	resolver := coretest.Members{"dana": {"tea-a"}}
 	svc := &Service{
 		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
 		Store: store,
