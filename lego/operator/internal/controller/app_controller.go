@@ -5255,7 +5255,15 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 		"name", obj.GetName(), "reason", reason)
 }
 
+// fail records err as the App's failure for reason, except a write conflict:
+// a lost race on the App's status or on an object the pass writes, which the
+// next pass retries from current state. Recorded, it would close the release's
+// open deploy as failed, stand as a terminal build failure nothing retries, or
+// overwrite another pass's durable acknowledgement with a stale status (w5/095).
 func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
+	if apierrors.IsConflict(err) {
+		return ctrl.Result{}, err
+	}
 	// A build failure additionally gets appv1alpha1.ConditionBuild, the durable
 	// record attributed to the RELEASE generation that actually built rather than
 	// to metadata.generation (w6/m100 — see that constant for why Ready cannot
@@ -5301,11 +5309,6 @@ func (f *stepFailure) Unwrap() error { return f.err }
 // failStep records a stepFailure through r.fail and returns any other error as
 // it is.
 func (r *AppReconciler) failStep(ctx context.Context, app *appv1alpha1.App, err error) (ctrl.Result, error) {
-	// Reconcile again from current state. Recording a failure with a stale status
-	// retry could overwrite another pass's durable acknowledgement.
-	if apierrors.IsConflict(err) {
-		return ctrl.Result{}, err
-	}
 	if step, ok := errors.AsType[*stepFailure](err); ok {
 		return r.fail(ctx, app, step.reason, step.err)
 	}
