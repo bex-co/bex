@@ -139,12 +139,12 @@ func TestDesiredReplicas(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &AppReconciler{ActivatorService: tc.activator}
-			replicas, requeue, autoHibernating := r.desiredReplicas(context.Background(), tc.app)
+			replicas, requeue, plan := r.desiredReplicas(context.Background(), tc.app, releaseObservation{})
 			if replicas != tc.wantReplicas {
 				t.Errorf("replicas = %d, want %d", replicas, tc.wantReplicas)
 			}
-			if autoHibernating != tc.wantAutoHibernating {
-				t.Errorf("autoHibernating = %v, want %v", autoHibernating, tc.wantAutoHibernating)
+			if plan.autoHibernating != tc.wantAutoHibernating {
+				t.Errorf("autoHibernating = %v, want %v", plan.autoHibernating, tc.wantAutoHibernating)
 			}
 			if requeue != tc.wantRequeue {
 				t.Errorf("autoscaleRequeue = %v, want %v", requeue, tc.wantRequeue)

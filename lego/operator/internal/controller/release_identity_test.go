@@ -283,9 +283,8 @@ func TestCanceledReleaseKeepsLastSuccessfulGeneration(t *testing.T) {
 
 // w5/m114: the backend now cancels the release a suspend interrupts, as it
 // does on Cancel. Neither the park nor the wake may get past the stamp: both
-// passes keep the last served generation, so holdUnservedRelease has no newer
-// release to roll after Resume and the canceled release's pre-deploy never
-// starts.
+// passes keep the last served generation, so the holds have no newer release
+// to roll after Resume and the canceled release's pre-deploy never starts.
 func TestSuspendedCanceledReleaseStaysCanceledThroughResume(t *testing.T) {
 	// Release 7 was adopted when it started rolling; 6 is what serves.
 	rolling := desiredAppReleaseIdentity(appv1alpha1.AppSpec{Image: "registry.example/app:v7"})
@@ -318,7 +317,7 @@ func TestSuspendedCanceledReleaseStaysCanceledThroughResume(t *testing.T) {
 			t.Fatalf("%s: decision = %+v releaseGeneration = %d, want canceled on the served generation 6", pass, decision, app.Status.ReleaseGeneration)
 		}
 		if newerReleaseUnserved(app) {
-			t.Fatalf("%s: a canceled release reads as a newer unserved one, which holdUnservedRelease would roll", pass)
+			t.Fatalf("%s: a canceled release reads as a newer unserved one, which the release plan would roll", pass)
 		}
 	}
 }

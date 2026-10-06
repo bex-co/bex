@@ -413,7 +413,8 @@ func (p *sweepProm) decide(ttl time.Duration, stamp, now time.Time) (bool, time.
 	app := activityApp(stamp.Add(-skew))
 	app.Spec.IdleTTLSeconds = int32(ttl / time.Second)
 	r, cl := activityReconciler(t, app, NewPrometheusAppActivityReader(p.srv.URL, p.srv.Client()))
-	_, _, sleeping := r.desiredReplicas(context.Background(), app)
+	_, _, plan := r.desiredReplicas(context.Background(), app, releaseObservation{})
+	sleeping := plan.autoHibernating
 	after, err := time.Parse(time.RFC3339, storedStamp(t, cl, app))
 	if err != nil {
 		t.Fatal(err)
