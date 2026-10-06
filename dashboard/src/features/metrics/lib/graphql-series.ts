@@ -1,30 +1,11 @@
-import { CombinedGraphQLErrors } from "@apollo/client/errors";
+import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 import type { ChartSeries } from "@/features/metrics/types";
 
-// bex-api's Metrics/DatastoreMetrics verbs report this exact message (Core's
-// ErrMetricsUnavailable) when a metric's backend isn't wired (e.g. no
-// Prometheus for request metrics) — surfaced here, not as a generic error.
-export const METRICS_UNAVAILABLE_MESSAGE = "metrics source not configured";
-
+// bex-api's Metrics/DatastoreMetrics verbs refuse with METRICS_UNAVAILABLE when
+// a metric's backend isn't wired (e.g. no Prometheus for request metrics) —
+// surfaced here, not as a generic error (w5/m128).
 export function isMetricsUnavailable(error: unknown): boolean {
-  return Boolean(
-    error &&
-    CombinedGraphQLErrors.is(error) &&
-    error.errors.some((e) => e.message === METRICS_UNAVAILABLE_MESSAGE),
-  );
-}
-
-// Substring of bex-api's ErrLogStoreUnavailable message (Core), returned by a
-// host/path-filtered request-metrics read when no durable log store (Loki) is
-// wired (w5/m58). Same marker the Logs tab matches on.
-export const LOG_STORE_UNAVAILABLE_MARKER = "durable log store";
-
-export function isLogStoreUnavailable(error: unknown): boolean {
-  return Boolean(
-    error &&
-    CombinedGraphQLErrors.is(error) &&
-    error.errors.some((e) => e.message.includes(LOG_STORE_UNAVAILABLE_MARKER)),
-  );
+  return hasGraphQLErrorCode(error, "METRICS_UNAVAILABLE");
 }
 
 /** The wire shape shared by GraphQL's MetricSeries type — metrics() and

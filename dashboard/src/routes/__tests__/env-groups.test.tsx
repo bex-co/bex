@@ -10,6 +10,7 @@ import {
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { formatDateTime } from "@/common/lib/format";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
 
@@ -287,7 +288,7 @@ describe("EnvGroupsPage", () => {
     ).toBeInTheDocument();
 
     view.unmount();
-    listState.error = new Error("secret store not configured");
+    listState.error = codedGraphQLError("SECRETS_UNAVAILABLE");
     renderList();
 
     expect(
@@ -677,7 +678,7 @@ describe("EnvGroupDetailPage", () => {
 
   it("stays put on the inline error state when the query fails (w9/m55)", async () => {
     detailState.group = null;
-    detailState.error = new Error("forbidden");
+    detailState.error = codedGraphQLError("FORBIDDEN");
     const router = renderDetail("missing");
 
     expect(await screen.findByText("Not authorized")).toBeInTheDocument();

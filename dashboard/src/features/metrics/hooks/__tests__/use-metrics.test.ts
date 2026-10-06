@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
-import {
-  useMetrics,
-  METRICS_UNAVAILABLE_MESSAGE,
-} from "@/features/metrics/hooks/use-metrics";
+import { codedGraphQLError } from "@/test/mocks/apollo";
+import { useMetrics } from "@/features/metrics/hooks/use-metrics";
 
 const mockUseQuery = vi.fn();
 
@@ -210,9 +208,7 @@ describe("useMetrics", () => {
   });
 
   it("reports unavailable (not a generic error) when bex-api has no source wired", () => {
-    const unavailableError = new CombinedGraphQLErrors({
-      errors: [{ message: METRICS_UNAVAILABLE_MESSAGE }],
-    } as never);
+    const unavailableError = codedGraphQLError("METRICS_UNAVAILABLE");
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: false,
@@ -273,14 +269,7 @@ describe("useMetrics", () => {
   });
 
   it("reports storeUnavailable (not a generic error) when a host/path filter hits no log store (w5/m58)", () => {
-    const storeError = new CombinedGraphQLErrors({
-      errors: [
-        {
-          message:
-            "request logs and structured log filters require the durable log store",
-        },
-      ],
-    } as never);
+    const storeError = codedGraphQLError("LOG_STORE_UNAVAILABLE");
     mockUseQuery.mockReturnValue({
       data: undefined,
       loading: false,

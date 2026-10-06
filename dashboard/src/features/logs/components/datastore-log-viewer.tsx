@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Loader2, Search } from "lucide-react";
 import { EmptyState } from "@/common/components/empty-state";
-import { isForbiddenError } from "@/common/lib/graphql-error";
+import { classifyRefusal } from "@/common/lib/graphql-error";
 import { Input } from "@/common/components/ui/input.tsx";
 import {
   Select,
@@ -121,14 +121,11 @@ export function DatastoreLogViewer({
   // Paged exactly like the service Logs tab (w4/m107): scrolling to the top
   // loads older pages until `hasMore` is false (w4/m136).
   const history = useLogHistory(resource, queryFilters, win);
-  // bex-api's no-source refusal carries no code yet.
-  const unavailable =
-    history.error?.message.includes("logs source not configured") ?? false;
-  const unauthorized = isForbiddenError(history.error);
+  const refusal = classifyRefusal(history.error, "LOGS_UNAVAILABLE");
   const instances = useLogLabelValues(resource, "instance");
 
   let body: ReactNode;
-  if (unavailable) {
+  if (refusal === "unavailable") {
     body = (
       <EmptyState
         iconName="Database"
@@ -136,7 +133,7 @@ export function DatastoreLogViewer({
         description={copy.unavailableBody}
       />
     );
-  } else if (unauthorized) {
+  } else if (refusal === "forbidden") {
     body = (
       <EmptyState
         iconName="LockKeyhole"

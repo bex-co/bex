@@ -310,7 +310,7 @@ func TestOpenFGAStillRequiredAfterPassingScope(t *testing.T) {
 		t.Fatalf("Authorize = %v, want OpenFGA ErrForbidden", err)
 	}
 	var coded *CodedError
-	if errors.As(err, &coded) {
-		t.Error("OpenFGA denial must not be rewritten as insufficient_scope")
+	if !errors.As(err, &coded) || coded.Code != "FORBIDDEN" {
+		t.Errorf("OpenFGA denial = %v, want the plain FORBIDDEN code, not rewritten as insufficient_scope", err)
 	}
 }

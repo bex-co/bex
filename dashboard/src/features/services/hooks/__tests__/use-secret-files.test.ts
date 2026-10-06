@@ -23,7 +23,6 @@ import {
   useSecretFileNames,
   useRevealSecretFile,
   useSecretFileMutations,
-  classifySecretFileError,
 } from "@/features/services/hooks/use-secret-files";
 
 beforeEach(() => {
@@ -187,16 +186,5 @@ describe("useSecretFileMutations", () => {
     expect(ok).toBe(false);
     expect(toastError).toHaveBeenCalledWith("Couldn't save cert.pem");
     expect(refetch).not.toHaveBeenCalled();
-  });
-});
-
-describe("classifySecretFileError", () => {
-  it("classifies the store-unavailable, forbidden, and generic errors, and null", () => {
-    expect(classifySecretFileError(undefined)).toBeNull();
-    expect(
-      classifySecretFileError(new Error("secret store not configured")),
-    ).toBe("unavailable");
-    expect(classifySecretFileError(new Error("forbidden"))).toBe("forbidden");
-    expect(classifySecretFileError(new Error("boom"))).toBe("generic");
   });
 });

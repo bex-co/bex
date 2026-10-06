@@ -3,6 +3,7 @@ import { useApolloClient, useQuery } from "@apollo/client/react";
 import { AuditLogsDocument, type AuditLogsQuery } from "@/graphql/definitions";
 import type { AuditEvent } from "@/features/audit/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { classifyRefusal } from "@/common/lib/graphql-error";
 
 const PAGE_SIZE = 20;
 
@@ -27,19 +28,6 @@ function toEvents(raw: AuditLogsQuery["auditLogs"] | undefined): AuditEvent[] {
         (scope): scope is string => typeof scope === "string" && scope !== "",
       ),
     }));
-}
-
-type ErrorKind = "forbidden" | "unavailable" | "error";
-
-// Resolver errors reach Apollo verbatim (graphql-go has no error-formatting
-// layer here) — `core.ErrForbidden`/`core.ErrAuditUnavailable`'s own message
-// text, matched the same way api-keys-panel.tsx classifies its own errors.
-function classify(error: Error | undefined): ErrorKind | null {
-  if (!error) return null;
-  const message = error.message.toLowerCase();
-  if (message.includes("forbidden")) return "forbidden";
-  if (message.includes("audit log store not configured")) return "unavailable";
-  return "error";
 }
 
 export interface UseAuditLogResult {
@@ -165,13 +153,13 @@ export function useAuditLog(): UseAuditLogResult {
     }
   }
 
-  const kind = classify(error ?? scoped.error);
+  const kind = classifyRefusal(error ?? scoped.error, "AUDIT_LOG_UNAVAILABLE");
 
   return {
     events,
     loading: !resolved || (loading && events.length === 0),
     loadingMore,
-    error: kind === "error" ? (error ?? scoped.error) : undefined,
+    error: kind === "generic" ? (error ?? scoped.error) : undefined,
     forbidden: kind === "forbidden",
     unavailable: kind === "unavailable",
     hasMore,

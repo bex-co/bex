@@ -670,18 +670,6 @@ export function secretFileNames(group: EnvGroupView | null): SecretFileName[] {
   return (group?.secretFileNames ?? []).map((name) => ({ id: name, name }));
 }
 
-export type EnvGroupErrorKind = "unavailable" | "forbidden" | "generic";
-
 export function isEnvGroupNotFound(error: Error | undefined): boolean {
   return !!error && isNotFoundError(error);
-}
-
-export function classifyEnvGroupError(
-  error: Error | undefined,
-): EnvGroupErrorKind | null {
-  if (!error) return null;
-  const message = error.message.toLowerCase();
-  if (message.includes("secret store")) return "unavailable";
-  if (message.includes("forbidden")) return "forbidden";
-  return "generic";
 }

@@ -18,6 +18,7 @@ package webhooks
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -40,6 +41,9 @@ func TestWebhookMetricsDistinguishAutomaticAndManualWithoutResourceLabels(t *tes
 	metrics.observeResend(nil)
 	metrics.observeResend(core.NewConflictError(WebhookEndpointDisabledCode, "disabled", nil))
 	metrics.observeResend(errors.New("https://secret.example/hook"))
+	metrics.observeResend(core.ErrForbidden)
+	metrics.observeResend(fmt.Errorf("%w: endpoint is in another workspace", core.ErrForbidden))
+	metrics.observeResend(core.Unavailable("webhook store not configured"))
 
 	families, err := registry.Gather()
 	if err != nil {
@@ -75,7 +79,9 @@ func TestWebhookMetricsDistinguishAutomaticAndManualWithoutResourceLabels(t *tes
 		`bex_webhooks_delivery_admissions_total{result="deduplicated"} 1`,
 		`bex_webhooks_delivery_capped_batch_size_count 1`,
 		`bex_webhooks_delivery_capped_batch_size_sum 12`,
+		`bex_webhooks_resend_requests_total{result="denied"} 2`,
 		`bex_webhooks_resend_requests_total{result="disabled"} 1`,
+		`bex_webhooks_resend_requests_total{result="unavailable"} 1`,
 		`bex_webhooks_resend_requests_total{result="queued"} 1`,
 	} {
 		if !strings.Contains(text, want) {

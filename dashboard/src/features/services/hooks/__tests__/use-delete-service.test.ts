@@ -17,6 +17,7 @@ vi.mock("sonner", () => ({
 
 import { useDeleteService } from "@/features/services/hooks/use-delete-service";
 import type { ProtectedActionResult } from "@/features/services/lib/protected-confirmation";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 
 beforeEach(() => {
   mockUseMutation.mockReset();
@@ -112,13 +113,11 @@ describe("useDeleteService", () => {
   });
 
   it("returns the server's exact protected confirmation without error toast", async () => {
-    const mutate = vi
-      .fn()
-      .mockRejectedValue(
-        new Error(
-          'service is in a protected environment; retry with confirm="sudo delete service web"',
-        ),
-      );
+    const mutate = vi.fn().mockRejectedValue(
+      codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
+        confirm: "sudo delete service web",
+      }),
+    );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useDeleteService());

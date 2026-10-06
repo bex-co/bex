@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -44,7 +44,6 @@ vi.mock("@/features/services/hooks/use-env-vars", () => ({
     refetch: refetchEnv,
   }),
   useRevealEnvVar: () => revealEnv,
-  classifyEnvVarError: () => null,
 }));
 
 vi.mock("@/features/services/hooks/use-secret-files", () => ({
@@ -55,7 +54,6 @@ vi.mock("@/features/services/hooks/use-secret-files", () => ({
     refetch: refetchFiles,
   }),
   useRevealSecretFile: () => revealFile,
-  classifySecretFileError: () => null,
 }));
 
 vi.mock("@/features/services/hooks/use-environment-draft-save", () => ({
@@ -777,14 +775,7 @@ describe("ServiceEnvironmentEditor", () => {
     const refusal =
       "BETA is declared in this service's render.yaml manifest, which owns its value — edit the manifest and sync the blueprint, or declare the variable with `sync: false` so the dashboard owns it instead";
     save.mockRejectedValueOnce(
-      new CombinedGraphQLErrors({
-        errors: [
-          {
-            message: refusal,
-            extensions: { code: "ENV_VAR_MANIFEST_MANAGED" },
-          },
-        ],
-      } as never),
+      codedGraphQLError("ENV_VAR_MANIFEST_MANAGED", {}, refusal),
     );
     const user = userEvent.setup();
     renderEditor();

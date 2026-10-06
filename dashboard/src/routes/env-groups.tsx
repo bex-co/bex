@@ -29,10 +29,8 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
-import {
-  classifyEnvGroupError,
-  useEnvGroups,
-} from "@/features/env-groups/hooks/use-env-groups";
+import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
+import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { LocalDateTime } from "@/common/components/local-time";
@@ -96,7 +94,7 @@ export function EnvGroupsPage() {
     searchState.workspaceId === currentWorkspaceId ? searchState.value : "";
   const setSearch = (value: string) =>
     setSearchState({ workspaceId: currentWorkspaceId, value });
-  const errorKind = classifyEnvGroupError(error);
+  const errorKind = classifySecretStoreError(error);
   const initialLoading = loading && groups.length === 0;
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const visibleGroups = normalizedSearch

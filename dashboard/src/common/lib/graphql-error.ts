@@ -26,13 +26,27 @@ export function refusalReason(err: unknown): string {
   return detail ? detail.charAt(0).toUpperCase() + detail.slice(1) : "";
 }
 
+/** True when bex-api refused the call as an authorization denial (w5/m128). */
+export function isForbiddenError(err: unknown): boolean {
+  return hasGraphQLErrorCode(err, "FORBIDDEN");
+}
+
+/** How a read that depends on a backing store bex-api may lack failed. */
+export type RefusalKind = "unavailable" | "forbidden" | "generic";
+
 /**
- * True when an error message names an authorization denial. The backend has no
- * stable error code for these yet, so every caller has to match the message —
- * this is the one place that does, so the case-insensitivity can't drift.
+ * Classifies a failed read into the states a panel renders differently: its
+ * backing store not wired (bex-api refuses with unavailableCode), an
+ * authorization denial, or anything else.
  */
-export function isForbiddenError(err: Error | undefined | null): boolean {
-  return err?.message.toLowerCase().includes("forbidden") ?? false;
+export function classifyRefusal(
+  error: unknown,
+  unavailableCode: string,
+): RefusalKind | null {
+  if (!error) return null;
+  if (hasGraphQLErrorCode(error, unavailableCode)) return "unavailable";
+  if (isForbiddenError(error)) return "forbidden";
+  return "generic";
 }
 
 /** True when any GraphQL error in Apollo's combined response has code. */
