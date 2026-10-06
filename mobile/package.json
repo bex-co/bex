@@ -1,6 +1,6 @@
 {
   "name": "@bex/mobile",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "main": "expo-router/entry",
   "packageManager": "yarn@1.22.22",
@@ -22,7 +22,8 @@
     "codegen": "graphql-codegen --config codegen.ts",
     "codegen:backend": "bash scripts/generate-graphql.sh",
     "bundle:ios": "expo export --platform ios --output-dir dist/ios",
-    "bundle:android": "expo export --platform android --output-dir dist/android"
+    "bundle:android": "expo export --platform android --output-dir dist/android",
+    "bump": "node ./scripts/bump-version.js"
   },
   "dependencies": {
     "@apollo/client": "^4.2.9",

@@ -42,3 +42,7 @@ __pycache__/
 bex-desktop/
 # External CI runner source checkout.
 /external/block-eden-mono/
+
+# Agent worktrees are full checkouts. .git/info/exclude hides them locally, but
+# EAS Build archives from a fresh clone that only honors committed ignore rules.
+.claude/worktrees/
