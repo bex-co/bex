@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -58,11 +59,13 @@ func NewLokiRequestMetricsSource(base string, hc *http.Client) RequestMetricsSou
 		}
 		// Loki's query_range takes nanosecond bounds (like NewLokiSource) and a
 		// step in seconds; the metric reply is a Prometheus-shaped matrix.
+		step := stepSeconds(req.Resolution)
+		start, end := lokiStepBounds(req.Start, req.End, step)
 		u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
 			"query": {query},
-			"start": {strconv.FormatInt(req.Start.UnixNano(), 10)},
-			"end":   {strconv.FormatInt(req.End.UnixNano(), 10)},
-			"step":  {strconv.FormatInt(stepSeconds(req.Resolution), 10)},
+			"start": {strconv.FormatInt(start, 10)},
+			"end":   {strconv.FormatInt(end, 10)},
+			"step":  {strconv.FormatInt(step, 10)},
 		}.Encode())
 		series, err := queryRangeMatrix(ctx, hc, u, "loki")
 		if err != nil {
@@ -79,6 +82,26 @@ func NewLokiRequestMetricsSource(base string, hc *http.Client) RequestMetricsSou
 		}
 		return series, nil
 	}
+}
+
+// lokiStepBounds rounds a read's bounds UP to the step, in nanoseconds (w4/m175).
+// Loki's query frontend (align_queries_with_step) floors start and end to the
+// step, and each point t counts (t-step, t], so a floored end dropped every
+// request after the last boundary. Rounded up, the last point is the bucket
+// that contains end and the first the bucket that contains start.
+func lokiStepBounds(start, end time.Time, step int64) (int64, int64) {
+	stepNs := step * int64(time.Second)
+	if stepNs <= 0 {
+		return start.UnixNano(), end.UnixNano()
+	}
+	ceil := func(t time.Time) int64 {
+		n := t.UnixNano()
+		if r := n % stepNs; r != 0 {
+			n += stepNs - r
+		}
+		return n
+	}
+	return ceil(start), ceil(end)
 }
 
 // lokiRequestQueryFor builds the LogQL metric query for a host/path-filtered

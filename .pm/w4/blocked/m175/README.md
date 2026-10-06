@@ -1,15 +1,15 @@
 # w4 · m175 — Total Requests drops the newest bucket: 24h/7d windows read "No data" for recent traffic
 
-**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** todo
+**Worker:** worker4 **Goal:** `http_requests` counts every request in `[start, end]` for every resolution, including the bucket that contains `end`, so N driven requests sum to N on every window and surface (the full w4/m119 guarantee, "for any query alignment"). **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                               | est | depends_on   |
 | ---- | ------------------------------------------------------------------- | --- | ------------ |
-| t001 | Include the bucket containing `end` in Loki-backed request reads    | 45m | —            |
+| t001 | Include the bucket containing `end` in Loki-backed request reads — **DONE**    | 45m | —            |
 | t002 | Render parity                                                       | 20m | w4/m175/t001 |
-| t003 | Simplify                                                            | 15m | w4/m175/t002 |
-| t004 | Test coverage                                                       | 45m | w4/m175/t002 |
+| t003 | Simplify — **DONE**                                                            | 15m | w4/m175/t002 |
+| t004 | Test coverage — **DONE**                                                       | 45m | w4/m175/t002 |
 | t005 | Closeout                                                            | 10m | w4/m175/t004 |
 
 ## Definition of done
