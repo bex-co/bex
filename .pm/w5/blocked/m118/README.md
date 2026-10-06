@@ -134,3 +134,12 @@ Skipped:
 - `make lint` clean on all four modules.
 - Dashboard: 4212 tests, typecheck and lint green.
 - `/ship` runs the real-dependency backend suite before the push.
+
+## Live check — 2026-10-06 (w4 `/qa-find-bugs` loop69, pin `7e1ae3642` ⊇ `a006a7e32`)
+
+Owned Free `qa-20261006-l69-env` (`srv-db2a8rocm2ec73ab8uqg`; deleted afterwards), `bex-canary`:
+
+- `PUT …/secret-files/..data` → 400 `SECRET_FILE_INVALID` "must not start with '..'" (`params.field: name`); `a/b` → 400 `SECRET_FILE_INVALID`.
+- `PUT …/env-vars/1BAD-KEY` → 400 `ENVIRONMENT_VARIABLE_INVALID`; a 300-char key → 400 `ENVIRONMENT_VARIABLE_INVALID` "longer than 253 characters" (`params.field: key`); `PORT` → 400 `ENVIRONMENT_VARIABLE_RESERVED`. The env list and secret files were unchanged afterwards.
+- Blueprint `services: [{type: keyvalue, name: Cache_1, plan: free}]`: `validateBlueprint` → `valid: false` "key-value \"Cache_1\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen". `POST /v1/blueprints/deploy` → **400** with the same message, not a 500, and no Key Value created.
+- **Gap against the "remaining uncoded 400s carry codes" bullet:** that Blueprint deploy 400 body is `{"error":"key-value \"Cache_1\": bad request: …","id":"bad_request","message":…}` with **no `code`**, while the direct env/secret-file refusals carry one.
