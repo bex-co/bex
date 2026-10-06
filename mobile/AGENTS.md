@@ -45,6 +45,13 @@ yarn bundle:android
 
 `yarn lint` runs ESLint plus framework-aware unused file/dependency analysis.
 
+`yarn expo:check` validates native package versions offline, against the list
+bundled in the installed `expo` package, so the gate depends only on
+`yarn.lock`. The online list moves whenever Expo publishes a patch, and gating
+on it turned CI red three times with no change in this repository. Run
+`yarn expo:outdated` to see newer patches and `npx expo install --fix` to take
+them.
+
 ## Release
 
 The app version lives in `app.json` and `package.json`; `yarn bump
