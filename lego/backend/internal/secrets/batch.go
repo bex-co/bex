@@ -28,9 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
@@ -44,9 +42,8 @@ import (
 type SaveMode string
 
 const (
-	SaveModeOnly                    SaveMode = "save_only"
-	SaveModeDeploy                  SaveMode = "deploy"
-	envProjectionRevisionAnnotation          = "app.bex.co/env-source-revision"
+	SaveModeOnly   SaveMode = "save_only"
+	SaveModeDeploy SaveMode = "deploy"
 )
 
 // EnvVarPatch is one explicit mutation in a service environment draft. Omitted
@@ -249,7 +246,7 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 		if !envWrite.changed {
 			return cause
 		}
-		superseded, err := s.restoreMap(ctx, envPath(service), envWrite)
+		_, superseded, err := s.restoreMap(ctx, envPath(service), envWrite)
 		switch {
 		case err != nil:
 			return errors.Join(cause, err)
@@ -284,14 +281,14 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		if txn.cas {
 			txn.casProjection, err = s.projectCASEnv(ctx, txn.service, a, env, txn.env.version)
 		} else {
-			err = s.projectEnv(ctx, a, env)
+			err = s.projectEnv(ctx, a, env, committedAt(txn.env.version))
 		}
 		if err != nil {
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
 	if txn.files.changed {
-		if err := s.projectFiles(ctx, a, files); err != nil {
+		if err := s.projectFiles(ctx, a, files, committedAt(txn.files.version)); err != nil {
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
@@ -406,64 +403,20 @@ func (s *Service) projectCASEnv(ctx context.Context, service string, a *appv1alp
 	if snapshot.Version != ownerVersion || !maps.Equal(snapshot.Data, env) {
 		return ownership, envRevisionConflict()
 	}
-
-	name := envSecretName(a.Name)
-	sec := &corev1.Secret{}
-	err = s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: name}, sec)
-	if apierrors.IsNotFound(err) {
-		sec = &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   a.Namespace,
-			Annotations: map[string]string{envProjectionRevisionAnnotation: encodeEnvRevision(ownerVersion)},
-		}}
-		sec.Type = corev1.SecretTypeOpaque
-		sec.Data = envBytes(env)
-		if ownerErr := controllerutil.SetControllerReference(a, sec, s.Client.Scheme()); ownerErr != nil {
-			return ownership, safeCASProjectionError(ownerErr)
-		}
-		if createErr := s.Client.Create(ctx, sec); createErr != nil {
-			return ownership, safeCASProjectionError(createErr)
-		}
-		a.Spec.EnvFromSecret = name
-		return ownership, nil
-	}
+	projection, err := s.projectSource(ctx, a, envProjection, env, committedAt(ownerVersion), false)
+	ownership.ExistedBefore = projection.ExistedBefore
 	if err != nil {
 		return ownership, safeCASProjectionError(err)
 	}
-	ownership.ExistedBefore = true
-	if current := sec.Annotations[envProjectionRevisionAnnotation]; current != "" {
-		currentVersion, decodeErr := decodeEnvRevision(current)
-		if decodeErr != nil || currentVersion > ownerVersion {
-			return ownership, envRevisionConflict()
-		}
-		if currentVersion == ownerVersion {
-			if !equalSecretData(sec.Data, env) {
-				return ownership, envRevisionConflict()
-			}
-			a.Spec.EnvFromSecret = name
-			return ownership, nil
-		}
+	if projection.Superseded {
+		return ownership, envRevisionConflict()
 	}
-	if sec.Annotations == nil {
-		sec.Annotations = map[string]string{}
-	}
-	sec.Annotations[envProjectionRevisionAnnotation] = encodeEnvRevision(ownerVersion)
-	sec.Type = corev1.SecretTypeOpaque
-	sec.Data = envBytes(env)
-	if ownerErr := controllerutil.SetControllerReference(a, sec, s.Client.Scheme()); ownerErr != nil {
-		return ownership, safeCASProjectionError(ownerErr)
-	}
-	// Update carries the exact UID and resourceVersion read above. Kubernetes
-	// refuses it if the object was replaced or changed after our ownership check.
-	if updateErr := s.Client.Update(ctx, sec); updateErr != nil {
-		return ownership, safeCASProjectionError(updateErr)
-	}
-	a.Spec.EnvFromSecret = name
+	a.Spec.EnvFromSecret = envSecretName(a.Name)
 	return ownership, nil
 }
 
 func safeCASProjectionError(err error) error {
-	if apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err) || errors.Is(err, core.ErrConflict) {
+	if apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err) || errors.Is(err, core.ErrConflict) || errors.Is(err, errProjectionConflict) {
 		return envRevisionConflict()
 	}
 	// Kubernetes and transport errors can contain object names or request paths.
@@ -545,10 +498,10 @@ func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
 // compensateEnvironment undoes a write whose projection or App patch failed:
 // the batch patch's and each single-map setter's (w5/m119). A changed map goes
 // back to what the write replaced only while the write is still the store's
-// latest (restoreMap), and its Secret then goes back with it. A map a newer
-// committed write superseded is left to that write, and the call answers
-// ENVIRONMENT_RESTORATION_FAILED: its own change may survive there. Which
-// projection lands last in that race is w5/091.
+// latest (restoreMap), and its Secret then goes back with it, at the revision
+// the restore committed (w5/m127). A map a newer committed write superseded is
+// left to that write, and the call answers ENVIRONMENT_RESTORATION_FAILED: its
+// own change may survive there.
 func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, cause error) error {
 	app := txn.originalApp
 	if txn.cas {
@@ -558,36 +511,38 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 	var compensation []error
 	superseded := false
 	for _, m := range []struct {
-		write               mapWrite
-		path, secret, label string
-		referenced          bool
+		write      mapWrite
+		path       string
+		kind       projectionKind
+		label      string
+		referenced bool
 	}{{
-		write: txn.env, path: envPath(txn.service), secret: envSecret, label: "environment",
+		write: txn.env, path: envPath(txn.service), kind: envProjection, label: "environment",
 		referenced: app.Spec.EnvFromSecret == envSecret || app.Annotations[appv1alpha1.PendingEnvSecretAnnotation] == envSecret,
 	}, {
-		write: txn.files, path: filesPath(txn.service), secret: filesSecret, label: "secret-file",
+		write: txn.files, path: filesPath(txn.service), kind: filesProjection, label: "secret-file",
 		referenced: slices.Contains(app.Spec.FilesFromSecrets, filesSecret) || app.Annotations[appv1alpha1.PendingFilesSecretAnnotation] == filesSecret,
 	}} {
 		if !m.write.changed {
 			continue
 		}
-		gone, err := s.restoreMap(ctx, m.path, m.write)
-		switch {
-		case err != nil:
+		restored, gone, err := s.restoreMap(ctx, m.path, m.write)
+		if err != nil {
 			compensation = append(compensation, fmt.Errorf("restore secret store: %w", err))
-		case gone:
+			continue
+		}
+		if gone {
 			superseded = true
-		// Only a Secret this write created for an empty map is removed. The App
-		// this call read decides no more than that: a concurrent first write may
+			continue
+		}
+		// The restored map goes back at the revision its restore committed, so
+		// it cannot overwrite a projection a newer write landed since. Only a
+		// Secret this write created for an empty map is removed. The App this
+		// call read decides no more than that: a concurrent first write may
 		// have referenced the Secret since, and the restored map is its own.
-		case len(m.write.prior) > 0 || m.referenced:
-			if err := s.upsertSecret(ctx, app, m.secret, m.write.prior); err != nil {
-				compensation = append(compensation, fmt.Errorf("restore %s projection: %w", m.label, err))
-			}
-		default:
-			if err := s.deleteSecret(ctx, app.Namespace, m.secret); err != nil {
-				compensation = append(compensation, fmt.Errorf("remove %s projection: %w", m.label, err))
-			}
+		remove := len(m.write.prior) == 0 && !m.referenced
+		if _, err := s.projectSource(ctx, app, m.kind, m.write.prior, committedAt(restored), remove); err != nil {
+			compensation = append(compensation, fmt.Errorf("restore %s projection: %w", m.label, err))
 		}
 	}
 	switch {
@@ -595,6 +550,8 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 		return errors.Join(append([]error{cause}, compensation...)...)
 	case superseded:
 		return envRestorationFailed()
+	case errors.Is(cause, errProjectionConflict):
+		return secretChanged()
 	}
 	return refusedProjection(cause, app.Name)
 }
@@ -632,7 +589,9 @@ func (s *Service) rollbackCASEnvProjection(ctx context.Context, originalApp *app
 	if err != nil {
 		return safeCASProjectionError(err)
 	}
-	if sec.Annotations[envProjectionRevisionAnnotation] != encodeEnvRevision(projection.OwnerVersion) {
+	// Only this write's own committed revision is its to roll back: a delete's
+	// provisional projection of that version is the delete's.
+	if current, known := projectedRevision(sec, envProjection); !known || current != committedAt(projection.OwnerVersion) {
 		return envRevisionConflict()
 	}
 	if !projection.ExistedBefore {
@@ -644,12 +603,9 @@ func (s *Service) rollbackCASEnvProjection(ctx context.Context, originalApp *app
 		}
 		return nil
 	}
-	if sec.Annotations == nil {
-		sec.Annotations = map[string]string{}
+	if err := s.stampProjection(originalApp, sec, envProjection, oldEnv, committedAt(restoredVersion)); err != nil {
+		return safeCASProjectionError(err)
 	}
-	sec.Annotations[envProjectionRevisionAnnotation] = encodeEnvRevision(restoredVersion)
-	sec.Type = corev1.SecretTypeOpaque
-	sec.Data = envBytes(oldEnv)
 	// Update is conditional on the exact UID/resourceVersion returned by Get.
 	if err := s.Client.Update(ctx, sec); err != nil {
 		return safeCASProjectionError(err)
