@@ -11,6 +11,7 @@ import {
   isValidSecretFileName,
   type EnvironmentDraft,
 } from "../environment-draft";
+import { readRepoVectors, repeated } from "@/test/repo-vectors";
 
 function addFile(draft: EnvironmentDraft, name: string, content: string) {
   draft.secretFiles.push({
@@ -283,16 +284,31 @@ describe("reidentifyDraft", () => {
   });
 });
 
+// The one table of environment variable and secret-file names. bex-api's
+// ValidEnvKey and ValidSecretFileName are tested against the same file
+// (lego/backend/internal/core/environmentpatch_test.go), and its answers, which
+// are Kubernetes' own Secret-key rule, are the source of truth (w5/m118).
+const CONFIG_KEY_VECTORS = readRepoVectors<{
+  key: string;
+  repeat?: number;
+  envVar: boolean;
+  secretFile: boolean;
+}>("lego/backend/internal/core/testdata/config-key-vectors.json");
+
+describe("the shared config-key vectors", () => {
+  it.each(
+    CONFIG_KEY_VECTORS.map(
+      (v) => [repeated(v.key, v.repeat), v.envVar, v.secretFile] as const,
+    ),
+  )("%j is an env key: %s, a secret file name: %s", (key, envVar, file) => {
+    expect(VALID_ENV_KEY.test(key)).toBe(envVar);
+    expect(isValidSecretFileName(key)).toBe(file);
+  });
+});
+
 // w4/m168: names cap at 253 characters, Kubernetes' Secret-key limit and
 // bex-api's — a longer name used to be stored and then fail the projection.
 describe("name length cap", () => {
-  it("accepts 253 characters and refuses 254 for env keys and file names", () => {
-    expect(VALID_ENV_KEY.test("A" + "b".repeat(252))).toBe(true);
-    expect(VALID_ENV_KEY.test("A" + "b".repeat(253))).toBe(false);
-    expect(isValidSecretFileName("f".repeat(253))).toBe(true);
-    expect(isValidSecretFileName("f".repeat(254))).toBe(false);
-  });
-
   it("blocks Save on a 254-character file name and keeps 253", () => {
     const tooLong = createEnvironmentDraft([], []);
     addFile(tooLong, "f".repeat(254), "x");

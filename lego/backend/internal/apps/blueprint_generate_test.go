@@ -149,7 +149,7 @@ func TestGenerateBlueprintRoundTrip(t *testing.T) {
 
 // TestGenerateBlueprintServiceNameIsPublicNotCRName covers w6/m114: a
 // store-managed App's object name is CRName(tenant, name) — tenant-prefixed and
-// past ValidAppName's 30-char cap — so exporting a.Name produced a render.yaml
+// past ValidResourceName's 30-char cap — so exporting a.Name produced a render.yaml
 // that bex's own validateBlueprint rejected AND leaked the workspace tenant id
 // into a file the user is told to commit. Every prior fixture used a bare CR
 // name (LabelServiceName absent), the legacy path where a.Name already is the

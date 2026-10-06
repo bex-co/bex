@@ -12,14 +12,6 @@ export interface WorkspaceView {
   createdAt: string | null;
 }
 
-// Mirrors the backend's workspace-name validation exactly (nameRE,
-// backend/internal/workspaces/service.go): a DNS label of 1-30 chars, because
-// a bex workspace name becomes part of every App CR name
-// ("<workspace>-<app>") — unlike Render's freeform names (documented parity
-// drift, w6/m1/t007). Validating client-side here only pre-empts a round
-// trip; the backend re-validates regardless.
-export const WORKSPACE_NAME_RE = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
-
 /**
  * The exact phrase the user must type to arm a workspace delete, cloning
  * Render's live dashboard guard verbatim (docs/render-artifacts/workspace-lifecycle.md,

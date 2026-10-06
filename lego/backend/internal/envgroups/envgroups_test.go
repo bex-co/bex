@@ -31,6 +31,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -1656,7 +1657,7 @@ func TestEnvGroup_OverLongNamesAreBadRequests(t *testing.T) {
 	svc := newService(newFakeStore())
 	ctx := context.Background()
 	g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
-	long := strings.Repeat("f", core.MaxConfigKeyLength+1)
+	long := strings.Repeat("f", validation.DNS1123SubdomainMaxLength+1)
 	if _, err := svc.SetEnvGroupFile(ctx, g.ID, long, "c"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("SetEnvGroupFile(254) = %v, want ErrBadRequest", err)
 	}

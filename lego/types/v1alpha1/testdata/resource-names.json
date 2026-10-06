@@ -1,0 +1,19 @@
+[
+  { "name": "web", "valid": true },
+  { "name": "web-1", "valid": true },
+  { "name": "beancount-cms-v2", "valid": true },
+  { "name": "1invalid", "valid": true, "why": "a DNS-1123 label may start with a digit" },
+  { "name": "a", "valid": true },
+  { "name": "9", "valid": true },
+  { "name": "srv-db1e4vnhb1uc73ebifi0", "valid": true, "why": "the rule allows it; datastores refuse the resource-ID shape separately" },
+  { "name": "a", "repeat": 30, "valid": true, "why": "MaxResourceNameLength, so <workspace>-<name> fits a 63-character object name" },
+  { "name": "a", "repeat": 31, "valid": false },
+  { "name": "", "valid": false },
+  { "name": "-web", "valid": false },
+  { "name": "web-", "valid": false },
+  { "name": "Web", "valid": false },
+  { "name": "web_1", "valid": false },
+  { "name": "web.1", "valid": false },
+  { "name": "web 1", "valid": false },
+  { "name": "wéb", "valid": false }
+]

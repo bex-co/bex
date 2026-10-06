@@ -280,7 +280,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	entry := map[string]any{
 		// The manifest-facing PUBLIC name, never the tenant-prefixed CR object
 		// name: a store-managed App's a.Name is CRName(tenant, name), which
-		// overruns ValidAppName's 30-char cap (so the create boundary
+		// overruns ValidResourceName's 30-char cap (so the create boundary
 		// validateBlueprint runs would reject the file this exporter tells the
 		// user to commit) and writes the workspace's tenant id into that repo.
 		// appServiceName reads LabelServiceName, falling back to a.Name only for

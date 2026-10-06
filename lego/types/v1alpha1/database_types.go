@@ -20,15 +20,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation"
 )
-
-// ValidDatabaseName reports whether name is a valid user-facing managed
-// Postgres name. Keeping this next to DatabaseSpec.Name makes the CRD contract
-// and every API/Blueprint writer share one validation rule.
-func ValidDatabaseName(name string) bool {
-	return len(name) <= 30 && len(validation.IsDNS1123Label(name)) == 0
-}
 
 const postgresIdentifierMaxBytes = 63
 

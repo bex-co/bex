@@ -61,7 +61,7 @@ const (
 // This is the selector docs/ADR010-observability.md describes; w6/m110 replaced
 // its two-segment-only form, which silently returned no series for every App
 // whose Kubernetes object name pushed past the truncation threshold (a service
-// name of ~22 characters, well inside the 30 ValidAppName allows).
+// name of ~22 characters, well inside the 30 ValidResourceName allows).
 //
 // objectName is the KUBERNETES object name (core.CRName(tenant, app) for an
 // App), never the workspace-scoped public service name — the pods are named

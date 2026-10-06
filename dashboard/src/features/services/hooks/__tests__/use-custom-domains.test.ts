@@ -3,21 +3,52 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { classifyAddError } from "@/features/services/hooks/use-custom-domains";
 
 describe("classifyAddError", () => {
-  it("maps the two stable sentinels to their localized keys", () => {
+  // bex-api's coded refusals (w5/m118): the dialog keys on the code, so the
+  // server's wording can change without the localized line going missing.
+  const coded = (code: string, message: string) =>
+    new CombinedGraphQLErrors({
+      errors: [{ message, extensions: { code } }],
+    } as never);
+
+  it("maps the two coded refusals to their localized keys", () => {
     expect(
-      classifyAddError(new Error("host already exists on another site")),
+      classifyAddError(
+        coded(
+          "CUSTOM_DOMAIN_IN_USE",
+          "this domain already exists on another site",
+        ),
+      ),
     ).toEqual({ key: "services.domainAddConflict" });
     expect(
-      classifyAddError(new Error("that is a reserved platform hostname")),
+      classifyAddError(
+        coded(
+          "CUSTOM_DOMAIN_RESERVED",
+          '"api.onbex.co" is a reserved platform hostname',
+        ),
+      ),
     ).toEqual({ key: "services.domainAddReserved" });
   });
 
+  it("decides by the code, not the wording", () => {
+    // The old sentinel text with no code is just another refusal now.
+    expect(
+      classifyAddError(new Error("host already exists on another site")),
+    ).toEqual({ detail: "Host already exists on another site" });
+    expect(
+      classifyAddError(coded("CUSTOM_DOMAIN_IN_USE", "reworded upstream")),
+    ).toEqual({ key: "services.domainAddConflict" });
+  });
+
   it("surfaces the server's own reason for any other refusal (strips the bad-request prefix)", () => {
-    // The wildcard case the QA walk hit: not a special-cased sentinel, so the
-    // dialog must show *why* — the server's message — not a generic failure.
+    // The wildcard case the QA walk hit: coded CUSTOM_DOMAIN_INVALID but not
+    // given its own line, so the dialog must show *why* — the server's
+    // message — not a generic failure.
     expect(
       classifyAddError(
-        new Error('bad request: wildcard hostnames are not allowed: "*.x.com"'),
+        coded(
+          "CUSTOM_DOMAIN_INVALID",
+          'wildcard hostnames are not allowed: "*.x.com"',
+        ),
       ),
     ).toEqual({ detail: 'Wildcard hostnames are not allowed: "*.x.com"' });
 

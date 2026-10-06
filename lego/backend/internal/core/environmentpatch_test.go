@@ -19,8 +19,11 @@ package core
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func TestApplyEnvVarPatchDistinguishesEmptyLiteralFromOmittedValue(t *testing.T) {
@@ -61,7 +64,7 @@ func TestApplyEnvVarPatchRequiresExactlyOneLiteralOrGenerationIntent(t *testing.
 // w4/m168: names are capped at Kubernetes' 253-character Secret-key limit, and
 // the refusal names the rule without echoing the over-long name.
 func TestConfigKeysAreCappedAtTheSecretKeyLimit(t *testing.T) {
-	ok, long := "A"+strings.Repeat("B", MaxConfigKeyLength-1), "A"+strings.Repeat("B", MaxConfigKeyLength)
+	ok, long := "A"+strings.Repeat("B", validation.DNS1123SubdomainMaxLength-1), "A"+strings.Repeat("B", validation.DNS1123SubdomainMaxLength)
 	if !ValidEnvKey(ok) || ValidEnvKey(long) {
 		t.Fatalf("ValidEnvKey: 253 => %v, 254 => %v", ValidEnvKey(ok), ValidEnvKey(long))
 	}
@@ -81,10 +84,67 @@ func TestConfigKeysAreCappedAtTheSecretKeyLimit(t *testing.T) {
 	}
 }
 
+// configKeyVectorsPath is the one table of environment variable and secret-file
+// names. The dashboard's VALID_ENV_KEY and isValidSecretFileName are tested
+// against the same file (dashboard/src/features/services/lib/__tests__/
+// environment-draft.test.ts), and bex-api's answers are the source of truth.
+const configKeyVectorsPath = "testdata/config-key-vectors.json"
+
+// TestConfigKeyVectors (w5/m118): every row is what bex-api accepts, and every
+// refusal is a coded 400 naming the field and the length limit.
+func TestConfigKeyVectors(t *testing.T) {
+	raw, err := os.ReadFile(configKeyVectorsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []struct {
+		Key        string `json:"key"`
+		Repeat     int    `json:"repeat"`
+		EnvVar     bool   `json:"envVar"`
+		SecretFile bool   `json:"secretFile"`
+	}
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		t.Fatal(err)
+	}
+	refused := 0
+	for _, row := range rows {
+		key := row.Key
+		if row.Repeat > 0 {
+			key = strings.Repeat(key, row.Repeat)
+		}
+		for _, tc := range []struct {
+			kind  string
+			want  bool
+			valid func(string) bool
+			check func(string) error
+			code  string
+		}{
+			{"environment variable", row.EnvVar, ValidEnvKey, CheckEnvKey, "ENVIRONMENT_VARIABLE_INVALID"},
+			{"secret file", row.SecretFile, ValidSecretFileName, CheckSecretFileName, "SECRET_FILE_INVALID"},
+		} {
+			if got := tc.valid(key); got != tc.want {
+				t.Errorf("%s name %.40q (%d chars): valid = %v, the table says %v", tc.kind, key, len(key), got, tc.want)
+			}
+			if tc.want {
+				continue
+			}
+			refused++
+			var coded *CodedError
+			if err := tc.check(key); !errors.As(err, &coded) || coded.Code != tc.code || !errors.Is(err, ErrBadRequest) ||
+				coded.Params["maxLength"] != validation.DNS1123SubdomainMaxLength {
+				t.Errorf("%s name %.40q: refusal = %v, want a 400 coded %s carrying maxLength", tc.kind, key, err, tc.code)
+			}
+		}
+	}
+	if refused < 10 {
+		t.Fatalf("vector table too small: %d refusals", refused)
+	}
+}
+
 // A name stored before the cap can still be deleted or renamed away through a
 // patch; writing one stays refused.
 func TestStoredOverLongNamesStayRemovable(t *testing.T) {
-	long := strings.Repeat("f", MaxConfigKeyLength+1)
+	long := strings.Repeat("f", validation.DNS1123SubdomainMaxLength+1)
 	files := map[string]string{long: "1", "g" + long[1:]: "2"}
 	if err := ApplySecretFilePatch(files, []SecretFilePatch{{Name: long, Delete: true}, {Name: "fixed.txt", FromName: "g" + long[1:]}}); err != nil {
 		t.Fatalf("delete/rename of stored over-long names = %v", err)

@@ -9,7 +9,6 @@ import {
   type CustomDomainFieldsFragment,
 } from "@/graphql/definitions";
 import {
-  graphQLErrorMessage,
   hasGraphQLErrorCode,
   mutationErrorMessage,
   refusalReason,
@@ -79,23 +78,21 @@ function mapRaw(raw: RawDomain): CustomDomainView | null {
 
 // classifyAddError turns a failed add into what to show the user, so the dialog
 // tells them *why* the add was refused rather than a generic failure. The two
-// stable bex-api sentinels get a friendly localized line (host taken by another
-// service — 409, Render's "already exists on another site" — or a reserved
-// platform host — 400); every other refusal falls through to the server's own
-// reason (shared `refusalReason`), e.g. "wildcard hostnames are not allowed", so
-// a rejection the UI doesn't special-case is still explained instead of
-// collapsing to "Couldn't add {name}". Same message-substring convention the
-// env-vars/secret-files hooks use (bex-api sentinels are stable wire text);
-// `key` resolves through t(), `detail` is the server's own text.
-// Exported for unit testing the classification in isolation.
+// refusals with their own localized line are keyed on bex-api's codes (w5/m118),
+// never its English: a host another service serves (409 CUSTOM_DOMAIN_IN_USE,
+// Render's "already exists on another site") and a reserved platform host (400
+// CUSTOM_DOMAIN_RESERVED). Every other refusal falls through to the server's own
+// reason (shared `refusalReason`), e.g. "wildcard hostnames are not allowed",
+// so a rejection the UI doesn't special-case is still explained instead of
+// collapsing to "Couldn't add {name}". `key` resolves through t(), `detail` is
+// the server's own text. Exported for unit testing the classification.
 export function classifyAddError(error: unknown): {
   key?: string;
   detail?: string;
 } {
-  const lower = (graphQLErrorMessage(error) ?? "").toLowerCase();
-  if (lower.includes("another site"))
+  if (hasGraphQLErrorCode(error, "CUSTOM_DOMAIN_IN_USE"))
     return { key: "services.domainAddConflict" };
-  if (lower.includes("reserved platform"))
+  if (hasGraphQLErrorCode(error, "CUSTOM_DOMAIN_RESERVED"))
     return { key: "services.domainAddReserved" };
   const detail = refusalReason(error);
   return detail ? { detail } : {};
