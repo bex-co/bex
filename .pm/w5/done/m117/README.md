@@ -142,3 +142,7 @@ Skipped:
 
 - The full backend suite on fresh Postgres, OpenFGA and OpenBao is green (68 packages); `/ship`'s gate runs it again before the push.
 - `make lint`: 0 issues in all four modules, including the whole-program dead-code pass.
+
+## Live check — 2026-10-06 (w4 `/qa-find-bugs` loop67, pin `b0a2e85d7`)
+
+REST create of an image web service with `port`, `healthCheckPath`, `maxShutdownDelaySeconds`, two env vars and `envSpecificDetails.dockerCommand`: every field reached the service (GraphQL `startCommand` = the Docker Command). An unknown `serviceDetails.totallyUnknownField` → 400. Generate Blueprint exported image, command, health check, shutdown delay and env keys, and the export validates. Gaps found and filed as [w4/209](../../../w4/209.md): REST `GET` never returns an image service's `envSpecificDetails.dockerCommand`, and Blueprints spell it `startCommand`, refusing `dockerCommand` on `runtime: image`.
