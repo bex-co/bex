@@ -55,6 +55,22 @@
 # attaches late still reads every line from position zero, and `stage.cri`
 # restores each line's original timestamp. Hence `alloy.mounts.varlog` below.
 #
+# TENANT APP PODS TAIL FILES TOO (w4/m174): the API tailer also drops lines
+# from a container that is RUNNING when it attaches. Alloy v1.11.2's kubetail
+# (internal/component/loki/source/kubernetes/kubetail/tailer.go:277) skips any
+# line whose timestamp is not strictly after the last one it shipped. The
+# kubelet's CRI file is written by one copier per stream, each stamping the
+# line when it reads it, so file order is not timestamp order: a stderr line
+# can land after a stdout line written later but stamped earlier. Measured on
+# kind with the cron DoD command (stdout, stdout, stderr, stdout, stdout):
+# 4 of 20 files held an out-of-order line, nearly always the stderr one, which
+# the API tailer then discarded — production lost a fast cron run's error line
+# in 3 of 6 runs. A file tailer reads by byte offset, never by timestamp, so
+# every line ships; `stage.cri` restores the write timestamp (Loki accepts the
+# slight disorder within a stream). Positions live on the node (STORAGE
+# below) so an Alloy restart resumes each file where it stopped instead of
+# re-reading it.
+#
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
 # name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app),
 # the tenant App namespaces, and the Loki push URL. If any differs on a cluster,
@@ -142,12 +158,27 @@ spec:
           # and pin no pool.
           tolerations:
             - operator: Exists
+          volumes:
+            extra:
+              - name: alloy-storage
+                hostPath:
+                  path: /var/lib/bex-log-shipper
+                  type: DirectoryOrCreate
         alloy:
           # Build logs are tailed from the node's own pod log files — see the
           # "EXCEPTION — build pods tail FILES" note at the top of this file —
           # so every replica mounts the kubelet's /var/log read-only.
           mounts:
             varlog: true
+            # STORAGE (w4/m174): loki.source.file positions — the byte offset
+            # reached in every tailed pod log — live under storagePath. The
+            # chart default (/tmp/alloy) is the container's own filesystem, so
+            # a restarted replica re-read every file from the start. A node
+            # hostPath keeps them across Alloy restarts and rollouts.
+            extra:
+              - name: alloy-storage
+                mountPath: /var/lib/alloy
+          storagePath: /var/lib/alloy
           # Node scoping (see NODE SCOPING note above) reads K8S_NODE_NAME via
           # sys.env() in the discovery.kubernetes field selector. Inject it
           # ourselves from the downward API rather than relying on a chart
@@ -198,10 +229,23 @@ spec:
                   source_labels = ["__meta_kubernetes_pod_container_name"]
                   target_label  = "container"
                 }
+                // FILE-BASED tailing (w4/m174) — see "TENANT APP PODS TAIL
+                // FILES TOO" at the top of this file. Same kubelet path and
+                // glob as build_pods: uid/container, every restart's file.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  separator     = "/"
+                  target_label  = "__path__"
+                  replacement   = "/var/log/pods/*$1/*.log"
+                }
               }
 
-              loki.source.kubernetes "app_pods" {
-                targets    = discovery.relabel.app_pods.output
+              local.file_match "app_pods" {
+                path_targets = discovery.relabel.app_pods.output
+              }
+
+              loki.source.file "app_pods" {
+                targets    = local.file_match.app_pods.targets
                 forward_to = [loki.process.app_logs.receiver]
               }
 
@@ -210,20 +254,19 @@ spec:
               // containing the word "error" is not an error). Lines without a
               // recognized structured severity are labelled `unknown`.
               loki.process "app_logs" {
-                // Kubelet retries can return this body when a container's log
-                // file is gone. Match only the complete containerd placeholder;
-                // quoted/structured messages and surrounding app text survive.
-                // The API source strips kubelet timestamps, so a tenant line
-                // byte-identical to this body is indistinguishable here.
-                stage.drop {
-                  expression          = "^unable to retrieve container logs for containerd://[0-9a-f]{64}\\r?\\n?$"
-                  drop_counter_reason = "kubelet_container_logs_gone"
-                }
-                // Once the pod's whole log directory is gone the kubelet
-                // answers with this body instead (w8/050); exact, as above.
-                stage.drop {
-                  expression          = "^failed to try resolving symlinks in path \"/var/log/pods/[^\"]+/[^/\"]+/[0-9]+\\.log\": lstat /var/log/pods/\\S+: no such file or directory\\r?\\n?$"
-                  drop_counter_reason = "kubelet_pod_log_dir_gone"
+                // CRI-framed file lines: restore the message, its stream and its
+                // ORIGINAL write timestamp (see build_logs). The kubelet API's
+                // "unable to retrieve container logs" / "failed to try resolving
+                // symlinks" placeholders (w8/050) were answers from the log API
+                // and never appear in the file, so their drops went with it.
+                stage.cri { }
+                // The file source labels each entry with its node path, and
+                // stage.cri with its stream. Neither is in bex's label vocabulary
+                // (ADR010), and keeping today's stream identity means a line
+                // re-read after a restart is a byte-identical duplicate Loki
+                // discards, not a second stream.
+                stage.label_drop {
+                  values = ["filename", "stream"]
                 }
 
                 // Both spellings seen in the wild: `level` (slog/zap/logrus/bunyan

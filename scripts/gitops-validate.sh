@@ -1322,6 +1322,23 @@ if [ -f "$LOGSHIP" ]; then
   echo "$vals" | grep -qF 'field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")' \
     || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
 
+  # Tenant App file tailing (w4/m174; rationale in the log-shipper header,
+  # "TENANT APP PODS TAIL FILES TOO"). Behavior test: scripts/test_log_shipper.py.
+  echo "==> $LOGSHIP tenant App pods tail CRI files (w4/m174)"
+  echo "$vals" | grep -q 'loki.source.kubernetes "app_pods"' \
+    && { echo "FAIL: log-shipper.yaml tails App pods through loki.source.kubernetes again — it drops out-of-order CRI lines (w4/m174)" >&2; fail=1; }
+  echo "$vals" | grep -qF 'loki.source.file "app_pods"' \
+    || { echo "FAIL: log-shipper.yaml lost loki.source.file \"app_pods\" (w4/m174)" >&2; fail=1; }
+  app_logs_block="$(echo "$vals" | awk '/loki.process "app_logs" \{/{on=1; match($0, /^ */); end=substr($0, 1, RLENGTH) "}"} on{print} on&&$0==end{exit}')"
+  for required in 'stage.cri { }' 'values = ["filename", "stream"]'; do
+    echo "$app_logs_block" | grep -qF "$required" \
+      || { echo "FAIL: log-shipper.yaml app_logs lost required stage: $required (w4/m174)" >&2; fail=1; }
+  done
+  [ "$(echo "$vals" | yq '.alloy.storagePath')" = "/var/lib/alloy" ] \
+    && [ "$(echo "$vals" | yq '.controller.volumes.extra[] | select(.name == "alloy-storage") | .hostPath.path')" = "/var/lib/bex-log-shipper" ] \
+    && [ "$(echo "$vals" | yq '.alloy.mounts.extra[] | select(.name == "alloy-storage") | .mountPath')" = "/var/lib/alloy" ] \
+    || { echo "FAIL: log-shipper.yaml file positions must live on the node hostPath /var/lib/bex-log-shipper (w4/m174)" >&2; fail=1; }
+
   # Managed-Postgres attribution guard (w3/m28): only operator-marked tenant
   # Database pods may enter the pipeline, only PostgreSQL's own container is
   # public, and CNPG's immutable cluster id must become the `database` label.

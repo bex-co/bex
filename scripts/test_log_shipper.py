@@ -35,7 +35,16 @@ def render_alloy(tmp):
     return config, image
 
 
-def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "dpg-test"', relabel=None, expect=None):
+CRI_LINE = re.compile(r"^\S+ (stdout|stderr) [PF] ")
+
+
+def cri_frame(lines):
+    """Frame plain lines as the kubelet's CRI file does; framed lines pass as-is."""
+    return [line if CRI_LINE.match(line) else f"2026-10-05T00:00:{i % 60:02d}.{i:09d}Z stdout F {line}"
+            for i, line in enumerate(lines)]
+
+
+def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "dpg-test"', relabel=None, expect=None, cri=False):
     """Render the chart, keep one production loki.process block, feed it lines
     in the chart's own Alloy image, and return {entry: labels} per echoed line.
 
@@ -51,7 +60,8 @@ def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "
         # A final plain line proves a single-file pipeline consumed the entire
         # fixture before we assert that earlier noise was dropped.
         barrier = "bex-log-shipper-done-" + uuid.uuid4().hex
-        files = {"lines.log": "\n".join([*lines, barrier]) + "\n"}
+        body = [*lines, barrier]
+        files = {"lines.log": "\n".join(cri_frame(body) if cri else body) + "\n"}
         if relabel:
             block_name, pods = relabel
             block = re.search(r'^discovery\.relabel "%s" \{\n.*?^\}' % block_name, config, re.M | re.S)
@@ -107,6 +117,8 @@ loki.echo "test" {}
                             completed = True
                             continue
                         labels = dict(re.findall(r'(\w+)="([^"\\]*)"', entry["labels"]))
+                        if cri:
+                            labels["__ts"] = entry.get("entry_timestamp")
                         test.assertEqual(labels.get("type"), receiver_type)
                         actual[entry["entry"]] = labels
                 if completed or (relabel and len(actual) >= expect):
@@ -128,54 +140,37 @@ POD_LOG_DIR_GONE = ('failed to try resolving symlinks in path "/var/log/pods/tea
                     'lstat /var/log/pods/tea-daif693dqjvc73e7as3g_tea-daif693dqjvc73e7as3g-hello-go-74bdbc5966-54lpf_'
                     'c2c5039f-1b2c-4d5e-8f90-123456789abc/app/0.log: no such file or directory')
 
+# w4/m174: one fast cron run's CRI file, replayed from kind (2026-10-06 UTC). The
+# stderr line was written LAST but stamped before the two stdout lines ahead of
+# it; Alloy's kubelet-API tailer drops any line not stamped after the previous
+# one, so this is the run that lost `error: GAMMA` in production.
+OUT_OF_ORDER_RUN = [
+    "2026-10-06T01:03:45.158665208Z stdout F ALPHA-x one",
+    "2026-10-06T01:03:45.158694666Z stdout F BETA-x two",
+    '2026-10-06T01:03:45.158695958Z stdout F {"level":"warn","msg":"DELTA-x"}',
+    "2026-10-06T01:03:45.158697625Z stdout F 100%-x under_score-x",
+    "2026-10-06T01:03:45.158672875Z stderr F error: GAMMA-x three",
+]
+
+APP_TARGET = 'namespace = "tenant", app = "web", pod = "web-1", container = "app"'
+
 
 class AppLogLevelsTest(unittest.TestCase):
-    def test_missing_container_flood_dropped_without_matching_app_messages(self):
-        placeholder = "unable to retrieve container logs for containerd://" + "a1" * 32
-        # These are application message bodies after Alloy has removed the
-        # kubelet timestamp. An application's own timestamp remains in its body;
-        # a tenant emitting the exact placeholder body is indistinguishable.
-        cases = {
-            "started tenant job": "unknown",
-            json.dumps({"level": "error", "msg": placeholder}): "error",
-            f'level=warn msg="{placeholder}"': "warning",
-            f"2026-10-02T00:00:00Z {placeholder}": "unknown",
-            f"error: {placeholder}": "unknown",
-            f"{placeholder} while reconnecting": "unknown",
-            f'"{placeholder}"': "unknown",
-            placeholder[:-1]: "unknown",
-            placeholder + "0": "unknown",
-            placeholder[:-1] + "g": "unknown",
-            placeholder.replace("containerd", "other-runtime"): "unknown",
-            "completed tenant job": "unknown",
-        }
-        lines = list(cases)
-        lines[2:2] = [placeholder] * 100
-        actual, output = run_pipeline(self, "app_logs", lines, "app",
-                                      'namespace = "tenant", app = "web", pod = "web-1", container = "app"')
-        self.assertEqual(set(actual), set(cases), f"unexpected App lines:\n{output}")
-        for line, level in cases.items():
+    def test_out_of_order_cri_lines_all_ship_with_write_timestamps(self):
+        actual, output = run_pipeline(self, "app_logs", OUT_OF_ORDER_RUN, "app", APP_TARGET, cri=True)
+        levels = {"ALPHA-x one": "unknown", "BETA-x two": "unknown",
+                  '{"level":"warn","msg":"DELTA-x"}': "warning",
+                  "100%-x under_score-x": "unknown", "error: GAMMA-x three": "unknown"}
+        self.assertEqual(set(actual), set(levels), f"App lines lost or still CRI-framed:\n{output}")
+        for line, level in levels.items():
             with self.subTest(line=line):
-                self.assertEqual({key: value for key, value in actual[line].items() if key != "filename"},
+                # Exactly bex's label vocabulary: the file source's node path
+                # (filename) and the CRI stream never become stream labels.
+                self.assertEqual({k: v for k, v in actual[line].items() if k != "__ts"},
                                  {"namespace": "tenant", "app": "web", "pod": "web-1",
                                   "container": "app", "type": "app", "level": level})
-
-    def test_pod_log_dir_gone_dropped_without_matching_app_messages(self):
-        cases = {
-            "before": "unknown",
-            f"error: {POD_LOG_DIR_GONE}": "unknown",
-            f"{POD_LOG_DIR_GONE} while tailing": "unknown",
-            json.dumps({"level": "warn", "msg": POD_LOG_DIR_GONE}): "warning",
-            "after": "unknown",
-        }
-        lines = list(cases)
-        lines[1:1] = [POD_LOG_DIR_GONE] * 7
-        actual, output = run_pipeline(self, "app_logs", lines, "app",
-                                      'namespace = "tenant", app = "web", pod = "web-1", container = "app"')
-        self.assertEqual(set(actual), set(cases), f"unexpected App lines:\n{output}")
-        for line, level in cases.items():
-            with self.subTest(line=line):
-                self.assertEqual(actual[line].get("level"), level)
+        self.assertEqual(actual["error: GAMMA-x three"]["__ts"], "2026-10-06T01:03:45.158672875Z",
+                         "the stderr line must keep its CRI write timestamp, not the read time")
 
     def test_structured_severity_and_bounded_labels(self):
         cases = {
@@ -216,8 +211,7 @@ class AppLogLevelsTest(unittest.TestCase):
 
         # discovery.relabel.app_pods drops every pod without app.bex.co/app,
         # so every production app_logs entry carries these labels.
-        actual, output = run_pipeline(self, "app_logs", list(cases), "app",
-                                      'namespace = "tenant", app = "web", pod = "web-1", container = "app"')
+        actual, output = run_pipeline(self, "app_logs", list(cases), "app", APP_TARGET, cri=True)
         self.assertEqual(set(actual), set(cases), f"missing or changed log lines:\n{output}")
         for line, expected in cases.items():
             with self.subTest(line=line):
