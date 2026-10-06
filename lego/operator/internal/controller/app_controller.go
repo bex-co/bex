@@ -123,6 +123,10 @@ const (
 	reasonRolloutSettling     = appv1alpha1.ReasonRolloutSettling
 	reasonPriorReleaseServing = appv1alpha1.ReasonPriorReleaseServing
 
+	// reasonRolloutProgressing is ordinary rollout progress, which bex-api
+	// keeps silent on the deploy row.
+	reasonRolloutProgressing = "RolloutProgressing"
+
 	// reasonPublishFailed is a static site's publication failure: on Ready for a
 	// first publish, on ConditionRollout over a served release (w4/m155).
 	reasonPublishFailed = "PublishFailed"
@@ -2316,26 +2320,30 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
 
-	plan, res, halted, err := r.planReplicas(ctx, app, false)
+	obs, err := r.observeRelease(ctx, app)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	plan, res, halted, err := r.planReplicas(ctx, app, obs, false)
 	if halted {
 		if err != nil {
 			return r.failStep(ctx, app, err)
 		}
 		return res, nil
 	}
-	replicas, autoHibernating := plan.replicas, plan.autoHibernating
+	replicas := plan.replicas
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
 	// the new revision's image before rolling the Deployment to it; a non-zero
 	// exit fails the deploy. While a prior release serves, holdNewerRelease keeps
 	// the template on it until the step passes and keeps its replicas and routing
 	// converging (w1/m156; a worker's replicas alone, w1/m158). For a first release
-	// the gate below halts the pass, and
-	// it is skipped while suspended or auto-hibernating, where nothing rolls.
-	if held, res, err := r.holdNewerRelease(ctx, app, image, port, plan); held {
+	// the gate below halts the pass, and it is skipped while parked, where nothing
+	// rolls.
+	if held, res, err := r.holdNewerRelease(ctx, app, image, port, &plan); held {
 		return res, err
 	}
-	if !app.Spec.Suspended && !autoHibernating {
+	if !plan.parked {
 		if res, halt, err := r.reconcilePreDeploy(ctx, app, image, port); halt || err != nil {
 			return res, err
 		}
@@ -2378,7 +2386,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// A parking pass never stamps it: the service is going to sleep, and the
 	// Deploying write would flash Deploying before parkKubernetes's Hibernated
 	// (w6/m147).
-	if rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) && !plan.parked(app) {
+	if plan.deploying() && rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 	}
 	// Reclaim snapshots outside the retained window only after the Deployment is in
@@ -2425,7 +2433,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// dep carries the live status CreateOrUpdate read before it wrote, so this is
 	// the App's own readiness as Kubernetes last observed it — no extra API call.
 	serving := dep.Status.ReadyReplicas > 0
-	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, port, autoHibernating, serving)
+	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, port, plan.autoHibernating, serving)
 	if err != nil {
 		return r.fail(ctx, app, "MaintenanceRoutingFailed", err)
 	}
@@ -2434,8 +2442,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.fail(ctx, app, reason, err)
 	}
 
-	if app.Spec.Suspended || autoHibernating {
-		return r.parkKubernetes(ctx, app, image, hosts, autoHibernating, plan.hibernateHold)
+	if plan.parked {
+		return r.parkKubernetes(ctx, app, image, hosts, plan.autoHibernating, plan.hibernateHold)
 	}
 
 	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
@@ -2468,19 +2476,20 @@ func (r *AppReconciler) convergeSharedChildren(ctx context.Context, app *appv1al
 	return nil
 }
 
-// planReplicas resolves the replicas this pass rolls and runs the disk lifecycle
-// that must settle before anything scales. poll marks a held pass on a step's or
-// build's few-second poll: it runs only the disk restore gate, and the plan lets
-// the route skip writes that would not change. halted reports that the caller
-// must return (res, err): a restore that owns the volume, or a routing or disk
-// failure carrying its reason (stepFailure). The rollout and both held-release
-// paths (w1/m156, w1/m157) scale from the plan it returns.
-func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, poll bool) (replicaPlan, ctrl.Result, bool, error) {
+// planReplicas plans the release from obs (planRelease), resolves the replicas
+// this pass rolls and runs the disk lifecycle that must settle before anything
+// scales. poll marks a held pass on a step's or build's few-second poll: it runs
+// only the disk restore gate, and the plan lets the route skip writes that would
+// not change. halted reports that the caller must return (res, err): a restore
+// that owns the volume, or a routing or disk failure carrying its reason
+// (stepFailure). The rollout and both held-release paths (w1/m156, w1/m157)
+// scale from the plan it returns.
+func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, obs releaseObservation, poll bool) (replicaPlan, ctrl.Result, bool, error) {
 	effectiveApp, err := r.selectedRuntimeApp(ctx, app)
 	if err != nil {
 		return replicaPlan{}, ctrl.Result{}, true, &stepFailure{reason: "DeployFailed", err: err}
 	}
-	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, effectiveApp)
+	replicas, autoscaleRequeue, release := r.desiredReplicas(ctx, effectiveApp, obs)
 
 	// Hibernating drains the App's own Service. Let the public Ingress move to
 	// the activator FIRST and give Traefik a pass to ingest it, because the two
@@ -2493,7 +2502,7 @@ func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, 
 	// for its whole TTL, and a request landing inside the grace gets the wake
 	// interstitial from an App that is still up — a second early, and the same
 	// answer it would have got a second later anyway.
-	replicas, hibernateHold, err := r.holdHibernateForRouting(ctx, app, autoHibernating, replicas)
+	replicas, hibernateHold, err := r.holdHibernateForRouting(ctx, app, release.autoHibernating, replicas)
 	if err != nil {
 		return replicaPlan{}, ctrl.Result{}, true, &stepFailure{reason: "IngressFailed", err: err}
 	}
@@ -2502,7 +2511,7 @@ func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, 
 		return replicaPlan{}, res, true, err
 	}
 	return replicaPlan{
-		replicas: replicas, autoscaleRequeue: autoscaleRequeue, autoHibernating: autoHibernating,
+		releasePlan: release, prior: obs.prior, replicas: replicas, autoscaleRequeue: autoscaleRequeue,
 		hibernateHold: hibernateHold, poll: poll,
 	}, ctrl.Result{}, false, nil
 }
@@ -2672,20 +2681,26 @@ func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1
 }
 
 // desiredReplicas resolves the replica count reconcileKubernetes rolls the
-// Deployment to, plus the flags for the two policies that can shape it
-// (autoscale polling, auto-hibernation).
+// Deployment to and plans the release (planRelease) from app and obs, plus the
+// autoscaler's poll.
 //
 // Auto-hibernate: idle free-tier web app past its TTL → scale to 0 without
 // touching spec.suspended, so manual-suspend semantics are preserved. Other
 // types never auto-hibernate: they have no public Ingress wake path (private,
 // worker, cron), or no per-App workload to scale (static).
-func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App) (replicas int32, autoscaleRequeue, autoHibernating bool) {
+func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App, obs releaseObservation) (int32, bool, releasePlan) {
+	now := time.Now()
+	f := obs.facts(app)
 	// The stamp is the cheap gate; traffic is read only once it says the window
-	// has elapsed (w1/m151).
-	autoHibernating = r.ActivatorService != "" && shouldAutoHibernate(app) &&
-		!r.rolloutAwaitingVerdict(ctx, app) && !r.recentlyActive(ctx, app)
+	// has elapsed (w1/m151), and not while a rollout awaits its verdict, which
+	// keeps the App up whatever the traffic.
+	f.idle = r.ActivatorService != "" && shouldAutoHibernate(app)
+	if f.idle && !f.awaitingVerdict(now) {
+		f.idle = !r.recentlyActive(ctx, app)
+	}
 
-	replicas = effectiveReplicas(app)
+	replicas := effectiveReplicas(app)
+	var autoscaleRequeue bool
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
 	// to spec.replicas (the user's static count). applyAutoscaling writes the
 	// annotation instead of spec.replicas to avoid bumping generation (see annotAutoscaleReplicas).
@@ -2699,44 +2714,13 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 		}
 		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
 	}
-	if autoHibernating {
-		replicas = 0
+	f.replicas = clampReplicas(app, replicas)
+	plan := planRelease(f, now)
+	if plan.autoHibernating {
+		return 0, autoscaleRequeue, plan
 	}
-	return clampReplicas(app, replicas), autoscaleRequeue, autoHibernating
+	return f.replicas, autoscaleRequeue, plan
 }
-
-// rolloutAwaitingVerdict reports whether the current release, newer than the
-// served one, is rolling out on an awake Deployment with no verdict yet. Such an
-// App is not idle (w6/m147): the idle window equals the rollout budget, and a
-// park before the verdict overwrites Ready with AutoHibernated, so the rollout
-// never settles and its crash or probe diagnosis never reaches the deploy row.
-// Once settleFailedRollout records ConditionRollout the App may park; a settle
-// that keeps failing stops deferring rolloutVerdictGrace past the deadline.
-func (r *AppReconciler) rolloutAwaitingVerdict(ctx context.Context, app *appv1alpha1.App) bool {
-	rev := releaseRevision(app)
-	if !releaseHasServed(app) || rev == app.Status.ActiveRevision {
-		return false
-	}
-	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); c != nil &&
-		c.ObservedGeneration == releaseGeneration(app) {
-		return false
-	}
-	var dep appsv1.Deployment
-	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &dep); err != nil {
-		return false
-	}
-	if dep.Spec.Template.Labels[labelRevision] != rev || dep.Spec.Replicas == nil || *dep.Spec.Replicas == 0 {
-		return false
-	}
-	if c := progressDeadlineExceeded(&dep); c != nil {
-		return time.Since(c.LastTransitionTime.Time) < rolloutVerdictGrace
-	}
-	return true
-}
-
-// rolloutVerdictGrace is how long past ProgressDeadlineExceeded a park still
-// waits for settleFailedRollout's verdict, which normally lands the same pass.
-const rolloutVerdictGrace = 2 * time.Minute
 
 // ingressBackend picks the Service/port the public Ingress routes to, in a
 // fixed precedence: maintenance → suspended → sleep → the App's own Service.
@@ -3098,7 +3082,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
-	notReadyReason := "RolloutProgressing"
+	notReadyReason := reasonRolloutProgressing
 	if r.currentRevisionFullyReady(ctx, dep, replicas) {
 		notReadyReason, notReadyMessage = reasonRolloutSettling, "current revision fully ready; Deployment status still converging"
 	}
@@ -3137,11 +3121,19 @@ func progressDeadlineExceeded(dep *appsv1.Deployment) *appsv1.DeploymentConditio
 	if dep == nil {
 		return nil
 	}
+	if c := deploymentCondition(dep, appsv1.DeploymentProgressing); c != nil &&
+		c.Status == corev1.ConditionFalse && c.Reason == reasonProgressDeadlineExceeded {
+		return c
+	}
+	return nil
+}
+
+// deploymentCondition returns dep's condition of type t, nil when it has none.
+// The deployment controller keeps one condition per type.
+func deploymentCondition(dep *appsv1.Deployment, t appsv1.DeploymentConditionType) *appsv1.DeploymentCondition {
 	for i := range dep.Status.Conditions {
-		c := &dep.Status.Conditions[i]
-		if c.Type == appsv1.DeploymentProgressing && c.Status == corev1.ConditionFalse &&
-			c.Reason == reasonProgressDeadlineExceeded {
-			return c
+		if dep.Status.Conditions[i].Type == t {
+			return &dep.Status.Conditions[i]
 		}
 	}
 	return nil
@@ -3214,7 +3206,8 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 		}
 		if restored {
 			r.settlePriorRelease(ctx, app, failedRolloutSummary(msg), dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0)
-			// Come back for holdFailedRollout to converge the served release's
+			// Come back for the failed-rollout hold (actHoldVerdict) to converge the
+			// served release's
 			// routing and its idle requeue.
 			return ctrl.Result{RequeueAfter: wakeReadyPoll}, nil
 		}
@@ -5549,25 +5542,17 @@ func preDeployPassed(app *appv1alpha1.App) bool {
 	return pd != nil && pd.Generation == releaseGeneration(app) && pd.Status == appv1alpha1.PreDeploySucceeded
 }
 
-// replicaPlan is what planReplicas resolved for this pass's replicas. poll marks
-// a held pass that comes back within seconds on a step's or build's own poll.
+// replicaPlan is what planReplicas resolved for this pass: the release plan, the
+// served release's runtime a hold keeps serving (nil when there is none) and the
+// replicas it runs. poll marks a held pass that comes back within seconds on a
+// step's or build's own poll.
 type replicaPlan struct {
+	releasePlan
+	prior            *priorRelease
 	replicas         int32
 	autoscaleRequeue bool
-	autoHibernating  bool
 	hibernateHold    bool
 	poll             bool
-}
-
-// priorRelease is the Deployment a serving prior release runs from and the port
-// its Service exposes (0 for a background worker, which has none).
-type priorRelease struct {
-	dep  *appsv1.Deployment
-	port int
-}
-
-func (p replicaPlan) parked(app *appv1alpha1.App) bool {
-	return app.Spec.Suspended || p.autoHibernating
 }
 
 // scalableRuntime reports whether the App runs as a Deployment a held release
@@ -5577,222 +5562,7 @@ func scalableRuntime(app *appv1alpha1.App) bool {
 	return app.Spec.Type != appv1alpha1.TypeCronJob && app.Spec.Type != appv1alpha1.TypeStaticSite
 }
 
-// wakeReadyPoll is how soon a held release's pass comes back while a woken free
-// service waits for its first ready pod, so the public route leaves the
-// activator promptly. The Deployment watch usually gets there first.
-const wakeReadyPoll = 5 * time.Second
-
-// holdUnpassedRelease keeps a newer release whose pre-deploy step has not passed
-// off the pod template while a prior release serves, and keeps that prior
-// release's replicas and routing following the App (w1/m156; for a background
-// worker, its replicas alone, w1/m158). Parked passes are held too: the gate
-// does not run while parked, so a parking pass would otherwise write the
-// unmigrated release onto the parked Deployment for the next wake to start.
-// held=false hands the pass to the normal path: no prior release, no prior
-// Deployment (or Service, for a web or private service), or a step that has
-// passed, including one that passes on this pass.
-func (r *AppReconciler) holdUnpassedRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, plan replicaPlan) (bool, ctrl.Result, error) {
-	if preDeployPassed(app) {
-		return false, ctrl.Result{}, nil
-	}
-	prior, err := r.servingPriorRelease(ctx, app)
-	if err != nil {
-		return true, ctrl.Result{}, err
-	}
-	if prior == nil {
-		return false, ctrl.Result{}, nil
-	}
-
-	failed := ""
-	if preDeployFailedFor(app, releaseGeneration(app)) {
-		failed = "the latest pre-deploy command failed"
-	}
-	var gate ctrl.Result
-	if failed == "" && !plan.parked(app) {
-		res, halt, err := r.reconcilePreDeploy(ctx, app, image, port)
-		if err != nil {
-			return true, res, err
-		}
-		if !halt {
-			return false, ctrl.Result{}, nil
-		}
-		gate = res
-	}
-	plan.poll = gate.RequeueAfter > 0
-	res, err := r.settleHeldRuntime(ctx, app, prior, plan, failed, gate.RequeueAfter)
-	if err != nil {
-		res, err = r.failStep(ctx, app, err)
-	}
-	return true, res, err
-}
-
-// newerReleaseUnserved reports a current release newer than the one that served.
-func newerReleaseUnserved(app *appv1alpha1.App) bool {
-	return releaseHasServed(app) && successfulReleaseGeneration(app) != releaseGeneration(app)
-}
-
-// preDeployFailedFor reports a failed pre-deploy verdict stored for release gen.
-func preDeployFailedFor(app *appv1alpha1.App, gen int64) bool {
-	pd := app.Status.PreDeploy
-	return pd != nil && pd.Generation == gen && pd.Status == appv1alpha1.PreDeployFailed
-}
-
-// holdFailedRollout is holdUnpassedRelease one stage later (w1/m172). A release
-// whose rollout settled failed over a served release stays off the pod template:
-// the Deployment runs the served release's template, and its replicas and routing
-// keep following the App, so a wake, resume or scale starts pods that can serve.
-// The hold ends when a newer release is requested, which moves the release
-// generation past the failed verdict. held=false hands the pass to the normal
-// path: no failed rollout, no prior Deployment (or Service), or nothing to
-// restore the served template from — where the rollout settles Failed.
-func (r *AppReconciler) holdFailedRollout(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (bool, ctrl.Result, error) {
-	if !failedRolloutOverServed(app) {
-		return false, ctrl.Result{}, nil
-	}
-	prior, err := r.servingPriorRelease(ctx, app)
-	if err != nil {
-		return true, ctrl.Result{}, err
-	}
-	if prior == nil {
-		return false, ctrl.Result{}, nil
-	}
-	restored, err := r.restoreServedTemplate(ctx, app, prior.dep)
-	if err != nil {
-		// Unrecorded: a read that failed says nothing about the serving release.
-		return true, ctrl.Result{}, err
-	}
-	if !restored {
-		return false, ctrl.Result{}, nil
-	}
-	verdict := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
-	res, err := r.settleHeldRuntime(ctx, app, prior, plan, failedRolloutSummary(verdict.Message), 0)
-	if err != nil {
-		res, err = r.failStep(ctx, app, err)
-	}
-	return true, res, err
-}
-
-// holdNewerRelease runs the three holds that keep a newer release off the pod
-// template while a prior release serves, in rollout order: a pre-deploy step that
-// has not passed, a rollout that settled failed, and a release that would
-// otherwise be started alone from zero.
-func (r *AppReconciler) holdNewerRelease(ctx context.Context, app *appv1alpha1.App, image string, port int, plan replicaPlan) (bool, ctrl.Result, error) {
-	if woke, err := r.wakeForRelease(ctx, app, plan); err != nil {
-		return true, ctrl.Result{}, err
-	} else if woke {
-		// The annotation patch alone triggers no reconcile.
-		return true, ctrl.Result{RequeueAfter: wakeReadyPoll}, nil
-	}
-	if held, res, err := r.holdUnpassedRelease(ctx, app, image, port, plan); held {
-		return true, res, err
-	}
-	if held, res, err := r.holdFailedRollout(ctx, app, plan); held {
-		return true, res, err
-	}
-	return r.holdUnservedRelease(ctx, app, plan)
-}
-
-// wakeForRelease wakes an auto-hibernated App once for a newer release that has
-// not served (w6/076). A deploy is activity: Render marks a deploy live only after
-// the new instance passes its health check, and parked, the holds below keep the
-// release off the Deployment until something wakes it. One wake per release
-// generation bounds the cost of a release that never rolls to one idle window.
-func (r *AppReconciler) wakeForRelease(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (bool, error) {
-	gen := releaseGeneration(app)
-	genKey := strconv.FormatInt(gen, 10)
-	if !plan.autoHibernating || !newerReleaseUnserved(app) ||
-		failedRolloutOverServed(app) || preDeployFailedFor(app, gen) || app.Annotations[annotReleaseWakeGeneration] == genKey {
-		return false, nil
-	}
-	if err := r.stampLastActive(ctx, app, time.Now(), [2]string{annotReleaseWakeGeneration, genKey}); err != nil {
-		return false, err
-	}
-	logf.FromContext(ctx).Info("waking app to roll out a new release", "name", app.Name, "releaseGeneration", gen)
-	return true, nil
-}
-
-// servedWakeBudget is how long a wake waits for the served release's pod before
-// the newer release rolls anyway, so a served release that can no longer start
-// never blocks the release that might fix it.
-const servedWakeBudget = 5 * time.Minute
-
-// holdUnservedRelease keeps a release that has not served from being started on
-// its own from zero (w1/m172). Scaling a Deployment up is not a rollout: with the
-// newer template already on a parked Deployment, a wake starts only its pods,
-// Kubernetes raises no progress deadline, and a release that cannot become ready
-// leaves the service on the activator with no verdict to restore from.
-//
-//   - Parked: the Deployment carries the served release's template, restored if a
-//     rollout was in flight when the park landed.
-//   - Waking: the served release's pod comes up first, behind the activator.
-//
-// Once that pod is ready, or servedWakeBudget has passed, held=false and the
-// normal path rolls the newer release over it as a rolling update, which keeps
-// the served pod until the new one is ready and can fail into holdFailedRollout.
-func (r *AppReconciler) holdUnservedRelease(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (bool, ctrl.Result, error) {
-	if !newerReleaseUnserved(app) {
-		return false, ctrl.Result{}, nil
-	}
-	prior, err := r.servingPriorRelease(ctx, app)
-	if err != nil {
-		return true, ctrl.Result{}, err
-	}
-	if prior == nil {
-		return false, ctrl.Result{}, nil
-	}
-	held := func(res ctrl.Result, err error) (bool, ctrl.Result, error) {
-		if err != nil {
-			res, err = r.failStep(ctx, app, err)
-		}
-		return true, res, err
-	}
-	if plan.parked(app) {
-		restored, err := r.restoreServedTemplate(ctx, app, prior.dep)
-		if err != nil {
-			return true, ctrl.Result{}, err
-		}
-		if !restored {
-			return false, ctrl.Result{}, nil
-		}
-		return held(r.convergeServingRuntime(ctx, app, prior, plan))
-	}
-	dep := prior.dep
-	if dep.Spec.Template.Labels[labelRevision] != app.Status.ActiveRevision || dep.Status.ReadyReplicas > 0 ||
-		plan.replicas == 0 || r.podsOlderThan(ctx, dep, servedWakeBudget) {
-		return false, ctrl.Result{}, nil
-	}
-	res, err := r.convergeServingRuntime(ctx, app, prior, plan)
-	if err != nil {
-		return held(res, err)
-	}
-	app.Status.Phase = appv1alpha1.PhaseDeploying
-	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "RolloutProgressing",
-		Message: "starting the previously deployed release before rolling the new one", ObservedGeneration: app.Generation,
-	})
-	r.updateStatusRetrying(ctx, app, "releaseHeld")
-	res.RequeueAfter = soonerRequeue(res.RequeueAfter, wakeReadyPoll)
-	return true, res, nil
-}
-
-// podsOlderThan reports whether any live pod of dep has existed for longer than d.
-func (r *AppReconciler) podsOlderThan(ctx context.Context, dep *appsv1.Deployment, d time.Duration) bool {
-	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
-		return false
-	}
-	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
-		return false
-	}
-	for i := range pods.Items {
-		if pod := &pods.Items[i]; pod.DeletionTimestamp.IsZero() && time.Since(pod.CreationTimestamp.Time) > d {
-			return true
-		}
-	}
-	return false
-}
-
-// holdPendingArtifact is holdUnpassedRelease one stage earlier (w1/m157). While a
+// holdPendingArtifact is the pre-deploy hold one stage earlier (w1/m157). While a
 // newer release has no image yet (its build is queued, running, waiting on a
 // registry credential or failed), or a suspended App reuses its serving image
 // instead of building, the prior release's replicas and public routing keep
@@ -5817,10 +5587,11 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 	if !scalableRuntime(app) {
 		return false, ctrl.Result{}, nil
 	}
-	prior, err := r.servingPriorRelease(ctx, app)
+	obs, err := r.observeRelease(ctx, app)
 	if err != nil {
 		return true, ctrl.Result{}, err
 	}
+	prior := obs.prior
 	if prior == nil {
 		return false, ctrl.Result{}, nil
 	}
@@ -5846,13 +5617,13 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 			return held(ctrl.Result{}, err)
 		}
 	}
-	plan, res, halted, err := r.planReplicas(ctx, app, poll)
+	plan, res, halted, err := r.planReplicas(ctx, app, obs, poll)
 	if halted {
 		res.RequeueAfter = soonerRequeue(res.RequeueAfter, buildHalt.RequeueAfter)
 		return held(res, err)
 	}
-	if building && plan.parked(app) {
-		if _, _, err := r.convergeServingRoute(ctx, app, prior, plan); err != nil {
+	if building && plan.parked {
+		if _, _, err := r.convergeServingRoute(ctx, app, plan); err != nil {
 			return held(ctrl.Result{}, err)
 		}
 		r.updateStatusRetrying(ctx, app, "releaseHeld")
@@ -5865,7 +5636,7 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 	if terminalBuildFailureRecorded(app) {
 		failed = "the latest build failed"
 	}
-	return held(r.settleHeldRuntime(ctx, app, prior, plan, failed, buildHalt.RequeueAfter))
+	return held(r.settleHeldRuntime(ctx, app, plan, failed, buildHalt.RequeueAfter))
 }
 
 // holdPendingCronArtifact keeps operational controls and run history converging
@@ -5893,47 +5664,19 @@ func (r *AppReconciler) holdPendingCronArtifact(ctx context.Context, app *appv1a
 	return true, res, nil
 }
 
-// servingPriorRelease returns the release a held pass keeps serving, or nil when
-// there is none to hold: nothing has served yet, or its Deployment, or a web or
-// private service's Service, is gone.
-func (r *AppReconciler) servingPriorRelease(ctx context.Context, app *appv1alpha1.App) (*priorRelease, error) {
-	if !releaseHasServed(app) {
-		return nil, nil
-	}
-	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
-	dep := &appsv1.Deployment{}
-	if err := r.Get(ctx, key, dep); err != nil {
-		return nil, client.IgnoreNotFound(err)
-	}
-	// A background worker has no Service or port: its runtime is the Deployment's
-	// replicas alone (w1/m158).
-	if !app.Spec.InternallyAddressable() {
-		return &priorRelease{dep: dep}, nil
-	}
-	var svc corev1.Service
-	if err := r.Get(ctx, key, &svc); err != nil {
-		return nil, client.IgnoreNotFound(err)
-	}
-	if len(svc.Spec.Ports) == 0 {
-		return nil, nil
-	}
-	// Route to the port the prior release's Service exposes: the held release may
-	// have changed spec.port, and its pods are not the ones serving.
-	return &priorRelease{dep: dep, port: int(svc.Spec.Ports[0].Port)}, nil
-}
-
 // settleHeldRuntime converges a held release's serving runtime and, while it is
-// awake, settles the status that pass left: from the scale it wrote when failed
-// names the failed step (on a wake pass the cached Deployment can still show the
-// parked count), otherwise as the pass left it. extra folds the gate's own
-// requeue in. Errors come back unrecorded, with their reason where they have one.
-func (r *AppReconciler) settleHeldRuntime(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan, failed string, extra time.Duration) (ctrl.Result, error) {
-	res, err := r.convergeServingRuntime(ctx, app, prior, plan)
-	if err != nil || plan.parked(app) {
+// awake, settles the status that pass left: the prior release keeps serving when
+// failed names the failed step, otherwise as the pass left it. Awake is the
+// plan's decision, not the cached Deployment's scale, which on a wake pass can
+// still show the parked count. extra folds the gate's own requeue in. Errors
+// come back unrecorded, with their reason where they have one.
+func (r *AppReconciler) settleHeldRuntime(ctx context.Context, app *appv1alpha1.App, plan replicaPlan, failed string, extra time.Duration) (ctrl.Result, error) {
+	res, err := r.convergeServingRuntime(ctx, app, plan)
+	if err != nil || plan.parked {
 		return res, err
 	}
 	if failed != "" {
-		r.settlePriorRelease(ctx, app, failed, plan.replicas == 0)
+		r.settlePriorRelease(ctx, app, failed, false)
 	} else {
 		r.updateStatusRetrying(ctx, app, "releaseHeld")
 	}
@@ -5944,15 +5687,15 @@ func (r *AppReconciler) settleHeldRuntime(ctx context.Context, app *appv1alpha1.
 // convergeServingRuntime moves a serving prior release's replicas and, unless it
 // is a background worker, its public routing to what the App wants, then parks
 // it or keeps its running requeue.
-func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan) (ctrl.Result, error) {
-	hosts, serving, err := r.convergeServingRoute(ctx, app, prior, plan)
+func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) (ctrl.Result, error) {
+	hosts, serving, err := r.convergeServingRoute(ctx, app, plan)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if plan.parked(app) {
+	if plan.parked {
 		return r.parkKubernetes(ctx, app, app.Status.Image, hosts, plan.autoHibernating, plan.hibernateHold)
 	}
-	completeAutoscalingTransition(app, prior.dep.Status.Replicas, prior.dep.Status.ReadyReplicas, time.Now())
+	completeAutoscalingTransition(app, plan.prior.dep.Status.Replicas, plan.prior.dep.Status.ReadyReplicas, time.Now())
 	res, err := r.runningRequeue(ctx, app, plan.autoscaleRequeue)
 	if err != nil {
 		return res, err
@@ -5967,8 +5710,8 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 // public Ingress without touching the pod template, and reports the hosts routed
 // and whether a pod is ready. A background worker returns right after the scale,
 // with no hosts. Errors carry their failure reason (stepFailure).
-func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alpha1.App, prior *priorRelease, plan replicaPlan) ([]string, bool, error) {
-	dep := prior.dep
+func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) ([]string, bool, error) {
+	dep := plan.prior.dep
 	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
 	if scaled {
 		base := dep.DeepCopy()
@@ -5987,7 +5730,7 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 		hosts = nil
 	}
 	r.setPublicRoutingCondition(app, hosts)
-	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, prior.port, plan.autoHibernating, serving)
+	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, plan.prior.port, plan.autoHibernating, serving)
 	if err != nil {
 		return nil, false, &stepFailure{reason: "MaintenanceRoutingFailed", err: err}
 	}

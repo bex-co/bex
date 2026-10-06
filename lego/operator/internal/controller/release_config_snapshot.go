@@ -503,7 +503,7 @@ func failedRolloutOverServed(app *appv1alpha1.App) bool {
 	gen := releaseGeneration(app)
 	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
 	return c != nil && c.Status == metav1.ConditionFalse && c.ObservedGeneration == gen &&
-		c.Reason != reasonPublishFailed && releaseHasServed(app) && successfulReleaseGeneration(app) != gen
+		c.Reason != reasonPublishFailed && newerReleaseUnserved(app)
 }
 
 // restoreServedTemplate puts dep back on the last served release's pod template

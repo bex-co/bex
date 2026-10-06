@@ -27,11 +27,8 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -52,16 +49,9 @@ func activityApp(lastActive time.Time) *appv1alpha1.App {
 
 func activityReconciler(t *testing.T, app *appv1alpha1.App, reader AppActivityReader) (*AppReconciler, client.Client) {
 	t.Helper()
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = appv1alpha1.AddToScheme(scheme)
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}).Build()
-	return &AppReconciler{
-		Client: cl, Scheme: scheme, Mode: ModeKubernetes, BaseDomain: "onbex.co",
-		ActivatorService: "bex-activator", ActivatorNamespace: "bex-system", ActivatorPort: 8888,
-		ActivityReader: reader,
-	}, cl
+	r, cl, _ := lifecycleFixture(t, app)
+	r.ActivityReader = reader
+	return r, cl
 }
 
 func storedStamp(t *testing.T, cl client.Client, app *appv1alpha1.App) string {
@@ -153,7 +143,8 @@ func TestIdleDecisionConsultsServedTraffic(t *testing.T) {
 			calls := 0
 			r, cl := activityReconciler(t, app, tc.reader(&calls))
 
-			_, _, sleeping := r.desiredReplicas(ctx, app)
+			_, _, plan := r.desiredReplicas(ctx, app, releaseObservation{})
+			sleeping := plan.autoHibernating
 			if sleeping != tc.wantSleep {
 				t.Fatalf("auto-hibernating = %v, want %v", sleeping, tc.wantSleep)
 			}
@@ -178,7 +169,7 @@ func TestIdleDecisionConsultsServedTraffic(t *testing.T) {
 func TestIdleDecisionWithoutAReaderUsesTheStamp(t *testing.T) {
 	app := activityApp(time.Now().Add(-time.Hour))
 	r, _ := activityReconciler(t, app, nil)
-	if _, _, sleeping := r.desiredReplicas(context.Background(), app); !sleeping {
+	if _, _, plan := r.desiredReplicas(context.Background(), app, releaseObservation{}); !plan.autoHibernating {
 		t.Fatal("with no activity reader an App past its window must still hibernate")
 	}
 }
@@ -190,7 +181,7 @@ func TestRequeueAfterTrafficIsTimedFromTheTraffic(t *testing.T) {
 	app := activityApp(now.Add(-time.Hour))
 	r, _ := activityReconciler(t, app, seenAt(now.Add(-time.Minute))(new(int)))
 
-	if _, _, sleeping := r.desiredReplicas(context.Background(), app); sleeping {
+	if _, _, plan := r.desiredReplicas(context.Background(), app, releaseObservation{}); plan.autoHibernating {
 		t.Fatal("recent traffic must keep the service awake")
 	}
 	res, err := r.runningRequeue(context.Background(), app, false)

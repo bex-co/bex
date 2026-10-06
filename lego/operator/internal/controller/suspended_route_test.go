@@ -20,12 +20,10 @@ import (
 	"context"
 	"testing"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -49,13 +47,9 @@ func suspendedWebApp() *appv1alpha1.App {
 // (w1/094 pass 13). The backend must be the activator alias — which the
 // activator answers with a content-negotiated bex 503, without waking anything.
 func TestSuspendedWebServiceRoutesToActivator(t *testing.T) {
-	scheme := wakeScheme()
 	app := suspendedWebApp()
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 	reconcileTwice(t, r, nn)
 
 	alias := activatorAliasName(app.Name)
@@ -91,13 +85,9 @@ func TestSuspendedWebServiceRoutesToActivator(t *testing.T) {
 // hand the public host straight back to the App's own Service, with no extra
 // reconcile step — ingressBackend is a pure function of the current spec.
 func TestResumeReturnsSuspendedRouteToOwnService(t *testing.T) {
-	scheme := wakeScheme()
 	app := suspendedWebApp()
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != activatorAliasName(app.Name) {
 		t.Fatalf("suspended backend = %q, want the activator alias", got)
@@ -121,13 +111,9 @@ func TestResumeReturnsSuspendedRouteToOwnService(t *testing.T) {
 // → suspended → sleep → own Service. An owner who configured a maintenance page
 // still gets that page while the service is also suspended.
 func TestMaintenanceWinsOverSuspendedRouting(t *testing.T) {
-	scheme := wakeScheme()
 	app := suspendedWebApp()
 	app.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 	reconcileTwice(t, r, nn)
 
 	if got := ingressBackendName(t, cl, nn); got != maintenanceAliasName(app.Name) {
@@ -138,15 +124,11 @@ func TestMaintenanceWinsOverSuspendedRouting(t *testing.T) {
 // TestSuspendedPrivateServiceHasNoIngress is the control for a type with no
 // public host: suspending it must not mint an activator alias or an Ingress.
 func TestSuspendedPrivateServiceHasNoIngress(t *testing.T) {
-	scheme := wakeScheme()
 	app := suspendedWebApp()
 	app.Spec.Type = appv1alpha1.TypePrivateService
 	app.Spec.Expose = false
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 	reconcileTwice(t, r, nn)
 
 	var ing networkingv1.Ingress
@@ -164,13 +146,9 @@ func TestSuspendedPrivateServiceHasNoIngress(t *testing.T) {
 // configured there is nothing to route to, so the App keeps its own Service and
 // the behavior is byte-identical to before m98 rather than a dangling backend.
 func TestSuspendedRoutingWithoutActivatorKeepsOwnService(t *testing.T) {
-	scheme := wakeScheme()
 	app := suspendedWebApp()
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	r.ActivatorService = ""
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 	reconcileTwice(t, r, nn)
 
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
@@ -181,12 +159,8 @@ func TestSuspendedRoutingWithoutActivatorKeepsOwnService(t *testing.T) {
 // TestSleepingFreeServiceStillRoutesToActivator is the w6/m94 control: the
 // sleep branch is unchanged by the suspended branch sitting above it.
 func TestSleepingFreeServiceStillRoutesToActivator(t *testing.T) {
-	scheme := wakeScheme()
 	app := hibernatingApp("tea-abc123")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 	reconcileTwice(t, r, nn)
 
 	if got := ingressBackendName(t, cl, nn); got != activatorAliasName(app.Name) {

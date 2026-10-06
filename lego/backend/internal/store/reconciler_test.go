@@ -1707,6 +1707,11 @@ func TestFailureReasonFor(t *testing.T) {
 	if got, code := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "ImagePullBackOff", "image pull is failing: 401"), DeployUpdateFailed); got != "image pull is failing: 401" || code != EventReasonImagePullBackoff {
 		t.Errorf("ImagePullBackOff reason = %q, want the condition message", got)
 	}
+	// The served release that a wake starts first cannot create its pods (w5/m123).
+	blocked := `the previously deployed release cannot create its pods: pods "web-abc12-" is forbidden: exceeded quota: tenant-quota`
+	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, appv1alpha1.ReasonServedReleaseCannotStart, blocked), DeployUpdateFailed); got != blocked {
+		t.Errorf("ServedReleaseCannotStart reason = %q, want the condition message", got)
+	}
 	// A bland in-progress condition proves nothing — synthesize the timeout line.
 	if got, _ := failureReasonFor(mk(appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for img"), DeployUpdateFailed); got == "" || got == "Reconciling Deployment for img" {
 		t.Errorf("bland Deploying condition reason = %q, want the synthesized timeout line", got)
@@ -2647,6 +2652,7 @@ func TestDeployStallReasonOnlyForActionableDiagnoses(t *testing.T) {
 		{"probe stall", appAt("HealthCheckFailing", probeMsg, metav1.ConditionFalse, 5), probeMsg},
 		{"crash loop", appAt("CrashLoopBackOff", "container exited", metav1.ConditionFalse, 5), "container exited"},
 		{"quota block", appAt("RolloutBlockedByQuota", "exceeded quota", metav1.ConditionFalse, 5), "exceeded quota"},
+		{"served release cannot start", appAt(appv1alpha1.ReasonServedReleaseCannotStart, "cannot create its pods", metav1.ConditionFalse, 5), "cannot create its pods"},
 		// Ordinary progress must stay silent, or every healthy deploy reads
 		// as stalled for its whole rollout.
 		{"progressing", appAt("RolloutProgressing", "waiting for pods", metav1.ConditionFalse, 5), ""},

@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -30,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -122,12 +120,8 @@ func buildSlotTaken(namespace string) *batchv1.Job {
 }
 
 func TestResumeOverFailedBuildRestoresPriorRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m157")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 
 	priorRevision, priorImage := serveReleaseOne(t, r, cl, nn)
 	releaseTwoFromSource(t, cl, nn)
@@ -153,7 +147,7 @@ func TestResumeOverFailedBuildRestoresPriorRelease(t *testing.T) {
 	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseRunning {
 		t.Fatalf("resumed phase = %q, want Running", got)
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("resumed backend = %q, want the App's own Service %q", got, app.Name)
@@ -162,13 +156,8 @@ func TestResumeOverFailedBuildRestoresPriorRelease(t *testing.T) {
 }
 
 func TestIdleSleepAndWakeOverFailedBuildKeepPriorRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m157")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 
 	priorRevision, priorImage := serveReleaseOne(t, r, cl, nn)
 	releaseTwoFromSource(t, cl, nn)
@@ -177,9 +166,7 @@ func TestIdleSleepAndWakeOverFailedBuildKeepPriorRelease(t *testing.T) {
 
 	// It goes idle: the route moves to the activator, then the pods drain.
 	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
-	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	reconcileOnce(t, r, nn)
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 0 {
 		t.Fatalf("idle replicas = %d, want 0: a recorded build failure must not stop an idle free service from sleeping", got)
@@ -200,7 +187,7 @@ func TestIdleSleepAndWakeOverFailedBuildKeepPriorRelease(t *testing.T) {
 	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseRunning {
 		t.Fatalf("phase on the wake pass = %q, want Running", got)
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("woken backend = %q, want the App's own Service %q once a pod is ready", got, app.Name)
@@ -213,12 +200,9 @@ func TestIdleSleepAndWakeOverFailedBuildKeepPriorRelease(t *testing.T) {
 // polled: nothing watches build Jobs, so a parked pass that dropped the build's
 // requeue could leave a finished build unobserved.
 func TestParkedServiceWithQueuedBuildKeepsBuildPollAndWakesOnPriorRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m157")
 	app.UID = "uid-web" // the fake client assigns none; build admission is keyed on it
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, buildSlotTaken(app.Namespace)).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}, &batchv1.Job{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app, withObjects(buildSlotTaken(app.Namespace)))
 	r.MaxConcurrentBuilds = 1
 	readerCalls := 0
 	r.ActivityReader = func(_ context.Context, _ *appv1alpha1.App, since time.Time) (time.Time, error) {
@@ -226,7 +210,6 @@ func TestParkedServiceWithQueuedBuildKeepsBuildPollAndWakesOnPriorRelease(t *tes
 		return since, nil // no traffic since the stamp
 	}
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 	req := reconcile.Request{NamespacedName: nn}
 
 	priorRevision, _ := serveReleaseOne(t, r, cl, nn)
@@ -293,7 +276,7 @@ func TestParkedServiceWithQueuedBuildKeepsBuildPollAndWakesOnPriorRelease(t *tes
 	if got := deploymentReplicas(t, cl, nn); got != 1 {
 		t.Fatalf("woken replicas = %d, want 1 while release 2 waits for its build", got)
 	}
-	markDeploymentRolledOut(t, cl, nn)
+	setDeploymentStatus(t, cl, nn, statusRolledOut)
 	reconcileTwice(t, r, nn)
 	if got := ingressBackendName(t, cl, nn); got != app.Name {
 		t.Fatalf("woken backend = %q, want the prior release's Service %q", got, app.Name)
@@ -307,13 +290,9 @@ func TestParkedServiceWithQueuedBuildKeepsBuildPollAndWakesOnPriorRelease(t *tes
 // than w6/m100, must stay on the old halt: the hold's status writes replace
 // Ready, and without its marker the failed build would be dispatched again.
 func TestLegacyReadyOnlyBuildFailureIsNotHeld(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m157")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	serveReleaseOne(t, r, cl, nn)
 	releaseTwoFromSource(t, cl, nn)
@@ -337,25 +316,19 @@ func TestLegacyReadyOnlyBuildFailureIsNotHeld(t *testing.T) {
 // must not scale the service back up onto a filesystem the restore Job is still
 // rewriting.
 func TestWakeOverFailedBuildWaitsForDiskRestore(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m157")
 	app.Spec.Disk = &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}, &batchv1.Job{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	r.DiskSnapshots = DiskSnapshotStore{Endpoint: "https://s3.example.invalid", Bucket: "snapshots", S3Secret: "s3", AgePublicKey: "age1test", AgeSecret: "age"}
 	r.BackupHelperImage = "ghcr.io/bex-co/bex:test"
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	serveReleaseOne(t, r, cl, nn)
 	releaseTwoFromSource(t, cl, nn)
 	storeReleaseTwoBuildFailure(t, cl, nn, appv1alpha1.ConditionBuild)
 	reconcileTwice(t, r, nn)
 	stampLastActiveAt(t, cl, nn, time.Now().Add(-time.Hour))
-	if _, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	reconcileOnce(t, r, nn)
 	reconcileTwice(t, r, nn)
 	if got := deploymentReplicas(t, cl, nn); got != 0 {
 		t.Fatalf("setup: replicas = %d, want 0 once hibernated", got)
@@ -388,13 +361,9 @@ func TestWakeOverFailedBuildWaitsForDiskRestore(t *testing.T) {
 // new release's config onto the parked template, or a resume would start the
 // prior image under the new release's settings.
 func TestDeployWhileSuspendedKeepsTemplateOnServingRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m157")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app)
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	_, priorImage := serveReleaseOne(t, r, cl, nn)
 	setSuspendedAt(t, cl, nn, true, 2)
@@ -439,12 +408,8 @@ func TestDeployWhileSuspendedKeepsTemplateOnServingRelease(t *testing.T) {
 // A background worker whose newest build failed could not be resumed: resume
 // needs the Deployment scale the build halt returned before (w1/m158).
 func TestSuspendAndResumeWorkerOverFailedBuildKeepPriorRelease(t *testing.T) {
-	scheme := wakeScheme()
 	app := heldWorkerApp("tea-m158")
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	r, cl, nn := lifecycleFixture(t, app)
 
 	priorRevision, priorImage := serveReleaseOne(t, r, cl, nn)
 	releaseTwoFromSource(t, cl, nn)
@@ -476,14 +441,10 @@ func TestSuspendAndResumeWorkerOverFailedBuildKeepPriorRelease(t *testing.T) {
 // matched, and the route never changes for an allow-list edit, so the old list
 // kept being enforced until a new release shipped.
 func TestAllowListEditOverFailedBuildReachesIngress(t *testing.T) {
-	scheme := newIPAllowListScheme()
 	app := activeApp("tea-m157")
 	app.Labels[labelAppID] = "srv-m157"
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app, withScheme(newIPAllowListScheme()))
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 
 	serveReleaseOne(t, r, cl, nn)
 	releaseTwoFromSource(t, cl, nn)
@@ -516,7 +477,6 @@ func TestAllowListEditOverFailedBuildReachesIngress(t *testing.T) {
 // Building phase with Failed: that phase pins the release to its build, and
 // without it a newer push could start a second build beside the running one.
 func TestRoutingFailureWhileBuildQueuedKeepsBuildingPhase(t *testing.T) {
-	scheme := wakeScheme()
 	app := activeApp("tea-m157")
 	app.UID = "uid-web"
 	refuseAlias := false
@@ -527,39 +487,33 @@ func TestRoutingFailureWhileBuildQueuedKeepsBuildingPhase(t *testing.T) {
 		}
 		return nil
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, buildSlotTaken(app.Namespace)).
-		WithStatusSubresource(&appv1alpha1.App{}, &appsv1.Deployment{}, &batchv1.Job{}).
-		WithInterceptorFuncs(interceptor.Funcs{
-			Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-				if err := aliasWrite(obj); err != nil {
-					return err
-				}
-				return c.Create(ctx, obj, opts...)
-			},
-			Update: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-				if err := aliasWrite(obj); err != nil {
-					return err
-				}
-				return c.Update(ctx, obj, opts...)
-			},
-			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-				if err := aliasWrite(obj); err != nil {
-					return err
-				}
-				return c.Patch(ctx, obj, patch, opts...)
-			},
-		}).Build()
-	r := wakeReconciler(cl, scheme)
+	r, cl, nn := lifecycleFixture(t, app, withObjects(buildSlotTaken(app.Namespace)), withInterceptor(interceptor.Funcs{
+		Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			if err := aliasWrite(obj); err != nil {
+				return err
+			}
+			return c.Create(ctx, obj, opts...)
+		},
+		Update: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
+			if err := aliasWrite(obj); err != nil {
+				return err
+			}
+			return c.Update(ctx, obj, opts...)
+		},
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if err := aliasWrite(obj); err != nil {
+				return err
+			}
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	}))
 	r.MaxConcurrentBuilds = 1
 	ctx := context.Background()
-	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
 	req := reconcile.Request{NamespacedName: nn}
 
 	serveReleaseOne(t, r, cl, nn)
 	releaseTwoFromSource(t, cl, nn)
-	if _, err := r.Reconcile(ctx, req); err != nil {
-		t.Fatalf("reconcile: %v", err)
-	}
+	reconcileOnce(t, r, nn)
 	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseBuilding {
 		t.Fatalf("setup: phase = %q, want Building while release 2 waits for a build slot", got)
 	}
