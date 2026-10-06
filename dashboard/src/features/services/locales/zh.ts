@@ -3061,10 +3061,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "使用 Dockerfile CMD",
     description: "Create-wizard optional Docker Command placeholder",
   },
-  "services.imageDeployDescription": {
-    message: "此镜像的容器如何启动。",
-    description: "Existing Image service Settings: Deploy card description",
-  },
   "services.imageCommandHint": {
     message: "覆盖镜像的默认命令（其 CMD）。留空则使用默认命令。",
     description: "Existing Image service Settings: Docker Command help text",

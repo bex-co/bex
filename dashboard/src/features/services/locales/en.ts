@@ -3130,10 +3130,6 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Create-wizard and settings placeholder for an Existing Image service's optional Docker Command",
   },
-  "services.imageDeployDescription": {
-    message: "How this image's container starts.",
-    description: "Existing Image service Settings: Deploy card description",
-  },
   "services.imageCommandHint": {
     message:
       "Overrides the image's default command (its CMD). Leave blank to use the default.",

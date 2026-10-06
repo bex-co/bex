@@ -13,19 +13,18 @@ import { Input } from "@/common/components/ui/input";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { DeployHookRows } from "@/features/services/components/deploy-hook-section";
+import { DeployCard } from "@/features/services/components/deploy-card";
 import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
-import { useStartCommand } from "@/features/services/hooks/use-start-command";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
-import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-command";
 import { useAutoDeploy } from "@/features/services/hooks/use-auto-deploy";
 import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { commandPromptPrefix } from "@/features/services/lib/format";
+import { isDockerBuild } from "@/features/services/lib/service-type";
 import type { BuildFilterView } from "@/features/services/types";
 
 export interface BuildDeploySectionProps {
@@ -147,10 +146,8 @@ export function BuildDeploySection({
   const createReasonKey = capabilities.reasonKey("can_create");
   const createReason = createReasonKey ? t(createReasonKey) : undefined;
   const { setRootDir, busy } = useRootDir();
-  const { setStartCommand, busy: startCommandBusy } = useStartCommand();
   const { setBuildCommand, busy: buildCommandBusy } = useBuildCommand();
   const { setDockerfilePath, busy: dockerfilePathBusy } = useDockerfilePath();
-  const { setPreDeployCommand, busy: preDeployBusy } = usePreDeployCommand();
   const { setAutoDeploy, busy: autoDeployBusy } = useAutoDeploy();
   // Optimistic switch state — reverted on a failed mutation.
   const [autoDeployOn, setAutoDeployOn] = useState(autoDeploy);
@@ -168,11 +165,8 @@ export function BuildDeploySection({
     [t],
   );
 
-  const dockerfileBuild =
-    showDockerfilePath &&
-    (runtime === "docker" || (!runtime && builder === "dockerfile"));
-  const dockerCommand =
-    runtime === "docker" || (!runtime && builder === "dockerfile");
+  const dockerCommand = isDockerBuild({ runtime, builder });
+  const dockerfileBuild = showDockerfilePath && dockerCommand;
 
   // Auto-Deploy select (Render's disabled-select-with-pencil, w5/m53) — lives in
   // the Deploy card (web/static) or, for a cron_job with no Deploy card, folds
@@ -293,97 +287,16 @@ export function BuildDeploySection({
       </Card>
 
       {showDeployCard && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("services.deploySectionTitle")}</CardTitle>
-            <CardDescription>
-              {t("services.deploySectionDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {showPreDeployCommand && (
-              <EditableFieldRow
-                label={t("services.preDeployLabel")}
-                hint={t("services.preDeployHint")}
-                value={preDeployCommand ?? ""}
-                // Pre-deploy runs from rootDir too — same "<rootDir>/ $" prompt (w5/m51).
-                valuePrefix={commandPromptPrefix(rootDir)}
-                placeholder={t("services.preDeployPlaceholder")}
-                editLabel={t("services.preDeployEdit")}
-                optional
-                mono
-                busy={preDeployBusy}
-                disabled={createDisabled}
-                disabledReason={createReason}
-                onSave={(value) => setPreDeployCommand(serviceId, value)}
-              />
-            )}
-
-            {showStartCommand && (
-              <EditableFieldRow
-                label={t(
-                  dockerCommand
-                    ? "services.dockerCommandLabel"
-                    : "services.startCommandLabel",
-                )}
-                hint={t(
-                  dockerCommand
-                    ? "services.dockerCommandHint"
-                    : "services.startCommandHint",
-                )}
-                value={startCommand ?? ""}
-                // A native Start Command runs from rootDir (Render's "<rootDir>/ $"
-                // prompt); a Docker Command overrides the container's CMD and isn't
-                // a rootDir shell command, so it carries no prompt (w5/m51).
-                valuePrefix={
-                  dockerCommand ? undefined : commandPromptPrefix(rootDir)
-                }
-                placeholder={t(
-                  dockerCommand
-                    ? "services.dockerCommandPlaceholder"
-                    : "services.startCommandPlaceholder",
-                )}
-                editLabel={t(
-                  dockerCommand
-                    ? "services.dockerCommandEdit"
-                    : "services.startCommandEdit",
-                )}
-                optional={dockerCommand}
-                mono
-                busy={startCommandBusy}
-                confirm={{
-                  title: (value) =>
-                    t(
-                      dockerCommand
-                        ? "services.dockerCommandConfirmTitle"
-                        : "services.startCommandConfirmTitle",
-                      { value },
-                    ),
-                  body: t("services.startCommandConfirmBody"),
-                  emptyValue: t("services.startCommandConfirmEmpty"),
-                }}
-                disabled={createDisabled}
-                disabledReason={createReason}
-                onSave={(value) => setStartCommand(serviceId, value)}
-              />
-            )}
-
-            {autoDeployRow}
-
-            {/* Deploy Hook, moved into the Deploy section (Render parity, w5/m52). */}
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm font-medium">
-                  {t("services.deployHookTitle")}
-                </div>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {t("services.deployHookDescription")}
-                </p>
-              </div>
-              <DeployHookRows serviceId={serviceId} />
-            </div>
-          </CardContent>
-        </Card>
+        <DeployCard
+          serviceId={serviceId}
+          commandKind={dockerCommand ? "docker" : "start"}
+          command={startCommand}
+          rootDir={rootDir}
+          preDeployCommand={preDeployCommand}
+          showPreDeployCommand={showPreDeployCommand}
+          showCommand={showStartCommand}
+          autoDeploy={autoDeployRow}
+        />
       )}
     </>
   );
