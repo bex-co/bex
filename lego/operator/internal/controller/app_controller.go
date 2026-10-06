@@ -2375,9 +2375,9 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// ProgressDeadlineExceeded, reportRolloutProgress settles a terminal phase
 	// (Failed / prior-release Running|Hibernated); re-stamping Deploying here
 	// every requeue would flap the service header against the deploy row (w4/m103).
-	// A parking pass never stamps it: parkKubernetes writes Hibernated against the
-	// cached App, which has not seen the Deploying write and skips it as unchanged,
-	// so a sleeping service could read Deploying (w6/m147).
+	// A parking pass never stamps it: the service is going to sleep, and the
+	// Deploying write would flash Deploying before parkKubernetes's Hibernated
+	// (w6/m147).
 	if rolloutPending(app, image) && !deploymentProgressDeadlineExceeded(dep) && !plan.parked(app) {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 	}
@@ -3937,8 +3937,13 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		return r.fail(ctx, app, "BadSpec", fmt.Errorf("spec.schedule is required for a cron_job"))
 	}
 	// Same steady-state gate as the Deployment path: the 1-minute run-history
-	// poll of a settled Running cron must not flap Running→Deploying→Running.
-	if app.Status.Phase != appv1alpha1.PhaseRunning ||
+	// poll of a settled cron, Running or suspended (Hibernated), must not flap
+	// through Deploying (w5/074).
+	settled := appv1alpha1.PhaseRunning
+	if app.Spec.Suspended {
+		settled = appv1alpha1.PhaseHibernated
+	}
+	if app.Status.Phase != settled ||
 		app.Status.ObservedGeneration != app.Generation || app.Status.Image != image {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	}

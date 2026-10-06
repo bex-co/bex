@@ -296,6 +296,12 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 				Image: "ghcr.io/example/cron:v1", Type: appv1alpha1.TypeCronJob,
 				Schedule: "*/5 * * * *",
 			}},
+			// A suspended cron settles Hibernated: its poll must not stamp
+			// Deploying and then restore Hibernated (w5/074).
+			{name: "converge-cron-suspended", owns: []string{"CronJob"}, spec: appv1alpha1.AppSpec{
+				Image: "ghcr.io/example/cron:v1", Type: appv1alpha1.TypeCronJob,
+				Schedule: "*/5 * * * *", Suspended: true,
+			}},
 		} {
 			rec := &writeRecorder{Client: k8sClient, recordStatus: tc.spec.Type == appv1alpha1.TypeCronJob}
 			r := &AppReconciler{

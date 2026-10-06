@@ -21,8 +21,10 @@ import (
 	"context"
 	"encoding/json"
 
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/resourceversion"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // updateStatusIfChanged avoids a status PUT when the persisted representation
@@ -37,9 +39,17 @@ func updateStatusIfChanged(ctx context.Context, c client.Client, obj client.Obje
 // statusUnchanged compares the complete status, including durable deploy facts.
 // Compare its wire representation: an empty omitempty slice (e.g. cron Runs)
 // and nil are the same persisted state. A failed read never suppresses a write.
+//
+// The read is the informer cache, which lags this pass's own writes: while obj
+// holds a newer resourceVersion (an in-pass write such as setPhase), the cached
+// status is no evidence of what is stored (w5/074). A cache at obj's version or
+// ahead of it has seen every write the pass made.
 func statusUnchanged(ctx context.Context, c client.Client, obj client.Object) bool {
 	stored := obj.DeepCopyObject().(client.Object)
 	if err := c.Get(ctx, client.ObjectKeyFromObject(obj), stored); err != nil {
+		return false
+	}
+	if cmp, err := resourceversion.CompareResourceVersion(stored.GetResourceVersion(), obj.GetResourceVersion()); err != nil || cmp < 0 {
 		return false
 	}
 	var desired, current any
