@@ -8,6 +8,7 @@ import {
   createMemoryHistory,
 } from "@tanstack/react-router";
 import { ServiceSettingsPage } from "../services.$serviceId.settings";
+import { ServiceSettingsSkeleton } from "@/common/components/route-skeletons";
 import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 
@@ -403,6 +404,192 @@ beforeEach(() => {
   serverState.error = undefined;
 });
 
+// w5/m124: the page, its navigation and its pending skeleton are drawn from one
+// section list, so for every type and source the skeleton reserves exactly the
+// regions the page renders, in the same order, and as many navigation slots
+// as the page has links.
+describe("settings skeleton parity", () => {
+  const W = ["general", "source"];
+  const END = ["suspend", "danger-zone"];
+  it.each([
+    [
+      "web_service",
+      "repo",
+      [
+        ...W,
+        "build",
+        "domains",
+        "networking",
+        "outbound-ips",
+        "notifications",
+        "port",
+        "health-checks",
+        "maintenance",
+        ...END,
+      ],
+    ],
+    [
+      "web_service",
+      "image",
+      [
+        ...W,
+        "deploy",
+        "domains",
+        "networking",
+        "outbound-ips",
+        "registry-credential",
+        "notifications",
+        "port",
+        "health-checks",
+        "maintenance",
+        ...END,
+      ],
+    ],
+    [
+      "private_service",
+      "repo",
+      [
+        ...W,
+        "build",
+        "outbound-ips",
+        "notifications",
+        "port",
+        "health-checks",
+        ...END,
+      ],
+    ],
+    [
+      "private_service",
+      "image",
+      [
+        ...W,
+        "deploy",
+        "outbound-ips",
+        "registry-credential",
+        "notifications",
+        "port",
+        "health-checks",
+        ...END,
+      ],
+    ],
+    [
+      "background_worker",
+      "repo",
+      [...W, "build", "outbound-ips", "notifications", ...END],
+    ],
+    [
+      "background_worker",
+      "image",
+      [
+        ...W,
+        "deploy",
+        "outbound-ips",
+        "registry-credential",
+        "notifications",
+        ...END,
+      ],
+    ],
+    [
+      "cron_job",
+      "repo",
+      ["general", "deploy", "build", "notifications", "deploy-hook", ...END],
+    ],
+    [
+      "cron_job",
+      "image",
+      [
+        "general",
+        "deploy",
+        "registry-credential",
+        "notifications",
+        "deploy-hook",
+        ...END,
+      ],
+    ],
+    [
+      "static_site",
+      "repo",
+      [
+        "general",
+        "build",
+        "static-site",
+        "domains",
+        "networking",
+        "outbound-ips",
+        "notifications",
+        ...END,
+      ],
+    ],
+  ] as const)(
+    "renders a %s from %s as its skeleton previews it",
+    async (type, source, expected) => {
+      const repo = source === "repo" ? "https://github.com/acme/app" : null;
+      const service = svc({
+        type,
+        repo,
+        runtime: repo ? "node" : null,
+        url:
+          type === "web_service" || type === "static_site"
+            ? "https://app.onbex.co"
+            : null,
+        schedule: type === "cron_job" ? "*/15 * * * *" : null,
+      });
+      serverState.service = service;
+      const page = renderSettings();
+      const links = await sectionHrefs();
+      const sections = [
+        ...document.querySelectorAll(
+          ".service-settings-layout > div > section[id]",
+        ),
+      ].map((section) => section.id);
+      page.unmount();
+
+      const { container } = render(
+        <ServiceSettingsSkeleton service={service} />,
+      );
+      const drawn = [
+        ...container.querySelectorAll<HTMLElement>(
+          "[data-skeleton-frame] > div > [data-skeleton-region]",
+        ),
+      ];
+      const regions = drawn.map((region) => region.dataset.skeletonRegion);
+      // Every region draws its card, not just a named placeholder.
+      expect(
+        drawn
+          .filter((region) => !region.querySelector('[data-slot="card"]'))
+          .map((region) => region.dataset.skeletonRegion),
+      ).toEqual([]);
+      const navigation = container.querySelector(
+        '[data-skeleton-region="section-navigation"]',
+      );
+
+      expect(sections).toEqual(expected);
+      expect(regions).toEqual(sections);
+      // Outbound IPs is the one section the navigation does not link.
+      expect(links).toEqual(
+        sections.filter((id) => id !== "outbound-ips").map((id) => `#${id}`),
+      );
+      expect(
+        navigation?.querySelectorAll('[data-slot="skeleton"]'),
+      ).toHaveLength(links.length);
+    },
+  );
+
+  // A service that has not loaded shows only the sections that wait for it.
+  it("shows General, Notifications and Health Checks until the service loads", async () => {
+    serverState.service = null;
+    serverState.loading = true;
+    renderSettings();
+
+    expect(await sectionHrefs()).toEqual([
+      "#general",
+      "#notifications",
+      "#health-checks",
+    ]);
+    expect(document.getElementById("deploy-hook")).toBeNull();
+  });
+});
+
 describe("ServiceSettingsPage", () => {
   it("links every visible repo-backed web-service section in page order", async () => {
     serverState.service = svc({
@@ -575,8 +762,8 @@ describe("ServiceSettingsPage", () => {
     expect(
       screen.getByText("Maintenance Mode", { selector: ":not(a)" }),
     ).toBeInTheDocument();
-    // An image-backed service has no Build & Deploy; its Deploy card holds
-    // only the Docker Command (w4/m166).
+    // An image-backed service has no Build & Deploy: its Deploy card stands
+    // alone (w4/m166, w5/m124).
     expect(
       screen.getByText("Deploy", { selector: ":not(a)" }),
     ).toBeInTheDocument();
@@ -603,6 +790,47 @@ describe("ServiceSettingsPage", () => {
       ).toBeInTheDocument();
     },
   );
+
+  // w5/m124: an image service's one Deploy card holds the Pre-Deploy Command,
+  // its Docker Command and the Deploy Hook, as a repo service's does, with no
+  // Auto-Deploy (there is no git push to follow) and no second hook card.
+  it("gives an image-backed service the repo Deploy card, without Auto-Deploy", async () => {
+    serverState.service = svc({
+      repo: null,
+      preDeployCommand: "npm run migrate",
+    });
+    renderSettings();
+
+    await screen.findByText("Docker Command");
+    const deploy = within(document.getElementById("deploy") as HTMLElement);
+    expect(deploy.getByDisplayValue("npm run migrate")).toBeInTheDocument();
+    expect(
+      deploy.getByRole("button", { name: "Edit Pre-Deploy Command" }),
+    ).toBeInTheDocument();
+    expect(
+      deploy.getByRole("button", { name: "Edit Docker Command" }),
+    ).toBeInTheDocument();
+    expect(deploy.getByText("Deploy Hook")).toBeInTheDocument();
+    expect(deploy.queryByText("Auto-Deploy")).toBeNull();
+    expect(document.getElementById("deploy-hook")).toBeNull();
+    expect(await sectionHrefs()).not.toContain("#deploy-hook");
+  });
+
+  it("offers Resume under the Suspend anchor for a suspended service", async () => {
+    serverState.service = svc({ suspended: true });
+    renderSettings();
+
+    const navigation = await screen.findByRole("navigation", {
+      name: "Settings sections",
+    });
+    const resume = within(navigation).getByRole("link", {
+      name: "Resume Service",
+    });
+    expect(resume).toHaveAttribute("href", "#suspend");
+    expect(
+      within(navigation).queryByRole("link", { name: "Suspend Service" }),
+    ).toBeNull();
+  });
 
   it("gives a repo-backed service no separate image Deploy card", async () => {
     serverState.service = svc({

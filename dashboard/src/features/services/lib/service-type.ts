@@ -66,12 +66,22 @@ export function serviceSudoPhrase(verb: "delete", s: ServiceView): string {
 
 /** True for a cron_job — the type whose detail shows a schedule + run history. */
 export function isCron(s: ServiceView): boolean {
-  return s.type === "cron_job";
+  return isCronType(s.type);
+}
+
+/** Raw-type form of isCron. */
+export function isCronType(type: string): boolean {
+  return type === "cron_job";
 }
 
 /** True for a static_site — the type whose settings show publishPath + edge rules. */
 export function isStaticSite(s: ServiceView): boolean {
-  return s.type === "static_site";
+  return isStaticSiteType(s.type);
+}
+
+/** Raw-type form of isStaticSite. */
+export function isStaticSiteType(type: string): boolean {
+  return type === "static_site";
 }
 
 /** True for a background_worker — no public URL, no health-check path. */
@@ -133,8 +143,22 @@ export function publiclyRoutable(type: string): boolean {
 }
 
 /** True when the service owns a long-running pod with a SIGTERM grace window. */
-export function supportsMaxShutdownDelay(s: ServiceView): boolean {
-  return servesHttp(s.type) || isWorker(s);
+export function supportsMaxShutdownDelay(
+  s: Pick<ServiceView, "type">,
+): boolean {
+  return servesHttp(s.type) || s.type === "background_worker";
+}
+
+/**
+ * A Dockerfile build: the docker runtime, or the legacy dockerfile builder of
+ * an App created before runtime existed. It shows Dockerfile Path where a
+ * native build shows Build Command, and runs a Docker Command.
+ */
+export function isDockerBuild(s: {
+  runtime?: string | null;
+  builder?: string | null;
+}): boolean {
+  return s.runtime === "docker" || (!s.runtime && s.builder === "dockerfile");
 }
 
 /**

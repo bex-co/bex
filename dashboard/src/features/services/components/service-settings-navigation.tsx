@@ -14,122 +14,105 @@ import {
   TriangleAlert,
   Webhook,
   Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import { SectionNavigation } from "@/common/components/section-navigation";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  navigableSettingsSections,
+  type NavigableSettingsSectionId,
+  type ServiceSettingsSectionId,
+} from "@/features/services/lib/settings-sections";
+import type { en } from "@/i18n";
 
-export type ServiceSettingsSection =
-  | "general"
-  | "deploy"
-  | "build"
-  | "source"
-  | "static-site"
-  | "domains"
-  | "networking"
-  | "registry-credential"
-  | "notifications"
-  | "port"
-  | "health-checks"
-  | "maintenance"
-  | "deploy-hook"
-  | "suspend"
-  | "resume"
-  | "danger-zone";
+interface SectionItem {
+  labelKey: keyof typeof en;
+  icon: LucideIcon;
+}
 
-const SECTION_ITEMS = {
+const SECTION_ITEMS: Record<NavigableSettingsSectionId, SectionItem> = {
   general: {
-    href: "#general",
     labelKey: "services.generalTitle",
     icon: Settings2,
   },
   deploy: {
-    href: "#deploy",
     labelKey: "services.deployTitle",
     icon: Rocket,
   },
   build: {
-    href: "#build",
     labelKey: "services.buildTitle",
     icon: Hammer,
   },
   source: {
-    href: "#source",
     labelKey: "services.sourceTitle",
     icon: Hammer,
   },
   "static-site": {
-    href: "#static-site",
     labelKey: "services.staticTitle",
     icon: FileText,
   },
   domains: {
-    href: "#domains",
     labelKey: "services.domainsTitle",
     icon: Globe2,
   },
   networking: {
-    href: "#networking",
     labelKey: "services.networkingTitle",
     icon: Network,
   },
   "registry-credential": {
-    href: "#registry-credential",
     labelKey: "services.registryCredentialSettingsTitle",
     icon: KeyRound,
   },
   notifications: {
-    href: "#notifications",
     labelKey: "services.settingsNotificationsTitle",
     icon: Bell,
   },
   port: {
-    href: "#port",
     labelKey: "services.settingsPortTitle",
     icon: Plug,
   },
   "health-checks": {
-    href: "#health-checks",
     labelKey: "services.settingsHealthChecksTitle",
     icon: HeartPulse,
   },
   maintenance: {
-    href: "#maintenance",
     labelKey: "services.maintenanceModeTitle",
     icon: Wrench,
   },
   "deploy-hook": {
-    href: "#deploy-hook",
     labelKey: "services.deployHookTitle",
     icon: Webhook,
   },
   suspend: {
-    href: "#suspend",
     labelKey: "services.suspendCardTitle",
     icon: CirclePause,
   },
-  resume: {
-    href: "#suspend",
-    labelKey: "services.resumeCardTitle",
-    icon: CirclePlay,
-  },
   "danger-zone": {
-    href: "#danger-zone",
     labelKey: "services.dangerZoneTitle",
     icon: TriangleAlert,
   },
-} as const;
+};
+
+// A suspended service's card offers Resume, under the Suspend anchor.
+const RESUME_ITEM: SectionItem = {
+  labelKey: "services.resumeCardTitle",
+  icon: CirclePlay,
+};
 
 export function ServiceSettingsNavigation({
   sections,
+  suspended,
   className,
 }: {
-  sections: ServiceSettingsSection[];
+  sections: ServiceSettingsSectionId[];
+  suspended: boolean;
   className?: string;
 }) {
   const { t } = useTranslations();
-  const items = sections.map((section) => {
-    const { href, labelKey, icon } = SECTION_ITEMS[section];
-    return { href, label: t(labelKey), icon };
+  const items = navigableSettingsSections(sections).map((section) => {
+    const item =
+      section === "suspend" && suspended ? RESUME_ITEM : SECTION_ITEMS[section];
+    return { href: `#${section}`, label: t(item.labelKey), icon: item.icon };
   });
 
   return (
