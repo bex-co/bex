@@ -72,6 +72,42 @@ type GenerateBlueprintResult struct {
 	Filename string `json:"filename"`
 }
 
+// exportedRegistryCredential is the render.yaml reference to a's bound
+// registry credential, by the name the parse resolves back to it. It is nil
+// when the export cannot carry one that would sync:
+//   - nothing is bound, or the binding is explicitly to none, which render.yaml
+//     cannot spell;
+//   - the binding no longer applies (a Dockerfile build since moved to a native
+//     runtime keeps it), which a create from the file would refuse;
+//   - the credential is gone, which also covers a failed name lookup, since
+//     ResolveCredentialNames reports none;
+//   - its name is shared. Names are not unique (an unnamed credential is named
+//     for its host), and the parse refuses an ambiguous one.
+func (s *Service) exportedRegistryCredential(ctx context.Context, a *appv1alpha1.App) (map[string]any, error) {
+	id := a.Spec.RegistryCredentialID
+	if id == nil || *id == "" {
+		return nil, nil
+	}
+	if applies, err := s.registryCredentialApplies(a); !applies || err != nil {
+		return nil, nil
+	}
+	workspace := s.AppWorkspace(ctx, a)
+	name := s.RegistryCreds.ResolveCredentialNames(ctx, workspace, []string{*id})[*id]
+	if name == "" {
+		return nil, nil
+	}
+	back, found, err := s.RegistryCreds.FindCredentialIDByName(ctx, workspace, name)
+	switch {
+	case errors.Is(err, core.ErrBadRequest): // the name is ambiguous
+		return nil, nil
+	case err != nil:
+		return nil, err
+	case !found || back != *id:
+		return nil, nil
+	}
+	return map[string]any{"fromRegistryCreds": map[string]any{"name": name}}, nil
+}
+
 // blueprintPlanSpelling maps a bex compute tier id to render.yaml's plan enum
 // spelling (multi-word plans use spaces there: "pro plus").
 func blueprintPlanSpelling(tier string) string {
@@ -298,10 +334,20 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	// raw field failed the self-check for an ordinary git service (w4/193).
 	runtime := effectiveRuntime(a.Spec, svcType)
 	builder := exportedBuilder(a.Spec)
+	// A bound registry credential exports by name (w5/089): on image.creds for
+	// a prebuilt image, as Render spells it, else on registryCredential.
+	creds, err := s.exportedRegistryCredential(ctx, a)
+	if err != nil {
+		return nil, err
+	}
 	switch {
 	case a.Spec.Image != "":
 		entry["runtime"] = "image"
-		entry["image"] = map[string]any{"url": a.Spec.Image}
+		image := map[string]any{"url": a.Spec.Image}
+		if creds != nil {
+			image["creds"] = creds
+		}
+		entry["image"] = image
 	case static:
 		entry["runtime"] = "static"
 	case runtime != "":
@@ -311,6 +357,9 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	}
 	if builder != "" {
 		entry["x-bex"] = map[string]any{"builder": builder}
+	}
+	if creds != nil && a.Spec.Image == "" {
+		entry["registryCredential"] = creds
 	}
 	if a.Spec.Repo != "" {
 		entry["repo"] = a.Spec.Repo

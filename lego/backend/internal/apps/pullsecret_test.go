@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -49,6 +50,8 @@ type fakePullSecrets struct {
 	// scoped to (proves render enrichment stays within the App's own tenant).
 	lastResolveWorkspace string
 	credentialIDsByName  map[string]string
+	// ambiguousNames are names more than one credential shares.
+	ambiguousNames map[string]bool
 }
 
 func (f *fakePullSecrets) ValidatePullSecret(_ context.Context, workspaceID, image string, credentialID *string) error {
@@ -60,6 +63,9 @@ func (f *fakePullSecrets) ValidatePullSecret(_ context.Context, workspaceID, ima
 }
 
 func (f *fakePullSecrets) FindCredentialIDByName(_ context.Context, _, name string) (string, bool, error) {
+	if f.ambiguousNames[name] {
+		return "", false, fmt.Errorf("%w: registry credential name %q is ambiguous", core.ErrBadRequest, name)
+	}
 	if f.credentialIDsByName == nil {
 		return "", false, nil
 	}
