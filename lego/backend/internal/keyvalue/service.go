@@ -295,8 +295,9 @@ func (s *Service) fetchKeyValue(ctx context.Context, relation, name string) (*ap
 
 // fetchKeyValueForRead is the by-id read gate: authorize + fetch, then treat a
 // DeletionTimestamp as not-found so get/connection-info/sibling reads agree with
-// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). WRITE verbs
-// keep fetchKeyValue so finalizer-safe teardown can still authorize the CR.
+// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). A plan or
+// settings change uses it too (fetchToChange, w5/m116); lifecycle teardown
+// keeps fetchKeyValue so a finalizer can still authorize the CR.
 func (s *Service) fetchKeyValueForRead(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
 	kv, err := s.fetchKeyValue(ctx, relation, name)
 	if err != nil {
@@ -416,6 +417,10 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 	return s.view(kv), nil
 }
 
+// keyValueCountCap is the plan's cap on Key Value stores per workspace, which
+// the workspace ResourceQuota enforces at admission.
+var keyValueCountCap = core.CountCap{Key: store.KeyValuesQuotaCountKey, Noun: "key-value store"}
+
 // CreateKeyValue provisions a managed key-value store (a KeyValue CR the operator
 // projects to a single-instance Valkey StatefulSet + Service + Secret).
 func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest) (KeyValueView, error) {
@@ -486,11 +491,13 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return KeyValueView{}, err
 	}
-	// Dry-run: return the resolved spec preview without any k8s write (w2/m29),
-	// refusing past the plan's count cap as admission would (w8/046).
+	resourcemeta.Touch(kv, s.Now())
+	// Dry-run: the exact object the real create writes, through admission
+	// without persisting it (w5/m116), so the plan's count cap and the CRD's
+	// rules refuse a preview exactly as they refuse the real create.
 	if req.DryRun {
-		if err := s.CheckQuotaCap(ctx, tenantID, store.KeyValuesQuotaCountKey, "key-value store"); err != nil {
-			return KeyValueView{}, err
+		if err := s.DryRunCreate(ctx, kv); err != nil {
+			return KeyValueView{}, keyValueCountCap.CreateError(err)
 		}
 		return s.view(kv), nil
 	}
@@ -500,17 +507,13 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return KeyValueView{}, err
 	}
-	resourcemeta.Touch(kv, s.Now())
 	if err := s.Client.Create(ctx, kv); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return KeyValueView{}, fmt.Errorf("%w: generated key-value id collision; retry the request", core.ErrConflict)
 		}
-		// Plan cap, enforced by the namespace ResourceQuota — see the identical
-		// mapping in postgres.CreatePostgres.
-		if mapped, ok := core.QuotaCapError(err, store.KeyValuesQuotaCountKey, "key-value store"); ok {
-			return KeyValueView{}, mapped
-		}
-		return KeyValueView{}, err
+		// Plan cap and CRD rules, at admission — see the identical mapping in
+		// postgres.CreatePostgres.
+		return KeyValueView{}, keyValueCountCap.CreateError(err)
 	}
 	s.RecordKeyValueEffect(ctx, kv, core.KeyValueCreated)
 	return s.view(kv), nil
@@ -701,8 +704,18 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 // to 400/a GraphQL error, listing the valid plans). A plan change resizes the
 // Valkey StatefulSet's pod resources on the next operator reconcile.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView, error) {
-	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
+	return s.setPlan(ctx, name, plan, false)
+}
+
+// SetPlanDryRun is SetPlan stopped before its first write (w5/m116): the same
+// checks, ending in a server-side dry-run of the patch, and the view that patch
+// would produce. It needs only can_view (fetchToChange).
+func (s *Service) SetPlanDryRun(ctx context.Context, name, plan string) (KeyValueView, error) {
+	return s.setPlan(ctx, name, plan, true)
+}
+
+func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (KeyValueView, error) {
+	ctx, kv, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -716,9 +729,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	from := kv.Spec.Plan
 	view, err := s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
 		kv.Spec.Plan = plan
-	})
-	if err != nil {
-		return KeyValueView{}, err
+	}, dryRun)
+	if err != nil || dryRun {
+		return view, err
 	}
 	// Recorded even when from == plan, matching apps' SetPlan precedent: the
 	// verb names the call the caller made and the equal pair shows nothing
@@ -727,32 +740,34 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	return view, nil
 }
 
-// PreviewSetPlan returns what SetPlan would produce without writing — the same
-// validation and in-memory spec update — zero side effects (w2/m29 dry-run).
-// Requires can_view on the named key-value store (no audit event, no write).
-func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (KeyValueView, error) {
+// fetchToChange fetches name for a verb that changes it. The real call
+// authorizes relation, deferring its allowed audit row to the write. Its
+// dry-run authorizes can_view, so a viewer can still preview, and shows billing
+// refusals only to a caller who holds relation (core.PreviewOf). A store being
+// deleted is not found either way.
+func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool, relation string) (context.Context, *appv1alpha1.KeyValue, error) {
+	if !dryRun {
+		ctx = core.WithDeferredAllowedWriteAudit(ctx)
+		kv, err := s.fetchKeyValueForRead(ctx, relation, name)
+		return ctx, kv, err
+	}
 	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
-		return KeyValueView{}, err
+		return ctx, nil, err
 	}
-	plan = tiers.Valkey.CanonicalID(plan)
-	if _, ok := tiers.Valkey.ByID(plan); !ok {
-		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
-	}
-	preview := kv.DeepCopy()
-	preview.Spec.Plan = plan
-	return s.view(preview), nil
+	return s.PreviewOf(ctx, kv.Labels, relation), kv, nil
 }
 
 // patchKeyValueObj applies mutate to an already-fetched KeyValue and merge-
-// patches it — for callers (SetPlan) that must validate input BEFORE the
-// write but AFTER authorizing+fetching, reusing the KeyValue fetchKeyValue
-// already fetched rather than fetching (and authorizing, and auditing) again.
-func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue, mutate func(kv *appv1alpha1.KeyValue)) (KeyValueView, error) {
+// patches it — for callers that must validate input BEFORE the write but AFTER
+// authorizing and fetching, reusing the object fetchToChange returned rather
+// than fetching (and authorizing, and auditing) again. A dry-run sends the
+// same patch for admission alone (core.Base.PatchObject).
+func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue, mutate func(kv *appv1alpha1.KeyValue), dryRun bool) (KeyValueView, error) {
 	patch := client.MergeFrom(kv.DeepCopy())
 	mutate(kv)
 	resourcemeta.Touch(kv, s.Now())
-	if err := s.Client.Patch(ctx, kv, patch); err != nil {
+	if err := s.PatchObject(ctx, kv, patch, dryRun); err != nil {
 		return KeyValueView{}, err
 	}
 	return s.view(kv), nil
@@ -791,9 +806,8 @@ type KeyValuePatch struct {
 	Public *bool
 }
 
-// validate checks every field present in the patch before any write; shared by
-// UpdateKeyValue and PreviewUpdateKeyValue so the two paths can never accept
-// different inputs (mirrors PostgresPatch.validate).
+// validate checks every field present in the patch before any write, for an
+// update and its dry-run alike (mirrors PostgresPatch.validate).
 func (patch KeyValuePatch) validate() error {
 	if patch.Name != nil {
 		if err := validateKeyValueName(*patch.Name); err != nil {
@@ -849,8 +863,18 @@ func (patch KeyValuePatch) apply(kv *appv1alpha1.KeyValue) {
 // PATCH route needs so `keyvalues update --name` (which sends no plan) stops
 // 400ing, and the rename lands on the immutable red- id.
 func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValuePatch) (KeyValueView, error) {
-	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	kv, err := s.fetchKeyValue(ctx, core.RelCanOperate, name)
+	return s.updateKeyValue(ctx, name, patch, false)
+}
+
+// UpdateKeyValueDryRun is UpdateKeyValue stopped before its first write
+// (w5/m116): every check, protection included, ending in a server-side dry-run
+// of the patch. It needs only can_view (fetchToChange).
+func (s *Service) UpdateKeyValueDryRun(ctx context.Context, name string, patch KeyValuePatch) (KeyValueView, error) {
+	return s.updateKeyValue(ctx, name, patch, true)
+}
+
+func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValuePatch, dryRun bool) (KeyValueView, error) {
+	ctx, kv, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
 	if err != nil {
 		return KeyValueView{}, err
 	}
@@ -874,9 +898,9 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 		}
 	}
 	before := kv.Spec
-	view, err := s.patchKeyValueObj(ctx, kv, patch.apply)
-	if err != nil {
-		return KeyValueView{}, err
+	view, err := s.patchKeyValueObj(ctx, kv, patch.apply, dryRun)
+	if err != nil || dryRun {
+		return view, err
 	}
 	s.recordUpdateEffects(ctx, kv, before)
 	return view, nil
@@ -904,26 +928,6 @@ func (s *Service) recordUpdateEffects(ctx context.Context, kv *appv1alpha1.KeyVa
 	if !recorded {
 		s.RecordKeyValueEffect(ctx, kv, core.KeyValueUpdated)
 	}
-}
-
-// PreviewUpdateKeyValue is UpdateKeyValue's dry-run twin (w2/m29 pattern): same
-// validation, zero side effects. Requires can_view (no audit event, no write).
-func (s *Service) PreviewUpdateKeyValue(ctx context.Context, name string, patch KeyValuePatch) (KeyValueView, error) {
-	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
-	if err != nil {
-		return KeyValueView{}, err
-	}
-	if err := patch.validate(); err != nil {
-		return KeyValueView{}, err
-	}
-	if patch.Name != nil {
-		if err := s.ensureKeyValueNameAvailable(ctx, kv.Labels[core.LabelTenant], *patch.Name, kv.Name); err != nil {
-			return KeyValueView{}, err
-		}
-	}
-	preview := kv.DeepCopy()
-	patch.apply(preview)
-	return s.view(preview), nil
 }
 
 // KeyValueConnectionInfo assembles the internal + external connection strings

@@ -17,13 +17,10 @@ limitations under the License.
 package core
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // TenantQuotaName is the per-workspace ResourceQuota carrying the plan's
@@ -70,35 +67,24 @@ func QuotaCapError(err error, countKey, noun string) (mapped error, ok bool) {
 	return quotaCapExceeded(digits[:end], noun), true
 }
 
-func quotaCapExceeded(limit, noun string) error {
-	return fmt.Errorf("%w: workspace is limited to %s %ss; delete an existing %s to create another", ErrBadRequest, limit, noun, noun)
+// CountCap names one per-kind workspace cap: the ResourceQuota key that
+// enforces it and the noun its refusal reads in.
+type CountCap struct{ Key, Noun string }
+
+// CreateError maps the API server's refusal of a tenant CR create onto the
+// API's answer, the same for the real create and its dry-run (DryRunCreate):
+// this cap's Render-shaped message, or a 400 naming the invalid fields. Any
+// other error comes back unchanged.
+func (c CountCap) CreateError(err error) error {
+	if mapped, ok := QuotaCapError(err, c.Key, c.Noun); ok {
+		return mapped
+	}
+	if mapped, ok := InvalidFieldsError(err); ok {
+		return mapped
+	}
+	return err
 }
 
-// CheckQuotaCap is the read-only preview of the admission check QuotaCapError
-// translates (w8/046): a create dry run never reaches ResourceQuota admission,
-// so it reads the same workspace quota and refuses with the same message when
-// one more countKey object would not fit. A missing namespace or quota, or a
-// quota without that key, is no cap — exactly what admission would see.
-func (b *Base) CheckQuotaCap(ctx context.Context, tenantID, countKey, noun string) error {
-	if b == nil || b.Client == nil || tenantID == "" || tenantID == DefaultTenant {
-		return nil
-	}
-	var q corev1.ResourceQuota
-	key := client.ObjectKey{Namespace: b.TenantNamespace(tenantID), Name: TenantQuotaName}
-	if err := b.Client.Get(ctx, key, &q); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("read workspace quota: %w", err)
-	}
-	name := corev1.ResourceName(countKey)
-	hard, capped := q.Spec.Hard[name]
-	if !capped {
-		return nil
-	}
-	used := q.Status.Used[name]
-	if used.Cmp(hard) >= 0 {
-		return quotaCapExceeded(hard.String(), noun)
-	}
-	return nil
+func quotaCapExceeded(limit, noun string) error {
+	return fmt.Errorf("%w: workspace is limited to %s %ss; delete an existing %s to create another", ErrBadRequest, limit, noun, noun)
 }

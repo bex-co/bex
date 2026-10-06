@@ -375,8 +375,11 @@ func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 	patch := KeyValuePatch{Name: req.Name, Plan: req.Plan, MaxmemoryPolicy: req.MaxmemoryPolicy, PersistenceMode: req.PersistenceMode, IPAllowList: req.IPAllowList, Public: req.Public}
 	apply := s.UpdateKeyValue
 	if core.DryRunRequested(r, req.DryRun) {
-		apply = s.PreviewUpdateKeyValue
+		apply = s.UpdateKeyValueDryRun
 	}
-	kv, err := apply(r.Context(), id, patch)
+	// The protected-environment phrase for a rename or an eviction or
+	// durability change (w4/m127), as the Postgres route reads it.
+	ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+	kv, err := apply(ctx, id, patch)
 	s.respondKeyValue(w, r, http.StatusOK, kv, err)
 }

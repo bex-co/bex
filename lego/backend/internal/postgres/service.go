@@ -538,8 +538,9 @@ func (s *Service) fetchDatabase(ctx context.Context, relation, name string) (*ap
 
 // fetchDatabaseForRead is the by-id read gate: authorize + fetch, then treat a
 // DeletionTimestamp as not-found so get/connection-info/sibling reads agree with
-// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). WRITE verbs
-// keep fetchDatabase so finalizer-safe teardown can still authorize the CR.
+// List and with Render's GET 404 (w8/m35 / core.NotFoundIfDeleting). A plan or
+// settings change uses it too (fetchToChange, w5/m116); lifecycle teardown
+// keeps fetchDatabase so a finalizer can still authorize the CR.
 func (s *Service) fetchDatabaseForRead(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
 	d, err := s.fetchDatabase(ctx, relation, name)
 	if err != nil {
@@ -647,6 +648,10 @@ func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, nam
 	return nil
 }
 
+// postgresCountCap is the plan's cap on Postgres databases per workspace, which
+// the workspace ResourceQuota enforces at admission.
+var postgresCountCap = core.CountCap{Key: store.DatabasesQuotaCountKey, Noun: "Postgres database"}
+
 // CreatePostgres provisions a managed Postgres (a Database CR the operator
 // projects to a CNPG Cluster).
 func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest) (PostgresView, error) {
@@ -728,11 +733,13 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return PostgresView{}, err
 	}
-	// Dry-run: return the resolved spec preview without any k8s write (w2/m29),
-	// refusing past the plan's count cap as admission would (w8/046).
+	resourcemeta.Touch(d, s.Now())
+	// Dry-run: the exact object the real create writes, through admission
+	// without persisting it (w5/m116), so the plan's count cap and the CRD's
+	// rules refuse a preview exactly as they refuse the real create.
 	if req.DryRun {
-		if err := s.CheckQuotaCap(ctx, tenantID, store.DatabasesQuotaCountKey, "Postgres database"); err != nil {
-			return PostgresView{}, err
+		if err := s.DryRunCreate(ctx, d); err != nil {
+			return PostgresView{}, postgresCountCap.CreateError(err)
 		}
 		return s.view(d), nil
 	}
@@ -742,20 +749,16 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := s.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
 		return PostgresView{}, err
 	}
-	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			return PostgresView{}, fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
 		}
 		// The per-namespace ResourceQuota is what enforces the plan's Postgres
-		// cap now that the CR lands in `<ws>` (ADR043 D8, closing w3/010).
-		// Translate the API server's Forbidden into the same Render-shaped
-		// message the service cap returns, or the caller sees a raw 403 about a
+		// cap now that the CR lands in `<ws>` (ADR043 D8, closing w3/010), and
+		// the CRD's own rules refuse an invalid field. Both come back in the
+		// API's terms, or the caller sees a raw admission message about a
 		// Kubernetes object they have no concept of.
-		if mapped, ok := core.QuotaCapError(err, store.DatabasesQuotaCountKey, "Postgres database"); ok {
-			return PostgresView{}, mapped
-		}
-		return PostgresView{}, err
+		return PostgresView{}, postgresCountCap.CreateError(err)
 	}
 	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
 	return s.view(d), nil
@@ -946,8 +949,18 @@ func certificateOnlyPEM(raw []byte) (string, error) {
 // CNPG Cluster's pod resources on the next operator reconcile — same cost as any
 // rolling update.
 func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView, error) {
-	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	return s.setPlan(ctx, name, plan, false)
+}
+
+// SetPlanDryRun is SetPlan stopped before its first write (w5/m116): the same
+// checks, ending in a server-side dry-run of the patch, and the view that patch
+// would produce. It needs only can_view (fetchToChange).
+func (s *Service) SetPlanDryRun(ctx context.Context, name, plan string) (PostgresView, error) {
+	return s.setPlan(ctx, name, plan, true)
+}
+
+func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (PostgresView, error) {
+	ctx, d, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -964,9 +977,9 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	from := d.Spec.Plan
 	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.Plan = plan
-	})
-	if err != nil {
-		return PostgresView{}, err
+	}, dryRun)
+	if err != nil || dryRun {
+		return view, err
 	}
 	// Recorded even when from == plan, matching apps' SetPlan precedent: the
 	// verb names the call the caller made and the equal pair shows nothing
@@ -975,24 +988,22 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	return view, nil
 }
 
-// PreviewSetPlan returns what SetPlan would produce without writing — the same
-// validation and in-memory spec update — zero side effects (w2/m29 dry-run).
-// Requires can_view on the named database (no audit event, no write).
-func (s *Service) PreviewSetPlan(ctx context.Context, name, plan string) (PostgresView, error) {
+// fetchToChange fetches name for a verb that changes it. The real call
+// authorizes relation, deferring its allowed audit row to the write. Its
+// dry-run authorizes can_view, so a viewer can still preview, and shows billing
+// refusals only to a caller who holds relation (core.PreviewOf). A database
+// being deleted is not found either way.
+func (s *Service) fetchToChange(ctx context.Context, name string, dryRun bool, relation string) (context.Context, *appv1alpha1.Database, error) {
+	if !dryRun {
+		ctx = core.WithDeferredAllowedWriteAudit(ctx)
+		d, err := s.fetchDatabaseForRead(ctx, relation, name)
+		return ctx, d, err
+	}
 	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
-		return PostgresView{}, err
+		return ctx, nil, err
 	}
-	plan = tiers.Postgres.CanonicalID(plan)
-	if _, ok := tiers.Postgres.ByID(plan); !ok {
-		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
-	}
-	if err := checkPostgresPatchAdmission(d, PostgresPatch{Plan: &plan}); err != nil {
-		return PostgresView{}, err
-	}
-	preview := d.DeepCopy()
-	preview.Spec.Plan = plan
-	return s.view(preview), nil
+	return s.PreviewOf(ctx, d.Labels, relation), d, nil
 }
 
 // PostgresPatch is the mutable-field set for PATCH /v1/postgres/{id} — Render's
@@ -1024,8 +1035,7 @@ type PostgresPatch struct {
 }
 
 // validate checks every field present in the patch (plan enum, CIDR syntax)
-// before any write; shared by UpdatePostgres and PreviewUpdatePostgres so the
-// two paths can never accept different inputs.
+// before any write, for an update and its dry-run alike (checkUpdate).
 func (patch PostgresPatch) validate() error {
 	if patch.DatadogAPIKey != nil || patch.DatadogSite != nil {
 		return unsupportedDatadogError()
@@ -1340,13 +1350,22 @@ func normalizeParameterOverrides(params map[string]string) map[string]string {
 
 // UpdatePostgres applies a partial update (Render's PATCH /postgres/{id}
 // semantics — only fields set in patch change; everything else is left alone).
-// SetPlan/PreviewSetPlan above remain the plan-only entry points GraphQL's
-// updatePostgresPlan mutation uses (the MCP half folded into update_postgres at
-// w1/m74); this
-// is the general handler REST's PATCH route needs (rename, disk, HA,
+// SetPlan remains the plan-only entry point GraphQL's updateDatabasePlan
+// mutation uses (the MCP half folded into update_postgres at w1/m74); this is
+// the general handler REST's PATCH route needs (rename, disk, HA,
 // ip-allow-list — not just plan).
 func (s *Service) UpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
-	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	return s.updatePostgres(ctx, name, patch, false)
+}
+
+// UpdatePostgresDryRun is UpdatePostgres stopped before its first write
+// (w5/m116): every check, protection included, ending in a server-side dry-run
+// of the patch. It needs only can_view (fetchToChange).
+func (s *Service) UpdatePostgresDryRun(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
+	return s.updatePostgres(ctx, name, patch, true)
+}
+
+func (s *Service) updatePostgres(ctx context.Context, name string, patch PostgresPatch, dryRun bool) (PostgresView, error) {
 	// SECURITY (codex round-5 F7): turning on statement logging writes the SQL
 	// text — and the literals inside it — into the database log, which
 	// can_view_logs (contributor and up) can read. That is the same disclosure
@@ -1356,49 +1375,22 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 	// alternative — fetch, diff, then gate — needs a second authorization pass
 	// on an already-fetched resource, which this codebase forbids because the
 	// two gates resolve different workspaces (see backend/AGENTS.md).
-	d, err := s.fetchDatabase(ctx, core.LifecycleOrCreate(
-		patch.ParameterOverrides != nil && setsSensitiveLoggingParameter(*patch.ParameterOverrides)), name)
+	relation := core.LifecycleOrCreate(patch.ParameterOverrides != nil && setsSensitiveLoggingParameter(*patch.ParameterOverrides))
+	ctx, d, err := s.fetchToChange(ctx, name, dryRun, relation)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if err := patch.validate(); err != nil {
+	if err := s.checkUpdate(ctx, d, patch); err != nil {
 		return PostgresView{}, err
-	}
-	// Protection reaches identity and availability, not only lifecycle (w4/m127).
-	if verb := protectedDatabasePatchVerb(patch); verb != "" {
-		if err := s.requireUnprotected(ctx, d, verb); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if patch.Plan != nil && core.PaidPlan(tiers.Postgres.CanonicalID(*patch.Plan)) {
-		if err := s.RequirePaymentMethod(ctx, d.Labels[core.LabelTenant]); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if patch.Plan != nil || patch.Version != nil || patch.DiskSizeGB != nil || patch.EnableDiskAutoscaling != nil || patch.EnableHighAvailability != nil {
-		if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if err := checkPostgresPatchAdmission(d, patch); err != nil {
-		return PostgresView{}, err
-	}
-	if patch.Name != nil {
-		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if patch.Version != nil {
-		if err := s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan); err != nil {
-			return PostgresView{}, err
-		}
 	}
 	before := d.Spec
-	view, err := s.patchDatabaseObj(ctx, d, patch.apply)
+	view, err := s.patchDatabaseObj(ctx, d, patch.apply, dryRun)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	s.recordUpdateEffects(ctx, d, before)
+	if !dryRun {
+		s.recordUpdateEffects(ctx, d, before)
+	}
 	// PATCH responses echo desired highAvailabilityEnabled when the caller just
 	// set it (w5/065): GET stays observed (≥2 ready instances), but the update
 	// response must match sibling fields (diskSizeGB, connectionPool) so the
@@ -1407,6 +1399,47 @@ func (s *Service) UpdatePostgres(ctx context.Context, name string, patch Postgre
 		view.HighAvailabilityEnabled = *patch.EnableHighAvailability
 	}
 	return view, nil
+}
+
+// checkUpdate is every read-only check a Postgres update runs before its
+// write: the patch itself, protection, billing, admission rules this service
+// enforces ahead of the API server, name uniqueness and the version upgrade.
+func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patch PostgresPatch) error {
+	if err := patch.validate(); err != nil {
+		return err
+	}
+	// Protection reaches identity and availability, not only lifecycle (w4/m127).
+	if verb := protectedDatabasePatchVerb(patch); verb != "" {
+		if err := s.requireUnprotected(ctx, d, verb); err != nil {
+			return err
+		}
+	}
+	// A plan change is paid intent (ADR046): the gate SetPlan runs, so a
+	// free-plan change meets the all-plans payment rule here too. The other
+	// billed dimensions are mutations of a plan already chosen, which the
+	// dunning gate alone holds.
+	switch {
+	case patch.Plan != nil:
+		if err := s.RequirePlanBilling(ctx, d.Labels[core.LabelTenant], tiers.Postgres.CanonicalID(*patch.Plan)); err != nil {
+			return err
+		}
+	case patch.Version != nil || patch.DiskSizeGB != nil || patch.EnableDiskAutoscaling != nil || patch.EnableHighAvailability != nil:
+		if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
+			return err
+		}
+	}
+	if err := checkPostgresPatchAdmission(d, patch); err != nil {
+		return err
+	}
+	if patch.Name != nil {
+		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {
+			return err
+		}
+	}
+	if patch.Version != nil {
+		return s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan)
+	}
+	return nil
 }
 
 // recordUpdateEffects records what a successful PATCH actually changed, one
@@ -1443,38 +1476,6 @@ func (s *Service) recordUpdateEffects(ctx context.Context, d *appv1alpha1.Databa
 	if !recorded {
 		s.RecordDatabaseEffect(ctx, d, core.DatabaseUpdated)
 	}
-}
-
-// PreviewUpdatePostgres is UpdatePostgres's dry-run twin (w2/m29 pattern): same
-// validation, zero side effects. Requires can_view (no audit event, no write).
-func (s *Service) PreviewUpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
-	if err != nil {
-		return PostgresView{}, err
-	}
-	if err := patch.validate(); err != nil {
-		return PostgresView{}, err
-	}
-	if err := checkPostgresPatchAdmission(d, patch); err != nil {
-		return PostgresView{}, err
-	}
-	if patch.Name != nil {
-		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if patch.Version != nil {
-		if err := s.validateVersionUpgrade(ctx, d, *patch.Version, patch.Plan); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	preview := d.DeepCopy()
-	patch.apply(preview)
-	view := s.view(preview)
-	if patch.EnableHighAvailability != nil {
-		view.HighAvailabilityEnabled = *patch.EnableHighAvailability
-	}
-	return view, nil
 }
 
 // UnsupportedVersionMessage is the one wording for a PostgreSQL version bex
@@ -1574,28 +1575,32 @@ func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Dat
 // SetVersion requests an offline CNPG major-version upgrade. The operator
 // observes the spec change, updates Cluster.spec.imageName, and reports the
 // pg_upgrade lifecycle through Database.status.
+//
+// It runs UpdatePostgres's checks for a version-only patch, so the protected
+// environment's "upgrade" confirmation and the billing gate apply here too
+// (w5/m116), while the audit trail keeps naming the verb the caller used.
 func (s *Service) SetVersion(ctx context.Context, name, target string) (PostgresView, error) {
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	d, err := s.fetchDatabaseForRead(ctx, core.RelCanOperate, name)
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if err := s.validateVersionUpgrade(ctx, d, target, nil); err != nil {
+	patch := PostgresPatch{Version: &target}
+	if err := s.checkUpdate(ctx, d, patch); err != nil {
 		return PostgresView{}, err
 	}
-	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
-		d.Spec.Version = target
-	})
+	return s.patchDatabaseObj(ctx, d, patch.apply, false)
 }
 
 // patchDatabaseObj applies mutate to an already-fetched Database and writes it
 // back as a merge patch — conflict-free against the operator's concurrent status
 // writes (no full-object optimistic lock), the same discipline apps.patchFetched
 // follows. Callers that already hold the object use this to avoid a re-fetch.
-func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database, mutate func(d *appv1alpha1.Database)) (PostgresView, error) {
+// A dry-run sends the same patch for admission alone (core.Base.PatchObject).
+func (s *Service) patchDatabaseObj(ctx context.Context, d *appv1alpha1.Database, mutate func(d *appv1alpha1.Database), dryRun bool) (PostgresView, error) {
 	patch := client.MergeFrom(d.DeepCopy())
 	mutate(d)
 	resourcemeta.Touch(d, s.Now())
-	if err := s.Client.Patch(ctx, d, patch); err != nil {
+	if err := s.PatchObject(ctx, d, patch, dryRun); err != nil {
 		return PostgresView{}, err
 	}
 	return s.view(d), nil
@@ -1608,7 +1613,7 @@ func (s *Service) patchDatabase(ctx context.Context, relation, name string, muta
 	if err != nil {
 		return PostgresView{}, err
 	}
-	return s.patchDatabaseObj(ctx, d, mutate)
+	return s.patchDatabaseObj(ctx, d, mutate, false)
 }
 
 // SetProjectID assigns the project and atomically drops the former

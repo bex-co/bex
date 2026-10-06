@@ -81,21 +81,3 @@ func TestPaidIntentGuardCoversKeyValueCreateAndBothPlanUpdatePaths(t *testing.T)
 		})
 	}
 }
-
-// TestDryRunCreateKeyValueRunsTheBillingGate is w8/045: the billing gate is
-// read-only, so a dry-run create returns the same 402 the real create does
-// (real-create parity) and writes no KeyValue.
-func TestDryRunCreateKeyValueRunsTheBillingGate(t *testing.T) {
-	svc, cl := newService()
-	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
-	gate := &rejectingPaymentGate{}
-	svc.Payment = gate
-	_, err := svc.CreateKeyValue(ctxAs("user-a"), CreateKeyValueRequest{Name: "cache", Plan: "starter", DryRun: true})
-	if !errors.Is(err, core.ErrPaymentRequired) || len(gate.calls) != 1 || gate.calls[0] != "tea-a" {
-		t.Fatalf("paid dry-run err=%v calls=%v, want the 402", err, gate.calls)
-	}
-	var list appv1alpha1.KeyValueList
-	if err := cl.List(context.Background(), &list); err != nil || len(list.Items) != 0 {
-		t.Fatalf("dry-run refusal wrote KeyValues: %+v err=%v", list.Items, err)
-	}
-}

@@ -483,8 +483,11 @@ func dedupDatastoreTwins[T any, PT interface {
 // namespace (ADR043), and bex-api's role grants cluster-wide App list for
 // precisely this reason — so such a List call takes no namespace option.
 
+// RequireBillingMutation refuses a mutation while dunning enforcement holds the
+// workspace. Like every billing gate, it passes a dry-run by a caller who may
+// not perform the real verb (PreviewOf).
 func (b *Base) RequireBillingMutation(ctx context.Context, workspaceID string) error {
-	if b == nil || b.Billing == nil || workspaceID == "" || workspaceID == DefaultTenant {
+	if b == nil || b.Billing == nil || workspaceID == "" || workspaceID == DefaultTenant || billingHiddenFromPreview(ctx) {
 		return nil
 	}
 	err := b.Billing.CheckBillingMutationAllowed(ctx, workspaceID)
@@ -503,15 +506,17 @@ func (b *Base) RequireBillingMutation(ctx context.Context, workspaceID string) e
 // RequirePaymentMethod consults the injected local marker gate. A configured
 // gate also sees an unexpectedly unresolved workspace and fails closed; the
 // store-off compatibility path remains byte-identical because its gate is nil.
+// It passes a dry-run by a caller who may not perform the real verb
+// (PreviewOf).
 func (b *Base) RequirePaymentMethod(ctx context.Context, workspaceID string) error {
-	if b == nil || b.Payment == nil {
+	if b == nil || b.Payment == nil || billingHiddenFromPreview(ctx) {
 		return nil
 	}
 	return b.Payment.RequirePaymentMethod(ctx, workspaceID)
 }
 
 // RequirePlanBilling is the paid-intent gate every billable create and plan
-// change runs: a non-free plan additionally requires a bound payment method
+// change runs (a dry-run included, core.PreviewOf): a non-free plan additionally requires a bound payment method
 // (ADR046) — or ANY plan when PaymentAllPlans widens the gate (ADR075 D7) —
 // and every mutation is refused while dunning enforcement is active. Both
 // checks in one seam so a new billable resource kind cannot wire only one of
@@ -1389,7 +1394,10 @@ func appPublicID(a *appv1alpha1.App) string {
 // tenant read reports it as absent — ErrNotFound, indistinguishable from a
 // resource that never existed — so detail surfaces agree with List and with
 // Render's GET 404. Applied to Apps (w3/m81) and Database/KeyValue (w8/m35).
-// Read verbs call it after Authorize*; WRITE verbs deliberately do not.
+// Read verbs call it after Authorize*, and so do the verbs that change a
+// resource's configuration — a plan or settings change and its dry-run
+// (w5/m116). Lifecycle teardown deliberately does not: a finalizer must still
+// be able to authorize the CR it is removing.
 func NotFoundIfDeleting(obj client.Object) error {
 	if obj == nil {
 		return nil

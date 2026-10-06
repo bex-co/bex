@@ -962,16 +962,25 @@ func claimedHostCount(app *appv1alpha1.App) int {
 func (s *Service) hostClaimedElsewhere(ctx context.Context, owner *appv1alpha1.App, host string) (bool, error) {
 	// A host is unique across the whole platform, and Apps are spread across
 	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide.
-	// Memoized per (owner, host): a service patch that sets maintenanceMode.uri
-	// validates it in both the preflight and the apply pass (w9/m166), and this
-	// is the one check in that table whose cost grows with the size of the
-	// platform rather than with the request.
-	return memoized(ctx, "hostClaimed:"+appClaimIdentity(owner)+":"+host, func() (bool, error) {
+	apps, err := s.allApps(ctx)
+	if err != nil {
+		return false, err
+	}
+	return hostClaimedInApps(apps, owner, host), nil
+}
+
+// allApps is the cluster-wide App sweep a host check needs, memoized for the
+// request: it is the one check whose cost grows with the size of the platform
+// rather than with the request, and a create checks its hosts in its plan and
+// again as it writes (w5/m116), as a patch does a maintenance URI in both its
+// passes (w9/m166).
+func (s *Service) allApps(ctx context.Context) ([]appv1alpha1.App, error) {
+	return memoized(ctx, "apps:all", func() ([]appv1alpha1.App, error) {
 		var list appv1alpha1.AppList
 		if err := s.Client.List(ctx, &list); err != nil {
-			return false, err
+			return nil, err
 		}
-		return hostClaimedInApps(list.Items, owner, host), nil
+		return list.Items, nil
 	})
 }
 
@@ -1032,20 +1041,23 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 	return s.checkHostsClaimable(ctx, app, false, false)
 }
 
-// previewHostsClaimable is ensureHostsClaimable for a dry-run create's preview
-// App (w8/045): the same caps, reserved-host and cross-service collision
-// checks, all read-only, so a preview refuses what the real create would. Two
-// inputs the real create only learns by writing are handled conservatively:
-//   - The own `<slug>.<base>` exemption: with the store on, the real create
-//     mints a random globally-unique slug (store.CreateApp), so no caller can
-//     name it in advance — the preview exempts nothing under the base domain.
-//     Storeless, the slug is the request name and the exemption is unchanged.
+// previewHostsClaimable is ensureHostsClaimable for a create that has not
+// written yet (w8/045): the same caps, reserved-host and cross-service
+// collision checks, all read-only, run by the create's plan for the real create
+// and its dry-run alike (w5/m116). Two inputs the create only learns by
+// writing are approximated:
+//   - The own `<slug>.<base>` exemption: store.CreateApp mints the slug as the
+//     service name unless another workspace already holds it, when it adds a
+//     random suffix. So the plan exempts `<slug>.<base>` for slug, the name;
+//     in the collision case the write-time check still refuses the host.
 //   - The synchronous DNS-TXT ownership proof (the storeless fallback): its
-//     challenge is keyed by the service id the create mints, which a preview
-//     does not have, so it is not checked. With the store on the real create
-//     never runs it either — managed claims start pending.
-func (s *Service) previewHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
-	return s.checkHostsClaimable(ctx, app, true, false)
+//     challenge is keyed by the service id the create mints, so the plan does
+//     not check it, though a storeless real create still does as it writes.
+//     With the store on no create runs it — managed claims start pending.
+func (s *Service) previewHostsClaimable(ctx context.Context, app *appv1alpha1.App, slug string) error {
+	probe := app.DeepCopy()
+	probe.Spec.Subdomain = slug
+	return s.checkHostsClaimable(ctx, probe, true, true)
 }
 
 // checkHostsClaimable is the shared gate. existing marks a preview of an App
@@ -1085,11 +1097,10 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 			return fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, h)
 		}
 		if !fetched {
-			var list appv1alpha1.AppList
-			if err := s.Client.List(ctx, &list); err != nil {
+			var err error
+			if apps, err = s.allApps(ctx); err != nil {
 				return err
 			}
-			apps = list.Items
 			fetched = true
 		}
 		if hostClaimedInApps(apps, app, h) {

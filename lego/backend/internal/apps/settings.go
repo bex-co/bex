@@ -18,6 +18,10 @@ package apps
 
 import (
 	"context"
+	"slices"
+	"strings"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
@@ -124,15 +128,12 @@ type servicePatchOp struct {
 	// against probe — a scratch App carrying the state this row will actually
 	// see, i.e. the current App with every EARLIER row's spec change already
 	// folded in. It must not write; instead it folds its own spec change into
-	// probe so the rows after it validate against the proposed combined state
-	// (a free downgrade sees the maintenance flip queued ahead of it; a build
-	// setting sees the source this same patch is repointing).
-	//
-	// Only the fields some later row's check READS are projected — tier,
-	// maintenance mode and the source quartet. Projecting the rest would be
-	// dead weight, since nothing downstream consults it.
-	//
-	// A row whose verb validates nothing beyond authorization leaves this nil.
+	// probe, exactly as its verb would make it, so the rows after it validate
+	// against the proposed combined state (a free downgrade sees the
+	// maintenance flip queued ahead of it; a build setting sees the source this
+	// same patch is repointing). The finished probe is the whole proposed spec:
+	// admission judges it before anything is written, and a dry-run answers
+	// with it (w5/m116).
 	check func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error
 	apply func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error)
 }
@@ -152,9 +153,25 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"DisplayName"},
 		present:  func(p ServicePatch) bool { return p.DisplayName != nil },
 		relation: canOperate,
-		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			_, err := checkDisplayName(probe, *p.DisplayName)
-			return err
+		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			trimmed, err := checkDisplayName(probe, *p.DisplayName)
+			if err != nil {
+				return err
+			}
+			// The store refuses a name another service in the workspace was
+			// created as or is displayed as (w8/m47) only as it writes, so the
+			// preflight reads that refusal ahead of it.
+			if id := managedAppID(probe); id != "" && s.Store != nil {
+				taken, err := s.Store.ServiceNameTaken(ctx, probe.Labels[core.LabelTenant], id, trimmed)
+				if err != nil {
+					return err
+				}
+				if taken {
+					return errServiceNameInUse(trimmed)
+				}
+			}
+			probe.Spec.DisplayName = trimmed
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetDisplayName(ctx, id, *p.DisplayName)
@@ -181,7 +198,7 @@ var servicePatchTable = []servicePatchOp{
 			// The build settings below (root dir, Dockerfile path, build
 			// filter) refuse on a service with no repo, so they must see the
 			// source this patch is moving them to, not the one it is leaving.
-			next.applyTo(probe)
+			next.applySourceChange(probe)
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -224,7 +241,8 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"IdleTTLSeconds"},
 		present:  func(p ServicePatch) bool { return p.IdleTTLSeconds != nil },
 		relation: canOperate,
-		check: func(_ context.Context, _ *Service, _ *appv1alpha1.App, _ string, p ServicePatch) error {
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			probe.Spec.IdleTTLSeconds = *p.IdleTTLSeconds
 			return checkIdleTTL(*p.IdleTTLSeconds)
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -236,7 +254,11 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.MaxShutdownDelaySeconds != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			return validateMaxShutdownDelaySeconds(probe.Spec.Type, p.MaxShutdownDelaySeconds)
+			if err := validateMaxShutdownDelaySeconds(probe.Spec.Type, p.MaxShutdownDelaySeconds); err != nil {
+				return err
+			}
+			probe.Spec.MaxShutdownDelaySeconds = clonePtr(p.MaxShutdownDelaySeconds)
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetMaxShutdownDelay(ctx, id, *p.MaxShutdownDelaySeconds)
@@ -247,7 +269,11 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.RootDir != nil },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			return s.checkRootDir(ctx, probe, id, *p.RootDir)
+			if err := s.checkRootDir(ctx, probe, id, *p.RootDir); err != nil {
+				return err
+			}
+			probe.Spec.RootDir = *p.RootDir
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetRootDir(ctx, id, *p.RootDir)
@@ -258,7 +284,8 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.BuildFilter != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			_, err := checkBuildFilter(probe, id, p.BuildFilter)
+			bf, err := checkBuildFilter(probe, id, p.BuildFilter)
+			probe.Spec.BuildFilter = bf
 			return err
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -269,6 +296,10 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"AutoDeploy"},
 		present:  func(p ServicePatch) bool { return p.AutoDeploy != nil },
 		relation: canOperate,
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			probe.Spec.AutoDeploy = *p.AutoDeploy
+			return nil
+		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetAutoDeploy(ctx, id, *p.AutoDeploy)
 		},
@@ -282,7 +313,16 @@ var servicePatchTable = []servicePatchOp{
 		// rescheduling when it runs stays lifecycle (SetCronJob's split).
 		relation: func(p ServicePatch) string { return core.LifecycleOrCreate(p.Command != nil) },
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			return s.checkCronJob(ctx, probe, id, p.Schedule, p.Command)
+			if err := s.checkCronJob(ctx, probe, id, p.Schedule, p.Command); err != nil {
+				return err
+			}
+			if p.Schedule != nil {
+				probe.Spec.Schedule = strings.TrimSpace(*p.Schedule)
+			}
+			if p.Command != nil {
+				probe.Spec.Command = strings.TrimSpace(*p.Command)
+			}
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetCronJob(ctx, id, p.Schedule, p.Command)
@@ -293,7 +333,8 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.HealthCheckPath != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			_, err := checkHealthCheckPath(probe, *p.HealthCheckPath)
+			trimmed, err := checkHealthCheckPath(probe, *p.HealthCheckPath)
+			probe.Spec.HealthCheckPath = trimmed
 			return err
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -304,8 +345,12 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"PreDeployCommand"},
 		present:  func(p ServicePatch) bool { return p.PreDeployCommand != nil },
 		relation: canCreate,
-		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, _ ServicePatch) error {
-			return s.checkPreDeployCommand(ctx, probe)
+		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			if err := s.checkPreDeployCommand(ctx, probe); err != nil {
+				return err
+			}
+			probe.Spec.PreDeployCommand = strings.TrimSpace(*p.PreDeployCommand)
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetPreDeployCommand(ctx, id, *p.PreDeployCommand)
@@ -316,7 +361,11 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.PublishPath != nil },
 		relation: canCreate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			return checkPublishPath(probe, id, *p.PublishPath)
+			if err := checkPublishPath(probe, id, *p.PublishPath); err != nil {
+				return err
+			}
+			probe.Spec.PublishPath = strings.TrimSpace(*p.PublishPath)
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetPublishPath(ctx, id, *p.PublishPath)
@@ -330,7 +379,20 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.BuildCommand != nil || p.StartCommand != nil },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			return s.checkCommands(ctx, probe, p.StartCommand)
+			if err := s.checkCommands(ctx, probe, p.StartCommand); err != nil {
+				return err
+			}
+			if p.BuildCommand != nil {
+				probe.Spec.BuildCommand = strings.TrimSpace(*p.BuildCommand)
+			}
+			if p.StartCommand != nil {
+				if probe.Spec.Type == appv1alpha1.TypeCronJob {
+					probe.Spec.Command = strings.TrimSpace(*p.StartCommand)
+				} else {
+					probe.Spec.StartCommand = strings.TrimSpace(*p.StartCommand)
+				}
+			}
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetCommands(ctx, id, p.BuildCommand, p.StartCommand)
@@ -341,7 +403,8 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.DockerfilePath != nil },
 		relation: canCreate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, id string, p ServicePatch) error {
-			_, err := s.checkDockerfilePath(ctx, probe, id, *p.DockerfilePath)
+			path, err := s.checkDockerfilePath(ctx, probe, id, *p.DockerfilePath)
+			probe.Spec.DockerfilePath = path
 			return err
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -353,7 +416,14 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.Port != nil },
 		relation: canCreate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			return checkPort(probe, *p.Port)
+			if err := checkPort(probe, *p.Port); err != nil {
+				return err
+			}
+			if probe.Spec.UsesImagePorts() {
+				probe.Spec.PortMode = appv1alpha1.PortModeImageConfiguredV1
+			}
+			probe.Spec.Port = *p.Port
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetPort(ctx, id, *p.Port)
@@ -363,8 +433,9 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"NotifyOnFail"},
 		present:  func(p ServicePatch) bool { return p.NotifyOnFail != nil },
 		relation: canOperate,
-		check: func(_ context.Context, _ *Service, _ *appv1alpha1.App, _ string, p ServicePatch) error {
-			_, err := normalizeNotifyOnFail(*p.NotifyOnFail)
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			normalized, err := normalizeNotifyOnFail(*p.NotifyOnFail)
+			probe.Spec.NotifyOnFail, probe.Spec.NotificationsToSend = normalized, ""
 			return err
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -375,8 +446,10 @@ var servicePatchTable = []servicePatchOp{
 		fields:   []string{"NotificationsToSend"},
 		present:  func(p ServicePatch) bool { return p.NotificationsToSend != nil },
 		relation: canOperate,
-		check: func(_ context.Context, _ *Service, _ *appv1alpha1.App, _ string, p ServicePatch) error {
-			_, err := normalizeNotificationsToSend(*p.NotificationsToSend)
+		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
+			normalized, err := normalizeNotificationsToSend(*p.NotificationsToSend)
+			probe.Spec.NotificationsToSend = normalized
+			probe.Spec.NotifyOnFail = appv1alpha1.NotifyOnFailForNotificationsToSend(normalized)
 			return err
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -388,7 +461,8 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.RenderSubdomainPolicy != nil },
 		relation: canOperate,
 		check: func(ctx context.Context, s *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			_, err := s.checkSubdomainPolicy(ctx, probe, *p.RenderSubdomainPolicy)
+			normalized, err := s.checkSubdomainPolicy(ctx, probe, *p.RenderSubdomainPolicy)
+			probe.Spec.SubdomainPolicy = normalized
 			return err
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -400,7 +474,11 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.IPAllowList != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			return checkIPAllowList(probe, *p.IPAllowList)
+			if err := checkIPAllowList(probe, *p.IPAllowList); err != nil {
+				return err
+			}
+			probe.Spec.SetIPAllowListEntries(core.AllowListToSpec(*p.IPAllowList))
+			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
 			return s.SetIPAllowList(ctx, id, *p.IPAllowList)
@@ -428,7 +506,8 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.Autoscaling != nil },
 		relation: canOperate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			_, err := checkAutoscaling(probe, *p.Autoscaling)
+			as, err := checkAutoscaling(probe, *p.Autoscaling)
+			probe.Spec.Autoscaling = &as
 			return err
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
@@ -500,40 +579,39 @@ func checkMaintenanceRow(ctx context.Context, s *Service, probe *appv1alpha1.App
 // truthful errors. Making that boundary atomic too would need a cross-store
 // rollback this deliberately does not invent (w4/123, w4/m130 own the
 // mid-persistence failure cases).
-// It returns the context the apply pass must use: the caller's, carrying the
+// It returns the context the apply pass must use — the caller's, carrying the
 // source the source row already probed so the apply pass does not repeat those
-// outbound calls.
-func (s *Service) preflightServicePatch(ctx context.Context, id string, p ServicePatch) (context.Context, error) {
+// outbound calls — and the probe, which a dry-run answers with. A dry-run
+// authorizes through authorizeToChange's preview path instead.
+func (s *Service) preflightServicePatch(ctx context.Context, id string, p ServicePatch, dryRun bool) (context.Context, *appv1alpha1.App, error) {
 	rows := presentServicePatchRows(p)
 	if len(rows) == 0 {
 		// No present field: ApplyServicePatch is a read-only no-op that
 		// authorizes can_view through Get. Nothing to preflight.
-		return ctx, nil
+		return ctx, nil, nil
 	}
-	auditCtx := core.WithDeferredAllowedWriteAudit(ctx)
-	var probe *appv1alpha1.App
-	seen := make(map[string]bool, 2)
+	relations := make([]string, 0, 2)
 	for _, row := range rows {
-		relation := row.relation(p)
-		if seen[relation] {
-			continue
-		}
-		seen[relation] = true
-		a, err := s.AuthorizeApp(auditCtx, relation, id)
-		if err != nil {
-			return ctx, err
-		}
-		if probe == nil {
-			probe = a.DeepCopy()
+		if relation := row.relation(p); !slices.Contains(relations, relation) {
+			relations = append(relations, relation)
 		}
 	}
+	ctx, a, err := s.authorizeToChange(ctx, id, dryRun, relations...)
+	if err != nil {
+		return ctx, nil, err
+	}
+	probe := a.DeepCopy()
 	for _, row := range rows {
-		if row.check == nil {
-			continue
-		}
 		if err := row.check(ctx, s, probe, id, p); err != nil {
-			return ctx, err
+			return ctx, nil, err
 		}
+	}
+	// The probe now holds the whole proposed spec, so the API server judges it
+	// — the CRD's schema and CEL rules — before any row writes: an invalid
+	// field fails the patch here instead of at its own row's CR write, after
+	// the rows ahead of it have landed (w5/m116).
+	if err := s.PatchObject(ctx, probe.DeepCopy(), client.MergeFrom(a), true); err != nil {
+		return ctx, nil, err
 	}
 	// The source row's check folded the source it probed onto probe, so the
 	// probe now carries exactly what the apply pass will resolve to. Publishing
@@ -545,7 +623,7 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 		image:                probe.Spec.Image,
 		branch:               probe.Spec.Branch,
 		registryCredentialID: clonePtr(probe.Spec.RegistryCredentialID),
-	}), nil
+	}), probe, nil
 }
 
 // ApplyServicePatch runs the present fields of p against service id as an
@@ -566,7 +644,7 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	// row. Memoize them for this request so the guarantee costs round trips
 	// proportional to the patch, not to the number of rows in it.
 	ctx = withRequestMemo(ctx)
-	ctx, err := s.preflightServicePatch(ctx, id, p)
+	ctx, _, err := s.preflightServicePatch(ctx, id, p, false)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -597,6 +675,35 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 		v.IPAllowListProxiedDomains = proxied
 	}
 	return v, err
+}
+
+// ApplyServicePatchDryRun is ApplyServicePatch stopped before its first write
+// (w5/m116): the same preflight — every present field's checks, protection
+// guards included — and the service as those checks leave it. It needs only
+// can_view (authorizeToChange).
+func (s *Service) ApplyServicePatchDryRun(ctx context.Context, id string, p ServicePatch) (AppView, error) {
+	return s.applyServicePatchDryRun(ctx, id, p)
+}
+
+// applyServicePatchDryRun is unexported so the verb a dry-run's audit row
+// names is the one the caller made (ApplyServicePatchDryRun or SetPlanDryRun).
+func (s *Service) applyServicePatchDryRun(ctx context.Context, id string, p ServicePatch) (AppView, error) {
+	ctx = withRequestMemo(ctx)
+	_, probe, err := s.preflightServicePatch(ctx, id, p, true)
+	if err != nil {
+		return AppView{}, err
+	}
+	if probe == nil {
+		return s.Get(ctx, id)
+	}
+	if err := core.NotFoundIfDeleting(probe); err != nil {
+		return AppView{}, err
+	}
+	view := s.view(probe)
+	if p.IPAllowList != nil {
+		view.IPAllowListProxiedDomains = s.allowListProxiedDomains(ctx, probe)
+	}
+	return view, nil
 }
 
 // presentServicePatchRows is the rows p actually asks for, in table order.

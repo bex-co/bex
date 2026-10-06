@@ -147,11 +147,11 @@ func TestDatabaseAdmissionRefusesPlanChangesAcrossWriteAndPreviewPaths(t *testin
 				case "set":
 					_, err = svc.SetPlan(ctx, "db", tc.target)
 				case "preview set":
-					_, err = svc.PreviewSetPlan(ctx, "db", tc.target)
+					_, err = svc.SetPlanDryRun(ctx, "db", tc.target)
 				case "patch":
 					_, err = svc.UpdatePostgres(ctx, "db", PostgresPatch{Plan: &tc.target})
 				case "preview patch":
-					_, err = svc.PreviewUpdatePostgres(ctx, "db", PostgresPatch{Plan: &tc.target})
+					_, err = svc.UpdatePostgresDryRun(ctx, "db", PostgresPatch{Plan: &tc.target})
 				}
 				var coded *core.CodedError
 				if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != tc.code {
@@ -171,7 +171,7 @@ func TestDatabaseAdmissionAllowsCombinedFeatureDisableAndDowngrade(t *testing.T)
 	svc, cl := newService(db)
 	plan, disabled := "free", false
 	patch := PostgresPatch{Plan: &plan, EnableDiskAutoscaling: &disabled, Pooler: &disabled}
-	if _, err := svc.PreviewUpdatePostgres(context.Background(), "db", patch); err != nil {
+	if _, err := svc.UpdatePostgresDryRun(context.Background(), "db", patch); err != nil {
 		t.Fatal(err)
 	}
 	if getDatabase(t, cl, "db").Spec.Plan != "basic-256mb" {

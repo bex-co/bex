@@ -64,7 +64,7 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	// Reuse the object already in hand — no second fetch.
 	return s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.Suspended = suspended
-	})
+	}, false)
 }
 
 // Restart requests a rolling restart of the primary (spec.restartedAt = now);
@@ -77,7 +77,7 @@ func (s *Service) Restart(ctx context.Context, name string) (PostgresView, error
 	}
 	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
 		d.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
-	})
+	}, false)
 	if err != nil {
 		return PostgresView{}, err
 	}

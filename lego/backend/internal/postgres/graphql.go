@@ -538,7 +538,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
-		"updateDatabasePlan":    gqlutil.PlanMutation(postgresGQLType, s.SetPlan, s.PreviewSetPlan),
+		"updateDatabasePlan":    gqlutil.PlanMutation(postgresGQLType, s.SetPlan, s.SetPlanDryRun),
 		"updateDatabaseVersion": gqlutil.ArgMutation(postgresGQLType, "version", s.SetVersion),
 		"updateDatabaseDiskAutoscaling": &graphql.Field{
 			Type: postgresGQLType,
@@ -553,7 +553,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"renameDatabase": gqlutil.PatchMutation(postgresGQLType, "name",
 			func(name string) PostgresPatch { return PostgresPatch{Name: &name} },
-			s.UpdatePostgres, s.PreviewUpdatePostgres),
+			s.UpdatePostgres, s.UpdatePostgresDryRun),
 		// setDatabasePublic is the explicit external-endpoint control (w4/m116),
 		// the mirror of setKeyValuePublic. A Postgres allowlist write never
 		// publishes on its own — private is an explicit choice here, unlike the

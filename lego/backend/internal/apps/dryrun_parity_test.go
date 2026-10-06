@@ -136,20 +136,23 @@ func TestCreateDryRunRunsTheBillingGate(t *testing.T) {
 	}
 }
 
-// TestCreateDryRunWithStoreExemptsNoPlatformHost: with the store on, the real
-// create mints a random slug the caller cannot know, so a preview must not
-// exempt `<name>.<base>` — the bare request name is not the service's host.
-func TestCreateDryRunWithStoreExemptsNoPlatformHost(t *testing.T) {
-	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
-	svc.Store = &recordingStore{}
-	svc.BaseDomain = "onbex.co"
-	_, err := svc.Create(paidGateContext(), CreateRequest{Name: "web", Image: "img:1", Hosts: []string{"web.onbex.co"}, DryRun: true})
-	if !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("store-mode dry-run claiming web.onbex.co = %v, want reserved-host refusal", err)
-	}
-	var apps appv1alpha1.AppList
-	if err := cl.List(context.Background(), &apps); err != nil || len(apps.Items) != 0 {
-		t.Fatalf("dry-run wrote Apps: %+v err=%v", apps.Items, err)
+// TestCreateExemptsTheServicesOwnPlatformHost (w5/m116): with the store on,
+// store.CreateApp mints the slug as the service name (a suffix only when
+// another workspace already holds it), so a create may claim `<name>.<base>`.
+// Its dry-run and the real create agree on that, and both refuse another
+// service's platform host. Before, the preview refused its own host too, and
+// running the create's plan ahead of the real write carried that onto it.
+func TestCreateExemptsTheServicesOwnPlatformHost(t *testing.T) {
+	for _, dryRun := range []bool{true, false} {
+		svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+		svc.Store = &recordingStore{}
+		svc.BaseDomain = "onbex.co"
+		if _, err := svc.Create(paidGateContext(), CreateRequest{Name: "web", Image: "img:1", Hosts: []string{"web.onbex.co"}, DryRun: dryRun}); err != nil {
+			t.Fatalf("dryRun=%v: a create claiming its own web.onbex.co = %v, want it accepted", dryRun, err)
+		}
+		if _, err := svc.Create(paidGateContext(), CreateRequest{Name: "api", Image: "img:1", Hosts: []string{"other.onbex.co"}, DryRun: dryRun}); !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("dryRun=%v: a create claiming other.onbex.co = %v, want the reserved-host refusal", dryRun, err)
+		}
 	}
 }
 

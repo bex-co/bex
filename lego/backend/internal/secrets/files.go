@@ -214,21 +214,11 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 	if len(initial) == 0 {
 		return nil
 	}
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
-	}
-	ctx, service = scopeApp(ctx, a, service)
-	files := make(map[string]string, len(initial))
-	for _, f := range initial {
-		name := strings.TrimSpace(f.Name)
-		if err := core.CheckSecretFileName(name); err != nil {
-			return err
-		}
-		files[name] = f.Content
-	}
-	if err := filesMapWithinQuota(files); err != nil {
+	files, err := s.createFiles(initial)
+	if err != nil {
 		return err
 	}
+	ctx, service = scopeApp(ctx, a, service)
 	name := filesSecretName(a.Name)
 	if err := s.prepareProjection(ctx, a, name, filesPath(service), files); err != nil {
 		return err
@@ -321,25 +311,47 @@ func (s *Service) prepareCreateEnvVars(ctx context.Context, service string, a *a
 	if len(env) == 0 {
 		return nil
 	}
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
-	}
-	ctx, service = scopeApp(ctx, a, service)
-	for _, key := range core.SortedKeys(env) {
-		if err := core.CheckEnvKey(key); err != nil {
-			// Names only in the error — never the value (docs/ADR013-secrets.md).
-			return err
-		}
-	}
-	if err := envMapWithinQuota(env); err != nil {
+	if err := s.checkCreateEnv(env); err != nil {
 		return err
 	}
+	ctx, service = scopeApp(ctx, a, service)
 	name := envSecretName(a.Name)
 	if err := s.prepareProjection(ctx, a, name, envPath(service), env); err != nil {
 		return err
 	}
 	a.Spec.EnvFromSecret = name
 	return nil
+}
+
+// createFiles is every refusal prepareSecretFiles makes before it writes,
+// returning the files keyed by name.
+func (s *Service) createFiles(initial []core.SecretFile) (map[string]string, error) {
+	if s.Store == nil {
+		return nil, core.ErrSecretsUnavailable
+	}
+	files := make(map[string]string, len(initial))
+	for _, f := range initial {
+		name := strings.TrimSpace(f.Name)
+		if err := core.CheckSecretFileName(name); err != nil {
+			return nil, err
+		}
+		files[name] = f.Content
+	}
+	return files, filesMapWithinQuota(files)
+}
+
+// checkCreateEnv is every refusal prepareCreateEnvVars makes before it writes.
+func (s *Service) checkCreateEnv(env map[string]string) error {
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	for _, key := range core.SortedKeys(env) {
+		if err := core.CheckEnvKey(key); err != nil {
+			// Names only in the error — never the value (docs/ADR013-secrets.md).
+			return err
+		}
+	}
+	return envMapWithinQuota(env)
 }
 
 func (s *Service) abortCreateEnvVars(ctx context.Context, service string, a *appv1alpha1.App) error {
@@ -357,12 +369,27 @@ func (s *Service) abortCreateEnvVars(ctx context.Context, service string, a *app
 // phases run only after apps.Create has performed the resource authorization
 // and are not independent API verbs.
 type CreateSecretsSeeder interface {
+	CheckCreateSecrets([]core.SecretFile, map[string]string) error
 	PrepareCreateSecrets(context.Context, string, *appv1alpha1.App, []core.SecretFile, map[string]string) error
 	CommitCreateSecrets(context.Context, string, *appv1alpha1.App) error
 	AbortCreateSecrets(context.Context, string, *appv1alpha1.App) error
 }
 
 type createSecretsSeeder struct{ service *Service }
+
+// CheckCreateSecrets is PrepareCreateSecrets' refusals without its writes —
+// what a create's plan meets before its first write (w5/m116).
+func (s createSecretsSeeder) CheckCreateSecrets(files []core.SecretFile, env map[string]string) error {
+	if len(files) > 0 {
+		if _, err := s.service.createFiles(files); err != nil {
+			return err
+		}
+	}
+	if len(env) > 0 {
+		return s.service.checkCreateEnv(env)
+	}
+	return nil
+}
 
 // PrepareCreateSecrets runs both legs; each is a no-op for an empty input, so a
 // create carrying only one of the two writes only that one.

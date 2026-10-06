@@ -179,6 +179,60 @@ func TestProtectedKeyValueConfirmationAcrossAdapters(t *testing.T) {
 		}
 	})
 
+	// w5/m116: the REST PATCH read no ?confirm= at all, so a protected store
+	// could not be renamed over REST; and a dry-run meets the same guard.
+	t.Run("REST rename and its dry-run", func(t *testing.T) {
+		kv := keyValueForProtection("red-rename", "rename-kv", true)
+		svc, cl, _ := protectedKeyValueService(kv)
+		body := `{"name":"renamed-kv"}`
+		for _, path := range []string{"/v1/key-value/red-rename", "/v1/key-value/red-rename?dryRun=true"} {
+			if got := serveREST(svc, http.MethodPatch, path, body); got.Code != http.StatusBadRequest {
+				t.Fatalf("unconfirmed PATCH %s = %d %s, want 400", path, got.Code, got.Body.String())
+			}
+		}
+		confirm := url.QueryEscape(ProtectedConfirmation("rename", "rename-kv"))
+		if got := serveREST(svc, http.MethodPatch, "/v1/key-value/red-rename?dryRun=true&confirm="+confirm, body); got.Code != http.StatusOK {
+			t.Fatalf("confirmed dry-run PATCH = %d %s, want 200", got.Code, got.Body.String())
+		}
+		var stored appv1alpha1.KeyValue
+		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &stored); err != nil || stored.Spec.Name != "rename-kv" {
+			t.Fatalf("after the dry-run the store is named %q (%v), want it untouched", stored.Spec.Name, err)
+		}
+		if got := serveREST(svc, http.MethodPatch, "/v1/key-value/red-rename?confirm="+confirm, body); got.Code != http.StatusOK {
+			t.Fatalf("confirmed PATCH = %d %s, want 200", got.Code, got.Body.String())
+		}
+		if err := cl.Get(context.Background(), client.ObjectKeyFromObject(kv), &stored); err != nil || stored.Spec.Name != "renamed-kv" {
+			t.Fatalf("after the confirmed PATCH the store is named %q (%v)", stored.Spec.Name, err)
+		}
+	})
+
+	t.Run("MCP update dry-run carries confirm", func(t *testing.T) {
+		kv := keyValueForProtection("red-mcp-update", "mcp-update-kv", true)
+		svc, _, _ := protectedKeyValueService(kv)
+		srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+		svc.RegisterMCP(srv)
+		ctx := context.Background()
+		serverTransport, clientTransport := mcp.NewInMemoryTransports()
+		if _, err := srv.Connect(ctx, serverTransport, nil); err != nil {
+			t.Fatal(err)
+		}
+		clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer clientSession.Close()
+		args := map[string]any{"keyValueId": kv.Name, "name": "renamed-kv", "dryRun": true}
+		blocked, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_key_value", Arguments: args})
+		if err != nil || !blocked.IsError {
+			t.Fatalf("unconfirmed dry-run = %#v, %v; want the guard's refusal", blocked, err)
+		}
+		args["confirm"] = ProtectedConfirmation("rename", "mcp-update-kv")
+		confirmed, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_key_value", Arguments: args})
+		if err != nil || confirmed.IsError {
+			t.Fatalf("confirmed dry-run = %#v, %v; want the preview", confirmed, err)
+		}
+	})
+
 	t.Run("MCP suspend", func(t *testing.T) {
 		kv := keyValueForProtection("red-mcp", "mcp-kv", true)
 		svc, _, _ := protectedKeyValueService(kv)

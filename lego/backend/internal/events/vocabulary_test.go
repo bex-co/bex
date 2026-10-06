@@ -146,6 +146,18 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	} {
 		excusedVerbs[verb] = "w6/m17 seam collapse newly targets it; not yet given an event type"
 	}
+	// w5/m116: a dry-run is its verb's plan step stopped before the first write.
+	// It authorizes only can_view and writes nothing, so its audit row is a read
+	// that never becomes an event. The walk cannot see that: the dry-run branch's
+	// literal read relation shares a plan step whose real branch passes the
+	// verb's relation as a variable.
+	for _, verb := range []string{
+		"apps.ApplyServicePatchDryRun", "apps.SetPlanDryRun",
+		"postgres.SetPlanDryRun", "postgres.UpdatePostgresDryRun",
+		"keyvalue.SetPlanDryRun", "keyvalue.UpdateKeyValueDryRun",
+	} {
+		excusedVerbs[verb] = "a dry-run: can_view only, writes nothing (w5/m116)"
+	}
 	// apps.CreateBlueprint calls deployStack, which in turn calls AuthorizeApp for each resource
 	// it applies — the target is per-resource inside the stack apply, not the blueprint itself.
 	excusedVerbs["apps.CreateBlueprint"] = "w2/m62: targets via deployStack → AuthorizeApp per resource; blueprint create has no per-service event type yet"

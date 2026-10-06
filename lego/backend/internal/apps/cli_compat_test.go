@@ -169,6 +169,10 @@ func (r fixedEnvironmentResolver) ResolveForCreate(_ context.Context, environmen
 	return core.EnvironmentAssignment{ID: e.ID, ProjectID: e.ProjectID, WorkspaceID: e.TenantID}, nil
 }
 
+func (s *recordingCreateSecretsSeeder) CheckCreateSecrets([]core.SecretFile, map[string]string) error {
+	return nil
+}
+
 func (s *recordingCreateSecretsSeeder) PrepareCreateSecrets(_ context.Context, service string, app *appv1alpha1.App, files []core.SecretFile, env map[string]string) error {
 	s.service = service
 	s.files = append([]core.SecretFile(nil), files...)
