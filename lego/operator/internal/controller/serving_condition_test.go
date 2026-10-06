@@ -33,7 +33,7 @@ func TestServingRevisionIgnoresFailingReplacement(t *testing.T) {
 		want         metav1.ConditionStatus
 	}{
 		{"healthy prior release", "rev-old", true, metav1.ConditionTrue},
-		{"crashed serving release", "rev-old", false, metav1.ConditionUnknown},
+		{"crashed serving release", "rev-old", false, metav1.ConditionFalse},
 		{"first deploy", "", true, metav1.ConditionUnknown},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

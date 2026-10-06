@@ -311,7 +311,10 @@ type ObservedServiceState struct {
 	// checkpoint's healthy_transition_at when the conclusion is healthy. Zero
 	// when availability was not derived from a Ready condition (e.g.
 	// hibernation) or the condition carried no timestamp; the guard treats
-	// zero as "cannot order" and fails open toward recording.
+	// zero as "cannot order" and fails open toward recording. A crash under an
+	// open deploy carries the Serving condition's stop instead when it is later
+	// than Ready's (the rollout start), and both the edge and the stale guard
+	// use it (w5/083).
 	ReadyTransitionAt time.Time
 	// AvailabilitySuppressed marks a pass whose availability conclusion a
 	// reconciler guard blanked: the debounce's first unhealthy pass, or a

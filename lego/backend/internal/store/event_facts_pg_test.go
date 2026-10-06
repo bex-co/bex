@@ -266,6 +266,75 @@ func TestPGFailureEdgeOutlivesTheDebouncedPhaseWrite(t *testing.T) {
 	}
 }
 
+// w5/083: a crash under an open deploy is dated when the serving revision
+// stopped, never before the rollout began. The first pass to see the rollout
+// is already the debounced crash, so no earlier write floors the edge, and
+// Ready's transition (the rollout start, :198) is the other clock on the CR.
+func TestPGOpenDeployCrashIsDatedWhenServingStopped(t *testing.T) {
+	st, _, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	base := time.Date(2026, 10, 6, 6, 0, 0, 0, time.UTC)
+	at := func(sec int) time.Time { return base.Add(time.Duration(sec) * time.Second) }
+	// crashed is the CR a rollout that began at :198 shows once its pods crash,
+	// with Serving as the operator's observeServingRevision last wrote it.
+	crashed := func(serving *metav1.Condition) *appv1alpha1.App {
+		cr := crashedCR(at(198))
+		cr.Generation = 2
+		if serving != nil {
+			cr.Status.Conditions = append(cr.Status.Conditions, *serving)
+		}
+		return cr
+	}
+	servingStopped := func(sec int, generation int64) *metav1.Condition {
+		return &metav1.Condition{Type: appv1alpha1.ConditionServing, Status: metav1.ConditionFalse,
+			Reason: appv1alpha1.ReasonServingRevisionUnavailable, LastTransitionTime: metav1.NewTime(at(sec)), ObservedGeneration: generation}
+	}
+	for _, tc := range []struct {
+		name    string
+		serving *metav1.Condition
+		want    time.Time
+	}{
+		// A RollingUpdate keeps the old pods serving until they die mid-rollout.
+		{"rolling update", servingStopped(250, 2), at(250)},
+		// A Recreate rollout (a disk-backed service) stops the old pod first.
+		{"recreate", servingStopped(198, 2), at(198)},
+		// No recorded stop: Ready's time, so the stale guard keeps a clock.
+		{"no serving stop", nil, at(198)},
+		// A stop observed for an earlier generation says nothing about this one.
+		{"serving from an older generation", servingStopped(250, 1), at(198)},
+		// A stop carried over from before the rollout is older than the healthy
+		// checkpoint at :170: alone it would date the crash before the rollout
+		// and make the stale guard refuse it.
+		{"stop carried over from before the rollout", servingStopped(150, 2), at(198)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: fmt.Sprintf("web-%d", time.Now().UnixNano()), Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+			if err != nil {
+				t.Fatalf("create app: %v", err)
+			}
+			r := &Reconciler{Store: st}
+			pass := func(sec int, cr *appv1alpha1.App, hasOpenDeploy bool) []ServiceEventFact {
+				t.Helper()
+				obs := observedServiceStateFor(app.ID, cr, hasOpenDeploy)
+				obs.At = at(sec)
+				facts, err := st.RecordObservedServiceState(ctx, r.guardServiceObservation(ctx, obs))
+				if err != nil {
+					t.Fatalf("record :%d: %v", sec, err)
+				}
+				return facts
+			}
+			pass(175, healthyCR(at(170)), false)
+			pass(180, healthyCR(at(170)), false)
+			if f := pass(260, crashed(tc.serving), true); len(f) != 0 {
+				t.Fatalf("debounced pass emitted %+v", f)
+			}
+			if f := pass(290, crashed(tc.serving), true); len(f) != 1 || f[0].Type != EventFactServerFailed || !f[0].At.Equal(tc.want) {
+				t.Fatalf("server_failed = %+v, want one edge at %s", f, tc.want.Format("15:04:05"))
+			}
+		})
+	}
+}
+
 // The datastore twin of TestPGAvailabilityEdgesCarryTheReadyTransitionTime.
 func TestPGDatastoreAvailabilityEdgesCarryTheReadyTransitionTime(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
