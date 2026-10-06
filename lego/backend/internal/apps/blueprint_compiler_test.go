@@ -161,9 +161,9 @@ func TestBlueprintCompilerRejectsRuntimeIncompatibleBuildCommands(t *testing.T) 
 			path: "#/services/0/buildCommand",
 		},
 		{
-			name: "image docker command",
+			name: "native docker command",
 			manifest: `services:
-  - {type: web, name: api, runtime: image, image: {url: nginx:1.27}, dockerCommand: nginx -g 'daemon off;'}
+  - {type: web, name: api, runtime: node, repo: https://github.com/bex-co/api, dockerCommand: npm start}
 `,
 			path: "#/services/0/dockerCommand",
 		},
@@ -175,6 +175,23 @@ func TestBlueprintCompilerRejectsRuntimeIncompatibleBuildCommands(t *testing.T) 
 				t.Fatalf("CompileBlueprintSource() problems = %+v, want incompatibility at %s", problems, tc.path)
 			}
 		})
+	}
+}
+
+// w5/080: a prebuilt image's command is a container command, as REST, GraphQL
+// and MCP accept it, and Render's own schema allows it on any server service.
+func TestBlueprintCompilerAcceptsAnImageDockerCommand(t *testing.T) {
+	for _, manifest := range []string{
+		`services:
+  - {type: web, name: api, runtime: image, image: {url: nginx:1.27}, dockerCommand: nginx -g 'daemon off;'}
+`,
+		`services:
+  - {type: cron, name: nightly, runtime: image, image: {url: busybox:1.36}, schedule: '0 2 * * *', dockerCommand: echo hi}
+`,
+	} {
+		if _, problems := CompileBlueprintSource(manifest); len(problems) != 0 {
+			t.Errorf("CompileBlueprintSource(%q) problems = %+v, want an image dockerCommand accepted", manifest, problems)
+		}
 	}
 }
 

@@ -173,8 +173,8 @@ var blueprintServiceFieldAppliers = []struct {
 	{names: []string{"buildCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.BuildCommand = want.BuildCommand }},
 	// A cron job's command lives in Spec.Command, not Spec.StartCommand —
 	// SetCommands has always known that, and so does the exporter, which writes
-	// Spec.Command out as `startCommand` (or `dockerCommand` for a docker
-	// runtime). These two appliers did not: they wrote every declared command
+	// Spec.Command out as `startCommand` (or `dockerCommand` for a docker or
+	// image runtime). These two appliers did not: they wrote every declared command
 	// into StartCommand, so an exported cron gained a StartCommand it never had
 	// while keeping its Command, and re-planned as `update` forever. Found by
 	// w4/m124's round-trip guard, not by the QA pass that opened the milestone
