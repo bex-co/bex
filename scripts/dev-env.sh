@@ -526,6 +526,10 @@ start_api() {
     BEX_SMTP_ADDR="localhost:$MAILPIT_SMTP_PORT"
     BEX_SMTP_FROM="bex dev-$N <no-reply@dev-$N.local>"
     BEX_REQUIRE_VERIFIED_INVITE_EMAIL="0"
+    # Mounts the internal identity-claims verb the dashboard consent acceptor
+    # calls to refuse unverified subjects (ADR075 D8 revision, w2/m168). A
+    # fixed local-only bearer; the printed dashboard command passes the same.
+    BEX_OPS_ROLE_TOKEN="dev-$N-internal"
   )
 
   if agent_enabled; then
@@ -744,7 +748,7 @@ dev-$N (workstream w$N) is up:
   bex-api:     http://localhost:$BEX_API_PORT (log: $ENVDIR/logs/bex-api.log, truncated on each up)
 
 start the dashboard against it:
-  cd dashboard && HYDRA_ADMIN_URL=http://localhost:$HYDRA_ADMIN_PORT HYDRA_PUBLIC_URL=http://localhost:$HYDRA_PUBLIC_PORT VITE_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_SSR_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_KRATOS_PUBLIC_URL=http://localhost:$KRATOS_PUBLIC_PORT VITE_KRATOS_SSR_URL=http://localhost:$KRATOS_PUBLIC_PORT yarn dev --port $DASHBOARD_PORT
+  cd dashboard && HYDRA_ADMIN_URL=http://localhost:$HYDRA_ADMIN_PORT BEX_IDENTITY_CLAIMS_URL=http://localhost:$BEX_CP_PORT/internal/identity-claims BEX_OPS_ROLE_TOKEN=dev-$N-internal HYDRA_PUBLIC_URL=http://localhost:$HYDRA_PUBLIC_PORT VITE_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_SSR_API_URL=http://localhost:$BEX_API_PORT/graphql VITE_KRATOS_PUBLIC_URL=http://localhost:$KRATOS_PUBLIC_PORT VITE_KRATOS_SSR_URL=http://localhost:$KRATOS_PUBLIC_PORT yarn dev --port $DASHBOARD_PORT
 
   (VITE_SSR_API_URL is NOT optional: dashboard/.env pins it to local-bex's
    offline stub on :8099, and a .env value wins over an unset shell var — so

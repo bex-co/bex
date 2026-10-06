@@ -348,6 +348,18 @@ func NewAccountDeletionPendingError() *CodedError {
 	return NewConflictError(CodeAccountDeletionPending, "account deletion is in progress", nil)
 }
 
+// CodeEmailVerificationRequired is the auth gate's refusal for a human caller
+// whose Kratos trait email is not verified (ADR075 D8 revision, 2026-10-06).
+// Written by the middleware before any surface runs, so REST, GraphQL and MCP
+// clients all receive the same REST-shaped 403 body.
+const CodeEmailVerificationRequired = "EMAIL_VERIFICATION_REQUIRED"
+
+// NewEmailVerificationRequiredError is the shared unverified-email refusal.
+func NewEmailVerificationRequiredError() *CodedError {
+	return NewForbiddenError(CodeEmailVerificationRequired,
+		"verify your email address before using bex; check your inbox for the code or request a new one at sign-in", nil)
+}
+
 // CodeOpsWorkspaceProtected is the stable refusal when a product-lifecycle
 // verb targets the pinned platform ops workspace (BEX_OPS_WORKSPACE,
 // docs/ADR088-platform-observability-ui.md §4): its membership is the

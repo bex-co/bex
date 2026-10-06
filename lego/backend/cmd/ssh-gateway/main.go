@@ -222,6 +222,22 @@ func main() {
 		SessionTimeout:     sessionTimeout,
 		RevalidateInterval: revalidateInterval,
 	}
+	// w2/m168 (ADR075 D8 revision): a native SSH key owner must have a verified
+	// email, because key auth never passes bex-api's middleware. On unless
+	// BEX_REQUIRE_VERIFIED_EMAIL=0. Without the exec secret the question can't
+	// be asked, so every key is refused rather than admitted.
+	if v := os.Getenv("BEX_REQUIRE_VERIFIED_EMAIL"); v != "0" && !strings.EqualFold(v, "false") {
+		if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
+			gateway.EmailVerified = (&agentsession.EmailVerificationClient{
+				URL:    envOr("BEX_IDENTITY_VERIFICATION_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalEmailVerificationPath),
+				Secret: []byte(secret),
+				HTTP:   &http.Client{Timeout: 5 * time.Second},
+			}).Check
+		} else {
+			log.Printf("ssh gateway: BEX_REQUIRE_VERIFIED_EMAIL is on but BEX_SANDBOX_EXEC_SECRET is unset; every native SSH key is refused")
+			gateway.EmailVerified = func(context.Context, string) error { return errors.New("email verification unavailable") }
+		}
+	}
 	credentials := &agentcred.Broker{Metrics: metrics}
 	// The ADR062 model proxy shares the Git proxy's trust model: the same
 	// gateway-only HMAC secret, the same source-pod resolver, an internal-only

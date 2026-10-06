@@ -65,7 +65,7 @@ bex 1.0 is available today. The platform is Apache-2.0 on GitHub; hosted bex.co 
 **Q: What are the launch gates?**
 
 1. **Self-host artifact** exists, installs on a fresh cluster from docs alone, and upgrades from a prior RC (the ≈1.0 bar from ADR058).
-2. **Open-signup preconditions** from ADR075: email verification enforced at login, `BEX_REQUIRE_PAYMENT_METHOD=all` live, the onboarding continuity fixes shipped — enabled _before_ external users exist, so nothing is grandfathered.
+2. **Open-signup preconditions** from ADR075: email verification enforced on every request (ADR075 D8 revision, 2026-10-06), `BEX_REQUIRE_PAYMENT_METHOD=all` live, the onboarding continuity fixes shipped — enabled _before_ external users exist, so nothing is grandfathered.
 3. **Billing end-to-end** on real Stripe: metered usage → sealed export → invoice, webhook intake verified, tax gate configured or explicitly deferred.
 4. **Migration-gated security deferrals resolved or consciously carried**: the ADR074 workspace-scoped artifact-identity runbook (ADR055 F2/F3) should complete before external tenants share the registry/S3 namespaces — this is the highest-risk open item and needs an explicit go/no-go.
 5. **Parity ledger and CLI checklist re-verified** at the release-candidate digest set; divergences published.

@@ -93,3 +93,30 @@ func TestKratosIdentitiesMFADerivation(t *testing.T) {
 		}
 	}
 }
+
+// TestKratosIdentitiesEmailVerified pins EmailVerified to the verifiable
+// address that matches the email trait: a verified OTHER address (a changed
+// email whose old entry lingers) must not vouch for the current one.
+func TestKratosIdentitiesEmailVerified(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/admin/identities/verified":
+			fmt.Fprint(w, `{"traits":{"email":"Ada@Example.com"},"verifiable_addresses":[{"value":"ada@example.com","verified":true}]}`)
+		case "/admin/identities/pending":
+			fmt.Fprint(w, `{"traits":{"email":"b@example.com"},"verifiable_addresses":[{"value":"b@example.com","verified":false}]}`)
+		case "/admin/identities/other":
+			fmt.Fprint(w, `{"traits":{"email":"new@example.com"},"verifiable_addresses":[{"value":"old@example.com","verified":true}]}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	k := NewKratosIdentities(srv.URL)
+
+	for subject, want := range map[string]bool{"verified": true, "pending": false, "other": false} {
+		attrs, ok := k.Lookup(context.Background(), subject)
+		if !ok || attrs.EmailVerified != want {
+			t.Errorf("%s: EmailVerified = %v (ok=%v), want %v", subject, attrs.EmailVerified, ok, want)
+		}
+	}
+}

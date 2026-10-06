@@ -1,13 +1,21 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { FlowType, VerificationFlowState } from "@ory/client-fetch";
 import { Verification } from "@ory/elements-react/theme";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
+import { useRootContext } from "@/common/hooks/use-root-context";
 import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
 import { peekPendingInviteToken } from "@/common/lib/invite-token";
+import { invalidateSessionCache } from "@/common/server-fn/session";
 import { takeAuthNext } from "@/features/auth/lib/auth-next";
+import { withPrefilledEmail } from "@/features/auth/lib/verification-prefill";
 import { paymentSetupPath } from "@/features/onboarding/lib/payment-setup";
+import {
+  emailVerificationRequired,
+  sessionTraitEmail,
+} from "@/features/onboarding/lib/email-verification";
 import { AuthWidgetSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
@@ -29,18 +37,36 @@ import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
  * unverified account bounced here by the login backstop) takes the same
  * navigation and requireAuth forwards them to /auth/login with the wall (and
  * its `next`) preserved.
+ *
+ * It is also the verification WALL (ADR075 D8 revision 2026-10-06, w2/m168):
+ * `EmailVerificationGate` and bex-api's `EMAIL_VERIFICATION_REQUIRED` backstop
+ * send a signed-in unverified session here with `?next=` and no flow id. The
+ * page then mints a fresh flow with the session's own email pre-filled (one
+ * click sends the code; Kratos's code step offers resend), swaps the subtitle
+ * to say why the user is here, and offers sign-out as the way out.
  */
 export default function VerificationPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth/verification" });
-  const flow = useOryFlow("verification", search.flow);
+  const rawFlow = useOryFlow("verification", search.flow);
+  const { session } = useRootContext();
+  const walled = emailVerificationRequired(session);
+  const email = sessionTraitEmail(session);
+  const flow = useMemo(
+    () => (rawFlow ? withPrefilledEmail(rawFlow, email) : null),
+    [rawFlow, email],
+  );
   const { t } = useTranslations();
   const oryConfig = useOryConfig();
 
   return (
     <AuthPageShell
       title={t("auth.verificationTitle")}
-      subtitle={t("auth.verificationSubtitle")}
+      subtitle={t(
+        walled
+          ? "auth.verificationRequiredSubtitle"
+          : "auth.verificationSubtitle",
+      )}
     >
       {flow ? (
         <Verification
@@ -69,6 +95,11 @@ export default function VerificationPage() {
             // this hop even when the query param wins.
             const stashed = takeAuthNext();
             const next = fromQuery !== "/" ? fromQuery : stashed;
+            // The browser memoizes whoami for up to a minute. The address is
+            // verified now, so drop the memo; otherwise the next root
+            // beforeLoad would still see the unverified session, and
+            // EmailVerificationGate would bounce the user back to this page.
+            invalidateSessionCache();
             void navigate({
               to: "/",
               href: peekPendingInviteToken()
@@ -80,6 +111,20 @@ export default function VerificationPage() {
       ) : (
         <AuthWidgetSkeleton fields={2} />
       )}
+      {session ? (
+        // Data-dependent (signed-in only), so the pending skeleton does not
+        // reserve it. bex-api refuses every other exit for an unverified
+        // human, so sign-out is the only one offered.
+        <p className="text-sm text-muted-foreground">
+          {t("auth.verificationWrongAccount")}{" "}
+          <Link
+            to="/auth/logout"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            {t("auth.verificationSignOut")}
+          </Link>
+        </p>
+      ) : null}
     </AuthPageShell>
   );
 }

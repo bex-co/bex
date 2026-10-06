@@ -31,6 +31,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
 }));
 vi.mock("@/common/apollo/auth-redirect", () => ({
   handleUnauthenticated: vi.fn(),
+  handleEmailVerificationRequired: vi.fn(),
 }));
 
 const workspaces = ["tea-first", "tea-second"].map((id) => ({
