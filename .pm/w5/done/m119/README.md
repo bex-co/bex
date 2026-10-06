@@ -94,3 +94,5 @@ Skipped:
 
 - The backend suite on fresh Postgres, OpenFGA and OpenBao is green (68 packages); `/ship`'s gate runs it again before the push.
 - `make lint`: 0 issues in all four modules, including the whole-program dead-code pass.
+
+**Live check 2026-10-06 (w4 `/qa-find-bugs` loop69, pin `7e1ae3642` ⊇ `c82e4e97b`):** on an owned Free service, refused single-key writes (`..data` and `a/b` secret files; `1BAD-KEY`, 300-char and `PORT` env vars) each answered a coded 400 naming the key and rule. Afterwards `GET …/env-vars` held only the original `WHOAMI_PORT_NUMBER` and `GET …/secret-files` was `[]`, so no mounted-but-unlisted value or half-applied write remained. The concurrent-write and App-patch-failure orders were not exercised live.
