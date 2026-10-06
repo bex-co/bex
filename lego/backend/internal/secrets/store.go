@@ -254,7 +254,7 @@ func (s *openBaoStore) PutCAS(ctx context.Context, path string, data map[string]
 	if err := s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, &out); err != nil {
 		var se *core.HTTPStatusError
 		if errors.As(err, &se) && (se.Code == http.StatusBadRequest || se.Code == http.StatusConflict) {
-			return 0, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+			return 0, secretChanged()
 		}
 		return 0, sanitizeVersionedStoreError("write", err)
 	}

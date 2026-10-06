@@ -346,6 +346,11 @@ func envSourceUnavailable() error {
 	return fmt.Errorf("%w: environment source is unavailable", core.ErrSecretsUnavailable)
 }
 
+// secretChanged is the answer to a write that kept losing to concurrent ones.
+func secretChanged() error {
+	return fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+}
+
 // ListEnvVarsPage returns a stable keyset page of a service's environment
 // variables. after is the prior page's item cursor (the env-var key). Paging
 // policy: see applyPageLimits.
@@ -509,7 +514,7 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 	// A whole-set replace also clears invalid-name debris from spec.Env, or
 	// `PUT []` answered [] while the list still showed it (w8/027).
 	if err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
-		if err := s.projectEnv(ctx, a, env); err != nil {
+		if err := s.projectEnv(ctx, a, env, committedAt(envWrite.version)); err != nil {
 			return err
 		}
 		dropInvalidSpecEnv(a, func(string) bool { return true })
@@ -579,7 +584,7 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 		return EnvVarView{}, quota
 	}
 	original := a.DeepCopy()
-	if err := s.materializeEnv(ctx, a, env); err != nil {
+	if err := s.materializeEnv(ctx, a, env, committedAt(envWrite.version)); err != nil {
 		return EnvVarView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetEnvVar)
@@ -616,8 +621,8 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 			return nil
 		}
 	}
-	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, func(current map[string]string) error {
-		return s.materializeEnv(ctx, a, admissible(current, core.ValidEnvKey))
+	keyFound, err := s.deleteMapKeyAfterProjection(ctx, envPath(service), key, func(current map[string]string, revision sourceRevision) error {
+		return s.materializeEnv(ctx, a, admissible(current, core.ValidEnvKey), revision)
 	})
 	if err != nil {
 		return err
@@ -696,7 +701,7 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 		return nil
 	}
 	original := a.DeepCopy()
-	if err := s.materializeEnv(ctx, a, env); err != nil {
+	if err := s.materializeEnv(ctx, a, env, committedAt(envWrite.version)); err != nil {
 		return s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, env: envWrite}, err)
 	}
 	// Past seed-once's "every key already present" return above, so a blueprint
@@ -904,7 +909,7 @@ func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(cur
 		}
 		current := core.CloneStringMap(snapshot.Data)
 		if !mutate(current) {
-			return current, mapWrite{}, nil
+			return current, mapWrite{version: snapshot.Version}, nil
 		}
 		version, err := versioned.PutCAS(ctx, path, current, snapshot.Version)
 		if err != nil {
@@ -915,12 +920,14 @@ func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(cur
 		}
 		return current, mapWrite{prior: snapshot.Data, version: version, changed: true}, nil
 	}
-	return nil, mapWrite{}, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+	return nil, mapWrite{}, secretChanged()
 }
 
 // mapWrite is what a write did to one source map, for compensation to undo:
-// the map it replaced, the store version it wrote, and whether it changed the
-// map at all.
+// the map it replaced, whether it changed the map at all, and the store
+// revision the map is now at: the one it wrote, or, when it wrote nothing, the
+// one it read (0 for a store without versions). That revision is what its
+// projection carries (w5/m127).
 type mapWrite struct {
 	prior   map[string]string
 	version uint64
@@ -930,20 +937,23 @@ type mapWrite struct {
 // restoreMap puts back the map a failed write replaced, only while that write
 // is still the store's latest: PutCAS against the version it wrote. A write
 // another caller committed since is never erased (w5/m119): restoreMap leaves
-// the map to it and reports it superseded. A store without versions (a test
-// double) is written back unconditionally.
-func (s *Service) restoreMap(ctx context.Context, path string, w mapWrite) (superseded bool, err error) {
+// the map to it and reports it superseded. restored is the version the restore
+// committed, which its projection carries (w5/m127); it is 0 when superseded,
+// and for a store without versions (a test double), which is written back
+// unconditionally.
+func (s *Service) restoreMap(ctx context.Context, path string, w mapWrite) (restored uint64, superseded bool, err error) {
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
-		return false, s.storeMap(ctx, path, w.prior)
+		return 0, false, s.storeMap(ctx, path, w.prior)
 	}
-	if _, err := versioned.PutCAS(ctx, path, w.prior, w.version); err != nil {
+	restored, err = versioned.PutCAS(ctx, path, w.prior, w.version)
+	if err != nil {
 		if errors.Is(err, core.ErrConflict) {
-			return true, nil
+			return 0, true, nil
 		}
-		return false, err
+		return 0, false, err
 	}
-	return false, nil
+	return restored, false, nil
 }
 
 // deleteMapKeyAfterProjection makes deletion converge in the opposite order
@@ -956,7 +966,15 @@ func (s *Service) restoreMap(ctx context.Context, path string, w mapWrite) (supe
 // Versioned stores retain the existing lost-update guarantee. A racing writer
 // makes PutCAS conflict; the loop re-reads its map, removes only this key, and
 // projects the fresh desired set before trying again.
-func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key string, project func(map[string]string) error) (bool, error) {
+//
+// The projection carries the revision the commit below will create, the path's
+// next version, marked provisional (w5/m127). Nothing older replaces it, so a
+// revoked key stays revoked when this delete fails. A write that commits that
+// version first replaces it, and the commit below then conflicts. A projection
+// of that version or a later one already in the Secret refuses this one before
+// the workload rolls, since the commit could only conflict. Either way the
+// loop re-reads. An absent key's repair projects the revision it read.
+func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key string, project func(current map[string]string, revision sourceRevision) error) (bool, error) {
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
 		current, err := s.readMap(ctx, path)
@@ -965,7 +983,7 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 		}
 		_, found := current[key]
 		delete(current, key)
-		if err := project(current); err != nil {
+		if err := project(current, sourceRevision{}); err != nil {
 			return found, err
 		}
 		if !found {
@@ -985,7 +1003,14 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 		}
 		_, found := current[key]
 		delete(current, key)
-		if err := project(current); err != nil {
+		revision := committedAt(snapshot.Version)
+		if found {
+			revision = provisionalAt(snapshot.Version + 1)
+		}
+		if err := project(current, revision); err != nil {
+			if errors.Is(err, errProjectionConflict) {
+				continue
+			}
 			return found, err
 		}
 		if !found {
@@ -999,7 +1024,7 @@ func (s *Service) deleteMapKeyAfterProjection(ctx context.Context, path, key str
 		}
 		return true, nil
 	}
-	return false, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
+	return false, secretChanged()
 }
 
 // envVarViews renders an env map as a key-sorted slice.
@@ -1025,9 +1050,9 @@ func envSecretName(service string) string { return service + "-env" }
 // etcd-avoidance). Pointing spec.envFromSecret at the Secret wires envFrom into
 // the Deployment; bumping spec.restartedAt rolls the pods, since envFrom is read
 // only at pod creation — the same no-downtime mechanism as the restart verb.
-func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string) error {
+func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision) error {
 	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
-		if err := s.projectEnv(ctx, a, env); err != nil {
+		if err := s.projectEnv(ctx, a, env, revision); err != nil {
 			return err
 		}
 		s.bumpRestart(a)
@@ -1040,8 +1065,8 @@ func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env ma
 // together with projectFiles, then patch the App once to notify a Save-only
 // comparison or request a rollout. The older single-item verbs keep calling
 // materializeEnv and retain their immediate-roll behavior.
-func (s *Service) projectEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string) error {
-	if err := s.upsertSecret(ctx, a, envSecretName(a.Name), env); err != nil {
+func (s *Service) projectEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision) error {
+	if _, err := s.projectSource(ctx, a, envProjection, env, revision, false); err != nil {
 		return err
 	}
 	a.Spec.EnvFromSecret = envSecretName(a.Name)
@@ -1060,10 +1085,6 @@ func (s *Service) bumpRestart(a *appv1alpha1.App) {
 // the whole desired set on every write, so a removed key can't linger from a
 // prior version.
 func (s *Service) upsertSecret(ctx context.Context, a *appv1alpha1.App, name string, data map[string]string) error {
-	bytesData := make(map[string][]byte, len(data))
-	for k, v := range data {
-		bytesData[k] = []byte(v)
-	}
 	// The pod injects this Secret via envFrom (spec.envFromSecret) and owns it
 	// (controller ref below), so it MUST live in the App's namespace — the
 	// per-tenant `<ws>` namespace under ADR043; a cross-namespace owner ref would
@@ -1071,7 +1092,7 @@ func (s *Service) upsertSecret(ctx context.Context, a *appv1alpha1.App, name str
 	sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, s.Client, sec, func() error {
 		sec.Type = corev1.SecretTypeOpaque
-		sec.Data = bytesData
+		sec.Data = envBytes(data)
 		return controllerutil.SetControllerReference(a, sec, s.Client.Scheme())
 	})
 	return err

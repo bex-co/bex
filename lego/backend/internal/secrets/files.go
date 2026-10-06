@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -151,7 +152,7 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 		return SecretFileView{}, quota
 	}
 	original := a.DeepCopy()
-	if err := s.materializeFiles(ctx, a, files); err != nil {
+	if err := s.materializeFiles(ctx, a, files, committedAt(filesWrite.version)); err != nil {
 		return SecretFileView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
 	}
 	return SecretFileView{Name: name, Content: content}, nil
@@ -196,7 +197,7 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 		return quota
 	}
 	original := a.DeepCopy()
-	if err := s.materializeFiles(ctx, a, files); err != nil {
+	if err := s.materializeFiles(ctx, a, files, committedAt(filesWrite.version)); err != nil {
 		return s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
 	}
 	return nil
@@ -216,11 +217,10 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 		return err
 	}
 	ctx, service = scopeApp(ctx, a, service)
-	name := filesSecretName(a.Name)
-	if err := s.prepareProjection(ctx, a, name, filesPath(service), files); err != nil {
+	if err := s.prepareProjection(ctx, a, filesProjection, filesPath(service), files); err != nil {
 		return err
 	}
-	a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, name)
+	a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(a.Name))
 	return nil
 }
 
@@ -232,24 +232,30 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 // The Secret is deliberately OWNERLESS for this prepare window because
 // Kubernetes has not assigned the App UID yet; adoptPreparedSecret restores
 // normal owner-reference garbage collection once the App create succeeds. The
-// caller points the App spec at `name` afterward — that reference is what tells
-// the commit phase which legs actually ran.
-func (s *Service) prepareProjection(ctx context.Context, a *appv1alpha1.App, name, path string, values map[string]string) error {
-	if err := s.storeMap(ctx, path, values); err != nil {
+// caller points the App spec at the Secret afterward — that reference is what
+// tells the commit phase which legs actually ran.
+func (s *Service) prepareProjection(ctx context.Context, a *appv1alpha1.App, kind projectionKind, path string, values map[string]string) error {
+	// The map replaces whatever a purge left at path, and the version this
+	// write commits is the revision its Secret carries (w5/m127).
+	_, write, err := s.updateMapCAS(ctx, path, func(current map[string]string) bool {
+		clear(current)
+		maps.Copy(current, values)
+		return true
+	})
+	if err != nil {
 		return err
-	}
-	data := make(map[string][]byte, len(values))
-	for key, value := range values {
-		data[key] = []byte(value)
 	}
 	sec := &corev1.Secret{
 		// The pod consumes this Secret (envFrom for env vars, a projected volume
 		// for files) and later owns it, so it MUST share the App's namespace — the
 		// per-tenant `<ws>` namespace under ADR043. A cross-namespace owner ref
 		// would also be garbage-collected.
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: kind.secretName(a.Name), Namespace: a.Namespace},
 		Type:       corev1.SecretTypeOpaque,
-		Data:       data,
+		Data:       envBytes(values),
+	}
+	if _, versioned := s.Store.(core.VersionedSecretKV); versioned {
+		setProjectedRevision(sec, kind, committedAt(write.version))
 	}
 	if err := s.Client.Create(ctx, sec); err != nil {
 		if deleteErr := s.Store.Delete(ctx, path); deleteErr != nil {
@@ -312,11 +318,10 @@ func (s *Service) prepareCreateEnvVars(ctx context.Context, service string, a *a
 		return err
 	}
 	ctx, service = scopeApp(ctx, a, service)
-	name := envSecretName(a.Name)
-	if err := s.prepareProjection(ctx, a, name, envPath(service), env); err != nil {
+	if err := s.prepareProjection(ctx, a, envProjection, envPath(service), env); err != nil {
 		return err
 	}
-	a.Spec.EnvFromSecret = name
+	a.Spec.EnvFromSecret = envSecretName(a.Name)
 	return nil
 }
 
@@ -434,8 +439,8 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if err != nil {
 		return err
 	}
-	nameFound, err := s.deleteMapKeyAfterProjection(ctx, filesPath(service), name, func(current map[string]string) error {
-		return s.materializeFiles(ctx, a, admissible(current, core.ValidSecretFileName))
+	nameFound, err := s.deleteMapKeyAfterProjection(ctx, filesPath(service), name, func(current map[string]string, revision sourceRevision) error {
+		return s.materializeFiles(ctx, a, admissible(current, core.ValidSecretFileName), revision)
 	})
 	if err != nil {
 		return err
@@ -476,9 +481,9 @@ func (s *Service) SecretFileContent(ctx context.Context, service, name string) (
 // Secret is deleted and the reference removed, so no empty /etc/secrets mount
 // lingers. The operator merges this Secret with any linked env-group file Secrets
 // into the single /etc/secrets projected volume (docs/ADR013-secrets.md).
-func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string) error {
+func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string, revision sourceRevision) error {
 	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
-		if err := s.projectFiles(ctx, a, files); err != nil {
+		if err := s.projectFiles(ctx, a, files, revision); err != nil {
 			return err
 		}
 		s.bumpRestart(a)
@@ -490,18 +495,19 @@ func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, file
 // changing restartedAt or persisting the App. It is the no-roll primitive used
 // by PatchEnvironment; materializeFiles layers the legacy immediate rollout on
 // top for existing clients.
-func (s *Service) projectFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string) error {
+func (s *Service) projectFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string, revision sourceRevision) error {
 	name := filesSecretName(a.Name)
-	if len(files) == 0 {
-		if err := s.deleteSecret(ctx, a.Namespace, name); err != nil {
-			return err
-		}
-		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, name)
-	} else {
-		if err := s.upsertSecret(ctx, a, name, files); err != nil {
-			return err
-		}
+	projection, err := s.projectSource(ctx, a, filesProjection, files, revision, len(files) == 0)
+	if err != nil {
+		return err
+	}
+	switch {
+	case len(files) > 0:
 		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, name)
+	case !projection.Superseded:
+		// A removal a later write superseded keeps the reference: the Secret
+		// that write projected is still there, and mounted.
+		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, name)
 	}
 	return nil
 }
