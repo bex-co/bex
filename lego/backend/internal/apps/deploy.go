@@ -2220,6 +2220,10 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if strings.EqualFold(runtime, "static") {
 		runtime = "" // static is represented by the service type, not an App runtime
 	}
+	builder := extensionBuilder(a.XBex)
+	if builder == buildBuildpack && strings.EqualFold(runtime, blueprintBuildpackRuntime) {
+		runtime = "" // the schema's required runtime; buildpacks select the build
+	}
 	startCommand, autoDeploy, err := manifestStartAndAutoDeploy(a)
 	if err != nil {
 		return CreateRequest{}, serviceEnv{}, err
@@ -2241,7 +2245,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Repo:                    repo,
 		Image:                   image,
 		Branch:                  branch,
-		Builder:                 extensionBuilder(a.XBex),
+		Builder:                 builder,
 		Runtime:                 runtime,
 		BuildCommand:            a.BuildCommand,
 		StartCommand:            startCommand,
