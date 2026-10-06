@@ -1,12 +1,12 @@
 ---
 name: release
-description: Autonomously release a bex component (today cli) — sync shipped main, choose the version, publish the tag, recover routine failures, and verify every distribution channel. Use when the user asks to release, publish, or bump the CLI. /ship lands code; /release mints versions.
+description: Autonomously release a bex component (cli or mobile) — sync shipped main, choose the version, publish the tag, recover routine failures, and verify every distribution channel. Use when the user asks to release, publish, or bump the CLI or the mobile app. /ship lands code; /release mints versions.
 allowed-tools: Bash, Read, Glob, Grep
 ---
 
 # Task: Release a bex component
 
-`/release <component> [patch|minor|major|X.Y.Z]` (Codex: `$release`) — today `cli`, tag prefix `bex-cli/v`. Reject `platform` until the ADR058 `bex/v*` train exists.
+`/release <component> [patch|minor|major|X.Y.Z]` (Codex: `$release`) — `cli` (tag prefix `bex-cli/v`) or `mobile` (tag prefix `bex-mobile/v`, see the Mobile section). Sections 1–5 are written for the CLI. Reject `platform` until the ADR058 `bex/v*` train exists.
 
 **Authorization:** a release request authorizes syncing shipped code, choosing the version by the rules below, pushing a new tag, running the release workflow, and verifying channels. Announce the version and source SHA, then proceed without confirmation. Honor explicit preview-only, no-publish, or exact-version constraints. A request only to edit this skill is not an instruction to publish.
 
@@ -56,3 +56,14 @@ allowed-tools: Bash, Read, Glob, Grep
 Report tag and source, workflow URL/verdict, and each channel's verification result. Update release tracking within the user's authorized scope only after verification; do not mark an unfinished release done.
 
 Routine sync, default version selection, normal CI waits, isolated worktrees, and bounded transient retries do not need confirmation. Stop only when there is nothing to release, the component is unsupported, or further progress needs unavailable credentials/approval, a source fix landed through `/ship`, an exact-version decision, or an action that would violate the invariants. Before a blocked stop, complete available diagnosis and reversible preparation, state the concrete remaining action, and cite the applicable boundary. Keep prior authorization; do not ask again for a version already authorized.
+
+## Mobile
+
+`/release mobile` follows sections 1–3 and 5 with these differences; `mobile/AGENTS.md` (Release) is the reference.
+
+- **Version lives in the binary.** The tag must equal `expo.version` in `mobile/app.json` and `version` in `mobile/package.json` on the tagged commit, or `mobile-release.yml` rejects it. Choose the version by the section 2 rules over `mobile/**` and `.github/workflows/mobile-release.yml`; if `origin/main` does not carry it yet, run `yarn bump` in `mobile/` and stop at the `/ship` boundary. Never tag a commit whose version differs.
+- **Checks.** `test (mobile)` (`mobile-test.yml`) must be green on the selected SHA.
+- **Publish.** Push the annotated tag `bex-mobile/vX.Y.Z`, then watch `release (bex mobile)`. It waits for both EAS builds and both store submissions, which takes tens of minutes. A missing `EXPO_TOKEN` or App Store Connect key on `production-release` needs the owner.
+- **Never rebuild a submitted version.** Each store accepts a build number once, and EAS increments it remotely on every attempt. If one platform failed, rebuild only that platform (`eas build --platform <ios|android> --profile production --auto-submit --non-interactive` from the tagged source) instead of re-running the whole job.
+- **Verify channels.** iOS: `asc builds list --app 6809027049` shows the new version and build number as `VALID`. Android: the EAS submission for the build reports success (`eas build:view <id>`). Then confirm the GitHub release exists for the tag.
+- **Scope.** This reaches TestFlight and the Play `internal` track only. Submitting for App Store review or promoting to a public Play track is a separate explicit request.

@@ -32,6 +32,9 @@ yarn bundle:ios
 yarn bundle:android
 ```
 
+Releases are cut with `yarn bump` and a `bex-mobile/vX.Y.Z` tag; see the
+Release section of [`AGENTS.md`](AGENTS.md).
+
 `yarn test` runs formatting, TypeScript, ESLint, unit tests, Expo dependency
 validation, and public-config validation. Never add credentials to `.env` or
 AsyncStorage. Native authentication is owned by `w11/m2` and must follow the

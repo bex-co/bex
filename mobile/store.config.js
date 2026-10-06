@@ -3,6 +3,10 @@
 // they are never committed. Copy `.env.template` to `.env` and fill them in.
 require("dotenv").config();
 
+// The listing version follows the binary: App Review rejects a build whose
+// version differs from the App Store version record.
+const { version } = require("./app.json").expo;
+
 const env = (name) => process.env[name]?.trim() || undefined;
 
 // App Review contact details and the demo account live only in the environment.
@@ -82,7 +86,7 @@ bex 是开源项目，欢迎在 github.com/bex-co/bex 查看源码或提交问�
 module.exports = {
   configVersion: 0,
   apple: {
-    version: "0.2.0",
+    version,
     copyright: "2026 Stargately, Inc.",
     categories: ["DEVELOPER_TOOLS", "PRODUCTIVITY"],
     release: {

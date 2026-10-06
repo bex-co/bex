@@ -1,0 +1,134 @@
+name: release (bex mobile)
+
+# Tag-triggered like cli-release.yml (ADR058): `bex-mobile/vX.Y.Z` on a main
+# commit builds both stores on EAS and auto-submits each binary — iOS to
+# TestFlight, Android to the Play track in mobile/eas.json. The GitHub release
+# is published only after every build finishes and every submission completes,
+# so a release page never describes a binary the stores did not receive.
+# The tag carries the version; mobile/app.json must already match it
+# (`yarn bump`, landed through /ship) because the store binary reads it there.
+
+on:
+  push:
+    tags: ["bex-mobile/v*"]
+
+# One store release at a time; never cancel a submission mid-flight.
+concurrency:
+  group: mobile-release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  authorize:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    permissions:
+      contents: read
+    steps:
+      # This gate deliberately runs before checkout: malformed tag names are
+      # rejected without loading any repository-controlled files.
+      - name: validate exact release tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^bex-mobile/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "release tag must be canonical bex-mobile/vX.Y.Z semver" >&2
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: require a reviewed main commit
+        env:
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          tagged_commit="$(git rev-parse "${TAGGED_SHA}^{commit}")"
+          if ! git merge-base --is-ancestor "$tagged_commit" refs/remotes/origin/main; then
+            echo "release tag does not point to a commit reviewed on main" >&2
+            exit 1
+          fi
+
+  release:
+    needs: authorize
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    # Configure required reviewers and protected-main-only deployment rules on
+    # this environment. Store credentials are unavailable until approval.
+    environment: production-release
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: enable corepack
+        run: corepack enable
+      - name: require the tag to match the app version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#bex-mobile/v}"
+          APP_VERSION="$(jq -r '.expo.version' app.json)"
+          PACKAGE_VERSION="$(jq -r '.version' package.json)"
+          if [ "$VERSION" != "$APP_VERSION" ] || [ "$VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "tag $VERSION, app.json $APP_VERSION, package.json $PACKAGE_VERSION differ — run yarn bump and /ship first" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: install dependencies
+        run: yarn install --frozen-lockfile
+      # Store builds reach real users — never on red checks.
+      - name: format, typecheck, lint, unit tests, Expo config
+        run: yarn test
+      - name: build and submit to both stores
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # Without an App Store Connect API key a non-interactive build cannot
+          # reach Apple, so it signs with whatever profile EAS has stored and
+          # fails once that profile expires or app.json gains a capability it
+          # predates (the 2026-09-05 expiry blocked iOS for a month). With the
+          # key, eas-cli regenerates the profile and syncs capabilities itself.
+          EXPO_ASC_API_KEY_P8: ${{ secrets.EXPO_ASC_API_KEY_P8 }}
+          EXPO_ASC_KEY_ID: ${{ secrets.EXPO_ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.EXPO_ASC_ISSUER_ID }}
+          EXPO_APPLE_TEAM_ID: PTLM7BZQMM
+          # Not a secret, and required or eas-cli prompts for it and then fails.
+          EXPO_APPLE_TEAM_TYPE: COMPANY_OR_ORGANIZATION
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN is not set on the production-release environment" >&2
+            exit 1
+          fi
+          # eas-cli reads the key from a file. Keep it in RUNNER_TEMP rather than
+          # the workspace so it is never part of the uploaded project archive,
+          # and delete it however the step ends (shared self-hosted runner).
+          if [ -n "$EXPO_ASC_API_KEY_P8" ]; then
+            KEY_FILE="$RUNNER_TEMP/asc-api-key.p8"
+            (umask 177 && printf '%s' "$EXPO_ASC_API_KEY_P8" > "$KEY_FILE")
+            trap 'rm -f -- "$KEY_FILE"' EXIT
+            export EXPO_ASC_API_KEY_PATH="$KEY_FILE"
+          else
+            echo "::warning::No ASC API key; an iOS profile that needs regenerating will fail this build."
+          fi
+          # --auto-submit submits each exact build once it finishes (server-side),
+          # avoiding the `submit --latest` race. Waiting (no --no-wait) fails
+          # this step when any build errors or any submission does not finish.
+          npx eas-cli@24.11.0 build --platform all --profile production \
+            --auto-submit --non-interactive
+      - name: publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        # Idempotent so a re-run after a late failure does not error out.
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "bex mobile $VERSION" --generate-notes
+          fi

@@ -89,4 +89,15 @@ else
   echo "skip  BEX_TAP_PUSH_KEY (no BEX_TAP_PUSH_KEY_FILE in .env)"
 fi
 
+# Optional: store-release credentials for mobile-release.yml, scoped to the
+# approval-gated environment that workflow runs in (see .env.example).
+set_scalar EXPO_TOKEN production-release
+set_scalar EXPO_ASC_KEY_ID production-release
+set_scalar EXPO_ASC_ISSUER_ID production-release
+if [ -n "${EXPO_ASC_API_KEY_P8_FILE:-}" ]; then
+  set_file EXPO_ASC_API_KEY_P8 "$EXPO_ASC_API_KEY_P8_FILE" production-release
+else
+  echo "skip  EXPO_ASC_API_KEY_P8 (no EXPO_ASC_API_KEY_P8_FILE in .env)"
+fi
+
 echo "done. verify with: gh secret list"
