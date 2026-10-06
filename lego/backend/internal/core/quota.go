@@ -18,8 +18,10 @@ package core
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -83,6 +85,23 @@ func (c CountCap) CreateError(err error) error {
 		return mapped
 	}
 	return err
+}
+
+// Room is how many more objects q admits under this cap: its enforced hard
+// limit less what is used. ok is false when q enforces no such limit.
+func (c CountCap) Room(q *corev1.ResourceQuota) (room, limit int64, ok bool) {
+	hard, ok := q.Status.Hard[corev1.ResourceName(c.Key)]
+	if !ok {
+		return 0, 0, false
+	}
+	used := q.Status.Used[corev1.ResourceName(c.Key)]
+	return hard.Value() - used.Value(), hard.Value(), true
+}
+
+// Exceeded is the refusal of a create past this cap's limit: what CreateError
+// maps admission's quota refusal to.
+func (c CountCap) Exceeded(limit int64) error {
+	return quotaCapExceeded(strconv.FormatInt(limit, 10), c.Noun)
 }
 
 func quotaCapExceeded(limit, noun string) error {

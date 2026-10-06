@@ -48,9 +48,12 @@ const crdInvalid = "crd-invalid"
 // workspace's count cap while atCap is set, and an object whose start command
 // or name carries crdInvalid is refused as an invalid field — for a real write
 // and its dry-run alike. persisted counts the writes that were not dry-runs.
+// limits instead caps a quota key at that many objects, counted from used and
+// from each persisted create of that kind.
 type admission struct {
-	atCap     bool
-	persisted int
+	atCap        bool
+	persisted    int
+	limits, used map[string]int
 }
 
 func (a *admission) client(objs ...client.Object) client.Client {
@@ -64,6 +67,9 @@ func (a *admission) client(objs ...client.Object) client.Client {
 				o.ApplyOptions(opts)
 				if !slices.Contains(o.DryRun, metav1.DryRunAll) {
 					a.persisted++
+					if key := admissionFacts(obj).key; key != "" && a.used != nil {
+						a.used[key]++
+					}
 				}
 				return c.Create(ctx, obj, opts...)
 			},
@@ -85,25 +91,36 @@ func (a *admission) client(objs ...client.Object) client.Client {
 		}).Build()
 }
 
-func (a *admission) admit(obj client.Object, create bool) error {
-	var kind, resource, key, path, value string
+// admitted is what the emulated admission judges of a tenant object: its kind
+// and resource, the quota key that counts it, and the one field the emulated
+// CRD rules read. key is empty for any other object.
+type admitted struct{ kind, resource, key, path, value string }
+
+func admissionFacts(obj client.Object) admitted {
 	switch o := obj.(type) {
 	case *appv1alpha1.App:
-		kind, resource, key, path, value = "App", "apps", store.AppsQuotaCountKey, "startCommand", o.Spec.StartCommand
+		return admitted{"App", "apps", store.AppsQuotaCountKey, "startCommand", o.Spec.StartCommand}
 	case *appv1alpha1.Database:
-		kind, resource, key, path, value = "Database", "databases", store.DatabasesQuotaCountKey, "name", o.Spec.Name
+		return admitted{"Database", "databases", store.DatabasesQuotaCountKey, "name", o.Spec.Name}
 	case *appv1alpha1.KeyValue:
-		kind, resource, key, path, value = "KeyValue", "keyvalues", store.KeyValuesQuotaCountKey, "name", o.Spec.Name
-	default:
+		return admitted{"KeyValue", "keyvalues", store.KeyValuesQuotaCountKey, "name", o.Spec.Name}
+	}
+	return admitted{}
+}
+
+func (a *admission) admit(obj client.Object, create bool) error {
+	f := admissionFacts(obj)
+	if f.key == "" {
 		return nil
 	}
-	if create && a.atCap {
-		return apierrors.NewForbidden(schema.GroupResource{Group: "app.bex.co", Resource: resource}, obj.GetName(),
-			fmt.Errorf("exceeded quota: %s, requested: %s=1, used: %s=1, limited: %s=1", core.TenantQuotaName, key, key, key))
+	if limit := a.limits[f.key]; create && (a.atCap || limit > 0 && a.used[f.key] >= limit) {
+		limit = max(limit, 1)
+		return apierrors.NewForbidden(schema.GroupResource{Group: "app.bex.co", Resource: f.resource}, obj.GetName(),
+			fmt.Errorf("exceeded quota: %s, requested: %s=1, used: %s=%d, limited: %s=%d", core.TenantQuotaName, f.key, f.key, limit, f.key, limit))
 	}
-	if strings.Contains(value, crdInvalid) {
-		return apierrors.NewInvalid(schema.GroupKind{Group: "app.bex.co", Kind: kind}, obj.GetName(),
-			field.ErrorList{field.Invalid(field.NewPath("spec", path), value, "refused by the CRD's rules")})
+	if strings.Contains(f.value, crdInvalid) {
+		return apierrors.NewInvalid(schema.GroupKind{Group: "app.bex.co", Kind: f.kind}, obj.GetName(),
+			field.ErrorList{field.Invalid(field.NewPath("spec", f.path), f.value, "refused by the CRD's rules")})
 	}
 	return nil
 }

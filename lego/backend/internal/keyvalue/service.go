@@ -405,9 +405,9 @@ func (s *Service) GetKeyValue(ctx context.Context, name string) (KeyValueView, e
 	return s.view(kv), nil
 }
 
-// keyValueCountCap is the plan's cap on Key Value stores per workspace, which
+// CountCap is the plan's cap on Key Value stores per workspace, which
 // the workspace ResourceQuota enforces at admission.
-var keyValueCountCap = core.CountCap{Key: store.KeyValuesQuotaCountKey, Noun: "key-value store"}
+var CountCap = core.CountCap{Key: store.KeyValuesQuotaCountKey, Noun: "key-value store"}
 
 // CreateKeyValue provisions a managed key-value store (a KeyValue CR the operator
 // projects to a single-instance Valkey StatefulSet + Service + Secret).
@@ -485,26 +485,33 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	// rules refuse a preview exactly as they refuse the real create.
 	if req.DryRun {
 		if err := s.DryRunCreate(ctx, kv); err != nil {
-			return KeyValueView{}, keyValueCountCap.CreateError(err)
+			return KeyValueView{}, CountCap.CreateError(err)
 		}
 		return s.view(kv), nil
 	}
-	// A freshly minted workspace's tea-* namespace may not exist yet (the
-	// NamespaceReconciler only converges it on its resync tick) — ensure it
-	// before the CR create lands there (w2/026).
-	if err := s.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
+	if err := CreateResource(ctx, s.Base, tenantID, kv); err != nil {
 		return KeyValueView{}, err
-	}
-	if err := s.Client.Create(ctx, kv); err != nil {
-		if apierrors.IsAlreadyExists(err) {
-			return KeyValueView{}, fmt.Errorf("%w: generated key-value id collision; retry the request", core.ErrConflict)
-		}
-		// Plan cap and CRD rules, at admission — see the identical mapping in
-		// postgres.CreatePostgres.
-		return KeyValueView{}, keyValueCountCap.CreateError(err)
 	}
 	s.RecordKeyValueEffect(ctx, kv, core.KeyValueCreated)
 	return s.view(kv), nil
+}
+
+// CreateResource writes kv, the create every Key Value takes — interactive or
+// from a Blueprint (w5/m126) — ensuring its workspace namespace first, like
+// postgres.CreateResource.
+func CreateResource(ctx context.Context, b *core.Base, tenantID string, kv *appv1alpha1.KeyValue) error {
+	if err := b.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
+		return err
+	}
+	if err := b.Client.Create(ctx, kv); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			return fmt.Errorf("%w: generated key-value id collision; retry the request", core.ErrConflict)
+		}
+		// Plan cap and CRD rules, at admission — see the identical mapping in
+		// postgres.CreateResource.
+		return CountCap.CreateError(err)
+	}
+	return nil
 }
 
 // DeleteKeyValue removes a managed key-value store (cascades the StatefulSet,

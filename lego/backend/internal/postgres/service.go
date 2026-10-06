@@ -667,9 +667,9 @@ func (s *Service) ensureDatabaseNameAvailable(ctx context.Context, tenantID, nam
 	return nil
 }
 
-// postgresCountCap is the plan's cap on Postgres databases per workspace, which
+// CountCap is the plan's cap on Postgres databases per workspace, which
 // the workspace ResourceQuota enforces at admission.
-var postgresCountCap = core.CountCap{Key: store.DatabasesQuotaCountKey, Noun: "Postgres database"}
+var CountCap = core.CountCap{Key: store.DatabasesQuotaCountKey, Noun: "Postgres database"}
 
 // CreatePostgres provisions a managed Postgres (a Database CR the operator
 // projects to a CNPG Cluster).
@@ -758,29 +758,37 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	// rules refuse a preview exactly as they refuse the real create.
 	if req.DryRun {
 		if err := s.DryRunCreate(ctx, d); err != nil {
-			return PostgresView{}, postgresCountCap.CreateError(err)
+			return PostgresView{}, CountCap.CreateError(err)
 		}
 		return s.view(d), nil
 	}
-	// A freshly minted workspace's tea-* namespace may not exist yet (the
-	// NamespaceReconciler only converges it on its resync tick) — ensure it
-	// before the CR create lands there (w2/026).
-	if err := s.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
+	if err := CreateResource(ctx, s.Base, tenantID, d); err != nil {
 		return PostgresView{}, err
 	}
-	if err := s.Client.Create(ctx, d); err != nil {
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
+	return s.view(d), nil
+}
+
+// CreateResource writes d, the create every Postgres takes — interactive or
+// from a Blueprint (w5/m126). A freshly minted workspace's tea-* namespace may
+// not exist yet (the NamespaceReconciler only converges it on its resync
+// tick), so it is ensured before the CR lands there (w2/026).
+func CreateResource(ctx context.Context, b *core.Base, tenantID string, d *appv1alpha1.Database) error {
+	if err := b.EnsureWorkspaceNamespace(ctx, tenantID); err != nil {
+		return err
+	}
+	if err := b.Client.Create(ctx, d); err != nil {
 		if apierrors.IsAlreadyExists(err) {
-			return PostgresView{}, fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
+			return fmt.Errorf("%w: generated Postgres id collision; retry the request", core.ErrConflict)
 		}
 		// The per-namespace ResourceQuota is what enforces the plan's Postgres
 		// cap now that the CR lands in `<ws>` (ADR043 D8, closing w3/010), and
 		// the CRD's own rules refuse an invalid field. Both come back in the
 		// API's terms, or the caller sees a raw admission message about a
 		// Kubernetes object they have no concept of.
-		return PostgresView{}, postgresCountCap.CreateError(err)
+		return CountCap.CreateError(err)
 	}
-	s.RecordDatabaseEffect(ctx, d, core.DatabaseCreated)
-	return s.view(d), nil
+	return nil
 }
 
 // DeletePostgres removes a managed Postgres (cascades the CNPG Cluster, PVC,

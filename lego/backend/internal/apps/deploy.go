@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/resourcename"
@@ -1331,7 +1332,7 @@ func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack)
 		}
 		// A host another site already serves is a manifest problem too (w8/055);
 		// the aggregate unwraps to its first error, so apply keeps the 409.
-		if !errors.Is(err, core.ErrBadRequest) && !errors.Is(err, core.ErrConflict) {
+		if !blueprintManifestProblem(err) {
 			return err // not a manifest problem; nothing to aggregate
 		}
 		problems = append(problems, blueprintResourceError{kind: BlueprintResourceService, name: svc.req.Name, err: err})
@@ -2847,7 +2848,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	// already running, as opposed to the git-push auto-deploy pipeline
 	// (unexported redeploy, webhook-triggered, not guarded). Guarded here, not
 	// at deployStack's top, so an unchanged re-apply and a brand-new service
-	// (createNewApp above) never need a confirmation.
+	// (createFromStack above) never need a confirmation.
 	if err := s.requireUnprotected(ctx, existing, "deploy"); err != nil {
 		return AppView{}, err
 	}
@@ -2861,17 +2862,20 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	})
 }
 
-// createFromStack is the stack upsert's create-when-absent half.
+// createFromStack is the stack upsert's create-when-absent half: planStackApp's
+// plan, then the interactive create's write tail — the store row and first
+// deploy record when the store is on, a clone secret for a private repo, and
+// the CR — so the stack path creates services identically to the interactive
+// create (w1/m24).
 func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
-	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
+	// Per create, not per stack: a later service's sweep must see the Apps
+	// this stack has already created (allApps).
+	ctx = withRequestMemo(ctx)
+	plan, err := s.planStackApp(ctx, req, desired)
+	if err != nil {
 		return AppView{}, err
 	}
-	// initialDeployHook: use the one-time command as preDeployCommand on first
-	// create so the operator runs it on the first deploy (w2/m45).
-	if req.InitialDeployHook != "" {
-		desired.PreDeployCommand = req.InitialDeployHook
-	}
-	return s.createNewApp(ctx, req, desired)
+	return s.materializeNewApp(ctx, req, plan.app, plan.tenantID, plan.environment, plan.seed)
 }
 
 // stackEnvironmentChange probes the environment half of a stack re-apply:
@@ -3140,21 +3144,11 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		}
 		return stackDatabaseView(existing), nil
 	}
-	if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
-		return StackDatabaseView{}, fmt.Errorf("%w: database %q %s", core.ErrBadRequest, db.name, blueprintDatabaseAdmissionConflict(err, db.fields))
+	d, err := s.planStackDatabase(ctx, db, assignment)
+	if err != nil {
+		return StackDatabaseView{}, err
 	}
-	d := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},
-		Spec:       db.spec,
-	}
-	if scoped {
-		d.Labels = core.TenantLabels(tenantID)
-	}
-	if assignment.ID != "" {
-		d.Spec.EnvironmentIPAllowList = core.ApplyGrouping(d, assignment)
-	}
-	resourcemeta.Touch(d, s.Now())
-	if err := s.Client.Create(ctx, d); err != nil {
+	if err := postgres.CreateResource(ctx, s.Base, tenantID, d); err != nil {
 		return StackDatabaseView{}, err
 	}
 	// Same successful-create effect hook as interactive CreatePostgres so
@@ -3198,6 +3192,42 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		}
 		return stackKeyValueView(existing), nil
 	}
+	resource := s.planStackKeyValue(ctx, kv, assignment)
+	if err := keyvalue.CreateResource(ctx, s.Base, tenantID, resource); err != nil {
+		return StackKeyValueView{}, err
+	}
+	// Same successful-create effect hook as interactive CreateKeyValue so
+	// Blueprint-provisioned Key Value lands in product_activity_events (w5/056).
+	s.RecordKeyValueEffect(ctx, resource, core.KeyValueCreated)
+	return stackKeyValueView(resource), nil
+}
+
+// planStackDatabase is a stack Postgres create up to its first write: the
+// Database exactly as applyDatabase creates it. Apply creates it, and a
+// Blueprint preview dry-runs it through admission (w5/m126), so the CRD's
+// rules and the plan's count cap refuse both alike.
+func (s *Service) planStackDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment) (*appv1alpha1.Database, error) {
+	if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+		return nil, fmt.Errorf("%w: database %q %s", core.ErrBadRequest, db.name, blueprintDatabaseAdmissionConflict(err, db.fields))
+	}
+	tenantID, scoped := s.Tenant(ctx)
+	d := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},
+		Spec:       db.spec,
+	}
+	if scoped {
+		d.Labels = core.TenantLabels(tenantID)
+	}
+	if assignment.ID != "" {
+		d.Spec.EnvironmentIPAllowList = core.ApplyGrouping(d, assignment)
+	}
+	resourcemeta.Touch(d, s.Now())
+	return d, nil
+}
+
+// planStackKeyValue is planStackDatabase for a stack Key Value create.
+func (s *Service) planStackKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment) *appv1alpha1.KeyValue {
+	tenantID, scoped := s.Tenant(ctx)
 	resource := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.TenantNamespace(tenantID)},
 		Spec:       kv.spec,
@@ -3209,13 +3239,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		resource.Spec.EnvironmentIPAllowList = core.ApplyGrouping(resource, assignment)
 	}
 	resourcemeta.Touch(resource, s.Now())
-	if err := s.Client.Create(ctx, resource); err != nil {
-		return StackKeyValueView{}, err
-	}
-	// Same successful-create effect hook as interactive CreateKeyValue so
-	// Blueprint-provisioned Key Value lands in product_activity_events (w5/056).
-	s.RecordKeyValueEffect(ctx, resource, core.KeyValueCreated)
-	return stackKeyValueView(resource), nil
+	return resource
 }
 
 func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {
