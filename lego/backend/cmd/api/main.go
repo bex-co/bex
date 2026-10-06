@@ -62,6 +62,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/identityclaims"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
 	"github.com/bex-co/bex/lego/backend/internal/mailer"
@@ -267,6 +268,7 @@ func main() {
 	// never mounted — until both are configured.
 	deps.OpsWorkspaceID = cfg.OpsWorkspace
 	opsRole := opsRoleHandler(cfg, authzChecker, deps.Identities)
+	identityClaims := identityClaimsHandler(cfg, deps.Identities)
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
 	// bex-api owns bex-db — run migrations, the projector (apps rows -> App CRs),
@@ -341,13 +343,13 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, deps.Secrets, opsRole, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, deps.Secrets, opsRole, identityClaims, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
 		// listener (local dev / e2e without BEX_CP_DB_URI). Production always
 		// runs the control plane and takes the branch above.
-		startOpsRoleServer(ctx, cfg, opsRole, ready)
+		startOpsRoleServer(ctx, cfg, opsRole, identityClaims, ready)
 	}
 
 	// Invite delivery (w4/m12): the members feature emails invites over the same
@@ -458,6 +460,16 @@ func main() {
 	srv.CORSOrigin = cfg.CORSOrigin
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = cfg.KratosURL
+	srv.RequireVerifiedEmail = cfg.RequireVerifiedEmail
+	if deps.Identities != nil {
+		identities := deps.Identities
+		srv.EmailVerified = func(ctx context.Context, subject string) (bool, bool) {
+			attrs, ok := identities.Lookup(ctx, subject)
+			return attrs.EmailVerified, ok
+		}
+	} else if cfg.RequireVerifiedEmail {
+		log.Printf("bex-api: BEX_REQUIRE_VERIFIED_EMAIL is on but BEX_KRATOS_ADMIN_URL is unset; human OAuth tokens will fail closed (503)")
+	}
 	configureServerAuthOptions(srv, cfg)
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
@@ -928,7 +940,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -945,6 +957,15 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
 			Nonce:  st,
 		})
+		// w2/m168: native public-key SSH never passes the auth middleware, so the
+		// gateway asks here whether a key owner's email is verified. Unwired
+		// Kratos admin leaves Resolve nil, so the verb answers 503 and the
+		// gateway refuses: closed, never open.
+		verification := &agentsession.EmailVerificationHandler{Secret: []byte(cfg.SandboxExecSecret), Nonce: st}
+		if cfg.KratosAdminURL != "" {
+			verification.Resolve = workspaces.NewKratosIdentities(cfg.KratosAdminURL).EmailVerification
+		}
+		internalRoot.Handle(agentsession.InternalEmailVerificationPath, verification)
 		// ADR062: the model-credential mint. Same gateway-only HMAC + internal-only
 		// listener as the Git mint, path-domain-separated. Wired only when OpenBao is
 		// reachable (modelKeys non-nil), so a deployment without the BYO key store
@@ -976,6 +997,8 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	// route's only protection). Register is a no-op unless BEX_OPS_WORKSPACE
 	// and BEX_OPS_ROLE_TOKEN are both set (opsRole is then nil).
 	opsrole.Register(internalRoot, opsRole)
+	// The identity-claims verb rides the same internal-only rule and bearer.
+	identityclaims.Register(internalRoot, identityClaims)
 	internalRoot.Handle("/", internal.Handler())
 	cpAddr := cfg.CPAddr
 	// Metered as surface="internal": the projection/mint/ops-role verbs are not
@@ -1017,12 +1040,30 @@ func opsRoleHandler(cfg *Config, authzChecker core.Checker, identities workspace
 	return h
 }
 
+// identityClaimsHandler builds the identity-claims verb (internal/identityclaims)
+// whenever the internal bearer BEX_OPS_ROLE_TOKEN is set; nil otherwise, so the
+// route is never mounted. It reads the same Kratos admin reader as the ops-role
+// verb and fails closed (503) when that reader is unwired or misses.
+func identityClaimsHandler(cfg *Config, identities workspaces.IdentityReader) *identityclaims.Handler {
+	if cfg.OpsRoleToken == "" {
+		return nil
+	}
+	h := &identityclaims.Handler{Token: cfg.OpsRoleToken}
+	if identities != nil {
+		h.Identity = func(ctx context.Context, subject string) (identityclaims.Claims, bool) {
+			attrs, ok := identities.Lookup(ctx, subject)
+			return identityclaims.Claims{Email: attrs.Email, EmailVerified: attrs.EmailVerified, Name: attrs.Name}, ok
+		}
+	}
+	return h
+}
+
 // startOpsRoleServer starts the cluster-internal listener with ONLY the ADR088
-// ops-role verb mounted — the control-plane-less shape (local dev / e2e
+// ops-role verb (and the identity-claims verb beside it) mounted — the control-plane-less shape (local dev / e2e
 // without BEX_CP_DB_URI). With the control plane on, the verb instead shares
 // the :8091 mux (startControlPlaneServer); either way it never touches the
 // public :8090 surface.
-func startOpsRoleServer(ctx context.Context, cfg *Config, h *opsrole.Handler, ready *serve.Readiness) {
+func startOpsRoleServer(ctx context.Context, cfg *Config, h *opsrole.Handler, identityClaims *identityclaims.Handler, ready *serve.Readiness) {
 	// loadConfig parses BEX_CP_ADDR under its own copy of the "internal
 	// listener will run" predicate; if the two ever drift, an empty addr here
 	// would make net/http bind ":http" (port 80) — a silent misbind on a
@@ -1032,6 +1073,7 @@ func startOpsRoleServer(ctx context.Context, cfg *Config, h *opsrole.Handler, re
 	}
 	internalRoot := http.NewServeMux()
 	opsrole.Register(internalRoot, h)
+	identityclaims.Register(internalRoot, identityClaims)
 	srv := newHTTPServer(cfg.CPAddr, internalRoot)
 	log.Printf("bex-api internal ops-role verb on %s (control plane off)", cfg.CPAddr)
 	go func() {

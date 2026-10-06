@@ -253,9 +253,13 @@ type IdentityReader interface {
 // store/CRs don't hold. ok=false from Lookup => the caller omits the field. Name
 // is the optional Kratos `name` trait (w4/m25); "" when the identity never set it.
 type IdentityAttrs struct {
-	Email      string
-	Name       string
-	MFAEnabled bool
+	Email string
+	// EmailVerified is Kratos' verification state for Email (its matching
+	// verifiable address). Read by the identity-claims verb and the auth
+	// gate's human-OAuth verification lookup (w2/m168).
+	EmailVerified bool
+	Name          string
+	MFAEnabled    bool
 }
 
 // KeyOwnerReader resolves a machine caller's API key (Hydra client id) to the

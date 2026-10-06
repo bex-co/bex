@@ -3,6 +3,7 @@ import {
   invalidateSessionCache,
 } from "@/common/server-fn/session";
 import { currentHref } from "@/common/lib/safe-next";
+import { emailVerificationPath } from "@/features/onboarding/lib/email-verification";
 
 /**
  * The login URL that sends an expired session back to sign-in and then back to
@@ -60,4 +61,26 @@ export async function handleUnauthenticated(): Promise<void> {
 
   redirecting = true;
   window.location.assign(buildLoginRedirectHref(currentHref(), aal2Required));
+}
+
+/**
+ * React to bex-api's `EMAIL_VERIFICATION_REQUIRED` refusal on the client
+ * (ADR075 D8 revision 2026-10-06, w2/m168): send the caller to the
+ * verification wall carrying the current href as the guarded `next`. The
+ * server's code is definitive (it read the identity fresh), so unlike the 401
+ * path there is no session re-check. The memoized whoami is dropped so the
+ * wall and the gates read the current identity after the hard navigation.
+ *
+ * Never fires on an auth page: the wall itself lives under /auth/, and a
+ * refusal there is the flow's business. Shares the in-flight guard with the
+ * 401 path so a burst of refused queries starts exactly one navigation.
+ */
+export function handleEmailVerificationRequired(): void {
+  if (typeof window === "undefined") return; // client-only
+  if (redirecting) return;
+  if (window.location.pathname.startsWith("/auth/")) return;
+
+  redirecting = true;
+  invalidateSessionCache();
+  window.location.assign(emailVerificationPath(currentHref()));
 }

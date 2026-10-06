@@ -14,6 +14,17 @@ const CHALLENGE = "abc";
  * Hydra-admin URL so a stray substring match in the mock cannot conflate it
  * with the consent lookup/accept/reject calls. */
 const OPS_ROLE_URL = "http://bex-api.bex-system.svc:8090/internal/ops-role";
+/** bex-api's identity-claims verb (docs/ADR075 D8 revision, w2/m168) — the
+ * verified-email gate every consent runs before any accept. */
+const CLAIMS_URL =
+  "http://bex-api.bex-system.svc:8091/internal/identity-claims";
+/** The shared internal-verb bearer (BEX_OPS_ROLE_TOKEN). */
+const VERB_TOKEN = "internal-verb-token";
+const VERIFIED_CLAIMS = {
+  email: "dev@example.com",
+  email_verified: true,
+  name: "Dev Eloper",
+};
 
 /** The token the consent page embeds: sha256(challenge:session id). */
 const csrf = (challenge = CHALLENGE, sessionID = SESSION_ID) =>
@@ -66,6 +77,14 @@ function mockUpstreams(opts: {
   opsStatus?: number;
   /** Simulates a network-level failure reaching the verb (fetch rejects). */
   opsUnreachable?: boolean;
+  /** Identity-claims verb body (default: a verified subject). */
+  claimsBody?: unknown;
+  /** Overrides the claims verb's status — e.g. 503, Kratos admin down. */
+  claimsStatus?: number;
+  /** Simulates a network-level failure reaching the claims verb. */
+  claimsUnreachable?: boolean;
+  /** Serves a raw (e.g. non-JSON) claims body instead of claimsBody. */
+  claimsRaw?: string;
 }) {
   const calls: { url: string; init?: RequestInit }[] = [];
   vi.stubGlobal(
@@ -79,6 +98,13 @@ function mockUpstreams(opts: {
       }
       // Must precede the consent-lookup fallthrough below, or the verb's URL
       // would be answered with a Hydra consent body.
+      if (url.startsWith(CLAIMS_URL)) {
+        if (opts.claimsUnreachable) throw new TypeError("fetch failed");
+        return new Response(
+          opts.claimsRaw ?? JSON.stringify(opts.claimsBody ?? VERIFIED_CLAIMS),
+          { status: opts.claimsStatus ?? 200 },
+        );
+      }
       if (url.startsWith(OPS_ROLE_URL)) {
         if (opts.opsUnreachable) throw new TypeError("fetch failed");
         return new Response(JSON.stringify(opts.opsBody ?? { member: false }), {
@@ -116,7 +142,11 @@ beforeEach(() => {
   delete process.env.OAUTH_PLATFORM_CLIENTS;
   delete process.env.OAUTH_OPS_CLIENTS;
   delete process.env.BEX_OPS_ROLE_URL;
-  delete process.env.BEX_OPS_ROLE_TOKEN;
+  // The verified-email gate is on by default and fails closed, so every test
+  // runs against a wired verb answering "verified" unless it says otherwise.
+  process.env.BEX_OPS_ROLE_TOKEN = VERB_TOKEN;
+  process.env.BEX_IDENTITY_CLAIMS_URL = CLAIMS_URL;
+  delete process.env.BEX_REQUIRE_VERIFIED_EMAIL;
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -126,6 +156,8 @@ afterEach(() => {
   delete process.env.OAUTH_OPS_CLIENTS;
   delete process.env.BEX_OPS_ROLE_URL;
   delete process.env.BEX_OPS_ROLE_TOKEN;
+  delete process.env.BEX_IDENTITY_CLAIMS_URL;
+  delete process.env.BEX_REQUIRE_VERIFIED_EMAIL;
 });
 
 /** A consent GET as the browser makes it: session cookie, challenge in the query. */
@@ -1039,6 +1071,9 @@ describe("ops-workspace gate (ADR088 §4)", () => {
   });
 
   it("rejects when BEX_OPS_ROLE_TOKEN is unset for a listed ops client", async () => {
+    // The verified-email gate shares this bearer and would reject first; turn
+    // it off so the assertion proves the ops gate's own fail-closed check.
+    process.env.BEX_REQUIRE_VERIFIED_EMAIL = "0";
     delete process.env.BEX_OPS_ROLE_TOKEN;
     const calls = mockUpstreams({
       lookupBody: opsConsent(),
@@ -1051,6 +1086,7 @@ describe("ops-workspace gate (ADR088 §4)", () => {
   });
 
   it("rejects when Hydra bound no subject to the challenge", async () => {
+    process.env.BEX_REQUIRE_VERIFIED_EMAIL = "0"; // isolate the ops gate
     const calls = mockUpstreams({
       lookupBody: opsConsent({ subject: "" }),
       opsBody: member("admin"),
@@ -1093,4 +1129,332 @@ describe("ops-workspace gate (ADR088 §4)", () => {
     expect("session" in body).toBe(false);
     expect(opsCalls(calls)).toHaveLength(0);
   });
+});
+
+// docs/ADR075 D8 revision (2026-10-06, w2/m168): a human whose Kratos trait
+// email is not verified can't use bex — including through an OAuth relying
+// party. Consent resolves consent.subject through bex-api's identity-claims
+// verb before the ops gate and before ANY accept, for every client class, and
+// fails closed when the verb is unwired, unreachable, or malformed.
+describe("verified-email gate (ADR075 D8 revision, w2/m168)", () => {
+  const DENIED = "https://oauth.bex.co/denied";
+  const UNVERIFIED = { ...VERIFIED_CLAIMS, email_verified: false };
+  const DESCRIPTION =
+    "Verify your email address before signing in to other apps";
+
+  const approve = {
+    consent_challenge: CHALLENGE,
+    decision: "approve",
+    csrf_token: csrf(),
+  };
+
+  const claimsCalls = (calls: { url: string; init?: RequestInit }[]) =>
+    calls.filter((c) => c.url.startsWith(CLAIMS_URL));
+  const opsCalls = (calls: { url: string; init?: RequestInit }[]) =>
+    calls.filter((c) => c.url.startsWith(OPS_ROLE_URL));
+
+  /** Asserts a GET answered with a real Hydra reject carrying the
+   * verification description — and that no accept was ever sent. */
+  function expectVerificationReject(
+    res: unknown,
+    calls: { url: string; init?: RequestInit }[],
+    status = 302,
+  ) {
+    expect(res).toBeInstanceOf(Response);
+    expect((res as Response).status).toBe(status);
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+    expect(rejects(calls)).toHaveLength(1);
+    const body = JSON.parse(rejects(calls)[0].init?.body as string);
+    expect(body).toEqual({
+      error: "access_denied",
+      error_description: DESCRIPTION,
+    });
+  }
+
+  it("rejects an unverified subject for a skip=true client (headless path)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({ skip: true }),
+      claimsBody: UNVERIFIED,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expectVerificationReject(res, calls);
+  });
+
+  it("rejects an unverified subject for a skip_consent client (forum, desktop, CLI)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        client: { client_id: "bex-forum", skip_consent: true },
+        requested_scope: ["openid", "profile", "email"],
+        requested_access_token_audience: [],
+      }),
+      claimsBody: UNVERIFIED,
+    });
+    // The headless path carries no dashboard cookie: the subject comes from
+    // the challenge, never a session.
+    const res = await handleConsent(
+      req(`?consent_challenge=${CHALLENGE}`, null),
+    );
+    expectVerificationReject(res, calls);
+    expect(new URL(claimsCalls(calls)[0].url).searchParams.get("subject")).toBe(
+      SUBJECT,
+    );
+    expect(
+      (claimsCalls(calls)[0].init?.headers as Record<string, string>)
+        .Authorization,
+    ).toBe(`Bearer ${VERB_TOKEN}`);
+  });
+
+  it("rejects an unverified subject for an OAUTH_TRUSTED_CLIENTS client", async () => {
+    process.env.OAUTH_TRUSTED_CLIENTS = "some-client";
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      claimsBody: UNVERIFIED,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expectVerificationReject(res, calls);
+  });
+
+  it("rejects an unverified subject for a platform client", async () => {
+    process.env.OAUTH_PLATFORM_CLIENTS = "bex-mobile";
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        client: { client_id: "bex-mobile", skip_consent: true },
+      }),
+      claimsBody: UNVERIFIED,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expectVerificationReject(res, calls);
+  });
+
+  it("rejects an unverified ops-workspace admin before the ops verb is consulted", async () => {
+    process.env.OAUTH_OPS_CLIENTS = "bex-obs";
+    process.env.BEX_OPS_ROLE_URL = OPS_ROLE_URL;
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        client: { client_id: "bex-obs", skip_consent: true },
+        requested_scope: ["openid", "profile", "email"],
+        requested_access_token_audience: [],
+      }),
+      claimsBody: UNVERIFIED,
+      opsBody: {
+        member: true,
+        role: "admin",
+        email: "operator@bex.co",
+        name: "Op Erator",
+      },
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expectVerificationReject(res, calls);
+    expect(opsCalls(calls)).toHaveLength(0);
+  });
+
+  it("rejects an unverified subject for a third-party client on GET (no consent card)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      claimsBody: UNVERIFIED,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expectVerificationReject(res, calls);
+  });
+
+  it("converts a third-party approve for an unverified subject into a reject (POST)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      claimsBody: UNVERIFIED,
+    });
+    const res = await handleConsentDecision(decisionReq(approve));
+    expectVerificationReject(res, calls, 303);
+  });
+
+  it("keeps a deny click's own description and never consults the verb (POST)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      claimsBody: UNVERIFIED,
+    });
+    const res = await handleConsentDecision(
+      decisionReq({ ...approve, decision: "deny" }),
+    );
+    expect(res.status).toBe(303);
+    expect(accepts(calls)).toHaveLength(0);
+    expect(
+      JSON.parse(rejects(calls)[0].init?.body as string).error_description,
+    ).toBe("The user denied the request");
+    expect(claimsCalls(calls)).toHaveLength(0);
+  });
+
+  it("passes a verified subject through to the trusted accept (GET)", async () => {
+    const calls = mockUpstreams({ lookupBody: consentRequest({ skip: true }) });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    expect(claimsCalls(calls)).toHaveLength(1);
+    expect(rejects(calls)).toHaveLength(0);
+    // The accept body is unchanged: no claims are stamped by this gate.
+    expect(
+      "session" in JSON.parse(accepts(calls)[0].init?.body as string),
+    ).toBe(false);
+  });
+
+  it("passes a verified subject through to the consent card and the approve (GET + POST)", async () => {
+    mockUpstreams({ lookupBody: consentRequest() });
+    const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(view).toMatchObject({ clientId: "some-client" });
+
+    const calls = mockUpstreams({ lookupBody: consentRequest() });
+    const res = await handleConsentDecision(decisionReq(approve));
+    expect(res.headers.get("Location")).toBe("https://oauth.bex.co/continue");
+    expect(accepts(calls)).toHaveLength(1);
+  });
+
+  // Fail closed: every way the verb can fail to say "verified" is a deny.
+  const failures: Array<
+    [string, () => void, Parameters<typeof mockUpstreams>[0]]
+  > = [
+    ["the verb answers 503", () => {}, { claimsStatus: 503 }],
+    ["the verb answers 401", () => {}, { claimsStatus: 401 }],
+    ["the verb answers 400", () => {}, { claimsStatus: 400 }],
+    ["the verb is unreachable", () => {}, { claimsUnreachable: true }],
+    ["the verb returns non-JSON", () => {}, { claimsRaw: "<html>oops</html>" }],
+    [
+      "email_verified is not a boolean",
+      () => {},
+      { claimsBody: { ...VERIFIED_CLAIMS, email_verified: "true" } },
+    ],
+    [
+      "email_verified is missing",
+      () => {},
+      { claimsBody: { email: "dev@example.com", name: "Dev" } },
+    ],
+    ["the body is JSON null", () => {}, { claimsRaw: "null" }],
+    [
+      "BEX_IDENTITY_CLAIMS_URL is unset",
+      () => {
+        delete process.env.BEX_IDENTITY_CLAIMS_URL;
+      },
+      {},
+    ],
+    [
+      "BEX_OPS_ROLE_TOKEN is unset",
+      () => {
+        delete process.env.BEX_OPS_ROLE_TOKEN;
+      },
+      {},
+    ],
+    [
+      "BEX_IDENTITY_CLAIMS_URL is unparseable",
+      () => {
+        process.env.BEX_IDENTITY_CLAIMS_URL = "not a url";
+      },
+      {},
+    ],
+  ];
+
+  for (const [label, setup, opts] of failures) {
+    it(`rejects a trusted client when ${label} (fail closed)`, async () => {
+      setup();
+      const calls = mockUpstreams({
+        lookupBody: consentRequest({ skip: true }),
+        ...opts,
+      });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expectVerificationReject(res, calls);
+    });
+
+    it(`rejects a human approve when ${label} (fail closed)`, async () => {
+      setup();
+      const calls = mockUpstreams({ lookupBody: consentRequest(), ...opts });
+      const res = await handleConsentDecision(decisionReq(approve));
+      expectVerificationReject(res, calls, 303);
+    });
+  }
+
+  it("rejects when Hydra bound no subject, without calling the verb", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({ skip: true, subject: "" }),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expectVerificationReject(res, calls);
+    expect(claimsCalls(calls)).toHaveLength(0);
+  });
+
+  it("answers headless_accept_failed when the verification reject itself fails (GET)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({ skip: true }),
+      claimsBody: UNVERIFIED,
+      rejectOk: false,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(res).toEqual({ errorCode: "headless_accept_failed" });
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("bounces to the retry page when the verification reject fails (POST)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest(),
+      claimsBody: UNVERIFIED,
+      rejectOk: false,
+    });
+    const res = await handleConsentDecision(decisionReq(approve));
+    expect(res.status).toBe(303);
+    expect(
+      new URL(res.headers.get("Location")!).searchParams.has("retry"),
+    ).toBe(true);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it('BEX_REQUIRE_VERIFIED_EMAIL="0" skips the gate entirely (GET + POST)', async () => {
+    process.env.BEX_REQUIRE_VERIFIED_EMAIL = "0";
+    delete process.env.BEX_IDENTITY_CLAIMS_URL;
+    const headless = mockUpstreams({
+      lookupBody: consentRequest({ skip: true }),
+      claimsBody: UNVERIFIED,
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    expect(claimsCalls(headless)).toHaveLength(0);
+
+    const human = mockUpstreams({
+      lookupBody: consentRequest(),
+      claimsBody: UNVERIFIED,
+    });
+    const decided = await handleConsentDecision(decisionReq(approve));
+    expect(decided.headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    expect(claimsCalls(human)).toHaveLength(0);
+  });
+
+  // Same parse as bex-api and the SSH gateway: only 0/false (any case) is off.
+  it.each(["false", "FALSE"])(
+    "treats BEX_REQUIRE_VERIFIED_EMAIL=%s as off, like bex-api",
+    async (value) => {
+      process.env.BEX_REQUIRE_VERIFIED_EMAIL = value;
+      const calls = mockUpstreams({
+        lookupBody: consentRequest({ skip: true }),
+        claimsBody: UNVERIFIED,
+      });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect((res as Response).headers.get("Location")).toBe(
+        "https://oauth.bex.co/continue",
+      );
+      expect(claimsCalls(calls)).toHaveLength(0);
+    },
+  );
+
+  it.each(["1", "true", "yes"])(
+    "treats BEX_REQUIRE_VERIFIED_EMAIL=%s as on",
+    async (value) => {
+      process.env.BEX_REQUIRE_VERIFIED_EMAIL = value;
+      const calls = mockUpstreams({
+        lookupBody: consentRequest({ skip: true }),
+        claimsBody: UNVERIFIED,
+      });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expectVerificationReject(res, calls);
+    },
+  );
 });

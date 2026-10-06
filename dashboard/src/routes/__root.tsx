@@ -11,6 +11,7 @@ import { getActiveI18n } from "@/i18n/request-scope";
 import { getDashboardOrigin, globalMetadata } from "@/common/lib/document-head";
 import { pendingInvitationDestination } from "@/features/invites/redirect-pending-invitation";
 import { getPersistedWorkspaceId } from "@/features/workspaces/lib/selection";
+import { emailVerificationRequired } from "@/features/onboarding/lib/email-verification";
 
 import appCss from "../style.css?inline";
 
@@ -45,7 +46,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     // needs it to redirect to the step-up (w4/m17).
     const { session, aal2Required } = await sessionPromise;
     const invitation = pendingInvitationDestination({
-      authenticated: Boolean(session),
+      // A pending invitation is reviewed after verification (ADR075
+      // § Invitation precedence): an unverified session meets the
+      // verification wall first, whose success continues to /invite.
+      authenticated: Boolean(session) && !emailVerificationRequired(session),
       eligible: matches.some(
         (match) =>
           match.staticData?.chrome || match.routeId === "/setup/payment",

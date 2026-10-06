@@ -2,6 +2,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { RootProvider } from "@/common/providers/root-provider";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { PaymentSetupGate } from "@/features/onboarding/components/payment-setup-gate";
+import { EmailVerificationGate } from "@/features/onboarding/components/email-verification-gate";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Outlet, useRouter, useMatches } from "@tanstack/react-router";
 import { useLanguageHydrationSync } from "@/i18n/use-language-hydration-sync";
@@ -23,6 +24,10 @@ export const RootComponent = () => {
   // shell, around the routed content only: a workspace the payment gate still
   // refuses is sent to the sign-up wall from any app route (ADR075 D7), while
   // bare routes (auth, the wall itself, consent/device, 404) are never gated.
+  // `EmailVerificationGate` runs first and wraps the shell itself: an
+  // unverified session (ADR075 D8 revision, w2/m168) goes to
+  // /auth/verification before any chrome or app content renders. It shares
+  // the same chrome-only mount, so the bare routes stay ungated.
   const chrome = useMatches({
     select: (matches) => matches.some((m) => m.staticData?.chrome),
   });
@@ -46,11 +51,13 @@ export const RootComponent = () => {
       onWorkspaceChange={invalidate}
     >
       {chrome ? (
-        <DashboardLayout>
-          <PaymentSetupGate>
-            <Outlet />
-          </PaymentSetupGate>
-        </DashboardLayout>
+        <EmailVerificationGate>
+          <DashboardLayout>
+            <PaymentSetupGate>
+              <Outlet />
+            </PaymentSetupGate>
+          </DashboardLayout>
+        </EmailVerificationGate>
       ) : (
         <Outlet />
       )}

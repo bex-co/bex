@@ -18,15 +18,29 @@ vi.mock("@/common/hooks/use-ory-flow", () => ({
 }));
 const calls: unknown[][] = [];
 
-// Expose onSuccess so a test can complete the code step the way Elements does.
+// Expose onSuccess (and the flow Elements was handed) so a test can complete
+// the code step the way Elements does and inspect the pre-fill.
 const elements = vi.hoisted(() => ({
   onSuccess: null as null | ((event: unknown) => void),
+  flow: null as VerificationFlow | null,
 }));
 vi.mock("@ory/elements-react/theme", () => ({
-  Verification: ({ onSuccess }: { onSuccess: (event: unknown) => void }) => {
+  Verification: ({
+    onSuccess,
+    flow,
+  }: {
+    onSuccess: (event: unknown) => void;
+    flow: VerificationFlow;
+  }) => {
     elements.onSuccess = onSuccess;
+    elements.flow = flow;
     return <div data-testid="ory-verification" />;
   },
+}));
+
+const sessionCache = vi.hoisted(() => ({ invalidate: vi.fn() }));
+vi.mock("@/common/server-fn/session", () => ({
+  invalidateSessionCache: sessionCache.invalidate,
 }));
 
 vi.mock("@/common/lib/ory/config", () => ({
@@ -43,21 +57,63 @@ const routerMock = vi.hoisted(() => ({
     next: string | undefined;
   },
   navigate: vi.fn(),
+  session: null as unknown,
 }));
 vi.mock("@tanstack/react-router", async (orig) => ({
   ...(await orig<typeof import("@tanstack/react-router")>()),
   useSearch: () => routerMock.search,
   useNavigate: () => routerMock.navigate,
+  useRouteContext: () => ({ session: routerMock.session }),
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 import VerificationPage from "@/features/auth/pages/verification-page";
+
+/** A signed-in session whose trait email is (un)verified. */
+const signedIn = (verified: boolean) => ({
+  id: "ses-1",
+  identity: {
+    id: "id-1",
+    traits: { email: "dev@example.com" },
+    verifiable_addresses: [{ value: "dev@example.com", verified }],
+  },
+});
+
+/** A fresh choose_method flow with an empty email input, as Kratos mints it. */
+const chooseMethodFlow = () =>
+  ({
+    id: "flow-1",
+    state: VerificationFlowState.ChooseMethod,
+    ui: {
+      action: "",
+      method: "POST",
+      nodes: [
+        {
+          type: "input",
+          group: "code",
+          attributes: { node_type: "input", name: "email", type: "email" },
+          messages: [],
+          meta: {},
+        },
+      ],
+    },
+  }) as unknown as VerificationFlow;
+
+const prefilled = () =>
+  (elements.flow?.ui.nodes[0]?.attributes as { value?: unknown } | undefined)
+    ?.value;
 
 beforeEach(() => {
   oryFlow.value = null;
   calls.length = 0;
   elements.onSuccess = null;
+  elements.flow = null;
   routerMock.search = { flow: undefined, next: undefined };
   routerMock.navigate.mockReset();
+  routerMock.session = null;
+  sessionCache.invalidate.mockReset();
 });
 
 describe("VerificationPage", () => {
@@ -119,6 +175,64 @@ describe("VerificationPage", () => {
     expect(routerMock.navigate).toHaveBeenCalledWith({
       to: "/",
       href: "/setup/payment",
+    });
+  });
+});
+
+// ADR075 D8 revision (2026-10-06, w2/m168): the page doubles as the wall a
+// signed-in unverified session is sent to, with `?next=` and no flow id.
+describe("VerificationPage as the verification wall (w2/m168)", () => {
+  it("pre-fills the session's own email into a fresh flow", () => {
+    routerMock.session = signedIn(false);
+    oryFlow.value = chooseMethodFlow();
+    render(<VerificationPage />);
+    expect(prefilled()).toBe("dev@example.com");
+  });
+
+  it("does not pre-fill anything for a session-less visitor", () => {
+    oryFlow.value = chooseMethodFlow();
+    render(<VerificationPage />);
+    expect(prefilled()).toBeUndefined();
+  });
+
+  it("says why a signed-in unverified session is here and offers sign-out", () => {
+    routerMock.session = signedIn(false);
+    render(<VerificationPage />);
+    expect(
+      screen.getByText("Verify your email address to keep using bex"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign out" })).toHaveAttribute(
+      "href",
+      "/auth/logout",
+    );
+  });
+
+  it("keeps the ordinary copy and no sign-out for a session-less visitor", () => {
+    render(<VerificationPage />);
+    expect(
+      screen.getByText(
+        "Enter the email address associated with your account to continue",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign out" })).toBeNull();
+  });
+
+  it("drops the memoized whoami before continuing, so the gate sees the verified session", () => {
+    routerMock.session = signedIn(false);
+    routerMock.search = { flow: undefined, next: "/services" };
+    oryFlow.value = chooseMethodFlow();
+    render(<VerificationPage />);
+    elements.onSuccess?.({
+      flowType: FlowType.Verification,
+      flow: { state: VerificationFlowState.PassedChallenge },
+    });
+    expect(sessionCache.invalidate).toHaveBeenCalledTimes(1);
+    expect(sessionCache.invalidate.mock.invocationCallOrder[0]).toBeLessThan(
+      routerMock.navigate.mock.invocationCallOrder[0],
+    );
+    expect(routerMock.navigate).toHaveBeenCalledWith({
+      to: "/",
+      href: "/setup/payment?next=%2Fservices",
     });
   });
 });

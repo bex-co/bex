@@ -121,6 +121,22 @@ type oryAuth struct {
 	// callers resolve via their key's tenant binding, never mint.
 	onboard Onboarding
 
+	// requireVerifiedEmail (BEX_REQUIRE_VERIFIED_EMAIL, on unless 0) refuses
+	// every human caller whose trait email Kratos has not verified, before
+	// onboarding can mint it a workspace (ADR075 D8 revision, w2/m168).
+	// Machine callers are never human and are unaffected.
+	requireVerifiedEmail bool
+	// emailVerified resolves a human OAuth subject's verification state from
+	// Kratos admin: an access token carries no email claim, unlike whoami.
+	// ok=false (or nil, BEX_KRATOS_ADMIN_URL unset) fails the introspection
+	// closed as an upstream error (503), never as a pass.
+	emailVerified func(ctx context.Context, subject string) (verified, ok bool)
+	// unverifiedTTL caps how long a refused (unverified) human token stays
+	// cached: short enough that verifying takes effect within seconds, long
+	// enough that a client retrying in a loop keeps getting the actionable 403
+	// instead of exhausting its admission budget on Hydra+Kratos round trips.
+	unverifiedTTL time.Duration
+
 	// Positive introspections are cached briefly so a chatty agent doesn't cost
 	// one Hydra round trip per request. Negatives are never cached. Concurrent
 	// misses for one token coalesce into a single Hydra call (group), which also
@@ -178,6 +194,10 @@ type RevocationStore interface {
 	OAuthRevokedAt(context.Context, string, string) (time.Time, bool, error)
 }
 
+// errEmailVerificationUnresolved fails a human introspection closed when the
+// verification gate is on but Kratos admin cannot answer for the subject.
+var errEmailVerificationUnresolved = core.Err("kratos admin could not resolve email verification")
+
 func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard Onboarding, touch func(string), apiScope string) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
@@ -193,6 +213,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 		client:          &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
 		cache:           core.NewTTLCache[cachedIdentity](),
 		platformClients: make(map[string]struct{}),
+		unverifiedTTL:   5 * time.Second,
 		requireAudience: requireAudience,
 		admission:       admission,
 		touch:           touch,
@@ -339,6 +360,10 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			// keys remain machine callers and resolve through their binding. A
 			// broken store fails closed (503), like a broken Ory: a
 			// request that can't be tenanted must not be served un-tenanted.
+			if a.requireVerifiedEmail && id.Human && !id.EmailVerified {
+				core.WriteErr(w, core.NewEmailVerificationRequiredError())
+				return
+			}
 			if a.onboard != nil && id.Human {
 				if _, err := a.onboard.EnsureTenant(r.Context(), id.Subject, id.Email, id.EmailVerified); err != nil {
 					var coded *core.CodedError
@@ -544,6 +569,16 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 			return nil
 		}
 	}
+	if human && a.requireVerifiedEmail {
+		if a.emailVerified == nil {
+			return errEmailVerificationUnresolved
+		}
+		verified, ok := a.emailVerified(ctx, subject)
+		if !ok {
+			return errEmailVerificationUnresolved
+		}
+		id.EmailVerified = verified
+	}
 	if human {
 		id.CanonicalScopes = grant.Scopes
 		id.AcceptedAudience = grant.AcceptedAudience
@@ -560,6 +595,9 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	}
 
 	expires := time.Now().Add(core.PositiveTTL)
+	if human && a.requireVerifiedEmail && !id.EmailVerified {
+		expires = time.Now().Add(a.unverifiedTTL)
+	}
 	if exp := time.Unix(int64(out.Exp), 0); out.Exp > 0 && exp.Before(expires) {
 		expires = exp
 	}

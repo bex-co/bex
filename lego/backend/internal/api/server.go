@@ -159,6 +159,13 @@ type Server struct {
 	HydraAdminURL string // Hydra admin base URL (introspection); required
 	KratosURL     string // Kratos public base URL (whoami); empty disables sessions
 
+	// RequireVerifiedEmail (BEX_REQUIRE_VERIFIED_EMAIL, on unless 0) refuses
+	// human callers with an unverified email (ADR075 D8 revision, w2/m168).
+	// EmailVerified resolves a human OAuth subject through Kratos admin; nil
+	// with the gate on fails every human bearer closed (503).
+	RequireVerifiedEmail bool
+	EmailVerified        func(ctx context.Context, subject string) (verified, ok bool)
+
 	// OAuth 2.1 resource-server discovery (w4/m9, MCP authorization spec).
 	// OAuthIssuer is Hydra's public issuer (e.g. https://oauth.bex.co);
 	// OAuthResource is this API's canonical resource URI (e.g.
@@ -1326,6 +1333,8 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 	gate := newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.OAuthRequireAudience, s.AuthAdmission, s.Onboard, touch, s.apiScope())
 	gate.setPlatformClientIDs(s.OAuthPlatformClients)
 	gate.revocations = s.OAuthRevocations
+	gate.requireVerifiedEmail = s.RequireVerifiedEmail
+	gate.emailVerified = s.EmailVerified
 	// The durable-credential mint verbs' class gate (round-7 F3) resolves
 	// platform clients through the same operator-owned registry the audience rule
 	// uses. Every feature service shares this one Base.

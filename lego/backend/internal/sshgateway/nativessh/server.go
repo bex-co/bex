@@ -122,6 +122,24 @@ type Server struct {
 	// Traefik's own pod IP). Set it once lego/operator/config/ssh/
 	// ingressroutetcp.yaml's service carries proxyProtocol.
 	TrustedProxies []netip.Prefix
+
+	// EmailVerified refuses a key whose owner is a human with an unverified
+	// email (ADR075 D8 revision, w2/m168): key auth never passes bex-api's
+	// middleware, so authentication and every reauthorization ask. Any
+	// non-nil error refuses. nil skips the check (BEX_REQUIRE_VERIFIED_EMAIL=0).
+	EmailVerified func(ctx context.Context, subject string) error
+}
+
+var errUnverifiedOwner = errors.New("public key rejected: verify your bex account email first")
+
+// verifiedOwner applies EmailVerified under the handshake deadline.
+func (s *Server) verifiedOwner(ctx context.Context, subject string) error {
+	if s.EmailVerified == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, s.HandshakeTimeout)
+	defer cancel()
+	return s.EmailVerified(ctx, subject)
 }
 
 func (s *Server) defaults() {
@@ -190,6 +208,10 @@ func (s *Server) config(ctx context.Context) (*ssh.ServerConfig, error) {
 		if lookupErr != nil || registered.Subject == "" || registered.Subject != subject {
 			s.Metrics.Authentication("rejected_key")
 			return nil, errors.New("public key rejected")
+		}
+		if err := s.verifiedOwner(ctx, subject); err != nil {
+			s.Metrics.Authentication("rejected_unverified")
+			return nil, errUnverifiedOwner
 		}
 		authCtx := core.WithIdentity(ctx, core.Identity{Subject: subject, Method: "ssh"})
 		authCtx, cancel := context.WithTimeout(authCtx, s.HandshakeTimeout)
@@ -545,6 +567,10 @@ func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser
 	if err != nil || registered.Subject == "" || registered.Subject != subject {
 		s.Metrics.Reauthorization("rejected")
 		return apps.SSHInstanceTarget{}, errors.New("public key rejected")
+	}
+	if err := s.verifiedOwner(ctx, subject); err != nil {
+		s.Metrics.Reauthorization("rejected")
+		return apps.SSHInstanceTarget{}, errUnverifiedOwner
 	}
 	authCtx := core.WithIdentity(lookupCtx, core.Identity{Subject: subject, Method: "ssh"})
 	target, err := s.Apps.ResolveSSHSession(authCtx, sticky.Get().ID)

@@ -343,6 +343,20 @@ func TestLoadConfigVerifiedInviteEmail(t *testing.T) {
 	}
 }
 
+// TestLoadConfigVerifiedEmail: the w2/m168 gate is secure by default; only an
+// explicit 0/false turns it off.
+func TestLoadConfigVerifiedEmail(t *testing.T) {
+	for raw, want := range map[string]bool{"": true, "1": true, "0": false, "false": false, "FALSE": false} {
+		cfg, _, err := loadFor(t, map[string]string{"BEX_REQUIRE_VERIFIED_EMAIL": raw})
+		if err != nil {
+			t.Fatalf("%q: %v", raw, err)
+		}
+		if cfg.RequireVerifiedEmail != want {
+			t.Errorf("RequireVerifiedEmail(%q) = %v, want %v", raw, cfg.RequireVerifiedEmail, want)
+		}
+	}
+}
+
 // TestLoadConfigOpsWorkspacePin covers the ADR088 §4 pin: both vars set arms
 // the verb (and, without a control plane, still parses the internal listener
 // address); exactly one set warns loudly and stays disabled; stdio mode never

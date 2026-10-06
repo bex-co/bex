@@ -39,6 +39,21 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Verification page hero subtitle (email-first Ory step; code arrives after)",
   },
+  "auth.verificationRequiredSubtitle": {
+    message: "验证您的邮箱地址后即可继续使用 bex",
+    description:
+      "Verification page hero subtitle for a signed-in session whose email is not verified yet (ADR075 D8 verification wall)",
+  },
+  "auth.verificationWrongAccount": {
+    message: "不是您的账户？",
+    description:
+      "Verification wall: lead-in before the sign-out link, shown only to a signed-in session",
+  },
+  "auth.verificationSignOut": {
+    message: "退出登录",
+    description:
+      "Verification wall: sign-out link, shown only to a signed-in session",
+  },
   "auth.settingsTitle": {
     message: "设置",
     description: "Account settings page heading",

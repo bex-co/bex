@@ -42,7 +42,9 @@ import { safeHttpHref } from "@/common/lib/external-url";
 // http://hydra-admin.auth.svc:4445), `OAUTH_TRUSTED_CLIENTS`,
 // `OAUTH_PLATFORM_CLIENTS` (comma-separated client_ids), and the ops-gate
 // trio `OAUTH_OPS_CLIENTS` / `BEX_OPS_ROLE_URL` / `BEX_OPS_ROLE_TOKEN`
-// (docs/ADR088-platform-observability-ui.md §4).
+// (docs/ADR088-platform-observability-ui.md §4), and the verified-email gate's
+// `BEX_IDENTITY_CLAIMS_URL` / `BEX_REQUIRE_VERIFIED_EMAIL` (docs/ADR075 D8
+// revision 2026-10-06, w2/m168), which shares `BEX_OPS_ROLE_TOKEN`.
 
 /** How long Hydra remembers an accepted consent, so a returning user's client
  * isn't re-challenged within the window. */
@@ -340,35 +342,14 @@ async function resolveOpsGate(
     return { verdict: "ungated" };
   }
 
-  const verbUrl = process.env.BEX_OPS_ROLE_URL ?? "";
-  const bearer = process.env.BEX_OPS_ROLE_TOKEN ?? "";
-  const subject = consent.subject ?? "";
-  if (!verbUrl || !bearer || !subject) return { verdict: "deny" };
-
-  let payload: unknown;
-  try {
-    const target = new URL(verbUrl);
-    target.searchParams.set("subject", subject);
-    const res = await fetch(target.toString(), {
-      headers: { Authorization: `Bearer ${bearer}` },
-      signal: AbortSignal.timeout(OPS_ROLE_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      // Release the connection: an unread undici body pins the socket until GC.
-      await res.body?.cancel();
-      return { verdict: "deny" };
-    }
-    payload = await res.json();
-  } catch {
-    // Unparseable BEX_OPS_ROLE_URL, network failure, timeout, non-JSON body —
-    // all the same verdict: never accept on a guess.
-    return { verdict: "deny" };
-  }
-
-  if (typeof payload !== "object" || payload === null) {
-    return { verdict: "deny" };
-  }
-  const { member, role, email, name } = payload as Record<string, unknown>;
+  // Partial wiring, an unbound subject, or any failed/malformed answer is a
+  // deny: never accept on a guess.
+  const payload = await fetchInternalVerb(
+    process.env.BEX_OPS_ROLE_URL ?? "",
+    consent.subject ?? "",
+  );
+  if (!payload) return { verdict: "deny" };
+  const { member, role, email, name } = payload;
   if (member !== true) return { verdict: "deny" };
   const opsRole = typeof role === "string" ? OPS_ROLE_CLAIM[role] : undefined;
   // email/name ride the same response into the id_token (one round trip); a
@@ -379,6 +360,71 @@ async function resolveOpsGate(
   }
   return { verdict: "allow", idToken: { email, name, ops_role: opsRole } };
 }
+
+/**
+ * GET one of bex-api's internal subject verbs (`?subject=`, bearer
+ * `BEX_OPS_ROLE_TOKEN`) and return its JSON object body. null on every failure
+ * (missing URL/token/subject, unparseable URL, network failure or timeout,
+ * non-200, non-object body), so callers fail closed by construction.
+ */
+async function fetchInternalVerb(
+  verbUrl: string,
+  subject: string,
+): Promise<Record<string, unknown> | null> {
+  const bearer = process.env.BEX_OPS_ROLE_TOKEN ?? "";
+  if (!verbUrl || !bearer || !subject) return null;
+  try {
+    const target = new URL(verbUrl);
+    target.searchParams.set("subject", subject);
+    const res = await fetch(target.toString(), {
+      headers: { Authorization: `Bearer ${bearer}` },
+      signal: AbortSignal.timeout(OPS_ROLE_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      // Release the connection: an unread undici body pins the socket until GC.
+      await res.body?.cancel();
+      return null;
+    }
+    const payload: unknown = await res.json();
+    return typeof payload === "object" && payload !== null
+      ? (payload as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `BEX_REQUIRE_VERIFIED_EMAIL`: on unless "0" or "false", bex-api's parse. */
+function verifiedEmailRequired(): boolean {
+  const v = process.env.BEX_REQUIRE_VERIFIED_EMAIL ?? "";
+  return v !== "0" && v.toLowerCase() !== "false";
+}
+
+/**
+ * Whether consent must refuse this challenge's subject (docs/ADR075 D8
+ * revision, w2/m168): a human whose Kratos trait email is unverified can't use
+ * bex, including through an OAuth relying party. Resolved from
+ * `consent.subject` via bex-api's identity-claims verb
+ * (`BEX_IDENTITY_CLAIMS_URL`); anything short of `email_verified: true` counts
+ * as unverified.
+ */
+async function unverifiedSubject(
+  consent: OAuth2ConsentRequest,
+): Promise<boolean> {
+  if (!verifiedEmailRequired()) return false;
+  const claims = await fetchInternalVerb(
+    process.env.BEX_IDENTITY_CLAIMS_URL ?? "",
+    consent.subject ?? "",
+  );
+  return claims?.email_verified !== true;
+}
+
+/** The error_description an unverified subject's client receives. */
+const UNVERIFIED_EMAIL_DESCRIPTION =
+  "Verify your email address before signing in to other apps";
+
+/** The error_description a human's own deny click (and the ops gate) sends. */
+const USER_DENIED_DESCRIPTION = "The user denied the request";
 
 /** Grant the recognized vocabulary (dropping unknown strings and, for a
  *  third-party client, the bex.api umbrella alias), remembered for the window.
@@ -412,16 +458,18 @@ async function acceptConsent(
   return redirect_to;
 }
 
-/** Hydra bounces the agent back to its redirect_uri with `error=access_denied`. */
+/** Hydra bounces the agent back to its redirect_uri with `error=access_denied`
+ * and the given description (default: the human's own deny). */
 async function rejectConsent(
   hydra: OAuth2Api,
   consentChallenge: string,
+  errorDescription: string = USER_DENIED_DESCRIPTION,
 ): Promise<string> {
   const { redirect_to } = await hydra.rejectOAuth2ConsentRequest({
     consentChallenge,
     rejectOAuth2Request: {
       error: "access_denied",
-      error_description: "The user denied the request",
+      error_description: errorDescription,
     },
   });
   return redirect_to;
@@ -503,18 +551,26 @@ export async function handleConsent(
     };
   }
 
-  // docs/ADR088 §4: the ops-workspace gate runs after the request-shape gates
-  // (PKCE, audience⇒scope) but BEFORE the trusted accept below — which is
-  // exactly the path the skip_consent Grafana client takes, so a gate placed
-  // any later would never fire for it. A deny is a real Hydra reject
-  // (access_denied back to the client), not a rendered error page: Grafana
-  // sent this browser here and must get an answer to finish its flow. For
-  // every non-ops client resolveOpsGate is an env-lookup no-op ("ungated").
-  const opsGate = await resolveOpsGate(consent);
+  // docs/ADR075 D8 revision (w2/m168) and ADR088 §4: the verified-email and
+  // ops-workspace gates run after the request-shape gates (PKCE,
+  // audience⇒scope) but BEFORE the trusted accept below — the skip_consent
+  // clients (forum, desktop, mobile, CLI, Grafana) take that headless path, so
+  // a later gate would never fire for them. A deny is a real Hydra reject
+  // (access_denied back to the client), not a rendered error page: the relying
+  // party sent this browser here and must get an answer to finish its flow.
+  // For every non-ops client resolveOpsGate is an env-lookup no-op.
+  const unverified = await unverifiedSubject(consent);
+  const opsGate: OpsGateResult = unverified
+    ? { verdict: "deny" }
+    : await resolveOpsGate(consent);
   if (opsGate.verdict === "deny") {
     try {
       return Response.redirect(
-        await rejectConsent(hydra, consentChallenge),
+        await rejectConsent(
+          hydra,
+          consentChallenge,
+          unverified ? UNVERIFIED_EMAIL_DESCRIPTION : undefined,
+        ),
         302,
       );
     } catch {
@@ -677,15 +733,23 @@ export async function handleConsentDecision(
   // approval is converted into the same access_denied reject a deny click
   // produces. Note the subject here is still consent.subject, already proven
   // above to match the session's identity.
+  // The verified-email gate (w2/m168) runs first, exactly as on the headless
+  // path; an unverified approve becomes a reject carrying its own reason.
+  const unverified =
+    decision === "approve" && (await unverifiedSubject(consent));
   const opsGate: OpsGateResult =
-    decision === "approve"
+    decision === "approve" && !unverified
       ? await resolveOpsGate(consent)
       : { verdict: "ungated" };
 
   try {
     const redirectTo =
-      decision === "deny" || opsGate.verdict === "deny"
-        ? await rejectConsent(hydra, consentChallenge)
+      decision === "deny" || unverified || opsGate.verdict === "deny"
+        ? await rejectConsent(
+            hydra,
+            consentChallenge,
+            unverified ? UNVERIFIED_EMAIL_DESCRIPTION : undefined,
+          )
         : await acceptConsent(
             hydra,
             consentChallenge,
