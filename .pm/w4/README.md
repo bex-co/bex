@@ -202,6 +202,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **210** — [Flaky deploy gate: `TestStatusWriterKeepsHijackerAndReaderFrom` reads metrics before the middleware records them](210.md) ← infinite /qa-find-bugs loop68 2026-10-06 UTC; failed deploy run 37422791965 (w5/m118).
+
 - [ ] **209** — [An image service's Docker Command is invisible on REST reads, and Blueprints spell it `startCommand` (refusing Render's `dockerCommand`)](209.md) ← infinite /qa-find-bugs loop67 2026-10-06 UTC.
 
 - [x] **208** — [BLOCKER: the dashboard dependency-audit gate now fails every deploy (new seroval/undici/busboy/… advisories)](done/208.md) ← infinite /qa-find-bugs loop62 2026-10-06 UTC; blocks w4/m174–m176 reaching production. **DONE 2026-10-05**: `seroval` resolutions cleared the critical (`e2e4d0d7e`); its deploy passed the gate and pinned images (`543217baa`).
