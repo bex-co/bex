@@ -11,7 +11,8 @@
 | t003 | Render parity                                                          | 20m | w4/m174/t002 |
 | t004 | Simplify — **DONE**                                                               | 15m | w4/m174/t003 |
 | t005 | Test coverage — **DONE**                                                          | 45m | w4/m174/t003 |
-| t006 | Closeout                                                               | 10m | w4/m174/t005 |
+| t007 | Find the residual one-line loss after the CRI-file switch               | 45m | w4/m174/t002 |
+| t006 | Closeout                                                               | 10m | w4/m174/t005, w4/m174/t007 |
 
 ## Definition of done
 
@@ -52,3 +53,7 @@ Owned Free cron `qa-20261006-l63-cron` (`srv-db269mk20ers738obg40`, `alpine:3`, 
 - Line order now follows CRI timestamps (the stderr line sometimes precedes `ALPHA`), consistent with the file tailer being active.
 - Before the fix (loop44) the same probe lost the stderr line in 3 of 6 runs.
 - **Open question for closeout:** the single miss fell ~3 min after the deploy finished. It may be the log-shipper DaemonSet still rolling node by node (a pod scheduled on a node whose Alloy had not yet restarted onto the CRI-file pipeline), or a residual race. Re-run the DoD's 6-run probe once more before closing; if any run misses, check which node ran it and that node's Alloy config generation.
+
+## Production replay 2 — 2026-10-06 (qa loop64, ≥40 min after deploy run 37404121909)
+
+Fresh owned cron `qa-20261006-l64-cron` (`srv-db26u3k20ers738obgfg`, DoD command verbatim; deleted afterwards). Six runs, 03:46:59–03:49:55: **29/30**. Run 03:48:45 has 4 lines and is missing `{"level":"warn","msg":"DELTA-x"}`; `GAMMA` is present this time. `&level=warning`, `&text=DELTA` and a 03:48:40–50Z window each return only five `DELTA` lines, so the line never reached Loki. This rules out "DaemonSet still rolling" for the loop63 miss: a residual drop of about one line in six runs remains, and it is not specific to stderr. Filed as t007; Closeout now depends on it.
