@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -1243,6 +1244,82 @@ func TestLokiRequestMetricsSourceRoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(gotQuery, "sum by (status)") || !strings.Contains(gotQuery, `request_host="web.example.com"`) {
 		t.Errorf("query missing group-by/host: %s", gotQuery)
+	}
+}
+
+// TestLokiRequestCountsIncludeTheBucketContainingEnd is w4/m175. A fake Loki
+// applies the pinned query frontend's step alignment (StepAlignMiddleware floors
+// start and end to the step) and evaluates count_over_time at each point t over
+// (t-step, t]. 125 requests sent just after a step boundary and read at once
+// must all be counted on every dashboard preset; before the fix the 24h and 7d
+// presets returned nothing.
+func TestLokiRequestCountsIncludeTheBucketContainingEnd(t *testing.T) {
+	presets := []struct{ span, step int64 }{
+		{1800, 15}, {3600, 30}, {14400, 120}, {43200, 300},
+		{86400, 720}, {172800, 1440}, {604800, 5040}, {1209600, 10080},
+	}
+	for _, p := range presets {
+		// Traffic starts 61 s after a step boundary (so it is after the last
+		// boundary for every coarse step), and the read comes 4 minutes later.
+		boundary := (int64(1_790_000_000) / 100800) * 100800 // a multiple of every step
+		var requests []int64
+		for i := range int64(125) {
+			requests = append(requests, (boundary+61)*1e9+i*int64(time.Second/2))
+		}
+		readAt := time.Unix(boundary+61+240, 123)
+		// One request a full span before the window must never be counted.
+		requests = append(requests, readAt.Add(-time.Duration(p.span)*time.Second).UnixNano()-p.step*2e9)
+
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			start, _ := strconv.ParseInt(q.Get("start"), 10, 64)
+			end, _ := strconv.ParseInt(q.Get("end"), 10, 64)
+			step, _ := strconv.ParseInt(q.Get("step"), 10, 64)
+			stepNs := step * 1e9
+			start, end = start/stepNs*stepNs, end/stepNs*stepNs
+			var values []string
+			for at := start; at <= end; at += stepNs {
+				n := 0
+				for _, req := range requests {
+					if req > at-stepNs && req <= at {
+						n++
+					}
+				}
+				if n > 0 {
+					values = append(values, fmt.Sprintf(`[%d,"%d"]`, at/1e9, n))
+				}
+			}
+			if len(values) == 0 {
+				_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"matrix","result":[]}}`))
+				return
+			}
+			_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"matrix","result":[{"metric":{},"values":[%s]}]}}`, strings.Join(values, ","))
+		}))
+		series, err := NewLokiRequestMetricsSource(ts.URL, ts.Client())(context.Background(), RequestMetricsRequest{
+			Namespace: "default", App: "web", Metric: MetricHTTPRequests,
+			Resolution: time.Duration(p.step) * time.Second,
+			Start:      readAt.Add(-time.Duration(p.span) * time.Second), End: readAt,
+		})
+		ts.Close()
+		if err != nil {
+			t.Fatalf("span %d: %v", p.span, err)
+		}
+		var sum float64
+		var last time.Time
+		for _, ser := range series {
+			for _, pt := range ser.Points {
+				sum += pt.Value
+				if at, err := time.Parse(time.RFC3339Nano, pt.Timestamp); err == nil {
+					last = at
+				}
+			}
+		}
+		if sum != 125 {
+			t.Errorf("span %d step %d: counted %v requests, want 125", p.span, p.step, sum)
+		}
+		if newest := time.Unix(0, requests[124]); last.Before(newest) {
+			t.Errorf("span %d step %d: last point %v ends before the newest request at %v", p.span, p.step, last, newest)
+		}
 	}
 }
 
