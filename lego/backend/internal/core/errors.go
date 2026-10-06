@@ -302,9 +302,20 @@ func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrBadRequest, msg: msg}
 }
 
-// ResourceNameRule is the one wording of what a service, Postgres or Key Value
-// may be named (appv1alpha1.ValidResourceName).
+// ResourceNameRule is the one wording of what a service, Postgres, Key Value
+// or workspace may be named (appv1alpha1.ValidResourceName).
 var ResourceNameRule = fmt.Sprintf("must use lowercase letters, digits, and hyphens, be at most %d characters, and not start or end with a hyphen", appv1alpha1.MaxResourceNameLength)
+
+// CheckResourceName refuses a name outside the resource-name rule with 400
+// RESOURCE_NAME_INVALID, params field and maxLength, so a client can branch
+// on the code rather than the wording (w5/093).
+func CheckResourceName(field, name string) error {
+	if appv1alpha1.ValidResourceName(name) {
+		return nil
+	}
+	return NewBadRequestError("RESOURCE_NAME_INVALID", field+" "+ResourceNameRule,
+		map[string]any{"field": field, "maxLength": appv1alpha1.MaxResourceNameLength})
+}
 
 // NameResourceIDReservedError refuses a name shaped like a resource ID
 // (`srv-…`, `dpg-…`): a selector could then mean "this ID" or "the thing named

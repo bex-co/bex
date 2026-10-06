@@ -2768,8 +2768,8 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 // agree on what a valid App is: DNS-label name, one of repo/image, a known
 // plan, sane port/replica bounds.
 func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
-	if !appv1alpha1.ValidResourceName(req.Name) {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: name %s", core.ErrBadRequest, core.ResourceNameRule)
+	if err := core.CheckResourceName("name", req.Name); err != nil {
+		return appv1alpha1.AppSpec{}, err
 	}
 	if err := validateCreateSource(req); err != nil {
 		return appv1alpha1.AppSpec{}, err

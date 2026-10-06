@@ -3,7 +3,10 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { RenameDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 
 export interface UseRenameDatabaseResult {
   rename: (id: string, name: string) => Promise<boolean>;
@@ -26,7 +29,7 @@ export function useRenameDatabase(): UseRenameDatabaseResult {
         const message = error instanceof Error ? error.message : "";
         if (message.includes("already exists")) {
           toast.error(t("databases.nameConflict"));
-        } else if (message.includes("name must")) {
+        } else if (hasGraphQLErrorCode(error, "RESOURCE_NAME_INVALID")) {
           toast.error(t("databases.nameInvalid"));
         } else {
           toast.error(mutationErrorMessage(error, t("databases.nameError")));
