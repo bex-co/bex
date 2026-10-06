@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,22 +100,5 @@ func TestEffectiveHosts(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestTLSSecretName(t *testing.T) {
-	// The live-App invariant: the first host keeps the legacy name.
-	if got := tlsSecretName("beancount-cms", 0, "beancount-cms-v2.onbex.co"); got != "beancount-cms-tls" {
-		t.Fatalf("first host secret = %q, want beancount-cms-tls", got)
-	}
-	if got := tlsSecretName("a", 1, "www.example.com"); got != "a-tls-www.example.com" {
-		t.Fatalf("second host secret = %q", got)
-	}
-	if got := tlsSecretName("a", 1, "*.example.com"); strings.Contains(got, "*") {
-		t.Fatalf("wildcard not sanitized: %q", got)
-	}
-	long := strings.Repeat("x", 300) + ".example.com"
-	if got := tlsSecretName("a", 1, long); len(got) > 253 {
-		t.Fatalf("secret name exceeds 253 chars: %d", len(got))
 	}
 }

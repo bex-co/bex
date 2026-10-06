@@ -215,7 +215,8 @@ func main() {
 		WebhookMetrics:   webhookMetrics,
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
-		BaseDomain: cfg.BaseDomain,
+		BaseDomain:      cfg.BaseDomain,
+		ReservedDomains: cfg.ReservedDomains,
 		// One shared detector (and DNS cache) for the allowlist's
 		// Cloudflare-proxied-domain warning on services and environments.
 		ProxiedHosts: core.NewProxiedHostDetector(),
@@ -298,7 +299,7 @@ func main() {
 		st.OpsWorkspaceID = cfg.OpsWorkspace
 		rec = store.NewReconciler(cl, st)
 		rec.ProductObserver = func(ctx context.Context, desired store.DesiredApp, app *appv1alpha1.App) {
-			apps.ObserveProductApp(ctx, st, cl, desired, app)
+			apps.ObserveProductApp(ctx, st, cl, cfg.BaseDomain, desired, app)
 		}
 		rec.Metrics = store.NewReconcilerMetrics(metricRegistry)
 		// A release a suspend ended has its build deleted where Cancel's is.

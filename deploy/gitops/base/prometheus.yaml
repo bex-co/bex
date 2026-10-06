@@ -1268,8 +1268,8 @@ spec:
                   # names the first/platform host "<app>-tls" (no host suffix, so it
                   # fails the name=~".+-tls-.+" match) and a "<sub>.onbex.co" host
                   # that lands as a later cert ("<app>-tls-<sub>.onbex.co") is kept
-                  # by the name!~onbex.co guard. (lego/operator .../app_controller.go
-                  # tlsSecretName; "onbex.co" is BEX_BASE_DOMAIN — keep in sync.)
+                  # by the name!~onbex.co guard. (lego/types v1alpha1.TLSSecretName;
+                  # "onbex.co" is BEX_BASE_DOMAIN — keep in sync.)
                   - alert: CertificateNotReady
                     expr: |
                       (certmanager_certificate_ready_status{condition="True"} == 0)

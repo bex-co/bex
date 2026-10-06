@@ -16,6 +16,14 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	"crypto/sha256"
+	"fmt"
+	"strings"
+
+	"k8s.io/apimachinery/pkg/util/validation"
+)
+
 // CloneSecretName and ExternalRegistryPullSecretName derive the two
 // build-plane Secrets bex-api mints for an App from the App's own name, and
 // then writes into spec.cloneSecret / spec.externalRegistryPullSecret.
@@ -38,3 +46,32 @@ func CloneSecretName(appName string) string { return appName + "-clone" }
 // dockerconfigjson Secret materialized from a workspace's stored registry
 // credential (w2/m14).
 func ExternalRegistryPullSecretName(appName string) string { return appName + "-registry-pull" }
+
+// TLSSecretName is the Secret the operator issues a host's certificate into,
+// and the one bex-api looks for to report the host verified (w5/m121). Each
+// host has its own, so one domain's failed issuance or renewal (a customer's
+// deleted CNAME) cannot block the others. The App's first effective host keeps
+// the legacy "<app>-tls": renaming it would point the Ingress at an empty
+// Secret until cert-manager re-issued. Any other is "<app>-tls-<host>" with
+// "*" spelled "wildcard", or a hash of the host past the 253-character Secret
+// name limit, so a long host still gets a name of its own.
+func TLSSecretName(app string, first bool, host string) string {
+	if first {
+		return app + "-tls"
+	}
+	name := app + "-tls-" + strings.ReplaceAll(host, "*", "wildcard")
+	if len(name) > validation.DNS1123SubdomainMaxLength {
+		sum := sha256.Sum256([]byte(host))
+		name = fmt.Sprintf("%s-tls-%x", app, sum[:8])
+	}
+	return name
+}
+
+// TLSSecretNameFor is TLSSecretName for host, first when it leads the hosts
+// EffectiveHosts serves: a custom primary in spec.host, or spec.hosts[0] when
+// no primary and no platform host precede it. baseDomain must be the
+// operator's BEX_BASE_DOMAIN, which bex-api shares.
+func (s AppSpec) TLSSecretNameFor(name, baseDomain, host string) string {
+	hosts := s.EffectiveHosts(name, baseDomain)
+	return TLSSecretName(name, len(hosts) > 0 && hosts[0] == host, host)
+}

@@ -65,9 +65,13 @@ type Config struct {
 	// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>`
 	// (docs/ADR005-custom-domain.md); unset falls back to deriving the platform
 	// host from an App's status URLs.
-	BaseDomain   string
-	RouterURL    string
-	RouterSecret string
+	BaseDomain string
+	// BEX_RESERVED_DOMAINS replaces the zones no tenant may claim a custom
+	// domain at or under; unset reserves each platform host's registrable
+	// domain other than BEX_BASE_DOMAIN's (docs/ADR005-custom-domain.md).
+	ReservedDomains []string
+	RouterURL       string
+	RouterSecret    string
 	// BEX_REGION is the explicit platform placement surfaced in Render resource
 	// metadata. Empty is honestly omitted.
 	Region       string
@@ -272,6 +276,11 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.DashboardURL = getenv("BEX_DASHBOARD_URL")
 	cfg.CORSOrigin = getenv("BEX_API_CORS_ORIGIN")
 	cfg.BaseDomain = getenv("BEX_BASE_DOMAIN")
+	if zones, err := apps.ParseReservedDomains(getenv("BEX_RESERVED_DOMAINS")); err != nil {
+		p.errorf("invalid BEX_RESERVED_DOMAINS: %v", err)
+	} else {
+		cfg.ReservedDomains = zones
+	}
 	cfg.RouterURL = getenv("BEX_ROUTER_URL")
 	cfg.RouterSecret = getenv("BEX_ROUTER_ASSERTION_SECRET")
 	if cfg.RouterURL != "" {

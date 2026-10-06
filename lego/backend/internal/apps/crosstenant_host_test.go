@@ -53,6 +53,7 @@ func TestCreateRejectsReservedAndClaimedHosts(t *testing.T) {
 		{"reserved-platform-subdomain", "someoneelse.onbex.co", core.ErrBadRequest},
 		{"reserved-base-apex", "onbex.co", core.ErrBadRequest},
 		{"host-owned-by-another-app", "victim.example.com", core.ErrConflict},
+		{"public-suffix", "github.io", core.ErrBadRequest},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := svc.create(ctx, CreateRequest{Name: "attacker", Image: "img:1", Hosts: []string{tc.host}})
