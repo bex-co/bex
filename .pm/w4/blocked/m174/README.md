@@ -42,3 +42,13 @@ Live, on owned Free fixtures in `bex-canary` (deleted afterwards):
 - **Render parity:** included (t003). The log line set users read on REST/GraphQL/MCP/UI changes, although no API shape changes.
 - **Unverified:** web/worker crash-loop containers (reasoned from the shared pipeline, not probed); Loki ingestion as an alternative cause (stdout lines from the same instant arrive, which argues against it); multi-node placement.
 - **Severity:** major (silent loss of the error output in a core journey).
+
+## Production replay — 2026-10-06 (qa loop63, pin `e2e4d0d7e` ⊇ `55403e56d`; deploy run 37404121909 finished 03:02:19Z)
+
+Owned Free cron `qa-20261006-l63-cron` (`srv-db269mk20ers738obg40`, `alpine:3`, the DoD command verbatim; deleted afterwards). `GET /v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=<id>&limit=100`, grouped by run second:
+
+- **Batch 1** (runs 03:03:27–03:06:23, starting ~1 min after the deploy finished): 29/30 lines. Runs 03:03:30, 03:04:04, 03:04:39, 03:05:50 and 03:06:25 complete; **03:05:14 lost only `error: GAMMA-x three`** (4 lines).
+- **Batch 2** (runs 03:08:18–03:11:07): **30/30**, all six runs complete with the stderr line.
+- Line order now follows CRI timestamps (the stderr line sometimes precedes `ALPHA`), consistent with the file tailer being active.
+- Before the fix (loop44) the same probe lost the stderr line in 3 of 6 runs.
+- **Open question for closeout:** the single miss fell ~3 min after the deploy finished. It may be the log-shipper DaemonSet still rolling node by node (a pod scheduled on a node whose Alloy had not yet restarted onto the CRI-file pipeline), or a residual race. Re-run the DoD's 6-run probe once more before closing; if any run misses, check which node ran it and that node's Alloy config generation.
