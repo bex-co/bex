@@ -281,13 +281,6 @@ func (s *Service) appForDeployHookToken(ctx context.Context, token string) (*app
 	return nil, core.ErrNotFound
 }
 
-func deployHookServiceName(a *appv1alpha1.App) string {
-	if name := a.Labels[core.LabelServiceName]; name != "" {
-		return name
-	}
-	return a.Name
-}
-
 // DeployHookRateLimiter is a token-keyed in-memory bucket. Like the main API
 // limiter (BEX_RATE_LIMIT) and the device-flow limiter, it is REPLICA-LOCAL by
 // design: with bex-api's two replicas (w1/m52) the effective per-token ceiling
@@ -378,7 +371,7 @@ func (s *Service) DeployHookHandler() http.Handler {
 			core.WriteErr(w, err)
 			return
 		}
-		d, err := s.triggerFetched(r.Context(), deployHookServiceName(a), a, TriggerParams{
+		d, err := s.triggerFetched(r.Context(), core.AppPublicName(a), a, TriggerParams{
 			CommitID: r.URL.Query().Get("ref"),
 			ImageURL: r.URL.Query().Get("imgURL"),
 		}, store.TriggerDeployHook)

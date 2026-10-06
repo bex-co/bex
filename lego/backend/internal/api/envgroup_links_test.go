@@ -42,9 +42,16 @@ func TestEnvGroups_DeletingAServiceUnlinksIt(t *testing.T) {
 		t.Fatalf("create group = %d %s", created.Code, created.Body)
 	}
 	group := decodeJSON[envgroups.EnvGroupView](t, created.Result())
+	// The stored link set, which GraphQL lists: REST names only the services
+	// that still exist, so it could not show a deleted service left linked.
 	links := func() []string {
 		t.Helper()
-		return decodeJSON[envgroups.EnvGroupView](t, do(t, h, "GET", "/v1/env-groups/"+group.ID, testToken, "").Result()).ServiceLinks
+		data := gql(t, h, `{ envGroup(id: "`+group.ID+`") { serviceLinks } }`)
+		ids := []string{}
+		for _, link := range data["envGroup"].(map[string]any)["serviceLinks"].([]any) {
+			ids = append(ids, link.(string))
+		}
+		return ids
 	}
 	if res := do(t, h, "POST", "/v1/env-groups/"+group.ID+"/services/web", testToken, ""); res.Code != http.StatusNoContent {
 		t.Fatalf("link by name = %d %s", res.Code, res.Body)

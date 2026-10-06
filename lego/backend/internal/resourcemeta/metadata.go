@@ -102,9 +102,9 @@ const (
 	KeyValueDashboardRoute = "r"
 )
 
-// serviceDashboardRoutes maps Render serviceType enum values to their dashboard
-// path segments.
-var serviceDashboardRoutes = map[string]string{
+// serviceTypesShort maps Render serviceType enum values to its serviceTypeShort
+// spellings.
+var serviceTypesShort = map[string]string{
 	"web_service":       "web",
 	"private_service":   "pserv",
 	"background_worker": "worker",
@@ -112,13 +112,21 @@ var serviceDashboardRoutes = map[string]string{
 	"static_site":       "static",
 }
 
-// ServiceDashboardRoute returns the type-aware Render dashboard segment for a
-// service, with Render's own CLI fallback (`web`) for unknown types.
-func ServiceDashboardRoute(serviceType string) string {
-	if segment, ok := serviceDashboardRoutes[serviceType]; ok {
-		return segment
+// ServiceTypeShort is Render's serviceTypeShort for a service type, the
+// spelling of its env-group links, with Render's own CLI fallback (`web`) for
+// an empty or unknown type. Unlike render.yaml's, it spells a static site
+// "static".
+func ServiceTypeShort(serviceType string) string {
+	if short, ok := serviceTypesShort[serviceType]; ok {
+		return short
 	}
 	return "web"
+}
+
+// ServiceDashboardRoute returns the type-aware Render dashboard segment for a
+// service, which is its serviceTypeShort.
+func ServiceDashboardRoute(serviceType string) string {
+	return ServiceTypeShort(serviceType)
 }
 
 // DashboardURL joins a known dashboard route and resource id onto the trusted

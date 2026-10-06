@@ -82,7 +82,7 @@ func (s *Service) tenantNames(ctx context.Context) (map[string]bool, error) {
 	}
 	names := make(map[string]bool, len(list.Items))
 	for i := range list.Items {
-		names[publicName(&list.Items[i])] = true
+		names[core.AppPublicName(&list.Items[i])] = true
 		// A name a service is displayed as is taken too (w8/m47): the store
 		// refuses it on create and rename alike.
 		if dn := list.Items[i].Spec.DisplayName; dn != "" {
@@ -90,17 +90,6 @@ func (s *Service) tenantNames(ctx context.Context) (map[string]bool, error) {
 		}
 	}
 	return names, nil
-}
-
-// publicName is an App's workspace-scoped name — LabelServiceName when the
-// create path stamped one (w4/m19), else the CR's own object name (a
-// hand-applied or pre-migration App, whose object name still IS its public
-// name).
-func publicName(a *appv1alpha1.App) string {
-	if n := a.Labels[core.LabelServiceName]; n != "" {
-		return n
-	}
-	return a.Name
 }
 
 // nextFreeName finds the smallest N such that "<base>-N" is free in taken —

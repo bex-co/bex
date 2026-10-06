@@ -274,7 +274,7 @@ func TestM125_ClaimsEqualResourcesAfterASyncDropsOne(t *testing.T) {
 	}
 	var seen bool
 	for i := range apps.Items {
-		if appServiceName(&apps.Items[i]) != "static-site" {
+		if core.AppPublicName(&apps.Items[i]) != "static-site" {
 			continue
 		}
 		seen = true

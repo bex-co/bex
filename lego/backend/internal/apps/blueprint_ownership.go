@@ -87,7 +87,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 		}
 		byName := map[string]string{}
 		for i := range apps.Items {
-			byName[appServiceName(&apps.Items[i])] = apps.Items[i].Labels[core.LabelBlueprint]
+			byName[core.AppPublicName(&apps.Items[i])] = apps.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, svc := range st.services {
 			labelOwner := byName[svc.req.Name]
@@ -167,21 +167,6 @@ func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 		map[string]any{"resource": c.name, "kind": c.kind, "owningBlueprintId": c.owner, "confirm": phrase})
 }
 
-// stampBlueprintOwnership records req.BlueprintID on every resource the apply
-// converged — create, adopt, and takeover all land here as a fail-loud
-// backfill for no-op short circuits that already claimed at write time
-// (w8/m40). A failed claim or label patch fails the sync: ownership
-// persistence failure cannot look like success.
-// appServiceName is the manifest-facing service name: the service-name label
-// for store-managed Apps (CR names carry the tenant prefix), the bare CR name
-// for hand-applied ones.
-func appServiceName(a *appv1alpha1.App) string {
-	if name := a.Labels[core.LabelServiceName]; name != "" {
-		return name
-	}
-	return a.Name
-}
-
 // takeoverExpectedOwner returns the owning blueprint id encoded in Confirm, or
 // "" when Confirm is not a takeover phrase.
 func takeoverExpectedOwner(confirm string) string {
@@ -244,6 +229,11 @@ func (s *Service) labelBlueprintOwnership(ctx context.Context, blueprintID strin
 	return nil
 }
 
+// stampBlueprintOwnership records req.BlueprintID on every resource the apply
+// converged — create, adopt, and takeover all land here as a fail-loud
+// backfill for no-op short circuits that already claimed at write time
+// (w8/m40). A failed claim or label patch fails the sync: ownership
+// persistence failure cannot look like success.
 func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, runID string, st parsedStack) error {
 	if blueprintID == "" {
 		return nil
@@ -297,8 +287,8 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 		wantedSvc[svc.req.Name] = true
 	}
 	for i := range apps.Items {
-		if wantedSvc[appServiceName(&apps.Items[i])] {
-			if err := claimAndLabel("service", appServiceName(&apps.Items[i]), &apps.Items[i]); err != nil {
+		if wantedSvc[core.AppPublicName(&apps.Items[i])] {
+			if err := claimAndLabel("service", core.AppPublicName(&apps.Items[i]), &apps.Items[i]); err != nil {
 				return err
 			}
 		}
@@ -408,7 +398,7 @@ func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprint
 		return fmt.Errorf("listing owned apps: %w", err)
 	}
 	for i := range apps.Items {
-		clear("service/"+appServiceName(&apps.Items[i]), &apps.Items[i])
+		clear("service/"+core.AppPublicName(&apps.Items[i]), &apps.Items[i])
 	}
 	var databases appv1alpha1.DatabaseList
 	if err := s.Client.List(ctx, &databases, owned...); err != nil {

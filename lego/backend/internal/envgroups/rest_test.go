@@ -357,11 +357,11 @@ func TestREST_CreateEnvGroupAcceptsInitialContentsAndLinks(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Fatalf("POST populated create: got %d: %s", w.Code, w.Body.String())
 	}
-	var g EnvGroupView
+	var g renderEnvGroup
 	if err := json.Unmarshal(w.Body.Bytes(), &g); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(g.ServiceLinks, []string{"web"}) ||
+	if !slices.Equal(g.ServiceLinks, []serviceLink{{ID: "web", Name: "web", Type: "web"}}) ||
 		!slices.Equal(g.EnvVars, []EnvVarView{{Key: "GENERATED"}, {Key: "LITERAL"}}) ||
 		!slices.Equal(g.SecretFiles, []SecretFileView{{Name: "rest.txt"}}) {
 		t.Fatalf("populated create response: %+v", g)

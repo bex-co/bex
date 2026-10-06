@@ -722,7 +722,7 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 		}
 	}
 
-	var group EnvGroupView
+	var group renderEnvGroup
 	call("create_env_group", map[string]any{
 		"name": "shared", "environmentId": "env-alpha",
 		"envVars":     []any{map[string]any{"key": "INITIAL", "value": "mcp"}},
@@ -732,7 +732,7 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 	if group.EnvironmentID != "env-alpha" {
 		t.Fatalf("create_env_group environmentId = %q, want env-alpha", group.EnvironmentID)
 	}
-	if !slices.Equal(group.ServiceLinks, []string{"web"}) ||
+	if !slices.Equal(group.ServiceLinks, []serviceLink{{ID: "web", Name: "web", Type: "web"}}) ||
 		!slices.Equal(group.EnvVars, []EnvVarView{{Key: "INITIAL"}}) ||
 		!slices.Equal(group.SecretFiles, []SecretFileView{{Name: "mcp.txt"}}) {
 		t.Fatalf("create_env_group initial contents: %+v", group)
@@ -789,7 +789,7 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 	}
 	var secondPage listEnvGroupsResult
 	call("list_env_groups", map[string]any{"limit": 2, "cursor": firstPage.EnvGroups[1].ID}, &secondPage)
-	if len(secondPage.EnvGroups) != 1 || slices.ContainsFunc(firstPage.EnvGroups, func(g EnvGroupView) bool { return g.ID == secondPage.EnvGroups[0].ID }) {
+	if len(secondPage.EnvGroups) != 1 || slices.ContainsFunc(firstPage.EnvGroups, func(g renderEnvGroup) bool { return g.ID == secondPage.EnvGroups[0].ID }) {
 		t.Fatalf("list_env_groups paging overlapped or lost a group: first=%+v second=%+v", firstPage, secondPage)
 	}
 	call("link_env_group", map[string]any{"id": group.ID, "serviceId": "web"}, nil)

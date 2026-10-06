@@ -1288,7 +1288,7 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 	}
 	candidates := list.Items[:0]
 	for _, a := range list.Items {
-		if displayedAppName(&a) == name {
+		if DisplayedAppName(&a) == name {
 			candidates = append(candidates, a)
 		}
 	}
@@ -1338,17 +1338,13 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 		map[string]any{"name": name, "serviceIds": ids})
 }
 
-// displayedAppName is the name a service is shown as: spec.displayName when
-// set, else its creation name (LabelServiceName, or the object name for a
-// hand-applied App).
-func displayedAppName(a *appv1alpha1.App) string {
+// DisplayedAppName is the name a service is shown as, Render's service name:
+// spec.displayName when set, else its creation name (AppPublicName).
+func DisplayedAppName(a *appv1alpha1.App) string {
 	if a.Spec.DisplayName != "" {
 		return a.Spec.DisplayName
 	}
-	if n := a.Labels[LabelServiceName]; n != "" {
-		return n
-	}
-	return a.Name
+	return AppPublicName(a)
 }
 
 // refuseAmbiguousName is the by-NAME guard for a caller who named no workspace
@@ -1401,6 +1397,17 @@ func (b *Base) refuseAmbiguousName(ctx context.Context, name string, chosen *app
 func AppPublicID(a *appv1alpha1.App) string {
 	if id := a.Labels[LabelAppID]; id != "" {
 		return id
+	}
+	return a.Name
+}
+
+// AppPublicName is an App's workspace-scoped name — LabelServiceName when the
+// create path stamped one (w4/m19), else the CR's own object name (a
+// hand-applied or pre-migration App, whose object name still IS its public
+// name).
+func AppPublicName(a *appv1alpha1.App) string {
+	if n := a.Labels[LabelServiceName]; n != "" {
+		return n
 	}
 	return a.Name
 }

@@ -60,7 +60,7 @@ func appOwner(t *testing.T, svc *Service, name string) string {
 		t.Fatalf("list apps: %v", err)
 	}
 	for i := range apps.Items {
-		if appServiceName(&apps.Items[i]) == name {
+		if core.AppPublicName(&apps.Items[i]) == name {
 			return apps.Items[i].Labels[core.LabelBlueprint]
 		}
 	}
