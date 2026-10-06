@@ -963,6 +963,16 @@ describe("NewServicePage", () => {
       },
     );
 
+    // w5/078: see parseNewServiceSearch.
+    it("hands readers no rejected ?type= or empty id", async () => {
+      const { router } = renderPage("/?type=bogus123&projectId=");
+      await screen.findAllByRole("radiogroup");
+      expect(router.state.matches.at(-1)?.search).toMatchObject({
+        type: undefined,
+        projectId: undefined,
+      });
+    });
+
     it("shows cron-specific chrome and a pre-filled schedule on the cron deep link", async () => {
       renderPage("/?type=cron_job");
       await screen.findAllByRole("radiogroup");
@@ -984,12 +994,6 @@ describe("NewServicePage", () => {
         screen.getByRole("radio", { name: /Static Site/i }),
       ).toHaveAttribute("aria-checked", "true");
     });
-
-    // The unknown-?type= fallback to web_service is enforced by the route's
-    // validateSearch (parseNewServiceSearch drops it → undefined → default);
-    // that drop is unit-tested in create-context.test.ts. The test harness
-    // mounts this component under a stand-in route, so its Route.useSearch()
-    // reads raw (unvalidated) search and can't faithfully model the drop here.
   });
 
   // w6/m43 t003: the heading/subtitle used to branch only on cron, so the

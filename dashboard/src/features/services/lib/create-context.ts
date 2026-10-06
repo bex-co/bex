@@ -17,7 +17,7 @@ export type ServiceType = (typeof SERVICE_TYPES)[number];
  *  state and the route's document title resolve the same type. */
 export const DEFAULT_SERVICE_TYPE: ServiceType = "web_service";
 
-export function isServiceType(v: unknown): v is ServiceType {
+function isServiceType(v: unknown): v is ServiceType {
   return (
     typeof v === "string" && (SERVICE_TYPES as readonly string[]).includes(v)
   );
@@ -74,14 +74,11 @@ export const SERVICE_TYPE_CREATE_COPY: Record<
 /** The wizard's heading + subtitle keys. An absent OR unknown `?type=` resolves
  *  to the same default the form itself starts on, so the two cannot disagree.
  *
- *  The parameter is a plain string on purpose (w4/102): this used to take
- *  `ServiceType | undefined` and default only on nullish, which is sound only
- *  while every caller passes validated search. The route's `head` resolver does
- *  not — it reads the raw `match.search?.type` — so `/services/new?type=worker`
- *  indexed the table to `undefined` and threw on `.titleKey`, taking the whole
- *  create wizard to the error boundary. Making the function total means the
- *  contract `parseNewServiceSearch` already documents ("unknown values
- *  dropped") holds at every call site rather than at the lucky ones. */
+ *  The parameter is a plain string on purpose (w4/102): defaulting only on
+ *  nullish once indexed the table to `undefined` for `/services/new?type=worker`
+ *  and threw on `.titleKey`, because the route's `head` resolver then read the
+ *  raw search. It reads validated search now (w5/078); the function stays total
+ *  so no caller depends on that. */
 export function serviceTypeCreateCopy(type: string | undefined): {
   titleKey: string;
   descriptionKey: string;
@@ -100,17 +97,21 @@ export interface NewServiceSearch {
 }
 
 /** Accept only a known service `type` plus nonempty string ids from contextual
- *  service-create links. */
+ *  service-create links. A rejected key is set to undefined, not omitted: the
+ *  router merges the validated search over the raw one, so an omitted key
+ *  keeps its raw value for every `useSearch()` reader (w5/078). */
 export function parseNewServiceSearch(
   search: Record<string, unknown>,
 ): NewServiceSearch {
   return {
-    ...(isServiceType(search.type) ? { type: search.type } : {}),
-    ...(typeof search.projectId === "string" && search.projectId
-      ? { projectId: search.projectId }
-      : {}),
-    ...(typeof search.environmentId === "string" && search.environmentId
-      ? { environmentId: canonicalEnvironmentLinkId(search.environmentId) }
-      : {}),
+    type: isServiceType(search.type) ? search.type : undefined,
+    projectId:
+      typeof search.projectId === "string" && search.projectId
+        ? search.projectId
+        : undefined,
+    environmentId:
+      typeof search.environmentId === "string" && search.environmentId
+        ? canonicalEnvironmentLinkId(search.environmentId)
+        : undefined,
   };
 }
