@@ -94,13 +94,33 @@ func (k configKeyKind) problem(key string) string {
 // refuse is the coded 400 for a key problem rejects, naming the rule it broke.
 // An over-long key is not echoed: the length is the whole story.
 func (k configKeyKind) refuse(key string) error {
-	params := map[string]any{"field": k.field, "maxLength": validation.DNS1123SubdomainMaxLength}
 	if len(key) > validation.DNS1123SubdomainMaxLength {
-		return NewBadRequestError(k.code, fmt.Sprintf("%s name is longer than %d characters", k.noun, validation.DNS1123SubdomainMaxLength), params)
+		return NewBadRequestError(k.code, fmt.Sprintf("%s name is longer than %d characters", k.noun, validation.DNS1123SubdomainMaxLength), k.params())
 	}
-	return NewBadRequestError(k.code, fmt.Sprintf("invalid %s name %q: %s", k.noun, key, k.problem(key)), params)
+	return NewBadRequestError(k.code, fmt.Sprintf("invalid %s name %q: %s", k.noun, key, k.problem(key)), k.params())
 }
 
+// projectionRefused is the coded 400 for a write Kubernetes refused to project
+// over key, for the API server's reason rule; the write was rolled back. A key
+// this kind's own rule rejects is refused by that rule instead. key or rule is
+// "" when the refusal named none.
+func (k configKeyKind) projectionRefused(key, rule string) error {
+	if key != "" && k.problem(key) != "" {
+		return k.refuse(key)
+	}
+	subject := "the change"
+	if key != "" {
+		subject = fmt.Sprintf("%s %q", k.noun, key)
+	}
+	if rule != "" {
+		rule = ": " + rule
+	}
+	return NewBadRequestError(k.code, subject+" cannot be applied to the service"+rule+"; it was not saved", k.params())
+}
+
+func (k configKeyKind) params() map[string]any {
+	return map[string]any{"field": k.field, "maxLength": validation.DNS1123SubdomainMaxLength}
+}
 
 // ValidEnvKey reports whether k is an environment variable name bex accepts: a
 // C identifier a shell reads that is also a valid Secret key. Rejecting the
@@ -185,4 +205,15 @@ func CheckSecretFileName(name string) error {
 		return secretFileKey.refuse(name)
 	}
 	return nil
+}
+
+// EnvKeyProjectionRefused and SecretFileProjectionRefused answer Kubernetes
+// refusing a service's env or files Secret over key, for rule: the same code
+// and params as the name's own refusal.
+func EnvKeyProjectionRefused(key, rule string) error {
+	return envVarKey.projectionRefused(key, rule)
+}
+
+func SecretFileProjectionRefused(key, rule string) error {
+	return secretFileKey.projectionRefused(key, rule)
 }

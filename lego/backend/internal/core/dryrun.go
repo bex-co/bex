@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -116,21 +117,33 @@ func (b *Base) PatchObject(ctx context.Context, obj client.Object, patch client.
 // earlier failure adds nothing the caller can act on. ok is false for any
 // other error.
 func InvalidFieldsError(err error) (mapped error, ok bool) {
-	if !apierrors.IsInvalid(err) {
+	details, ok := InvalidDetails(err)
+	if !ok {
 		return nil, false
 	}
 	var causes []string
-	var status apierrors.APIStatus
-	if errors.As(err, &status) && status.Status().Details != nil {
-		for _, c := range status.Status().Details.Causes {
-			if c.Field == "" || c.Field == "<nil>" {
-				continue
-			}
-			causes = append(causes, c.Field+": "+c.Message)
+	for _, c := range details.Causes {
+		if c.Field == "" || c.Field == "<nil>" {
+			continue
 		}
+		causes = append(causes, c.Field+": "+c.Message)
 	}
 	if len(causes) == 0 {
 		return fmt.Errorf("%w: the configuration is invalid", ErrBadRequest), true
 	}
 	return fmt.Errorf("%w: %s", ErrBadRequest, strings.Join(causes, "; ")), true
+}
+
+// InvalidDetails returns the API server's details of an Invalid refusal: the
+// refused object's kind and name, and each cause. ok is false for any other
+// error.
+func InvalidDetails(err error) (details metav1.StatusDetails, ok bool) {
+	if !apierrors.IsInvalid(err) {
+		return metav1.StatusDetails{}, false
+	}
+	var status apierrors.APIStatus
+	if errors.As(err, &status) && status.Status().Details != nil {
+		details = *status.Status().Details
+	}
+	return details, true
 }
