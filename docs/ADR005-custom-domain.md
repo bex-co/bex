@@ -14,8 +14,10 @@ After an authorized add, REST, GraphQL, MCP, and the dashboard return two separa
 | Purpose | Type | Name | Value |
 | --- | --- | --- | --- |
 | Prove ownership | `TXT` | `_bex-challenge.<registrable-domain>` | Durable random `bex-domain-verification=…` challenge |
-| Route a subdomain | `CNAME` | label prefix (`www`, `api.stage`) | `<service>.<BEX_BASE_DOMAIN>` |
+| Route a subdomain | `CNAME` | labels below the registrable domain (`www`, `api.stage`; `www` for `www.example.co.uk`) | `<service>.<BEX_BASE_DOMAIN>` |
 | Route an apex | `ALIAS` | `@` | `<service>.<BEX_BASE_DOMAIN>` |
+
+Both names are relative to the same zone, the host's registrable domain under the public suffix list (w5/m121). Until then the CNAME stripped two labels, so `www.example.co.uk` read `www.example`, a name in zone `co.uk`. A host must have a registrable domain to be claimed: a bare public suffix such as `co.uk`, or the private suffix `github.io`, is refused with `CUSTOM_DOMAIN_INVALID`. Lookups, verify and delete included, do not apply the rule, so a host stored before it can still be removed. A Blueprint that still lists such a host fails validation until the host leaves it.
 
 The tenant creates the TXT record and invokes Verify. A missing value, mismatched value, resolver error, or timeout returns the named `DOMAIN_OWNERSHIP_PENDING` conflict and leaves both the claim and serving spec unchanged. A correct value promotes by claim id plus expected challenge; if the row was deleted/recreated during DNS lookup, `DOMAIN_CLAIM_STALE` wins and the replacement remains pending.
 
@@ -39,7 +41,9 @@ Storeless bex-api has nowhere durable to hold pending state, so it retains the o
 
 ## Projection and certificates
 
-The operator remains mechanism-only. It does not resolve DNS or transition domain business state. For each verified custom host it renders an Ingress rule and an independent TLS secret (`<app>-tls` for the first effective host, `<app>-tls-<host>` for later hosts), isolating certificate failures.
+The operator remains mechanism-only. It does not resolve DNS or transition domain business state. For each verified custom host it renders an Ingress rule and an independent TLS secret (`<app>-tls` for the first effective host, `<app>-tls-<host>` for later hosts, a hash of the host past the 253-character name limit), isolating certificate failures. The operator and bex-api compute that name with one function, `v1alpha1.TLSSecretName` (w5/m121): bex-api used to truncate the name the operator hashes, so a long host stayed pending after its certificate was issued.
+
+**Reserved hosts.** No tenant may claim a platform host (the dashboard, API, SSH and deploy-hook hosts) or a host in a reserved zone. By default the reserved zones are the registrable domain of each platform host other than `BEX_BASE_DOMAIN`'s, so production reserves all of `bex.co` (w4/190). `BEX_RESERVED_DOMAINS`, a comma-separated list, replaces those zones (w5/m121). A self-hoster with the dashboard at `bex.acme.com` and services on another apex sets it to `bex.acme.com`, and can then claim `www.acme.com`. The platform hosts bex-api knows stay reserved, but the zones must cover every host the platform serves: production, for one, also serves auth, OAuth, observability and schema hosts under `bex.co`. A zone covering `BEX_BASE_DOMAIN` would reserve the services' own hosts too. Unset changes nothing.
 
 When a safe shared-hosting suffix is configured, the traffic target is the App's platform host. Apex domains use provider ALIAS/ANAME/CNAME-flattening because bex has no stable tenant-facing load-balancer IP. Production must not enable an ordinary registrable `BEX_BASE_DOMAIN`; ADR029's Public Suffix/browser-isolation gate still applies.
 

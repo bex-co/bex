@@ -117,7 +117,7 @@ func TestPGObserveProductAppHostingAndCertificates(t *testing.T) {
 			}
 			cl := &productCertificateClient{Client: fakeClient()}
 			if !tc.missing {
-				secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: tlsSecretForHost(app, domain.Host), Namespace: workspace.ID},
+				secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: app.Spec.TLSSecretNameFor(app.Name, "", domain.Host), Namespace: workspace.ID},
 					Data: map[string][]byte{"tls.crt": []byte("certificate-evidence")}}
 				if err := cl.Create(ctx, secret); err != nil {
 					t.Fatal(err)
@@ -131,7 +131,7 @@ func TestPGObserveProductAppHostingAndCertificates(t *testing.T) {
 				}
 			}
 			desired := store.DesiredApp{App: row}
-			ObserveProductApp(ctx, st, cl, desired, app)
+			ObserveProductApp(ctx, st, cl, "", desired, app)
 			var live, wasLive bool
 			if err := pool.QueryRow(ctx, "SELECT live,was_live FROM product_hosting_daily WHERE resource_id=$1", row.ID).Scan(&live, &wasLive); err != nil || live != tc.wantLive || wasLive != tc.wantLive {
 				t.Fatalf("live=%v wasLive=%v want=%v err=%v", live, wasLive, tc.wantLive, err)
@@ -159,7 +159,7 @@ func TestPGObserveProductAppHostingAndCertificates(t *testing.T) {
 			if err := pool.QueryRow(ctx, "SELECT count(*) FROM product_domain_observations WHERE domain_id=$1", alias.ID).Scan(&aliasSamples); err != nil || aliasSamples != 0 {
 				t.Fatalf("alias samples=%d err=%v", aliasSamples, err)
 			}
-			ObserveProductApp(ctx, st, cl, desired, app)
+			ObserveProductApp(ctx, st, cl, "", desired, app)
 			if cl.calls != wantCalls {
 				t.Fatal("unchanged hosting repeated certificate work")
 			}

@@ -456,3 +456,20 @@ func TestRouterConfiguration(t *testing.T) {
 		}
 	}
 }
+
+// BEX_RESERVED_DOMAINS (w5/m121) lists zones, normalized like a custom
+// domain; a malformed entry refuses to start rather than reserve nothing.
+func TestLoadConfigReservedDomains(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{"BEX_RESERVED_DOMAINS": " Bex.Acme.com. , ,ops.acme.com"})
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	if got := strings.Join(cfg.ReservedDomains, ","); got != "bex.acme.com,ops.acme.com" {
+		t.Fatalf("ReservedDomains = %q, want bex.acme.com,ops.acme.com", got)
+	}
+	for _, bad := range []string{"bad_zone", "https://bex.acme.com", "localhost"} {
+		if _, _, err := loadFor(t, map[string]string{"BEX_RESERVED_DOMAINS": bad}); err == nil || !strings.Contains(err.Error(), "BEX_RESERVED_DOMAINS") {
+			t.Errorf("BEX_RESERVED_DOMAINS=%q = %v, want a startup error naming it", bad, err)
+		}
+	}
+}

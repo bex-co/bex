@@ -482,7 +482,7 @@ func appendIngressHostRoute(ing *networkingv1.Ingress, appName, host string, tls
 	pathType := networkingv1.PathTypePrefix
 	ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
 		Hosts:      []string{host},
-		SecretName: tlsSecretName(appName, tlsIndex, host),
+		SecretName: appv1alpha1.TLSSecretName(appName, tlsIndex == 0, host),
 	})
 	ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
 		Host: host,
@@ -4785,22 +4785,6 @@ func clampReplicas(app *appv1alpha1.App, n int32) int32 {
 	return n
 }
 
-// tlsSecretName gives each host its own certificate secret so one domain's
-// failed issuance/renewal (e.g. a customer's deleted CNAME) can't block the
-// others. The first host keeps the legacy "<app>-tls" name — renaming it would
-// point the Ingress at an empty secret until cert-manager re-issues.
-func tlsSecretName(appName string, i int, host string) string {
-	if i == 0 {
-		return appName + "-tls"
-	}
-	name := appName + "-tls-" + strings.ReplaceAll(host, "*", "wildcard")
-	if len(name) > 253 { // secret names are RFC 1123 subdomains, max 253 chars
-		sum := sha256.Sum256([]byte(host))
-		name = fmt.Sprintf("%s-tls-%x", appName, sum[:8])
-	}
-	return name
-}
-
 // tenantSecCtx returns the hardening SecurityContext stamped on every tenant
 // container: no privilege escalation, all capabilities dropped, RuntimeDefault
 // seccomp. runAsNonRoot is deliberately absent — tenant images may run as root
@@ -6514,7 +6498,7 @@ func (r *AppReconciler) recordTLSSecretHistory(ctx context.Context, app *appv1al
 	live := make(map[string]struct{})
 	changed := false
 	for idx, host := range effectiveHosts(app, r.BaseDomain) {
-		name := tlsSecretName(app.Name, idx, host)
+		name := appv1alpha1.TLSSecretName(app.Name, idx == 0, host)
 		live[name] = struct{}{}
 		if _, ok := seen[name]; !ok {
 			names = append(names, name)
@@ -6568,7 +6552,7 @@ func (r *AppReconciler) tlsSecretNameSet(app *appv1alpha1.App) map[string]struct
 		names[name] = struct{}{}
 	}
 	for idx, host := range effectiveHosts(app, r.BaseDomain) {
-		names[tlsSecretName(app.Name, idx, host)] = struct{}{}
+		names[appv1alpha1.TLSSecretName(app.Name, idx == 0, host)] = struct{}{}
 	}
 	return names
 }

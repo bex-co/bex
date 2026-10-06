@@ -98,9 +98,13 @@ type Service struct {
 	DashboardHost string
 	// PlatformHosts are the platform's other public hosts (the API and SSH
 	// gateway, from their configured public URLs). Together with DashboardHost
-	// they and everything under their registrable apex (bex.co) are reserved:
-	// no tenant may claim api.bex.co as a custom domain (w4/190).
+	// they are reserved, and by default so is everything under their
+	// registrable apex (bex.co): no tenant may claim api.bex.co as a custom
+	// domain (w4/190, reservedZones).
 	PlatformHosts []string
+	// ReservedDomains, from BEX_RESERVED_DOMAINS, replaces the default zones
+	// reserved around the platform hosts (reservedZones).
+	ReservedDomains []string
 	// MaxCustomDomainsPerService and MaxCustomDomainsPerWorkspace cap
 	// custom-domain cardinality (codex-security round 18;
 	// BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE / BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE,
@@ -3088,7 +3092,8 @@ func applyOptionalCreateSpec(spec *appv1alpha1.AppSpec, svcType string, req Crea
 }
 
 // canonicalHosts canonicalizes every requested custom hostname (trimmed,
-// terminal dot dropped, lowercased, DNS-1123 validated) so the cross-App
+// terminal dot dropped, lowercased, DNS-1123 validated, not a public suffix:
+// claimableHostname) so the cross-App
 // uniqueness sweep and every downstream consumer compare like with like — a
 // case/trailing-dot variant of another tenant's host must collapse to the
 // same value here instead of slipping past as a distinct string.
@@ -3096,7 +3101,7 @@ func canonicalHosts(raw []string) ([]string, error) {
 	hosts := make([]string, 0, len(raw))
 	seen := make(map[string]struct{}, len(raw))
 	for _, r := range raw {
-		h, err := canonicalHostname(r)
+		h, err := claimableHostname(r)
 		if err != nil {
 			return nil, err
 		}

@@ -198,11 +198,11 @@ func TestTLSSecretHistoryStaysBoundedUnderChurn(t *testing.T) {
 	if len(names) != maxTLSSecretHistoryEntries {
 		t.Fatalf("history len = %d, want the %d-entry cap", len(names), maxTLSSecretHistoryEntries)
 	}
-	newest := tlsSecretName(final.Name, 1, fmt.Sprintf("h%d.example.com", maxTLSSecretHistoryEntries+49))
+	newest := appv1alpha1.TLSSecretName(final.Name, false, fmt.Sprintf("h%d.example.com", maxTLSSecretHistoryEntries+49))
 	if !slices.Contains(names, newest) {
 		t.Errorf("newest name %q trimmed; the cap must keep the most recent entries", newest)
 	}
-	if oldest := tlsSecretName(final.Name, 1, "h0.example.com"); slices.Contains(names, oldest) {
+	if oldest := appv1alpha1.TLSSecretName(final.Name, false, "h0.example.com"); slices.Contains(names, oldest) {
 		t.Errorf("oldest churned name %q retained past the cap", oldest)
 	}
 	if !slices.Contains(names, final.Name+"-tls") {

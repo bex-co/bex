@@ -2278,7 +2278,7 @@ func TestCertificateReasonMatchesOnlyItsOwnHost(t *testing.T) {
 func TestVerifiedDomainCarriesNoCertificateReason(t *testing.T) {
 	app := appWithHosts("web", "good.example.com")
 	svc := acmeService([]*appv1alpha1.App{app},
-		tlsSecret("default", tlsSecretForHost(app, "good.example.com")),
+		tlsSecret("default", app.Spec.TLSSecretNameFor(app.Name, "", "good.example.com")),
 		acmeObject(acmeChallengeGVK, "default", "stale",
 			map[string]any{"dnsName": "good.example.com"},
 			map[string]any{"reason": "stale reason from a previous attempt"}))
@@ -2330,7 +2330,7 @@ func TestCertificateReasonFallsBackToFailedOrder(t *testing.T) {
 func TestCertificateReasonFallsBackToCertificateCondition(t *testing.T) {
 	app := appWithHosts("web", "issuer.example.com")
 	svc := acmeService([]*appv1alpha1.App{app},
-		acmeObject(certManagerCertificateGVK, "default", tlsSecretForHost(app, "issuer.example.com"),
+		acmeObject(certManagerCertificateGVK, "default", app.Spec.TLSSecretNameFor(app.Name, "", "issuer.example.com"),
 			map[string]any{"dnsNames": []any{"issuer.example.com"}},
 			map[string]any{"conditions": []any{
 				map[string]any{"type": "Ready", "status": "False", "message": "issuer letsencrypt-prod not found"},
@@ -2417,7 +2417,7 @@ func TestCertificateReasonSurfaceParity(t *testing.T) {
 // REST field is omitted entirely and GraphQL resolves it to null.
 func TestCertificateReasonAbsentWhenIssued(t *testing.T) {
 	app := appWithHosts("web", "good.example.com")
-	svc := acmeService([]*appv1alpha1.App{app}, tlsSecret("default", tlsSecretForHost(app, "good.example.com")))
+	svc := acmeService([]*appv1alpha1.App{app}, tlsSecret("default", app.Spec.TLSSecretNameFor(app.Name, "", "good.example.com")))
 
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)

@@ -16,10 +16,10 @@
 
 Traffic instructions remain:
 
-| Domain kind | Type    | Name         | Value                         |
-| ----------- | ------- | ------------ | ----------------------------- |
-| subdomain   | `CNAME` | label prefix | `<service>.<BEX_BASE_DOMAIN>` |
-| apex        | `ALIAS` | `@`          | `<service>.<BEX_BASE_DOMAIN>` |
+| Domain kind | Type | Name | Value |
+| --- | --- | --- | --- |
+| subdomain | `CNAME` | labels below the registrable domain | `<service>.<BEX_BASE_DOMAIN>` |
+| apex | `ALIAS` | `@` | `<service>.<BEX_BASE_DOMAIN>` |
 
 Bex adds an ownership instruction for every new managed claim:
 

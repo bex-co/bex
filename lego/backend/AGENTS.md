@@ -72,6 +72,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_OPENFGA_URL`, `BEX_OPENFGA_TOKEN` | OpenFGA authz; unset → allow-all |
 | bex-api | `BEX_ALLOW_INSECURE_AUTHZ` | `1` allows startup with `BEX_CP_DB_URI` but no FGA (dev only); else fail-closed |
 | bex-api | `BEX_BASE_DOMAIN` | wildcard `onbex.co` for custom-domain DNS targets |
+| bex-api | `BEX_RESERVED_DOMAINS` | comma-separated zones no tenant may claim a custom domain at or under, replacing the default: each platform host's registrable domain other than `BEX_BASE_DOMAIN`'s. List zones covering every host the platform serves (docs/ADR005-custom-domain.md) |
 | bex-api | `BEX_PROM_URL` | Prometheus (Traefik/cAdvisor); unset → request 503, metrics fallback |
 | bex-api | `BEX_USAGE_RETENTION_MONTHS` `3`, `BEX_AUDIT_RETENTION_DAYS` `90` | usage hot window + audit purge intervals |
 | bex-api | `BEX_MAX_BLUEPRINT_GROUPINGS` `1000`, `…_ENV_GROUPS…` `100`, `…_GIT_CONNECTIONS…` `10`, `…_REGISTRY_CREDS…` `50` | per-workspace caps (coded `*_LIMIT` 409) |

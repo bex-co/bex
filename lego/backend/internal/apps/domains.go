@@ -159,7 +159,7 @@ type DomainView struct {
 // than a bare A-record IP — the edge is Cloudflare-proxied, docs/ADR005-custom-domain.md.)
 type DNSRecordView struct {
 	Type  string // "CNAME" (subdomain), "ALIAS" (apex), or "TXT" (ownership)
-	Name  string // Host relative to the DNS zone: subdomain label(s), "@" for apex, or "_bex-challenge" for ownership TXT (never an FQDN — w4/092)
+	Name  string // Host relative to the DNS zone: the labels below the registrable domain, "@" for apex, or "_bex-challenge" for ownership TXT (never an FQDN — w4/092)
 	Value string // the target/value: platform host <app>.<base-domain>, or the ownership challenge string
 }
 
@@ -207,9 +207,9 @@ func normalizeHostname(raw string) string {
 }
 
 // canonicalHostname is normalizeHostname plus DNS-1123 host validation — the
-// ONE canonicalization every custom-hostname write boundary (create/update
-// spec.hosts, AddDomain) runs before persisting, so stored values are always
-// canonical and comparable.
+// one canonicalization every custom-hostname boundary runs, so stored values
+// are always canonical and comparable. A host being claimed (create/update
+// spec.hosts, AddDomain) also goes through claimableHostname.
 //
 // Wildcard hosts ("*.example.com") are REJECTED here (round-5 finding 7). The
 // collision check and the store's UNIQUE(host) constraint both compare literal
@@ -232,6 +232,22 @@ func canonicalHostname(raw string) (string, error) {
 	// could never verify and only yields nonsense DNS instructions (w4/190).
 	if net.ParseIP(host) != nil || !strings.Contains(host, ".") {
 		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: use a fully qualified domain name", raw))
+	}
+	return host, nil
+}
+
+// claimableHostname is canonicalHostname for a host being claimed, which must
+// also be registered under a public suffix: a bare suffix ("co.uk",
+// "github.io") has no zone its owner could prove or point at the platform
+// (w5/m121). Lookups of an existing claim stay on canonicalHostname, so one
+// stored before this rule can still be read and deleted.
+func claimableHostname(raw string) (string, error) {
+	host, err := canonicalHostname(raw)
+	if err != nil {
+		return "", err
+	}
+	if registrableDomain(host) == "" {
+		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: it is a public suffix; use a domain registered under it", raw))
 	}
 	return host, nil
 }
@@ -297,19 +313,18 @@ func (s *Service) platformHost(app *appv1alpha1.App) string {
 
 // dnsRecordFor computes the DNS record the tenant must create for host, given its
 // already-classified dtype ("apex"/"subdomain") and the app's platform host as the
-// target. A subdomain gets a CNAME whose record name is the label prefix below the
-// root zone (www.example.com -> "www"); an apex gets an ALIAS at "@". Target is the
+// target. A subdomain gets a CNAME named by its labels below the registrable
+// domain, the zone its owner manages and the ownership TXT record's zone too
+// (www.example.co.uk -> "www"); an apex gets an ALIAS at "@". Target is the
 // platform host; empty target still yields a well-typed record (the dashboard
 // renders the type/host guidance regardless).
 func dnsRecordFor(host, dtype, platformHost string) DNSRecordView {
 	if dtype == "apex" {
 		return DNSRecordView{Type: "ALIAS", Name: "@", Value: platformHost}
 	}
-	// Subdomain: strip the trailing two labels (the root zone) to get the record name.
-	labels := strings.Split(host, ".")
-	name := host
-	if len(labels) > 2 {
-		name = strings.Join(labels[:len(labels)-2], ".")
+	name := normalizeHostname(host)
+	if label, ok := strings.CutSuffix(name, "."+ownershipDomain(name)); ok {
+		name = label
 	}
 	return DNSRecordView{Type: "CNAME", Name: name, Value: platformHost}
 }
@@ -329,37 +344,23 @@ func ownershipDNSRecordFor(host, challenge string) *DNSRecordView {
 	return &DNSRecordView{Type: "TXT", Name: name, Value: challenge}
 }
 
-// tlsSecretForHost returns the TLS Secret name the operator creates for a host
-// in App.spec.hosts[], mirroring the operator's naming convention:
-// - first effective host → "<app>-tls"
-// - subsequent hosts    → "<app>-tls-<host>"
-// A host in spec.hosts[] is at position 0 only when spec.host is unset and
-// spec.expose is false (no platform or explicit primary host precedes it).
-func tlsSecretForHost(app *appv1alpha1.App, host string) string {
-	if app.Spec.Host == "" && !app.Spec.Expose && len(app.Spec.Hosts) > 0 && app.Spec.Hosts[0] == host {
-		return app.Name + "-tls"
-	}
-	name := app.Name + "-tls-" + strings.ReplaceAll(host, "*", "wildcard")
-	if len(name) > 253 {
-		name = name[:253]
-	}
-	return name
-}
-
 // domainVerified reports whether cert-manager has issued a TLS certificate for
 // the host by looking for the corresponding TLS Secret. Any absence or error
 // is treated as "pending" — the conservative state during cert issuance.
 func (s *Service) domainVerified(ctx context.Context, app *appv1alpha1.App, host string) bool {
-	ready, _ := domainCertificateReady(ctx, s.Client, app, host)
+	ready, _ := domainCertificateReady(ctx, s.Client, app, s.BaseDomain, host)
 	return ready
 }
 
-func domainCertificateReady(ctx context.Context, cl client.Client, app *appv1alpha1.App, host string) (bool, error) {
+// domainCertificateReady reads the TLS Secret the operator issues host's
+// certificate into, named as the operator names it, from the host's place
+// among the hosts it serves with baseDomain (AppSpec.TLSSecretNameFor).
+func domainCertificateReady(ctx context.Context, cl client.Client, app *appv1alpha1.App, baseDomain, host string) (bool, error) {
 	var sec corev1.Secret
 	// cert-manager writes the TLS Secret into the App's own namespace (its
 	// Ingress lives there), which is the per-tenant `<ws>` namespace under ADR043,
 	// not the shared one — read it from the App's namespace.
-	err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: tlsSecretForHost(app, host)}, &sec)
+	err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Spec.TLSSecretNameFor(app.Name, baseDomain, host)}, &sec)
 	if apierrors.IsNotFound(err) {
 		return false, nil
 	}
@@ -391,14 +392,14 @@ var (
 // empty string, never an error. The reason is a hint layered on top of the
 // authoritative Secret-based status (domainCertificateReady); a cluster without
 // it must degrade to exactly today's behavior rather than fail the domain read.
-func domainCertificateReason(ctx context.Context, cl client.Client, app *appv1alpha1.App, host string) string {
+func domainCertificateReason(ctx context.Context, cl client.Client, app *appv1alpha1.App, baseDomain, host string) string {
 	if reason := acmeChallengeReason(ctx, cl, app.Namespace, host); reason != "" {
 		return reason
 	}
 	if reason := acmeOrderReason(ctx, cl, app.Namespace, host); reason != "" {
 		return reason
 	}
-	return certificateReadyReason(ctx, cl, app.Namespace, tlsSecretForHost(app, host))
+	return certificateReadyReason(ctx, cl, app.Namespace, app.Spec.TLSSecretNameFor(app.Name, baseDomain, host))
 }
 
 // listUnstructured is the shared read for all three ACME kinds. A nil result
@@ -506,7 +507,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
 	}
 	if !verified {
-		view.CertificateReason = domainCertificateReason(ctx, s.Client, app, host)
+		view.CertificateReason = domainCertificateReason(ctx, s.Client, app, s.BaseDomain, host)
 	}
 	return view
 }
@@ -539,7 +540,7 @@ func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, cla
 	// that can stall for weeks, and the only one with a reason worth reading.
 	// An ownership-pending claim is never projected into spec.hosts, so no
 	// Ingress and no ACME exchange exist for it to explain (it returned above).
-	view.CertificateReason = domainCertificateReason(ctx, s.Client, app, claim.Host)
+	view.CertificateReason = domainCertificateReason(ctx, s.Client, app, s.BaseDomain, claim.Host)
 	return view
 }
 
@@ -830,20 +831,60 @@ func (s *Service) reservedHost(ownPlatformHost, host string) bool {
 // BEX_BASE_DOMAIN apex is left to the rule above, which exempts each App's own
 // auto host.
 func (s *Service) platformHostReserved(host string) bool {
-	baseApex := registrableDomain(s.BaseDomain)
-	for _, platform := range append([]string{s.DashboardHost}, s.PlatformHosts...) {
-		if platform == "" {
-			continue
+	var platform []string
+	for _, h := range append([]string{s.DashboardHost}, s.PlatformHosts...) {
+		if h = normalizeHostname(h); h != "" {
+			platform = append(platform, h)
 		}
-		if host == platform {
-			return true
-		}
-		if apex := registrableDomain(platform); apex != "" && apex != baseApex &&
-			(host == apex || strings.HasSuffix(host, "."+apex)) {
+	}
+	if slices.Contains(platform, host) {
+		return true
+	}
+	for _, zone := range s.reservedZones(platform) {
+		if host == zone || strings.HasSuffix(host, "."+zone) {
 			return true
 		}
 	}
 	return false
+}
+
+// reservedZones are the domains no tenant may claim a host at or under:
+// BEX_RESERVED_DOMAINS when set, else the registrable domain of each platform
+// host other than BEX_BASE_DOMAIN's, which tenant hosts share. A self-hoster
+// whose dashboard sits on their own domain (bex.acme.com) lists zones covering
+// the platform's hosts to claim the rest of acme.com for services (w5/m121).
+func (s *Service) reservedZones(platform []string) []string {
+	if len(s.ReservedDomains) > 0 {
+		return s.ReservedDomains
+	}
+	baseApex := registrableDomain(s.BaseDomain)
+	var zones []string
+	for _, host := range platform {
+		if apex := registrableDomain(host); apex != "" && apex != baseApex && !slices.Contains(zones, apex) {
+			zones = append(zones, apex)
+		}
+	}
+	return zones
+}
+
+// ParseReservedDomains reads BEX_RESERVED_DOMAINS, a comma-separated list of
+// zones, each held to the custom-domain hostname rule: a malformed entry
+// refuses to start rather than reserve nothing.
+func ParseReservedDomains(value string) ([]string, error) {
+	var zones []string
+	for _, entry := range strings.Split(value, ",") {
+		if strings.TrimSpace(entry) == "" {
+			continue
+		}
+		zone, err := canonicalHostname(entry)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.Contains(zones, zone) {
+			zones = append(zones, zone)
+		}
+	}
+	return zones, nil
 }
 
 // errNoPublicIngress rejects a custom domain on a service type the platform
@@ -1196,7 +1237,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	if !app.Spec.PubliclyRoutable() {
 		return DomainView{}, false, errNoPublicIngress(effectiveType(app.Spec.Type))
 	}
-	hostname, err = canonicalHostname(hostname)
+	hostname, err = claimableHostname(hostname)
 	if err != nil {
 		return DomainView{}, false, err
 	}
