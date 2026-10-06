@@ -85,9 +85,11 @@ describe("project resource filters", () => {
         kind: "services",
       }),
     ).toEqual({ env: "env-production", q: "api", kind: "services" });
+    // w5/078: undefined, not omitted, or the router keeps the raw value; a
+    // numeric ?q=123 then reached filterProjectResources and threw on trim().
     expect(
-      parseProjectResourceSearch({ env: 42, q: "", kind: "workers" }),
-    ).toEqual({});
+      parseProjectResourceSearch({ env: 42, q: 123, kind: "workers" }),
+    ).toStrictEqual({ env: undefined, q: undefined, kind: undefined });
   });
 
   it("composes search and kind without escaping the supplied environment members", () => {
