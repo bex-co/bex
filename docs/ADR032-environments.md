@@ -107,7 +107,7 @@ A protected environment refused to pause the service and permitted anyone to rep
 
 | verb | covers |
 | --- | --- |
-| `repoint` | `image`, `repo`, `branch`, `registryCredentialId` — which code runs |
+| `repoint` | `image`, `repo`, `branch`, `registryCredentialId` — which code runs; and, since w4/m176, a deploy trigger carrying `imageUrl` or `commitId` and every rollback |
 | `redefine` | build/start/pre-deploy commands, a cron's `command`, `dockerfilePath`, `rootDir` — how it is built and what it executes |
 | `take offline` | **enabling** maintenance mode, which 503s every host |
 
@@ -118,6 +118,7 @@ One phrase per class, not per setter. The per-verb design exists so a confirm ty
 **Deliberately left out, with reasons, so the omissions are decisions:**
 
 - **`Resume`, `restartServer`, webhook auto-deploy** — unchanged, for the reasons already recorded above.
+- **A bare redeploy** (a deploy trigger with no `imageUrl`/`commitId`) — it runs the configured artifact, whose staging the setter already guarded.
 - **Disabling maintenance mode, and a URI-only edit** — restoring availability, the same reason `Resume` is exempt.
 - **A cron `schedule`-only change** — _when_ the job runs, not _what_ it runs. The service layer already splits these two (`LifecycleOrCreate(command != nil)`), and the guard follows the same split.
 - **`scaleService`** — the minimum is 1 replica, so scaling can never take the service offline. It is capacity, and capacity is billing.
@@ -126,6 +127,8 @@ One phrase per class, not per setter. The per-verb design exists so a confirm ty
 - **Environment variables and secret files** — the honest borderline. They change the service's _configuration_, not its identity, and they are the single most-edited control in the product; gating them would mean a typed phrase on nearly every save in a protected environment, which trains people to type the phrase without reading it. Revisit only with evidence of a real incident, not on symmetry.
 
 Mechanically identical to every other guarded verb: the phrase rides `core.WithConfirm` on the request context, `confirm` is an **optional** argument on the GraphQL mutations, the REST `PATCH /v1/services/{id}` query string, and MCP `update_service`, and an unprotected service is byte-identical to before. The guard fails **closed** — a protection-lookup failure refuses the verb rather than waving it through, matching delete and suspend.
+
+**Deploy verbs (w4/m176, 2026-10-05).** m126 probed only the setters, and the deploy endpoint did the same swap in one call, immediately: on a protected member, `POST /v1/services/{id}/deploys {"imageUrl":…}` and `POST …/rollback` both went live without a phrase (live 2026-10-05). The deploys package now calls the apps guard through `apps.Service.ProtectionGuard()`, so it shares the predicate and the `repoint` phrase. Order: authorization first, so the phrase is never an oracle to non-members. The guard runs before any write. For rollback it runs after the suspended/billing/target checks, so nobody types the phrase for a rollback refused anyway (the w4/132 rule). A lookup failure refuses. `confirm` rides REST `?confirm=` (admitted on `create-deploy`, `rollback-deploy` and, fixing an older gap where the refusal named a parameter the validator then rejected, `update-service`), GraphQL `triggerDeploy`/`rollbackService` and MCP `trigger_deploy`/`rollback_deploy`. `deployActions` reports `rollback` as `protected_confirmation_required` once a target exists; the bare `deploy` action stays unguarded. Webhook auto-deploy and env-group rebuilds call `Trigger` with no override. **The deploy hook does take overrides** (Render's `?ref=`/`?imgURL=`), and it stays exempt deliberately, as webhook auto-deploy is. The hook is a secret URL the service's owner minted for automation, not a person at a console. A phrase a CI pipeline could send would have to be baked into the URL, which only makes it a second static secret. Rotating or deleting the hook is the control. The dashboard's Rollback and "Deploy a specific commit" use the same `withProtectedRetry` handshake.
 
 **Dashboard.** The retry handshake `w5/m31` described for delete and suspend now lives in one mount (`common/providers/protected-retry-provider.tsx`) that every single-field Settings save reaches through `useFieldMutation`, plus the four hooks with their own bodies (registry credential, cron, maintenance mode). The constraint from `w5/m31` is unchanged and is the reason this is safe: the dashboard parses the phrase out of the server's error and never precomputes it, so adding or renaming a verb word cannot desynchronize the UI.
 

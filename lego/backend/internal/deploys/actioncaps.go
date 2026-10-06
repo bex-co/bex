@@ -177,5 +177,9 @@ func (s *Service) deployPreconditions(ctx context.Context, a *appv1alpha1.App) (
 			}
 		}
 	}
+	// Last, as in Rollback: the phrase is only asked for once there is a target.
+	if rollbackPre == "" && s.Protection != nil {
+		rollbackPre = core.ProtectionPrecondition(s.Protection.AppProtected(ctx, a))
+	}
 	return deployPre, cancelPre, rollbackPre
 }

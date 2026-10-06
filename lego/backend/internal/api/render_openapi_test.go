@@ -833,6 +833,32 @@ func TestRenderRequestValidatorNamesUnsupportedQuery(t *testing.T) {
 	}
 }
 
+// TestRenderValidatorAdmitsProtectedConfirm: every guarded Render route's
+// refusal says "retry with confirm=…", so the validator must let ?confirm=
+// reach the handler — including PATCH /services/{id}, whose refusal predates
+// w4/m176 but whose confirm was rejected as an unsupported query parameter.
+func TestRenderValidatorAdmitsProtectedConfirm(t *testing.T) {
+	mux := http.NewServeMux()
+	for _, pattern := range []string{"PATCH /v1/services/{id}", "POST /v1/services/{id}/deploys", "POST /v1/services/{id}/rollback"} {
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	}
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const id = "srv-c185th5c2rvvnhbfiltg"
+	for _, tc := range []struct{ method, path, body string }{
+		{http.MethodPatch, "/v1/services/" + id, `{"name":"web"}`},
+		{http.MethodPost, "/v1/services/" + id + "/deploys", `{"imageUrl":"docker.io/traefik/whoami:v1.10.1"}`},
+		{http.MethodPost, "/v1/services/" + id + "/rollback", `{"deployId":"dep-c185th5c2rvvnhbfiltg"}`},
+	} {
+		w := requestOpenAPITest(t, h, tc.method, tc.path+"?confirm=sudo+repoint+service+web", "", tc.body)
+		if w.Code != http.StatusNoContent {
+			t.Errorf("%s %s?confirm= = %d %s, want it to reach the handler", tc.method, tc.path, w.Code, w.Body.String())
+		}
+	}
+}
+
 func TestRegistryCredentialWorkspaceQueryPassesRenderValidator(t *testing.T) {
 	for _, method := range []string{http.MethodGet, http.MethodPatch, http.MethodDelete} {
 		t.Run(method, func(t *testing.T) {
