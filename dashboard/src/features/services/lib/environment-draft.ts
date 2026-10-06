@@ -1,5 +1,9 @@
-// Both name rules cap at 253 characters, Kubernetes' Secret-key limit and
-// bex-api's (core.MaxConfigKeyLength): a longer name fails the projection.
+// An environment variable is a C identifier, and a secret file name a
+// Kubernetes Secret key; both fit Kubernetes' 253-character Secret-key limit,
+// and no file name may start with "..". bex-api applies Kubernetes' own checks
+// (IsCIdentifier, IsConfigMapKey), and
+// lego/backend/internal/core/testdata/config-key-vectors.json pins both sides to
+// the same answers (w5/m118).
 export const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,252}$/;
 
 /**
@@ -16,7 +20,7 @@ export const RESERVED_ENV_KEYS: readonly string[] = ["PORT"];
 export function isReservedEnvKey(key: string): boolean {
   return RESERVED_ENV_KEYS.includes(key);
 }
-export const VALID_SECRET_FILE_NAME = /^[-._a-zA-Z0-9]{1,253}$/;
+const VALID_SECRET_FILE_NAME = /^[-._a-zA-Z0-9]{1,253}$/;
 /**
  * The upload path's read guard: a file this large is never read into memory.
  * It is not the storage limit — that is MAX_ENVIRONMENT_MAP_BYTES in total.
@@ -387,5 +391,7 @@ export function environmentDraftPatch(
 }
 
 export function isValidSecretFileName(name: string): boolean {
-  return VALID_SECRET_FILE_NAME.test(name) && name !== "." && name !== "..";
+  return (
+    VALID_SECRET_FILE_NAME.test(name) && name !== "." && !name.startsWith("..")
+  );
 }

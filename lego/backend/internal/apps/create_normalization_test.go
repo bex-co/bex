@@ -42,13 +42,13 @@ func TestValidateTypeSpecificCreate(t *testing.T) {
 			name:    "cron_job without schedule",
 			svcType: appv1alpha1.TypeCronJob,
 			req:     CreateRequest{},
-			wantErr: "bad request: schedule is required for a cron_job",
+			wantErr: "schedule is required for a cron_job", // coded SCHEDULE_INVALID, so no sentinel prefix (w5/m118)
 		},
 		{
 			name:    "cron_job with whitespace-only schedule",
 			svcType: appv1alpha1.TypeCronJob,
 			req:     CreateRequest{Schedule: "   "},
-			wantErr: "bad request: schedule is required for a cron_job",
+			wantErr: "schedule is required for a cron_job", // coded SCHEDULE_INVALID, so no sentinel prefix (w5/m118)
 		},
 		{
 			name:    "background_worker with hosts",
@@ -114,7 +114,7 @@ func TestValidateTypeSpecificCreate(t *testing.T) {
 			name:    "schedule precedence over hosts on a cron_job",
 			svcType: appv1alpha1.TypeCronJob,
 			req:     CreateRequest{Hosts: []string{"api.example.com"}},
-			wantErr: "bad request: schedule is required for a cron_job",
+			wantErr: "schedule is required for a cron_job", // coded SCHEDULE_INVALID, so no sentinel prefix (w5/m118)
 		},
 		{
 			name:    "valid web_service",

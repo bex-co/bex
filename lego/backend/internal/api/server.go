@@ -1574,7 +1574,18 @@ func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError) []gqlerrors.Formatte
 	for i := range errs {
 		resolverErr := resolverError(errs[i].OriginalError())
 		// nil → a parse/validation error that wraps no resolver error: keep it.
-		if resolverErr == nil || core.IsPublicError(resolverErr) {
+		if resolverErr == nil {
+			continue
+		}
+		if core.IsPublicError(resolverErr) {
+			// graphql-go reads extensions off the returned error only, so a
+			// CodedError a resolver wrapped (fmt.Errorf("…: %w", coded)) would
+			// lose its code on GraphQL alone: REST and MCP find it with
+			// errors.As (w5/m118).
+			var coded *core.CodedError
+			if _, has := errs[i].Extensions["code"]; !has && errors.As(resolverErr, &coded) {
+				errs[i].Extensions = coded.Extensions()
+			}
 			continue
 		}
 		// A resolver that ran out of the execution budget is the caller's

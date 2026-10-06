@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -40,8 +41,9 @@ import (
 // against a client that refuses Secrets the way the API server does.
 
 // refusingClient rejects any Secret whose data carries a key the API server
-// would refuse (over 253 characters) or a key named poison, so a valid name can
-// still exercise a projection failure.
+// would refuse (Kubernetes' own Secret-key check, validation.IsConfigMapKey)
+// or a key named poison, so a valid name can still exercise a projection
+// failure.
 func refusingClient(objs ...client.Object) client.Client {
 	refuse := func(obj client.Object) error {
 		sec, ok := obj.(*corev1.Secret)
@@ -49,9 +51,13 @@ func refusingClient(objs ...client.Object) client.Client {
 			return nil
 		}
 		for k := range sec.Data {
-			if len(k) > core.MaxConfigKeyLength || strings.HasPrefix(k, "poison") || strings.HasPrefix(k, "POISON") {
+			problems := validation.IsConfigMapKey(k)
+			if strings.HasPrefix(k, "poison") || strings.HasPrefix(k, "POISON") {
+				problems = append(problems, "poisoned by the test")
+			}
+			if len(problems) > 0 {
 				return apierrors.NewInvalid(schema.GroupKind{Kind: "Secret"}, sec.Name,
-					field.ErrorList{field.Invalid(field.NewPath("data").Key("…"), "…", "must be no more than 253 characters")})
+					field.ErrorList{field.Invalid(field.NewPath("data").Key("…"), "…", strings.Join(problems, "; "))})
 			}
 		}
 		return nil
@@ -97,6 +103,32 @@ func TestOverLongNamesAreRefusedBeforeAnyWrite(t *testing.T) {
 	// The boundary itself is fine.
 	if _, err := svc.SetSecretFile(ctx, "web", strings.Repeat("y", 253), "c"); err != nil {
 		t.Fatalf("SetSecretFile(253) = %v, want success", err)
+	}
+}
+
+// TestDotDotSecretFileIsRefusedBeforeAnyWrite (w5/m118): Kubernetes refuses a
+// Secret key starting with "..", which the kubelet's atomic-writer layout owns.
+// The name used to pass bex's copy of the rule, reach the store, fail the
+// projection, roll back and answer an uncoded 400; it is now refused first,
+// coded, with the rule named, through every secret-file write.
+func TestDotDotSecretFileIsRefusedBeforeAnyWrite(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := refusingService(store)
+	ctx := context.Background()
+	for verb, write := range map[string]func() error{
+		"SetSecretFile": func() error { _, err := svc.SetSecretFile(ctx, "web", "..data", "c"); return err },
+		"PatchEnvironment": func() error {
+			_, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{SaveMode: SaveModeDeploy, SecretFiles: []SecretFilePatch{{Name: "..data", Content: "c"}}})
+			return err
+		},
+	} {
+		var coded *core.CodedError
+		if err := write(); !errors.As(err, &coded) || coded.Code != "SECRET_FILE_INVALID" || !strings.Contains(err.Error(), "must not start with '..'") {
+			t.Errorf("%s(..data) = %v, want SECRET_FILE_INVALID naming the '..' rule", verb, err)
+		}
+	}
+	if store.puts != 0 {
+		t.Fatalf("a refused name reached the store: %d writes, %+v", store.puts, store.m)
 	}
 }
 

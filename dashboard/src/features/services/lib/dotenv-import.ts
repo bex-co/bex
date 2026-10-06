@@ -1,4 +1,4 @@
-const VALID_ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,252}$/;
+import { VALID_ENV_KEY } from "@/features/services/lib/environment-draft";
 
 export const MAX_DOTENV_FILE_BYTES = 1024 * 1024;
 

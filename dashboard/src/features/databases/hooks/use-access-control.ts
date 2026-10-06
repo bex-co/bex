@@ -15,7 +15,10 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 
 export interface PooledStrings {
   internal: string;
@@ -94,7 +97,9 @@ export function useAccessControl(id: string) {
         return res.data?.createDatabaseUser?.password ?? null;
       } catch (e) {
         toast.error(
-          t("databases.accessUserError", { error: (e as Error).message }),
+          hasGraphQLErrorCode(e, "POSTGRES_IDENTIFIER_RESERVED")
+            ? t("databases.fieldPhysicalNameReserved", { name })
+            : t("databases.accessUserError", { error: (e as Error).message }),
         );
         return null;
       }

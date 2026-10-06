@@ -340,15 +340,8 @@ func validateCASPatch(patch EnvironmentPatch) (string, error) {
 	}
 	write := patch.EnvVars[0]
 	key := strings.TrimSpace(write.Key)
-	if !core.ValidEnvKey(key) {
-		return "", core.NewBadRequestError(
-			"ENVIRONMENT_VARIABLE_INVALID",
-			"environment variable key is invalid",
-			nil,
-		)
-	}
-	if core.IsReservedEnvKey(key) {
-		return "", core.ReservedEnvKeyError(key)
+	if err := core.CheckEnvKey(key); err != nil {
+		return "", err
 	}
 	if strings.TrimSpace(write.FromKey) != "" || write.Delete || write.GenerateValue {
 		return "", core.NewBadRequestError(

@@ -39,6 +39,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/resourcename"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -235,7 +236,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if req.Name == "" {
 		return PostgresView{}, fmt.Errorf("%w: name (the new instance) is required", core.ErrBadRequest)
 	}
-	if err := validateDatabaseName(req.Name); err != nil {
+	if err := resourcename.CheckDatastore(req.Name); err != nil {
 		return PostgresView{}, err
 	}
 	if req.Name == src.Spec.Name {

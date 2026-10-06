@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 func TestNameAvailable_FreeNameNoSuggestion(t *testing.T) {
@@ -66,7 +66,7 @@ func TestNameAvailable_SuffixChainSkipsOccupied(t *testing.T) {
 }
 
 func TestNameAvailable_TruncatesAtMaxLength(t *testing.T) {
-	base := strings.Repeat("a", 30) // ValidAppName's cap
+	base := strings.Repeat("a", 30) // ValidResourceName's cap
 	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, tenantApp(base, "tea-a"))
 	ctx := ctxAs("identity-a")
 
@@ -80,8 +80,8 @@ func TestNameAvailable_TruncatesAtMaxLength(t *testing.T) {
 	if len(got.Suggestion) > 30 {
 		t.Errorf("suggestion %q is %d chars, want <=30", got.Suggestion, len(got.Suggestion))
 	}
-	if !store.ValidAppName(got.Suggestion) {
-		t.Errorf("suggestion %q does not pass ValidAppName", got.Suggestion)
+	if !appv1alpha1.ValidResourceName(got.Suggestion) {
+		t.Errorf("suggestion %q does not pass ValidResourceName", got.Suggestion)
 	}
 }
 

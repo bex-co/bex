@@ -1,9 +1,26 @@
 import { describe, it, expect } from "vitest";
 import { isValidDnsLabel } from "../dns-label";
+import { readRepoVectors, repeated } from "@/test/repo-vectors";
 
-// w4/m19: aligned with the backend's own rule (store.ValidAppName /
-// lego/backend/internal/store/api.go's nameRE) — digit-start allowed, 30-char
-// cap, not the old letter-start/63-char rule.
+// The one table of resource names: appv1alpha1.ValidResourceName is its
+// source of truth (lego/types/v1alpha1/resourcename_test.go), w5/m118.
+const VECTORS = readRepoVectors<{
+  name: string;
+  repeat?: number;
+  valid: boolean;
+}>("lego/types/v1alpha1/testdata/resource-names.json");
+
+describe("the shared resource-name vectors", () => {
+  it.each(VECTORS.map((v) => [repeated(v.name, v.repeat), v.valid] as const))(
+    "isValidDnsLabel(%j) is %s, the same as bex-api",
+    (name, valid) => {
+      expect(isValidDnsLabel(name)).toBe(valid);
+    },
+  );
+});
+
+// w4/m19: aligned with the backend's own rule (appv1alpha1.ValidResourceName)
+// — digit-start allowed, 30-char cap, not the old letter-start/63-char rule.
 describe("isValidDnsLabel", () => {
   it("accepts lowercase letters, digits, and interior hyphens", () => {
     expect(isValidDnsLabel("web")).toBe(true);

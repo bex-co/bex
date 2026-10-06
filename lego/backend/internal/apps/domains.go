@@ -222,18 +222,29 @@ func normalizeHostname(raw string) string {
 func canonicalHostname(raw string) (string, error) {
 	host := normalizeHostname(raw)
 	if strings.HasPrefix(host, "*.") || strings.Contains(host, "*") {
-		return "", fmt.Errorf("%w: wildcard hostnames are not allowed: %q", core.ErrBadRequest, raw)
+		return "", errInvalidHostname(raw, fmt.Sprintf("wildcard hostnames are not allowed: %q", raw))
 	}
 	if host == "" || len(validation.IsDNS1123Subdomain(host)) != 0 {
-		return "", fmt.Errorf("%w: invalid hostname %q", core.ErrBadRequest, raw)
+		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q", raw))
 	}
 	// A custom domain is a DNS name under a public suffix: an IP literal
 	// ("127.0.0.1" passes the DNS-1123 check) or a single label ("localhost")
 	// could never verify and only yields nonsense DNS instructions (w4/190).
 	if net.ParseIP(host) != nil || !strings.Contains(host, ".") {
-		return "", fmt.Errorf("%w: invalid hostname %q: use a fully qualified domain name", core.ErrBadRequest, raw)
+		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: use a fully qualified domain name", raw))
 	}
 	return host, nil
+}
+
+// errInvalidHostname refuses a custom domain that is not a hostname bex can
+// serve; errReservedHostname one the platform owns. Both are coded so a client
+// branches on the code, not the wording (w5/m118).
+func errInvalidHostname(host, msg string) error {
+	return core.NewBadRequestError("CUSTOM_DOMAIN_INVALID", msg, map[string]any{"hostname": host})
+}
+
+func errReservedHostname(host string) error {
+	return core.NewBadRequestError("CUSTOM_DOMAIN_RESERVED", fmt.Sprintf("%q is a reserved platform hostname", host), map[string]any{"hostname": host})
 }
 
 // wwwSibling returns the www<->apex pairing partner Render auto-adds when a
@@ -843,10 +854,11 @@ func errNoPublicIngress(serviceType string) error {
 }
 
 // errDomainInUse is the cross-App collision rejection — Render's "this domain
-// already exists on another site" (core.ErrConflict => 409). Built in one place
-// so the service-level guard and the store-race backstop word it identically.
+// already exists on another site" (core.ErrConflict => 409), coded
+// CUSTOM_DOMAIN_IN_USE. Built in one place so the service-level guard and the
+// store-race backstop word it identically.
 func errDomainInUse() error {
-	return fmt.Errorf("%w: this domain already exists on another site", core.ErrConflict)
+	return core.NewConflictError("CUSTOM_DOMAIN_IN_USE", "this domain already exists on another site", nil)
 }
 
 // workspaceDomainCounter is the store seam behind the per-workspace
@@ -1094,7 +1106,7 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 			continue
 		}
 		if s.reservedHost(ownHost, h) {
-			return fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, h)
+			return errReservedHostname(h)
 		}
 		if !fetched {
 			var err error
@@ -1207,7 +1219,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 				return DomainView{}, false, err
 			}
 			if s.reservedHost(s.ownPlatformHost(app), hostname) {
-				return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
+				return DomainView{}, false, errReservedHostname(hostname)
 			}
 			if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
 				return DomainView{}, false, err
@@ -1248,7 +1260,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 			return DomainView{}, false, err
 		}
 		if s.reservedHost(s.ownPlatformHost(app), hostname) {
-			return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
+			return DomainView{}, false, errReservedHostname(hostname)
 		}
 		if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
 			return DomainView{}, false, err

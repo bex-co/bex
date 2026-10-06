@@ -35,6 +35,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/resourcename"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -2144,8 +2145,8 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q has an env var without a key", core.ErrBadRequest, name)
 		}
 		if !core.ValidEnvKey(e.Key) {
-			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit, at most %d characters)",
-				core.ErrBadRequest, name, e.Key, core.MaxConfigKeyLength)
+			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: invalid environment variable name (%s)",
+				core.ErrBadRequest, name, e.Key, core.EnvKeyRule)
 		}
 		if core.IsReservedEnvKey(e.Key) {
 			return parsedEnvGroup{}, fmt.Errorf("%w: env group %q envVars[%q]: %s",
@@ -2390,8 +2391,8 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		// parse error does — the validation surface renders the error string,
 		// not a code (w2/m95 t003).
 		if !core.ValidEnvKey(e.Key) {
-			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (letters, digits and underscores, not starting with a digit, at most %d characters)",
-				core.ErrBadRequest, a.Name, e.Key, core.MaxConfigKeyLength)
+			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: invalid environment variable name (%s)",
+				core.ErrBadRequest, a.Name, e.Key, core.EnvKeyRule)
 		}
 		if core.IsReservedEnvKey(e.Key) {
 			return nil, serviceEnv{}, fmt.Errorf("%w: %s envVars[%q]: %s",
@@ -2458,11 +2459,8 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if d.Name == "" {
 		return parsedDatabase{}, fmt.Errorf("%w: a database entry is missing its name", core.ErrBadRequest)
 	}
-	if !appv1alpha1.ValidDatabaseName(d.Name) {
-		return parsedDatabase{}, fmt.Errorf("%w: database %q name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest, d.Name)
-	}
-	if id.LooksLikeResourceID(d.Name) {
-		return parsedDatabase{}, core.NameResourceIDReservedError(d.Name)
+	if err := resourcename.CheckDatastore(d.Name); err != nil {
+		return parsedDatabase{}, fmt.Errorf("database %q: %w", d.Name, err)
 	}
 	if d.EnvironmentID != "" {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the database under projects[].environments[].databases instead", core.ErrBadRequest, d.Name)
@@ -2479,17 +2477,15 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 			return parsedDatabase{}, fmt.Errorf("%w: database %q field %q is unsupported because bex has no preview environments or per-resource region placement", core.ErrBadRequest, d.Name, unsupported.name)
 		}
 	}
-	if d.DatabaseName != "" && !appv1alpha1.ValidPostgresIdentifier(d.DatabaseName) {
-		return parsedDatabase{}, fmt.Errorf("%w: database %q databaseName must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", core.ErrBadRequest, d.Name)
+	if d.DatabaseName != "" {
+		if err := postgres.ValidateDatabaseIdentifier("databaseName", d.DatabaseName); err != nil {
+			return parsedDatabase{}, fmt.Errorf("database %q: %w", d.Name, err)
+		}
 	}
-	if d.User != "" && !appv1alpha1.ValidPostgresIdentifier(d.User) {
-		return parsedDatabase{}, fmt.Errorf("%w: database %q user must start with a lowercase letter or underscore, contain only lowercase letters, digits, and underscores, and be at most 63 bytes", core.ErrBadRequest, d.Name)
-	}
-	if appv1alpha1.ReservedPostgresDatabaseName(d.DatabaseName) {
-		return parsedDatabase{}, fmt.Errorf("%w: database %q databaseName %q is reserved by PostgreSQL", core.ErrBadRequest, d.Name, d.DatabaseName)
-	}
-	if appv1alpha1.ReservedPostgresRole(d.User) {
-		return parsedDatabase{}, fmt.Errorf("%w: database %q user %q is reserved by PostgreSQL", core.ErrBadRequest, d.Name, d.User)
+	if d.User != "" {
+		if err := postgres.ValidateRoleIdentifier("user", d.User); err != nil {
+			return parsedDatabase{}, fmt.Errorf("database %q: %w", d.Name, err)
+		}
 	}
 	plan := d.Plan
 	// Render's current Blueprint default is a paid basic-256mb instance. This
@@ -2542,8 +2538,10 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	if k.Name == "" {
 		return parsedKeyValue{}, fmt.Errorf("%w: a key-value service entry is missing its name", core.ErrBadRequest)
 	}
-	if id.LooksLikeResourceID(k.Name) {
-		return parsedKeyValue{}, core.NameResourceIDReservedError(k.Name)
+	// Checked here, as parseDatabase does, so a bad name is a validation
+	// error rather than the apiserver's refusal at apply: a 500 (w5/m118).
+	if err := resourcename.CheckDatastore(k.Name); err != nil {
+		return parsedKeyValue{}, fmt.Errorf("key-value %q: %w", k.Name, err)
 	}
 	if k.EnvironmentID != "" {
 		return parsedKeyValue{}, fmt.Errorf("%w: key-value %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest it under projects[].environments[].services instead", core.ErrBadRequest, k.Name)

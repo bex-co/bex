@@ -65,6 +65,19 @@ func TestSanitizeGraphQLErrors(t *testing.T) {
 	}
 }
 
+// A CodedError a resolver wrapped keeps its code on GraphQL as it does on REST
+// and MCP (w5/m118): graphql-go reads extensions off the returned error only.
+func TestSanitizeGraphQLErrorsKeepsAWrappedCode(t *testing.T) {
+	coded := core.NewConflictError("CUSTOM_DOMAIN_IN_USE", "this domain already exists on another site", nil)
+	wrapped := fmt.Errorf("%w: %q", coded, "shop.example.com")
+	out := sanitizeGraphQLErrors([]gqlerrors.FormattedError{
+		gqlerrors.FormatError(gqlerrors.NewError(wrapped.Error(), nil, "", nil, nil, wrapped)),
+	})
+	if out[0].Extensions["code"] != "CUSTOM_DOMAIN_IN_USE" || out[0].Message != wrapped.Error() {
+		t.Fatalf("wrapped coded error = %q %v, want its message and code", out[0].Message, out[0].Extensions)
+	}
+}
+
 // TestGraphQLExecutionBudgetFitsInsideTheWriteDeadline pins w4/m140's fix: with
 // the two equal, a resolver that ran to the deadline lost its connection before
 // the error could be written, and the edge answered with a CORS-less 502.

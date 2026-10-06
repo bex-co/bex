@@ -150,7 +150,8 @@ describe("useCreateDatabase", () => {
         data: null,
         errors: [
           {
-            message: 'a Postgres database named "db" already exists in this workspace',
+            message:
+              'a Postgres database named "db" already exists in this workspace',
             extensions: { code: "CONFLICT" },
           },
         ],
@@ -165,6 +166,35 @@ describe("useCreateDatabase", () => {
 
     expect(toastError).toHaveBeenCalledWith(
       'A Postgres database named "db" already exists in this workspace',
+    );
+  });
+
+  // w5/m118: a name PostgreSQL owns is refused by code, and the toast words
+  // it locally with the value of the field the server named.
+  it.each([
+    ["databaseUser", "orders_owner"],
+    ["databaseName", "orders_data"],
+  ])("words a reserved %s refusal from its code", async (field, name) => {
+    const mutate = vi.fn().mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: `${field} "${name}" is reserved by PostgreSQL; choose another name`,
+            extensions: { code: "POSTGRES_IDENTIFIER_RESERVED", field },
+          },
+        ],
+      }),
+    );
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateDatabase());
+    await act(async () => {
+      await result.current.create(input);
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      `“${name}” is reserved by PostgreSQL. Choose another name.`,
     );
   });
 

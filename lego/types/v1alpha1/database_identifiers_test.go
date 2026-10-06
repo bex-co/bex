@@ -17,48 +17,55 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
 
-func TestValidPostgresIdentifier(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct {
-		name string
-		want bool
-	}{
-		{name: "orders", want: true},
-		{name: "orders_2026", want: true},
-		{name: "_internal", want: true},
-		{name: "1orders", want: false},
-		{name: "orders-api", want: false},
-		{name: "Orders", want: false},
-		{name: "", want: false},
-		{name: strings.Repeat("a", 63), want: true},
-		{name: strings.Repeat("a", 64), want: false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			if got := ValidPostgresIdentifier(tc.name); got != tc.want {
-				t.Fatalf("ValidPostgresIdentifier(%q) = %v, want %v", tc.name, got, tc.want)
-			}
-		})
-	}
-}
+// postgresIdentifierVectorsPath is the one table of Postgres identifiers: the
+// operator's TestManagedRolesNeverProjectReservedRoles and the dashboard's
+// identifiers test read the same file, and these predicates are its source of
+// truth (w5/m118).
+const postgresIdentifierVectorsPath = "testdata/postgres-identifiers.json"
 
-// TestReservedPostgresRole pins the roles bex never projects into CNPG: CNPG's
-// own reserved names (its webhook refuses the whole Cluster update for them)
-// and the names PostgreSQL 17 refuses to create ("role name ... is reserved").
-func TestReservedPostgresRole(t *testing.T) {
+func TestPostgresIdentifierVectors(t *testing.T) {
 	t.Parallel()
-	for name, want := range map[string]bool{
-		"postgres": true, "streaming_replica": true, "cnpg_pooler_pgbouncer": true, "cnpg_reader": true,
-		"public": true, "none": true, "pg_monitor": true, "pg_reader": true,
-		"app_user": false, "orders_owner": false, "cnpg": false, "pg": false, "publicist": false, "nonexistent": false,
-	} {
-		if got := ReservedPostgresRole(name); got != want {
-			t.Errorf("ReservedPostgresRole(%q) = %v, want %v", name, got, want)
+	raw, err := os.ReadFile(postgresIdentifierVectorsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []struct {
+		Name             string `json:"name"`
+		Repeat           int    `json:"repeat"`
+		Valid            bool   `json:"valid"`
+		ReservedRole     bool   `json:"reservedRole"`
+		ReservedDatabase bool   `json:"reservedDatabase"`
+	}
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		t.Fatal(err)
+	}
+	reserved := 0
+	for _, row := range rows {
+		name := row.Name
+		if row.Repeat > 0 {
+			name = strings.Repeat(name, row.Repeat)
 		}
+		if got := ValidPostgresIdentifier(name); got != row.Valid {
+			t.Errorf("ValidPostgresIdentifier(%.20q) = %v, the table says %v", name, got, row.Valid)
+		}
+		if got := ReservedPostgresRole(name); got != row.ReservedRole {
+			t.Errorf("ReservedPostgresRole(%q) = %v, the table says %v", name, got, row.ReservedRole)
+		}
+		if got := ReservedPostgresDatabaseName(name); got != row.ReservedDatabase {
+			t.Errorf("ReservedPostgresDatabaseName(%q) = %v, the table says %v", name, got, row.ReservedDatabase)
+		}
+		if row.ReservedRole || row.ReservedDatabase {
+			reserved++
+		}
+	}
+	if reserved < 10 || len(rows) < 20 {
+		t.Fatalf("vector table too small: %d rows, %d reserved", len(rows), reserved)
 	}
 }
 

@@ -104,14 +104,14 @@ func TestPodNameRegexMatchesTruncatedNames(t *testing.T) {
 }
 
 // TestPodNameRegexCoversEveryGeneratedName walks the generator itself rather
-// than a sample: for every service-name length ValidAppName allows and every
+// than a sample: for every service-name length ValidResourceName allows and every
 // pod-template-hash length Kubernetes produces, it reproduces
 // SimpleNameGenerator exactly and asserts the selector matches what came out.
 // This is the check that would have caught Defect B at the 22-character
 // threshold, where the two-segment-only selector started returning nothing.
 func TestPodNameRegexCoversEveryGeneratedName(t *testing.T) {
 	const tenant = "tea-d98210cbbpdc73dcrkvg" // 24 chars, the real id shape
-	for svcLen := 1; svcLen <= 30; svcLen++ { // ValidAppName caps at 30
+	for svcLen := 1; svcLen <= 30; svcLen++ { // ValidResourceName caps at 30
 		service := ""
 		for len(service) < svcLen {
 			service += "a"

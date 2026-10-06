@@ -21,7 +21,6 @@ import (
 	"encoding/hex"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // AnnotationPreserveKeyValueBackups makes a KeyValue deletion retain its S3
@@ -29,14 +28,6 @@ import (
 // the retiring and replacement CRs share that prefix. Normal tenant deletes
 // must omit this annotation and continue to purge retained backups.
 const AnnotationPreserveKeyValueBackups = "app.bex.co/preserve-backups-on-delete"
-
-// ValidKeyValueName reports whether name is a valid user-facing managed
-// key-value name. Keeping this next to KeyValueSpec.Name makes the CRD contract
-// and every API/Blueprint writer share one validation rule — the same shape
-// ValidDatabaseName enforces for managed Postgres (w9/m6, mirroring w9/m3).
-func ValidKeyValueName(name string) bool {
-	return len(name) <= 30 && len(validation.IsDNS1123Label(name)) == 0
-}
 
 // KeyValueSpec is the desired state of a managed Valkey (Redis-compatible)
 // key-value store — the Render-style "add a Key Value" unit. The operator

@@ -77,12 +77,14 @@ func TestSetCronJobRejectsEmptySchedule(t *testing.T) {
 func TestSetCronJobRejectsInvalidSchedule(t *testing.T) {
 	svc, _ := newService(nil, cronApp("nightly"))
 
-	for bad, valid := range loadCronScheduleVectors(t) {
-		if valid || strings.TrimSpace(bad) == "" {
+	for bad, code := range loadCronScheduleVectors(t) {
+		if code == "" || strings.TrimSpace(bad) == "" {
 			continue // "" is the empty-schedule case, tested above
 		}
-		if _, err := svc.SetCronJob(context.Background(), "nightly", sp(bad), sp("")); !errors.Is(err, core.ErrBadRequest) {
-			t.Errorf("schedule %q => ErrBadRequest, got %v", bad, err)
+		_, err := svc.SetCronJob(context.Background(), "nightly", sp(bad), sp(""))
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != code || !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("schedule %q => %v, want a 400 coded %s", bad, err, code)
 		}
 	}
 }

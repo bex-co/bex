@@ -18,6 +18,9 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -378,28 +381,51 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 // add-user of "postgres", then its delete) heals on the next reconcile.
 func TestManagedRolesNeverProjectReservedRoles(t *testing.T) {
 	plan, gb := resolvePlan(appv1alpha1.DatabaseSpec{Plan: "free"})
-	extra := appv1alpha1.DatabaseUser{Name: "qa_extra", SecretName: "s4"}
-	users := []appv1alpha1.DatabaseUser{{Name: "postgres", SecretName: "s1"}, {Name: "pg_monitor_x", SecretName: "s2"}, {Name: "cnpg_reader", SecretName: "s3"}, extra}
+	// Every well-formed role in the shared table is declared as a user and
+	// tombstoned once: the reserved ones must never be projected either way.
+	var users []appv1alpha1.DatabaseUser
+	var deleted []string
+	reserved := map[string]bool{}
+	for i, row := range postgresIdentifierVectors(t) {
+		if !row.Valid || row.Repeat > 0 {
+			continue
+		}
+		users = append(users, appv1alpha1.DatabaseUser{Name: row.Name, SecretName: fmt.Sprintf("s%d", i)})
+		deleted = append(deleted, "gone_"+row.Name) // an ordinary role whatever row.Name is
+		if row.ReservedRole {
+			reserved[row.Name] = true
+			deleted = append(deleted, row.Name)
+		}
+	}
+	if len(reserved) < 5 || len(users)-len(reserved) < 5 {
+		t.Fatalf("the shared table has %d reserved and %d ordinary roles; too few to mean anything", len(reserved), len(users)-len(reserved))
+	}
 	spec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user",
-		users: users, deletedUsers: []string{"postgres", "streaming_replica", "gone"}})
+		users: users, deletedUsers: deleted})
 	roles := managedRoleIndex(t, spec)
-	for _, reserved := range []string{"postgres", "pg_monitor_x", "streaming_replica", "cnpg_reader"} {
-		if r, ok := roles[reserved]; ok {
-			t.Errorf("reserved role %q projected: %v", reserved, r)
+	for _, u := range users {
+		switch r, ok := roles[u.Name]; {
+		case reserved[u.Name] && ok:
+			t.Errorf("reserved role %q projected: %v", u.Name, r)
+		case !reserved[u.Name] && r["ensure"] != "present":
+			t.Errorf("role %q = %v, want ensure:present", u.Name, r)
 		}
 	}
-	for name, ensure := range map[string]string{"d_user": "present", "qa_extra": "present", "gone": "absent"} {
-		if roles[name]["ensure"] != ensure {
-			t.Errorf("role %q = %v, want ensure:%s", name, roles[name], ensure)
+	for _, name := range deleted {
+		if strings.HasPrefix(name, "gone_") && roles[name]["ensure"] != "absent" {
+			t.Errorf("tombstoned role %q = %v, want ensure:absent", name, roles[name])
 		}
 	}
+	extra := appv1alpha1.DatabaseUser{Name: "qa_extra", SecretName: "s4"}
 	// Nothing left to manage but reserved names: no managed block at all.
 	only := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "postgres", deletedUsers: []string{"postgres"}})
 	if m, ok := only["managed"]; ok {
 		t.Errorf("only reserved roles => managed block %v, want none", m)
 	}
 
-	db := &appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Users: users, DeletedUsers: []string{"postgres"}}}
+	db := &appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Users: []appv1alpha1.DatabaseUser{
+		{Name: "postgres", SecretName: "s1"}, {Name: "pg_monitor_x", SecretName: "s2"}, {Name: "cnpg_reader", SecretName: "s3"}, extra,
+	}, DeletedUsers: []string{"postgres"}}}
 	noteReservedRoles(db, "d_user")
 	c := apimeta.FindStatusCondition(db.Status.Conditions, conditionReservedRolesIgnored)
 	if c == nil || c.Message != "not managed, reserved by PostgreSQL: cnpg_reader, pg_monitor_x, postgres" {
@@ -410,6 +436,29 @@ func TestManagedRolesNeverProjectReservedRoles(t *testing.T) {
 	if apimeta.FindStatusCondition(db.Status.Conditions, conditionReservedRolesIgnored) != nil {
 		t.Fatal("the condition must clear once no reserved role remains")
 	}
+}
+
+// postgresIdentifierRow is one row of the shared table of Postgres
+// identifiers (lego/types/v1alpha1/testdata/postgres-identifiers.json), which
+// the types test and the dashboard read too (w5/m118).
+type postgresIdentifierRow struct {
+	Name         string `json:"name"`
+	Repeat       int    `json:"repeat"`
+	Valid        bool   `json:"valid"`
+	ReservedRole bool   `json:"reservedRole"`
+}
+
+func postgresIdentifierVectors(t *testing.T) []postgresIdentifierRow {
+	t.Helper()
+	raw, err := os.ReadFile("../../../types/v1alpha1/testdata/postgres-identifiers.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []postgresIdentifierRow
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		t.Fatal(err)
+	}
+	return rows
 }
 
 // managedRoleIndex keys a projected spec's managed roles by name so assertions

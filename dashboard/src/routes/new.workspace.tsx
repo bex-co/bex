@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { WorkspaceCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -18,10 +19,7 @@ import { useWorkspaceCreationBilling } from "@/features/workspaces/hooks/use-wor
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { PlanPicker } from "@/features/workspaces/components/plan-picker";
 import { CreateWorkspacePaymentPanel } from "@/features/workspaces/components/create-workspace-payment-panel";
-import {
-  WORKSPACE_NAME_RE,
-  type WorkspacePlanId,
-} from "@/features/workspaces/types";
+import { type WorkspacePlanId } from "@/features/workspaces/types";
 
 export const Route = createFileRoute("/new/workspace")({
   staticData: { chrome: true },
@@ -69,7 +67,7 @@ export function NewWorkspacePage() {
     setPaymentError(null);
   }, [creation.attempt]);
 
-  const nameValid = WORKSPACE_NAME_RE.test(name);
+  const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
   const emailValid = isValidEmail(billingEmail);
   const showEmailError = billingEmail.length > 0 && !emailValid;

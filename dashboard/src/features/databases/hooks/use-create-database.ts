@@ -5,6 +5,7 @@ import { CreateDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
+  graphQLErrorExtensions,
   graphQLErrorMessage,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
@@ -87,8 +88,20 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return null;
         const msg = graphQLErrorMessage(err) ?? "";
+        // A name PostgreSQL owns is refused by code, whichever field held it
+        // (w5/m118), and worded in the user's language.
+        const reserved = graphQLErrorExtensions(
+          err,
+          "POSTGRES_IDENTIFIER_RESERVED",
+        );
         if (msg.toLowerCase().includes("workspace is limited")) {
           setCapLimit(msg);
+        } else if (reserved) {
+          const name =
+            reserved["field"] === "databaseName"
+              ? input.databaseName
+              : input.databaseUser;
+          toast.error(t("databases.fieldPhysicalNameReserved", { name }));
         } else {
           toast.error(
             mutationErrorMessage(

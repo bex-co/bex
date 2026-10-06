@@ -54,10 +54,19 @@ func TestReservedPostgresIdentifiersAreRefused(t *testing.T) {
 		t.Fatalf("control create = %v", err)
 	}
 
+	// Every add-user refusal is coded and names the field (w5/m118); an
+	// invalid name used to answer an uncoded 400.
 	seedDatabaseSpec(t, cl, "res-db", appv1alpha1.DatabaseSpec{Plan: "free"}, false)
-	for _, role := range []string{"postgres", "streaming_replica", "pg_signal_backend", "cnpg_reader"} {
-		if _, err := svc.CreateUser(context.Background(), "res-db", role); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "reserved") {
-			t.Errorf("CreateUser(%q) = %v, want a reserved-name 400", role, err)
+	for role, code := range map[string]string{
+		"postgres": "POSTGRES_IDENTIFIER_RESERVED", "streaming_replica": "POSTGRES_IDENTIFIER_RESERVED",
+		"pg_signal_backend": "POSTGRES_IDENTIFIER_RESERVED", "cnpg_reader": "POSTGRES_IDENTIFIER_RESERVED",
+		"Bad-Name": "POSTGRES_IDENTIFIER_INVALID", "": "POSTGRES_IDENTIFIER_INVALID",
+		strings.Repeat("a", 64): "POSTGRES_IDENTIFIER_INVALID",
+	} {
+		_, err := svc.CreateUser(context.Background(), "res-db", role)
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != code || coded.Params["field"] != "name" || !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("CreateUser(%.20q) = %v, want a 400 coded %s for field name", role, err, code)
 		}
 	}
 	if _, err := svc.CreateUser(context.Background(), "res-db", "qa_extra"); err != nil {

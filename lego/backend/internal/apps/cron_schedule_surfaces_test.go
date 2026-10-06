@@ -116,8 +116,8 @@ func TestCronScheduleContractAcrossSurfaces(t *testing.T) {
 		for _, surface := range surfaces {
 			t.Run(schedule+"/"+surface.name, func(t *testing.T) {
 				accepted, detail := surface.run(t, schedule)
-				if accepted != want {
-					t.Fatalf("accepted = %v, table says %v (%s)", accepted, want, detail)
+				if accepted != (want == "") {
+					t.Fatalf("accepted = %v, table says code %q (%s)", accepted, want, detail)
 				}
 				if !accepted && !strings.Contains(detail, refusal) {
 					t.Errorf("refusal must say %q, got %s", refusal, detail)

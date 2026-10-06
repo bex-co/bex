@@ -33,7 +33,7 @@ Redeploy needs the operator to roll a fresh revision. [ADR007-restart-suspend-an
 
 ### 4. Create writes the App CR directly (the hand-applied path)
 
-The public create surface has no tenant context, so it writes the `App` CR **directly** (like `scripts/app-apply.sh`), not through a control-plane `apps` row. The row-backed, multi-tenant create — which needs a `tenantId` and mints a `<tenant>-<app>` CR name — stays the internal control-plane API's job ([ADR003-control-plane.md](ADR003-control-plane.md), `store` `POST /v1/apps`). The two coexist safely: the projector lists and deletes **only** CRs carrying its `app.kubernetes.io/managed-by: bex-controlplane` label, so it never touches a directly-created CR. Validation (DNS-label name, one-of repo/image, known plan, port/replica bounds) is shared with that internal path through `store.ValidAppName` + `store.MaxReplicas`, so both agree on what a valid App is.
+The public create surface has no tenant context, so it writes the `App` CR **directly** (like `scripts/app-apply.sh`), not through a control-plane `apps` row. The row-backed, multi-tenant create — which needs a `tenantId` and mints a `<tenant>-<app>` CR name — stays the internal control-plane API's job ([ADR003-control-plane.md](ADR003-control-plane.md), `store` `POST /v1/apps`). The two coexist safely: the projector lists and deletes **only** CRs carrying its `app.kubernetes.io/managed-by: bex-controlplane` label, so it never touches a directly-created CR. Validation (DNS-label name, one-of repo/image, known plan, port/replica bounds) is shared with that internal path through `appv1alpha1.ValidResourceName` + `store.MaxReplicas`, so both agree on what a valid App is.
 
 ### 5. The git webhook authenticates by HMAC, outside the OAuth gate
 

@@ -93,8 +93,8 @@ func ApplyEnvVarPatch(env map[string]string, writes []EnvVarPatch) error {
 			},
 		}
 	}
-	return applyMapPatch(env, ops, ValidEnvKey, IsReservedEnvKey, mapPatchWording{
-		noun:            "environment variable",
+	return applyMapPatch(env, ops, mapPatchWording{
+		key:             envVarKey,
 		renameConflicts: "delete, value, or generateValue",
 		deleteConflicts: "a value or generateValue",
 	})
@@ -115,10 +115,8 @@ func ApplySecretFilePatch(files map[string]string, writes []SecretFilePatch) err
 			},
 		}
 	}
-	// Secret files have no reserved names — a file called PORT is not an
-	// environment variable and the operator never injects one.
-	return applyMapPatch(files, ops, ValidSecretFileName, nil, mapPatchWording{
-		noun:            "secret file",
+	return applyMapPatch(files, ops, mapPatchWording{
+		key:             secretFileKey,
 		renameConflicts: "delete or content",
 		deleteConflicts: "content",
 	})
@@ -133,28 +131,28 @@ type mapPatchOp struct {
 }
 
 type mapPatchWording struct {
-	noun            string
+	key             configKeyKind
 	renameConflicts string
 	deleteConflicts string
 }
 
-func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp, key, fromKey string, valid func(string) bool, wording mapPatchWording) error {
+func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp, key, fromKey string, wording mapPatchWording) error {
 	// Renaming a stored key away is how an inadmissible name gets fixed.
-	if _, stored := m[fromKey]; !valid(fromKey) && !stored {
-		return fmt.Errorf("%w: invalid source %s name %q", ErrBadRequest, wording.noun, fromKey)
+	if _, stored := m[fromKey]; wording.key.problem(fromKey) != "" && !stored {
+		return wording.key.refuse(fromKey)
 	}
 	if op.remove || op.hasPayload {
-		return fmt.Errorf("%w: %s rename %q cannot combine with %s", ErrBadRequest, wording.noun, key, wording.renameConflicts)
+		return fmt.Errorf("%w: %s rename %q cannot combine with %s", ErrBadRequest, wording.key.noun, key, wording.renameConflicts)
 	}
 	if _, duplicate := seen[fromKey]; duplicate && fromKey != key {
-		return fmt.Errorf("%w: conflicting %s operation for %q", ErrBadRequest, wording.noun, fromKey)
+		return fmt.Errorf("%w: conflicting %s operation for %q", ErrBadRequest, wording.key.noun, fromKey)
 	}
 	value, ok := m[fromKey]
 	if !ok {
-		return fmt.Errorf("%w: source %s %q", ErrNotFound, wording.noun, fromKey)
+		return fmt.Errorf("%w: source %s %q", ErrNotFound, wording.key.noun, fromKey)
 	}
 	if _, occupied := m[key]; occupied && key != fromKey {
-		return fmt.Errorf("%w: %s rename destination %q already exists", ErrBadRequest, wording.noun, key)
+		return fmt.Errorf("%w: %s rename destination %q already exists", ErrBadRequest, wording.key.noun, key)
 	}
 	seen[fromKey] = struct{}{}
 	delete(m, fromKey)
@@ -162,35 +160,36 @@ func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp,
 	return nil
 }
 
-// reserved reports names the platform owns; it may be nil when the map has
-// none. Only a write is refused — a delete or a rename *away from* a reserved
-// name stays legal so an already-stored one can be removed.
-func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) bool, reserved func(string) bool, wording mapPatchWording) error {
+// applyMapPatch applies ops to m. A name the platform owns
+// (wording.key.reserved) is refused only on a write: a delete or a rename
+// *away from* one stays legal so an already-stored one can be removed.
+func applyMapPatch(m map[string]string, ops []mapPatchOp, wording mapPatchWording) error {
 	seen := make(map[string]struct{}, len(ops))
 	for _, op := range ops {
 		key := strings.TrimSpace(op.key)
 		// A key already stored can always be deleted, even one a later rule
-		// (the 253-character cap) no longer admits — refusing would strand it.
-		if _, stored := m[key]; !valid(key) && !(op.remove && stored) {
-			return invalidConfigKey(wording.noun, key)
+		// (the 253-character cap, the ".." prefix) no longer admits —
+		// refusing would strand it.
+		if _, stored := m[key]; wording.key.problem(key) != "" && !(op.remove && stored) {
+			return wording.key.refuse(key)
 		}
-		if reserved != nil && reserved(key) && !op.remove {
+		if wording.key.reserved != nil && wording.key.reserved(key) && !op.remove {
 			return ReservedEnvKeyError(key)
 		}
 		fromKey := strings.TrimSpace(op.fromKey)
 		if _, duplicate := seen[key]; duplicate {
-			return fmt.Errorf("%w: duplicate %s operation for %q", ErrBadRequest, wording.noun, key)
+			return fmt.Errorf("%w: duplicate %s operation for %q", ErrBadRequest, wording.key.noun, key)
 		}
 		seen[key] = struct{}{}
 		if fromKey != "" {
-			if err := applyRenameOp(m, seen, op, key, fromKey, valid, wording); err != nil {
+			if err := applyRenameOp(m, seen, op, key, fromKey, wording); err != nil {
 				return err
 			}
 			continue
 		}
 		if op.remove {
 			if op.hasPayload {
-				return fmt.Errorf("%w: %s %q cannot combine delete with %s", ErrBadRequest, wording.noun, key, wording.deleteConflicts)
+				return fmt.Errorf("%w: %s %q cannot combine delete with %s", ErrBadRequest, wording.key.noun, key, wording.deleteConflicts)
 			}
 			delete(m, key)
 			continue

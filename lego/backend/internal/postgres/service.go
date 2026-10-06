@@ -40,6 +40,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/resourcename"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -298,16 +299,6 @@ type CreatePostgresRequest struct {
 	DryRun bool `json:"dryRun,omitempty"`
 }
 
-func validateDatabaseName(name string) error {
-	if !appv1alpha1.ValidDatabaseName(name) {
-		return fmt.Errorf("%w: name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest)
-	}
-	if id.LooksLikeResourceID(name) {
-		return core.NameResourceIDReservedError(name)
-	}
-	return nil
-}
-
 // reservedIdentifierError refuses a name PostgreSQL owns (w4/m170), naming the
 // field so every surface can point at it.
 func reservedIdentifierError(field, name string) error {
@@ -318,12 +309,23 @@ func reservedIdentifierError(field, name string) error {
 	)
 }
 
-func validatePhysicalIdentifier(field, name string) error {
-	if name == "" {
-		return nil
-	}
-	if (field == "databaseName" && appv1alpha1.ReservedPostgresDatabaseName(name)) ||
-		(field == "databaseUser" && appv1alpha1.ReservedPostgresRole(name)) {
+// ValidateDatabaseIdentifier and ValidateRoleIdentifier refuse a physical
+// database or role identifier bex cannot create, coded on every surface: one
+// PostgreSQL owns (POSTGRES_IDENTIFIER_RESERVED) or one outside the unquoted
+// identifier contract (POSTGRES_IDENTIFIER_INVALID). field names the input as
+// the caller sent it. The API's create and add-user and Blueprint parsing
+// share them (w5/m118).
+func ValidateDatabaseIdentifier(field, name string) error {
+	return validatePhysicalIdentifier(field, name, appv1alpha1.ReservedPostgresDatabaseName)
+}
+
+// ValidateRoleIdentifier is ValidateDatabaseIdentifier for a role.
+func ValidateRoleIdentifier(field, name string) error {
+	return validatePhysicalIdentifier(field, name, appv1alpha1.ReservedPostgresRole)
+}
+
+func validatePhysicalIdentifier(field, name string, reserved func(string) bool) error {
+	if reserved(name) {
 		return reservedIdentifierError(field, name)
 	}
 	if !appv1alpha1.ValidPostgresIdentifier(name) {
@@ -396,10 +398,16 @@ func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
 	if req.DatadogAPIKey != nil || req.DatadogSite != nil {
 		return unsupportedDatadogError()
 	}
-	if err := validatePhysicalIdentifier("databaseName", req.DatabaseName); err != nil {
-		return err
+	// Both are optional: omitted, the resource id's default applies.
+	if req.DatabaseName != "" {
+		if err := ValidateDatabaseIdentifier("databaseName", req.DatabaseName); err != nil {
+			return err
+		}
 	}
-	return validatePhysicalIdentifier("databaseUser", req.DatabaseUser)
+	if req.DatabaseUser != "" {
+		return ValidateRoleIdentifier("databaseUser", req.DatabaseUser)
+	}
+	return nil
 }
 
 // dbStatus maps bex's Database phase onto Render's databaseStatus enum. A
@@ -660,7 +668,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return PostgresView{}, err
 	}
-	if err := validateDatabaseName(req.Name); err != nil {
+	if err := resourcename.CheckDatastore(req.Name); err != nil {
 		return PostgresView{}, err
 	}
 	req.Plan = tiers.Postgres.CanonicalID(req.Plan)
@@ -1041,7 +1049,7 @@ func (patch PostgresPatch) validate() error {
 		return unsupportedDatadogError()
 	}
 	if patch.Name != nil {
-		if err := validateDatabaseName(*patch.Name); err != nil {
+		if err := resourcename.CheckDatastore(*patch.Name); err != nil {
 			return err
 		}
 	}

@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const CodeAccountDeletionPending = "ACCOUNT_DELETION_PENDING"
@@ -300,14 +302,19 @@ func NewBadRequestError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrBadRequest, msg: msg}
 }
 
-// NameResourceIDReservedError refuses a datastore name shaped like a resource
-// ID (`srv-…`, `dpg-…`): a selector could then mean "this ID" or "the thing
-// named this" (w8/049). Services refuse the same shape for display names
-// (DISPLAY_NAME_RESOURCE_ID_RESERVED, w8/034); callers test the shape with
+// ResourceNameRule is the one wording of what a service, Postgres or Key Value
+// may be named (appv1alpha1.ValidResourceName).
+var ResourceNameRule = fmt.Sprintf("must use lowercase letters, digits, and hyphens, be at most %d characters, and not start or end with a hyphen", appv1alpha1.MaxResourceNameLength)
+
+// NameResourceIDReservedError refuses a name shaped like a resource ID
+// (`srv-…`, `dpg-…`): a selector could then mean "this ID" or "the thing named
+// this" (w8/049). Datastore names and service display names (w8/034) refuse
+// the shape with this one code; params.field says which (w5/m118 merged
+// DISPLAY_NAME_RESOURCE_ID_RESERVED into it). Callers test the shape with
 // id.LooksLikeResourceID.
-func NameResourceIDReservedError(name string) *CodedError {
+func NameResourceIDReservedError(field, name string) *CodedError {
 	return NewBadRequestError("NAME_RESOURCE_ID_RESERVED",
-		fmt.Sprintf("name %q must not look like a resource ID", name), nil)
+		fmt.Sprintf("%q must not look like a resource ID", name), map[string]any{"field": field})
 }
 
 // NewForbiddenError returns a machine-readable 403 for a caller class or

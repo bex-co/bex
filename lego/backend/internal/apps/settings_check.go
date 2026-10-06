@@ -227,7 +227,7 @@ func (s *Service) checkCronJob(ctx context.Context, a *appv1alpha1.App, name str
 	if schedule != nil {
 		trimmed := strings.TrimSpace(*schedule)
 		if trimmed == "" {
-			return fmt.Errorf("%w: schedule is required", core.ErrBadRequest)
+			return core.NewBadRequestError(cronScheduleInvalid, "schedule is required", map[string]any{"field": "schedule"})
 		}
 		if err := checkCronSchedule(trimmed); err != nil {
 			return err

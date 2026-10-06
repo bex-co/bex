@@ -28,7 +28,6 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -42,12 +41,18 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// nameRE constrains a workspace name to a DNS-1123 label capped at 30 chars.
-// Unlike Render's freeform workspace names, a bex workspace name becomes part
-// of every App CR name ("<workspace>-<app>", ≤63 chars), so it must be a DNS
-// label — the same rule the internal tenant API enforces (store/api.go). The
-// divergence from Render's freeform names is recorded as parity drift (w6/m1/t007).
-var nameRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$`)
+// validWorkspaceName holds a workspace name to the resource-name rule
+// (appv1alpha1.ValidResourceName). Unlike Render's freeform workspace names, a
+// bex workspace name becomes part of every App CR name ("<workspace>-<app>",
+// ≤63 chars), so it must be a DNS label — the same rule the internal tenant API
+// enforces (store/api.go). The divergence from Render's freeform names is
+// recorded as parity drift (w6/m1/t007).
+func validWorkspaceName(name string) error {
+	if !appv1alpha1.ValidResourceName(name) {
+		return fmt.Errorf("%w: name %s", core.ErrBadRequest, core.ResourceNameRule)
+	}
+	return nil
+}
 
 // Service holds the workspace lifecycle logic once. It embeds *core.Base for the
 // authorization gate + caller Identity, and writes through the Postgres source
@@ -338,8 +343,8 @@ func (s *Service) authorizeWorkspaceCreation(ctx context.Context) (core.Identity
 }
 
 func (s *Service) validateWorkspaceCreation(ctx context.Context, id core.Identity, name, plan, billingEmail string) (string, string, error) {
-	if !nameRE.MatchString(name) {
-		return "", "", fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
+	if err := validWorkspaceName(name); err != nil {
+		return "", "", err
 	}
 	normalizedPlan, err := normalizePlan(plan)
 	if err != nil {
@@ -881,8 +886,8 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 	if !ok || id.Subject == "" {
 		return WorkspaceView{}, core.ErrForbidden
 	}
-	if !nameRE.MatchString(name) {
-		return WorkspaceView{}, fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
+	if err := validWorkspaceName(name); err != nil {
+		return WorkspaceView{}, err
 	}
 	plan, err := normalizePlan(plan)
 	if err != nil {
@@ -933,8 +938,8 @@ func (s *Service) Rename(ctx context.Context, id, name string) (WorkspaceView, e
 	if s.Store == nil {
 		return WorkspaceView{}, core.ErrWorkspacesUnavailable
 	}
-	if !nameRE.MatchString(name) {
-		return WorkspaceView{}, fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
+	if err := validWorkspaceName(name); err != nil {
+		return WorkspaceView{}, err
 	}
 	t, err := s.Store.RenameTenant(ctx, id, name)
 	if err != nil {

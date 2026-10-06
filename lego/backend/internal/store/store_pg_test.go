@@ -1824,7 +1824,7 @@ func assertSlugMinting(ctx context.Context, t *testing.T, s *PGStore, app App) {
 		t.Errorf("collided slug = %q, want %q + 4 random chars", collided.Slug, wantPrefix)
 	}
 
-	// Max-length name (30 chars, the ValidAppName cap): the suffixed slug (35
+	// Max-length name (30 chars, the ValidResourceName cap): the suffixed slug (35
 	// chars) must still be a valid DNS label — comfortably under the 63-char
 	// limit a hostname combined with BEX_BASE_DOMAIN must respect.
 	longName := strings.Repeat("a", 30)

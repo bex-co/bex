@@ -2734,8 +2734,8 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 // agree on what a valid App is: DNS-label name, one of repo/image, a known
 // plan, sane port/replica bounds.
 func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
-	if !store.ValidAppName(req.Name) {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
+	if !appv1alpha1.ValidResourceName(req.Name) {
+		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: name %s", core.ErrBadRequest, core.ResourceNameRule)
 	}
 	if err := validateCreateSource(req); err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -2915,7 +2915,7 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 	if svcType == appv1alpha1.TypeCronJob {
 		sched := strings.TrimSpace(req.Schedule)
 		if sched == "" {
-			return fmt.Errorf("%w: schedule is required for a cron_job", core.ErrBadRequest)
+			return core.NewBadRequestError(cronScheduleInvalid, "schedule is required for a cron_job", map[string]any{"field": "schedule"})
 		}
 		if err := checkCronSchedule(sched); err != nil {
 			return err
@@ -4245,14 +4245,23 @@ func checkCronSchedule(s string) error {
 		return errCronScheduleFormat
 	}
 	if sched.Next(time.Now().UTC()).IsZero() {
-		return core.NewBadRequestError("SCHEDULE_NEVER_FIRES",
+		return core.NewBadRequestError(cronScheduleNeverFires,
 			fmt.Sprintf("schedule %q never fires: no date and time matches all of its fields (e.g. February 31)", s),
 			map[string]any{"field": "schedule"})
 	}
 	return nil
 }
 
-var errCronScheduleFormat = fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
+// The codes a schedule's refusal carries: one that is missing or not a 5-field
+// cron expression, and one no date matches. The dashboard's
+// cronScheduleProblem answers the same two (testdata/cron-schedule-vectors.json).
+const (
+	cronScheduleInvalid    = "SCHEDULE_INVALID"
+	cronScheduleNeverFires = "SCHEDULE_NEVER_FIRES"
+)
+
+var errCronScheduleFormat = core.NewBadRequestError(cronScheduleInvalid,
+	"schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", map[string]any{"field": "schedule"})
 
 // SetHealthCheckPath changes spec.healthCheckPath — what the operator wires
 // into the container's startup and readiness probes (w1/m23/t001). A direct CR
@@ -4618,7 +4627,7 @@ func checkDisplayName(a *appv1alpha1.App, value string) (string, error) {
 		return "", core.NewBadRequestError("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("display name must be at most %d Unicode code points", maxLength), map[string]any{"maxLength": maxLength})
 	}
 	if ids.LooksLikeResourceID(value) {
-		return "", core.NewBadRequestError("DISPLAY_NAME_RESOURCE_ID_RESERVED", "display name must not look like a resource ID", nil)
+		return "", core.NameResourceIDReservedError("displayName", value)
 	}
 	return value, nil
 }

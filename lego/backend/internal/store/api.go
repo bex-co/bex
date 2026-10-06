@@ -583,9 +583,6 @@ func (a *API) bearer(h http.Handler) http.Handler {
 }
 
 var (
-	// nameRE: DNS-1123 label capped at 30 chars, so "<tenant>-<app>" always
-	// fits the 63-char CR-name limit (see CRName).
-	nameRE = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$`)
 	// hostRE: lowercase FQDN with at least two labels (custom domains are
 	// full hostnames, never bare labels).
 	hostRE = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
@@ -611,18 +608,15 @@ var (
 	subjectRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,253}$`)
 )
 
+// validateName holds a name to the one resource-name rule
+// (appv1alpha1.ValidResourceName), which also keeps "<tenant>-<app>" inside
+// the 63-character object-name limit (see CRName).
 func validateName(field, v string) error {
-	if !nameRE.MatchString(v) {
-		return fmt.Errorf("%w: %s must be a DNS label of 1-30 chars ([a-z0-9-])", ErrInvalid, field)
+	if !appv1alpha1.ValidResourceName(v) {
+		return fmt.Errorf("%w: %s %s", ErrInvalid, field, core.ResourceNameRule)
 	}
 	return nil
 }
-
-// ValidAppName reports whether v is a valid App/tenant name: a DNS-1123 label of
-// 1-30 chars. Exported so bex-api's public create verb enforces the exact same
-// rule as this internal create API — the two can't disagree about what a valid
-// name is (the same single-source rationale as MaxReplicas).
-func ValidAppName(v string) bool { return nameRE.MatchString(v) }
 
 // ValidRepo reports whether v is an acceptable git repo URL for a build-from-git
 // App (https/ssh/git@, no whitespace or control chars, ≤2048 bytes). Exported so
