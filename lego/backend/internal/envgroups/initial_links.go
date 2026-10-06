@@ -30,7 +30,7 @@ import (
 // WithInitialEnvGroups composes trusted group references before a new App is
 // observable. It is an internal Blueprint creation seam, not a public input for
 // Kubernetes Secret names. The caller compensates its App/store writes on error.
-func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, service string, a *appv1alpha1.App, create, complete func() error) (err error) {
+func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *appv1alpha1.App, create, complete func() error) (err error) {
 	if err := s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
 		return err
 	}
@@ -40,6 +40,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, serv
 	if _, ok := s.Store.(core.VersionedSecretKV); !ok {
 		return core.ErrSecretsUnavailable
 	}
+	service := core.AppPublicID(a)
 	type initialGroup struct {
 		gid   string
 		meta  meta
@@ -76,11 +77,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, serv
 			if !group.added {
 				continue
 			}
-			_, rollbackErr := s.mutateMetaCAS(rollbackCtx, group.gid, group.meta.workspace, func(cur meta) (meta, error) {
-				cur.links = removeString(cur.links, service)
-				cur.updatedAt = s.now()
-				return cur, nil
-			})
+			rollbackErr := s.dropLinks(rollbackCtx, group.gid, group.meta.workspace, service)
 			if rollbackErr != nil && !errors.Is(rollbackErr, core.ErrNotFound) {
 				err = errors.Join(err, fmt.Errorf("rollback initial group membership: %w", rollbackErr))
 			}
@@ -95,6 +92,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, serv
 				return meta{}, checkErr
 			}
 			addedThisAttempt = !slices.Contains(cur.links, service)
+			cur.linksByID = cur.linksByID || len(cur.links) == 0
 			cur.links = addString(cur.links, service)
 			cur.updatedAt = s.now()
 			return cur, nil
@@ -122,6 +120,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, serv
 			if checkErr := s.validateInitialGroup(ctx, cur, service, a); checkErr != nil {
 				return meta{}, checkErr
 			}
+			cur.linksByID = cur.linksByID || len(cur.links) == 0
 			cur.links = addString(cur.links, service)
 			return cur, nil
 		})

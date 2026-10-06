@@ -199,6 +199,9 @@ type Service struct {
 	// (they are purged on workspace delete via WorkspacePurger). Satisfied
 	// structurally by *secrets.WorkspacePurger so apps never imports secrets.
 	SecretsEraser AppSecretsEraser
+	// EnvGroupLinks, when set, removes a deleted service from every env group
+	// its spec mounts (w5/m120).
+	EnvGroupLinks AppEnvGroupUnlinker
 	// EnvGroups, when set (OpenBao is wired), materializes a render.yaml's
 	// envVarGroups: and links them to services via fromGroup (w1/m35), riding the
 	// env-groups feature through a narrow seam. nil => a manifest using
@@ -252,6 +255,12 @@ func managedAppID(a *appv1alpha1.App) string {
 // delete. Satisfied structurally by *secrets.WorkspacePurger.
 type AppSecretsEraser interface {
 	PurgeApp(ctx context.Context, a *appv1alpha1.App) error
+}
+
+// AppEnvGroupUnlinker removes a service being deleted from the env groups its
+// spec mounts. Satisfied structurally by *envgroups.WorkspacePurger.
+type AppEnvGroupUnlinker interface {
+	UnlinkApp(ctx context.Context, a *appv1alpha1.App) error
 }
 
 // CreateSecretsSeeder is the narrow create-time seam onto the secrets feature:
@@ -2579,7 +2588,7 @@ func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *app
 		complete = func() error { return requireDeployAuthority(ctx, s) }
 	}
 	created := false
-	err := s.EnvGroups.WithInitialEnvGroups(ctx, req.initialEnvGroups, req.Name, a, func() error {
+	err := s.EnvGroups.WithInitialEnvGroups(ctx, req.initialEnvGroups, a, func() error {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return err
 		}
@@ -2694,6 +2703,14 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	// PositiveTTL cannot tear down one last service.
 	if err := s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
 		return err
+	}
+	// Unlink it from its env groups before anything irreversible: a failure
+	// fails the delete, which a retry completes, so no group lists a deleted
+	// service.
+	if s.EnvGroupLinks != nil {
+		if err := s.EnvGroupLinks.UnlinkApp(ctx, a); err != nil {
+			return fmt.Errorf("unlink env groups: %w", err)
+		}
 	}
 	// Remove the private-repo clone Secret bex-api wrote for it (docs/github-
 	// integration.md) — the operator doesn't own it (no ownerRef), so the CR

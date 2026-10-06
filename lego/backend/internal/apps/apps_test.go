@@ -1407,6 +1407,44 @@ func TestDeleteManagedAppKeepsRowUntilSecretPurgeSucceeds(t *testing.T) {
 	gone(t, cl, "web")
 }
 
+type appGroupUnlinker struct {
+	err      error
+	unlinked []string
+}
+
+func (u *appGroupUnlinker) UnlinkApp(_ context.Context, a *appv1alpha1.App) error {
+	u.unlinked = append(u.unlinked, a.Labels[core.LabelAppID])
+	return u.err
+}
+
+// w5/m120: a deleted service leaves the env groups that link it, or the next
+// service to take its name inherited the link. The unlink runs while the
+// service still exists, so a failure fails the delete, keeping the row and
+// the CR, and the retry completes it.
+func TestDeleteUnlinksEnvGroupsBeforeRemovingTheService(t *testing.T) {
+	rec := &recordingStore{}
+	unlinker := &appGroupUnlinker{err: errors.New("injected OpenBao failure")}
+	svc, cl := newService(rec, managedApp("web", "srv-1"))
+	svc.EnvGroupLinks = unlinker
+
+	if err := svc.Delete(context.Background(), "web"); err == nil {
+		t.Fatal("Delete unexpectedly succeeded while the env-group unlink failed")
+	}
+	if len(rec.deleteCalls) != 0 {
+		t.Fatalf("row deleted before the env-group unlink: %v", rec.deleteCalls)
+	}
+	getApp(t, cl, "web")
+
+	unlinker.err = nil
+	if err := svc.Delete(context.Background(), "web"); err != nil {
+		t.Fatalf("retry Delete: %v", err)
+	}
+	if !slices.Equal(unlinker.unlinked, []string{"srv-1", "srv-1"}) || len(rec.deleteCalls) != 1 {
+		t.Fatalf("retry did not unlink then delete: unlinked=%v deletes=%v", unlinker.unlinked, rec.deleteCalls)
+	}
+	gone(t, cl, "web")
+}
+
 func TestDeleteUnmanagedAppSkipsStore(t *testing.T) {
 	rec := &recordingStore{}
 	a := sampleApp("hand")

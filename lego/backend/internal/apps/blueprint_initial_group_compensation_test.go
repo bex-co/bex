@@ -35,8 +35,8 @@ import (
 
 type failingInitialGroups struct{ *envgroups.Service }
 
-func (g failingInitialGroups) WithInitialEnvGroups(ctx context.Context, names []string, service string, a *appv1alpha1.App, create, complete func() error) error {
-	return g.Service.WithInitialEnvGroups(ctx, names, service, a, create, func() error {
+func (g failingInitialGroups) WithInitialEnvGroups(ctx context.Context, names []string, a *appv1alpha1.App, create, complete func() error) error {
+	return g.Service.WithInitialEnvGroups(ctx, names, a, create, func() error {
 		return errors.New("injected creation completion failure")
 	})
 }
