@@ -51,7 +51,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **083** — [A crash under an open deploy can be dated from the rollout start](done/083.md) (~45m) ← found in w5/m113's review — **DONE 2026-10-06**: the operator now records when the serving revision stopped (`Serving=False`; it used to write Unknown). A crash under an open deploy is dated by the later of that stop and the rollout start: a RollingUpdate crash at the stop, a Recreate at the rollout start. The stale guard keeps a real clock. Replayed on real Postgres.
 - [x] **084** — [The local mock cluster has no `bex-build` namespace, so every App deletion on a dev-N stack stalls](done/084.md) (~30m) ← found in w5/m113's dev-5 replay — **DONE 2026-10-06**: `mock-cluster.sh` applies the production build boundary (namespace, RBAC, NetworkPolicies) and verifies it. Applied to the live local cluster, it let the operator finalize both stuck w5 fixtures on its next retry, with no finalizer edits.
 - [x] **085** — [A canceled release's in-flight pre-deploy finishes while its row reads canceled](done/085.md) (~45m) ← found in w5/m114's dev-5 replay — **DONE 2026-10-06**: the operator keeps reading a canceled release's step until it ends and records the verdict. bex-api puts that verdict on the canceled deploy, with its `pre_deploy_ended` event. The service is not failed and the canceled release is not rolled. Envtests, a memStore replay and a real-PG test pass.
-- [ ] **086** — [Pick one answer for a named workspace that does not hold the id](086.md) (~1h, may promote) ← found in w5/m115's suite run
+- [ ] **086** — [Pick one answer for a named workspace that does not hold the id](blocked/086.md) (~1h, may promote) ← found in w5/m115's suite run — **BLOCKED (your decision: when a request names workspace W for an id that lives in another workspace, answer 404 everywhere — recommended, ~2h, changes w6/m14's 403 and its two e2e tests — or 403 everywhere, ~3–4h, which adds cross-workspace existence reads to five store-backed families)**
 - [ ] **087** — [Sandbox verbs rewrite the workspace's tenant-key row on every call](087.md) (~30m) ← found in w5/m115's efficiency review
 - [ ] **088** — [Blueprint preview runs each declared resource's create plan](088.md) (>1h, promote when taken) ← found in w5/m116's inventory
 - [ ] **089** — [Generate Blueprint exports a service's registry credential](089.md) (~1h) ← found by w5/m117's round trip
@@ -69,6 +69,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **101** — [An unavailable Key Value says why, as a sentence and a code the dashboard translates](101.md) (>1h, promote when taken) ← found by w5/079's reuse review
 - [ ] **102** — [A Blueprint dockerCommand on a buildpack build becomes the start command, while the API ignores it](102.md) (~30m) ← found by w5/080's reuse review
 - [ ] **103** — [ci-schedule-drift lists runs through the runs API's event search, the same lagging path as a branch filter](103.md) (~30m) ← found by w5/082's quality review
+- [ ] **104** — [Listing members rewrites each member's owner-id row](104.md) (~45m) ← found by w5/087's reuse review
 
 ## Approved queue — 2026-10-01
 
