@@ -258,7 +258,7 @@ func TestPGObservedKeyValueArmsOnFirstReady(t *testing.T) {
 		return keyValueCR(appv1alpha1.KVPhaseProvisioning, metav1.ConditionFalse, "Provisioning", at)
 	}
 	ready := func(at time.Time) *appv1alpha1.KeyValue {
-		return keyValueCR(appv1alpha1.KVPhaseReady, metav1.ConditionTrue, datastoreReasonProvisioned, at)
+		return keyValueCR(appv1alpha1.KVPhaseReady, metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, at)
 	}
 
 	observe(provisioning(base), 3) // never been Ready

@@ -18,6 +18,37 @@ export const STATUS_LABEL: Record<DatabaseStatusKey, keyof typeof en> = {
 };
 
 /**
+ * An unavailable database's reason by bex-api's statusReasonCode, the
+ * operator's Ready-condition reason (w5/079). A code missing here shows
+ * bex-api's English sentence instead.
+ */
+const STATUS_REASON_LABEL: Record<string, keyof typeof en> = {
+  ClusterFailed: "databases.statusReasonClusterFailed",
+  ClusterReadFailed: "databases.statusReasonClusterReadFailed",
+  NetworkPolicyFailed: "databases.statusReasonNetworkPolicyFailed",
+  DiskAutoscalingFailed: "databases.statusReasonDiskAutoscalingFailed",
+  ExportFailed: "databases.statusReasonExportFailed",
+  PoolerFailed: "databases.statusReasonPoolerFailed",
+  PostUpgradeBackupFailed: "databases.statusReasonPostUpgradeBackupFailed",
+  MajorVersionUpgradeFailed: "databases.statusReasonMajorVersionUpgradeFailed",
+  StorageShrinkRejected: "databases.statusReasonStorageShrinkRejected",
+  RecoveryUnavailable: "databases.statusReasonRecoveryUnavailable",
+  BackupStoreUnavailable: "databases.statusReasonBackupStoreUnavailable",
+  ScheduledBackupFailed: "databases.statusReasonScheduledBackupFailed",
+  ScheduledBackupCleanupFailed:
+    "databases.statusReasonScheduledBackupCleanupFailed",
+};
+
+/** The translation key of an unavailable database's reason, if this dashboard knows its code. */
+export function statusReasonLabel(
+  code: string | null | undefined,
+): keyof typeof en | undefined {
+  return code && Object.hasOwn(STATUS_REASON_LABEL, code)
+    ? STATUS_REASON_LABEL[code]
+    : undefined;
+}
+
+/**
  * The i18n label for a database's displayed status — one composition shared by
  * the badge and the detail page's Details row, so a suspended instance can
  * never read "Suspended" in one and the raw "available" in the other (w1/m159).

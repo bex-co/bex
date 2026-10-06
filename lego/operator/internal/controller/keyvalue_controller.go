@@ -544,7 +544,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		}
 		kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
 		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
-			Reason: "ConnectionSecretRebuilding", Message: "rebuilding immutable connection information", ObservedGeneration: kv.Generation})
+			Reason: appv1alpha1.ReasonConnectionSecretRebuilding, Message: "rebuilding immutable connection information", ObservedGeneration: kv.Generation})
 		if err := updateStatusIfChanged(ctx, r.Client, kv); err != nil {
 			return nil, ctrl.Result{}, true, err
 		}
@@ -1000,7 +1000,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
 	}
 	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &kv, kv.Labels[labelEnvironment], "-environment-ingress", map[string]string{labelKeyValue: kv.Name}); err != nil {
-		return r.kvFail(ctx, &kv, "NetworkPolicyFailed", err)
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonNetworkPolicyFailed, err)
 	}
 
 	// The backup/purge Jobs need egress the platform-wide Cilium node/metadata
@@ -1091,7 +1091,7 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	podsReady := r.keyValuePodsReady(ctx, kv, sts, replicas)
 	if kv.Spec.Suspended || (rolloutReady && podsReady) {
 		kv.Status.CredentialRevision = credentialRevision
-		reason, message := "Provisioned", "valkey ready"
+		reason, message := appv1alpha1.ReasonProvisioned, "valkey ready"
 		if kv.Spec.Suspended {
 			reason, message = reasonSuspended, "valkey suspended (scaled to zero); persistence settings apply on resume"
 		}
@@ -1179,11 +1179,11 @@ func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv
 	kv.Status.AllocatedStorageGB = current
 	message := fmt.Sprintf("Valkey storage is grow-only: requested %d GB is below the allocated %d GB", requested, current)
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: conditionStorageReady, Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Type: conditionStorageReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonStorageShrinkRejected,
 		Message: message, ObservedGeneration: kv.Generation,
 	})
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonStorageShrinkRejected,
 		Message: message, ObservedGeneration: kv.Generation,
 	})
 	return updateStatusIfChanged(ctx, r.Client, kv)

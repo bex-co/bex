@@ -35,6 +35,8 @@ query Database($id: String!) {
     version
     status
     statusReason
+    # The reason's code, translated by STATUS_REASON_LABEL (w5/079).
+    statusReasonCode
     databaseName
     databaseUser
     diskSizeGB

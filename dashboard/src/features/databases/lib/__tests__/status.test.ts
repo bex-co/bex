@@ -80,6 +80,7 @@ describe("toDatabaseDetailView", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
       statusReason: null,
+      statusReasonCode: null,
       id: "db1",
       name: "db1",
       plan: "free",
@@ -113,6 +114,7 @@ describe("toDatabaseDetailView", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
       statusReason: null,
+      statusReasonCode: null,
       id: "db3",
       name: "db3",
       plan: "free",
@@ -142,6 +144,7 @@ describe("toDatabaseDetailView", () => {
     const d = toDatabaseDetailView({
       __typename: "Database",
       statusReason: null,
+      statusReasonCode: null,
       id: "db2",
       name: "db2",
       plan: "free",
@@ -164,6 +167,40 @@ describe("toDatabaseDetailView", () => {
       readReplicas: null,
     });
     expect(d.region).toBe("fsn1");
+  });
+
+  // w5/079: the card translates by code, so dropping it here would silently
+  // show bex-api's English sentence in every language.
+  it("carries an unavailable database's reason and its code", () => {
+    const d = toDatabaseDetailView({
+      __typename: "Database",
+      statusReason: "The connection pooler could not be provisioned.",
+      statusReasonCode: "PoolerFailed",
+      id: "db4",
+      name: "db4",
+      plan: "free",
+      version: "18",
+      status: "unavailable",
+      databaseName: "db4",
+      databaseUser: "db4_user",
+      diskSizeGB: 1,
+      diskAutoscalingEnabled: false,
+      highAvailabilityEnabled: false,
+      suspended: "not_suspended",
+      createdAt: null,
+      updatedAt: null,
+      externalHost: null,
+      public: false,
+      poolerEnabled: true,
+      backupsEnabled: null,
+      ipAllowList: null,
+      region: null,
+      readReplicas: null,
+    });
+    expect(d.statusReason).toBe(
+      "The connection pooler could not be provisioned.",
+    );
+    expect(d.statusReasonCode).toBe("PoolerFailed");
   });
 });
 
