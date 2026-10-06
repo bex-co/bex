@@ -175,11 +175,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, KeyValueView{}, err
 		}
 		patch := KeyValuePatch{Name: in.Name, Plan: in.Plan, MaxmemoryPolicy: in.MaxmemoryPolicy, PersistenceMode: in.PersistenceMode, IPAllowList: allowList, Public: in.Public}
+		// The protected-environment phrase reaches the dry-run too: it is the
+		// real call stopped before its first write (w5/m116).
+		ctx = core.WithConfirm(ctx, in.Confirm)
 		if in.DryRun {
-			v, err := s.PreviewUpdateKeyValue(ctx, in.KeyValueID, patch)
+			v, err := s.UpdateKeyValueDryRun(ctx, in.KeyValueID, patch)
 			return nil, v, err
 		}
-		v, err := s.UpdateKeyValue(core.WithConfirm(ctx, in.Confirm), in.KeyValueID, patch)
+		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
 		return nil, v, err
 	})
 

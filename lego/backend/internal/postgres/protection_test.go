@@ -200,6 +200,26 @@ func TestProtectedDatabaseConfirmationAcrossAdapters(t *testing.T) {
 		}
 	})
 
+	// w5/m116: update_postgres handed confirm to the real call only, so a
+	// confirmed dry-run of a guarded change was refused.
+	t.Run("MCP update dry-run carries confirm", func(t *testing.T) {
+		db := databaseForProtection("dpg-mcp-update", "mcp-update-db", true)
+		svc, _, _ := protectedPostgresService(db)
+		clientSession, closeSession := pgMCPSession(t, svc)
+		defer closeSession()
+		ctx := context.Background()
+		args := map[string]any{"postgresId": db.Name, "name": "renamed-db", "dryRun": true}
+		blocked, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_postgres", Arguments: args})
+		if err != nil || !blocked.IsError {
+			t.Fatalf("unconfirmed dry-run = %#v, %v; want the guard's refusal", blocked, err)
+		}
+		args["confirm"] = ProtectedConfirmation("rename", "mcp-update-db")
+		confirmed, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: "update_postgres", Arguments: args})
+		if err != nil || confirmed.IsError {
+			t.Fatalf("confirmed dry-run = %#v, %v; want the preview", confirmed, err)
+		}
+	})
+
 	t.Run("MCP suspend", func(t *testing.T) {
 		db := databaseForProtection("dpg-mcp", "mcp-db", true)
 		svc, _, _ := protectedPostgresService(db)

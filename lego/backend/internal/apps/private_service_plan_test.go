@@ -82,8 +82,8 @@ func TestSetPlanPrivateServiceFreeRefused(t *testing.T) {
 		t.Errorf("a refused downgrade must not change spec.tier, got %q", got)
 	}
 
-	if _, err := svc.PreviewSetPlan(context.Background(), "priv", "free"); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "requires a paid plan") {
-		t.Errorf("PreviewSetPlan private service -> free = %v, want the paid-only refusal", err)
+	if _, err := svc.SetPlanDryRun(context.Background(), "priv", "free"); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "requires a paid plan") {
+		t.Errorf("SetPlanDryRun private service -> free = %v, want the paid-only refusal", err)
 	}
 
 	if _, err := svc.SetPlan(context.Background(), "priv", "starter"); err != nil {

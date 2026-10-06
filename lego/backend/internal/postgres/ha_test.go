@@ -88,8 +88,8 @@ func TestHARefusedBelowOneCPU(t *testing.T) {
 		}
 	}
 	enabled := true
-	if _, err := svc.PreviewUpdatePostgres(context.Background(), "free-db", PostgresPatch{EnableHighAvailability: &enabled}); !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("PreviewUpdatePostgres HA on free => want ErrBadRequest, got %v", err)
+	if _, err := svc.UpdatePostgresDryRun(context.Background(), "free-db", PostgresPatch{EnableHighAvailability: &enabled}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("UpdatePostgresDryRun HA on free => want ErrBadRequest, got %v", err)
 	}
 	var cr appv1alpha1.Database
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "free-db"}, &cr); err != nil {
@@ -116,8 +116,8 @@ func TestHAPlanChangeUnderHARefused(t *testing.T) {
 	if _, err := svc.SetPlan(ctx, "ha-db", "basic-1gb"); err == nil || !strings.Contains(err.Error(), remedy) {
 		t.Errorf("SetPlan under HA => want %q, got %v", remedy, err)
 	}
-	if _, err := svc.PreviewSetPlan(ctx, "ha-db", "free"); err == nil || !strings.Contains(err.Error(), remedy) {
-		t.Errorf("PreviewSetPlan under HA => want %q, got %v", remedy, err)
+	if _, err := svc.SetPlanDryRun(ctx, "ha-db", "free"); err == nil || !strings.Contains(err.Error(), remedy) {
+		t.Errorf("SetPlanDryRun under HA => want %q, got %v", remedy, err)
 	}
 
 	// A database already running HA on an unsupported plan keeps it through an

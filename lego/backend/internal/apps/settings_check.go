@@ -255,8 +255,8 @@ func (s *Service) checkPlan(ctx context.Context, a *appv1alpha1.App, plan string
 		return "", fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 	}
 	tier := t.ID
-	// Paid-only types refuse a downgrade to free here, which is the SetPlan /
-	// PreviewSetPlan half of the create-time rule in normalizeTierForType
+	// Paid-only types refuse a downgrade to free here, which is the SetPlan
+	// half (dry-run included) of the create-time rule in normalizeTierForType
 	// (ADR030 §7; private services added by w1/111).
 	if paidOnlyServiceType(a.Spec.Type) && !core.PaidPlan(tier) {
 		return "", errFreePlanForType(a.Spec.Type)

@@ -91,10 +91,14 @@ func TestServicePatchTableCoversEveryFieldExactlyOnce(t *testing.T) {
 		}
 		// w9/m166: a row with no relation is invisible to the preflight, so
 		// its permission would only be checked once its verb ran — after the
-		// earlier rows had already written. `check` may be nil (a verb that
-		// refuses nothing beyond authorization), but the relation may not.
+		// earlier rows had already written. w5/m116: a row with no check
+		// leaves its change out of the probe, which admission judges before
+		// the first write and a dry-run answers with.
 		if row.relation == nil {
 			t.Errorf("servicePatchTable[%d] (%v) names no relation — the preflight could not authorize it before the patch's first write", i, row.fields)
+		}
+		if row.check == nil {
+			t.Errorf("servicePatchTable[%d] (%v) has no check — its change would reach neither admission's dry-run nor a dry-run's answer", i, row.fields)
 		}
 		for _, f := range row.fields {
 			owned[f]++
