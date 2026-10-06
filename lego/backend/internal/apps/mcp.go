@@ -255,7 +255,8 @@ func (a createWebServiceArgs) dockerDetails() dockerDetails {
 }
 
 func (a createWebServiceArgs) toCreateRequest() CreateRequest {
-	startCommand, _, dockerContext := a.dockerDetails().resolve()
+	docker := a.dockerDetails()
+	startCommand, _, dockerContext := docker.resolve()
 	return CreateRequest{
 		EnvironmentID:           a.EnvironmentID,
 		Name:                    a.Name,
@@ -269,7 +270,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Runtime:                 a.Runtime,
 		BuildCommand:            a.BuildCommand,
 		StartCommand:            startCommand,
-		DockerfilePath:          a.DockerfilePath,
+		DockerfilePath:          docker.dockerfileOnly(a.DockerfilePath),
 		DockerContext:           dockerContext,
 		Builder:                 a.Builder,
 		Plan:                    a.Plan,
@@ -359,7 +360,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		Runtime:              a.Runtime,
 		BuildCommand:         a.BuildCommand,
 		StartCommand:         startCommand,
-		DockerfilePath:       a.DockerfilePath,
+		DockerfilePath:       docker.dockerfileOnly(a.DockerfilePath),
 		DockerContext:        dockerContext,
 		Builder:              a.Builder,
 		Plan:                 a.Plan,

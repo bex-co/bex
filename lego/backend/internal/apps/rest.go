@@ -494,9 +494,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			docker := dockerDetails{runtime: runtime, builder: r.Builder, image: imagePath,
 				startCommand: d.StartCommand, dockerCommand: d.DockerCommand, dockerContext: d.DockerContext}
 			startCommand, _, dockerContext = docker.resolve()
-			if docker.build() == buildDockerfile {
-				dockerfilePath = d.DockerfilePath
-			}
+			dockerfilePath = docker.dockerfileOnly(d.DockerfilePath)
 		}
 		if r.ServiceDetails.BuildCommand != "" {
 			buildCommand = r.ServiceDetails.BuildCommand

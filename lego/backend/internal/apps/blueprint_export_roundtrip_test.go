@@ -129,12 +129,6 @@ var blueprintNotExported = map[string]exportGap{
 			return !strings.HasPrefix(buildStrategy(spec), buildNative)
 		},
 	},
-	"StartCommand": {
-		reason: "a static site serves files and never runs a start command, and render.yaml has none for it",
-		applies: func(spec appv1alpha1.AppSpec) bool {
-			return spec.Type == appv1alpha1.TypeStaticSite
-		},
-	},
 	"RegistryCredentialID": {
 		reason: "render.yaml has no spelling for binding no credential at all: the export reads as unbound, so a pull falls back to a credential matching the image host",
 		applies: func(spec appv1alpha1.AppSpec) bool {
@@ -219,7 +213,8 @@ func roundTripCreates(t *testing.T) []CreateRequest {
 	out = append(out,
 		CreateRequest{Name: "rt-hidden", Image: "nginx:1.27", Hosts: []string{"hidden.example.com"}, SubdomainPolicy: appv1alpha1.SubdomainPolicyDisabled},
 		CreateRequest{Name: "rt-manual", Repo: "https://github.com/acme/app", AutoDeploy: &off},
-		// Commands a build never runs, which create accepts (w5/090).
+		// Commands a build never runs, which create and update both still
+		// accept: w5/090 refused only the settings update already refused.
 		CreateRequest{Name: "rt-docker-build-command", Repo: "https://github.com/acme/app", Runtime: "docker", BuildCommand: "make"},
 		CreateRequest{Name: "rt-buildpack-commands", Repo: "https://github.com/acme/app", Builder: "buildpack", BuildCommand: "make", StartCommand: "./serve"},
 		// An image's command round-trips (w5/080).
@@ -255,7 +250,9 @@ func roundTripCreates(t *testing.T) []CreateRequest {
 				case appv1alpha1.TypeCronJob:
 					req.Schedule, req.Command = "*/5 * * * *", "bin/report"
 				case appv1alpha1.TypeStaticSite:
-					req.PublishPath = "dist"
+					// A static site serves files and runs no start command,
+					// which create refuses (w5/090).
+					req.PublishPath, req.StartCommand = "dist", ""
 				}
 				if _, err := specFromCreate(req); err != nil {
 					continue // a combination create refuses has nothing to export

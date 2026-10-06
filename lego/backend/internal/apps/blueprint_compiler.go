@@ -283,6 +283,11 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 	runtime, _ := object["runtime"].(string)
 	runtime = strings.ToLower(strings.TrimSpace(runtime))
 	_, hasImage := object["image"]
+	// runtime docker beside x-bex.builder: buildpack is a buildpack build
+	// (w5/m117), so only runtime docker without it reads a Dockerfile.
+	extension, _ := object["x-bex"].(map[string]any)
+	builder, _ := extension["builder"].(string)
+	dockerfileBuild := runtime == "docker" && !strings.EqualFold(builder, buildBuildpack)
 	var problems []BlueprintSourceProblem
 	for _, rule := range []struct {
 		field   string
@@ -298,6 +303,18 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 			field:   "dockerCommand",
 			invalid: runtime != "docker" && runtime != "image",
 			message: "dockerCommand requires runtime: docker or image",
+		},
+		// The prebuilt-image policy already refuses a dockerfilePath beside an
+		// image, so it is judged here only for a repo build (w5/090).
+		{
+			field:   "dockerfilePath",
+			invalid: !hasImage && !dockerfileBuild,
+			message: "dockerfilePath requires a Dockerfile build: runtime docker, without x-bex.builder buildpack",
+		},
+		{
+			field:   "dockerContext",
+			invalid: !dockerfileBuild,
+			message: "dockerContext requires a Dockerfile build: runtime docker, without x-bex.builder buildpack",
 		},
 	} {
 		if _, declared := object[rule.field]; !declared || !rule.invalid {
@@ -337,6 +354,9 @@ type prebuiltImageSourceField struct {
 // prebuiltImageSourceFields is the shared policy for settings that only have
 // meaning while a service builds from Git. The Blueprint compiler rejects enabled
 // automation and other declared build fields; the direct create API checks the subset it exposes.
+// An entry with no blueprintName is create-only: the compiler's loop finds no
+// such top-level field, and the Blueprint spelling (x-bex.builder) reaches the
+// create check through the parse.
 var prebuiltImageSourceFields = []prebuiltImageSourceField{
 	{blueprintName: "repo", createName: "repo", declaredInCreate: func(req CreateRequest) bool { return req.Repo != "" }},
 	{blueprintName: "branch", createName: "branch", declaredInCreate: func(req CreateRequest) bool { return req.Branch != "" }},
@@ -346,6 +366,12 @@ var prebuiltImageSourceFields = []prebuiltImageSourceField{
 	{blueprintName: "dockerfilePath", createName: "dockerfilePath", declaredInCreate: func(req CreateRequest) bool { return req.DockerfilePath != "" }},
 	{blueprintName: "autoDeploy", createName: "autoDeploy", declaredInCreate: func(req CreateRequest) bool { return req.AutoDeploy != nil && *req.AutoDeploy }},
 	{blueprintName: "autoDeployTrigger"},
+	// A prebuilt image builds nothing, so a builder other than the default is
+	// never used (w5/090).
+	{createName: "builder", declaredInCreate: func(req CreateRequest) bool {
+		builder := strings.ToLower(strings.TrimSpace(req.Builder))
+		return builder != "" && builder != "auto"
+	}},
 }
 
 func prebuiltImageSourceFieldMessage(field string) string {
@@ -413,6 +439,22 @@ func blueprintPrebuiltImageProblems(object map[string]any, path []string, locati
 			Line:    location.Line,
 			Column:  location.Column,
 		})
+	}
+	// A prebuilt image builds nothing, so a builder beside it is never used
+	// (w5/090); "auto" is the default and names no build.
+	if extension, _ := object["x-bex"].(map[string]any); extension != nil {
+		if builder, _ := extension["builder"].(string); builder != "" && !strings.EqualFold(builder, "auto") {
+			fieldPath := append(append([]string(nil), path...), "x-bex", "builder")
+			pointer := renderSchemaPointer(fieldPath)
+			location := lookupBlueprintLocation(pointer, locations)
+			problems = append(problems, BlueprintSourceProblem{
+				Code:    "BLUEPRINT_CAPABILITY_INCOMPATIBLE",
+				Path:    pointer,
+				Message: prebuiltImageSourceFieldMessage("x-bex.builder"),
+				Line:    location.Line,
+				Column:  location.Column,
+			})
+		}
 	}
 	return problems
 }

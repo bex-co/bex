@@ -139,8 +139,6 @@ func createProbeRequests() []CreateRequest {
 			StartCommand:            "node server.js",
 			RootDir:                 "apps/web",
 			BuildFilter:             &BuildFilterView{Paths: []string{"apps/web/**"}},
-			DockerfilePath:          "docker/Dockerfile",
-			DockerContext:           "services/api",
 			Port:                    8080,
 			Replicas:                2,
 			Plan:                    "starter",
@@ -158,6 +156,15 @@ func createProbeRequests() []CreateRequest {
 			MaintenanceMode:         &MaintenanceModeView{Enabled: true, URI: "https://status.example.com/maintenance"},
 			Autoscaling:             &SetAutoscalingRequest{MinInstances: 1, MaxInstances: 3, TargetCPUPercent: &cpu},
 			DryRun:                  true,
+		},
+		// The Dockerfile-build settings, which only a Dockerfile build reads
+		// (w5/090), so they cannot ride the native web probe.
+		{
+			Name:           "probe-dockerfile",
+			Repo:           "https://github.com/acme/api",
+			Runtime:        "docker",
+			DockerfilePath: "docker/Dockerfile",
+			DockerContext:  "services/api",
 		},
 		// Prebuilt image (repo and every build-from-git field must be absent).
 		{Name: "probe-image", Image: "ghcr.io/acme/api:1.2.3"},
