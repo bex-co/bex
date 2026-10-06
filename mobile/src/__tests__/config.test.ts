@@ -1,4 +1,5 @@
 import appConfig from "../../app.json";
+import packageJson from "../../package.json";
 
 describe("mobile configuration", () => {
   it("uses only bex-owned identifiers and no dangerous permissions", () => {
@@ -11,6 +12,10 @@ describe("mobile configuration", () => {
       "dba70c4b-4aae-4bf9-a461-a19bcae69b3a",
     );
     expect(JSON.stringify(appConfig)).not.toContain("updates");
+  });
+
+  it("keeps package.json and app.json on one version (yarn bump)", () => {
+    expect(packageJson.version).toBe(appConfig.expo.version);
   });
 
   it("claims only the verified production invite URL", () => {

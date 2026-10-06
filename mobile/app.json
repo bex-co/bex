@@ -3,7 +3,7 @@
     "name": "bex",
     "slug": "bex-mobile",
     "scheme": ["bex", "co.bex.mobile"],
-    "version": "0.2.0",
+    "version": "0.3.0",
     "platforms": ["ios", "android"],
     "orientation": "default",
     "userInterfaceStyle": "automatic",
