@@ -48,3 +48,7 @@ Live on an owned Free web service (`traefik/whoami`, `WHOAMI_PORT_NUMBER=8080`, 
 - **Render parity:** included (t002). The numbers on REST/GraphQL/MCP/UI change; the shapes do not.
 - **Unverified:** whether Loki or bex-api's window builder does the epoch alignment (t001 reads Loki's `query_range` step handling at the pinned version); 2d/14d presets (reasoned the same). (An earlier note that `HTTP_LATENCY` read `0` at 24h was a probe artifact: the probe rounded sub-second seconds to integers. Retracted 2026-10-05.)
 - **Severity:** major.
+
+## Production replay — passed 2026-10-06 (qa loop63, pin `e2e4d0d7e` ⊇ `a6ba9fdce`)
+
+Owned Free `qa-20261006-l63-web` (`srv-db269mc20ers738obg20`; deleted afterwards). 100 `GET /l63probe` finished at 03:11:17Z (99 returned 200; one curl timed out). At 03:12:17Z, GraphQL `metrics(HTTP_REQUESTS, PATH=/l63probe)` read **99** on every preset: `(3600,30)`, `(43200,300)`, `(86400,720)`, `(172800,1440)`, `(604800,5040)` and `(1209600,10080)`. The last bucket stamp was at or after `end` (24h/2d/7d/14d `03:12:00`, 12h `03:15:00`). REST `GET /v1/metrics/http-requests?…&path=/l63probe&resolutionSeconds=720` over 24h → 99. Before the fix the same 24h/7d reads returned no series (loop46). Not re-probed: the dashboard "Last 24 hours" card and MCP.
