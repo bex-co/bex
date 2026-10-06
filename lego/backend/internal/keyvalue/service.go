@@ -46,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/resourcename"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -207,19 +208,6 @@ func maxmemoryPolicyKnown(render string) bool {
 // policy — can never accept different values at create and update.
 func persistenceModeKnown(render string) bool {
 	return slices.Contains(validPersistenceModes, renderToCRD(render))
-}
-
-// validateKeyValueName enforces the user-facing display-name shape (the CRD's
-// spec.name markers). Shared by create and rename so the two paths can never
-// accept different names — the same courtesy validateDatabaseName extends.
-func validateKeyValueName(name string) error {
-	if !appv1alpha1.ValidKeyValueName(name) {
-		return fmt.Errorf("%w: name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen", core.ErrBadRequest)
-	}
-	if id.LooksLikeResourceID(name) {
-		return core.NameResourceIDReservedError(name)
-	}
-	return nil
 }
 
 // kvStatus maps bex's KeyValue phase onto a Render-shaped keyValueStatus
@@ -435,7 +423,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return KeyValueView{}, err
 	}
-	if err := validateKeyValueName(req.Name); err != nil {
+	if err := resourcename.CheckDatastore(req.Name); err != nil {
 		return KeyValueView{}, err
 	}
 	req.Plan = tiers.Valkey.CanonicalID(req.Plan)
@@ -810,7 +798,7 @@ type KeyValuePatch struct {
 // update and its dry-run alike (mirrors PostgresPatch.validate).
 func (patch KeyValuePatch) validate() error {
 	if patch.Name != nil {
-		if err := validateKeyValueName(*patch.Name); err != nil {
+		if err := resourcename.CheckDatastore(*patch.Name); err != nil {
 			return err
 		}
 	}

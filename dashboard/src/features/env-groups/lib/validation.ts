@@ -1,7 +1,7 @@
 import {
   isReservedEnvKey,
+  isValidSecretFileName as isValidServiceSecretFileName,
   VALID_ENV_KEY,
-  VALID_SECRET_FILE_NAME,
 } from "@/features/services/lib/environment-draft";
 
 /** bex-api and Render both accept any non-empty group display name. */
@@ -22,11 +22,5 @@ export function isValidEnvVarKey(key: string): boolean {
 
 /** Matches the backend's Kubernetes Secret-key filename validation. */
 export function isValidSecretFileName(name: string): boolean {
-  const trimmed = name.trim();
-  return (
-    trimmed !== "" &&
-    trimmed !== "." &&
-    trimmed !== ".." &&
-    VALID_SECRET_FILE_NAME.test(trimmed)
-  );
+  return isValidServiceSecretFileName(name.trim());
 }

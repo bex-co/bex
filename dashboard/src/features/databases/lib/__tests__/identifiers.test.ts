@@ -1,27 +1,41 @@
 import { describe, expect, it } from "vitest";
 
-import { isReservedPostgresRole } from "@/features/databases/lib/identifiers";
+import {
+  isReservedPostgresDatabaseName,
+  isReservedPostgresRole,
+  isValidPostgresIdentifier,
+} from "@/features/databases/lib/identifiers";
+import { readRepoVectors, repeated } from "@/test/repo-vectors";
 
-// Mirrors TestReservedPostgresRole (lego/types/v1alpha1): the names CNPG
-// reserves (its webhook refuses the whole Cluster update for them) and those
-// PostgreSQL refuses to create, so the form never offers a role bex-api refuses.
-describe("isReservedPostgresRole", () => {
-  it.each([
-    ["postgres", true],
-    ["streaming_replica", true],
-    ["cnpg_pooler_pgbouncer", true],
-    ["cnpg_reader", true],
-    ["public", true],
-    ["none", true],
-    ["pg_monitor", true],
-    ["pg_reader", true],
-    ["app_user", false],
-    ["orders_owner", false],
-    ["cnpg", false],
-    ["pg", false],
-    ["publicist", false],
-    ["nonexistent", false],
-  ] as const)("isReservedPostgresRole(%j) is %s", (name, reserved) => {
-    expect(isReservedPostgresRole(name)).toBe(reserved);
-  });
+// The one table of Postgres identifiers. lego/types/v1alpha1's predicates are
+// its source of truth (TestPostgresIdentifierVectors), and the operator's
+// TestManagedRolesNeverProjectReservedRoles reads it too, so the form never
+// offers a name bex-api refuses or CNPG cannot manage (w5/m118).
+const VECTORS = readRepoVectors<{
+  name: string;
+  repeat?: number;
+  valid: boolean;
+  reservedRole: boolean;
+  reservedDatabase: boolean;
+}>("lego/types/v1alpha1/testdata/postgres-identifiers.json");
+
+describe("the shared Postgres identifier vectors", () => {
+  it.each(
+    VECTORS.map(
+      (v) =>
+        [
+          repeated(v.name, v.repeat),
+          v.valid,
+          v.reservedRole,
+          v.reservedDatabase,
+        ] as const,
+    ),
+  )(
+    "%j: valid %s, reserved role %s, reserved database %s",
+    (name, valid, reservedRole, reservedDatabase) => {
+      expect(isValidPostgresIdentifier(name)).toBe(valid);
+      expect(isReservedPostgresRole(name)).toBe(reservedRole);
+      expect(isReservedPostgresDatabaseName(name)).toBe(reservedDatabase);
+    },
+  );
 });

@@ -1,9 +1,8 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useRenameDatabase } from "@/features/databases/hooks/use-rename-database";
 import type { DatabaseDetailView } from "@/features/databases/types";
-
-const NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?$/;
 
 export interface DatabaseNameRowProps {
   database: DatabaseDetailView;
@@ -29,7 +28,7 @@ export function DatabaseNameRow({ database, onRenamed }: DatabaseNameRowProps) {
       editLabel={t("databases.nameEdit")}
       busy={busy}
       validate={(draft) =>
-        NAME_PATTERN.test(draft.trim()) ? null : t("databases.nameInvalid")
+        isValidDnsLabel(draft.trim()) ? null : t("databases.nameInvalid")
       }
       onSave={async (value) => {
         const ok = await rename(database.id, value);

@@ -1675,7 +1675,7 @@ func TestAppInstanceSecondsSelectsByKubernetesObjectName(t *testing.T) {
 // 58-char truncation point loses the hyphen before the random suffix, and the
 // two-segment-only matcher stopped selecting it. 23 characters is the live case
 // (qa-20260826-webhook-svc); the threshold is 22, well inside the 30 characters
-// ValidAppName allows.
+// ValidResourceName allows.
 func TestAppInstanceSecondsMatchesTruncatedPodNames(t *testing.T) {
 	app := store.App{ID: "srv-long", TenantID: "tea-d98210cbbpdc73dcrkvg", Name: "qa-20260826-webhook-svc", Tier: "starter"}
 	var query string

@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+
+import { readRepoVectors } from "@/test/repo-vectors";
 
 import {
   cronScheduleProblem,
@@ -7,33 +8,44 @@ import {
   isValidCron,
 } from "@/features/services/lib/cron";
 
-// The one acceptance table for a cron schedule. bex-api's validCronSchedule is
+// The one acceptance table for a cron schedule. bex-api's checkCronSchedule is
 // tested against the same file (lego/backend/internal/apps/
-// cron_schedule_vectors_test.go), and its answers are the source of truth: the
-// form must accept exactly what the server accepts (w1/m145).
-const VECTORS: { schedule: string; valid: boolean }[] = JSON.parse(
-  readFileSync(
-    `${process.cwd()}/../lego/backend/internal/apps/testdata/cron-schedule-vectors.json`,
-    "utf8",
-  ),
+// cron_schedule_vectors_test.go), and its answers are the source of truth: each
+// row's code is bex-api's refusal code, null for a schedule it accepts. The form
+// must accept exactly what the server accepts (w1/m145) and refuse it for the
+// same reason (w5/m118).
+const VECTORS = readRepoVectors<{ schedule: string; code: string | null }>(
+  "lego/backend/internal/apps/testdata/cron-schedule-vectors.json",
 );
 
-describe("isValidCron", () => {
-  it.each(VECTORS.map((v) => [v.schedule, v.valid] as const))(
-    "isValidCron(%j) is %s, the same as bex-api",
-    (schedule, valid) => {
-      expect(isValidCron(schedule)).toBe(valid);
+// The problem cronScheduleProblem names for each of bex-api's refusal codes.
+const PROBLEM_FOR_CODE: Record<string, "format" | "never_fires"> = {
+  SCHEDULE_INVALID: "format",
+  SCHEDULE_NEVER_FIRES: "never_fires",
+};
+
+describe("the shared cron vectors", () => {
+  it.each(VECTORS.map((v) => [v.schedule, v.code] as const))(
+    "cronScheduleProblem(%j) answers bex-api's %s",
+    (schedule, code) => {
+      const want = code === null ? null : PROBLEM_FOR_CODE[code];
+      expect(want, `unmapped bex-api code ${code}`).not.toBeUndefined();
+      expect(cronScheduleProblem(schedule)).toBe(want);
+      expect(isValidCron(schedule)).toBe(code === null);
     },
   );
 
   it("is checked against a non-trivial table", () => {
-    expect(VECTORS.filter((v) => v.valid).length).toBeGreaterThanOrEqual(10);
-    expect(VECTORS.filter((v) => !v.valid).length).toBeGreaterThanOrEqual(10);
+    const count = (code: string | null) =>
+      VECTORS.filter((v) => v.code === code).length;
+    expect(count(null)).toBeGreaterThanOrEqual(10);
+    expect(count("SCHEDULE_INVALID")).toBeGreaterThanOrEqual(10);
+    expect(count("SCHEDULE_NEVER_FIRES")).toBeGreaterThanOrEqual(5);
   });
 });
 
-// isValidCron's vector table above already runs every row through
-// cronScheduleProblem; these pin which refusal each draft gets, which the
+// The vector table above already runs every row through cronScheduleProblem;
+// these pin which refusal each draft gets, which the
 // settings editor computes on every keystroke (w5/070: classifying "*/0 * * * *"
 // used to expand the zero step forever).
 describe("cronScheduleProblem", () => {

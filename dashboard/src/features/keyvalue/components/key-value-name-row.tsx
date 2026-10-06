@@ -1,9 +1,8 @@
 import { useTranslations } from "@/common/hooks/use-translations";
+import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useRenameKeyValue } from "@/features/keyvalue/hooks/use-rename-key-value";
 import type { KeyValueView } from "@/features/keyvalue/types";
-
-const NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?$/;
 
 export interface KeyValueNameRowProps {
   keyValue: KeyValueView;
@@ -29,7 +28,7 @@ export function KeyValueNameRow({ keyValue, onRenamed }: KeyValueNameRowProps) {
       editLabel={t("keyvalue.nameEdit")}
       busy={busy}
       validate={(draft) =>
-        NAME_PATTERN.test(draft.trim()) ? null : t("keyvalue.nameInvalid")
+        isValidDnsLabel(draft.trim()) ? null : t("keyvalue.nameInvalid")
       }
       onSave={async (value) => {
         const ok = await rename(keyValue.id, value);

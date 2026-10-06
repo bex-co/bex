@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -36,12 +37,11 @@ import (
 func TestDisplayNameValidationRefusesAcrossSurfacesWithoutMutation(t *testing.T) {
 	const control = "DISPLAY_NAME_CONTROL_CHARACTER"
 	const tooLong = "DISPLAY_NAME_TOO_LONG"
-	const reserved = "DISPLAY_NAME_RESOURCE_ID_RESERVED"
+	const reserved = "NAME_RESOURCE_ID_RESERVED" // shared with datastore names (w5/m118)
 	otherID := id.New(id.Service)
 	messages := map[string]string{
-		control:  "display name must not contain control characters or line separators",
-		tooLong:  "display name must be at most 100 Unicode code points",
-		reserved: "display name must not look like a resource ID",
+		control: "display name must not contain control characters or line separators",
+		tooLong: "display name must be at most 100 Unicode code points",
 	}
 	for _, surface := range []string{"service", "REST name", "REST displayName", "GraphQL", "MCP"} {
 		t.Run(surface, func(t *testing.T) {
@@ -75,8 +75,12 @@ func TestDisplayNameValidationRefusesAcrossSurfacesWithoutMutation(t *testing.T)
 			} {
 				t.Run(tc.name, func(t *testing.T) {
 					code, message := call(t, tc.value)
-					if code != tc.code || message != messages[tc.code] {
-						t.Fatalf("error = %q/%q, want %q/%q", code, message, tc.code, messages[tc.code])
+					want := messages[tc.code]
+					if tc.code == reserved {
+						want = fmt.Sprintf("%q must not look like a resource ID", strings.TrimSpace(tc.value))
+					}
+					if code != tc.code || message != want {
+						t.Fatalf("error = %q/%q, want %q/%q", code, message, tc.code, want)
 					}
 					if !reflect.DeepEqual(before, getApp(t, cl, "web")) {
 						t.Fatal("refused display name changed the App")

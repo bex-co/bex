@@ -135,11 +135,8 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanCreate, d); err != nil {
 		return CreateUserResult{}, err
 	}
-	if !appv1alpha1.ValidPostgresIdentifier(role) {
-		return CreateUserResult{}, fmt.Errorf("%w: role must be a lowercase PostgreSQL identifier of at most 63 bytes", core.ErrBadRequest)
-	}
-	if appv1alpha1.ReservedPostgresRole(role) {
-		return CreateUserResult{}, reservedIdentifierError("name", role)
+	if err := ValidateRoleIdentifier("name", role); err != nil {
+		return CreateUserResult{}, err
 	}
 	orig := d.DeepCopy()
 	for _, u := range d.Spec.Users {

@@ -91,6 +91,7 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 // exercised too.
 type fakeSecretStore struct {
 	m       map[string]map[string]string
+	puts    int
 	deletes int
 	failGet error
 	failPut error
@@ -112,6 +113,7 @@ func (f *fakeSecretStore) Get(_ context.Context, path string) (map[string]string
 }
 
 func (f *fakeSecretStore) Put(_ context.Context, path string, data map[string]string) error {
+	f.puts++
 	if f.failPut != nil {
 		return f.failPut
 	}

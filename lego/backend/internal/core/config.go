@@ -22,6 +22,10 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
+
+	"k8s.io/apimachinery/pkg/api/validate/content"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // config.go holds the validation rules shared by the two config features
@@ -55,39 +59,55 @@ func SortedKeys(m map[string]string) []string {
 	return out
 }
 
-// MaxConfigKeyLength is the longest environment variable name or secret-file
-// name bex accepts: Kubernetes' own Secret-key limit (IsConfigMapKey). A longer
-// key fails the Secret projection after the store write, which is how one
-// wedged a service's environment (w4/m168).
-const MaxConfigKeyLength = 253
-
-// invalidConfigKey refuses a key a validator rejected, naming the rule it
-// broke. An over-long key is not echoed: the length is the whole story.
-func invalidConfigKey(noun, key string) error {
-	if len(key) > MaxConfigKeyLength {
-		return fmt.Errorf("%w: %s name is longer than %d characters", ErrBadRequest, noun, MaxConfigKeyLength)
-	}
-	return fmt.Errorf("%w: invalid %s name %q", ErrBadRequest, noun, key)
+// configKeyKind is one of the two names bex projects into a Kubernetes
+// Secret's keys, and so validates by Kubernetes' own Secret-key rule
+// (validation.IsConfigMapKey) rather than a copy of it: a copy let "..data"
+// through, which the store accepted and the projection then refused (w5/m118),
+// and a name over 253 characters wedged a service's environment (w4/m168).
+type configKeyKind struct {
+	noun, code, field string
+	// identifier also holds the key to a C identifier, what a shell reads.
+	identifier bool
+	// reserved reports the names bex owns; nil when the kind has none.
+	reserved func(string) bool
 }
 
-// ValidEnvKey reports whether k is a C-locale environment variable name
-// ([A-Za-z_][A-Za-z0-9_]*): what a shell and Kubernetes' Secret-key validation
-// both accept. Rejecting the rest keeps a bad name from failing the Secret write
-// with a cryptic error later.
+var (
+	envVarKey = configKeyKind{noun: "environment variable", code: "ENVIRONMENT_VARIABLE_INVALID", field: "key",
+		identifier: true, reserved: IsReservedEnvKey}
+	// Secret files have no reserved names: a file called PORT is not an
+	// environment variable, and the operator never injects one.
+	secretFileKey = configKeyKind{noun: "secret file", code: "SECRET_FILE_INVALID", field: "name"}
+)
+
+// EnvKeyRule is the one wording of what an environment variable may be named.
+var EnvKeyRule = fmt.Sprintf("letters, digits and underscores, not starting with a digit, at most %d characters", validation.DNS1123SubdomainMaxLength)
+
+// problem names the rule key breaks, or "" when it is a valid name.
+func (k configKeyKind) problem(key string) string {
+	if k.identifier && len(content.IsCIdentifier(key)) > 0 {
+		return "use " + EnvKeyRule
+	}
+	return strings.Join(validation.IsConfigMapKey(key), "; ")
+}
+
+// refuse is the coded 400 for a key problem rejects, naming the rule it broke.
+// An over-long key is not echoed: the length is the whole story.
+func (k configKeyKind) refuse(key string) error {
+	params := map[string]any{"field": k.field, "maxLength": validation.DNS1123SubdomainMaxLength}
+	if len(key) > validation.DNS1123SubdomainMaxLength {
+		return NewBadRequestError(k.code, fmt.Sprintf("%s name is longer than %d characters", k.noun, validation.DNS1123SubdomainMaxLength), params)
+	}
+	return NewBadRequestError(k.code, fmt.Sprintf("invalid %s name %q: %s", k.noun, key, k.problem(key)), params)
+}
+
+
+// ValidEnvKey reports whether k is an environment variable name bex accepts: a
+// C identifier a shell reads that is also a valid Secret key. Rejecting the
+// rest keeps a bad name from failing the Secret write with a cryptic error
+// later.
 func ValidEnvKey(k string) bool {
-	if k == "" || len(k) > MaxConfigKeyLength {
-		return false
-	}
-	for i, r := range k {
-		switch {
-		case r == '_':
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z':
-		case i > 0 && r >= '0' && r <= '9':
-		default:
-			return false
-		}
-	}
-	return true
+	return envVarKey.problem(k) == ""
 }
 
 // ReservedEnvKeys are environment variable names bex owns, so a user write of
@@ -142,7 +162,7 @@ func ReservedEnvKeyError(k string) error {
 func CheckEnvKey(k string) error {
 	if !ValidEnvKey(k) {
 		// Names only in the error — never the value (docs/ADR013-secrets.md).
-		return invalidConfigKey("environment variable", k)
+		return envVarKey.refuse(k)
 	}
 	if IsReservedEnvKey(k) {
 		return ReservedEnvKeyError(k)
@@ -150,29 +170,19 @@ func CheckEnvKey(k string) error {
 	return nil
 }
 
-// ValidSecretFileName reports whether name is a legal Kubernetes Secret key
-// ([-._a-zA-Z0-9]+, not "."/".."): the file is mounted at /etc/secrets/<name>, so
-// a name outside this set (a path, in particular) would fail the Secret write.
+// ValidSecretFileName reports whether name is a legal Kubernetes Secret key:
+// the file is mounted at /etc/secrets/<name>, so a name outside the rule (a
+// path, or "..data", which the kubelet's atomic-writer layout owns) would fail
+// the Secret write.
 func ValidSecretFileName(name string) bool {
-	if name == "" || name == "." || name == ".." || len(name) > MaxConfigKeyLength {
-		return false
-	}
-	for _, r := range name {
-		switch {
-		case r == '_', r == '-', r == '.':
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
-		default:
-			return false
-		}
-	}
-	return true
+	return secretFileKey.problem(name) == ""
 }
 
 // CheckSecretFileName is CheckEnvKey's twin for secret files: the one refusal
 // every secret-file write returns for a name ValidSecretFileName rejects.
 func CheckSecretFileName(name string) error {
 	if !ValidSecretFileName(name) {
-		return invalidConfigKey("secret file", name)
+		return secretFileKey.refuse(name)
 	}
 	return nil
 }

@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -48,8 +47,8 @@ func (s *Service) NameAvailable(ctx context.Context, name string) (NameAvailabil
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return NameAvailability{}, err
 	}
-	if !store.ValidAppName(name) {
-		return NameAvailability{}, fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
+	if !appv1alpha1.ValidResourceName(name) {
+		return NameAvailability{}, fmt.Errorf("%w: name %s", core.ErrBadRequest, core.ResourceNameRule)
 	}
 	taken, err := s.tenantNames(ctx)
 	if err != nil {
@@ -117,11 +116,11 @@ func nextFreeName(base string, taken map[string]bool) string {
 }
 
 // suffixedName joins base and "-N", truncating base so the result never
-// exceeds ValidAppName's 30-char cap — a suggestion must itself be a valid
+// exceeds ValidResourceName's length cap — a suggestion must itself be a valid
 // name, never just the taken one with a tail bolted on regardless of length.
 func suffixedName(base string, n int) string {
 	suffix := "-" + strconv.Itoa(n)
-	if maxBase := 30 - len(suffix); len(base) > maxBase {
+	if maxBase := appv1alpha1.MaxResourceNameLength - len(suffix); len(base) > maxBase {
 		base = base[:maxBase]
 	}
 	return base + suffix

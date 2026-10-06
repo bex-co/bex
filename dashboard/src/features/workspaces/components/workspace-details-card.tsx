@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { Loader2 } from "lucide-react";
 import {
   Card,
@@ -20,7 +21,6 @@ import { useRenameWorkspace } from "@/features/workspaces/hooks/use-rename-works
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
 import {
-  WORKSPACE_NAME_RE,
   workspacePlanNameKey,
   type WorkspaceView,
 } from "@/features/workspaces/types";
@@ -69,7 +69,7 @@ export function WorkspaceDetailsCard({
     setName(workspace.name);
   }
 
-  const nameValid = WORKSPACE_NAME_RE.test(name);
+  const nameValid = isValidDnsLabel(name);
   const showNameError = name.length > 0 && !nameValid;
   const canSave = nameValid && name !== workspace.name && !busy;
 
