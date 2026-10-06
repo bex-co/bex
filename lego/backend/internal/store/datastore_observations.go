@@ -27,24 +27,6 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Ready-condition reasons the Database and KeyValue controllers write. They are
-// string literals on the operator side (no exported constant to import, and the
-// backend must never import the operator), so they are re-declared here and
-// held in agreement by the tests in datastore_event_facts_test.go.
-const (
-	datastoreReasonProvisioned = "Provisioned"
-	// A major-version upgrade in flight is the one Ready=False the availability
-	// dimension deliberately declines to observe: it is planned downtime whose
-	// own postgres_upgrade_* facts describe it, and reporting it twice would
-	// page an operator for a maintenance window they scheduled.
-	datastoreReasonMajorVersionUpgrade       = "MajorVersionUpgrade"
-	datastoreReasonMajorVersionUpgradeFailed = "MajorVersionUpgradeFailed"
-	// Refusals of an intent, not evidence that the datastore stopped serving —
-	// the datastore precedent for the App path's preRuntimeFailure.
-	datastoreReasonStorageShrinkRejected      = "StorageShrinkRejected"
-	datastoreReasonConnectionSecretRebuilding = "ConnectionSecretRebuilding"
-)
-
 // reconcileDatastores repairs provably stale grouping references and runs the
 // App observation path over managed Database and KeyValue CRs.
 //
@@ -181,7 +163,7 @@ func observedDatabaseStateFor(db *appv1alpha1.Database) (ObservedDatastoreState,
 	obs.SpecVersion = db.Spec.Version
 	obs.CurrentVersion = db.Status.CurrentVersion
 	if ready := findReadyCondition(db.Status.Conditions); ready != nil &&
-		ready.Status == metav1.ConditionFalse && ready.Reason == datastoreReasonMajorVersionUpgradeFailed {
+		ready.Status == metav1.ConditionFalse && ready.Reason == appv1alpha1.ReasonMajorVersionUpgradeFailed {
 		obs.UpgradeFailed = true
 	}
 	return obs, true
@@ -235,7 +217,7 @@ func applyDatastoreReadyCondition(obs ObservedDatastoreState, conditions []metav
 	}
 	switch ready.Status {
 	case metav1.ConditionTrue:
-		if phaseReady && ready.Reason == datastoreReasonProvisioned {
+		if phaseReady && ready.Reason == appv1alpha1.ReasonProvisioned {
 			obs.Availability = "healthy"
 			obs.AvailabilityObserved = true
 			obs.ReadyTransitionAt = ready.LastTransitionTime.Time
@@ -264,9 +246,14 @@ func applyDatastoreReadyCondition(obs ObservedDatastoreState, conditions []metav
 // Provisioning observable here is what lets a real outage be reported at all.
 func datastoreAvailabilityUnobserved(reason string) bool {
 	switch reason {
-	case datastoreReasonMajorVersionUpgrade,
-		datastoreReasonStorageShrinkRejected,
-		datastoreReasonConnectionSecretRebuilding:
+	// A major-version upgrade in flight is planned downtime whose own
+	// postgres_upgrade_* facts describe it; reporting it twice would page an
+	// operator for a maintenance window they scheduled.
+	case appv1alpha1.ReasonMajorVersionUpgrade,
+		// Refusals of an intent, not evidence that the datastore stopped
+		// serving: the datastore precedent for the App path's preRuntimeFailure.
+		appv1alpha1.ReasonStorageShrinkRejected,
+		appv1alpha1.ReasonConnectionSecretRebuilding:
 		return true
 	}
 	return false

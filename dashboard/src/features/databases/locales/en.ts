@@ -264,6 +264,74 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Details",
     description: "Database detail metadata card title",
   },
+  "databases.statusReasonClusterFailed": {
+    message:
+      "The database cluster rejected its configuration, so the latest change could not be applied.",
+    description:
+      "Why an unavailable database is unavailable: the operator's ClusterFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonClusterReadFailed": {
+    message: "The database cluster's state could not be read.",
+    description:
+      "Why an unavailable database is unavailable: the operator's ClusterReadFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonNetworkPolicyFailed": {
+    message: "The database's network policy could not be applied.",
+    description:
+      "Why an unavailable database is unavailable: the operator's NetworkPolicyFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonDiskAutoscalingFailed": {
+    message: "Disk autoscaling could not be applied.",
+    description:
+      "Why an unavailable database is unavailable: the operator's DiskAutoscalingFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonExportFailed": {
+    message: "A database export could not be started.",
+    description:
+      "Why an unavailable database is unavailable: the operator's ExportFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonPoolerFailed": {
+    message: "The connection pooler could not be provisioned.",
+    description:
+      "Why an unavailable database is unavailable: the operator's PoolerFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonPostUpgradeBackupFailed": {
+    message: "The backup after the version upgrade could not be taken.",
+    description:
+      "Why an unavailable database is unavailable: the operator's PostUpgradeBackupFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonMajorVersionUpgradeFailed": {
+    message:
+      "The major version upgrade failed; the database stays on its current version.",
+    description:
+      "Why an unavailable database is unavailable: the operator's MajorVersionUpgradeFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonStorageShrinkRejected": {
+    message:
+      "Postgres storage only grows: the disk can't go below its allocated {size} GB.",
+    description:
+      "Why an unavailable database is unavailable: the operator's StorageShrinkRejected Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonRecoveryUnavailable": {
+    message: "The database can't be restored: no backup store is configured.",
+    description:
+      "Why an unavailable database is unavailable: the operator's RecoveryUnavailable Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonBackupStoreUnavailable": {
+    message: "The database's backup storage could not be set up.",
+    description:
+      "Why an unavailable database is unavailable: the operator's BackupStoreUnavailable Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonScheduledBackupFailed": {
+    message: "The daily backup could not be scheduled.",
+    description:
+      "Why an unavailable database is unavailable: the operator's ScheduledBackupFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonScheduledBackupCleanupFailed": {
+    message: "The daily backup schedule could not be removed.",
+    description:
+      "Why an unavailable database is unavailable: the operator's ScheduledBackupCleanupFailed Ready reason (bex-api statusReasonCode)",
+  },
   "databases.metaStatus": {
     message: "Status",
     description: "Database detail metadata row label",

@@ -127,7 +127,7 @@ func TestDatabaseStorageShrinkIsRejectedBeforeCNPGMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	condition := metaReadyCondition(current.Status.Conditions)
-	if current.Status.Phase != appv1alpha1.DBPhaseFailed || condition == nil || condition.Reason != "StorageShrinkRejected" {
+	if current.Status.Phase != appv1alpha1.DBPhaseFailed || condition == nil || condition.Reason != appv1alpha1.ReasonStorageShrinkRejected {
 		t.Fatalf("shrink status = phase %q condition %+v", current.Status.Phase, condition)
 	}
 }

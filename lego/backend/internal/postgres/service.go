@@ -99,9 +99,14 @@ type PostgresView struct {
 	// w4/m170): a fixed sentence per operator failure, never raw error text.
 	// Omitted for every other status.
 	StatusReason string `json:"statusReason,omitempty"`
-	DatabaseName string `json:"databaseName"` // the actual (normalized) db
-	DatabaseUser string `json:"databaseUser"`
-	DiskSizeGB   int32  `json:"diskSizeGB,omitempty"`
+	// StatusReasonCode is the Ready-condition reason behind StatusReason (one
+	// of lego/types' Reason* constants, or one a client may not know yet), so
+	// a client can show the reason in its own language (w5/079). Omitted with
+	// StatusReason, and when no failed Ready condition names one.
+	StatusReasonCode string `json:"statusReasonCode,omitempty"`
+	DatabaseName     string `json:"databaseName"` // the actual (normalized) db
+	DatabaseUser     string `json:"databaseUser"`
+	DiskSizeGB       int32  `json:"diskSizeGB,omitempty"`
 	// DiskAutoscalingEnabled is Render's read-side field. Writes use the
 	// intentionally asymmetric enableDiskAutoscaling input name.
 	DiskAutoscalingEnabled bool `json:"diskAutoscalingEnabled"`
@@ -431,29 +436,34 @@ func dbStatus(d *appv1alpha1.Database) string {
 // raw API-server or CNPG text (it can name Secrets), so it is not published;
 // StorageShrinkRejected's message is operator-authored and is.
 var unavailableReasons = map[string]string{
-	"ClusterFailed":             "The database cluster rejected its configuration, so the latest change could not be applied.",
-	"ClusterReadFailed":         "The database cluster's state could not be read.",
-	"NetworkPolicyFailed":       "The database's network policy could not be applied.",
-	"DiskAutoscalingFailed":     "Disk autoscaling could not be applied.",
-	"ExportFailed":              "The database's log and metric export could not be configured.",
-	"PoolerFailed":              "The connection pooler could not be provisioned.",
-	"PostUpgradeBackupFailed":   "The backup after the version upgrade could not be taken.",
-	"MajorVersionUpgradeFailed": "The major version upgrade failed; the database stays on its current version.",
+	appv1alpha1.ReasonClusterFailed:                "The database cluster rejected its configuration, so the latest change could not be applied.",
+	appv1alpha1.ReasonClusterReadFailed:            "The database cluster's state could not be read.",
+	appv1alpha1.ReasonNetworkPolicyFailed:          "The database's network policy could not be applied.",
+	appv1alpha1.ReasonDiskAutoscalingFailed:        "Disk autoscaling could not be applied.",
+	appv1alpha1.ReasonExportFailed:                 "A database export could not be started.",
+	appv1alpha1.ReasonPoolerFailed:                 "The connection pooler could not be provisioned.",
+	appv1alpha1.ReasonPostUpgradeBackupFailed:      "The backup after the version upgrade could not be taken.",
+	appv1alpha1.ReasonMajorVersionUpgradeFailed:    "The major version upgrade failed; the database stays on its current version.",
+	appv1alpha1.ReasonRecoveryUnavailable:          "The database can't be restored: no backup store is configured.",
+	appv1alpha1.ReasonBackupStoreUnavailable:       "The database's backup storage could not be set up.",
+	appv1alpha1.ReasonScheduledBackupFailed:        "The daily backup could not be scheduled.",
+	appv1alpha1.ReasonScheduledBackupCleanupFailed: "The daily backup schedule could not be removed.",
 }
 
-// statusReason explains an unavailable database from its Ready condition.
-func statusReason(d *appv1alpha1.Database) string {
+// statusReason explains an unavailable database from its Ready condition: a
+// sentence, and the condition's reason as its code.
+func statusReason(d *appv1alpha1.Database) (sentence, code string) {
 	c := meta.FindStatusCondition(d.Status.Conditions, appv1alpha1.ConditionReady)
 	if c == nil || c.Status == metav1.ConditionTrue {
-		return "The database failed to reconcile."
+		return "The database failed to reconcile.", ""
 	}
-	if c.Reason == "StorageShrinkRejected" {
-		return c.Message
+	if c.Reason == appv1alpha1.ReasonStorageShrinkRejected {
+		return c.Message, c.Reason
 	}
 	if reason, ok := unavailableReasons[c.Reason]; ok {
-		return reason
+		return reason, c.Reason
 	}
-	return fmt.Sprintf("The database failed to reconcile (%s).", c.Reason)
+	return fmt.Sprintf("The database failed to reconcile (%s).", c.Reason), c.Reason
 }
 
 func pgView(d *appv1alpha1.Database) PostgresView {
@@ -488,9 +498,9 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	if !d.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}
-	reason := ""
+	var reason, reasonCode string
 	if status == "unavailable" {
-		reason = statusReason(d)
+		reason, reasonCode = statusReason(d)
 	}
 	// ipAllowList is required in Render's schema — an empty stored list
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
@@ -501,6 +511,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		Version:                 version,
 		Status:                  status,
 		StatusReason:            reason,
+		StatusReasonCode:        reasonCode,
 		DatabaseName:            dbn,
 		DatabaseUser:            dbUser,
 		DiskSizeGB:              DatabaseStorageHighWater(d),

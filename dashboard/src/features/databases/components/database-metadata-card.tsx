@@ -3,7 +3,10 @@ import { MetadataList } from "@/common/components/metadata-list";
 import { RelativeAge } from "@/common/components/relative-time";
 import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
-import { statusLabel } from "@/features/databases/lib/labels";
+import {
+  statusLabel,
+  statusReasonLabel,
+} from "@/features/databases/lib/labels";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
@@ -27,6 +30,11 @@ export function DatabaseMetadataCard({
   // Cache-first catalog: fall back to the plan id while it is empty.
   const planName =
     instanceTypes.find((it) => it.id === database.plan)?.name ?? database.plan;
+  const reasonKey = statusReasonLabel(database.statusReasonCode);
+  // The shrink refusal names the allocated size, which diskSizeGB reports.
+  const reason = reasonKey
+    ? t(reasonKey, { size: database.diskSizeGB ?? "" })
+    : database.statusReason;
   return (
     <MetadataList
       title={t("databases.metaTitle")}
@@ -37,12 +45,10 @@ export function DatabaseMetadataCard({
         // beside it (w1/m159, from w1/085).
         {
           label: t("databases.metaStatus"),
-          value: database.statusReason ? (
+          value: reason ? (
             <span className="flex flex-col gap-0.5">
               <span>{t(statusLabel(database))}</span>
-              <span className="text-muted-foreground text-xs">
-                {database.statusReason}
-              </span>
+              <span className="text-muted-foreground text-xs">{reason}</span>
             </span>
           ) : (
             t(statusLabel(database))
