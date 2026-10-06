@@ -140,8 +140,13 @@ const renderBlueprintIDPattern = `^(?:blp|exs)-[0-9a-z]{20}$`
 // operations. All other query names must come from the matched OpenAPI
 // operation (including its path-level parameters).
 var renderQueryExtensions = map[string]map[string]struct{}{
-	"create-service":  {"dryRun": {}},
-	"update-service":  {"dryRun": {}},
+	"create-service": {"dryRun": {}},
+	// confirm arms a guarded patch on a protected member (w4/m126); the
+	// refusal names it, so the validator must let it through.
+	"update-service": {"dryRun": {}, "confirm": {}},
+	// Override deploys and rollback swap the running code (w4/m176).
+	"create-deploy":   {"confirm": {}},
+	"rollback-deploy": {"confirm": {}},
 	"delete-service":  {"confirm": {}},
 	"suspend-service": {"confirm": {}},
 	"resume-service":  {"confirm": {}},

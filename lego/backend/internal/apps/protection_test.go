@@ -471,3 +471,22 @@ func TestM126_GuardedMutationsAcceptConfirm(t *testing.T) {
 		}
 	}
 }
+
+// TestProtectionGuardIsTheServiceGuard: the adapter deploys uses (w4/m176) is
+// the same predicate and phrase as apps' own verbs.
+func TestProtectionGuardIsTheServiceGuard(t *testing.T) {
+	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
+	svc, _ := newService(rec, managedApp("web", "srv-1"))
+	a := managedApp("web", "srv-1")
+	guard := svc.ProtectionGuard()
+	if protected, err := guard.AppProtected(context.Background(), a); err != nil || !protected {
+		t.Fatalf("AppProtected = %v, %v", protected, err)
+	}
+	if err := guard.RequireUnprotected(context.Background(), a, "repoint"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("unconfirmed = %v", err)
+	}
+	ctx := core.WithConfirm(context.Background(), ProtectedConfirmation("repoint", "web"))
+	if err := guard.RequireUnprotected(ctx, a, "repoint"); err != nil {
+		t.Fatalf("confirmed = %v", err)
+	}
+}

@@ -76,17 +76,21 @@ query ServiceEvents(
   }
 }
 
+# confirm: the protected-environment phrase a commitId deploy needs on a
+# protected member (w4/m176), copied from the first call's refusal.
 mutation TriggerDeploy(
   $serviceId: String!
   $commitId: String
   $deployMode: String
   $clearCache: String
+  $confirm: String
 ) {
   triggerDeploy(
     serviceId: $serviceId
     commitId: $commitId
     deployMode: $deployMode
     clearCache: $clearCache
+    confirm: $confirm
   ) {
     id
     status
@@ -121,11 +125,18 @@ mutation CancelDeploy($serviceId: String!, $deployId: String!) {
 # disableAutoDeploy: Render turns auto-deploy off for a rollback started in its
 # dashboard, so the next push does not silently undo it, and leaves it alone for an
 # API rollback. This is the dashboard, so it always asks (w1/m152 t009).
-mutation RollbackService($serviceId: String!, $deployId: String!) {
+# confirm: a rollback swaps the running code, so a protected member asks for
+# the server-issued phrase (w4/m176).
+mutation RollbackService(
+  $serviceId: String!
+  $deployId: String!
+  $confirm: String
+) {
   rollbackService(
     serviceId: $serviceId
     deployId: $deployId
     disableAutoDeploy: true
+    confirm: $confirm
   ) {
     id
     status

@@ -1906,6 +1906,7 @@ export type MutationRevokeWorkspaceInviteArgs = {
 
 
 export type MutationRollbackServiceArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
   deployId: Scalars['String']['input'];
   disableAutoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
   serviceId: Scalars['String']['input'];
@@ -2295,6 +2296,7 @@ export type MutationTerminateSandboxArgs = {
 export type MutationTriggerDeployArgs = {
   clearCache?: InputMaybe<Scalars['String']['input']>;
   commitId?: InputMaybe<Scalars['String']['input']>;
+  confirm?: InputMaybe<Scalars['String']['input']>;
   deployMode?: InputMaybe<Scalars['String']['input']>;
   imageUrl?: InputMaybe<Scalars['String']['input']>;
   serviceId: Scalars['String']['input'];

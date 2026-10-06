@@ -7,6 +7,11 @@ import {
 import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
+import {
+  ProtectedConfirmationDismissed,
+  withProtectedRetry,
+} from "@/features/services/lib/protected-confirmation";
 
 const REFETCH_DEPLOYS = {
   refetchQueries: DEPLOY_REFETCH_QUERIES,
@@ -71,6 +76,7 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
     RestartServerDocument,
     REFETCH_DEPLOYS,
   );
+  const askForConfirmation = useAskForProtectedConfirmation();
 
   async function restart(serviceId: string): Promise<string | null> {
     try {
@@ -88,17 +94,23 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
     opts?: TriggerOptions,
   ): Promise<string | null> {
     try {
-      const { data } = await triggerDeploy({
-        variables: {
-          serviceId,
-          commitId: opts?.commitId,
-          deployMode: opts?.deployMode,
-          clearCache: opts?.clearCache,
-        },
-      });
+      // Deploying a specific commit swaps the running code, so a protected
+      // environment asks for the server-issued phrase (w4/m176).
+      const { data } = await withProtectedRetry(askForConfirmation, (confirm) =>
+        triggerDeploy({
+          variables: {
+            serviceId,
+            commitId: opts?.commitId,
+            deployMode: opts?.deployMode,
+            clearCache: opts?.clearCache,
+            confirm,
+          },
+        }),
+      );
       toast.success(t("services.triggerDeploySuccess"));
       return data?.triggerDeploy?.id ?? null;
     } catch (err) {
+      if (err instanceof ProtectedConfirmationDismissed) return null;
       toast.error(mutationErrorMessage(err, t("services.triggerDeployError")));
       return null;
     }
