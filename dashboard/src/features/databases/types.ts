@@ -43,6 +43,8 @@ export interface ReadReplicaView {
 export interface DatabaseDetailView extends DatabaseView {
   /** Why an unavailable database is unavailable (bex-api statusReason), else null. */
   statusReason?: string | null;
+  /** The code of statusReason (the operator's Ready reason), else null. */
+  statusReasonCode?: string | null;
   /** Normalized (unquoted-identifier) database name. */
   databaseName: string | null;
   /** Owner role, `<db>_user`. */

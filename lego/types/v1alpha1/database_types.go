@@ -386,6 +386,29 @@ const (
 	DBPhaseFailed       DatabasePhase = "Failed"
 )
 
+// Ready-condition reasons the operator sets on a Database. A failed one is
+// what bex-api publishes as an unavailable database's statusReasonCode, which
+// clients translate (w5/079), so renaming one is an API change. A Key Value
+// shares Provisioned, NetworkPolicyFailed and StorageShrinkRejected.
+const (
+	ReasonProvisioned         = "Provisioned"
+	ReasonMajorVersionUpgrade = "MajorVersionUpgrade"
+
+	ReasonClusterFailed                = "ClusterFailed"
+	ReasonClusterReadFailed            = "ClusterReadFailed"
+	ReasonNetworkPolicyFailed          = "NetworkPolicyFailed"
+	ReasonDiskAutoscalingFailed        = "DiskAutoscalingFailed"
+	ReasonExportFailed                 = "ExportFailed"
+	ReasonPoolerFailed                 = "PoolerFailed"
+	ReasonPostUpgradeBackupFailed      = "PostUpgradeBackupFailed"
+	ReasonMajorVersionUpgradeFailed    = "MajorVersionUpgradeFailed"
+	ReasonStorageShrinkRejected        = "StorageShrinkRejected"
+	ReasonRecoveryUnavailable          = "RecoveryUnavailable"
+	ReasonBackupStoreUnavailable       = "BackupStoreUnavailable"
+	ReasonScheduledBackupFailed        = "ScheduledBackupFailed"
+	ReasonScheduledBackupCleanupFailed = "ScheduledBackupCleanupFailed"
+)
+
 // DatabaseStatus is the observed state of a Database.
 type DatabaseStatus struct {
 	// Phase is the high-level lifecycle state.

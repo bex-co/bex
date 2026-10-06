@@ -510,7 +510,7 @@ func TestKeyValueStorageShrinkIsRejectedBeforePVCMutation(t *testing.T) {
 	ready := meta.FindStatusCondition(gotKV.Status.Conditions, "Ready")
 	storage := meta.FindStatusCondition(gotKV.Status.Conditions, "StorageReady")
 	if gotKV.Status.Phase != appv1alpha1.KVPhaseFailed || ready == nil || storage == nil ||
-		ready.Reason != "StorageShrinkRejected" || storage.Reason != "StorageShrinkRejected" {
+		ready.Reason != appv1alpha1.ReasonStorageShrinkRejected || storage.Reason != appv1alpha1.ReasonStorageShrinkRejected {
 		t.Fatalf("shrink status = phase %q ready %+v storage %+v", gotKV.Status.Phase, ready, storage)
 	}
 }

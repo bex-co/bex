@@ -55,7 +55,7 @@ func TestPostgresStatusTellsARestartFromCreation(t *testing.T) {
 		}, "config_restart"},
 		{"current Ready", 2, false, false, appv1alpha1.DatabaseStatus{
 			Phase: appv1alpha1.DBPhaseReady, Provisioned: true,
-			Conditions: ready(metav1.ConditionTrue, "Provisioned", 2),
+			Conditions: ready(metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, 2),
 		}, "available"},
 		{"upgrading is unchanged", 2, false, false, appv1alpha1.DatabaseStatus{
 			Phase: appv1alpha1.DBPhaseUpgrading, Provisioned: true,

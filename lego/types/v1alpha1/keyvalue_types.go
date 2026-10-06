@@ -142,6 +142,10 @@ const (
 	KVPhaseFailed       KeyValuePhase = "Failed"
 )
 
+// ReasonConnectionSecretRebuilding is a Key Value's Ready reason while its
+// immutable connection Secret is rebuilt: a refusal of intent, not an outage.
+const ReasonConnectionSecretRebuilding = "ConnectionSecretRebuilding"
+
 // KeyValueStatus is the observed state of a KeyValue.
 type KeyValueStatus struct {
 	// Phase is the high-level lifecycle state.

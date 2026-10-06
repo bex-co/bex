@@ -82,18 +82,24 @@ func TestUnavailableDatabaseCarriesAValueFreeReason(t *testing.T) {
 		meta.SetStatusCondition(&d.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: message})
 		return d
 	}
-	cluster := pgView(failed("ClusterFailed", `admission webhook denied: secret "dpg-x-app" spec.managed.roles[1]`))
+	cluster := pgView(failed(appv1alpha1.ReasonClusterFailed, `admission webhook denied: secret "dpg-x-app" spec.managed.roles[1]`))
 	if cluster.Status != "unavailable" || !strings.Contains(cluster.StatusReason, "rejected its configuration") || strings.Contains(cluster.StatusReason, "dpg-x-app") {
 		t.Fatalf("ClusterFailed view = %q / %q", cluster.Status, cluster.StatusReason)
 	}
-	if got := pgView(failed("StorageShrinkRejected", "Postgres storage is grow-only: requested 1 GB is below the allocated 5 GB")).StatusReason; !strings.Contains(got, "grow-only") {
-		t.Fatalf("operator-authored message dropped: %q", got)
+	// w5/079: the reason travels as a code a client can translate.
+	if cluster.StatusReasonCode != appv1alpha1.ReasonClusterFailed {
+		t.Fatalf("ClusterFailed code = %q", cluster.StatusReasonCode)
 	}
-	if got := pgView(failed("SomethingNew", "raw")).StatusReason; got != "The database failed to reconcile (SomethingNew)." {
-		t.Fatalf("unknown reason = %q", got)
+	shrink := pgView(failed(appv1alpha1.ReasonStorageShrinkRejected, "Postgres storage is grow-only: requested 1 GB is below the allocated 5 GB"))
+	if !strings.Contains(shrink.StatusReason, "grow-only") || shrink.StatusReasonCode != appv1alpha1.ReasonStorageShrinkRejected {
+		t.Fatalf("operator-authored message or its code dropped: %q / %q", shrink.StatusReason, shrink.StatusReasonCode)
+	}
+	unknown := pgView(failed("SomethingNew", "raw"))
+	if unknown.StatusReason != "The database failed to reconcile (SomethingNew)." || unknown.StatusReasonCode != "SomethingNew" {
+		t.Fatalf("unknown reason = %q / %q", unknown.StatusReason, unknown.StatusReasonCode)
 	}
 	healthy := &appv1alpha1.Database{Status: appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady}}
-	if got := pgView(healthy).StatusReason; got != "" {
-		t.Fatalf("a non-failed database carries a reason: %q", got)
+	if got := pgView(healthy); got.StatusReason != "" || got.StatusReasonCode != "" {
+		t.Fatalf("a non-failed database carries a reason: %q / %q", got.StatusReason, got.StatusReasonCode)
 	}
 }

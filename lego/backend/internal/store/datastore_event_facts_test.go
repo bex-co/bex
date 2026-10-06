@@ -47,7 +47,7 @@ func databaseCR(phase appv1alpha1.DatabasePhase, ready metav1.ConditionStatus, r
 }
 
 func readyDatabase(transitionedAt time.Time) *appv1alpha1.Database {
-	return databaseCR(appv1alpha1.DBPhaseReady, metav1.ConditionTrue, datastoreReasonProvisioned, transitionedAt)
+	return databaseCR(appv1alpha1.DBPhaseReady, metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, transitionedAt)
 }
 
 // downDatabase is the ambiguous state that makes the arming rule load-bearing:
@@ -209,14 +209,14 @@ func TestObservedKeyValueUsesTheKeyValueVocabulary(t *testing.T) {
 	rec, st, _ := newGuardedReconciler()
 	base := time.Now().Add(-time.Hour).UTC()
 
-	healthy := keyValueCR(appv1alpha1.KVPhaseReady, metav1.ConditionTrue, datastoreReasonProvisioned, base)
+	healthy := keyValueCR(appv1alpha1.KVPhaseReady, metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, base)
 	down := keyValueCR(appv1alpha1.KVPhaseProvisioning, metav1.ConditionFalse, "PodUnready", base.Add(10*time.Minute))
 	suspended := keyValueCR(appv1alpha1.KVPhaseReady, metav1.ConditionTrue, appv1alpha1.ReasonSuspended, base.Add(30*time.Minute))
 	suspended.Spec.Suspended = true
 
 	driveKeyValue(t, rec, healthy, 2)
 	driveKeyValue(t, rec, down, 3)
-	driveKeyValue(t, rec, keyValueCR(appv1alpha1.KVPhaseReady, metav1.ConditionTrue, datastoreReasonProvisioned, base.Add(20*time.Minute)), 2)
+	driveKeyValue(t, rec, keyValueCR(appv1alpha1.KVPhaseReady, metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, base.Add(20*time.Minute)), 2)
 	driveKeyValue(t, rec, suspended, 2)
 
 	counts := datastoreEdgeCounts(st)
@@ -268,7 +268,7 @@ func TestMajorVersionUpgradeLeavesAvailabilityUnobserved(t *testing.T) {
 	base := time.Now().Add(-time.Hour).UTC()
 
 	driveDatabase(t, rec, readyDatabase(base), 1)
-	upgrading := databaseCR(appv1alpha1.DBPhaseUpgrading, metav1.ConditionFalse, datastoreReasonMajorVersionUpgrade, base.Add(10*time.Minute))
+	upgrading := databaseCR(appv1alpha1.DBPhaseUpgrading, metav1.ConditionFalse, appv1alpha1.ReasonMajorVersionUpgrade, base.Add(10*time.Minute))
 	driveDatabase(t, rec, upgrading, 3)
 	driveDatabase(t, rec, readyDatabase(base.Add(20*time.Minute)), 2)
 

@@ -55,7 +55,7 @@ func TestKeyValueStatusTellsARestartFromCreation(t *testing.T) {
 		}, "config_restart"},
 		{"Ready from the previous generation (config saved, not yet observed)", 3, false, false, appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseReady, CredentialRevision: "rev-1",
-			Conditions: ready(metav1.ConditionTrue, "Provisioned", 2),
+			Conditions: ready(metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, 2),
 		}, "config_restart"},
 		{"resumed: the suspended Ready is stale", 4, false, false, appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseReady, CredentialRevision: "rev-1",
@@ -63,7 +63,7 @@ func TestKeyValueStatusTellsARestartFromCreation(t *testing.T) {
 		}, "config_restart"},
 		{"current Ready", 3, false, false, appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseReady, CredentialRevision: "rev-1",
-			Conditions: ready(metav1.ConditionTrue, "Provisioned", 3),
+			Conditions: ready(metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, 3),
 		}, "available"},
 		{"Ready without a condition trusts the phase", 0, false, false, appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseReady,
@@ -73,7 +73,7 @@ func TestKeyValueStatusTellsARestartFromCreation(t *testing.T) {
 		}, "unavailable"},
 		{"suspended outranks the stale Ready", 3, true, false, appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseReady, CredentialRevision: "rev-1",
-			Conditions: ready(metav1.ConditionTrue, "Provisioned", 2),
+			Conditions: ready(metav1.ConditionTrue, appv1alpha1.ReasonProvisioned, 2),
 		}, "suspended"},
 		{"deleting outranks everything", 3, true, true, appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseProvisioning, CredentialRevision: "rev-1",

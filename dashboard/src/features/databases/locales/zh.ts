@@ -261,6 +261,71 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "详情",
     description: "Database detail metadata card title",
   },
+  "databases.statusReasonClusterFailed": {
+    message: "数据库集群拒绝了该配置，最近的更改未能生效。",
+    description:
+      "Why an unavailable database is unavailable: the operator's ClusterFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonClusterReadFailed": {
+    message: "无法读取数据库集群的状态。",
+    description:
+      "Why an unavailable database is unavailable: the operator's ClusterReadFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonNetworkPolicyFailed": {
+    message: "无法应用数据库的网络策略。",
+    description:
+      "Why an unavailable database is unavailable: the operator's NetworkPolicyFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonDiskAutoscalingFailed": {
+    message: "无法应用磁盘自动扩容。",
+    description:
+      "Why an unavailable database is unavailable: the operator's DiskAutoscalingFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonExportFailed": {
+    message: "无法创建数据库导出。",
+    description:
+      "Why an unavailable database is unavailable: the operator's ExportFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonPoolerFailed": {
+    message: "无法预配连接池。",
+    description:
+      "Why an unavailable database is unavailable: the operator's PoolerFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonPostUpgradeBackupFailed": {
+    message: "版本升级后的备份未能完成。",
+    description:
+      "Why an unavailable database is unavailable: the operator's PostUpgradeBackupFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonMajorVersionUpgradeFailed": {
+    message: "主版本升级失败；数据库仍保持当前版本。",
+    description:
+      "Why an unavailable database is unavailable: the operator's MajorVersionUpgradeFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonStorageShrinkRejected": {
+    message: "Postgres 存储只能扩容：磁盘容量不能低于已分配的 {size} GB。",
+    description:
+      "Why an unavailable database is unavailable: the operator's StorageShrinkRejected Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonRecoveryUnavailable": {
+    message: "无法恢复数据库：未配置备份存储。",
+    description:
+      "Why an unavailable database is unavailable: the operator's RecoveryUnavailable Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonBackupStoreUnavailable": {
+    message: "无法设置数据库的备份存储。",
+    description:
+      "Why an unavailable database is unavailable: the operator's BackupStoreUnavailable Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonScheduledBackupFailed": {
+    message: "无法安排每日备份。",
+    description:
+      "Why an unavailable database is unavailable: the operator's ScheduledBackupFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "databases.statusReasonScheduledBackupCleanupFailed": {
+    message: "无法移除每日备份计划。",
+    description:
+      "Why an unavailable database is unavailable: the operator's ScheduledBackupCleanupFailed Ready reason (bex-api statusReasonCode)",
+  },
   "databases.metaStatus": {
     message: "状态",
     description: "Database detail metadata row label",

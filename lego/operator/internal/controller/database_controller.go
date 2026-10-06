@@ -160,7 +160,7 @@ func (r *DatabaseReconciler) databaseStorageIntent(
 	desiredGB int32,
 ) (int32, ctrl.Result, bool, error) {
 	if err := r.Get(ctx, client.ObjectKeyFromObject(cluster), cluster); err != nil && !apierrors.IsNotFound(err) {
-		result, failErr := r.dbFail(ctx, db, "ClusterReadFailed", err)
+		result, failErr := r.dbFail(ctx, db, appv1alpha1.ReasonClusterReadFailed, err)
 		return 0, result, true, failErr
 	}
 	currentGB, effectiveGB, shrink := growOnlyIntent(
@@ -785,7 +785,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	diskRequeue, err := r.applyDiskAutoscaling(ctx, &db)
 	if err != nil {
-		return r.dbFail(ctx, &db, "DiskAutoscalingFailed", err)
+		return r.dbFail(ctx, &db, appv1alpha1.ReasonDiskAutoscalingFailed, err)
 	}
 
 	plan, storageGB := resolvePlan(db.Spec)
@@ -817,10 +817,10 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		parameters:        db.Spec.Parameters,
 		serverAltDNSNames: databaseServerAltDNSNames(&db, r.DBDomain),
 	}); err != nil {
-		return r.dbFail(ctx, &db, "ClusterFailed", err)
+		return r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)
 	}
 	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelEnvironment], "-environment-ingress", map[string]string{"app.bex.co/component": "database"}); err != nil {
-		return r.dbFail(ctx, &db, "NetworkPolicyFailed", err)
+		return r.dbFail(ctx, &db, appv1alpha1.ReasonNetworkPolicyFailed, err)
 	}
 
 	r.stampConnectionStatus(&db, storageGB, backups)
@@ -833,12 +833,12 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// --- logical exports: pg_dump directory archive -> object store ---
 	exportRequeue, err := r.reconcileExports(ctx, &db, backups.storeConfigured)
 	if err != nil {
-		return r.dbFail(ctx, &db, "ExportFailed", err)
+		return r.dbFail(ctx, &db, appv1alpha1.ReasonExportFailed, err)
 	}
 
 	// --- PgBouncer Pooler when requested ---
 	if poolerRequeue, err := r.reconcilePooler(ctx, &db); err != nil {
-		return r.dbFail(ctx, &db, "PoolerFailed", err)
+		return r.dbFail(ctx, &db, appv1alpha1.ReasonPoolerFailed, err)
 	} else if poolerRequeue {
 		// CNPG creates source credentials after accepting its bootstrap spec.
 		// Keep retrying until the derived Secret exists; consumers can never
@@ -905,7 +905,7 @@ func (r *DatabaseReconciler) prepareBackups(ctx context.Context, db *appv1alpha1
 	intent.enabled = plan.Backup && intent.storeConfigured
 	intent.currentServerName, intent.targetServerName = databaseBackupServerNames(db)
 	if db.Spec.Recovery != nil && !intent.storeConfigured {
-		return intent, "RecoveryUnavailable", fmt.Errorf("recovery requested but no backup store is configured")
+		return intent, appv1alpha1.ReasonRecoveryUnavailable, fmt.Errorf("recovery requested but no backup store is configured")
 	}
 	// The Barman ObjectStore and its S3 credential are namespaced, and GitOps
 	// installs exactly one of each in the shared apps namespace. A Database in a
@@ -915,7 +915,7 @@ func (r *DatabaseReconciler) prepareBackups(ctx context.Context, db *appv1alpha1
 	// archives nothing.
 	if intent.enabled {
 		if err := r.reconcileTenantBackupStore(ctx, db); err != nil {
-			return intent, "BackupStoreUnavailable", err
+			return intent, appv1alpha1.ReasonBackupStoreUnavailable, err
 		}
 	}
 	return intent, "", nil
@@ -1081,12 +1081,12 @@ func terminalBackupSummary(backup *unstructured.Unstructured) (appv1alpha1.Datab
 func (r *DatabaseReconciler) reconcileScheduledBackup(ctx context.Context, db *appv1alpha1.Database, backupEnabled bool) (string, error) {
 	if backupEnabled {
 		if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgScheduledBackupGVK, db.Name+"-backup", scheduledBackupSpec(db.Name)); err != nil {
-			return "ScheduledBackupFailed", err
+			return appv1alpha1.ReasonScheduledBackupFailed, err
 		}
 		return "", nil
 	}
 	if err := deleteOwned(ctx, r.Client, db, cnpgScheduledBackupGVK, db.Name+"-backup"); err != nil {
-		return "ScheduledBackupCleanupFailed", err
+		return appv1alpha1.ReasonScheduledBackupCleanupFailed, err
 	}
 	return "", nil
 }
@@ -1292,7 +1292,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		}
 		db.Status.Phase = appv1alpha1.DBPhaseFailed
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "MajorVersionUpgradeFailed",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonMajorVersionUpgradeFailed,
 			Message: clusterState.message, ObservedGeneration: db.Generation,
 		})
 		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
@@ -1303,7 +1303,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 	if clusterState.majorUpgradeRunning() {
 		db.Status.Phase = appv1alpha1.DBPhaseUpgrading
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "MajorVersionUpgrade",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonMajorVersionUpgrade,
 			Message: clusterState.message, ObservedGeneration: db.Generation,
 		})
 		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
@@ -1320,14 +1320,14 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		if backupEnabled && previousVersion != "" && clusterState.currentVersion != "" && previousVersion != clusterState.currentVersion {
 			name := fmt.Sprintf("%s-post-upgrade-pg%s", db.Name, clusterState.currentVersion)
 			if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgBackupGVK, name, onDemandBackupSpec(db.Name)); err != nil {
-				return r.dbFail(ctx, db, "PostUpgradeBackupFailed", err)
+				return r.dbFail(ctx, db, appv1alpha1.ReasonPostUpgradeBackupFailed, err)
 			}
 			db.Status.BackupServerName = targetBackupServerName
 		}
 		db.Status.Phase = appv1alpha1.DBPhaseReady
 		db.Status.Provisioned = true
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Provisioned",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: appv1alpha1.ReasonProvisioned,
 			Message: "postgres ready", ObservedGeneration: db.Generation,
 		})
 		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
@@ -1577,7 +1577,7 @@ func (r *DatabaseReconciler) rejectDatabaseStorageShrink(ctx context.Context, db
 	db.Status.Phase = appv1alpha1.DBPhaseFailed
 	db.Status.AllocatedStorageGB = current
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonStorageShrinkRejected,
 		Message:            fmt.Sprintf("Postgres storage is grow-only: requested %d GB is below the allocated %d GB", requested, current),
 		ObservedGeneration: db.Generation,
 	})

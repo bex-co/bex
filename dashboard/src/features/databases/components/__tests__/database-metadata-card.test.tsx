@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import i18n from "@/i18n/init";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 // The card reaches Apollo only through the instance-type catalog; the name row
@@ -75,6 +76,58 @@ describe("DatabaseMetadataCard", () => {
       }),
     );
     expect(screen.getByText(/rejected its configuration/)).toBeInTheDocument();
+  });
+
+  // w5/079: the reason is translated by its code; bex-api's sentence is the
+  // fallback for a code this dashboard does not know.
+  describe("unavailable reason by code", () => {
+    afterEach(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    it("translates a known code", async () => {
+      await i18n.changeLanguage("zh");
+      renderCard(
+        db({
+          status: "unavailable",
+          statusReason: "The connection pooler could not be provisioned.",
+          statusReasonCode: "PoolerFailed",
+        }),
+      );
+      expect(screen.getByText("无法预配连接池。")).toBeInTheDocument();
+      expect(screen.queryByText(/connection pooler/)).not.toBeInTheDocument();
+    });
+
+    it("names the allocated size a storage shrink was refused at", () => {
+      renderCard(
+        db({
+          status: "unavailable",
+          diskSizeGB: 20,
+          statusReason:
+            "Postgres storage is grow-only: requested 10 GB is below the allocated 20 GB",
+          statusReasonCode: "StorageShrinkRejected",
+        }),
+      );
+      expect(
+        screen.getByText(
+          "Postgres storage only grows: the disk can't go below its allocated 20 GB.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("falls back to bex-api's sentence for an unknown code", async () => {
+      await i18n.changeLanguage("zh");
+      renderCard(
+        db({
+          status: "unavailable",
+          statusReason: "The database failed to reconcile (SomethingNew).",
+          statusReasonCode: "SomethingNew",
+        }),
+      );
+      expect(
+        screen.getByText("The database failed to reconcile (SomethingNew)."),
+      ).toBeInTheDocument();
+    });
   });
 
   it("reads the suspended status, not a stale ready label (w1/m159)", () => {

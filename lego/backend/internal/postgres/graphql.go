@@ -35,12 +35,14 @@ import (
 var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Database",
 	Fields: graphql.Fields{
-		"id":                      gqlutil.StrField(func(v PostgresView) any { return v.ID }),
-		"name":                    gqlutil.StrField(func(v PostgresView) any { return v.Name }),
-		"plan":                    gqlutil.StrField(func(v PostgresView) any { return v.Plan }),
-		"version":                 gqlutil.StrField(func(v PostgresView) any { return v.Version }),
-		"status":                  gqlutil.StrField(func(v PostgresView) any { return v.Status }),
-		"statusReason":            gqlutil.StrField(func(v PostgresView) any { return v.StatusReason }),
+		"id":      gqlutil.StrField(func(v PostgresView) any { return v.ID }),
+		"name":    gqlutil.StrField(func(v PostgresView) any { return v.Name }),
+		"plan":    gqlutil.StrField(func(v PostgresView) any { return v.Plan }),
+		"version": gqlutil.StrField(func(v PostgresView) any { return v.Version }),
+		"status":  gqlutil.StrField(func(v PostgresView) any { return v.Status }),
+		// Null when omitted, as REST and MCP omit them (gqlutil.OptionalStrField).
+		"statusReason":            gqlutil.OptionalStrField(func(v PostgresView) any { return v.StatusReason }),
+		"statusReasonCode":        gqlutil.OptionalStrField(func(v PostgresView) any { return v.StatusReasonCode }),
 		"databaseName":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseName }),
 		"databaseUser":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseUser }),
 		"diskSizeGB":              gqlutil.IntField(func(v PostgresView) any { return v.DiskSizeGB }),
