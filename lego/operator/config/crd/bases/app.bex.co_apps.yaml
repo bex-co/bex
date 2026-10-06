@@ -1185,8 +1185,9 @@ spec:
               preDeploy:
                 description: |-
                   PreDeploy is the outcome of the pre-deploy command for the revision the
-                  operator is currently rolling out (nil when no pre-deploy step is
-                  configured or none has run yet). See spec.preDeployCommand.
+                  operator is currently rolling out, or for a canceled release whose step was
+                  left to finish (nil when no pre-deploy step is configured or none has run
+                  yet). See spec.preDeployCommand.
                 properties:
                   finishedAt:
                     description: FinishedAt is when it completed or failed (RFC3339);

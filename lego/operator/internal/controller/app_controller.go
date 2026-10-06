@@ -667,6 +667,7 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	if app.Status.ObservedGeneration != app.Generation {
 		recordBuildOutcome(buildOutcomeCanceled)
 	}
+	poll := r.observeCanceledPreDeploy(ctx, app)
 	// Only a release that served can be reverted to; otherwise there is simply
 	// no release yet and the Canceled branch below is the truth (w1/m160).
 	if releaseHasServed(app) {
@@ -697,7 +698,9 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 			app.Status.ImageNetwork = serving.DeepCopy()
 			image, port = serving.Image, int(serving.PrimaryPort)
 		}
-		return r.dispatchRuntime(ctx, app, image, port)
+		res, err := r.dispatchRuntime(ctx, app, image, port)
+		res.RequeueAfter = soonerRequeue(res.RequeueAfter, poll)
+		return res, err
 	}
 	// Canceled, not Failed: the Condition below has always said "BuildCanceled",
 	// but the coarse phase reused PhaseFailed, so the service reported an error
@@ -710,7 +713,39 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "BuildCanceled",
 		Message: "build canceled before a release became available", ObservedGeneration: app.Generation,
 	})
-	return ctrl.Result{}, updateStatusIfChanged(ctx, r.Client, app)
+	return ctrl.Result{RequeueAfter: poll}, updateStatusIfChanged(ctx, r.Client, app)
+}
+
+// observeCanceledPreDeploy records how a canceled release's pre-deploy step
+// ended (w5/085). A cancel, whether the user's or a suspend that ended the
+// rollout, leaves a running step to finish. Nothing gates on it any more, so
+// reconcilePreDeploy stops reading its Job, but bex-api projects this verdict
+// onto the canceled deploy, which otherwise reads "canceled" for a migration
+// that ran. It only sets status.preDeploy, for the pass's own status write to
+// persist: the verdict neither fails the service nor rolls the release. It
+// returns how soon to look again while the Job runs, zero once there is nothing
+// to observe. Nobody waits on this verdict, and the step's pod ending already
+// triggers a pass, so the look-again is the unhurried child-health cadence.
+func (r *AppReconciler) observeCanceledPreDeploy(ctx context.Context, app *appv1alpha1.App) time.Duration {
+	pd := app.Status.PreDeploy
+	if gen, ok := canceledReleaseGeneration(app); !ok || pd == nil || pd.Generation != gen ||
+		pd.Status != appv1alpha1.PreDeployRunning || pd.Job == "" {
+		return 0
+	}
+	job := &batchv1.Job{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: pd.Job}, job); err != nil {
+		if apierrors.IsNotFound(err) {
+			return 0 // reaped before anyone read it: the deploy keeps "canceled"
+		}
+		logf.FromContext(ctx).Error(err, "read canceled release's pre-deploy Job", "app", app.Name, "job", pd.Job)
+		return childHealthRequeue
+	}
+	ended, ok := preDeployEnded(ctx, r.Client, job, *pd)
+	if !ok {
+		return childHealthRequeue
+	}
+	app.Status.PreDeploy = &ended
+	return 0
 }
 
 // resolveDeployImage settles which image this pass deploys — prebuilt, a reused
@@ -5452,41 +5487,52 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		return ctrl.Result{}, true, err
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	switch predeploy.Observe(job) {
-	case predeploy.StateSucceeded:
-		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
-			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeploySucceeded,
-			StartedAt: started, FinishedAt: now,
+	running := appv1alpha1.PreDeployStatus{
+		Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeployRunning, StartedAt: started,
+	}
+	if ended, ok := preDeployEnded(ctx, r.Client, job, running); ok {
+		if ended.Status == appv1alpha1.PreDeployFailed {
+			return r.failPreDeploy(ctx, app, &ended)
 		}
+		app.Status.PreDeploy = &ended
 		r.updateStatusRetrying(ctx, app, "predeploy-succeeded")
 		logf.FromContext(ctx).Info("pre-deploy succeeded", "name", app.Name, "job", job.Name)
 		return ctrl.Result{}, false, nil // proceed to the rollout
-	case predeploy.StateFailed:
-		return r.failPreDeploy(ctx, app, failedPD(job.Name, predeploy.FailureMessage(ctx, r.Client, job)))
-	default: // Pending/Running — keep the old revision serving and requeue
-		// A malformed reference fails immediately; permanent pull errors wait
-		// through the retry grace window. Delete the Job before recording failure
-		// so a late pull cannot run the migration after that verdict. A failed
-		// delete retries rather than recording a verdict it can't back.
-		if msg := predeploy.PullFailure(ctx, r.Client, job, time.Now()); msg != "" {
-			if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
-				return ctrl.Result{}, true, err
-			}
-			return r.failPreDeploy(ctx, app, failedPD(job.Name, msg))
-		}
-		app.Status.Phase = appv1alpha1.PhaseDeploying
-		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
-			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeployRunning,
-			StartedAt: started,
-		}
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "PreDeploy",
-			Message: "running pre-deploy command", ObservedGeneration: app.Generation,
-		})
-		r.updateStatusRetrying(ctx, app, "predeploy-running")
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil
 	}
+	// Pending/Running — keep the old revision serving and requeue.
+	// A malformed reference fails immediately; permanent pull errors wait
+	// through the retry grace window. Delete the Job before recording failure
+	// so a late pull cannot run the migration after that verdict. A failed
+	// delete retries rather than recording a verdict it can't back.
+	if msg := predeploy.PullFailure(ctx, r.Client, job, time.Now()); msg != "" {
+		if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationBackground)); client.IgnoreNotFound(err) != nil {
+			return ctrl.Result{}, true, err
+		}
+		return r.failPreDeploy(ctx, app, failedPD(job.Name, msg))
+	}
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	app.Status.PreDeploy = &running
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "PreDeploy",
+		Message: "running pre-deploy command", ObservedGeneration: app.Generation,
+	})
+	r.updateStatusRetrying(ctx, app, "predeploy-running")
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil
+}
+
+// preDeployEnded is step settled to how its Job ended, dated by the Job's own
+// finish rather than by when a pass read it; ok is false while the Job runs.
+func preDeployEnded(ctx context.Context, cl client.Reader, job *batchv1.Job, step appv1alpha1.PreDeployStatus) (appv1alpha1.PreDeployStatus, bool) {
+	switch predeploy.Observe(job) {
+	case predeploy.StateSucceeded:
+		step.Status = appv1alpha1.PreDeploySucceeded
+	case predeploy.StateFailed:
+		step.Status, step.Message = appv1alpha1.PreDeployFailed, predeploy.FailureMessage(ctx, cl, job)
+	default:
+		return step, false
+	}
+	step.FinishedAt = jobFinishedAt(job, time.Now()).Format(time.RFC3339)
+	return step, true
 }
 
 // failPreDeploy records the failed pre-deploy step and blocks the rollout — the

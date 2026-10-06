@@ -1275,7 +1275,8 @@ const (
 
 // PreDeployStatus records the outcome of the pre-deploy command
 // (spec.preDeployCommand) for the revision the operator is currently rolling
-// out. It is populated only when a pre-deploy step is configured, and lets the
+// out, or for a canceled release whose step was left to finish (w5/085). It is
+// populated only when a pre-deploy step is configured, and lets the
 // deploy record show that step's progress — and tell a pre-deploy failure apart
 // from a health-check failure — without a client having to list Jobs. Mirrors
 // the CronRun precedent (a Job's outcome recorded in status). See
@@ -1394,8 +1395,9 @@ type AppStatus struct {
 	Phase AppPhase `json:"phase,omitempty"`
 
 	// PreDeploy is the outcome of the pre-deploy command for the revision the
-	// operator is currently rolling out (nil when no pre-deploy step is
-	// configured or none has run yet). See spec.preDeployCommand.
+	// operator is currently rolling out, or for a canceled release whose step was
+	// left to finish (nil when no pre-deploy step is configured or none has run
+	// yet). See spec.preDeployCommand.
 	// +optional
 	PreDeploy *PreDeployStatus `json:"preDeploy,omitempty"`
 
