@@ -46,12 +46,8 @@ import { useUpdateBlueprint } from "@/features/blueprints/hooks/use-update-bluep
 import { useDisconnectBlueprint } from "@/features/blueprints/hooks/use-disconnect-blueprint";
 import { useBlueprintSyncs } from "@/features/blueprints/hooks/use-blueprint-syncs";
 import { RelativeAge } from "@/common/components/relative-time";
-import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
-import {
-  takeoverCopy,
-  type BlueprintTakeover,
-} from "@/features/blueprints/lib/takeover";
-import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
+import { BlueprintConfirmationDialog } from "@/features/blueprints/components/blueprint-confirmation-dialog";
+import type { BlueprintConfirmationRequired } from "@/features/blueprints/lib/takeover";
 import { BlueprintDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -228,15 +224,14 @@ export function BlueprintDetailPage() {
     blueprint?.id,
   );
   const [disconnecting, setDisconnecting] = useState(false);
-  const [protectedConfirmation, setProtectedConfirmation] = useState<
-    string | null
+  // The server's refusal awaiting its phrase (a protected environment, or a
+  // Blueprint takeover that names what it replaces), with the pin its retry
+  // resends. Closing the sync dialog drops the reviewed pin, and the phrase
+  // only arrives after that close, so the retry carries its own (w8/m41).
+  const [pendingConfirmation, setPendingConfirmation] = useState<
+    | (BlueprintConfirmationRequired & { reviewed: ReviewedBlueprintSource })
+    | null
   >(null);
-  const [takeover, setTakeover] = useState<BlueprintTakeover | null>(null);
-  // The pin the protected-confirmation retry resends. Closing the sync dialog
-  // drops the reviewed pin, and the server's phrase only arrives after that
-  // close — without carrying it here the retry has nothing to send (w8/m41).
-  const [protectedReviewed, setProtectedReviewed] =
-    useState<ReviewedBlueprintSource | null>(null);
 
   const busy = syncBusy || updateBusy || disconnectBusy;
 
@@ -275,14 +270,11 @@ export function BlueprintDetailPage() {
     const result = await sync(blueprintId, { reviewed, confirmation });
     if (result.status === "confirmation_required") {
       setConfirming(false);
-      setProtectedReviewed(reviewed);
-      setProtectedConfirmation(result.confirmation);
-      setTakeover(result.takeover ?? null);
+      setPendingConfirmation({ ...result, reviewed });
       return;
     }
     if (result.status === "source_changed") {
-      setProtectedConfirmation(null);
-      setProtectedReviewed(null);
+      setPendingConfirmation(null);
       setConfirming(true);
       clearReviewedSource();
       setAwaitingFreshPreview(true);
@@ -291,8 +283,7 @@ export function BlueprintDetailPage() {
     }
     if (result.status === "success") {
       setConfirming(false);
-      setProtectedConfirmation(null);
-      setProtectedReviewed(null);
+      setPendingConfirmation(null);
       clearReviewedSource();
       setSourceChangedHint(false);
       setAwaitingFreshPreview(false);
@@ -706,28 +697,14 @@ export function BlueprintDetailPage() {
         onConfirm={() => void handleDisconnect()}
       />
 
-      <ProtectedConfirmationDialog
-        key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}
-        open={protectedConfirmation !== null}
-        resourceName={
-          protectedConfirmation
-            ? protectedServiceName(protectedConfirmation)
-            : (blueprint?.name ?? blueprintId)
-        }
-        requiredConfirmation={protectedConfirmation ?? ""}
+      <BlueprintConfirmationDialog
+        pending={pendingConfirmation}
         actionLabel={t("blueprints.syncConfirmAction")}
-        {...(takeover ? takeoverCopy(takeover, t) : {})}
         busy={syncBusy}
-        onOpenChange={(open) => {
-          if (!open) {
-            setProtectedConfirmation(null);
-            setProtectedReviewed(null);
-            setTakeover(null);
-          }
-        }}
+        onDismiss={() => setPendingConfirmation(null)}
         onConfirm={async (confirmation) => {
-          if (protectedReviewed)
-            await handleSync(protectedReviewed, confirmation);
+          if (pendingConfirmation)
+            await handleSync(pendingConfirmation.reviewed, confirmation);
         }}
       />
     </DashboardLayout>

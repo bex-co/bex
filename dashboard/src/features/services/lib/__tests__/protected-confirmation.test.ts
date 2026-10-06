@@ -12,22 +12,16 @@ describe("protectedConfirmationFromError", () => {
     expect(protectedConfirmationFromError(err)).toBe("sudo deploy service api");
   });
 
-  it("extracts the blueprint takeover phrase (w8/m23)", () => {
-    const err = new Error(
+  // Blueprint takeovers share the confirm-phrase convention but carry a code,
+  // so blueprintTakeoverFromError classifies them first; this helper answers
+  // only the protected-environment refusal (w5/m125).
+  it("leaves Blueprint takeover refusals to their own classifier", () => {
+    for (const message of [
       'service "web" is managed by blueprint blp-abc; retry with confirm="takeover blueprint blp-abc" to transfer ownership to this blueprint',
-    );
-    expect(protectedConfirmationFromError(err)).toBe(
-      "takeover blueprint blp-abc",
-    );
-  });
-
-  it("extracts the blueprint connection phrase (w4/m125)", () => {
-    const err = new Error(
       'blueprint blp-1 ("bpA") already tracks https://github.com/o/r@main from "a.yaml"; update it with updateBlueprint to change its path, or retry with confirm="takeover blueprint blp-1" to replace it',
-    );
-    expect(protectedConfirmationFromError(err)).toBe(
-      "takeover blueprint blp-1",
-    );
+    ]) {
+      expect(protectedConfirmationFromError(new Error(message))).toBeNull();
+    }
   });
 
   it("ignores unrelated errors", () => {

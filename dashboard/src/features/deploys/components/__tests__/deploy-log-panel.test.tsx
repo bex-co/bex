@@ -157,6 +157,42 @@ describe("DeployLogPanel", () => {
     ).not.toBeInTheDocument();
   });
 
+  // w5/m125: the panel's empty states are the shared LogEmptyState. A search
+  // that matches none of the deploy's lines says so; with no lines at all, a
+  // search still finds "no logs", not "no match".
+  it("tells a search that matched nothing from a deploy with no logs", async () => {
+    logState.lines = [line("compiling", "build")];
+    const view = render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText("Search logs…"), "nowhere");
+
+    expect(await screen.findByText("No matching logs")).toBeInTheDocument();
+    expect(screen.getByText("No logs match these filters.")).toBeInTheDocument();
+
+    logState.lines = [];
+    view.rerender(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    expect(
+      await screen.findByText("No logs in this time range"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No matching logs")).not.toBeInTheDocument();
+  });
+
   it("filters to build or application lines via Render's type selector (w1/029)", async () => {
     const line = (key: string, message: string, type: string): LogLine => ({
       key,

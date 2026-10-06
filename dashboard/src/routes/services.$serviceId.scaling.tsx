@@ -14,6 +14,7 @@ import { ScalingRecentMetrics } from "@/features/services/components/scaling-rec
 import { useAutoscaling } from "@/features/services/hooks/use-autoscaling";
 import { useServer } from "@/features/services/hooks/use-server";
 import { supportsScaling } from "@/features/services/lib/service-type";
+import { runsInstances } from "@/features/services/lib/status";
 import { ServiceScalingSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/scaling")({
@@ -80,7 +81,12 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
           plan={service.plan}
         />
       ) : null}
-      {scalable ? <ScalingRecentMetrics serviceId={serviceId} /> : null}
+      {scalable ? (
+        <ScalingRecentMetrics
+          serviceId={serviceId}
+          runsInstances={runsInstances(service)}
+        />
+      ) : null}
     </div>
   );
 }

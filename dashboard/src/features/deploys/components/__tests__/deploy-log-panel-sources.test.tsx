@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DeployLogPanel } from "../deploy-log-panel";
-import type { EventSourceLike } from "@/features/logs/hooks/use-live-logs";
 import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
 // The real useDeployLogs merge (toLogLines + dedupe) under the real panel
@@ -70,15 +69,14 @@ async function choose(name: string) {
   await user.click(screen.getByRole("menuitemradio", { name }));
 }
 
-function renderPanel(createEventSource?: (url: string) => EventSourceLike) {
+function renderPanel() {
   render(
     <DeployLogPanel
       resource="srv-db0ruak48ccs739jikeg"
       startTime="2026-10-04T02:54:00Z"
-      endTime={createEventSource ? undefined : "2026-10-04T02:56:00Z"}
+      endTime="2026-10-04T02:56:00Z"
       hasPreDeploy
-      followBuild={!!createEventSource}
-      createEventSource={createEventSource}
+      followBuild={false}
     />,
   );
 }
@@ -133,47 +131,5 @@ describe("DeployLogPanel source buckets over the real merge", () => {
     // Search is debounced: the non-matching app line leaves once it applies.
     await waitFor(() => expect(count("GET /qa-r83")).toBe(0));
     expect(count(MARKER)).toBe(1);
-  });
-
-  it("counts a live build twin of a pre-deploy line as build output", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    try {
-      stubLegs({ build: [], predeploy: [twin("predeploy")], app: [] });
-      let source: EventSourceLike & {
-        onopen: (() => void) | null;
-        onmessage: ((ev: { data: string }) => void) | null;
-      };
-      renderPanel(() => {
-        source = {
-          onopen: null,
-          onmessage: null,
-          onerror: null,
-          close() {},
-        };
-        return source;
-      });
-      act(() => source.onopen?.());
-      act(() =>
-        source.onmessage?.({
-          data: JSON.stringify({
-            timestamp: "2026-10-04T02:54:41.610Z",
-            message: MARKER,
-            labels: [
-              { name: "type", value: "build" },
-              { name: "instance", value: POD },
-            ],
-          }),
-        }),
-      );
-      act(() => vi.advanceTimersByTime(100));
-
-      expect(count(MARKER)).toBe(1);
-      await choose("Build logs");
-      expect(count(MARKER)).toBe(1);
-      await choose("Application logs");
-      expect(count(MARKER)).toBe(1);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 });

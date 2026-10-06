@@ -34,12 +34,10 @@ import { useCreateBlueprint } from "@/features/blueprints/hooks/use-create-bluep
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
 import { BlueprintErrorList } from "@/features/blueprints/components/blueprint-error-list";
-import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
-import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
-import { isTakeoverOnlyConflict } from "@/features/blueprints/lib/views";
+import { BlueprintConfirmationDialog } from "@/features/blueprints/components/blueprint-confirmation-dialog";
 import {
-  takeoverCopy,
-  type BlueprintTakeover,
+  isTakeoverOnlyConflict,
+  type BlueprintConfirmationRequired,
 } from "@/features/blueprints/lib/takeover";
 
 export const Route = createFileRoute("/blueprints/new")({
@@ -62,10 +60,10 @@ export function NewBlueprintPage() {
   const [nameEdited, setNameEdited] = useState(false);
   const [branch, setBranch] = useState("");
   const [path, setPath] = useState("render.yaml");
-  const [protectedConfirmation, setProtectedConfirmation] = useState<
-    string | null
-  >(null);
-  const [takeover, setTakeover] = useState<BlueprintTakeover | null>(null);
+  // The server's refusal awaiting its phrase: a protected environment, or a
+  // Blueprint takeover that names what it replaces.
+  const [pendingConfirmation, setPendingConfirmation] =
+    useState<BlueprintConfirmationRequired | null>(null);
   // sync:false prompt values, keyed by env var name. Secrets: kept only in
   // this component's memory until submit, never in router state or URLs.
   const [envVarValues, setEnvVarValues] = useState<Record<string, string>>({});
@@ -111,7 +109,7 @@ export function NewBlueprintPage() {
   // transport-level preview failure does not block — the backend re-validates
   // on create anyway.
   const previewConflictOnly = isTakeoverOnlyConflict(
-    (preview?.validation?.errors ?? []).filter((e): e is string => !!e),
+    preview?.validation?.errorDetails ?? [],
   );
   const previewBlocks =
     preview != null &&
@@ -137,12 +135,11 @@ export function NewBlueprintPage() {
       suppliedValues,
     );
     if (result.status === "confirmation_required") {
-      setProtectedConfirmation(result.confirmation);
-      setTakeover(result.takeover ?? null);
+      setPendingConfirmation(result);
       return;
     }
     if (result.status === "success") {
-      setProtectedConfirmation(null);
+      setPendingConfirmation(null);
       void navigate({
         to: "/blueprints/$blueprintId",
         params: { blueprintId: result.blueprint.id },
@@ -463,26 +460,12 @@ export function NewBlueprintPage() {
         </div>
       </div>
 
-      <ProtectedConfirmationDialog
-        key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}
-        open={protectedConfirmation !== null}
-        resourceName={
-          protectedConfirmation
-            ? protectedServiceName(protectedConfirmation)
-            : name || sourceRepo
-        }
-        requiredConfirmation={protectedConfirmation ?? ""}
+      <BlueprintConfirmationDialog
+        pending={pendingConfirmation}
         actionLabel={t("blueprints.createAction")}
-        {...(takeover ? takeoverCopy(takeover, t) : {})}
         busy={busy}
-        onOpenChange={(open) => {
-          if (open) return;
-          setProtectedConfirmation(null);
-          setTakeover(null);
-        }}
-        onConfirm={async (confirmation) => {
-          await handleCreate(confirmation);
-        }}
+        onDismiss={() => setPendingConfirmation(null)}
+        onConfirm={(confirmation) => handleCreate(confirmation)}
       />
     </DashboardLayout>
   );
