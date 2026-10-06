@@ -55,7 +55,7 @@ func TestInitialBlueprintGroupsRefuseUnauthorizedComposition(t *testing.T) {
 				}
 				ctx = core.WithIdentity(ctx, tc.identity)
 				called := false
-				err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", sampleApp("web"), func() error { called = true; return nil }, nil)
+				err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, sampleApp("web"), func() error { called = true; return nil }, nil)
 				if !errors.Is(err, core.ErrForbidden) || called {
 					t.Fatalf("denied composition: called=%v err=%v", called, err)
 				}
@@ -96,7 +96,7 @@ func TestInitialBlueprintGroupsKeepWorkspaceAndEnvironmentBoundaries(t *testing.
 			app := ownedApp("web", tc.appWorkspace)
 			app.Labels[core.LabelEnvironment] = tc.appEnvironment
 			called := false
-			err = svc.WithInitialEnvGroups(core.WithWorkspace(ctx, "tea-a"), []string{"shared"}, "web", app, func() error { called = true; return nil }, nil)
+			err = svc.WithInitialEnvGroups(core.WithWorkspace(ctx, "tea-a"), []string{"shared"}, app, func() error { called = true; return nil }, nil)
 			if !errors.Is(err, tc.want) || called {
 				t.Fatalf("cross-boundary composition: called=%v err=%v want=%v", called, err, tc.want)
 			}
@@ -122,7 +122,7 @@ func TestInitialBlueprintGroupsUnavailableStoresDoNotCreate(t *testing.T) {
 				svc.Store = struct{ core.SecretKV }{svc.Store}
 			}
 			called := false
-			err := svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", sampleApp("web"), func() error { called = true; return nil }, nil)
+			err := svc.WithInitialEnvGroups(ctx, []string{"shared"}, sampleApp("web"), func() error { called = true; return nil }, nil)
 			if !errors.Is(err, core.ErrSecretsUnavailable) || called {
 				t.Fatalf("unavailable composition: called=%v err=%v", called, err)
 			}
@@ -140,7 +140,7 @@ func TestInitialBlueprintGroupsCompensateCreateAndCompletionFailures(t *testing.
 				t.Fatal(err)
 			}
 			failure := errors.New("initial write rejected")
-			err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", sampleApp("web"), func() error {
+			err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, sampleApp("web"), func() error {
 				if stage == "create" {
 					return failure
 				}
@@ -173,7 +173,7 @@ func TestInitialBlueprintGroupsRevalidateAfterCreation(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := core.ErrNotFound
-			err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", sampleApp("web"), func() error {
+			err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, sampleApp("web"), func() error {
 				switch change {
 				case "delete":
 					_, err = svc.clearMetaCAS(ctx, group.ID, "")
@@ -256,7 +256,7 @@ func TestInitialBlueprintGroupsRollbackPreservesConcurrentMembership(t *testing.
 		}
 	}
 	called := false
-	err = svc.WithInitialEnvGroups(ctx, []string{"first", "second"}, "web", sampleApp("web"), func() error { called = true; return nil }, nil)
+	err = svc.WithInitialEnvGroups(ctx, []string{"first", "second"}, sampleApp("web"), func() error { called = true; return nil }, nil)
 	if !errors.Is(err, st.failure) || called {
 		t.Fatalf("partial membership failure: called=%v err=%v", called, err)
 	}
@@ -281,7 +281,7 @@ func TestInitialBlueprintGroupsRollbackPostCommitLocatorFailure(t *testing.T) {
 	}
 	st.failLocator = true
 	called := false
-	err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", ownedApp("web", "tea-a"), func() error { called = true; return nil }, nil)
+	err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, ownedApp("web", "tea-a"), func() error { called = true; return nil }, nil)
 	if !errors.Is(err, st.failure) || called {
 		t.Fatalf("post-commit failure: called=%v err=%v", called, err)
 	}
@@ -300,7 +300,7 @@ func TestInitialBlueprintGroupsRollbackSurvivesCallerCancellation(t *testing.T) 
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", sampleApp("web"), func() error { cancel(); return ctx.Err() }, nil)
+	err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, sampleApp("web"), func() error { cancel(); return ctx.Err() }, nil)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation lost: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestInitialBlueprintGroupsFailureRetainsPreexistingMembership(t *testing.T)
 		t.Fatal(err)
 	}
 	failure := errors.New("create refused")
-	err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", sampleApp("web"), func() error { return failure }, nil)
+	err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, sampleApp("web"), func() error { return failure }, nil)
 	if !errors.Is(err, failure) {
 		t.Fatalf("failure lost: %v", err)
 	}
@@ -363,7 +363,7 @@ func TestInitialBlueprintGroupsConflictCompensationRespectsCreationBoundary(t *t
 				st.afterGetVersioned = injectCompetingLink
 			}
 			failure := errors.New("creation cannot complete")
-			err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, "web", sampleApp("web"), func() error {
+			err = svc.WithInitialEnvGroups(ctx, []string{"shared"}, sampleApp("web"), func() error {
 				if stage == "reservation" {
 					return failure
 				}

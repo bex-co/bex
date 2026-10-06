@@ -58,7 +58,7 @@ func newFakeEnvGroups(preexisting ...string) *fakeEnvGroups {
 	return &fakeEnvGroups{preexisting: preexisting, applied: map[string]appliedGroup{}, environments: map[string]string{}}
 }
 
-func (f *fakeEnvGroups) WithInitialEnvGroups(_ context.Context, _ []string, _ string, _ *appv1alpha1.App, create, complete func() error) error {
+func (f *fakeEnvGroups) WithInitialEnvGroups(_ context.Context, _ []string, _ *appv1alpha1.App, create, complete func() error) error {
 	if err := create(); err != nil {
 		return err
 	}
