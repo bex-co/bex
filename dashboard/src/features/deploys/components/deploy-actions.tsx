@@ -26,6 +26,11 @@ import {
 } from "@/features/capabilities/hooks/use-resource-actions";
 import { useBoundActionConfirm } from "@/features/capabilities/hooks/use-bound-action-confirm";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
+import {
+  ProtectedConfirmationDismissed,
+  withProtectedRetry,
+} from "@/features/services/lib/protected-confirmation";
 import {
   decisionForSelectedRollback,
   gateAction,
@@ -133,6 +138,7 @@ export function DeployActions({
     RollbackServiceDocument,
     { refetchQueries: DEPLOY_REFETCH_QUERIES },
   );
+  const askForConfirmation = useAskForProtectedConfirmation();
   const [checking, setChecking] = useState(false);
   const busy = checking || canceling || rollingBack;
 
@@ -192,12 +198,19 @@ export function DeployActions({
         if (!isIntentCurrent(binding)) return;
         toast.success(t("services.cancelDeploySuccess"));
       } else if (action === "rollback") {
-        const { data } = await rollbackService({
-          variables: {
-            serviceId: binding.resourceId,
-            deployId: binding.deployId ?? deployId,
-          },
-        });
+        // A rollback swaps the running code: a protected member answers with
+        // the phrase to retry with (w4/m176).
+        const { data } = await withProtectedRetry(
+          askForConfirmation,
+          (confirm) =>
+            rollbackService({
+              variables: {
+                serviceId: binding.resourceId,
+                deployId: binding.deployId ?? deployId,
+                confirm,
+              },
+            }),
+        );
         if (!isIntentCurrent(binding)) return;
         const rollbackId = data?.rollbackService?.id;
         if (!rollbackId)
@@ -210,6 +223,7 @@ export function DeployActions({
       }
       onChanged?.();
     } catch (err) {
+      if (err instanceof ProtectedConfirmationDismissed) return;
       toast.error(
         mutationErrorMessage(
           err,

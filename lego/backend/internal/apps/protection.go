@@ -122,6 +122,21 @@ func (s *Service) appProtected(ctx context.Context, a *appv1alpha1.App) (bool, e
 	return protectedStatus == core.ProtectedStatusProtected, nil
 }
 
+// ProtectionGuard lends this predicate and guard to deploys' override Trigger
+// and Rollback (w4/m176). A value, not Service methods, so the verb sweeps do
+// not take it for an authorized verb.
+func (s *Service) ProtectionGuard() protectionGuard { return protectionGuard{s} }
+
+type protectionGuard struct{ s *Service }
+
+func (g protectionGuard) RequireUnprotected(ctx context.Context, a *appv1alpha1.App, verb string) error {
+	return g.s.requireUnprotected(ctx, a, verb)
+}
+
+func (g protectionGuard) AppProtected(ctx context.Context, a *appv1alpha1.App) (bool, error) {
+	return g.s.appProtected(ctx, a)
+}
+
 // requireUnprotected blocks verb on a App belonging to a
 // protectedStatus=protected Environment unless the context carries the
 // matching ProtectedConfirmation phrase.

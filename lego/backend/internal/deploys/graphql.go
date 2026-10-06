@@ -213,13 +213,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// enabled, "clear" rebuilds without importing prior layers (w7/m88);
 				// with the gate off both values are no-ops. See TriggerParams.
 				"clearCache": gqlutil.Arg(graphql.String),
+				// The protected-environment phrase for an imageUrl/commitId
+				// deploy (w4/m176), copied from the first call's refusal.
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				commitID := gqlutil.Str(p.Args, "commitId")
 				deployMode := gqlutil.Str(p.Args, "deployMode")
 				imageURL := gqlutil.Str(p.Args, "imageUrl")
 				clearCache := gqlutil.Str(p.Args, "clearCache")
-				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{
+				return s.Trigger(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["serviceId"].(string), TriggerParams{
 					CommitID:   commitID,
 					DeployMode: deployMode,
 					ImageURL:   imageURL,
@@ -256,10 +259,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// rollbacks). The dashboard passes true; every other caller gets the API
 				// behaviour by default (w1/m152 t009).
 				"disableAutoDeploy": &graphql.ArgumentConfig{Type: graphql.Boolean, DefaultValue: false},
+				"confirm":           gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				disable, _ := p.Args["disableAutoDeploy"].(bool)
-				return s.Rollback(p.Context, p.Args["serviceId"].(string), p.Args["deployId"].(string),
+				return s.Rollback(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["serviceId"].(string), p.Args["deployId"].(string),
 					RollbackOptions{DisableAutoDeploy: disable})
 			},
 		},

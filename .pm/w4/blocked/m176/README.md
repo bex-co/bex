@@ -1,17 +1,17 @@
 # w4 · m176 — Protected environments: a deploy with `imageUrl`/`commitId` or a rollback swaps the running code without the "repoint" confirmation
 
-**Worker:** worker4 **Goal:** on a member of a `protectedStatus: protected` environment, every verb that selects which code runs needs the `repoint` confirmation that ADR032 (w4/m126) already requires of `image`/`repo`/`branch` edits. That includes a deploy trigger carrying `imageUrl` or `commitId`, and a rollback. **Status:** todo
+**Worker:** worker4 **Goal:** on a member of a `protectedStatus: protected` environment, every verb that selects which code runs needs the `repoint` confirmation that ADR032 (w4/m126) already requires of `image`/`repo`/`branch` edits. That includes a deploy trigger carrying `imageUrl` or `commitId`, and a rollback. **Status:** blocked
 
 ## Tasks (in order)
 
 | id   | title                                                                     | est | depends_on   |
 | ---- | ------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Guard `Trigger` overrides and `Rollback` with the protected confirmation  | 45m | —            |
-| t002 | Project `protected_confirmation_required` on deploy/rollback actions; dashboard confirm flow | 45m | w4/m176/t001 |
-| t003 | Record the decision in ADR032's service table                            | 15m | w4/m176/t001 |
+| t001 | Guard `Trigger` overrides and `Rollback` with the protected confirmation — **DONE**  | 45m | —            |
+| t002 | Project `protected_confirmation_required` on deploy/rollback actions; dashboard confirm flow — **DONE** | 45m | w4/m176/t001 |
+| t003 | Record the decision in ADR032's service table — **DONE**                            | 15m | w4/m176/t001 |
 | t004 | Render parity                                                             | 20m | w4/m176/t002, w4/m176/t003 |
-| t005 | Simplify                                                                  | 15m | w4/m176/t004 |
-| t006 | Test coverage                                                             | 45m | w4/m176/t004 |
+| t005 | Simplify — **DONE**                                                                  | 15m | w4/m176/t004 |
+| t006 | Test coverage — **DONE**                                                             | 45m | w4/m176/t004 |
 | t007 | Closeout                                                                  | 10m | w4/m176/t006 |
 
 ## Definition of done

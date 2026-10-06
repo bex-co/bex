@@ -256,7 +256,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
-		d, err := s.Trigger(r.Context(), r.PathValue("id"), TriggerParams{
+		// ?confirm=<phrase> arms an imageUrl/commitId deploy on a protected
+		// member (w4/m176).
+		d, err := s.Trigger(core.WithConfirm(r.Context(), r.URL.Query().Get("confirm")), r.PathValue("id"), TriggerParams{
 			CommitID:   body.CommitID,
 			DeployMode: body.DeployMode,
 			ImageURL:   body.ImageURL,
@@ -288,7 +290,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
-		d, err := s.Rollback(r.Context(), r.PathValue("id"), body.DeployID)
+		d, err := s.Rollback(core.WithConfirm(r.Context(), r.URL.Query().Get("confirm")), r.PathValue("id"), body.DeployID)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

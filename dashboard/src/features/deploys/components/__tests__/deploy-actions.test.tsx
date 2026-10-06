@@ -42,6 +42,11 @@ vi.mock("sonner", () => ({
   },
 }));
 
+const ask = vi.fn();
+vi.mock("@/common/providers/protected-retry-context", () => ({
+  useAskForProtectedConfirmation: () => ask,
+}));
+
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-test" }),
 }));
@@ -126,6 +131,7 @@ beforeEach(() => {
   toastError.mockReset();
   cancelDeploy.mockReset();
   rollbackService.mockReset();
+  ask.mockReset();
   apolloQuery.mockReset();
   deployState = {
     status: "ready",
@@ -194,6 +200,67 @@ describe("DeployActions", () => {
         "/services/web/deploys/dep-rollback",
       );
     });
+  });
+
+  // w4/m176: a rollback swaps the running code, so a protected member refuses
+  // with the phrase; the dashboard asks for exactly that phrase and retries.
+  it("retries a protected rollback with the server-issued phrase", async () => {
+    rollbackService
+      .mockRejectedValueOnce(
+        new Error(
+          '"web" is a member of a protected environment; retry with confirm="sudo repoint service web" to repoint it',
+        ),
+      )
+      .mockResolvedValueOnce({
+        data: {
+          rollbackService: { id: "dep-rollback", status: "update_in_progress" },
+        },
+      });
+    ask.mockResolvedValue("sudo repoint service web");
+    const user = userEvent.setup();
+    const router = renderActions("deactivated");
+
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
+
+    await vi.waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        "/services/web/deploys/dep-rollback",
+      );
+    });
+    expect(ask).toHaveBeenCalledWith("sudo repoint service web");
+    expect(rollbackService).toHaveBeenNthCalledWith(2, {
+      variables: {
+        serviceId: "web",
+        deployId: "dep-1",
+        confirm: "sudo repoint service web",
+      },
+    });
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when the protected phrase is dismissed", async () => {
+    rollbackService.mockRejectedValueOnce(
+      new Error(
+        '"web" is a member of a protected environment; retry with confirm="sudo repoint service web" to repoint it',
+      ),
+    );
+    ask.mockResolvedValue(null);
+    const user = userEvent.setup();
+    renderActions("deactivated");
+
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
+
+    await vi.waitFor(() => expect(ask).toHaveBeenCalled());
+    expect(rollbackService).toHaveBeenCalledTimes(1);
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("does not navigate when rollback omits the new deploy id", async () => {

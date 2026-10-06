@@ -21,6 +21,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
@@ -65,6 +66,15 @@ type triggerDeployArgs struct {
 	CommitID   string `json:"commitId,omitempty" jsonschema:"repo-backed services only: build from this git ref instead of Branch HEAD; rejected for image-backed and cron_job services"`
 	DeployMode string `json:"deployMode,omitempty" jsonschema:"build_and_deploy (default) or deploy_only (image-backed only — skips rebuild, re-pulls current image)"`
 	ClearCache string `json:"clearCache,omitempty" jsonschema:"Render's clear|do_not_clear enum. With BEX_BUILD_CACHE=registry, clear rebuilds without importing prior layers and still exports a fresh cache; with the gate off both values are no-ops."`
+	Confirm    string `json:"confirm,omitempty" jsonschema:"the confirmation phrase, required only when the service belongs to a protected environment and imageUrl or commitId is set. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal"`
+}
+
+// rollbackDeployArgs is rollback_deploy's input: getDeployArgs plus the
+// protected-environment confirmation (w4/m176).
+type rollbackDeployArgs struct {
+	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`
+	DeployID  string `json:"deployId" jsonschema:"the deploy id (dep-…), as returned by list_deploys"`
+	Confirm   string `json:"confirm,omitempty" jsonschema:"the confirmation phrase, required only when the service belongs to a protected environment. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal"`
 }
 
 type serviceArgs struct {
@@ -168,8 +178,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "rollback_deploy",
 		Description: "bex extension: roll back to a previously-live deploy's artifact and retained configuration without overwriting saved settings. Creates a new deploy; missing historical configuration falls back to image only. Leaves auto-deploy unchanged.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
-		d, err := s.Rollback(ctx, in.ServiceID, in.DeployID)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rollbackDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
+		d, err := s.Rollback(core.WithConfirm(ctx, in.Confirm), in.ServiceID, in.DeployID)
 		if err != nil {
 			return nil, renderDeploy{}, err
 		}
@@ -184,7 +194,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "trigger_deploy",
 		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys another tag or digest of the configured image (host, repository and image name must match). For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache is Render's clear|do_not_clear enum: with registry build caching enabled, clear rebuilds without importing prior layers (and still exports a fresh cache); with caching off both values are no-ops. Returns the new deploy; poll with get_deploy until status is live.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
-		d, err := s.Trigger(ctx, in.ServiceID, TriggerParams{
+		d, err := s.Trigger(core.WithConfirm(ctx, in.Confirm), in.ServiceID, TriggerParams{
 			ImageURL:   in.ImageURL,
 			CommitID:   in.CommitID,
 			DeployMode: in.DeployMode,
