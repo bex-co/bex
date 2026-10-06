@@ -270,7 +270,7 @@ var mcpCreateRules = map[string]wireRule{
 		}
 		return wireOutcome{fields: []string{"StartCommand"}}
 	}},
-	"dockerfilePath": to("DockerfilePath"),
+	"dockerfilePath": dockerfileBuildOnly("DockerfilePath"),
 	"dockerContext":  dockerfileBuildOnly("DockerContext"),
 	"dockerCommand": {want: func(s createShape) wireOutcome {
 		if !s.readsDockerCommand() {

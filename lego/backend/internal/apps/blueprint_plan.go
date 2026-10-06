@@ -313,6 +313,17 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		}
 		if buildStrategy(next) != buildStrategy(*dst) {
 			dst.Runtime, dst.Builder = next.Runtime, next.Builder
+			// The Dockerfile-build settings an omission would keep do nothing
+			// on another build, which create and update refuse (w5/090). One
+			// the file declares there is refused before any apply.
+			if buildStrategy(*dst) != buildDockerfile {
+				if !present("dockerfilePath") {
+					dst.DockerfilePath = ""
+				}
+				if !present("dockerContext") {
+					dst.DockerContext = ""
+				}
+			}
 		}
 	}
 

@@ -237,8 +237,8 @@ x-bex:
 services:
   - type: web
     name: api
-    runtime: image
-    image: {url: nginx:1.27}
+    runtime: docker
+    repo: https://github.com/acme/api
     x-bex:
       builder: dockerfile
 `

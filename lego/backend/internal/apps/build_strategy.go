@@ -100,9 +100,7 @@ func readsDockerCommand(build string) bool {
 // build only.
 func (d dockerDetails) resolve() (startCommand, command, context string) {
 	startCommand, command = d.startCommand, d.command
-	if d.build() == buildDockerfile {
-		context = d.dockerContext
-	}
+	context = d.dockerfileOnly(d.dockerContext)
 	if d.commandApplies() && strings.TrimSpace(d.dockerCommand) != "" {
 		startCommand = d.dockerCommand
 		if command == "" {
@@ -110,6 +108,16 @@ func (d dockerDetails) resolve() (startCommand, command, context string) {
 		}
 	}
 	return startCommand, command, context
+}
+
+// dockerfileOnly is value when the create builds a Dockerfile, else empty: a
+// Dockerfile-build setting is inert elsewhere, as on Render, so the transports
+// drop it rather than send the core a setting it refuses (w5/090).
+func (d dockerDetails) dockerfileOnly(value string) string {
+	if d.build() == buildDockerfile {
+		return value
+	}
+	return ""
 }
 
 // conflict refuses a dockerCommand the build reads sent beside another

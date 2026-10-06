@@ -373,11 +373,16 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	if filter := buildFilterView(a.Spec.BuildFilter); filter != nil {
 		entry["buildFilter"] = filter
 	}
-	if a.Spec.DockerfilePath != "" {
-		entry["dockerfilePath"] = a.Spec.DockerfilePath
-	}
-	if a.Spec.DockerContext != "" {
-		entry["dockerContext"] = a.Spec.DockerContext
+	// Only a Dockerfile build reads these, and create refuses them elsewhere
+	// (w5/090): a service created before that holds one exports without it,
+	// and a sync of the file keeps the stored value.
+	if buildStrategy(a.Spec) == buildDockerfile {
+		if a.Spec.DockerfilePath != "" {
+			entry["dockerfilePath"] = a.Spec.DockerfilePath
+		}
+		if a.Spec.DockerContext != "" {
+			entry["dockerContext"] = a.Spec.DockerContext
+		}
 	}
 	// Only a native build runs a build command, and render.yaml refuses one
 	// beside any other runtime: a Dockerfile or buildpack build's would fail
