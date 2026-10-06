@@ -2044,7 +2044,10 @@ func TestQuietServiceAndDarkPipelineAreTheSameResponse(t *testing.T) {
 		svc := newService(nil, sampleApp("web"))
 		svc.PodLogs, svc.PodLogsFollow = nil, nil
 		svc.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
-		return serveREST(svc, http.MethodGet, "/v1/logs?resource=web&type=request").Body.String()
+		// A pinned window: the default one ends at the clock, so two requests a
+		// second apart would differ in their paging cursors alone.
+		return serveREST(svc, http.MethodGet,
+			"/v1/logs?resource=web&type=request&startTime=2026-07-05T00:00:00Z&endTime=2026-07-05T01:00:00Z").Body.String()
 	}
 	// Same wire bytes whether the service was quiet or the shipper was dropping
 	// every line — which is exactly why the guard is a scheduled platform probe
