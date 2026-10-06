@@ -131,6 +131,12 @@ func TestMaintenanceModeEligibilityAndSelfURLAreMutationFree(t *testing.T) {
 	if got := getApp(t, cl, "web").Spec.MaintenanceMode; got != nil {
 		t.Fatalf("same-service rejection mutated App: %+v", got)
 	}
+	// A host that canonicalizes to nothing names no service, so it is refused
+	// as no URL at all rather than checked against the platform's claims
+	// (w5/094).
+	if _, err := svc.ConfigureMaintenanceMode(context.Background(), "web", MaintenanceModeView{Enabled: true, URI: "http://./"}); !strings.Contains(errString(err), "absolute HTTP(S) URL") {
+		t.Fatalf("empty-host error = %v", err)
+	}
 }
 
 func TestMaintenanceModeBlueprintOmissionAndPaidDefault(t *testing.T) {

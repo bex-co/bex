@@ -789,6 +789,9 @@ func (s *Service) validateMaintenanceMode(ctx context.Context, a *appv1alpha1.Ap
 		return err
 	}
 	host := canonicalHost(u.Hostname())
+	if host == "" {
+		return fmt.Errorf("%w: maintenanceMode.uri must be an absolute HTTP(S) URL", core.ErrBadRequest)
+	}
 	for owned := range s.maintenanceHosts(a) {
 		if host == owned {
 			return fmt.Errorf("%w: maintenanceMode.uri cannot point to the same service", core.ErrBadRequest)
@@ -1939,8 +1942,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 // the deploy/restart verbs and the stack path's applyCreate (deploy.go, an
 // idempotent upsert by design) are for.
 func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error) {
-	// One sweep of the platform's Apps serves the plan's host check and the
-	// write's (allApps).
+	// One index of the platform's host claims serves the plan's host check and
+	// the write's (hostClaimIndex).
 	ctx = withRequestMemo(ctx)
 	desired, err := specFromCreate(req)
 	if err != nil {

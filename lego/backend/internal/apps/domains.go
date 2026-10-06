@@ -1000,62 +1000,94 @@ func claimedHostCount(app *appv1alpha1.App) int {
 
 // hostClaimedElsewhere reports whether host is already registered (as spec.host
 // or in spec.hosts[]) — or is the www<->apex sibling (wwwSibling, t002) of a host
-// already registered — on a *different* App in the namespace. The sibling check
-// is what closes w7/m6's documented blind spot (w6/m23 t004): registering
-// `www.foo.com` on app A now also reserves `foo.com` against app B, and vice
-// versa, matching the cross-App, cross-tenant collision Render blocks with
-// "this domain already exists on another site." wwwSibling is its own inverse
-// for a valid pair, so a single `wwwSibling(h) == host` check (no need to also
-// compute wwwSibling(host)) catches both add orders. host must already be
-// canonical (canonicalHostname at the write boundaries); stored claims are
-// normalized defensively (normalizeHostname) so a legacy verbatim-stored value
-// with stray case/dot/whitespace still collides instead of slipping past. The
+// already registered — on a *different* App anywhere on the platform. The
+// sibling check is what closes w7/m6's documented blind spot (w6/m23 t004):
+// registering `www.foo.com` on app A now also reserves `foo.com` against app B,
+// and vice versa, matching the cross-App, cross-tenant collision Render blocks
+// with "this domain already exists on another site." host must already be
+// canonical and non-empty (canonicalHostname at the write boundaries). The
 // owning App's name is deliberately not returned: a caller must not learn
 // another tenant's service name from the rejection.
 func (s *Service) hostClaimedElsewhere(ctx context.Context, owner *appv1alpha1.App, host string) (bool, error) {
-	// A host is unique across the whole platform, and Apps are spread across
-	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide.
-	apps, err := s.allApps(ctx)
+	claims, err := s.hostClaimIndex(ctx)
 	if err != nil {
 		return false, err
 	}
-	return hostClaimedInApps(apps, owner, host), nil
+	return claims.claimedElsewhere(owner, host), nil
 }
 
-// allApps is the cluster-wide App sweep a host check needs, memoized for the
-// request: it is the one check whose cost grows with the size of the platform
-// rather than with the request, and a create checks its hosts in its plan and
-// again as it writes (w5/m116), as a patch does a maintenance URI in both its
-// passes (w9/m166).
-func (s *Service) allApps(ctx context.Context) ([]appv1alpha1.App, error) {
-	return memoized(ctx, "apps:all", func() ([]appv1alpha1.App, error) {
+// hostClaimIndex is the platform's host claims, indexed once per request
+// that arms the memo (w5/094): their sweep is the one cost that grows with the
+// platform rather than with the request. A create checks its hosts in its plan
+// and again as it writes (w5/m116), as a patch does a maintenance URI in both
+// its passes (w9/m166).
+func (s *Service) hostClaimIndex(ctx context.Context) (hostClaims, error) {
+	return memoized(ctx, "apps:host-claims", func() (hostClaims, error) {
+		// A host is unique across the whole platform, and Apps are spread across
+		// per-tenant namespaces (ADR043), so the sweep is cluster-wide.
 		var list appv1alpha1.AppList
 		if err := s.Client.List(ctx, &list); err != nil {
 			return nil, err
 		}
-		return list.Items, nil
+		return indexHostClaims(list.Items), nil
 	})
 }
 
-// hostClaimedInApps is hostClaimedElsewhere's matching core over an
-// already-fetched App list, so ensureHostsClaimable can check a whole host set
-// against one cluster-wide sweep instead of Listing per host.
-func hostClaimedInApps(items []appv1alpha1.App, owner *appv1alpha1.App, host string) bool {
-	ownerID := appClaimIdentity(owner)
+// hostClaims maps each host an App stores, normalized, to that App's
+// identity (appClaimIdentity), or to contestedClaim when several Apps store
+// it. A request's memo shares it, so it is read-only once built.
+type hostClaims map[string]string
+
+// contestedClaim marks a host more than one App stores. It is never an App's
+// identity, so it is never an owner's.
+const contestedClaim = "\x00"
+
+// indexHostClaims indexes items' stored hosts. They are normalized
+// defensively, so a legacy value stored with stray case, dot or whitespace
+// still collides.
+func indexHostClaims(items []appv1alpha1.App) hostClaims {
+	size := 0
 	for i := range items {
-		a := &items[i]
-		if ownerID != "" && appClaimIdentity(a) == ownerID {
+		size += claimedHostCount(&items[i])
+	}
+	claims := make(hostClaims, size)
+	add := func(host, claimant string) {
+		if host = normalizeHostname(host); host == "" {
+			return
+		}
+		if prior, ok := claims[host]; ok && prior != claimant {
+			claimant = contestedClaim
+		}
+		claims[host] = claimant
+	}
+	for i := range items {
+		if claimedHostCount(&items[i]) == 0 {
 			continue
 		}
-		claimed := append([]string{a.Spec.Host}, a.Spec.Hosts...)
-		for _, h := range claimed {
-			h = normalizeHostname(h)
-			if h != "" && (h == host || wwwSibling(h) == host) {
-				return true
-			}
+		claimant := appClaimIdentity(&items[i])
+		add(items[i].Spec.Host, claimant)
+		for _, h := range items[i].Spec.Hosts {
+			add(h, claimant)
 		}
 	}
-	return false
+	return claims
+}
+
+// claimedElsewhere reports whether an App other than owner stores host or its
+// www<->apex sibling. wwwSibling is its own inverse for any pair an App can
+// claim, so looking up the queried host's sibling finds an App storing a host
+// whose sibling is the query.
+func (c hostClaims) claimedElsewhere(owner *appv1alpha1.App, host string) bool {
+	ownerID := appClaimIdentity(owner)
+	storedElsewhere := func(h string) bool {
+		claimant, ok := c[h]
+		return ok && (ownerID == "" || claimant != ownerID)
+	}
+	if storedElsewhere(host) {
+		return true
+	}
+	sibling := wwwSibling(host)
+	return sibling != "" && storedElsewhere(sibling)
 }
 
 // appClaimIdentity returns an immutable identity whenever one exists. Public
@@ -1085,8 +1117,9 @@ func appClaimIdentity(app *appv1alpha1.App) string {
 // platform name (api/dashboard/`*.<base>`) or one another tenant already owns and
 // have the operator mint an Ingress that hijacks it (w7/m57). Before this, the
 // guard lived ONLY in AddDomain, so a create could claim any host unchecked.
-// app is the new App; hostClaimedElsewhere skips app.Name, so a blueprint
-// re-apply that re-states the App's own hosts is not self-rejected, and
+// app is the new App; the claim check skips the App's own claims (by
+// appClaimIdentity), so a blueprint re-apply that re-states its hosts is not
+// self-rejected, and
 // reservedHost exempts only the App's own immutable `<slug>.<base>` platform
 // host (via s.ownPlatformHost) — not `<app.Name>.<base>`, which a tenant could
 // otherwise set to a victim's slug and hijack at create time too (codex F5).
@@ -1137,11 +1170,10 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 		}
 		managedClaims = true // skip the id-keyed TXT proof (see previewHostsClaimable)
 	}
-	// One cluster-wide sweep serves every host in the set, fetched on first
-	// need so a hostless create still Lists nothing and a reserved first host
-	// still fails before any List.
-	var apps []appv1alpha1.App
-	fetched := false
+	// One cluster-wide index serves every host in the set, built on first need
+	// so a hostless create still Lists nothing and a reserved first host still
+	// fails before any List.
+	var claims hostClaims
 	for _, h := range append([]string{app.Spec.Host}, app.Spec.Hosts...) {
 		if h == "" {
 			continue
@@ -1149,14 +1181,13 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 		if s.reservedHost(ownHost, h) {
 			return errReservedHostname(h)
 		}
-		if !fetched {
+		if claims == nil {
 			var err error
-			if apps, err = s.allApps(ctx); err != nil {
+			if claims, err = s.hostClaimIndex(ctx); err != nil {
 				return err
 			}
-			fetched = true
 		}
-		if hostClaimedInApps(apps, app, h) {
+		if claims.claimedElsewhere(app, h) {
 			// Names the caller's own host so a Blueprint refusal can be located
 			// at its domains entry (w8/055) — never the site that holds it.
 			return fmt.Errorf("%w: %q", errDomainInUse(), h)
@@ -1189,6 +1220,9 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 // hostClaimedElsewhere) elsewhere-claimed sibling is skipped silently rather
 // than failing the caller's own successful add.
 func (s *Service) AddDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
+	// One index of the platform's host claims serves both adds: the sibling
+	// add's check can only differ by this App's own claims, which are exempt.
+	ctx = withRequestMemo(ctx)
 	// The raw input goes straight to addOne, which authorizes FIRST (the
 	// authz-before-validation verb contract) and then canonicalizes; the
 	// canonical value comes back as view.Name for the sibling pairing below.

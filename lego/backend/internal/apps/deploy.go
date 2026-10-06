@@ -694,7 +694,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.resolveBlueprintRegistryCredentials(ctx, &st); err != nil {
 		return StackResult{}, err
 	}
-	if err := s.validateBlueprintServices(ctx, st); err != nil {
+	// The preflight writes nothing, so one index of the platform's host claims
+	// serves every service it checks.
+	if err := s.validateBlueprintServices(withRequestMemo(ctx), st); err != nil {
 		return StackResult{}, err
 	}
 	if err := s.preflightBlueprintOwnership(ctx, req, st); err != nil {
@@ -2799,6 +2801,9 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	if errors.Is(err, core.ErrNotFound) {
 		return s.createFromStack(ctx, req, desired)
 	}
+	// One index of the platform's host claims serves this update's checks: it
+	// changes only this App's own claims, which are exempt.
+	ctx = withRequestMemo(ctx)
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
 		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
 	}
@@ -2868,8 +2873,8 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 // the CR — so the stack path creates services identically to the interactive
 // create (w1/m24).
 func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
-	// Per create, not per stack: a later service's sweep must see the Apps
-	// this stack has already created (allApps).
+	// Per create, not per stack: a later service's check must see the hosts
+	// this stack has already claimed (hostClaimIndex).
 	ctx = withRequestMemo(ctx)
 	plan, err := s.planStackApp(ctx, req, desired)
 	if err != nil {

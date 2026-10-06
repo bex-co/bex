@@ -104,8 +104,58 @@ func TestHostOwnershipExemptionUsesImmutableIdentity(t *testing.T) {
 	sameNameOtherTenant := appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
 		Name: "web", Namespace: "tea-b", Labels: map[string]string{core.LabelAppID: "srv-other"},
 	}, Spec: appv1alpha1.AppSpec{Hosts: []string{"claimed.example.com"}}}
-	if !hostClaimedInApps([]appv1alpha1.App{sameNameOtherTenant}, owner, "claimed.example.com") {
+	if !indexHostClaims([]appv1alpha1.App{sameNameOtherTenant}).claimedElsewhere(owner, "claimed.example.com") {
 		t.Fatal("same service name in another tenant was mistaken for the owning App")
+	}
+}
+
+// TestHostClaimsIndexAHostAndItsSibling (w5/094): one index of the platform's
+// claims answers each check with a lookup. A host is claimed elsewhere when
+// another App stores it or its www<->apex sibling, whichever order the Apps
+// were listed in, never by the owner's own claims, and a legacy stored value
+// still collides after normalization.
+func TestHostClaimsIndexAHostAndItsSibling(t *testing.T) {
+	app := func(id string, hosts ...string) appv1alpha1.App {
+		return appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: id, Namespace: "tea-" + id, Labels: map[string]string{core.LabelAppID: id}},
+			Spec: appv1alpha1.AppSpec{Hosts: hosts}}
+	}
+	owner := app("srv-owner", "www.mine.com", "api.mine.com", "shared-first.com", "shared-last.com")
+	primary := app("srv-primary")
+	primary.Spec.Host = "primary.com"
+	claims := indexHostClaims([]appv1alpha1.App{
+		app("srv-early", "shared-first.com"), // listed before the owner
+		owner,
+		app("srv-late", " Shared-Last.COM. "), // listed after, stored unnormalized
+		app("srv-other", "www.theirs.com", "deep.sub.theirs.net"),
+		app("srv-apex", "apex.com"),
+		primary,
+	})
+	for host, want := range map[string]bool{
+		"www.theirs.com":          true,  // another App's host
+		"theirs.com":              true,  // the apex sibling of another App's www host
+		"www.apex.com":            true,  // the www sibling of another App's apex
+		"primary.com":             true,  // another App's spec.host
+		"www.primary.com":         true,  // and its sibling
+		"shared-first.com":        true,  // the owner shares it with an App listed first
+		"shared-last.com":         true,  // and with one listed last, stored unnormalized
+		"www.shared-first.com":    true,  // the sibling of a shared host
+		"deep.sub.theirs.net":     true,  // another App's deep subdomain
+		"sub.theirs.net":          false, // a deep subdomain reserves no apex
+		"www.deep.sub.theirs.net": false, // nor a www form
+		"www.mine.com":            false, // the owner's own host
+		"mine.com":                false, // the owner's own sibling
+		"api.mine.com":            false, // the owner's deep subdomain
+		"free.com":                false,
+	} {
+		if got := claims.claimedElsewhere(&owner, host); got != want {
+			t.Errorf("claimedElsewhere(owner, %q) = %v, want %v", host, got, want)
+		}
+	}
+
+	// An App with no identity yet: with no owner to exempt, its claim stands.
+	anonymous := appv1alpha1.App{Spec: appv1alpha1.AppSpec{Hosts: []string{"anon.com"}}}
+	if !indexHostClaims([]appv1alpha1.App{anonymous}).claimedElsewhere(nil, "anon.com") {
+		t.Error("with no owner, an App with no identity still claims its host")
 	}
 }
 

@@ -642,8 +642,8 @@ func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, own
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
 func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML, blueprintID string) (BlueprintValidation, error) {
-	// One memo for the whole validation: it writes nothing, so every sweep of
-	// the workspace's Apps (host claims, maintenance URIs) reads the same set.
+	// One memo for the whole validation: it writes nothing, so every check of
+	// the platform's host claims (domains, maintenance URIs) reads one index.
 	ctx = withRequestMemo(ctx)
 	if blueprintID != "" {
 		if s.Blueprints == nil {
