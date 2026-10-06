@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	"sigs.k8s.io/yaml"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -40,6 +42,7 @@ func TestGenerateBlueprintRoundTripsRealCreates(t *testing.T) {
 	differs := map[string]bool{}
 	for _, req := range roundTripCreates(t) {
 		svc, cl := newService(nil)
+		svc.RegistryCreds = probeRegistryCreds()
 		if _, err := svc.Create(ctx, req); err != nil {
 			t.Errorf("%s: create: %v", req.Name, err)
 			continue
@@ -51,6 +54,10 @@ func TestGenerateBlueprintRoundTripsRealCreates(t *testing.T) {
 			continue
 		}
 		stack := parseBlueprintStackForTest(t, out.Manifest) // GenerateBlueprint's self-check already parsed it
+		if err := svc.resolveBlueprintRegistryCredentials(ctx, &stack); err != nil {
+			t.Errorf("%s: the export's registry credential does not resolve: %v\n%s", req.Name, err, out.Manifest)
+			continue
+		}
 		parsed, err := specFromCreate(stack.services[0].req)
 		if err != nil {
 			t.Errorf("%s: the exported service does not create: %v\n%s", req.Name, err, out.Manifest)
@@ -128,6 +135,12 @@ var blueprintNotExported = map[string]exportGap{
 			return spec.Type == appv1alpha1.TypeStaticSite
 		},
 	},
+	"RegistryCredentialID": {
+		reason: "render.yaml has no spelling for binding no credential at all: the export reads as unbound, so a pull falls back to a credential matching the image host",
+		applies: func(spec appv1alpha1.AppSpec) bool {
+			return spec.RegistryCredentialID != nil && *spec.RegistryCredentialID == ""
+		},
+	},
 }
 
 type exportGap struct {
@@ -179,6 +192,15 @@ func exportSpelling(spec appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 	return spec
 }
 
+// probeRegistryCreds is a workspace whose credential "rc-probe" is named
+// "probe-creds": an export names it, and the parse resolves the name back.
+func probeRegistryCreds() *fakePullSecrets {
+	return &fakePullSecrets{
+		credNames:           map[string]string{"rc-probe": "probe-creds"},
+		credentialIDsByName: map[string]string{"probe-creds": "rc-probe"},
+	}
+}
+
 // roundTripCreates is the create probes, minus what a storeless create cannot
 // take, plus every type × runtime × builder combination create accepts.
 func roundTripCreates(t *testing.T) []CreateRequest {
@@ -189,7 +211,7 @@ func roundTripCreates(t *testing.T) []CreateRequest {
 		// store and secret seams this test runs without.
 		req.OwnerID, req.EnvironmentID, req.EnvironmentSpecified = "", "", false
 		req.SecretFiles, req.InitialDeployHook, req.DryRun = nil, "", false
-		req.RegistryCredentialID = nil
+		req.RegistryCredentialID = nil // the probe's native runtime takes none; see rt-private-*
 		out = append(out, req)
 	}
 	// Values the probes leave at their defaults.
@@ -202,6 +224,12 @@ func roundTripCreates(t *testing.T) []CreateRequest {
 		CreateRequest{Name: "rt-buildpack-commands", Repo: "https://github.com/acme/app", Builder: "buildpack", BuildCommand: "make", StartCommand: "./serve"},
 		// An image's command round-trips (w5/080).
 		CreateRequest{Name: "rt-image-command", Image: "nginx:1.27", StartCommand: "nginx -g 'daemon off;'"},
+		// A bound registry credential exports by name, on image.creds for an
+		// image and on registryCredential for a build (w5/089); binding none
+		// at all cannot be spelled.
+		CreateRequest{Name: "rt-private-image", Image: "ghcr.io/acme/private:1", RegistryCredentialID: strp("rc-probe")},
+		CreateRequest{Name: "rt-private-build", Repo: "https://github.com/acme/app", Runtime: "docker", RegistryCredentialID: strp("rc-probe")},
+		CreateRequest{Name: "rt-no-credential", Image: "ghcr.io/acme/public:1", RegistryCredentialID: strp("")},
 	)
 	types := []string{appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite}
 	sources := []struct {
@@ -285,6 +313,66 @@ func TestBlueprintSyncKeepsAnOmittedBuilder(t *testing.T) {
 			}
 			if changed != (tc.wantRuntime != "") || (changed && synced.Runtime != tc.wantRuntime) {
 				t.Errorf("sync changed = %v, runtime %q; want changed %v, runtime %q", changed, synced.Runtime, tc.wantRuntime != "", tc.wantRuntime)
+			}
+		})
+	}
+}
+
+// TestGenerateBlueprintNamesTheBoundRegistryCredential (w5/089): a bound
+// credential exports by its workspace name where Render spells it — on
+// image.creds for a prebuilt image, on registryCredential for a build. One the
+// file could not sync exports nothing: a credential since deleted, a name
+// another credential shares, or a binding the build no longer reads.
+func TestGenerateBlueprintNamesTheBoundRegistryCredential(t *testing.T) {
+	ctx := context.Background()
+	image := CreateRequest{Name: "private-image", Image: "ghcr.io/acme/private:1", RegistryCredentialID: strp("rc-probe")}
+	build := CreateRequest{Name: "private-build", Repo: "https://github.com/acme/app", Runtime: "docker", RegistryCredentialID: strp("rc-probe")}
+	imageCreds := func(service map[string]any) any { image, _ := service["image"].(map[string]any); return image["creds"] }
+	buildCreds := func(service map[string]any) any { return service["registryCredential"] }
+	named := map[string]any{"fromRegistryCreds": map[string]any{"name": "probe-creds"}}
+	for _, tc := range []struct {
+		name   string
+		create CreateRequest
+		creds  func(service map[string]any) any
+		after  func(*fakePullSecrets, *appv1alpha1.App) // what changed since the create
+		want   any
+	}{
+		{"a prebuilt image", image, imageCreds, nil, named},
+		{"a Dockerfile build", build, buildCreds, nil, named},
+		{"a deleted credential", image, imageCreds, func(f *fakePullSecrets, _ *appv1alpha1.App) { f.credNames = nil }, nil},
+		{"a shared name", image, imageCreds, func(f *fakePullSecrets, _ *appv1alpha1.App) {
+			f.ambiguousNames = map[string]bool{"probe-creds": true}
+		}, nil},
+		{"a build moved to a native runtime", build, buildCreds, func(_ *fakePullSecrets, a *appv1alpha1.App) {
+			a.Spec.Runtime, a.Spec.BuildCommand, a.Spec.StartCommand = "node", "npm ci", "npm start"
+		}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService(nil)
+			creds := probeRegistryCreds()
+			svc.RegistryCreds = creds
+			if _, err := svc.Create(ctx, tc.create); err != nil {
+				t.Fatalf("create: %v", err)
+			}
+			if tc.after != nil {
+				app := getApp(t, cl, tc.create.Name)
+				tc.after(creds, app)
+				if err := cl.Update(ctx, app); err != nil {
+					t.Fatal(err)
+				}
+			}
+			out, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{ServiceIDs: []string{tc.create.Name}})
+			if err != nil {
+				t.Fatalf("GenerateBlueprint: %v", err)
+			}
+			var doc struct {
+				Services []map[string]any `json:"services"`
+			}
+			if err := yaml.Unmarshal([]byte(out.Manifest), &doc); err != nil || len(doc.Services) != 1 {
+				t.Fatalf("export does not hold one service: %v\n%s", err, out.Manifest)
+			}
+			if got := tc.creds(doc.Services[0]); !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("exported credential = %v, want %v\n%s", got, tc.want, out.Manifest)
 			}
 		})
 	}
