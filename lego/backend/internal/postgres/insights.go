@@ -25,11 +25,9 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -46,28 +44,14 @@ import (
 // were query text.
 const pgInsufficientPrivilege = "<insufficient privilege>"
 
-// redactedSecret replaces the literal of a secret-bearing clause in published
-// query text. It stays a quoted SQL literal so the statement still reads as SQL,
-// and is visibly distinct from the privilege-masked path (which publishes
-// nothing).
-const redactedSecret = "'<redacted>'"
-
-// secretKeyword finds the SQL token PASSWORD (ALTER/CREATE ROLE … [ENCRYPTED]
-// PASSWORD '…', USER MAPPING OPTIONS (password '…')) and the libpq conninfo key
-// password= (CREATE SUBSCRIPTION … CONNECTION '…', dblink). The value that
-// follows, if any, is what redactSecrets removes.
-var secretKeyword = regexp.MustCompile(`(?i)\bpassword\b\s*(=\s*)?`)
-
-// dollarQuoteTag matches a PostgreSQL dollar-quote opener: $$ or $tag$. A
-// positional parameter ($1) is not one.
-var dollarQuoteTag = regexp.MustCompile(`^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$`)
-
-// positionalParam matches a whole $n parameter reference.
-var positionalParam = regexp.MustCompile(`^\$[0-9]+$`)
+// redactedLiteral replaces every string literal in published query text. It
+// stays a quoted SQL literal so the statement still reads as SQL, and is
+// visibly distinct from the privilege-masked path (which publishes nothing).
+const redactedLiteral = "'<redacted>'"
 
 // publishedQuery returns the query text Insights may publish, and whether
 // PostgreSQL masked it. A privilege placeholder publishes nothing (Masked); any
-// other text publishes with its secrets redacted. pg_stat_statements does not
+// other text publishes with its literals redacted. pg_stat_statements does not
 // normalize utility statements, so the provisioning ALTER ROLE … PASSWORD
 // 'SCRAM-SHA-256$…' sits there verbatim from a database's first minute
 // (w4/m167) — a verifier no reader, however privileged, should see.
@@ -75,79 +59,164 @@ func publishedQuery(q string) (string, bool) {
 	if q == pgInsufficientPrivilege {
 		return "", true
 	}
-	return redactSecrets(q), false
+	return redactLiterals(q), false
 }
 
-// redactSecrets replaces the value after every PASSWORD keyword with
-// redactedSecret: a quoted, escape-string or dollar-quoted literal, or an
-// unquoted conninfo value after password=. Text the reader truncated mid-literal
-// is redacted to its end. A bare PASSWORD with no value (a column name,
-// PASSWORD NULL) is left alone.
-func redactSecrets(q string) string {
+// redactLiterals replaces every string literal in q with redactedLiteral, so a
+// secret never survives whatever syntax carries it: a PASSWORD clause, a
+// conninfo string, a connection URI (w5/075). pg_stat_statements already turns
+// DML constants into $n, so top queries lose nothing; live query text loses
+// its literal values, which a monitoring view need not show.
+//
+// Literals are '…' with an optional E, U&, B, X or N prefix, and dollar-quoted
+// $tag$…$tag$ bodies. Comments (-- and nested /* */) and "quoted identifiers"
+// are copied as they are, so a quote inside one starts nothing, and a
+// positional parameter ($1) is not a literal. A literal the reader truncated
+// runs to the end and is redacted to it.
+func redactLiterals(q string) string {
 	var b strings.Builder
-	rest := q
-	for {
-		loc := secretKeyword.FindStringSubmatchIndex(rest)
-		if loc == nil {
-			if len(rest) == len(q) {
-				return q // the common case: nothing to redact, nothing to copy
+	copied := 0 // q[:copied] is already in b
+	for i := 0; i < len(q); {
+		switch {
+		case strings.HasPrefix(q[i:], "--"):
+			i += lineCommentLen(q[i:])
+		case strings.HasPrefix(q[i:], "/*"):
+			i += blockCommentLen(q[i:])
+		case q[i] == '"':
+			i += quotedLen(q[i:], 1, '"', false)
+		default:
+			n := literalLen(q, i)
+			if n == 0 {
+				i++
+				continue
 			}
-			b.WriteString(rest)
-			return b.String()
-		}
-		b.WriteString(rest[:loc[1]])
-		rest = rest[loc[1]:]
-		if n := secretValueLen(rest, loc[2] >= 0); n > 0 {
-			b.WriteString(redactedSecret)
-			rest = rest[n:]
+			if b.Len() == 0 {
+				b.Grow(len(q))
+			}
+			b.WriteString(q[copied:i])
+			b.WriteString(redactedLiteral)
+			i += n
+			copied = i
 		}
 	}
+	if b.Len() == 0 {
+		return q // no literal: the common case, nothing copied
+	}
+	b.WriteString(q[copied:])
+	return b.String()
 }
 
-// secretValueLen returns the byte length of the secret value at the start of s,
-// or 0 when none follows. assigned reports a conninfo-style password=, where an
-// unquoted value (up to whitespace or a closing quote) is the secret too.
-func secretValueLen(s string, assigned bool) int {
-	switch {
-	case strings.HasPrefix(s, "'"):
-		return quotedLen(s, 1, false)
-	case len(s) > 1 && (s[0] == 'E' || s[0] == 'e') && s[1] == '\'':
-		return quotedLen(s, 2, true)
+// literalLen returns the byte length of the string literal starting at q[i],
+// prefix included, or 0 when none starts there. A prefix letter or a $ that
+// continues an identifier (date'…', name$x) opens nothing; a bare quote always
+// opens a literal, even right after a keyword (PASSWORD'x').
+func literalLen(q string, i int) int {
+	s := q[i:]
+	if s[0] == '\'' {
+		return plainLiteralLen(s, 1)
 	}
-	if tag := dollarQuoteTag.FindString(s); tag != "" {
-		if end := strings.Index(s[len(tag):], tag); end >= 0 {
-			return len(tag) + end + len(tag)
+	if i > 0 && identifierByte(q[i-1]) {
+		return 0
+	}
+	switch {
+	case len(s) > 1 && (s[0] == 'E' || s[0] == 'e') && s[1] == '\'':
+		return quotedLen(s, 2, '\'', true)
+	case len(s) > 2 && (s[0] == 'U' || s[0] == 'u') && s[1] == '&' && s[2] == '\'':
+		return plainLiteralLen(s, 3)
+	case len(s) > 1 && strings.IndexByte("BbXxNn", s[0]) >= 0 && s[1] == '\'':
+		return plainLiteralLen(s, 2)
+	}
+	if tag := dollarTagLen(s); tag > 0 {
+		if end := strings.Index(s[tag:], s[:tag]); end >= 0 {
+			return tag + end + tag
 		}
 		return len(s)
 	}
-	if !assigned {
-		return 0
-	}
-	end := strings.IndexFunc(s, func(r rune) bool { return r == '\'' || unicode.IsSpace(r) })
-	if end < 0 {
-		end = len(s)
-	}
-	if positionalParam.MatchString(s[:end]) {
-		return 0 // pg_stat_statements' normalized constant, not a secret
-	}
-	return end
+	return 0
 }
 
-// quotedLen returns the length of the single-quoted literal at s, whose body
-// starts at offset start. A doubled quote always escapes a quote; backslash
-// escapes the next byte in an escape-string (E-prefixed) literal. An
-// unterminated literal runs to the end of s.
-func quotedLen(s string, start int, backslash bool) int {
+// plainLiteralLen returns the length of the non-escape '…' literal whose body
+// starts at offset start of s. A backslash before a quote is text under the
+// default standard_conforming_strings and escapes the quote with it off. The
+// text does not say which the session used, so when the two readings disagree
+// the rest of s is taken as the literal: over-redacting, never leaking.
+func plainLiteralLen(s string, start int) int {
+	if n := quotedLen(s, start, '\'', false); n == quotedLen(s, start, '\'', true) {
+		return n
+	}
+	return len(s)
+}
+
+// dollarTagLen returns the length of the dollar-quote opener at s ($$ or
+// $tag$), or 0 when s does not start one. A tag starts with a letter, _ or
+// non-ASCII byte and continues with those or digits, so a positional parameter
+// ($1) is not one.
+func dollarTagLen(s string) int {
+	if s[0] != '$' {
+		return 0
+	}
+	for i := 1; i < len(s); i++ {
+		switch c := s[i]; {
+		case c == '$':
+			return i + 1
+		case !identifierByte(c), i == 1 && '0' <= c && c <= '9':
+			return 0
+		}
+	}
+	return 0
+}
+
+// identifierByte reports whether c can continue an unquoted identifier: a
+// letter, digit, _ or $, or any byte of a multibyte (non-ASCII) character.
+func identifierByte(c byte) bool {
+	return c == '_' || c == '$' || c >= 0x80 ||
+		('0' <= c && c <= '9') || ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z')
+}
+
+// quotedLen returns the length of the quoted token at s, whose body starts at
+// offset start and ends at the closing quote. A doubled quote always escapes a
+// quote; with backslash set (an E'…' literal), a backslash escapes the next
+// byte. An unterminated token runs to the end of s.
+func quotedLen(s string, start int, quote byte, backslash bool) int {
 	for i := start; i < len(s); i++ {
 		switch {
 		case backslash && s[i] == '\\':
 			i++
-		case s[i] == '\'':
-			if i+1 < len(s) && s[i+1] == '\'' {
+		case s[i] == quote:
+			if i+1 < len(s) && s[i+1] == quote {
 				i++
 				continue
 			}
 			return i + 1
+		}
+	}
+	return len(s)
+}
+
+// lineCommentLen returns the length of the -- comment at s, which a newline
+// or carriage return ends.
+func lineCommentLen(s string) int {
+	if end := strings.IndexAny(s, "\r\n"); end >= 0 {
+		return end + 1
+	}
+	return len(s)
+}
+
+// blockCommentLen returns the length of the /* */ comment at s. PostgreSQL
+// nests them; an unterminated one runs to the end of s.
+func blockCommentLen(s string) int {
+	depth := 0
+	for i := 0; i+1 < len(s); i++ {
+		switch {
+		case s[i] == '/' && s[i+1] == '*':
+			depth++
+			i++
+		case s[i] == '*' && s[i+1] == '/':
+			depth--
+			i++
+			if depth == 0 {
+				return i + 1
+			}
 		}
 	}
 	return len(s)
@@ -312,21 +381,33 @@ ORDER BY name`
 // runInsight dials the database and executes sql inside the standard read-only
 // envelope (same safety rails as Query). The caller maps rows to its typed view.
 func (s *Service) runInsight(ctx context.Context, relation, dbID, sql string) (QueryResult, error) {
-	db, err := s.fetchDatabaseForRead(ctx, relation, dbID)
+	db, err := s.insightDatabase(ctx, relation, dbID)
 	if err != nil {
 		return QueryResult{}, err
 	}
-	// Processes/TopQueries (and every other insight that dials the tenant
-	// database) surface live query text. RelCanViewSensitive and RelCanView
-	// are both read relations, so Authorize uses the decision cache; re-check
-	// uncached before loading the connection Secret (codex round-15 #4).
-	if err := s.AuthorizeDatabaseFresh(ctx, relation, db); err != nil {
-		return QueryResult{}, err
-	}
-	return s.runAuthorizedInsight(ctx, db, sql)
+	return s.runAuthorizedInsight(ctx, db, sql, false)
 }
 
-func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Database, sql string) (QueryResult, error) {
+// insightDatabase loads a database for an insight and authorizes relation on
+// it uncached. Processes/TopQueries (and every other insight that dials the
+// tenant database) surface live query text. RelCanViewSensitive and RelCanView
+// are both read relations, so Authorize uses the decision cache; re-check
+// uncached before loading the connection Secret (codex round-15 #4).
+func (s *Service) insightDatabase(ctx context.Context, relation, dbID string) (*appv1alpha1.Database, error) {
+	db, err := s.fetchDatabaseForRead(ctx, relation, dbID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.AuthorizeDatabaseFresh(ctx, relation, db); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+// runAuthorizedInsight runs sql on a database the caller already authorized.
+// serverSettings dials without the session rails, which only the pg_settings
+// read wants (queryLimits.serverSettings).
+func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Database, sql string, serverSettings bool) (QueryResult, error) {
 	sec, err := s.databaseSecret(ctx, db)
 	if err != nil {
 		return QueryResult{}, err
@@ -336,7 +417,7 @@ func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Data
 		return QueryResult{}, core.ErrNotFound
 	}
 	return runReadOnlyQuery(ctx, uri, sql, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap,
-		serverSettings: sql == sqlParameterOverrides})
+		serverSettings: serverSettings})
 }
 
 // strVal extracts a string from a pgx any value (nil → "").
@@ -429,17 +510,14 @@ func processViews(rows [][]any) []ProcessView {
 // pg_stat_statements. Unavailable statistics must not look like an empty result.
 // Requires RelCanViewSensitive because query texts may contain literal values.
 func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, error) {
-	db, err := s.fetchDatabaseForRead(ctx, core.RelCanViewSensitive, dbID)
+	db, err := s.insightDatabase(ctx, core.RelCanViewSensitive, dbID)
 	if err != nil {
-		return nil, err
-	}
-	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, db); err != nil {
 		return nil, err
 	}
 	if db.Spec.Suspended {
 		return nil, fmt.Errorf("%w: database is suspended", core.ErrUnavailable)
 	}
-	res, err := s.runAuthorizedInsight(ctx, db, sqlTopQueries)
+	res, err := s.runAuthorizedInsight(ctx, db, sqlTopQueries, false)
 	if err != nil {
 		return nil, fmt.Errorf("%w: top query statistics could not be read; the database must be reachable with pg_stat_statements enabled", core.ErrUnavailable)
 	}
@@ -532,7 +610,11 @@ func (s *Service) TableScans(ctx context.Context, dbID string) ([]TableScanView,
 
 // ParameterOverrides returns non-default postgresql.conf parameters from pg_settings.
 func (s *Service) ParameterOverrides(ctx context.Context, dbID string) ([]ParameterOverrideView, error) {
-	res, err := s.runInsight(ctx, core.RelCanView, dbID, sqlParameterOverrides)
+	db, err := s.insightDatabase(ctx, core.RelCanView, dbID)
+	if err != nil {
+		return nil, err
+	}
+	res, err := s.runAuthorizedInsight(ctx, db, sqlParameterOverrides, true)
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +670,7 @@ func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSp
 	// hostage to the normal insight query's longer timeout.
 	observationCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	observed, observationErr := s.runAuthorizedInsight(observationCtx, db, sqlParameterOverrides)
+	observed, observationErr := s.runAuthorizedInsight(observationCtx, db, sqlParameterOverrides, true)
 	return parameterSpecViews(db.Spec.Parameters, parameterOverrideViews(observed), observationErr), nil
 }
 
