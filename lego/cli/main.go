@@ -53,6 +53,9 @@ func main() {
 	// Branding mutates exported cobra metadata (Use/help/docs) after native
 	// commands attach so ungrouped Bex commands keep their help section.
 	branding.Apply(cmd.RootCmd, bexVersion)
+	// Brands the children upstream Execute registers after Apply before any
+	// command, including __complete, runs (w2/043).
+	cobra.OnInitialize(func() { branding.Refresh(cmd.RootCmd) })
 
 	// Own the version path: upstream's handler compares against
 	// render-oss/cli releases (const cfg.RepoURL) and would direct bex users

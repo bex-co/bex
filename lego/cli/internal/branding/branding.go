@@ -41,7 +41,8 @@ const (
 // Apply mutates root in place: Use/examples/Short/Long read as Bex, help
 // chrome uses bexVersion, and `docs` opens DocsURL. Upstream setupCommands
 // adds more children during Execute (after this returns), so HelpFunc and
-// UsageFunc re-walk the tree before help or usage output. It does not replace
+// UsageFunc re-walk the tree before help or usage output (see Refresh for
+// completion). It does not replace
 // upstream RunE bodies except for `docs`.
 func Apply(root *cobra.Command, bexVersion string) {
 	if root == nil {
@@ -64,18 +65,29 @@ func Apply(root *cobra.Command, bexVersion string) {
 
 	prevHelp := root.HelpFunc()
 	root.SetHelpFunc(func(c *cobra.Command, args []string) {
-		brandTree(root)
-		overrideDocs(root)
+		Refresh(root)
 		prevHelp(c, args)
 	})
 	// Flag/arg errors call UsageFunc (UsageString), not HelpFunc — without this
 	// wrapper late-added setupCommands children still print `render …` examples.
 	prevUsage := root.UsageFunc()
 	root.SetUsageFunc(func(c *cobra.Command) error {
-		brandTree(root)
-		overrideDocs(root)
+		Refresh(root)
 		return prevUsage(c)
 	})
+}
+
+// Refresh re-applies the branding walk to commands upstream added after Apply.
+// The launcher registers it once as a cobra initializer so successful shell
+// completion — which reads Short directly and calls neither HelpFunc nor
+// UsageFunc — also sees Bex descriptions for setupCommands children (w2/043).
+// The walk is idempotent.
+func Refresh(root *cobra.Command) {
+	if root == nil {
+		return
+	}
+	brandTree(root)
+	overrideDocs(root)
 }
 
 func brandTree(root *cobra.Command) {

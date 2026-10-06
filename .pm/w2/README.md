@@ -160,6 +160,6 @@ _(`015.md` promoted to **m58** 2026-07-19; moved to `done/`. `012.md` promoted t
 
 > **m3 (E2B-compatible sandboxes) removed 2026-07-08** — hosted agent sandboxes (pillar 5) are off the roadmap by user decision; see [`.pm/DO_NOT_DO.md`](../DO_NOT_DO.md). The architecture record stays in docs/ADR014-sandboxes.md (ADR, status: proposed) for a future explicit re-open.
 
-- [ ] **043** — [Brand late-added command descriptions before shell completion](043.md) (35m) ← live CLI QA, 2026-10-03 UTC.
+- [x] **043** — [Brand late-added command descriptions before shell completion](done/043.md) (35m) — **DONE 2026-10-06** ← live CLI QA, 2026-10-03 UTC.
 
-- [ ] **044** — [Remove the nonexistent service-get command from Bex CLI guidance](044.md) (20m) ← CLI QA follow-up to w7/045, 2026-10-03 UTC.
+- [x] **044** — [Remove the nonexistent service-get command from Bex CLI guidance](done/044.md) (20m) — **DONE 2026-10-03** (`f37cb370f`) ← CLI QA follow-up to w7/045, 2026-10-03 UTC.
