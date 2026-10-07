@@ -9,7 +9,10 @@ import {
   createMemoryHistory,
 } from "@tanstack/react-router";
 import { KeyValueDetailPage, Route } from "../keyvalue.$keyValueId";
-import type { RangeSearch } from "@/features/metrics/lib/range";
+import {
+  CLEARED_RANGE_SEARCH,
+  type RangeSearch,
+} from "@/features/metrics/lib/range";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 const keyValueState: {
@@ -186,7 +189,10 @@ describe("key value detail tab search contract", () => {
 
   it("keeps the linkable tabs and round-trips the log range (w6/065)", () => {
     expect(validate({ tab: "metrics" })).toEqual({ tab: "metrics" });
-    expect(validate({ tab: "bogus" })).toEqual({});
+    expect(validate({ tab: "bogus" })).toStrictEqual({
+      tab: undefined,
+      ...CLEARED_RANGE_SEARCH,
+    });
     // A picked preset survives a reload alongside the tab key…
     expect(validate({ tab: "logs", range: "24h" })).toEqual({
       tab: "logs",
@@ -206,8 +212,11 @@ describe("key value detail tab search contract", () => {
       rangeStart: "2026-07-01T00:00:00.000Z",
       rangeEnd: "2026-07-01T06:00:00.000Z",
     });
-    // …and malformed ranges drop out (default behavior preserved).
-    expect(validate({ tab: "logs", range: "6h" })).toEqual({ tab: "logs" });
+    // …and malformed ranges come back undefined (default behavior preserved).
+    expect(validate({ tab: "logs", range: "6h" })).toStrictEqual({
+      tab: "logs",
+      ...CLEARED_RANGE_SEARCH,
+    });
   });
 });
 

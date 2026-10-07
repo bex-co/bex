@@ -22,7 +22,7 @@ vi.mock("@/features/ssh-keys/hooks/use-ssh-keys", () => ({
 const routerSearch: { returnTo?: string; addKey?: boolean } = {};
 const navigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
-  useSearch: () => routerSearch,
+  getRouteApi: () => ({ useSearch: () => routerSearch }),
   useNavigate: () => navigate,
 }));
 

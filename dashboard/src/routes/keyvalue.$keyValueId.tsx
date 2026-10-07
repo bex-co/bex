@@ -62,9 +62,10 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
   validateSearch: (
     search: Record<string, unknown>,
   ): { tab?: "logs" | "metrics" } & RangeSearch => ({
-    ...(search.tab === "logs" || search.tab === "metrics"
-      ? { tab: search.tab }
-      : {}),
+    tab:
+      search.tab === "logs" || search.tab === "metrics"
+        ? search.tab
+        : undefined,
     // The Logs tab's time range persists in the shared `range`/`rangeStart`/
     // `rangeEnd` URL shape (w6/065) so it survives a reload and is shareable.
     ...parseRangeSearch(search),

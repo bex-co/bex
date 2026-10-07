@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { KeyRound, Loader2, Plus } from "lucide-react";
 import { safeNext } from "@/common/lib/safe-next";
 import { Button } from "@/common/components/ui/button";
@@ -42,6 +42,9 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
 import { useSSHKeys } from "@/features/ssh-keys/hooks/use-ssh-keys";
 
+// The panel renders only on /settings, whose validator types this search.
+const settingsRoute = getRouteApi("/settings");
+
 const publicKeyPattern =
   /^(ssh-(?:ed25519|rsa)|ecdsa-sha2-nistp(?:256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)[ \t]+[A-Za-z0-9+/]+={0,3}(?:[ \t]+[^\r\n]+)?$/;
 
@@ -54,10 +57,7 @@ export function SSHKeysPanel() {
   // arrival. Both ride the query string so the SSR render and client agree —
   // the form opens with no post-hydration effect; the `#ssh-public-keys` hash
   // on the CTA link handles the native scroll-into-view.
-  const { returnTo, addKey } = useSearch({ strict: false }) as {
-    returnTo?: string;
-    addKey?: boolean;
-  };
+  const { returnTo, addKey } = settingsRoute.useSearch();
   const [open, setOpen] = useState(Boolean(addKey));
   const [name, setName] = useState("");
   const [publicKey, setPublicKey] = useState("");

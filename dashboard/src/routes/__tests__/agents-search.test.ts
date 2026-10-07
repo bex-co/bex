@@ -27,7 +27,11 @@ describe("agent-session filter search contracts", () => {
       validateList({ archived: "true", phase: "failed", view: "list" }),
     ).toEqual({ archived: "archived", phase: "failed", view: "list" });
     expect(validateList({ archived: true })).toEqual({ archived: "archived" });
-    expect(validateList({ archived: "no", phase: "unknown" })).toEqual({});
+    expect(validateList({ archived: "no", phase: "unknown" })).toStrictEqual({
+      view: undefined,
+      archived: undefined,
+      phase: undefined,
+    });
   });
 
   it("does not wire a phase-filter dropdown on /agents", async () => {
@@ -54,6 +58,6 @@ describe("agent-session filter search contracts", () => {
     });
     expect(
       validateDetail({ fromArchived: "false", fromPhase: "unknown" }),
-    ).toEqual({});
+    ).toStrictEqual({ fromArchived: undefined, fromPhase: undefined });
   });
 });
