@@ -34,6 +34,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,6 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	crbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
@@ -280,6 +282,9 @@ type AppReconciler struct {
 	// namespace needs the same bypass, for the same reason.
 	BuildClient client.Client
 	Scheme      *runtime.Scheme
+	// stoppedCanceledBuilds holds, per App UID, the canceled release
+	// generation whose build a canceled pass stopped (settleCanceledRelease).
+	stoppedCanceledBuilds sync.Map
 	// AppsNamespace is the shared/bootstrap tenant namespace (BEX_APPS_NAMESPACE,
 	// default "default"). Together with each App's own workspace namespace it
 	// defines the canonical set the reconciler will act on — see canonicalNamespace
@@ -653,9 +658,17 @@ func (r *AppReconciler) convergeRegistryCredentials(ctx context.Context, app *ap
 	return ctrl.Result{}, false, nil
 }
 
-// settleCanceledRelease handles a generation whose build artifact the backend
-// already deleted: preserve the last healthy release (if any) and acknowledge
-// the current App generation without ever dispatching the canceled build again.
+// canceledBuildStopped reports that a canceled pass already stopped the build
+// of uid's canceled release generation.
+func (r *AppReconciler) canceledBuildStopped(uid types.UID, generation int64) bool {
+	stopped, ok := r.stoppedCanceledBuilds.Load(uid)
+	return ok && stopped.(int64) == generation
+}
+
+// settleCanceledRelease handles a generation the backend canceled: stop its
+// build if one still runs, preserve the last healthy release (if any) and
+// acknowledge the current App generation without ever dispatching the
+// canceled build again.
 func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alpha1.App, port int) (ctrl.Result, error) {
 	// Meter the cancel once — a user Cancel, or a suspend that ended the
 	// rollout (w5/m114). Reconciliation is level-triggered, so gate on the
@@ -668,6 +681,21 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 		recordBuildOutcome(buildOutcomeCanceled)
 	}
 	poll := r.observeCanceledPreDeploy(ctx, app)
+	// bex-api stops the canceled release's build once, best effort, after its
+	// stamp lands. A build a pass dispatched after that delete, or one whose
+	// delete failed, would run to the end and hold a build-cap slot. Canceled
+	// passes stop it until one succeeds; no canceled pass dispatches, so the
+	// release's build cannot start again, and later passes skip the build
+	// plane's uncached reads (w5/149). An image-backed release has no build.
+	if generation, ok := canceledReleaseGeneration(app); ok && app.Spec.Repo != "" && !r.canceledBuildStopped(app.UID, generation) {
+		owner := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID)}
+		if err := build.StopRevision(ctx, r.buildPlaneClient(), r.buildNamespace(app.Namespace), owner, appv1alpha1.BuildRevision(generation)); err != nil {
+			logf.FromContext(ctx).Error(err, "stop the canceled release's build", "app", app.Name)
+			poll = soonerRequeue(poll, childHealthRequeue)
+		} else {
+			r.stoppedCanceledBuilds.Store(app.UID, generation)
+		}
+	}
 	// Only a release that served can be reverted to; otherwise there is simply
 	// no release yet and the Canceled branch below is the truth (w1/m160).
 	if releaseHasServed(app) {
@@ -1141,21 +1169,12 @@ func (r *AppReconciler) deleteSiblingBuildJobs(ctx context.Context, app *appv1al
 	if err := r.buildPlaneClient().List(ctx, &jobs, client.InNamespace(buildNs), sel); err != nil {
 		return err
 	}
-	background := metav1.DeletePropagationBackground
 	var errs []error
 	for i := range jobs.Items {
-		job := &jobs.Items[i]
-		if job.Name == keep {
+		if jobs.Items[i].Name == keep {
 			continue
 		}
-		if job.Status.Succeeded > 0 || job.Status.Failed > 0 {
-			continue
-		}
-		uid := job.UID
-		if err := r.buildPlaneClient().Delete(ctx, job, &client.DeleteOptions{
-			Preconditions:     &metav1.Preconditions{UID: &uid},
-			PropagationPolicy: &background,
-		}); client.IgnoreNotFound(err) != nil {
+		if err := build.StopBuildJob(ctx, r.buildPlaneClient(), &jobs.Items[i]); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -6069,6 +6088,7 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		if err := r.Update(ctx, app); err != nil {
 			return ctrl.Result{}, err
 		}
+		r.stoppedCanceledBuilds.Delete(app.UID)
 	}
 	return ctrl.Result{}, nil
 }

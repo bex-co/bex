@@ -132,10 +132,10 @@ func cancelTestClient(t *testing.T, app *appv1alpha1.App, funcs interceptor.Func
 // stopped it. The cancel selects it by the labels the operator stamps instead,
 // the App's UID among them: the canceled release's build goes, whichever shape
 // it took, while a recreated namesake App's build of the same revision and the
-// App's later release stay. bex-api
-// may list kpack Images only in the build namespace. Nothing retries a cancel
-// once its stamp lands, so a failed Job delete must not spare the Image, and a
-// cluster without kpack has no Image to stop.
+// App's later release stay. bex-api may list kpack Images only in the build
+// namespace. The operator retries the stop (w5/149), but a failed Job delete
+// still must not spare the Image, and a cluster without kpack has no Image to
+// stop.
 func TestCancelReleaseStopsItsBuild(t *testing.T) {
 	ctx := context.Background()
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"},

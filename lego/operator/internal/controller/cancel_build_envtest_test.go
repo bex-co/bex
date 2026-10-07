@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"strconv"
 	"time"
 
@@ -25,8 +26,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
@@ -38,6 +41,20 @@ import (
 // RUNS. The operator has already dispatched generation 2 — status names it as
 // the release in flight — before the cancel lands, which the image-backed specs
 // never reach.
+// jobGetCounter counts the build-plane reads of one build Job.
+type jobGetCounter struct {
+	client.Client
+	name string
+	gets int
+}
+
+func (c *jobGetCounter) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if _, ok := obj.(*batchv1.Job); ok && key.Name == c.name {
+		c.gets++
+	}
+	return c.Client.Get(ctx, key, obj, opts...)
+}
+
 var _ = Describe("Canceling a config_change mid-build (w1/m152)", func() {
 	const name = "cancel-mid-build"
 	nn := types.NamespacedName{Name: name, Namespace: "default"}
@@ -79,7 +96,7 @@ var _ = Describe("Canceling a config_change mid-build (w1/m152)", func() {
 			}
 			r.Registry = saved
 		}
-		for _, rev := range []string{"gen-1", "gen-2"} {
+		for _, rev := range []string{"gen-1", "gen-2", "gen-3"} {
 			_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: build.JobName(name, rev), Namespace: "default"}})
 		}
 		_ = k8sClient.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name + "-env", Namespace: "default"}})
@@ -122,6 +139,8 @@ var _ = Describe("Canceling a config_change mid-build (w1/m152)", func() {
 		Expect(getApp().Status.ReleaseGeneration).To(Equal(int64(2)), "precondition: generation 2 is in flight")
 
 		By("canceling it mid-build")
+		reads := &jobGetCounter{Client: k8sClient, name: build.JobName(name, "gen-2")}
+		r.BuildClient = reads
 		app = getApp()
 		app.Annotations = map[string]string{appv1alpha1.AnnotationCanceledReleaseGeneration: strconv.FormatInt(app.Generation, 10)}
 		Expect(k8sClient.Update(ctx, app)).To(Succeed())
@@ -131,5 +150,17 @@ var _ = Describe("Canceling a config_change mid-build (w1/m152)", func() {
 		app = getApp()
 		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
 		Expect(app.Status.UndeployedChanges).To(BeTrue(), "the saved change must read as not deployed")
+
+		By("stopping the canceled release's build, which bex-api's one delete may miss (w5/149)")
+		_, err := buildJobFor(name, "gen-2")
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "the canceled release's build Job must be stopped: %v", err)
+		Expect(reads.gets).To(Equal(1), "canceled passes after the stop must skip the build plane's reads")
+
+		By("a later deploy's build runs untouched by the canceled stamp")
+		app = getApp()
+		app.Spec.RestartedAt = time.Now().UTC().Add(time.Second).Format(time.RFC3339Nano)
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		pass(2)
+		Expect(buildJobFor(name, "gen-3")).NotTo(BeNil(), "the later release's build Job must run")
 	})
 })
