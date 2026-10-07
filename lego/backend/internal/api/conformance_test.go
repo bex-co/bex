@@ -31,8 +31,10 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -366,6 +368,27 @@ func TestRenderConformance(t *testing.T) {
 
 	t.Run("events/get", func(t *testing.T) {
 		check(t, "/v1/events/"+eventID, "retrieve-event")
+	})
+
+	// Render's replace-all secret-file PUT (w8/063). Runs last: it replaces the
+	// seeded ca.pem/db.pem the list subtest above reads.
+	t.Run("secret-files/replace-all", func(t *testing.T) {
+		w := do(t, h, "PUT", "/v1/services/"+appName+"/secret-files", testToken,
+			`[{"name":"b.txt","content":"two"},{"name":"a.txt","content":"one"}]`)
+		if w.Code != http.StatusOK {
+			t.Fatalf("PUT secret-files = %d: %s", w.Code, w.Body.String())
+		}
+		if errs := filterAllowed("update-secret-files-for-service", spec.validate("update-secret-files-for-service", w.Body.Bytes())); len(errs) > 0 {
+			t.Errorf("update-secret-files-for-service diverges: %v", errs)
+		}
+		w = do(t, h, "GET", "/v1/services/"+appName+"/secret-files", testToken, "")
+		var listed []struct {
+			SecretFile struct{ Name string } `json:"secretFile"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &listed); err != nil || len(listed) != 2 ||
+			listed[0].SecretFile.Name != "a.txt" || listed[1].SecretFile.Name != "b.txt" {
+			t.Fatalf("after replace-all, list = %s, want exactly a.txt and b.txt (seeded files gone)", w.Body.String())
+		}
 	})
 }
 
