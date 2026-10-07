@@ -85,6 +85,11 @@ func TestKratosIdentitiesMFADerivation(t *testing.T) {
 		"totp-plus-enrolled":  {`{"totp":{"type":"totp"},"webauthn":{"type":"webauthn","config":{"credentials":[{"id":"a2V5"}]}}}`, true},
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only webauthn's config is needed; asking for TOTP's would return the
+		// secret (w5/127), and the shapes below are Kratos' answer to this ask.
+		if included := r.URL.Query()["include_credential"]; !slices.Equal(included, []string{"webauthn"}) {
+			t.Errorf("%s includes %v, want only webauthn", r.URL, included)
+		}
 		shape, ok := shapes[r.URL.Path[len("/admin/identities/"):]]
 		if !ok {
 			http.NotFound(w, r)
@@ -143,9 +148,9 @@ func fakeKratosList(t *testing.T, missing string, failing ...string) (*KratosIde
 		mu.Lock()
 		batches = append(batches, q["ids"])
 		mu.Unlock()
-		if r.URL.Path != "/admin/identities" || !slices.Equal(q["include_credential"], []string{"totp", "webauthn"}) ||
+		if r.URL.Path != "/admin/identities" || !slices.Equal(q["include_credential"], []string{"webauthn"}) ||
 			q.Get("page_size") != strconv.Itoa(len(q["ids"])) {
-			t.Errorf("request %s, want one page of the batch read with the MFA credentials", r.URL)
+			t.Errorf("request %s, want one page of the batch read with the webauthn credential", r.URL)
 		}
 		for _, id := range q["ids"] {
 			if uuid.Validate(id) != nil {
