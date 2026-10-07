@@ -604,6 +604,21 @@ func mcpSession(t *testing.T, srv *Server) *mcp.ClientSession {
 	return cs
 }
 
+// TestHandlerBuildsTheOneMCPServerAtStartup (w5/107): Handler builds the MCP
+// server, so a broken tool schema fails at startup rather than on the first
+// /mcp request, and every later caller shares that instance instead of
+// registering every tool again.
+func TestHandlerBuildsTheOneMCPServerAtStartup(t *testing.T) {
+	_, srv := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	built := srv.mcpServer
+	if built == nil {
+		t.Fatal("Handler left the MCP server unbuilt")
+	}
+	if srv.MCPServer() != built {
+		t.Fatal("MCPServer built another server")
+	}
+}
+
 func TestMCP_ExposesRenderConsistentAndBexExtensionTools(t *testing.T) {
 	srv := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{})
 	cs := mcpSession(t, srv)

@@ -36,6 +36,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -258,6 +259,9 @@ type Server struct {
 	OriginMetrics *OriginMetrics
 
 	schema graphql.Schema
+
+	mcpOnce   sync.Once
+	mcpServer *mcp.Server
 }
 
 type accountStore interface {
@@ -1626,11 +1630,24 @@ func resolverError(orig error) error {
 	return orig
 }
 
-// MCPServer builds the MCP server with every feature's tools registered. The
-// returned server is stateless w.r.t. sessions, so one instance is reused for
-// stdio and across HTTP sessions.
+// MCPServer returns the MCP server with every feature's tools registered. It is
+// stateless w.r.t. sessions, so one instance per Server serves stdio, every
+// HTTP session and in-memory test sessions alike (w5/107). It is built once, on
+// first use, which Handler makes at startup: a broken tool schema still fails
+// there, and the Server's fields must be final by then.
 func (s *Server) MCPServer() *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: mcpServerName, Version: mcpVersion}, nil)
+	s.mcpOnce.Do(func() { s.mcpServer = s.buildMCPServer() })
+	return s.mcpServer
+}
+
+// mcpSchemaCache shares tools' inferred and resolved JSON schemas across the
+// MCP servers one process builds: they depend only on each tool's Go types.
+// Production builds one server, but the api tests build one per test server,
+// and resolving every tool's schemas each time was most of their CPU (w5/107).
+var mcpSchemaCache = mcp.NewSchemaCache()
+
+func (s *Server) buildMCPServer() *mcp.Server {
+	srv := mcp.NewServer(&mcp.Implementation{Name: mcpServerName, Version: mcpVersion}, &mcp.ServerOptions{SchemaCache: mcpSchemaCache})
 	for _, f := range s.features() {
 		if r, ok := f.(mcpRegistrar); ok {
 			r.RegisterMCP(srv)
