@@ -297,7 +297,8 @@ func (s *Service) prepareProjection(ctx context.Context, a *appv1alpha1.App, kin
 		Type:       corev1.SecretTypeOpaque,
 		Data:       envBytes(values),
 	}
-	if err := s.createPreparedSecret(ctx, a, sec); err != nil {
+	setPreparedAt(sec, s.Now())
+	if err := s.createPreparedSecret(ctx, a, kind, sec); err != nil {
 		return err
 	}
 	// The map replaces whatever a purge left at path, and the version this
@@ -343,12 +344,13 @@ func compensationContext(ctx context.Context) (context.Context, context.CancelFu
 // by a live App, a create in progress, or a deleted one's Secret still going.
 var errSecretNameHeld = fmt.Errorf("%w: a service of this name is still being created or deleted; retry shortly", core.ErrConflict)
 
-// createPreparedSecret creates sec, ownerless, for a's create. A deleted
-// namesake's Secret that garbage collection has not reached is taken over and
-// left ownerless as a fresh one would be, until adoptPreparedSecret makes the
-// new App its controller: the create-time half of w5/118's takeover (w5/128).
-// Any other holder refuses the create with errSecretNameHeld.
-func (s *Service) createPreparedSecret(ctx context.Context, a *appv1alpha1.App, sec *corev1.Secret) error {
+// createPreparedSecret creates sec, ownerless, for a's create. A vacated
+// Secret — a deleted namesake's that garbage collection has not reached, or a
+// preparation its create abandoned — is taken over and left ownerless as a
+// fresh one would be, until adoptPreparedSecret makes the new App its
+// controller: the create-time half of w5/118's takeover (w5/128, w5/135). Any
+// other holder refuses the create with errSecretNameHeld.
+func (s *Service) createPreparedSecret(ctx context.Context, a *appv1alpha1.App, kind projectionKind, sec *corev1.Secret) error {
 	for attempt := 0; attempt <= casMaxRetries; attempt++ {
 		err := s.Client.Create(ctx, sec)
 		if !apierrors.IsAlreadyExists(err) {
@@ -360,16 +362,19 @@ func (s *Service) createPreparedSecret(ctx context.Context, a *appv1alpha1.App, 
 		} else if err != nil {
 			return err
 		}
-		vacated, err := s.ownedByDeletedNamesake(ctx, a, held)
+		if held.DeletionTimestamp != nil {
+			return errSecretNameHeld // it would vanish under the takeover
+		}
+		vacated, err := s.vacated(ctx, a, kind, held)
 		if err != nil {
 			return err
 		}
-		if !vacated || held.DeletionTimestamp != nil {
+		if !vacated {
 			return errSecretNameHeld
 		}
 		held.OwnerReferences = nil
 		held.Labels = sec.Labels
-		held.Annotations = sec.Annotations // none yet: the store write stamps its revision
+		held.Annotations = sec.Annotations // the claim's date; the store write stamps its revision
 		held.Data = sec.Data
 		err = s.Client.Update(ctx, held)
 		if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
@@ -393,6 +398,7 @@ func (s *Service) adoptPreparedSecret(ctx context.Context, a *appv1alpha1.App, n
 	if err := controllerutil.SetControllerReference(a, sec, s.Client.Scheme()); err != nil {
 		return err
 	}
+	delete(sec.Annotations, preparedAtAnnotation)
 	return s.Client.Update(ctx, sec)
 }
 

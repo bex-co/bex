@@ -154,6 +154,8 @@ type recordingCreateSecretsSeeder struct {
 	service string
 	files   []core.SecretFile
 	env     map[string]string
+	// The deadline prepare and commit each ran under; zero for none.
+	prepareDeadline, commitDeadline time.Time
 }
 
 type fixedEnvironmentResolver map[string]store.Environment
@@ -173,7 +175,8 @@ func (s *recordingCreateSecretsSeeder) CheckCreateSecrets([]core.SecretFile, map
 	return nil
 }
 
-func (s *recordingCreateSecretsSeeder) PrepareCreateSecrets(_ context.Context, service string, app *appv1alpha1.App, files []core.SecretFile, env map[string]string) error {
+func (s *recordingCreateSecretsSeeder) PrepareCreateSecrets(ctx context.Context, service string, app *appv1alpha1.App, files []core.SecretFile, env map[string]string) error {
+	s.prepareDeadline, _ = ctx.Deadline()
 	s.service = service
 	s.files = append([]core.SecretFile(nil), files...)
 	s.env = maps.Clone(env)
@@ -186,7 +189,8 @@ func (s *recordingCreateSecretsSeeder) PrepareCreateSecrets(_ context.Context, s
 	return nil
 }
 
-func (*recordingCreateSecretsSeeder) CommitCreateSecrets(context.Context, string, *appv1alpha1.App) error {
+func (s *recordingCreateSecretsSeeder) CommitCreateSecrets(ctx context.Context, _ string, _ *appv1alpha1.App) error {
+	s.commitDeadline, _ = ctx.Deadline()
 	return nil
 }
 
@@ -209,6 +213,31 @@ func TestRESTCreateSeedsOfficialCLISecretFiles(t *testing.T) {
 	}
 	if seeder.service != "web" || len(seeder.files) != 1 || seeder.files[0].Name != "app-secret" || seeder.files[0].Content != "top-secret" {
 		t.Fatalf("seed call = service %q, files %#v", seeder.service, seeder.files)
+	}
+}
+
+// TestACreatesPreparedSecretsRunWithinTheirBound (w5/135): another create may
+// take over a prepared Secret still ownerless far past
+// core.CreateSecretsTimeout, so the create that prepared it runs from prepare
+// to commit within that bound.
+func TestACreatesPreparedSecretsRunWithinTheirBound(t *testing.T) {
+	seeder := &recordingCreateSecretsSeeder{}
+	svc, _ := newService(nil)
+	svc.CreateSecrets = seeder
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine"},"secretFiles":[{"name":"app-secret","content":"top-secret"}]}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST with secretFiles = %d: %s", rec.Code, rec.Body.String())
+	}
+	latest := time.Now().Add(core.CreateSecretsTimeout)
+	for phase, deadline := range map[string]time.Time{"prepare": seeder.prepareDeadline, "commit": seeder.commitDeadline} {
+		if deadline.IsZero() || deadline.After(latest) {
+			t.Errorf("%s ran under deadline %v, want one within %v", phase, deadline, core.CreateSecretsTimeout)
+		}
 	}
 }
 

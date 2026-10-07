@@ -100,7 +100,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **132** — [A Blueprint sync and preview still list the workspace's Apps two or three times](done/132.md) (~45m) ← found by w5/124's efficiency review — **DONE 2026-10-07**: the request snapshot (`workspaceSnapshot`) lists the workspace's Apps once, shared by the action plan, the sync's detachment check and the ownership check. A preview and a sync each list Apps once before their first write, and the plan resolves the same set as before. Its reviews found the apply's per-service `GetApp` patching another workspace's or a renamed service, filed as **m133** and taken next. Follow-ups: w5/141, w5/142.
 - [x] **133** — [Email-only identity reads still make Kratos load every credential](done/133.md) (~30m) ← found by w5/127's efficiency review — **DONE 2026-10-07**: owner metadata on every REST list and the invite's member check read emails through a new `LookupEmails` batch read, which asks Kratos for no credentials. Member lists, which report MFA, keep the webauthn include. Follow-ups: w5/145, w5/146.
 - [x] **134** — [A refused service create overwrites, then deletes, its namesake's secrets store map](done/134.md) (~45m) ← found while closing w5/128 — **DONE 2026-10-07**: create-time prepare claims the name with its projection Secret before writing the store, so a refused create never touches the holder's map. An abort deletes the map before releasing the name. Follow-up: w5/147.
-- [ ] **135** — [An ownerless Secret a crashed service create left behind blocks that name for good](135.md) (~30m) ← found by w5/128's quality review
+- [x] **135** — [An ownerless Secret a crashed service create left behind blocks that name for good](done/135.md) (~30m) ← found by w5/128's quality review — **DONE 2026-10-07**: a create takes over a prepared Secret its create abandoned: ownerless, claimed longer ago than `core.CreateSecretsTimeout` allows any create to run (now enforced by `writeNewApp`), and at a name no App holds. Claims are dated, and env-group Secrets and other owners are never taken. Follow-up: w5/148.
 - [ ] **136** — [Cancelling a buildpack release never stops its kpack build](136.md) (~45m) ← found by w5/129's quality review
 - [ ] **137** — [Every buildpack release builds with an empty cache](137.md) (~45m) ← found by w5/129's efficiency review
 - [ ] **138** — [A new service's first build follows its branch, not the commit its deploy records](138.md) (~30m) ← found by w5/129's efficiency review
@@ -114,6 +114,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **145** — [Email-only single identity reads load credentials, and notifications look each recipient up in turn](145.md) (~45m) ← found by w5/133's reviews
 - [ ] **146** — [The projects list reads each project's environments separately](146.md) (~30m) ← found by w5/133's efficiency review
 - [ ] **147** — [A deleted namesake's in-flight secrets write can take over a create's prepared Secret](147.md) (~45m) ← found by w5/134's quality review
+- [ ] **148** — [A crashed create's other projection leg outlives the service that takes its name](148.md) (~45m) ← found by w5/135's quality review
 
 ## Approved queue — 2026-10-01
 
