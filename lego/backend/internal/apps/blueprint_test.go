@@ -53,8 +53,9 @@ type fakeBlueprintStore struct {
 	mu         sync.Mutex
 	blueprints map[string]store.Blueprint // key: id
 	syncs      map[string]store.BlueprintSync
-	// claims keys are tenant|kind|name → blueprint id (w8/m40).
-	claims map[string]string
+	// claims maps a workspace's claimed resource to its owning blueprint id
+	// (w8/m40).
+	claims map[fakeClaimKey]string
 	// ownersReads and ownerLookups count the workspace-wide and the
 	// per-resource claim reads (w5/114).
 	ownersReads, ownerLookups int
@@ -88,7 +89,7 @@ func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
 	f := &fakeBlueprintStore{
 		blueprints: make(map[string]store.Blueprint),
 		syncs:      make(map[string]store.BlueprintSync),
-		claims:     make(map[string]string),
+		claims:     make(map[fakeClaimKey]string),
 	}
 	for _, b := range bs {
 		f.blueprints[b.ID] = b
@@ -574,15 +575,20 @@ func (f *fakeBlueprintStore) AbandonBlueprintSync(_ context.Context, runID strin
 	return true, nil
 }
 
-func claimKey(tenantID, kind, name string) string {
-	return tenantID + "|" + kind + "|" + name
+type fakeClaimKey struct {
+	tenantID string
+	store.BlueprintResourceKey
 }
 
-func (f *fakeBlueprintStore) ClaimBlueprintResource(_ context.Context, tenantID, kind, name, blueprintID, expectedOwner string) error {
+func claimKey(tenantID string, kind store.BlueprintClaimKind, name string) fakeClaimKey {
+	return fakeClaimKey{tenantID, store.BlueprintResourceKey{Kind: kind, Name: name}}
+}
+
+func (f *fakeBlueprintStore) ClaimBlueprintResource(_ context.Context, tenantID string, kind store.BlueprintClaimKind, name, blueprintID, expectedOwner string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.claims == nil {
-		f.claims = make(map[string]string)
+		f.claims = make(map[fakeClaimKey]string)
 	}
 	key := claimKey(tenantID, kind, name)
 	cur, ok := f.claims[key]
@@ -597,14 +603,14 @@ func (f *fakeBlueprintStore) ReleaseBlueprintResourceClaims(_ context.Context, t
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for k, v := range f.claims {
-		if v == blueprintID && strings.HasPrefix(k, tenantID+"|") {
+		if v == blueprintID && k.tenantID == tenantID {
 			delete(f.claims, k)
 		}
 	}
 	return nil
 }
 
-func (f *fakeBlueprintStore) ReleaseBlueprintResourceClaim(_ context.Context, tenantID, kind, name, blueprintID string) error {
+func (f *fakeBlueprintStore) ReleaseBlueprintResourceClaim(_ context.Context, tenantID string, kind store.BlueprintClaimKind, name, blueprintID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.claims[claimKey(tenantID, kind, name)] == blueprintID {
@@ -617,21 +623,15 @@ func (f *fakeBlueprintStore) ListBlueprintResourceClaims(_ context.Context, tena
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var out []store.BlueprintResourceClaim
-	prefix := tenantID + "|"
 	for k, v := range f.claims {
-		if v != blueprintID || !strings.HasPrefix(k, prefix) {
-			continue
+		if v == blueprintID && k.tenantID == tenantID {
+			out = append(out, store.BlueprintResourceClaim{TenantID: tenantID, Kind: k.Kind, Name: k.Name, BlueprintID: blueprintID})
 		}
-		parts := strings.SplitN(strings.TrimPrefix(k, prefix), "|", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		out = append(out, store.BlueprintResourceClaim{TenantID: tenantID, Kind: parts[0], Name: parts[1], BlueprintID: blueprintID})
 	}
 	return out, nil
 }
 
-func (f *fakeBlueprintStore) GetBlueprintResourceOwner(_ context.Context, tenantID, kind, name string) (string, error) {
+func (f *fakeBlueprintStore) GetBlueprintResourceOwner(_ context.Context, tenantID string, kind store.BlueprintClaimKind, name string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.ownerLookups++
@@ -643,12 +643,9 @@ func (f *fakeBlueprintStore) BlueprintResourceOwners(_ context.Context, tenantID
 	defer f.mu.Unlock()
 	f.ownersReads++
 	owners := map[store.BlueprintResourceKey]string{}
-	prefix := tenantID + "|"
 	for k, v := range f.claims {
-		if rest, ok := strings.CutPrefix(k, prefix); ok {
-			if kind, name, ok := strings.Cut(rest, "|"); ok {
-				owners[store.BlueprintResourceKey{Kind: kind, Name: name}] = v
-			}
+		if k.tenantID == tenantID {
+			owners[k.BlueprintResourceKey] = v
 		}
 	}
 	return owners, nil

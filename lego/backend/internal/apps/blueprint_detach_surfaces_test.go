@@ -107,7 +107,7 @@ func TestBlueprintDetachPlanAcrossSurfaces(t *testing.T) {
 								t.Fatal(err)
 							}
 						case "GraphQL":
-							fields := `valid plan { actions { operation name resourceId message } }`
+							fields := `valid plan { actions { operation kind name resourceId message } }`
 							argument := fmt.Sprintf(`bexYaml:%q`, detachReplacementManifest)
 							if preview {
 								argument = fmt.Sprintf(`repo:%q,branch:"main",path:%q`, repoBex, pathSite)
@@ -146,7 +146,7 @@ func TestBlueprintDetachPlanAcrossSurfaces(t *testing.T) {
 						for _, action := range validation.Plan.Actions {
 							if action.Operation == "detach" {
 								detaches++
-								if action.Name != "static-site" || action.ResourceID == "" || action.Message == "" {
+								if action.Name != "static-site" || action.Kind != BlueprintResourceService || action.ResourceID == "" || action.Message == "" {
 									t.Fatalf("incomplete detach explanation: %+v", action)
 								}
 							}

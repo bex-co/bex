@@ -51,14 +51,7 @@ func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st pa
 		return BlueprintPlan{}, false, err
 	}
 	for _, resource := range detached {
-		kind := BlueprintResourceService
-		if resource.Type == "postgres" {
-			kind = BlueprintResourcePostgres
-		}
-		if resource.Type == "key_value" {
-			kind = BlueprintResourceKeyValue
-		}
-		plan.Actions = append(plan.Actions, BlueprintPlanAction{Operation: BlueprintPlanDetach, Kind: kind, Name: resource.Name, ResourceID: resource.ID, Message: "Stops being managed by this blueprint; continues running and may incur charges."})
+		plan.Actions = append(plan.Actions, BlueprintPlanAction{Operation: BlueprintPlanDetach, Kind: resource.kind, Name: resource.Name, ResourceID: resource.ID, Message: "Stops being managed by this blueprint; continues running and may incur charges."})
 	}
 	return plan, true, nil
 }

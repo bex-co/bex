@@ -176,7 +176,7 @@ func (f *blueprintFixtureStore) AbandonBlueprintSync(context.Context, string, ti
 	return false, nil
 }
 
-func (f *blueprintFixtureStore) ClaimBlueprintResource(context.Context, string, string, string, string, string) error {
+func (f *blueprintFixtureStore) ClaimBlueprintResource(context.Context, string, store.BlueprintClaimKind, string, string, string) error {
 	return nil
 }
 
@@ -184,7 +184,7 @@ func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaims(context.Context, 
 	return nil
 }
 
-func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaim(context.Context, string, string, string, string) error {
+func (f *blueprintFixtureStore) ReleaseBlueprintResourceClaim(context.Context, string, store.BlueprintClaimKind, string, string) error {
 	return nil
 }
 
@@ -192,7 +192,7 @@ func (f *blueprintFixtureStore) ListBlueprintResourceClaims(context.Context, str
 	return nil, nil
 }
 
-func (f *blueprintFixtureStore) GetBlueprintResourceOwner(context.Context, string, string, string) (string, error) {
+func (f *blueprintFixtureStore) GetBlueprintResourceOwner(context.Context, string, store.BlueprintClaimKind, string) (string, error) {
 	return "", nil
 }
 

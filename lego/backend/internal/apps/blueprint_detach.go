@@ -23,11 +23,18 @@ import (
 	"strings"
 )
 
+// blueprintDetachment is a resource a sync stops managing, with the manifest
+// kind its plan action names.
+type blueprintDetachment struct {
+	BlueprintResource
+	kind BlueprintResourceKind
+}
+
 // Only durable claims belonging to this blueprint can become detach actions.
 // Missing resources are not advertised as continuing to run, and resources
 // declared by other blueprints never enter this diff.
-func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintID string, st parsedStack, resolver *blueprintActionResolver) ([]BlueprintResource, error) {
-	out := []BlueprintResource{}
+func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintID string, st parsedStack, resolver *blueprintActionResolver) ([]blueprintDetachment, error) {
+	out := []blueprintDetachment{}
 	if blueprintID == "" || s.Blueprints == nil {
 		return out, nil
 	}
@@ -37,7 +44,7 @@ func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintI
 	}
 	declared := blueprintDeclaredClaims(st)
 	for _, claim := range claims {
-		if declared[claim.Kind+"/"+claim.Name] {
+		if declared[claim.Key()] {
 			continue
 		}
 		if resolver == nil {
@@ -58,9 +65,9 @@ func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintI
 		if kind == BlueprintResourceService {
 			resourceType = effectiveType(resolver.services[claim.Name].Spec.Type)
 		}
-		out = append(out, BlueprintResource{ID: current.ID, Name: claim.Name, Type: resourceType})
+		out = append(out, blueprintDetachment{BlueprintResource: BlueprintResource{ID: current.ID, Name: claim.Name, Type: resourceType}, kind: kind})
 	}
-	slices.SortFunc(out, func(a, b BlueprintResource) int {
+	slices.SortFunc(out, func(a, b blueprintDetachment) int {
 		if c := strings.Compare(a.Type, b.Type); c != 0 {
 			return c
 		}

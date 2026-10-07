@@ -51,18 +51,24 @@ func BlueprintTakeoverConfirmation(owningBlueprintID string) string {
 
 // blueprintOwnershipConflict is one resource owned by another blueprint.
 type blueprintOwnershipConflict struct {
-	kind  string // the claim kind: service | database | key_value
+	kind  store.BlueprintClaimKind
 	name  string
 	owner string // owning blueprint id
 }
 
 // blueprintClaimResourceKind is a claim kind's manifest kind, as plan actions
-// name it: a claim calls a Postgres "database"; the other kinds match.
-func blueprintClaimResourceKind(claimKind string) BlueprintResourceKind {
-	if claimKind == "database" {
+// name it: a claim calls a Postgres "database". Any other kind (the CHECK
+// admits none) passes through verbatim, so no resolver finds it.
+func blueprintClaimResourceKind(kind store.BlueprintClaimKind) BlueprintResourceKind {
+	switch kind {
+	case store.BlueprintClaimService:
+		return BlueprintResourceService
+	case store.BlueprintClaimDatabase:
 		return BlueprintResourcePostgres
+	case store.BlueprintClaimKeyValue:
+		return BlueprintResourceKeyValue
 	}
-	return BlueprintResourceKind(claimKind)
+	return BlueprintResourceKind(kind)
 }
 
 // blueprintResourceOwners reads the workspace's durable claims (w8/m40) once
@@ -82,7 +88,7 @@ func (s *Service) blueprintResourceOwners(ctx context.Context, tenantID string) 
 
 // blueprintResourceOwner prefers the durable claim and falls back to the CR
 // label.
-func blueprintResourceOwner(owners map[store.BlueprintResourceKey]string, kind, name, labelOwner string) string {
+func blueprintResourceOwner(owners map[store.BlueprintResourceKey]string, kind store.BlueprintClaimKind, name, labelOwner string) string {
 	if owner := owners[store.BlueprintResourceKey{Kind: kind, Name: name}]; owner != "" {
 		return owner
 	}
@@ -101,7 +107,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 	}
 	owners := s.blueprintResourceOwners(ctx, tenantID)
 	var conflicts []blueprintOwnershipConflict
-	record := func(kind, name, labelOwner string) {
+	record := func(kind store.BlueprintClaimKind, name, labelOwner string) {
 		if owner := blueprintResourceOwner(owners, kind, name, labelOwner); owner != "" && owner != selfID {
 			conflicts = append(conflicts, blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
 		}
@@ -120,7 +126,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[core.AppPublicName(&apps.Items[i])] = apps.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, svc := range st.services {
-			record("service", svc.req.Name, byName[svc.req.Name])
+			record(store.BlueprintClaimService, svc.req.Name, byName[svc.req.Name])
 		}
 	}
 	if len(st.databases) > 0 {
@@ -135,7 +141,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[databases.Items[i].Spec.Name] = databases.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, db := range st.databases {
-			record("database", db.name, byName[db.name])
+			record(store.BlueprintClaimDatabase, db.name, byName[db.name])
 		}
 	}
 	if len(st.keyValues) > 0 {
@@ -150,7 +156,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[keyValues.Items[i].Spec.Name] = keyValues.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, kv := range st.keyValues {
-			record("key_value", kv.name, byName[kv.name])
+			record(store.BlueprintClaimKeyValue, kv.name, byName[kv.name])
 		}
 	}
 	return conflicts, nil
@@ -193,8 +199,8 @@ func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployReq
 
 // blueprintOwnershipError refuses a resource another blueprint manages, for
 // an apply and for the preview's validation entries. Its kind param is the
-// manifest kind a client labels it by (w5/098); the message keeps the wording
-// it has always had.
+// manifest kind a client labels it by (w5/098), mapped from the claim kind; the
+// message keeps the wording it has always had.
 func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 	phrase := BlueprintTakeoverConfirmation(c.owner)
 	kind := blueprintClaimResourceKind(c.kind)
@@ -223,7 +229,7 @@ func takeoverExpectedOwner(confirm string) string {
 // claimBlueprintResourceName takes the durable claim for one resource and
 // stamps the CR label. expectedOwner comes from an explicit takeover Confirm;
 // empty means adopt-or-keep-mine only.
-func (s *Service) claimBlueprintResourceName(ctx context.Context, kind, name string) error {
+func (s *Service) claimBlueprintResourceName(ctx context.Context, kind store.BlueprintClaimKind, name string) error {
 	req, ok := ctx.Value(deployAuthorityKey{}).(DeployRequest)
 	if !ok || req.BlueprintID == "" || s.Blueprints == nil {
 		return nil
@@ -240,7 +246,7 @@ func (s *Service) claimBlueprintResourceName(ctx context.Context, kind, name str
 
 // claimBlueprintResource takes the durable claim on one resource for
 // blueprintID, refusing with the owning blueprint when another holds it.
-func (s *Service) claimBlueprintResource(ctx context.Context, tenantID, kind, name, blueprintID, expectedOwner string) error {
+func (s *Service) claimBlueprintResource(ctx context.Context, tenantID string, kind store.BlueprintClaimKind, name, blueprintID, expectedOwner string) error {
 	err := s.Blueprints.ClaimBlueprintResource(ctx, tenantID, kind, name, blueprintID, expectedOwner)
 	if errors.Is(err, store.ErrBlueprintResourceConflict) {
 		owner, _ := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name)
@@ -307,7 +313,7 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 	req, _ := ctx.Value(deployAuthorityKey{}).(DeployRequest)
 	expected := takeoverExpectedOwner(req.Confirm)
 
-	claimAndLabel := func(kind, name string, obj client.Object) error {
+	claimAndLabel := func(kind store.BlueprintClaimKind, name string, obj client.Object) error {
 		if s.Blueprints != nil {
 			if err := s.claimBlueprintResource(ctx, tenantID, kind, name, blueprintID, expected); err != nil {
 				return err
@@ -326,7 +332,7 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 	}
 	for i := range apps.Items {
 		if wantedSvc[core.AppPublicName(&apps.Items[i])] {
-			if err := claimAndLabel("service", core.AppPublicName(&apps.Items[i]), &apps.Items[i]); err != nil {
+			if err := claimAndLabel(store.BlueprintClaimService, core.AppPublicName(&apps.Items[i]), &apps.Items[i]); err != nil {
 				return err
 			}
 		}
@@ -344,7 +350,7 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 		}
 		for i := range databases.Items {
 			if wanted[databases.Items[i].Spec.Name] {
-				if err := claimAndLabel("database", databases.Items[i].Spec.Name, &databases.Items[i]); err != nil {
+				if err := claimAndLabel(store.BlueprintClaimDatabase, databases.Items[i].Spec.Name, &databases.Items[i]); err != nil {
 					return err
 				}
 			}
@@ -361,7 +367,7 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 		}
 		for i := range keyValues.Items {
 			if wanted[keyValues.Items[i].Spec.Name] {
-				if err := claimAndLabel("key_value", keyValues.Items[i].Spec.Name, &keyValues.Items[i]); err != nil {
+				if err := claimAndLabel(store.BlueprintClaimKeyValue, keyValues.Items[i].Spec.Name, &keyValues.Items[i]); err != nil {
 					return err
 				}
 			}
@@ -396,15 +402,15 @@ func (s *Service) releaseUndeclaredClaims(ctx context.Context, tenantID, bluepri
 		return fmt.Errorf("listing Blueprint resource claims: %w", err)
 	}
 	declared := blueprintDeclaredClaims(st)
-	released := map[string]bool{}
+	released := map[store.BlueprintResourceKey]bool{}
 	for _, c := range claims {
-		if declared[c.Kind+"/"+c.Name] {
+		if declared[c.Key()] {
 			continue
 		}
 		if err := s.Blueprints.ReleaseBlueprintResourceClaim(ctx, tenantID, c.Kind, c.Name, blueprintID); err != nil {
 			return fmt.Errorf("releasing Blueprint claim on %s %q: %w", c.Kind, c.Name, err)
 		}
-		released[c.Kind+"/"+c.Name] = true
+		released[c.Key()] = true
 	}
 	if len(released) == 0 {
 		return nil
@@ -418,10 +424,10 @@ func (s *Service) releaseUndeclaredClaims(ctx context.Context, tenantID, bluepri
 // so a marker that outlives its claim is stale rather than authoritative; the
 // first failure is returned so a sync reports the incomplete cleanup instead of
 // inferring success, the same posture clearBlueprintOwnership takes.
-func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprintID string, released map[string]bool) error {
+func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprintID string, released map[store.BlueprintResourceKey]bool) error {
 	owned := []client.ListOption{client.MatchingLabels{core.LabelTenant: tenantID, core.LabelBlueprint: blueprintID}}
 	var firstErr error
-	clear := func(key string, obj client.Object) {
+	clear := func(key store.BlueprintResourceKey, obj client.Object) {
 		if !released[key] {
 			return
 		}
@@ -442,21 +448,21 @@ func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprint
 		return fmt.Errorf("listing owned apps: %w", err)
 	}
 	for i := range apps.Items {
-		clear("service/"+core.AppPublicName(&apps.Items[i]), &apps.Items[i])
+		clear(store.BlueprintResourceKey{Kind: store.BlueprintClaimService, Name: core.AppPublicName(&apps.Items[i])}, &apps.Items[i])
 	}
 	var databases appv1alpha1.DatabaseList
 	if err := s.Client.List(ctx, &databases, owned...); err != nil {
 		return fmt.Errorf("listing owned databases: %w", err)
 	}
 	for i := range databases.Items {
-		clear("database/"+databases.Items[i].Spec.Name, &databases.Items[i])
+		clear(store.BlueprintResourceKey{Kind: store.BlueprintClaimDatabase, Name: databases.Items[i].Spec.Name}, &databases.Items[i])
 	}
 	var keyValues appv1alpha1.KeyValueList
 	if err := s.Client.List(ctx, &keyValues, owned...); err != nil {
 		return fmt.Errorf("listing owned key values: %w", err)
 	}
 	for i := range keyValues.Items {
-		clear("key_value/"+keyValues.Items[i].Spec.Name, &keyValues.Items[i])
+		clear(store.BlueprintResourceKey{Kind: store.BlueprintClaimKeyValue, Name: keyValues.Items[i].Spec.Name}, &keyValues.Items[i])
 	}
 	return firstErr
 }
@@ -707,16 +713,16 @@ func blueprintReferencePointer(ir BlueprintIR, msg string) string {
 	return ""
 }
 
-func blueprintDeclaredClaims(st parsedStack) map[string]bool {
-	declared := map[string]bool{}
+func blueprintDeclaredClaims(st parsedStack) map[store.BlueprintResourceKey]bool {
+	declared := map[store.BlueprintResourceKey]bool{}
 	for _, svc := range st.services {
-		declared["service/"+svc.req.Name] = true
+		declared[store.BlueprintResourceKey{Kind: store.BlueprintClaimService, Name: svc.req.Name}] = true
 	}
 	for _, db := range st.databases {
-		declared["database/"+db.name] = true
+		declared[store.BlueprintResourceKey{Kind: store.BlueprintClaimDatabase, Name: db.name}] = true
 	}
 	for _, kv := range st.keyValues {
-		declared["key_value/"+kv.name] = true
+		declared[store.BlueprintResourceKey{Kind: store.BlueprintClaimKeyValue, Name: kv.name}] = true
 	}
 	return declared
 }

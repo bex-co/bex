@@ -240,7 +240,7 @@ func TestM125_ClaimsEqualResourcesAfterASyncDropsOne(t *testing.T) {
 	ctx := ownershipCtx()
 	a := connectA(t, svc)
 
-	if owner, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", "service", "static-site"); owner != a.ID {
+	if owner, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", store.BlueprintClaimService, "static-site"); owner != a.ID {
 		t.Fatalf("static-site owner after create = %q, want %s", owner, a.ID)
 	}
 
@@ -252,7 +252,7 @@ func TestM125_ClaimsEqualResourcesAfterASyncDropsOne(t *testing.T) {
 		t.Fatalf("takeover: %v", err)
 	}
 
-	if owner, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", "service", "static-site"); owner != "" {
+	if owner, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", store.BlueprintClaimService, "static-site"); owner != "" {
 		t.Fatalf("static-site still claimed by %q after it was dropped", owner)
 	}
 	claims, err := fs.ListBlueprintResourceClaims(ctx, "tea-a", a.ID)

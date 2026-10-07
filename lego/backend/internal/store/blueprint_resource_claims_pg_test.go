@@ -31,40 +31,40 @@ func TestPGClaimBlueprintResource(t *testing.T) {
 	b := lifecycleBlueprint(t, st, tenant, "claim-b")
 	ctx := context.Background()
 
-	if err := st.ClaimBlueprintResource(ctx, tenant.ID, "service", "web", a.ID, ""); err != nil {
+	if err := st.ClaimBlueprintResource(ctx, tenant.ID, BlueprintClaimService, "web", a.ID, ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.ClaimBlueprintResource(ctx, tenant.ID, "service", "web", b.ID, ""); !errors.Is(err, ErrBlueprintResourceConflict) {
+	if err := st.ClaimBlueprintResource(ctx, tenant.ID, BlueprintClaimService, "web", b.ID, ""); !errors.Is(err, ErrBlueprintResourceConflict) {
 		t.Fatalf("second claim = %v, want ErrBlueprintResourceConflict", err)
 	}
-	if err := st.ClaimBlueprintResource(ctx, tenant.ID, "service", "web", b.ID, a.ID); err != nil {
+	if err := st.ClaimBlueprintResource(ctx, tenant.ID, BlueprintClaimService, "web", b.ID, a.ID); err != nil {
 		t.Fatalf("takeover: %v", err)
 	}
-	owner, err := st.GetBlueprintResourceOwner(ctx, tenant.ID, "service", "web")
+	owner, err := st.GetBlueprintResourceOwner(ctx, tenant.ID, BlueprintClaimService, "web")
 	if err != nil || owner != b.ID {
 		t.Fatalf("owner = %q (%v), want %q", owner, err, b.ID)
 	}
 	// Stale expected owner after intervening takeover.
-	if err := st.ClaimBlueprintResource(ctx, tenant.ID, "service", "web", a.ID, a.ID); !errors.Is(err, ErrBlueprintResourceConflict) {
+	if err := st.ClaimBlueprintResource(ctx, tenant.ID, BlueprintClaimService, "web", a.ID, a.ID); !errors.Is(err, ErrBlueprintResourceConflict) {
 		t.Fatalf("stale takeover = %v, want conflict", err)
 	}
-	if err := st.ClaimBlueprintResource(ctx, tenant.ID, "database", "web", a.ID, ""); err != nil {
+	if err := st.ClaimBlueprintResource(ctx, tenant.ID, BlueprintClaimDatabase, "web", a.ID, ""); err != nil {
 		t.Fatal(err)
 	}
 	other := lifecycleTenant(t, st, "claim-other")
 	otherBlueprint := lifecycleBlueprint(t, st, other, "claim-other")
-	if err := st.ClaimBlueprintResource(ctx, other.ID, "service", "api", otherBlueprint.ID, ""); err != nil {
+	if err := st.ClaimBlueprintResource(ctx, other.ID, BlueprintClaimService, "api", otherBlueprint.ID, ""); err != nil {
 		t.Fatal(err)
 	}
 	owners, err := st.BlueprintResourceOwners(ctx, tenant.ID)
-	want := map[BlueprintResourceKey]string{{Kind: "service", Name: "web"}: b.ID, {Kind: "database", Name: "web"}: a.ID}
+	want := map[BlueprintResourceKey]string{{Kind: BlueprintClaimService, Name: "web"}: b.ID, {Kind: BlueprintClaimDatabase, Name: "web"}: a.ID}
 	if err != nil || !maps.Equal(owners, want) {
 		t.Fatalf("workspace owners = %v (%v), want %v and no other workspace's claim", owners, err, want)
 	}
 	if err := st.ReleaseBlueprintResourceClaims(ctx, tenant.ID, b.ID); err != nil {
 		t.Fatal(err)
 	}
-	owner, err = st.GetBlueprintResourceOwner(ctx, tenant.ID, "service", "web")
+	owner, err = st.GetBlueprintResourceOwner(ctx, tenant.ID, BlueprintClaimService, "web")
 	if err != nil || owner != "" {
 		t.Fatalf("after release owner = %q (%v)", owner, err)
 	}
