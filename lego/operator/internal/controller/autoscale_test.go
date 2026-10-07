@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -26,10 +27,9 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -293,9 +293,7 @@ func TestAutoscaleDesiredBothMetrics(t *testing.T) {
 // The fix: persist the desired count in annotAutoscaleReplicas instead, which
 // does NOT bump generation and therefore does NOT trigger a rebuild.
 func TestApplyAutoscalingWritesAnnotationNotSpec(t *testing.T) {
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-	_ = appv1alpha1.AddToScheme(scheme)
+	scheme := wakeScheme()
 
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
@@ -381,5 +379,96 @@ func TestCompleteAutoscalingTransitionEndsOnlyAtReadyTarget(t *testing.T) {
 	completeAutoscalingTransition(app, 3, 3, now.Add(time.Minute))
 	if app.Status.Autoscaling.FinishedAt != finished {
 		t.Fatal("reconcile retry changed an already-ended transition")
+	}
+}
+
+// autoscaledApp is a starter-tier App the autoscaler holds at three replicas,
+// with a scale-down stamped at stamped.
+func autoscaledApp(stamped time.Time) *appv1alpha1.App {
+	return &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-app", Namespace: "default", Annotations: map[string]string{
+			annotAutoscaleReplicas:  "3",
+			annotAutoscaleScaleDown: stamped.UTC().Format(time.RFC3339),
+		}},
+		Spec: appv1alpha1.AppSpec{Tier: "starter", Replicas: 1, Autoscaling: &appv1alpha1.AutoscalingSpec{
+			Enabled: true, MinReplicas: 1, MaxReplicas: 5, TargetCPUPercent: new(int32(80)),
+		}},
+	}
+}
+
+// threePodsAt is three pods using cpu cores each. On the starter tier the
+// target is 0.4 cores a pod: at 0.35 the autoscaler wants three, at 0.05 one.
+func threePodsAt(cpu float64) []PodUsage {
+	return []PodUsage{{Pod: "a", CPUCores: cpu}, {Pod: "b", CPUCores: cpu}, {Pod: "c", CPUCores: cpu}}
+}
+
+// TestARecoveredSignalVoidsAPendingScaleDown (w5/109): a dip stamps a pending
+// scale-down, and when the signal came back to the current count nothing
+// cleared that stamp. A later one-tick dip read the old stamp, past the
+// window, and scaled down at once. The window exists to require a sustained
+// low signal, so any recovery voids the stamp and the new dip waits again.
+func TestARecoveredSignalVoidsAPendingScaleDown(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		recovered []PodUsage
+		replicas  int32
+	}{
+		{"back to the current count", threePodsAt(0.35), 3},
+		{"above it", threePodsAt(0.5), 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := autoscaledApp(time.Now().Add(-20 * time.Minute)) // a dip long ago
+			usage := tc.recovered
+			r := &AppReconciler{
+				Client:        fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).Build(),
+				MetricsReader: func(context.Context, string, string) ([]PodUsage, error) { return usage, nil },
+			}
+
+			if got, _ := r.applyAutoscaling(context.Background(), app, 3); got != tc.replicas {
+				t.Fatalf("the recovered signal scaled to %d, want %d", got, tc.replicas)
+			}
+			completeAutoscalingTransition(app, tc.replicas, tc.replicas, time.Now())
+			usage = threePodsAt(0.05)
+			if got, _ := r.applyAutoscaling(context.Background(), app, tc.replicas); got != tc.replicas {
+				t.Fatalf("the new dip scaled to %d at once, want it held for a full window", got)
+			}
+			if stamped, err := time.Parse(time.RFC3339, app.Annotations[annotAutoscaleScaleDown]); err != nil || time.Since(stamped) > time.Minute {
+				t.Fatalf("scale-down stamp = %q, want the new dip's", app.Annotations[annotAutoscaleScaleDown])
+			}
+		})
+	}
+}
+
+// TestACommittedScaleDownSettlesInOneWrite (w5/109): committing a scale-down
+// cleared the stamp and recorded the new count in two writes. When one failed
+// and the other landed, the stamp was gone, so the next pass started the window
+// over. One write now carries both: when it fails, the stamp stays, and the
+// retry commits.
+func TestACommittedScaleDownSettlesInOneWrite(t *testing.T) {
+	app := autoscaledApp(time.Now().Add(-scaleDownStabilizationWindow - time.Minute))
+	failed := false
+	cl := fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).WithInterceptorFuncs(interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if data, _ := patch.Data(obj); !failed && bytes.Contains(data, []byte(annotAutoscaleScaleDown)) {
+				failed = true
+				return errors.New("injected patch failure")
+			}
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	}).Build()
+	r := &AppReconciler{
+		Client:        cl,
+		MetricsReader: func(context.Context, string, string) ([]PodUsage, error) { return threePodsAt(0.05), nil },
+	}
+
+	got, _ := r.applyAutoscaling(context.Background(), app, 3)
+	if !failed {
+		t.Fatal("setup: the pass never wrote the stamp's clear")
+	}
+	if got != 3 {
+		t.Fatalf("the pass whose write failed scaled to %d, want it held at 3", got)
+	}
+	if got, _ := r.applyAutoscaling(context.Background(), app, 3); got != 1 {
+		t.Fatalf("the retry scaled to %d, want 1: a failed write must not restart the window", got)
 	}
 }

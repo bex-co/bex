@@ -264,10 +264,11 @@ func tierLimits(tier string) (cpuCores float64, memBytes float64) {
 }
 
 // applyAutoscaling runs the autoscaling decision and, if action is needed,
-// updates the App's spec.replicas. It respects the scale-down stabilization
-// window: the annotation annotAutoscaleScaleDown is stamped when a downward
-// decision is first made; the replica count is only lowered after the window
-// has elapsed. Returns the replica count to use and whether to requeue.
+// records the desired count in annotAutoscaleReplicas. It respects the
+// scale-down stabilization window: annotAutoscaleScaleDown is stamped when a
+// downward decision is first made, the replica count is lowered only once the
+// window has elapsed, and any other decision clears the stamp (w5/109).
+// Returns the replica count to use and whether to requeue.
 func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.App, current int32) (desired int32, requeue bool) {
 	if r.MetricsReader == nil {
 		return current, false
@@ -310,13 +311,6 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 		if err != nil || now.Sub(t) < scaleDownStabilizationWindow {
 			return current, true // window not yet elapsed — hold
 		}
-		// Clear the annotation now that we're committing the downscale.
-		_ = r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) { delete(meta.Annotations, annotAutoscaleScaleDown) })
-	} else if want > current {
-		// Scale-up: clear any pending scale-down annotation.
-		if app.Annotations[annotAutoscaleScaleDown] != "" {
-			_ = r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) { delete(meta.Annotations, annotAutoscaleScaleDown) })
-		}
 	}
 
 	// Persist the desired count in an annotation, not spec.replicas.
@@ -325,9 +319,14 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	// explains the incident). The caller reads this annotation to seed `current`
 	// on the next reconcile pass so a metrics-failure pass doesn't revert to
 	// spec.replicas (the user's static count).
-	if strconv.Itoa(int(want)) != app.Annotations[annotAutoscaleReplicas] {
+	//
+	// The stamp is cleared in the same patch, so a failure cannot clear it yet
+	// keep the old count, which would restart the window.
+	replicas := strconv.Itoa(int(want))
+	if app.Annotations[annotAutoscaleScaleDown] != "" || replicas != app.Annotations[annotAutoscaleReplicas] {
 		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
-			metav1.SetMetaDataAnnotation(meta, annotAutoscaleReplicas, strconv.Itoa(int(want)))
+			delete(meta.Annotations, annotAutoscaleScaleDown)
+			metav1.SetMetaDataAnnotation(meta, annotAutoscaleReplicas, replicas)
 		}); err != nil {
 			return current, true
 		}
