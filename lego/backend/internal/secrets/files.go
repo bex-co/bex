@@ -158,6 +158,52 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	return SecretFileView{Name: name, Content: content}, nil
 }
 
+// SetSecretFiles replaces a service's whole secret-file set (Render's PUT
+// .../secret-files, w8/063): files not named are removed. Every name is
+// validated and the replacement map must fit the aggregate quota before
+// anything is written, so a bad entry cannot partially apply. Returns the new
+// set, name-sorted, contents echoed as the per-file PUT does. Manage-scope verb.
+func (s *Service) SetSecretFiles(ctx context.Context, service string, in []SecretFileView) ([]SecretFileView, error) {
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	if err != nil {
+		return nil, err
+	}
+	named := make(map[string]bool, len(in))
+	files := make([]core.SecretFile, 0, len(in))
+	for _, f := range in {
+		name := strings.TrimSpace(f.Name)
+		if named[name] {
+			return nil, fmt.Errorf("%w: secret file %q is named twice", core.ErrBadRequest, name)
+		}
+		named[name] = true
+		files = append(files, core.SecretFile{Name: f.Name, Content: f.Content})
+	}
+	next, err := s.createFiles(files)
+	if err != nil {
+		return nil, err
+	}
+	stored, filesWrite, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		if maps.Equal(current, next) {
+			return false
+		}
+		clear(current)
+		maps.Copy(current, next)
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	original := a.DeepCopy()
+	if err := s.materializeFiles(ctx, a, stored, committedAt(filesWrite.version)); err != nil {
+		return nil, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
+	}
+	out := make([]SecretFileView, 0, len(next))
+	for _, name := range core.SortedKeys(next) {
+		out = append(out, SecretFileView{Name: name, Content: next[name]})
+	}
+	return out, nil
+}
+
 // SeedSecretFiles persists the official CLI's create-time secretFiles payload
 // in one write and materializes the service's files Secret. All names are
 // validated before any mutation, so one bad entry cannot partially seed the

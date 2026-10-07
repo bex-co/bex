@@ -136,7 +136,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	for _, verb := range []string{
 		"apps.SetCronJob", "apps.SetHealthCheckPath",
 		"deploys.Cancel", "deploys.Rollback",
-		"secrets.SetSecretFile", "secrets.SeedSecretFiles", "secrets.DeleteSecretFile",
+		"secrets.SetSecretFile", "secrets.SetSecretFiles", "secrets.SeedSecretFiles", "secrets.DeleteSecretFile",
 		"postgres.Suspend", "postgres.Resume", "postgres.Restart", "postgres.Failover",
 		"postgres.SetPlan", "postgres.DeletePostgres", "postgres.SetIPAllowList",
 		"postgres.CreateUser", "postgres.DeleteUser", "postgres.Recover",

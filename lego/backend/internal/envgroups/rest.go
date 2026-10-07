@@ -181,8 +181,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 
 	// Link / unlink a service to the group.
-	mux.HandleFunc("POST /v1/env-groups/{id}/services/{serviceId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		return s.LinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId"))
+	// Render answers a link with the updated envGroup (200), read back after
+	// the write commits (w8/063); unlink stays a bare 204.
+	mux.HandleFunc("POST /v1/env-groups/{id}/services/{serviceId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		if err := s.LinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId")); err != nil {
+			return nil, err
+		}
+		return s.committed(r.Context())(s.GetEnvGroup(r.Context(), r.PathValue("id")))
 	}))
 	mux.HandleFunc("DELETE /v1/env-groups/{id}/services/{serviceId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.UnlinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId"))

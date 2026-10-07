@@ -59,6 +59,10 @@ func TestEveryServiceMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 			_, err := s.SetSecretFile(ctx, "web", "big.bin", big)
 			return err
 		},
+		"SetSecretFiles": func(s *Service) error {
+			_, err := s.SetSecretFiles(ctx, "web", []SecretFileView{{Name: "big.bin", Content: big}})
+			return err
+		},
 		"SeedSecretFiles": func(s *Service) error {
 			return s.SeedSecretFiles(ctx, "web", []core.SecretFile{{Name: "big.bin", Content: big}})
 		},

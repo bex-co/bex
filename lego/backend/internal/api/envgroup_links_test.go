@@ -32,8 +32,8 @@ import (
 func TestEnvGroups_DeletingAServiceUnlinksIt(t *testing.T) {
 	webID := ids.New(ids.Service)
 	web := sampleApp("web")
-	web.Labels = map[string]string{core.LabelAppID: webID, core.LabelServiceName: "web"}
-	base := &core.Base{Client: fakeClient(web), Namespace: "default",
+	web.Labels = map[string]string{core.LabelAppID: webID, core.LabelServiceName: "web", core.LabelTenant: "tea-cli"}
+	base := &core.Base{Client: fakeClient(web), Namespace: "default", Workspace: fakeWorkspace{"client-1": "tea-cli"},
 		Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() }}
 	h, _ := serverWith(t, base, Deps{Secrets: newMemSecretStore()})
 
@@ -53,8 +53,11 @@ func TestEnvGroups_DeletingAServiceUnlinksIt(t *testing.T) {
 		}
 		return ids
 	}
-	if res := do(t, h, "POST", "/v1/env-groups/"+group.ID+"/services/web", testToken, ""); res.Code != http.StatusNoContent {
+	if res := do(t, h, "POST", "/v1/env-groups/"+group.ID+"/services/web", testToken, ""); res.Code != http.StatusOK {
 		t.Fatalf("link by name = %d %s", res.Code, res.Body)
+	} else if errs := loadRenderSpec(t).validate("link-service-to-env-group", res.Body.Bytes()); len(errs) > 0 {
+		// Render answers a link with the updated envGroup (w8/063).
+		t.Fatalf("link response diverges from envGroup: %v\n%s", errs, res.Body)
 	}
 	if got := links(); !slices.Equal(got, []string{webID}) {
 		t.Fatalf("serviceLinks = %v, want the service id %s", got, webID)

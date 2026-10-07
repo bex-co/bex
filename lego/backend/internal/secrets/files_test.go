@@ -538,3 +538,48 @@ func TestCreationTimeEnvVarIsVisibleOnEverySecretsReadSurface(t *testing.T) {
 		}
 	})
 }
+
+// w8/063: Render's replace-all PUT drops files it does not name, materializes
+// the new set, and refuses a duplicated or invalid name before any write.
+func TestSetSecretFilesReplacesTheWholeSet(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, sampleApp("web"))
+	ctx := context.Background()
+	if _, err := svc.SetSecretFile(ctx, "web", "old.pem", "old"); err != nil {
+		t.Fatalf("SetSecretFile: %v", err)
+	}
+
+	got, err := svc.SetSecretFiles(ctx, "web", []SecretFileView{{Name: "b.txt", Content: "two"}, {Name: " a.txt ", Content: "one"}})
+	if err != nil {
+		t.Fatalf("SetSecretFiles: %v", err)
+	}
+	want := []SecretFileView{{Name: "a.txt", Content: "one"}, {Name: "b.txt", Content: "two"}}
+	if !slices.Equal(got, want) {
+		t.Fatalf("SetSecretFiles = %+v, want the new set name-sorted", got)
+	}
+	if stored := store.m[filesPath("web")]; len(stored) != 2 || stored["a.txt"] != "one" || stored["b.txt"] != "two" {
+		t.Fatalf("store = %+v, want exactly a.txt and b.txt (old.pem removed)", stored)
+	}
+	sec := getSecret(t, svc.Client, "web-files")
+	if _, stale := sec.Data["old.pem"]; stale || string(sec.Data["a.txt"]) != "one" {
+		t.Fatalf("materialized Secret = %v, want the replaced set", sec.Data)
+	}
+
+	// An empty set clears every file.
+	defer func() {
+		if got, err := svc.SetSecretFiles(ctx, "web", []SecretFileView{}); err != nil || len(got) != 0 || len(store.m[filesPath("web")]) != 0 {
+			t.Errorf("PUT [] = %+v, %v; store %+v, want every file removed", got, err, store.m[filesPath("web")])
+		}
+	}()
+	for name, in := range map[string][]SecretFileView{
+		"duplicate": {{Name: "a.txt", Content: "x"}, {Name: "a.txt", Content: "y"}},
+		"invalid":   {{Name: "ok.txt", Content: "x"}, {Name: "../etc/passwd", Content: "y"}},
+	} {
+		if _, err := svc.SetSecretFiles(ctx, "web", in); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%s: err = %v, want ErrBadRequest", name, err)
+		}
+		if stored := store.m[filesPath("web")]; len(stored) != 2 || stored["a.txt"] != "one" {
+			t.Errorf("%s: a refused replace changed the store: %+v", name, stored)
+		}
+	}
+}

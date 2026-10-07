@@ -123,6 +123,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return toSecretFileList(files), nil
 	}))
+	// Render's update-secret-files-for-service: replace the whole set.
+	mux.HandleFunc("PUT "+base+"/{id}/secret-files", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		in, err := core.DecodeBody[[]SecretFileView](r)
+		if err != nil {
+			return nil, err
+		}
+		files, err := s.SetSecretFiles(r.Context(), r.PathValue("id"), in)
+		if err != nil {
+			return nil, err
+		}
+		return toSecretFileList(files), nil
+	}))
 	// Bare {name, content}.
 	mux.HandleFunc("GET "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"))

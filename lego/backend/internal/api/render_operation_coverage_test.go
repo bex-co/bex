@@ -81,7 +81,6 @@ var renderOperationOmissions = map[string]string{
 	"update-owner-log-stream":              "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 	"update-redis":                         "ADR018 \u00a7 Render operation omissions \u2014 Legacy Redis spelling",
 	"update-resource-log-stream":           "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
-	"update-secret-files-for-service":      "ADR018 \u00a7 Render operation omissions \u2014 Bulk secret-file replacement",
 	"update-workspace-member":              "ADR018 \u00a7 Render operation omissions \u2014 Render member mutation paths",
 	"updateWorkflow":                       "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"upsertOwnerMetricsStream":             "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
