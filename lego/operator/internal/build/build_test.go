@@ -965,9 +965,10 @@ func TestBuildJobWorkspaceLabel(t *testing.T) {
 
 // TestObservingAppBuild pins which builds are this App's own to observe, which
 // the build caps must never hold (ADR060 §D1a): a running one, or the
-// release's own Job once it finished (w5/108). Never another release's
-// finished Job, nor — the round-5 finding-5 cross-tenant guard — a same-named
-// App's build in ANOTHER workspace (same build label, different UID).
+// release's own Job or kpack Image once it finished (w5/108, w5/119). Never
+// another release's finished build, nor — the round-5 finding-5 cross-tenant
+// guard — a same-named App's build in ANOTHER workspace (same build label,
+// different UID).
 func TestObservingAppBuild(t *testing.T) {
 	o := opts()
 	active := BuildJob(o, o.ImageRef()) // active: no conditions
@@ -982,9 +983,25 @@ func TestObservingAppBuild(t *testing.T) {
 	foreign.Name = JobName(o.Name, "gen-9")
 	foreign.Labels["app.bex.co/app-uid"] = "uid-foreign"
 
+	kpackFor := func(revision string, status corev1.ConditionStatus) *unstructured.Unstructured {
+		ko := o
+		ko.Revision = revision
+		if status == "" {
+			return KpackImage(ko) // running: no Ready verdict yet
+		}
+		return kpackImageWithCondition(ko, status, "Build", "", "")
+	}
+	builtImage := kpackFor("gen-4", corev1.ConditionTrue)
+	failedImage := kpackFor("gen-4", corev1.ConditionFalse)
+	runningImage := kpackFor("gen-5", "")
+	foreignImage := kpackFor("gen-9", "") // running, like the foreign Job
+	labels := foreignImage.GetLabels()
+	labels["app.bex.co/app-uid"] = "uid-foreign"
+	foreignImage.SetLabels(labels)
+
 	for _, tc := range []struct {
 		name    string
-		jobs    []client.Object
+		objs    []client.Object
 		release string
 		want    bool
 	}{
@@ -992,9 +1009,14 @@ func TestObservingAppBuild(t *testing.T) {
 		{"the release's own finished Job", []client.Object{done, foreign}, "gen-4", true},
 		{"another release's finished Job", []client.Object{done, foreign}, "gen-6", false},
 		{"a same-named App's build elsewhere", []client.Object{foreign}, "gen-9", false},
+		{"a running kpack build", []client.Object{runningImage, builtImage}, "gen-6", true},
+		{"the release's own built kpack Image", []client.Object{builtImage, foreignImage}, "gen-4", true},
+		{"the release's own failed kpack Image", []client.Object{failedImage}, "gen-4", true},
+		{"another release's finished kpack Image", []client.Object{builtImage, foreignImage}, "gen-6", false},
+		{"a same-named App's kpack Image elsewhere", []client.Object{foreignImage}, "gen-9", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ObservingAppBuild(context.Background(), fakeClient(tc.jobs...), o.Namespace, o.Name, o.AppUID, JobName(o.Name, tc.release))
+			got, err := ObservingAppBuild(context.Background(), fakeClient(tc.objs...), o.Namespace, o.Name, o.AppUID, tc.release)
 			if err != nil || got != tc.want {
 				t.Fatalf("ObservingAppBuild = %v, %v; want %v", got, err, tc.want)
 			}

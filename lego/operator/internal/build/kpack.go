@@ -484,27 +484,32 @@ func buildLabels(o Options) map[string]string {
 }
 
 // activeKpackImages counts the non-terminal kpack Images matching sel — the
-// kpack half of every build counter (this App's, one workspace's, or the whole
-// build namespace's; the caller supplies the selector).
-//
-// A cluster with no kpack CRDs installed is not an error: kpack is one of two
-// builders, and an operator that only ever runs Dockerfile builds must not have
-// its admission gate fail closed on a missing API group.
+// kpack half of every active-build counter (one workspace's or the whole build
+// namespace's; the caller supplies the selector).
 func activeKpackImages(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) (int, error) {
-	images := newKpackImageList()
-	if err := cl.List(ctx, images, client.InNamespace(namespace), sel); err != nil {
-		if apierrors.IsNotFound(err) || strings.Contains(err.Error(), "no matches for kind") {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("list kpack builds in %s: %w", namespace, err)
-	}
+	images, err := listKpackImages(ctx, cl, namespace, sel)
 	active := 0
-	for i := range images.Items {
-		if !kpackImageTerminal(&images.Items[i]) {
+	for i := range images {
+		if !kpackImageTerminal(&images[i]) {
 			active++
 		}
 	}
-	return active, nil
+	return active, err
+}
+
+// listKpackImages lists the kpack Images matching sel. A cluster with no kpack
+// CRDs installed has none, and that is not an error: kpack is one of two
+// builders, and an operator that only ever runs Dockerfile builds must not have
+// its admission gate fail closed on a missing API group.
+func listKpackImages(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) ([]unstructured.Unstructured, error) {
+	images := newKpackImageList()
+	if err := cl.List(ctx, images, client.InNamespace(namespace), sel); err != nil {
+		if missingKpack(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("list kpack builds in %s: %w", namespace, err)
+	}
+	return images.Items, nil
 }
 
 func kpackImageTerminal(image *unstructured.Unstructured) bool {
