@@ -46,8 +46,9 @@ var renderProjectKeys = []string{"createdAt", "environmentIds", "id", "name", "o
 // paths used to emit the internal view instead of Render's shape).
 var internalOnlyProjectKeys = []string{"databaseIds", "keyValueIds", "ownerId", "serviceIds"}
 
-// envListerStore is fakeProjectStore plus the optional ListEnvironments
-// capability renderProject reads to populate Render's required environmentIds —
+// envListerStore is fakeProjectStore plus the optional
+// ListEnvironmentsForProjects capability renderProject reads to populate
+// Render's required environmentIds —
 // so these tests prove the WRITE paths resolve environment membership (the
 // ctx+error step core's context-free view hooks could not express), not merely
 // that they emit an empty array.
@@ -56,8 +57,12 @@ type envListerStore struct {
 	envs map[string][]store.Environment
 }
 
-func (e envListerStore) ListEnvironments(_ context.Context, projectID string) ([]store.Environment, error) {
-	return e.envs[projectID], nil
+func (e envListerStore) ListEnvironmentsForProjects(_ context.Context, projectIDs []string) ([]store.Environment, error) {
+	var out []store.Environment
+	for _, projectID := range projectIDs {
+		out = append(out, e.envs[projectID]...)
+	}
+	return out, nil
 }
 
 // projectResponseKeys serves one request against mux and returns the sorted

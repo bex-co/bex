@@ -97,21 +97,7 @@ func createProject(ctx context.Context, q groupingQuerier, tenantID, name string
 }
 
 func listEnvironments(ctx context.Context, q groupingQuerier, projectID string) ([]Environment, error) {
-	rows, err := q.Query(ctx,
-		`SELECT `+environmentColumns+` FROM environments WHERE project_id = $1 ORDER BY created_at`, projectID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Environment
-	for rows.Next() {
-		e, err := scanEnvironment(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
+	return queryEnvironments(ctx, q, "project_id = $1", projectID)
 }
 
 func createEnvironment(ctx context.Context, q groupingQuerier, projectID, tenantID, name string) (Environment, error) {

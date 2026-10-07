@@ -54,7 +54,7 @@ import (
 )
 
 // conformProjectStore is a stateful projects.ProjectStore for the conformance
-// fixtures. It also carries ListEnvironments (the optional
+// fixtures. It also carries ListEnvironmentsForProjects (the optional
 // projectEnvironmentLister renderProject reads) so environmentIds is populated
 // from real membership, not a coincidental empty array.
 type conformProjectStore struct {
@@ -134,6 +134,14 @@ func (s *conformProjectStore) ListProjectServices(context.Context, string) ([]st
 
 func (s *conformProjectStore) ListEnvironments(_ context.Context, projectID string) ([]store.Environment, error) {
 	return s.envs[projectID], nil
+}
+
+func (s *conformProjectStore) ListEnvironmentsForProjects(_ context.Context, projectIDs []string) ([]store.Environment, error) {
+	var out []store.Environment
+	for _, projectID := range projectIDs {
+		out = append(out, s.envs[projectID]...)
+	}
+	return out, nil
 }
 
 // projectConformanceOwner is the resolvable workspace identity the value-level

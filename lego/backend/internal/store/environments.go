@@ -56,6 +56,16 @@ type Environment struct {
 
 const environmentColumns = `id, project_id, tenant_id, name, created_at, protected_status, network_isolation_enabled, ip_allow_list`
 
+// queryEnvironments reads the Environments where, a condition on $1, holds, in
+// the one order every environment read shares: creation, then id.
+func queryEnvironments(ctx context.Context, q groupingQuerier, where string, arg any) ([]Environment, error) {
+	rows, err := q.Query(ctx, `SELECT `+environmentColumns+` FROM environments WHERE `+where+` ORDER BY created_at, id`, arg)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Environment, error) { return scanEnvironment(row) })
+}
+
 func scanEnvironment(row pgx.Row) (Environment, error) {
 	var e Environment
 	var allowList []byte
@@ -90,25 +100,18 @@ func (s *PGStore) ListEnvironments(ctx context.Context, projectID string) ([]Env
 	return listEnvironments(ctx, s.Pool, projectID)
 }
 
+// ListEnvironmentsForProjects returns the Environments of every project in
+// projectIDs in one query, each project's ordered as ListEnvironments orders
+// it. A page of projects reads its environments together (w5/146).
+func (s *PGStore) ListEnvironmentsForProjects(ctx context.Context, projectIDs []string) ([]Environment, error) {
+	return queryEnvironments(ctx, s.Pool, "project_id = ANY($1)", projectIDs)
+}
+
 // ListWorkspaceEnvironments returns every Environment in one workspace. The
 // workspace scope index needs this shape directly; making the store express it
 // avoids issuing one ListEnvironments query per Project.
 func (s *PGStore) ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]Environment, error) {
-	rows, err := s.Pool.Query(ctx,
-		`SELECT `+environmentColumns+` FROM environments WHERE tenant_id = $1 ORDER BY created_at, id`, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := []Environment{}
-	for rows.Next() {
-		e, err := scanEnvironment(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
+	return queryEnvironments(ctx, s.Pool, "tenant_id = $1", tenantID)
 }
 
 func (s *PGStore) RenameEnvironment(ctx context.Context, id, name string) error {

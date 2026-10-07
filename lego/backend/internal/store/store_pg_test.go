@@ -110,6 +110,7 @@ func TestPGStore(t *testing.T) {
 	assertRegistryCredentials(ctx, t, s, ten)
 	assertAgentSessions(ctx, t, s, ten)
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
+	assertProjectsEnvironmentsRead(ctx, t, s)
 	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
 }
@@ -755,6 +756,47 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 	}
 	if _, err := s.GetRegistryCredential(ctx, ten.ID, c.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get after delete: want ErrNotFound, got %v", err)
+	}
+}
+
+// assertProjectsEnvironmentsRead (w5/146): one query reads the environments
+// of every project asked about, each project's in creation order, and no
+// other project's.
+func assertProjectsEnvironmentsRead(ctx context.Context, t *testing.T, s *PGStore) {
+	t.Helper()
+	ten, err := s.CreateTenant(ctx, "projects-environments", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projects []Project
+	for _, name := range []string{"one", "two", "three"} {
+		p, err := s.CreateProject(ctx, ten.ID, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		projects = append(projects, p)
+	}
+	envs := map[string][]string{}
+	for _, placement := range []struct {
+		project int
+		name    string
+	}{{0, "staging"}, {1, "preview"}, {0, "production"}, {2, "unasked"}} {
+		e, err := s.CreateEnvironment(ctx, projects[placement.project].ID, ten.ID, placement.name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		envs[e.ProjectID] = append(envs[e.ProjectID], e.ID)
+	}
+	got, err := s.ListEnvironmentsForProjects(ctx, []string{projects[0].ID, projects[1].ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	grouped := map[string][]string{}
+	for _, e := range got {
+		grouped[e.ProjectID] = append(grouped[e.ProjectID], e.ID)
+	}
+	if len(got) != 3 || !slices.Equal(grouped[projects[0].ID], envs[projects[0].ID]) || !slices.Equal(grouped[projects[1].ID], envs[projects[1].ID]) {
+		t.Fatalf("ListEnvironmentsForProjects = %v, want projects one and two's environments in creation order and not three's", grouped)
 	}
 }
 
