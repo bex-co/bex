@@ -206,6 +206,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **211** — [An awake, unhealthy Free service answers public requests with "service hibernated"](211.md) ← live `qa-find-bugs` loop, 2026-10-07 sweep 14; two readiness-outage reproductions plus genuine cold-wake control.
+
 - [ ] **210** — [Flaky deploy gate: `TestStatusWriterKeepsHijackerAndReaderFrom` reads metrics before the middleware records them](210.md) ← infinite /qa-find-bugs loop68 2026-10-06 UTC; failed deploy run 37422791965 (w5/m118).
 
 - [ ] **209** — [An image service's Docker Command is invisible on REST reads, and Blueprints spell it `startCommand` (refusing Render's `dockerCommand`)](209.md) ← infinite /qa-find-bugs loop67 2026-10-06 UTC.
