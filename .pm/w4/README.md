@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m178** — [Refresh source project membership after a move](m178/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` loop, 2026-10-07 sweep 8; cross-project moves succeed while the source table retains the moved row until reload.
+
 - [ ] **m177** — [Report container startup failures as startup failures, with the missing executable named](m177/README.md) (6 tasks, ~2h 40m) ← live `/qa-find-bugs` loop, 2026-10-07 pass 1; `StartError` currently becomes an application-crash message pointing to logs that do not exist.
 
 - [ ] **m165** — [Loop1: workspace-switch navigation + identical-cancel undeployed flag](blocked/m165/README.md) — **BLOCKED (release pipeline deploys operator + dashboard; QA replays the bex→tian-personal switch from a project page and bex→bex-canary from a service page (lands on `/`, no stale content or ID breadcrumbs), an identical Manual Deploy + Cancel on a Live service (no banner, GraphQL/REST `undeployedChanges` false), the save-without-deploy control and a config-change cancel, then cleans up)**. t001–t005 done 2026-10-04: the switcher leaves resource routes for `/`; release records carry a settings fingerprint so a cancel over a served release is pending only when a retained setting differs (legacy records stay conservative); operator `make test`, `make lint`, 4089 dashboard tests green.
