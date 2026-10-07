@@ -21,11 +21,13 @@ package sandboxfiles
 import (
 	"archive/tar"
 	"bufio"
+	"compress/flate"
 	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"net/http"
 	"path"
@@ -139,7 +141,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	if c.Operation == files.OperationUpload {
 		err = s.upload(ctx, target, c.Path, r)
 		if err != nil {
-			writeError(w, err)
+			writeError(w, target.ServiceID, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -161,8 +163,22 @@ type statusError struct {
 
 func (e *statusError) Error() string { return e.message }
 
-func writeError(w http.ResponseWriter, err error) {
-	status := http.StatusServiceUnavailable
+var errOperationFailed = &statusError{http.StatusServiceUnavailable, "sandbox file operation failed"}
+
+// hideCause answers errOperationFailed in place of an unclassified failure: a
+// Kubernetes exec error can name the API server, the pod and the node, and a
+// failed read of the upload the gateway's own addresses (w5/131). The cause is
+// logged instead, unless the caller canceled. core.HideCause does the same for
+// bex-api, but logs as bex-api.
+func hideCause(sandbox string, cause error) error {
+	if !errors.Is(cause, context.Canceled) {
+		log.Printf("sandbox files: %v (sandbox=%s): %v", errOperationFailed, sandbox, cause)
+	}
+	return errOperationFailed
+}
+
+func writeError(w http.ResponseWriter, sandbox string, err error) {
+	var status int
 	var se *statusError
 	switch {
 	case errors.As(err, &se):
@@ -175,8 +191,24 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusNotFound
 	case errors.Is(err, context.DeadlineExceeded):
 		status = http.StatusGatewayTimeout
+	default:
+		err, status = hideCause(sandbox, err), errOperationFailed.status
 	}
 	http.Error(w, err.Error(), status)
+}
+
+// archiveError marks err as the client's bad archive when the archive's own
+// format failed it; anything else passes through. A failed read of the upload
+// is not the archive's fault, and its text, a network error, must not reach
+// the client inside one (w5/131).
+func archiveError(err error) error {
+	var corrupt flate.CorruptInputError
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, errMissingEnd) ||
+		errors.Is(err, gzip.ErrHeader) || errors.Is(err, gzip.ErrChecksum) || errors.As(err, &corrupt) ||
+		errors.Is(err, tar.ErrHeader) {
+		return fmt.Errorf("%w: %w", errBadArchive, err)
+	}
+	return err
 }
 
 func executionError(code int, err error) error {
@@ -191,7 +223,7 @@ func executionError(code int, err error) error {
 	case 73:
 		return &statusError{http.StatusConflict, "sandbox destination exists or is not a supported file target"}
 	default:
-		return &statusError{http.StatusServiceUnavailable, "sandbox file operation failed"}
+		return errOperationFailed
 	}
 }
 
@@ -199,6 +231,11 @@ func (s *Server) execute(ctx context.Context, target apps.SSHInstanceTarget, com
 	code, err := s.Executor.Execute(ctx, target, command, false, nil, input, output, io.Discard)
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+	if err != nil && !errors.Is(err, sshgateway.ErrTargetTerminated) {
+		// The executor's own failure answers as one whatever it wraps, never as
+		// the client's bad upload (io.ErrUnexpectedEOF) or a timeout.
+		return hideCause(target.ServiceID, err)
 	}
 	return executionError(code, err)
 }
@@ -291,7 +328,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	if encoding == "gzip" {
 		gz, err := gzip.NewReader(input)
 		if err != nil {
-			return fmt.Errorf("%w: %v", errBadArchive, err)
+			return archiveError(err)
 		}
 		defer gz.Close()
 		input = gz
@@ -313,7 +350,9 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 		}
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		_ = s.execute(cleanupCtx, target, shell(`cd -P "$1" && rm -rf -- "$2"`, parent, stage), nil, io.Discard)
+		// Its outcome is discarded, so it skips execute, whose log would repeat
+		// the transfer's own failure.
+		_, _ = s.Executor.Execute(cleanupCtx, target, shell(`cd -P "$1" && rm -rf -- "$2"`, parent, stage), false, nil, nil, io.Discard, io.Discard)
 	}()
 	reader, writer := io.Pipe()
 	stopPipe := context.AfterFunc(ctx, func() {
@@ -396,14 +435,14 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 	if err != nil || (kind != "file\n" && kind != "directory\n") {
 		cancel()
 		_ = reader.Close()
-		execErr := <-done
-		if execErr != nil {
+		// The cancel above ends a stream still running, so its Canceled is ours.
+		if execErr := <-done; execErr != nil && !errors.Is(execErr, context.Canceled) {
 			err = execErr
 		}
 		if err == nil {
 			err = errors.New("invalid sandbox transfer response")
 		}
-		writeError(w, err)
+		writeError(w, target.ServiceID, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -507,7 +546,7 @@ func copyArchive(dst io.Writer, src io.Reader) error {
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("%w: %w", errBadArchive, err)
+			return archiveError(err)
 		}
 		entries++
 		if entries > files.MaxArchiveEntries {
@@ -547,7 +586,7 @@ func copyArchive(dst io.Writer, src io.Reader) error {
 			return err
 		}
 		if _, err := io.Copy(tw, tr); err != nil {
-			return err
+			return archiveError(err)
 		}
 	}
 	// Reading through EOF also verifies a gzip footer. Reject non-padding data
@@ -564,7 +603,7 @@ func copyArchive(dst io.Writer, src io.Reader) error {
 			break
 		}
 		if err != nil {
-			return err
+			return archiveError(err)
 		}
 	}
 	return tw.Close()
