@@ -115,11 +115,18 @@ export interface RangeSearch {
   rangeEnd?: string;
 }
 
+/** Every range key, undefined: what a validator returns for a rejected range. */
+export const CLEARED_RANGE_SEARCH = {
+  range: undefined,
+  rangeStart: undefined,
+  rangeEnd: undefined,
+} as const satisfies RangeSearch;
+
 /**
  * Validates the shared range keys off a raw URL search object. Malformed or
- * unknown values drop out entirely (a bad link renders the surface's default
- * range), and a custom range is kept only when both bounds reconstruct a valid
- * window — mirroring parseLogSearch's range handling.
+ * unknown values come back undefined, so a bad link renders the surface's
+ * default range, and a custom range is kept only when both bounds reconstruct
+ * a valid window. parseLogSearch reads the range through it too.
  */
 export function parseRangeSearch(search: Record<string, unknown>): RangeSearch {
   if (search.range === "custom") {
@@ -130,10 +137,9 @@ export function parseRangeSearch(search: Record<string, unknown>): RangeSearch {
     if (start && end && parseCustomRange(start, end)) {
       return { range: "custom", rangeStart: start, rangeEnd: end };
     }
-    return {};
+    return { ...CLEARED_RANGE_SEARCH };
   }
-  const preset = parseRangePreset(search.range);
-  return preset ? { range: preset.id } : {};
+  return { ...CLEARED_RANGE_SEARCH, range: parseRangePreset(search.range)?.id };
 }
 
 /** Restores the selection a validated RangeSearch names, else the caller's

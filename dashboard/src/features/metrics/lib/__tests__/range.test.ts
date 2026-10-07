@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  CLEARED_RANGE_SEARCH,
   RANGE_PRESETS,
   DEFAULT_RANGE_PRESET,
   MAX_CUSTOM_RANGE_HOURS,
@@ -139,21 +140,27 @@ describe("range URL search params (w6/065)", () => {
     });
   });
 
-  it("drops malformed values so a bad link falls back to the surface default", () => {
-    expect(parseRangeSearch({})).toEqual({});
-    expect(parseRangeSearch({ range: "6h" })).toEqual({}); // retired id
-    expect(parseRangeSearch({ range: ["1h"] })).toEqual({});
+  it("rejects malformed values so a bad link falls back to the surface default", () => {
+    expect(parseRangeSearch({})).toStrictEqual(CLEARED_RANGE_SEARCH);
+    expect(parseRangeSearch({ range: "6h" })).toStrictEqual(
+      CLEARED_RANGE_SEARCH,
+    ); // retired id
+    expect(parseRangeSearch({ range: ["1h"] })).toStrictEqual(
+      CLEARED_RANGE_SEARCH,
+    );
     // custom without bounds, and custom with a backwards window
-    expect(parseRangeSearch({ range: "custom" })).toEqual({});
+    expect(parseRangeSearch({ range: "custom" })).toStrictEqual(
+      CLEARED_RANGE_SEARCH,
+    );
     expect(
       parseRangeSearch({
         range: "custom",
         rangeStart: "2026-07-02T00:00:00Z",
         rangeEnd: "2026-07-01T00:00:00Z",
       }),
-    ).toEqual({});
+    ).toStrictEqual(CLEARED_RANGE_SEARCH);
     // the Logs-specific `r` Render alias deliberately does not spread here
-    expect(parseRangeSearch({ r: "15m" })).toEqual({});
+    expect(parseRangeSearch({ r: "15m" })).toStrictEqual(CLEARED_RANGE_SEARCH);
 
     expect(rangeFromSearch({}, DEFAULT_RANGE_PRESET)).toBe(
       DEFAULT_RANGE_PRESET,
