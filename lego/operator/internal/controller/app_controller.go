@@ -792,7 +792,7 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 		}
 	}
 	if image == "" {
-		built, res, buildHalted, err := r.buildFromSource(ctx, app)
+		built, res, buildHalted, err := r.buildFromSource(ctx, app, decision.desired.artifact)
 		if buildHalted {
 			if err == nil {
 				if held, heldRes, heldErr := r.holdPendingArtifact(ctx, app, res); held {
@@ -828,8 +828,9 @@ const buildObserveRequeue = 5 * time.Second
 // in-cluster build and OBSERVING it without blocking (ADR060 §D1): one
 // create-if-absent + one read per reconcile, requeuing while the build runs.
 // halted=true means this reconcile pass must stop and return (res, err): the
-// credential gate, the per-workspace cap, a still-running build (requeue), or a
-// build failure has already recorded its status. Over a serving prior release,
+// credential gate, the per-workspace cap, a still-running build (requeue), a
+// build failure that has already recorded its status, or a succeeded build
+// whose artifact write failed (requeue). Over a serving prior release,
 // resolveDeployImage holds that release's runtime instead (holdPendingArtifact).
 // The image is the only output on success.
 //
@@ -838,7 +839,7 @@ const buildObserveRequeue = 5 * time.Second
 // until it resolves, so releaseBuildRevision here is always the running build's
 // revision — a newer push is coalesced into the pending slot and picked up once
 // this build completes and the release advances.
-func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.App) (string, ctrl.Result, bool, error) {
+func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.App, artifact string) (string, ctrl.Result, bool, error) {
 	halt := func(res ctrl.Result, err error) (string, ctrl.Result, bool, error) {
 		return "", res, true, err
 	}
@@ -896,14 +897,15 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	// than starting another build. The caps gate only a NEW dispatch: once builds
 	// are observed across many reconciles (§D1), an App already building must
 	// never be stalled by a cap (it would deadlock on its own build), so the whole
-	// gate is skipped when this App already has an active build.
+	// gate is skipped when this pass only observes the App's own build.
 	caps := r.buildCaps(app)
 	if len(caps) > 0 {
-		mine, err := build.ActiveAppBuilds(ctx, buildClient, buildNs, app.Name, string(app.UID))
+		observing, err := build.ObservingAppBuild(ctx, buildClient, buildNs, app.Name, string(app.UID),
+			build.JobName(app.Name, releaseBuildRevision(app)))
 		if err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting app builds: %w", err)))
 		}
-		if mine == 0 {
+		if !observing {
 			for _, cap := range caps {
 				active, err := cap.count(ctx, buildClient, buildNs)
 				if err != nil {
@@ -1009,17 +1011,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	}
 	switch obs.Phase {
 	case build.PhaseSucceeded:
-		// Meter once per build, not once per reconcile: reconciliation is
-		// level-triggered, so this branch is re-entered until the release advances.
-		// Here ObservedGeneration is the marker (the rollout stamps it), the same
-		// gate the user-cancel counter uses (settleCanceledRelease).
-		if app.Status.ObservedGeneration != app.Generation {
-			recordBuildOutcome(buildOutcomeSucceeded)
-			recordBuildRunSeconds(obs.RunSeconds)
-			r.meterBuildSignals(ctx, app, buildNs)
-			r.consumeClearCacheAnnotation(ctx, app)
-		}
-		return r.pinBuiltImage(ctx, app, obs.Image), ctrl.Result{}, false, nil
+		return r.storeBuiltArtifact(ctx, app, obs, buildNs, artifact)
 	case build.PhaseFailed:
 		view := viewForBuildFault(obs.Fault)
 		// The failure branch needs a DIFFERENT marker: r.fail deliberately never
@@ -1068,6 +1060,33 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuilding, "Building image from "+app.Spec.Repo)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	}
+}
+
+// storeBuiltArtifact settles a succeeded build: it stores the artifact before
+// anything else can end the pass, then meters the build. Until the artifact is
+// stored, every pass re-enters buildFromSource for a build that already
+// succeeded: admission, the digest lookup and the metering again (w5/108).
+// Once it is, resolveDeployImage reuses it.
+func (r *AppReconciler) storeBuiltArtifact(ctx context.Context, app *appv1alpha1.App, obs build.Observation, buildNs, artifact string) (string, ctrl.Result, bool, error) {
+	image := r.pinBuiltImage(ctx, app, obs.Image)
+	app.Status.ArtifactFingerprint, app.Status.ArtifactImage = artifact, image
+	// An unconditional write, not updateStatusIfChanged: a pass that read the
+	// App before an earlier pass stored this artifact must conflict here. Its
+	// cache may have caught up since, and a skipped write would let it meter
+	// the build again.
+	if err := r.Status().Update(ctx, app); err != nil {
+		return "", ctrl.Result{}, true, err
+	}
+	// Meter once per build, not once per reconcile: only the pass whose write
+	// above stored the artifact gets here. ObservedGeneration, the same gate the
+	// user-cancel counter uses (settleCanceledRelease), stays as a backstop.
+	if app.Status.ObservedGeneration != app.Generation {
+		recordBuildOutcome(buildOutcomeSucceeded)
+		recordBuildRunSeconds(obs.RunSeconds)
+		r.meterBuildSignals(ctx, app, buildNs)
+		r.consumeClearCacheAnnotation(ctx, app)
+	}
+	return image, ctrl.Result{}, false, nil
 }
 
 func expectedGitObjectID(value string) string {

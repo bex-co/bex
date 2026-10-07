@@ -286,7 +286,7 @@ func runCacheDrillBuild(t *testing.T, ctx context.Context, live client.Client, a
 		if err := local.Get(ctx, client.ObjectKeyFromObject(app), app); err != nil {
 			return false, err
 		}
-		image, _, halt, err := r.buildFromSource(ctx, app)
+		image, _, halt, err := r.buildFromSource(ctx, app, desiredAppReleaseIdentity(app.Spec).artifact)
 		if err == nil && app.Status.Phase == appv1alpha1.PhaseFailed {
 			return false, fmt.Errorf("build entered Failed phase")
 		}
