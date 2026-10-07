@@ -31,7 +31,10 @@ import (
 // lookups (w5/124, w5/132). bex-api's client is uncached, so each list is an
 // API-server round trip returning every resource of that kind in the
 // workspace. A kind is listed on first use. A read after a write lists for
-// itself, since a snapshot would miss the CRs the write created.
+// itself, since a snapshot would miss the CRs the write created. The one reader
+// that follows writes is a Blueprint create's resources view: the ownership
+// stamp, the apply's last write, re-reads the workspace through the apply's
+// snapshot (forget), and the view reads what it listed (w5/141).
 type workspaceSnapshot struct {
 	s            *Service
 	tenantID     string
@@ -46,10 +49,17 @@ func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
 	return &workspaceSnapshot{s: s, tenantID: tenantID}
 }
 
+// forget drops what the snapshot has listed, so its next reads see the
+// workspace as it is now.
+func (snap *workspaceSnapshot) forget() {
+	snap.appList, snap.serviceMap, snap.databaseList, snap.keyValueList = nil, nil, nil, nil
+}
+
 // apps lists the workspace's Apps the way its datastores are listed: by tenant
 // label in every namespace, since they may straddle the shared namespace and
 // the workspace's own (w5/125). Its readers hold pointers into the list, so
-// none may modify or reorder it.
+// none may reorder it, and only the ownership stamp's label patches write to
+// its objects.
 func (snap *workspaceSnapshot) apps(ctx context.Context) (*appv1alpha1.AppList, error) {
 	if snap.appList == nil {
 		list := &appv1alpha1.AppList{}

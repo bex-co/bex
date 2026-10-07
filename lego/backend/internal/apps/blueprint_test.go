@@ -2505,7 +2505,7 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	mkApp("api")
 
 	st := parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}
-	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", st); err != nil {
+	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", st, svc.newWorkspaceSnapshot(ctx)); err != nil {
 		t.Fatalf("current-generation stamp: %v", err)
 	}
 	var web appv1alpha1.App
@@ -2517,7 +2517,7 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	}
 
 	stale := parsedStack{services: []parsedService{{req: CreateRequest{Name: "api"}}}}
-	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 6, "bsr-old", stale); err == nil {
+	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 6, "bsr-old", stale, svc.newWorkspaceSnapshot(ctx)); err == nil {
 		t.Fatalf("superseded-generation stamp returned nil, want BLUEPRINT_SYNC_BUSY")
 	}
 	var api appv1alpha1.App
@@ -2530,7 +2530,7 @@ func TestOwnershipStampSkippedAfterDisconnect(t *testing.T) {
 	if err := svc.DisconnectBlueprint(ctx, "blp-1", "tea-a"); err != nil {
 		t.Fatalf("disconnect: %v", err)
 	}
-	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", stale); err == nil {
+	if err := svc.stampBlueprintOwnership(ctx, "blp-1", 7, "bsr-current", stale, svc.newWorkspaceSnapshot(ctx)); err == nil {
 		t.Fatalf("post-disconnect stamp returned nil, want BLUEPRINT_SYNC_BUSY")
 	}
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "api"}, &api); err != nil {
@@ -2811,7 +2811,7 @@ func TestPausedApplyAssertsAfterAbandon(t *testing.T) {
 		}
 	}
 	mkApp("web")
-	if err := svc.stampBlueprintOwnership(ctx, b.ID, run.ExecutionGeneration, run.ID, st); err == nil {
+	if err := svc.stampBlueprintOwnership(ctx, b.ID, run.ExecutionGeneration, run.ID, st, svc.newWorkspaceSnapshot(ctx)); err == nil {
 		t.Fatalf("abandoned run stamp returned nil, want BLUEPRINT_SYNC_BUSY")
 	}
 	var web appv1alpha1.App

@@ -279,7 +279,14 @@ func (s *Service) labelBlueprintOwnership(ctx context.Context, blueprintID strin
 // backfill for no-op short circuits that already claimed at write time
 // (w8/m40). A failed claim or label patch fails the sync: ownership
 // persistence failure cannot look like success.
-func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, runID string, st parsedStack) error {
+//
+// It is the apply's last write, so it reads the workspace afresh through snap
+// and stamps the copy of each service the apply resolved. Its label patches
+// land on the objects it read, so a reader of snap after a successful stamp
+// sees the declared resources as the apply left them; a failed patch fails the
+// apply (w5/141).
+func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID string, generation int64, runID string, st parsedStack, snap *workspaceSnapshot) error {
+	snap.forget()
 	if blueprintID == "" {
 		return nil
 	}
@@ -317,26 +324,22 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 	}
 
 	// A kind the manifest does not declare has nothing to stamp, so it is not
-	// listed.
+	// listed. Each declared service is the one the apply resolved and wrote.
 	if len(st.services) > 0 {
-		var apps appv1alpha1.AppList
-		if err := s.ListByTenant(ctx, &apps, tenantID); err != nil {
-			return fmt.Errorf("listing apps for ownership stamp: %w", err)
+		services, err := snap.services(ctx)
+		if err != nil {
+			return fmt.Errorf("resolving services for ownership stamp: %w", err)
 		}
-		wantedSvc := map[string]bool{}
 		for _, svc := range st.services {
-			wantedSvc[svc.req.Name] = true
-		}
-		for i := range apps.Items {
-			if wantedSvc[core.AppPublicName(&apps.Items[i])] {
-				if err := claimAndLabel(store.BlueprintClaimService, core.AppPublicName(&apps.Items[i]), &apps.Items[i]); err != nil {
+			if app := services[svc.req.Name]; app != nil {
+				if err := claimAndLabel(store.BlueprintClaimService, svc.req.Name, app); err != nil {
 					return err
 				}
 			}
 		}
 	}
 	if len(st.databases) > 0 {
-		databases, err := s.listWorkspaceDatabases(ctx, tenantID)
+		databases, err := snap.databases(ctx)
 		if err != nil {
 			return fmt.Errorf("listing databases for ownership stamp: %w", err)
 		}
@@ -353,7 +356,7 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 		}
 	}
 	if len(st.keyValues) > 0 {
-		keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
+		keyValues, err := snap.keyValues(ctx)
 		if err != nil {
 			return fmt.Errorf("listing key values for ownership stamp: %w", err)
 		}
