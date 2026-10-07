@@ -70,6 +70,10 @@ check "single stale run" "$(runs "$(run 30)")" 1 "for 30h00m (window 12h)"
 # (d) Zero scheduled runs — never fired. The worst case: a gap computation over
 # an empty list finds no gap and reports nothing.
 check "never fired" "$(runs)" 1 "no scheduled run reached a verdict in the 0 inspected"
+# Only scheduled runs count as inspected: a manual run beside none is still
+# "never fired", not one inspected (w5/103).
+check "never fired beside a manual run" "$(runs "$(run 1 success workflow_dispatch)")" 1 \
+  "no scheduled run reached a verdict in the 0 inspected"
 
 # (e) A workflow_dispatch run is not a scheduled run. A manual run an hour ago
 # must not hide that the schedule has not delivered for 20h.
@@ -172,6 +176,56 @@ if [ "$rc" != 0 ]; then
   fails=$((fails + 1))
 else
   echo "ok   [repo windows match repo workflows]"
+fi
+
+# (o) Through the real fetch path with a stub `gh`: w.yml's scheduled
+# runs are on time, interleaved with pushes. The stub answers `--event` with a
+# stale page of only old scheduled runs, as GitHub's lagging search can
+# (cli/cli#7341), so a checker that filters by event again reads an on-time
+# workflow as overdue.
+stub="$tmp/stub"
+mkdir -p "$stub"
+history=""
+for h in 1 5 7 11 13 17 19 23 25 29 31 35 41; do
+  event=schedule
+  [ $((h % 6)) = 1 ] && event=push
+  history="$history$(run "$h" success "$event")"
+done
+runs "$history" | jq '."w.yml"' >"$stub/runs.json"
+cat >"$stub/gh" <<'STUB'
+#!/usr/bin/env bash
+# Minimal `gh run list --workflow W [--event E] --limit N --json F`.
+set -euo pipefail
+[ "$1 $2" = "run list" ] || { echo "stub gh: unexpected $*" >&2; exit 1; }
+shift 2
+limit=20 event=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --limit) limit="$2"; shift 2 ;;
+    -e|--event) event="$2"; shift 2 ;;
+    --workflow|--json) shift 2 ;;
+    *) echo "stub gh: unexpected flag $1" >&2; exit 1 ;;
+  esac
+done
+runs="$(dirname "$0")/runs.json"
+if [ -n "$event" ]; then
+  # The search's stale answer: only runs older than a day.
+  jq --arg e "$event" --argjson n "$limit" '[.[] | select(.event == $e)] | .[-3:] | .[:$n]' "$runs"
+else
+  jq --argjson n "$limit" '.[:$n]' "$runs"
+fi
+STUB
+chmod +x "$stub/gh"
+set +e
+out="$(PATH="$stub:$PATH" BEX_CI_DRIFT_NOW="$NOW" BEX_CI_DRIFT_WINDOWS="$tmp/windows" bash "$SCRIPT" 2>&1)"
+rc=$?
+set -e
+if [ "$rc" != 0 ]; then
+  echo "FAIL [fetch path, every event]: exit=$rc want=0 (the stale event search must not be used)" >&2
+  echo "$out" | sed 's/^/    /' >&2
+  fails=$((fails + 1))
+else
+  echo "ok   [fetch path, every event]"
 fi
 
 if [ "$fails" -ne 0 ]; then
