@@ -566,6 +566,69 @@ func TestAPauseInAutoscalingClearsAPendingScaleDown(t *testing.T) {
 	}
 }
 
+// TestTurningAutoscalingBackOnStartsFromTheServicesOwnCount (w5/130): every
+// autoscaled pass starts from the count the autoscaler last chose, and nothing
+// cleared it when autoscaling was turned off. Turned back on, a service set to
+// one replica whose autoscaler had chosen four jumped to four, and the
+// scale-down window held it there. A scale-up still under way held at its
+// target the same way. Turning autoscaling off now forgets the count and ends
+// the transition. Suspending, or losing the metrics reader, keeps both, so the
+// service resumes where it was.
+func TestTurningAutoscalingBackOnStartsFromTheServicesOwnCount(t *testing.T) {
+	off := func(_ *AppReconciler, a *appv1alpha1.App) { a.Spec.Autoscaling.Enabled = false }
+	for name, tc := range map[string]struct {
+		midScale bool
+		pause    func(*AppReconciler, *appv1alpha1.App)
+		want     int32
+	}{
+		"autoscaling off":           {pause: off, want: 1},
+		"autoscaling off mid-scale": {midScale: true, pause: off, want: 1},
+		"autoscaling unset":         {pause: func(_ *AppReconciler, a *appv1alpha1.App) { a.Spec.Autoscaling = nil }, want: 1},
+		"suspended":                 {pause: func(_ *AppReconciler, a *appv1alpha1.App) { a.Spec.Suspended = true }, want: 4},
+		"metrics unwired":           {pause: func(r *AppReconciler, _ *appv1alpha1.App) { r.MetricsReader = nil }, want: 4},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			app := autoscaledApp(time.Now())
+			// No window pending, so forgetting the count is a write of its own.
+			delete(app.Annotations, annotAutoscaleScaleDown)
+			app.Annotations[annotAutoscaleReplicas] = "4"
+			if tc.midScale {
+				app.Status.Autoscaling = &appv1alpha1.AutoscalingStatus{
+					TransitionID: "to-4", FromReplicas: 1, ToReplicas: 4,
+					State: appv1alpha1.AutoscalingTransitionStarted, StartedAt: time.Now().Format(time.RFC3339Nano),
+				}
+			}
+			reader := func(context.Context, string, string) ([]PodUsage, error) { return threePodsAt(0.05), nil }
+			r := &AppReconciler{
+				Client:        fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).WithStatusSubresource(app).Build(),
+				MetricsReader: reader,
+			}
+			paused := app.DeepCopy()
+			tc.pause(r, paused)
+			r.desiredReplicas(ctx, paused, effectiveReplicas(paused), releaseObservation{})
+			if tc.midScale && paused.Status.Autoscaling.State != appv1alpha1.AutoscalingTransitionEnded {
+				t.Fatalf("turning autoscaling off left its transition %s", paused.Status.Autoscaling.State)
+			}
+
+			// The pass writes its status; the stored App, which never paused, is
+			// the service turned back on.
+			r.MetricsReader = reader
+			resumed := &appv1alpha1.App{}
+			if err := r.Get(ctx, client.ObjectKeyFromObject(app), resumed); err != nil {
+				t.Fatal(err)
+			}
+			resumed.Status = paused.Status
+			if err := r.Status().Update(ctx, resumed); err != nil {
+				t.Fatal(err)
+			}
+			if got, _, _ := r.desiredReplicas(ctx, resumed, effectiveReplicas(resumed), releaseObservation{}); got != tc.want {
+				t.Fatalf("turned back on at %d replicas, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestAScaleDownWindowHonorsAMaxLoweredWhileItRan (w5/120): the window's
 // record predates a change to the bounds. When max is lowered below it, the
 // window commits within the new max rather than at the old record.
