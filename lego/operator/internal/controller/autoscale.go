@@ -283,13 +283,13 @@ func autoscaleBounds(as *appv1alpha1.AutoscalingSpec) (minR, maxR int32) {
 // whether to requeue.
 func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.App, current int32) (desired int32, requeue bool) {
 	if r.MetricsReader == nil {
-		r.dropScaleDownWindow(ctx, app)
+		r.skipAutoscaling(ctx, app)
+		return current, false
+	}
+	if !autoscalingEnabled(app) {
 		return current, false
 	}
 	as := app.Spec.Autoscaling
-	if as == nil || !as.Enabled {
-		return current, false
-	}
 	// Hold one from/to edge stable until the Deployment reaches its recorded
 	// target. This prevents a metrics wobble from overwriting a Started status
 	// before the backend can persist its matching Ended fact.
@@ -350,17 +350,8 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	// explains the incident). The caller reads this annotation to seed `current`
 	// on the next reconcile pass so a metrics-failure pass doesn't revert to
 	// spec.replicas (the user's static count).
-	//
-	// The stamp is cleared in the same patch, so a failure cannot clear it yet
-	// keep the old count, which would restart the window.
-	replicas := strconv.Itoa(int(want))
-	if scaleDownPending(app) || replicas != app.Annotations[annotAutoscaleReplicas] {
-		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
-			clearScaleDownWindow(meta)
-			metav1.SetMetaDataAnnotation(meta, annotAutoscaleReplicas, replicas)
-		}); err != nil {
-			return current, true
-		}
+	if err := r.settleAutoscaler(ctx, app, strconv.Itoa(int(want))); err != nil {
+		return current, true
 	}
 	if want != current {
 		app.Status.Autoscaling = &appv1alpha1.AutoscalingStatus{
@@ -380,15 +371,45 @@ func scaleDownPending(app *appv1alpha1.App) bool {
 	return app.Annotations[annotAutoscaleScaleDown] != "" || app.Annotations[annotAutoscaleScaleDownTo] != ""
 }
 
-// dropScaleDownWindow clears a pending scale-down window when autoscaling does
-// not run for app (disabled, unwired or suspended). The window must hold a dip
-// for its whole length on readings it saw, so a stamp from before a pause must
-// not let one low reading after it commit (w5/120).
-func (r *AppReconciler) dropScaleDownWindow(ctx context.Context, app *appv1alpha1.App) {
-	if !scaleDownPending(app) {
-		return
+// skipAutoscaling settles the autoscaler's state on a pass it does not run
+// (autoscaling turned off, metrics unwired, or the service suspended). A
+// pending scale-down window always goes: it must hold a dip for its whole
+// length on readings it saw, so a stamp from before a pause must not let one
+// low reading after it commit (w5/120). Only autoscaling turned off also
+// forgets the count the autoscaler last chose and ends a transition it started,
+// so turning it back on starts from the service's own count (w5/130). A
+// suspended or unwired service keeps both and resumes where it was.
+func (r *AppReconciler) skipAutoscaling(ctx context.Context, app *appv1alpha1.App) {
+	count := app.Annotations[annotAutoscaleReplicas]
+	if !autoscalingEnabled(app) {
+		count = ""
+		endAutoscalingTransition(app, time.Now())
 	}
-	_ = r.patchAppMeta(ctx, app, clearScaleDownWindow)
+	_ = r.settleAutoscaler(ctx, app, count)
+}
+
+// settleAutoscaler records count as the autoscaler's last decision ("" for
+// none) and clears any scale-down window in the same write, so a failure cannot
+// clear the window yet keep the old count, which would restart it. A pass with
+// nothing to change writes nothing.
+func (r *AppReconciler) settleAutoscaler(ctx context.Context, app *appv1alpha1.App, count string) error {
+	if !scaleDownPending(app) && app.Annotations[annotAutoscaleReplicas] == count {
+		return nil
+	}
+	return r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		clearScaleDownWindow(meta)
+		if count == "" {
+			delete(meta.Annotations, annotAutoscaleReplicas)
+		} else {
+			metav1.SetMetaDataAnnotation(meta, annotAutoscaleReplicas, count)
+		}
+	})
+}
+
+// autoscalingEnabled reports whether app's autoscaling is turned on, whether
+// or not it runs this pass.
+func autoscalingEnabled(app *appv1alpha1.App) bool {
+	return app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled
 }
 
 // clearScaleDownWindow removes a scale-down window's stamp and its record.
@@ -398,11 +419,16 @@ func clearScaleDownWindow(meta *metav1.ObjectMeta) {
 }
 
 func completeAutoscalingTransition(app *appv1alpha1.App, replicas, ready int32, now time.Time) {
+	if transition := app.Status.Autoscaling; transition != nil && replicas == transition.ToReplicas && ready >= transition.ToReplicas {
+		endAutoscalingTransition(app, now)
+	}
+}
+
+// endAutoscalingTransition ends app's autoscaling transition if one is under
+// way.
+func endAutoscalingTransition(app *appv1alpha1.App, now time.Time) {
 	transition := app.Status.Autoscaling
 	if transition == nil || transition.State != appv1alpha1.AutoscalingTransitionStarted {
-		return
-	}
-	if replicas != transition.ToReplicas || ready < transition.ToReplicas {
 		return
 	}
 	transition.State = appv1alpha1.AutoscalingTransitionEnded
