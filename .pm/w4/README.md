@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m179** — [Revoke deleted Postgres logins even when objects reference the role](m179/README.md) (6 tasks, ~2h 50m) ← live `qa-find-bugs` loop, 2026-10-07 sweep 15; deleted granted roles still authenticate and read data after their Secret and UI entry are gone.
+
 - [ ] **m178** — [Refresh source project membership after a move](m178/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` loop, 2026-10-07 sweep 8; cross-project moves succeed while the source table retains the moved row until reload.
 
 - [ ] **m177** — [Report container startup failures as startup failures, with the missing executable named](m177/README.md) (6 tasks, ~2h 40m) ← live `/qa-find-bugs` loop, 2026-10-07 pass 1; `StartError` currently becomes an application-crash message pointing to logs that do not exist.
