@@ -29,22 +29,6 @@ import (
 // Before this, removing a founding admin silently reassigned who a workspace
 // appeared to belong to — on a field billing and support read.
 
-// emailLookup is an IdentityReader over a subject→email map; a miss is the
-// honest-omit path.
-type emailLookup map[string]string
-
-func (e emailLookup) Lookup(_ context.Context, subject string) (IdentityAttrs, bool) {
-	email, ok := e[subject]
-	if !ok {
-		return IdentityAttrs{}, false
-	}
-	return IdentityAttrs{Email: email}, true
-}
-
-func (e emailLookup) LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs {
-	return lookupEach(ctx, e, subjects)
-}
-
 func TestOwnerEmailFollowsTheOwnerBindingNotTheOldestAdmin(t *testing.T) {
 	st := newFakeStore()
 	st.tenants["tea-1"] = store.Tenant{ID: "tea-1", Name: "acme", Plan: store.PlanPro}
@@ -56,9 +40,9 @@ func TestOwnerEmailFollowsTheOwnerBindingNotTheOldestAdmin(t *testing.T) {
 	}
 	st.ownerSubjects["tea-1"] = "owner"
 
-	s := &Service{Store: st, Identities: emailLookup{
-		"founder": "founder@example.com",
-		"owner":   "owner@example.com",
+	s := &Service{Store: st, Identities: fakeIdentities{
+		"founder": {Email: "founder@example.com"},
+		"owner":   {Email: "owner@example.com"},
 	}}
 
 	if got := s.ownerEmail(context.Background(), "tea-1"); got != "owner@example.com" {
@@ -77,9 +61,9 @@ func TestOwnerEmailFallsBackToOldestAdminOnlyWithoutABinding(t *testing.T) {
 		{TenantID: "tea-1", Subject: "later", Role: "admin", CreatedAt: time.Unix(2, 0)},
 	}
 
-	s := &Service{Store: st, Identities: emailLookup{
-		"founder": "founder@example.com",
-		"later":   "later@example.com",
+	s := &Service{Store: st, Identities: fakeIdentities{
+		"founder": {Email: "founder@example.com"},
+		"later":   {Email: "later@example.com"},
 	}}
 
 	if got := s.ownerEmail(context.Background(), "tea-1"); got != "founder@example.com" {
@@ -98,7 +82,7 @@ func TestOwnerEmailDoesNotSubstituteWhenTheOwnerIsUnresolvable(t *testing.T) {
 	}
 	st.ownerSubjects["tea-1"] = "vanished-owner"
 
-	s := &Service{Store: st, Identities: emailLookup{"founder": "founder@example.com"}}
+	s := &Service{Store: st, Identities: fakeIdentities{"founder": {Email: "founder@example.com"}}}
 
 	if got := s.ownerEmail(context.Background(), "tea-1"); got != "" {
 		t.Errorf("ownerEmail = %q, want \"\" — the owner is unresolvable, not somebody else", got)

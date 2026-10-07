@@ -24,15 +24,15 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// countingLookups is fakeIdentities counting its batch lookups.
+// countingLookups is fakeIdentities counting its email reads.
 type countingLookups struct {
 	fakeIdentities
 	batches int
 }
 
-func (c *countingLookups) LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs {
+func (c *countingLookups) LookupEmails(ctx context.Context, subjects []string) map[string]string {
 	c.batches++
-	return c.fakeIdentities.LookupMany(ctx, subjects)
+	return c.fakeIdentities.LookupEmails(ctx, subjects)
 }
 
 // TestOwnerListsReadEveryContactAtOnce (w5/126): listing W workspaces, or the

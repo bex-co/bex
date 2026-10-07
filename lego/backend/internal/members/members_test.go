@@ -146,6 +146,14 @@ func (f fakeIdentities) LookupIdentity(_ context.Context, subject string) (Ident
 	return attrs, ok
 }
 
+func (f fakeIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+	out := map[string]string{}
+	for subject, attrs := range f.LookupIdentities(ctx, subjects) {
+		out[subject] = attrs.Email
+	}
+	return out
+}
+
 func (f fakeIdentities) LookupIdentities(_ context.Context, subjects []string) map[string]IdentityAttrs {
 	out := map[string]IdentityAttrs{}
 	for _, subject := range subjects {
@@ -1500,10 +1508,11 @@ func TestTheStoreLastAdminBackstopIsCoded(t *testing.T) {
 	}
 }
 
-// countingIdentities counts the per-subject and the batch identity reads.
+// countingIdentities counts the per-subject, the batch and the email-only
+// identity reads.
 type countingIdentities struct {
 	fakeIdentities
-	single, batches int
+	single, batches, emails int
 }
 
 func (c *countingIdentities) LookupIdentity(ctx context.Context, subject string) (IdentityAttrs, bool) {
@@ -1514,6 +1523,11 @@ func (c *countingIdentities) LookupIdentity(ctx context.Context, subject string)
 func (c *countingIdentities) LookupIdentities(ctx context.Context, subjects []string) map[string]IdentityAttrs {
 	c.batches++
 	return c.fakeIdentities.LookupIdentities(ctx, subjects)
+}
+
+func (c *countingIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+	c.emails++
+	return c.fakeIdentities.LookupEmails(ctx, subjects)
 }
 
 // TestListAndTheMemberCheckResolveMembersInOneRead (w5/116): List and the
@@ -1537,7 +1551,9 @@ func TestListAndTheMemberCheckResolveMembersInOneRead(t *testing.T) {
 	if member, err := s.memberWithEmail(ctxWith("admin-1"), "tea-1", "dev1@example.com"); err != nil || !member {
 		t.Fatalf("memberWithEmail = %v, %v; want dev-1 found", member, err)
 	}
-	if identities.batches != 2 || identities.single != 0 {
-		t.Fatalf("identity reads: %d batches and %d single lookups, want one batch each and no single lookups", identities.batches, identities.single)
+	// The member check reads only emails, so it asks for no credentials
+	// (w5/133); List reports MFA, so it reads the full identities.
+	if identities.batches != 1 || identities.emails != 1 || identities.single != 0 {
+		t.Fatalf("identity reads: %d batches, %d email reads and %d single lookups, want one of each batch kind and no single lookups", identities.batches, identities.emails, identities.single)
 	}
 }

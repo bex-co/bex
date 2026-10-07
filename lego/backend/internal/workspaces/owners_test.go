@@ -41,6 +41,15 @@ func (f fakeIdentities) LookupMany(ctx context.Context, subjects []string) map[s
 	return lookupEach(ctx, f, subjects)
 }
 
+func (f fakeIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+	return emailsEach(ctx, f, subjects)
+}
+
+// emailsEach is LookupEmails for a fake reader: one Lookup per subject.
+func emailsEach(ctx context.Context, r IdentityReader, subjects []string) map[string]string {
+	return emailsOf(lookupEach(ctx, r, subjects))
+}
+
 // lookupEach is LookupMany for a fake reader: one Lookup per subject.
 func lookupEach(ctx context.Context, r IdentityReader, subjects []string) map[string]IdentityAttrs {
 	out := map[string]IdentityAttrs{}
