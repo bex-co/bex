@@ -32,6 +32,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -111,6 +112,7 @@ func TestPGStore(t *testing.T) {
 	assertAgentSessions(ctx, t, s, ten)
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
 	assertProjectsEnvironmentsRead(ctx, t, s)
+	assertWorkspaceEnvironmentReadsUseTheirIndex(ctx, t, pool)
 	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
 }
@@ -756,6 +758,51 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 	}
 	if _, err := s.GetRegistryCredential(ctx, ten.ID, c.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get after delete: want ErrNotFound, got %v", err)
+	}
+}
+
+// assertWorkspaceEnvironmentReadsUseTheirIndex (w5/154): a workspace's
+// environment reads filtered by tenant_id, which no index covered, so each
+// scanned every workspace's environments. The planner, told to avoid a
+// sequential scan, now reads them through environments_tenant_id_idx, which
+// 0145's down migration drops again.
+func assertWorkspaceEnvironmentReadsUseTheirIndex(ctx context.Context, t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SET LOCAL enable_seqscan = off`); err != nil {
+		t.Fatal(err)
+	}
+	for _, query := range []string{
+		`EXPLAIN SELECT ` + environmentColumns + ` FROM environments WHERE tenant_id = $1 ORDER BY created_at, id`,
+		`EXPLAIN SELECT count(*) FROM environments WHERE tenant_id = $1`,
+	} {
+		rows, err := tx.Query(ctx, query, "tea-plan")
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if plan := strings.Join(lines, "\n"); !strings.Contains(plan, "environments_tenant_id_idx") {
+			t.Fatalf("%s plans as\n%s\nwant the tenant_id index", query, plan)
+		}
+	}
+	// The down migration drops it again; the rollback restores it.
+	down, err := migrationsFS.ReadFile("migrations/0145_environments_tenant_id_index.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatal(err)
+	}
+	var dropped bool
+	if err := tx.QueryRow(ctx, `SELECT to_regclass('environments_tenant_id_idx') IS NULL`).Scan(&dropped); err != nil || !dropped {
+		t.Fatalf("after 0145's down migration the index is dropped = %v (%v), want it dropped", dropped, err)
 	}
 }
 
