@@ -83,7 +83,10 @@ type Mailer interface {
 // interface for the same independence reason. The composition root's
 // identityEmailLookup adapter satisfies both.
 type EmailLookup interface {
-	LookupEmail(ctx context.Context, subject string) (string, bool)
+	// LookupEmails resolves many subjects' emails in one batched read that
+	// asks the identity provider for no credentials (w5/133). A subject that
+	// did not resolve is absent.
+	LookupEmails(ctx context.Context, subjects []string) map[string]string
 }
 
 type billingOwnerStore interface {
@@ -180,10 +183,11 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 	}
 	subject, msg := billingEmail(n, s.DashboardBaseURL)
 	text, html := msg.Text(), msg.HTML()
+	emails := s.Identities.LookupEmails(ctx, subjects)
 	var errs []error
 	for _, owner := range subjects {
-		addr, found := s.Identities.LookupEmail(ctx, owner)
-		if !found {
+		addr := emails[owner]
+		if addr == "" {
 			errs = append(errs, fmt.Errorf("owner %s email unavailable", owner))
 			continue
 		}
@@ -778,12 +782,7 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 	logsURL := s.deployLogsURL(appName, details.deployID)
 	emailSubject, msg := deployEmail(appName, kind, details, logsURL)
 	text, html := msg.Text(), msg.HTML()
-	// Each recipient costs two blocking network round-trips (an identity
-	// lookup, then an SMTP send) — run them concurrently, capped, so a large
-	// workspace's fan-out costs roughly one round-trip's latency instead of
-	// N in sequence.
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, notifyConcurrency)
+	var to []string
 	for _, r := range recipients {
 		var wants bool
 		switch notificationsToSend {
@@ -803,37 +802,43 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 				wants = r.DeployFailed
 			}
 		}
-		if !wants {
+		if wants {
+			to = append(to, r.Subject)
+		}
+	}
+	if len(to) == 0 {
+		return
+	}
+	// One batched read resolves every recipient's address (w5/145); a
+	// recipient with no known address is omitted. Each send is a blocking SMTP
+	// round trip, logged rather than propagated on failure (see NotifyDeploy),
+	// so they run concurrently, capped: a large workspace's fan-out costs
+	// about one round trip's latency instead of N in sequence.
+	addrs := s.Identities.LookupEmails(ctx, to)
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, notifyConcurrency)
+	for _, subject := range to {
+		addr := addrs[subject]
+		if addr == "" {
 			continue
 		}
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(subject string) {
+		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			s.notifyOne(ctx, subject, appName, kind, emailSubject, text, html)
-		}(r.Subject)
+			if err := s.Mailer.Send(ctx, addr, emailSubject, text, html); err != nil {
+				log.Printf("notifications: sending deploy %s email for %s to %s: %v", kind, appName, addr, err)
+			}
+		}()
 	}
 	wg.Wait()
 }
 
-// notifyConcurrency bounds how many recipients' email lookup + send run at
-// once — enough to amortize per-recipient network latency without opening an
-// unbounded number of SMTP connections for a very large workspace.
+// notifyConcurrency bounds how many recipients' sends run at once — enough to
+// amortize per-recipient network latency without opening an unbounded number
+// of SMTP connections for a very large workspace.
 const notifyConcurrency = 8
-
-// notifyOne resolves one recipient's address and sends the pre-composed deploy
-// email (text + HTML), logging (never propagating) any failure — see
-// NotifyDeploy's doc. appName/kind are carried only to label that log line.
-func (s *Service) notifyOne(ctx context.Context, recipient, appName string, kind deployMailKind, emailSubject, text, html string) {
-	addr, ok := s.Identities.LookupEmail(ctx, recipient)
-	if !ok {
-		return // no known address — nothing to send to (honest omit)
-	}
-	if err := s.Mailer.Send(ctx, addr, emailSubject, text, html); err != nil {
-		log.Printf("notifications: sending deploy %s email for %s to %s: %v", kind, appName, addr, err)
-	}
-}
 
 // deployLogsURL is the "View Logs" deep link to the deploy's detail page, which
 // renders build/deploy logs (w7/m44). Empty when the dashboard URL is unset or

@@ -141,11 +141,6 @@ func (f *fakeStore) OwnerIDsForSubjects(_ context.Context, subjects []string) (m
 // MFA state), miss on absence.
 type fakeIdentities map[string]IdentityAttrs
 
-func (f fakeIdentities) LookupIdentity(_ context.Context, subject string) (IdentityAttrs, bool) {
-	attrs, ok := f[subject]
-	return attrs, ok
-}
-
 func (f fakeIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
 	out := map[string]string{}
 	for subject, attrs := range f.LookupIdentities(ctx, subjects) {
@@ -1508,16 +1503,10 @@ func TestTheStoreLastAdminBackstopIsCoded(t *testing.T) {
 	}
 }
 
-// countingIdentities counts the per-subject, the batch and the email-only
-// identity reads.
+// countingIdentities counts the batch and the email-only identity reads.
 type countingIdentities struct {
 	fakeIdentities
-	single, batches, emails int
-}
-
-func (c *countingIdentities) LookupIdentity(ctx context.Context, subject string) (IdentityAttrs, bool) {
-	c.single++
-	return c.fakeIdentities.LookupIdentity(ctx, subject)
+	batches, emails int
 }
 
 func (c *countingIdentities) LookupIdentities(ctx context.Context, subjects []string) map[string]IdentityAttrs {
@@ -1553,7 +1542,24 @@ func TestListAndTheMemberCheckResolveMembersInOneRead(t *testing.T) {
 	}
 	// The member check reads only emails, so it asks for no credentials
 	// (w5/133); List reports MFA, so it reads the full identities.
-	if identities.batches != 1 || identities.emails != 1 || identities.single != 0 {
-		t.Fatalf("identity reads: %d batches, %d email reads and %d single lookups, want one of each batch kind and no single lookups", identities.batches, identities.emails, identities.single)
+	if identities.batches != 1 || identities.emails != 1 {
+		t.Fatalf("identity reads: %d batches and %d email reads, want one of each", identities.batches, identities.emails)
+	}
+}
+
+// TestAnInvitePreviewNamesItsInviter (w5/145): the preview reads the
+// inviter's address through the batched email read.
+func TestAnInvitePreviewNamesItsInviter(t *testing.T) {
+	const token = "0123456789abcdef0123456789abcdef"
+	st := newFakeStore(store.PlanPro)
+	st.invites["inv-1"] = store.Invite{ID: "inv-1", TenantID: "tea-1", Token: token, Role: "developer", ExpiresAt: time.Now().Add(time.Hour), InvitedBy: "alice"}
+	s := svc(st, newFakeGranter(), nil, nil)
+	s.Identities = fakeIdentities{"alice": {Email: "alice@example.com"}}
+	view, err := s.PreviewInvite(ctxWith("bob"), token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.InviterEmail != "alice@example.com" {
+		t.Errorf("inviter email = %q, want alice@example.com", view.InviterEmail)
 	}
 }

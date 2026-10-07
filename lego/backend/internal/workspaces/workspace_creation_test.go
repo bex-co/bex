@@ -304,3 +304,23 @@ func TestWorkspaceCreationProviderFailureStaysResumable(t *testing.T) {
 		t.Fatalf("provider failure exposed tenant or lost retry state: tenants=%v attempt=%+v", baseStore.tenants, creationStore.attempts[attempt.ID])
 	}
 }
+
+// TestAHobbyBillingEmailMustBeTheAccountEmail (w5/145): the Hobby check reads
+// the account's address through the batched email read, refuses another
+// address and takes the account's own.
+func TestAHobbyBillingEmailMustBeTheAccountEmail(t *testing.T) {
+	baseStore := newFakeStore()
+	svc := allowSvc(baseStore, &fakeGranter{}, &fakeRevoker{}, nil)
+	svc.CreationStore = newCreationStoreFake(baseStore)
+	svc.CreationBilling = &creationBillingFake{}
+	svc.Payment = rejectingPaymentGate{}
+	svc.PaymentAllPlans = true
+	svc.Identities = fakeIdentities{"user-a": {Email: "Alice@Example.com"}}
+
+	if _, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "hobby", "billing@example.com", "", true); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("a Hobby billing email that is not the account's = %v, want refused", err)
+	}
+	if _, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "hobby", "alice@example.com", "", true); err != nil {
+		t.Fatalf("the account's own address = %v, want accepted", err)
+	}
+}
