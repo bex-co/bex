@@ -40,7 +40,7 @@ import (
 
 type patchCountingClient struct {
 	client.Client
-	patches int
+	patches int // the App patches that landed
 	fail    error
 	// beforeFail runs once inside the first failing patch, with failures off:
 	// a concurrent call landing between a write's projection and its App patch.
@@ -128,7 +128,6 @@ func (f *versionedFakeSecretStore) PutCAS(ctx context.Context, path string, data
 }
 
 func (c *patchCountingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-	c.patches++
 	if c.fail != nil {
 		if hook := c.beforeFail; hook != nil {
 			fail := c.fail
@@ -138,7 +137,11 @@ func (c *patchCountingClient) Patch(ctx context.Context, obj client.Object, patc
 		}
 		return c.fail
 	}
-	return c.Client.Patch(ctx, obj, patch, opts...)
+	err := c.Client.Patch(ctx, obj, patch, opts...)
+	if err == nil {
+		c.patches++
+	}
+	return err
 }
 
 func (c *patchCountingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {

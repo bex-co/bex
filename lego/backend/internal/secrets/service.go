@@ -97,8 +97,13 @@ type Service struct {
 // write path for every env/secret-file materialization — the staged
 // (save_only) mode changes no release-identity field and correctly records
 // nothing until the caller later deploys.
+//
+// The patch is locked (w5/m131): a write that loses the App race to another
+// re-reads the App and runs mutate again, its projection included. The
+// projection reports what the Secret now holds, so the files reference ends up
+// where the latest files write left it rather than where a stale read put it.
 func (s *Service) rollApp(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App) error) error {
-	return s.Rollout.Patch(ctx, s.Client, a, store.TriggerConfigChange, mutate)
+	return s.Rollout.PatchLocked(ctx, s.Client, a, store.TriggerConfigChange, mutate)
 }
 
 // envPath is a service's env-map key in the store (docs/ADR013-secrets.md §4 layout,

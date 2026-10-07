@@ -1186,8 +1186,13 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 // here: the group's Secret refs and spec.restartedAt are release identity, so
 // the operator rebuilds and redeploys for them exactly as it does for a
 // Settings-page edit — and the user is owed the same visible deploy.
+//
+// The patch is locked (w5/m131): spec.filesFromSecrets is one list a merge
+// patch replaces whole, so a write computed from a stale read could drop the
+// service's own files reference a secrets write just set. A write that loses
+// re-reads the App and applies mutate again.
 func (s *Service) rollLinkedService(ctx context.Context, a *appv1alpha1.App, mutate func(*appv1alpha1.App)) error {
-	return s.Rollout.Patch(ctx, s.Client, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+	return s.Rollout.PatchLocked(ctx, s.Client, a, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
 		mutate(a)
 		return nil
 	})
@@ -1225,9 +1230,10 @@ func autoDeployGated(a *appv1alpha1.App) bool {
 // name the untouched services back to the API client.
 func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp string, mutate func(*appv1alpha1.App)) (bool, error) {
 	if autoDeployGated(a) {
-		base := client.MergeFrom(a.DeepCopy())
-		mutate(a)
-		return true, s.Client.Patch(ctx, a, base)
+		return true, rollout.PatchAppLocked(ctx, s.Client, a, func(a *appv1alpha1.App) error {
+			mutate(a)
+			return nil
+		})
 	}
 	return false, s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
 		mutate(a)
