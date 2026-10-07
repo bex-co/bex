@@ -4218,30 +4218,20 @@ func (r *AppReconciler) preemptOtherCronRuns(ctx context.Context, app *appv1alph
 			continue
 		}
 		pending = true
-		before := app.DeepCopy()
-		changed := false
 		run := toCronRun(job)
 		run.Status = appv1alpha1.CronRunCanceled
 		run.FinishedAt = time.Now().UTC().Format(time.RFC3339)
-		found := false
-		for j := range app.Status.Runs {
-			if app.Status.Runs[j].Name == job.Name {
-				if app.Status.Runs[j].Status != appv1alpha1.CronRunCanceled {
-					app.Status.Runs[j] = run
-					changed = true
-				}
-				found = true
-				break
-			}
-		}
-		if !found {
-			app.Status.Runs = append(app.Status.Runs, run)
-			changed = true
-		}
 		// Persist the extra cancellation before deleting its only backing object.
 		// A crash or later reconcile error must not erase this run's outcome.
-		if changed {
-			if err := r.Status().Patch(ctx, app, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
+		recorded := slices.IndexFunc(app.Status.Runs, func(existing appv1alpha1.CronRun) bool { return existing.Name == run.Name })
+		if recorded < 0 || app.Status.Runs[recorded].Status != appv1alpha1.CronRunCanceled {
+			if err := r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
+				if recorded < 0 {
+					status.Runs = append(status.Runs, run)
+				} else {
+					status.Runs[recorded] = run
+				}
+			}); err != nil {
 				return false, err
 			}
 		}

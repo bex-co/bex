@@ -41,13 +41,9 @@ func (r *AppReconciler) acknowledgeManualRun(ctx context.Context, app *appv1alph
 	if app.Spec.RunAt == "" || manualRunHandled(app) {
 		return nil
 	}
-	before := app.DeepCopy()
-	app.Status.ManualRunHandledAt = app.Spec.RunAt
-	if err := r.Status().Patch(ctx, app, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
-		app.Status.ManualRunHandledAt = before.Status.ManualRunHandledAt
-		return err
-	}
-	return nil
+	return r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
+		status.ManualRunHandledAt = app.Spec.RunAt
+	})
 }
 
 // adoptManualRun upgrades existing intent evidence before history eviction or
