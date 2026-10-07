@@ -237,6 +237,9 @@ type IdentityLookup interface {
 	// LookupIdentities resolves a list's subjects at once (w5/116). A subject
 	// that did not resolve is absent.
 	LookupIdentities(ctx context.Context, subjects []string) map[string]IdentityAttrs
+	// LookupEmails is LookupIdentities for a caller that reads only the email:
+	// it asks the IdP for no credentials (w5/133).
+	LookupEmails(ctx context.Context, subjects []string) map[string]string
 }
 
 // RoleGranter writes a member's OpenFGA role tuple on a workspace (the authz
@@ -596,8 +599,8 @@ func (s *Service) memberWithEmail(ctx context.Context, workspaceID, email string
 	for _, m := range ms {
 		subjects = append(subjects, m.Subject)
 	}
-	for _, attrs := range s.Identities.LookupIdentities(ctx, subjects) {
-		if strings.EqualFold(strings.TrimSpace(attrs.Email), email) {
+	for _, found := range s.Identities.LookupEmails(ctx, subjects) {
+		if strings.EqualFold(strings.TrimSpace(found), email) {
 			return true, nil
 		}
 	}

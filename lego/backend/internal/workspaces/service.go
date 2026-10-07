@@ -247,6 +247,10 @@ type IdentityReader interface {
 	// LookupMany resolves a list's subjects at once (w5/116). A subject that
 	// did not resolve is absent, and the caller omits its fields.
 	LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs
+	// LookupEmails is LookupMany for a caller that reads only the email: it
+	// asks the IdP for no credentials, which a batch read otherwise loads
+	// (w5/133).
+	LookupEmails(ctx context.Context, subjects []string) map[string]string
 }
 
 // IdentityAttrs are the IdP attributes a Render owner/member object needs that the
@@ -810,11 +814,11 @@ func (s *Service) ownerEmails(ctx context.Context, tenantIDs []string) map[strin
 	if err != nil || len(contacts) == 0 {
 		return nil
 	}
-	identities := s.Identities.LookupMany(ctx, slices.Collect(maps.Values(contacts)))
+	found := s.Identities.LookupEmails(ctx, slices.Collect(maps.Values(contacts)))
 	emails := make(map[string]string, len(contacts))
 	for tenantID, subject := range contacts {
-		if attrs, ok := identities[subject]; ok {
-			emails[tenantID] = attrs.Email
+		if email, ok := found[subject]; ok {
+			emails[tenantID] = email
 		}
 	}
 	return emails
