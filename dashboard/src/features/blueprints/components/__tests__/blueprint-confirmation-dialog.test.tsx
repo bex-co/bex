@@ -15,7 +15,7 @@ const resourceTakeover: BlueprintConfirmationRequired = {
     kind: "resource",
     phrase: PHRASE,
     resource: "docs",
-    resourceKind: "key value",
+    resourceKind: "key_value",
     owningBlueprintId: "blp-db136288mmqc73d4hpug",
   },
 };
@@ -63,8 +63,8 @@ describe("BlueprintConfirmationDialog", () => {
   });
 
   // w5/m125: zh reads the zh sentence, with the kind's product name rather
-  // than bex-api's English display text ("key value"). Product names (Key
-  // Value, Blueprint) stay as the zh copy writes them.
+  // than bex-api's manifest kind ("key_value"). Product names (Key Value,
+  // Blueprint) stay as the zh copy writes them.
   it("renders a takeover in zh without English fragments", async () => {
     await i18n.changeLanguage("zh");
     renderDialog(resourceTakeover);
@@ -72,7 +72,9 @@ describe("BlueprintConfirmationDialog", () => {
     expect(text).toContain(
       "Key Value “docs” 由 Blueprint blp-db136288mmqc73d4hpug 管理。",
     );
-    expect(text).not.toMatch(/key value|managed by|Continuing|Type the command/);
+    expect(text).not.toMatch(
+      /key[ _]value|managed by|Continuing|Type the command/,
+    );
   });
 
   it("keeps the protected-environment copy for a protected refusal", () => {
