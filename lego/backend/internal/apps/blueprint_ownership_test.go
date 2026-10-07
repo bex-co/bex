@@ -23,6 +23,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -205,12 +206,12 @@ func TestBlueprintResourceClaimRaceLoserCannotWrite(t *testing.T) {
 		t.Fatalf("create A: %v", err)
 	}
 	// Simulate a racing claim already held by A before B's write path runs.
-	if err := fs.ClaimBlueprintResource(ctx, "tea-a", "service", "web", a.ID, ""); err != nil {
+	if err := fs.ClaimBlueprintResource(ctx, "tea-a", store.BlueprintClaimService, "web", a.ID, ""); err != nil {
 		t.Fatalf("seed claim: %v", err)
 	}
 
 	ctxB := withDeployAuthority(ctx, DeployRequest{BlueprintID: "blp-b-race", Confirm: ""})
-	if err := svc.claimBlueprintResourceName(ctxB, "service", "web"); err == nil {
+	if err := svc.claimBlueprintResourceName(ctxB, store.BlueprintClaimService, "web"); err == nil {
 		t.Fatal("loser claim must conflict")
 	} else {
 		var coded *core.CodedError
@@ -287,19 +288,19 @@ func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
 	t.Run("durable claim", func(t *testing.T) {
 		svc, fs := ownershipService(t)
 		ctx := ownershipCtx()
-		for kind, name := range map[string]string{"database": "orders", "key_value": "cache"} {
+		for kind, name := range map[store.BlueprintClaimKind]string{store.BlueprintClaimDatabase: "orders", store.BlueprintClaimKeyValue: "cache"} {
 			if err := fs.ClaimBlueprintResource(ctx, "tea-a", kind, name, "blp-a", ""); err != nil {
 				t.Fatal(err)
 			}
 		}
 		ctxB := withDeployAuthority(ctx, DeployRequest{BlueprintID: "blp-b"})
-		expect(t, svc.claimBlueprintResourceName(ctxB, "database", "orders"), postgres)
-		expect(t, svc.claimBlueprintResourceName(ctxB, "key_value", "cache"), keyValue)
+		expect(t, svc.claimBlueprintResourceName(ctxB, store.BlueprintClaimDatabase, "orders"), postgres)
+		expect(t, svc.claimBlueprintResourceName(ctxB, store.BlueprintClaimKeyValue, "cache"), keyValue)
 	})
 	t.Run("post-apply stamp", func(t *testing.T) {
 		svc, fs := ownershipService(t)
 		ctx := ownershipCtx()
-		if err := fs.ClaimBlueprintResource(ctx, "tea-a", "key_value", "cache", "blp-a", ""); err != nil {
+		if err := fs.ClaimBlueprintResource(ctx, "tea-a", store.BlueprintClaimKeyValue, "cache", "blp-a", ""); err != nil {
 			t.Fatal(err)
 		}
 		cache := &appv1alpha1.KeyValue{
@@ -398,7 +399,7 @@ databases:
 	// Another Blueprint takes the Postgres over. Its CR label still names bp,
 	// but the claim decides: the read no longer lists it, and the preflight
 	// refuses the re-apply before any write-time claim has to.
-	if err := fs.ClaimBlueprintResource(ctx, "tea-a", "database", "orders", "blp-other", bp.ID); err != nil {
+	if err := fs.ClaimBlueprintResource(ctx, "tea-a", store.BlueprintClaimDatabase, "orders", "blp-other", bp.ID); err != nil {
 		t.Fatal(err)
 	}
 	if resources := read(); len(resources) != 3 {
@@ -433,5 +434,21 @@ func TestAServicesOnlyApplyListsNoDatastores(t *testing.T) {
 	}
 	if databases, keyValues := lists.databases.Load(), lists.keyValues.Load(); databases != 0 || keyValues != 0 {
 		t.Errorf("a services-only apply listed Databases %d and Key Values %d times, want none", databases, keyValues)
+	}
+}
+
+// TestEveryClaimKindHasItsOwnManifestKind (w5/115): each claim kind maps to a
+// distinct manifest kind, so a new kind cannot ship without its mapping.
+func TestEveryClaimKindHasItsOwnManifestKind(t *testing.T) {
+	seen := map[BlueprintResourceKind]store.BlueprintClaimKind{}
+	for _, kind := range store.BlueprintClaimKinds() {
+		manifest := blueprintClaimResourceKind(kind)
+		if !slices.Contains([]BlueprintResourceKind{BlueprintResourceService, BlueprintResourcePostgres, BlueprintResourceKeyValue}, manifest) {
+			t.Errorf("claim kind %q maps to %q, not a manifest kind", kind, manifest)
+		}
+		if other, dup := seen[manifest]; dup {
+			t.Errorf("claim kinds %q and %q both map to %q", other, kind, manifest)
+		}
+		seen[manifest] = kind
 	}
 }

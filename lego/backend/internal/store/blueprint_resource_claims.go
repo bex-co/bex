@@ -25,14 +25,35 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// BlueprintClaimKind is the kind of resource a claim names. The constants are
+// exactly the set blueprint_resource_claims_kind_chk admits (w5/115).
+type BlueprintClaimKind string
+
+const (
+	BlueprintClaimService  BlueprintClaimKind = "service"
+	BlueprintClaimDatabase BlueprintClaimKind = "database"
+	BlueprintClaimKeyValue BlueprintClaimKind = "key_value"
+)
+
+// BlueprintClaimKinds is every claim kind. Tests range over it, so a new kind
+// cannot ship without its CHECK migration or its manifest kind.
+func BlueprintClaimKinds() []BlueprintClaimKind {
+	return []BlueprintClaimKind{BlueprintClaimService, BlueprintClaimDatabase, BlueprintClaimKeyValue}
+}
+
 // BlueprintResourceClaim is the durable owner of one workspace resource name
-// (w8/m40). Kind is service | database | key_value.
+// (w8/m40).
 type BlueprintResourceClaim struct {
 	TenantID    string
-	Kind        string
+	Kind        BlueprintClaimKind
 	Name        string
 	BlueprintID string
 	ClaimedAt   time.Time
+}
+
+// Key names the resource the claim is on.
+func (c BlueprintResourceClaim) Key() BlueprintResourceKey {
+	return BlueprintResourceKey{Kind: c.Kind, Name: c.Name}
 }
 
 // ErrBlueprintResourceConflict wraps ErrConflict when another Blueprint already
@@ -43,7 +64,7 @@ var ErrBlueprintResourceConflict = fmt.Errorf("blueprint resource claim conflict
 // expectedOwner "" adopts only when the row is absent or already ours;
 // non-empty authorizes transfer only while that owner still holds the claim
 // (intervening takeover cannot use a stale confirmation).
-func (s *PGStore) ClaimBlueprintResource(ctx context.Context, tenantID, kind, name, blueprintID, expectedOwner string) error {
+func (s *PGStore) ClaimBlueprintResource(ctx context.Context, tenantID string, kind BlueprintClaimKind, name, blueprintID, expectedOwner string) error {
 	if tenantID == "" || kind == "" || name == "" || blueprintID == "" {
 		return fmt.Errorf("claim blueprint resource: missing identity")
 	}
@@ -101,9 +122,11 @@ func (s *PGStore) ListBlueprintResourceClaims(ctx context.Context, tenantID, blu
 	return out, rows.Err()
 }
 
-// BlueprintResourceKey names one claimable resource in a workspace: its claim
-// kind (service | database | key_value) and name.
-type BlueprintResourceKey struct{ Kind, Name string }
+// BlueprintResourceKey names one claimable resource in a workspace.
+type BlueprintResourceKey struct {
+	Kind BlueprintClaimKind
+	Name string
+}
 
 // BlueprintResourceOwners maps every claimed resource in the workspace to its
 // owning blueprint id, so an ownership check over a whole manifest costs one
@@ -128,7 +151,7 @@ func (s *PGStore) BlueprintResourceOwners(ctx context.Context, tenantID string) 
 }
 
 // GetBlueprintResourceOwner returns the owning blueprint id, or "" if unclaimed.
-func (s *PGStore) GetBlueprintResourceOwner(ctx context.Context, tenantID, kind, name string) (string, error) {
+func (s *PGStore) GetBlueprintResourceOwner(ctx context.Context, tenantID string, kind BlueprintClaimKind, name string) (string, error) {
 	var owner string
 	err := s.Pool.QueryRow(ctx,
 		`SELECT blueprint_id FROM blueprint_resource_claims WHERE tenant_id = $1 AND kind = $2 AND name = $3`,
@@ -148,7 +171,7 @@ func (s *PGStore) GetBlueprintResourceOwner(ctx context.Context, tenantID, kind,
 // confirmation, and a release that ignored the current owner would silently
 // undo that takeover. A row already owned by someone else is a no-op, which is
 // the correct outcome — this blueprint no longer manages it either way.
-func (s *PGStore) ReleaseBlueprintResourceClaim(ctx context.Context, tenantID, kind, name, blueprintID string) error {
+func (s *PGStore) ReleaseBlueprintResourceClaim(ctx context.Context, tenantID string, kind BlueprintClaimKind, name, blueprintID string) error {
 	_, err := s.Pool.Exec(ctx,
 		`DELETE FROM blueprint_resource_claims
 		 WHERE tenant_id = $1 AND kind = $2 AND name = $3 AND blueprint_id = $4`,

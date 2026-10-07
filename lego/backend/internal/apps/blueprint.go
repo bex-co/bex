@@ -109,7 +109,7 @@ type BlueprintStore interface {
 	// ClaimBlueprintResource takes (or keeps) the durable workspace claim for
 	// one resource name (w8/m40). expectedOwner "" adopts only when absent or
 	// already ours; non-empty transfers only while that owner still holds it.
-	ClaimBlueprintResource(ctx context.Context, tenantID, kind, name, blueprintID, expectedOwner string) error
+	ClaimBlueprintResource(ctx context.Context, tenantID string, kind store.BlueprintClaimKind, name, blueprintID, expectedOwner string) error
 	// ReleaseBlueprintResourceClaims drops every durable claim for a
 	// disconnected Blueprint (w8/m40).
 	ReleaseBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) error
@@ -117,13 +117,13 @@ type BlueprintStore interface {
 	// also what a sync diffs against the manifest's declarations (w4/m125).
 	ListBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) ([]store.BlueprintResourceClaim, error)
 	// GetBlueprintResourceOwner returns the owning blueprint id, or "" if none.
-	GetBlueprintResourceOwner(ctx context.Context, tenantID, kind, name string) (string, error)
+	GetBlueprintResourceOwner(ctx context.Context, tenantID string, kind store.BlueprintClaimKind, name string) (string, error)
 	// BlueprintResourceOwners maps every claimed resource in the workspace to
 	// its owning blueprint id (w5/114).
 	BlueprintResourceOwners(ctx context.Context, tenantID string) (map[store.BlueprintResourceKey]string, error)
 	// ReleaseBlueprintResourceClaim drops one claim, and only while this
 	// blueprint still holds it (w4/m125).
-	ReleaseBlueprintResourceClaim(ctx context.Context, tenantID, kind, name, blueprintID string) error
+	ReleaseBlueprintResourceClaim(ctx context.Context, tenantID string, kind store.BlueprintClaimKind, name, blueprintID string) error
 }
 
 // errBlueprintSyncBusy is the one documented 409 for every lifecycle fencing
@@ -1405,9 +1405,13 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	baseline := []BlueprintResource{}
 	var stack StackResult
 	if applyErr == nil {
-		baseline, err = s.blueprintDetachments(ctx, b.TenantID, b.ID, *prepared, nil)
-		if err != nil {
+		var detached []blueprintDetachment
+		if detached, err = s.blueprintDetachments(ctx, b.TenantID, b.ID, *prepared, nil); err != nil {
 			return settleStage(err)
+		}
+		baseline = make([]BlueprintResource, 0, len(detached))
+		for _, resource := range detached {
+			baseline = append(baseline, resource.BlueprintResource)
 		}
 		stack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared)
 	}
@@ -1804,7 +1808,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 	// (w8/m40). Unclaimed resources that only match the manifest by name are
 	// not reported as managed.
 	owners := s.blueprintResourceOwners(ctx, tenantID)
-	owned := func(kind, name, labelOwner string) bool {
+	owned := func(kind store.BlueprintClaimKind, name, labelOwner string) bool {
 		return blueprintResourceOwner(owners, kind, name, labelOwner) == b.ID
 	}
 	var resources []BlueprintResource
@@ -1815,7 +1819,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if !ok {
 				continue
 			}
-			if !owned("service", resource.Name, a.Labels[core.LabelBlueprint]) {
+			if !owned(store.BlueprintClaimService, resource.Name, a.Labels[core.LabelBlueprint]) {
 				continue
 			}
 			resourceID := store.ManagedAppID(a.Labels)
@@ -1828,19 +1832,19 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if !ok {
 				continue
 			}
-			if !owned("database", resource.Name, d.Labels[core.LabelBlueprint]) {
+			if !owned(store.BlueprintClaimDatabase, resource.Name, d.Labels[core.LabelBlueprint]) {
 				continue
 			}
-			resources = append(resources, BlueprintResource{ID: d.Name, Name: resource.Name, Type: "postgres"})
+			resources = append(resources, BlueprintResource{ID: d.Name, Name: resource.Name, Type: string(BlueprintResourcePostgres)})
 		case BlueprintResourceKeyValue:
 			kv, ok := keyValueByName[resource.Name]
 			if !ok {
 				continue
 			}
-			if !owned("key_value", resource.Name, kv.Labels[core.LabelBlueprint]) {
+			if !owned(store.BlueprintClaimKeyValue, resource.Name, kv.Labels[core.LabelBlueprint]) {
 				continue
 			}
-			resources = append(resources, BlueprintResource{ID: kv.Name, Name: resource.Name, Type: "key_value"})
+			resources = append(resources, BlueprintResource{ID: kv.Name, Name: resource.Name, Type: string(BlueprintResourceKeyValue)})
 		case BlueprintResourceEnvVarGroup:
 			groupID, ok := envGroupByName[resource.Name]
 			if !ok {

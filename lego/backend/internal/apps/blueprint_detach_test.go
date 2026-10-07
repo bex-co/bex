@@ -40,17 +40,23 @@ func TestBlueprintDetachCandidatesAreOwnedSurvivingResources(t *testing.T) {
 		databases: map[string]*appv1alpha1.Database{"data": {ObjectMeta: metav1.ObjectMeta{Name: dbID}, Spec: appv1alpha1.DatabaseSpec{Name: "data"}}},
 		keyValues: map[string]*appv1alpha1.KeyValue{"cache": {ObjectMeta: metav1.ObjectMeta{Name: kvID}, Spec: appv1alpha1.KeyValueSpec{Name: "cache"}}},
 	}
-	for _, c := range []struct{ kind, name, owner string }{{"database", "data", bp.ID}, {"key_value", "cache", bp.ID}, {"service", "already-deleted", bp.ID}, {"service", "unrelated", ids.New(ids.Blueprint)}} {
+	for _, c := range []struct {
+		kind        store.BlueprintClaimKind
+		name, owner string
+	}{{store.BlueprintClaimDatabase, "data", bp.ID}, {store.BlueprintClaimKeyValue, "cache", bp.ID}, {store.BlueprintClaimService, "already-deleted", bp.ID}, {store.BlueprintClaimService, "unrelated", ids.New(ids.Blueprint)}} {
 		if err := fs.ClaimBlueprintResource(ctx, connOwner, c.kind, c.name, c.owner, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
 	got, err := svc.blueprintDetachments(ctx, connOwner, bp.ID, parsedStack{}, resolver)
-	want := []BlueprintResource{{ID: kvID, Name: "cache", Type: "key_value"}, {ID: dbID, Name: "data", Type: "postgres"}}
+	want := []blueprintDetachment{
+		{BlueprintResource{ID: kvID, Name: "cache", Type: "key_value"}, BlueprintResourceKeyValue},
+		{BlueprintResource{ID: dbID, Name: "data", Type: "postgres"}, BlueprintResourcePostgres},
+	}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("detached = %+v, %v; want %+v", got, err, want)
 	}
-	if owner, _ := fs.GetBlueprintResourceOwner(ctx, connOwner, "database", "data"); owner != bp.ID {
+	if owner, _ := fs.GetBlueprintResourceOwner(ctx, connOwner, store.BlueprintClaimDatabase, "data"); owner != bp.ID {
 		t.Fatal("planning released ownership")
 	}
 }
@@ -75,7 +81,7 @@ func TestBlueprintFailedSyncDoesNotReportCompletedDetach(t *testing.T) {
 				}
 			}
 			if failure == "apply" {
-				if owner, _ := fs.GetBlueprintResourceOwner(context.Background(), connOwner, "service", "static-site"); owner != bp.ID {
+				if owner, _ := fs.GetBlueprintResourceOwner(context.Background(), connOwner, store.BlueprintClaimService, "static-site"); owner != bp.ID {
 					t.Fatal("failed apply released original resource")
 				}
 				var live appv1alpha1.AppList
@@ -126,7 +132,7 @@ func TestBlueprintLegacyInvalidManifestCompletesAsError(t *testing.T) {
 	if stored.Status != store.BlueprintStatusError || stored.ActiveRunID != "" {
 		t.Fatalf("invalid legacy sync not completed as error: %+v", stored)
 	}
-	if owner, _ := fs.GetBlueprintResourceOwner(context.Background(), connOwner, "service", "static-site"); owner != bp.ID {
+	if owner, _ := fs.GetBlueprintResourceOwner(context.Background(), connOwner, store.BlueprintClaimService, "static-site"); owner != bp.ID {
 		t.Fatal("invalid legacy manifest released ownership")
 	}
 	for _, run := range fs.syncs {
