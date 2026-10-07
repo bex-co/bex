@@ -438,3 +438,35 @@ func TestImageOverrideUsesSavedConfigurationAndExpiresOnNextRelease(t *testing.T
 		t.Fatalf("next release image = %q, reusable %v; want saved image:B", image, ok)
 	}
 }
+
+// TestASelectedConfigsAutoscalerWritesThePassApp (w5/110): a release running
+// an earlier release's configuration plans its replicas from a copy of the
+// App. The autoscaler wrote to that copy: the pass's own App kept its old
+// resourceVersion, so its status write conflicted, and the Started record the
+// autoscaler set went with the copy.
+func TestASelectedConfigsAutoscalerWritesThePassApp(t *testing.T) {
+	r, app := selectedReleaseFixture(t)
+	if err := r.ensureReleaseConfigSnapshot(context.Background(), app); err != nil {
+		t.Fatal(err)
+	}
+	app.Spec.Autoscaling = &appv1alpha1.AutoscalingSpec{Enabled: true, MinReplicas: 1, MaxReplicas: 5, TargetCPUPercent: new(int32(80))}
+	limit, _ := tierLimits(app.Spec.Tier)
+	r.MetricsReader = func(context.Context, string, string) ([]PodUsage, error) {
+		// Two pods at their CPU limit: 125% of the 80% target, so three replicas.
+		return []PodUsage{{Pod: "a", CPUCores: limit}, {Pod: "b", CPUCores: limit}}, nil
+	}
+
+	plan, _, halted, err := r.planReplicas(context.Background(), app, releaseObservation{}, false)
+	if err != nil || halted {
+		t.Fatalf("planReplicas halted=%v err=%v", halted, err)
+	}
+	if plan.replicas != 3 {
+		t.Fatalf("planned %d replicas, want 3 from the selected config's 2", plan.replicas)
+	}
+	if got := app.Status.Autoscaling; got == nil || got.State != appv1alpha1.AutoscalingTransitionStarted || got.FromReplicas != 2 || got.ToReplicas != 3 {
+		t.Fatalf("the pass's App records autoscaling %+v, want Started 2→3", got)
+	}
+	if err := r.Status().Update(context.Background(), app); err != nil {
+		t.Fatalf("the pass's status write: %v", err)
+	}
+}

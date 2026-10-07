@@ -2539,7 +2539,7 @@ func (r *AppReconciler) planReplicas(ctx context.Context, app *appv1alpha1.App, 
 	if err != nil {
 		return replicaPlan{}, ctrl.Result{}, true, &stepFailure{reason: "DeployFailed", err: err}
 	}
-	replicas, autoscaleRequeue, release := r.desiredReplicas(ctx, effectiveApp, obs)
+	replicas, autoscaleRequeue, release := r.desiredReplicas(ctx, app, effectiveReplicas(effectiveApp), obs)
 
 	// Hibernating drains the App's own Service. Let the public Ingress move to
 	// the activator FIRST and give Traefik a pass to ingest it, because the two
@@ -2732,13 +2732,17 @@ func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1
 
 // desiredReplicas resolves the replica count reconcileKubernetes rolls the
 // Deployment to and plans the release (planRelease) from app and obs, plus the
-// autoscaler's poll.
+// autoscaler's poll. configured is the count the release runs with, from the
+// configuration it runs (selectedRuntimeApp). app must be the pass's own App,
+// never that projected copy: the last-active stamp and the autoscaler write to
+// it. On a copy, the pass's App kept its old resourceVersion, so its status
+// write conflicted, and the autoscaler's Started record was lost (w5/110).
 //
 // Auto-hibernate: idle free-tier web app past its TTL → scale to 0 without
 // touching spec.suspended, so manual-suspend semantics are preserved. Other
 // types never auto-hibernate: they have no public Ingress wake path (private,
 // worker, cron), or no per-App workload to scale (static).
-func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App, obs releaseObservation) (int32, bool, releasePlan) {
+func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App, configured int32, obs releaseObservation) (int32, bool, releasePlan) {
 	now := time.Now()
 	f := obs.facts(app)
 	// The stamp is the cheap gate; traffic is read only once it says the window
@@ -2749,7 +2753,7 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 		f.idle = !r.recentlyActive(ctx, app)
 	}
 
-	replicas := effectiveReplicas(app)
+	replicas := configured
 	var autoscaleRequeue bool
 	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
 	// to spec.replicas (the user's static count). applyAutoscaling writes the

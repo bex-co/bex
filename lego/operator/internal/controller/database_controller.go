@@ -1283,12 +1283,19 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		// explicit revert. Return Database.spec.version to the observed source so
 		// the next reconcile deletes the failed job and restarts the original
 		// server instead of retrying forever.
+		//
+		// Patch a copy under the read resourceVersion, as patchAppMeta does:
+		// patching db itself decoded the server's object into it, replacing the
+		// status this pass had set but not yet written, the cluster's
+		// currentVersion among it, so the Failed write below saved stale
+		// values (w5/110).
 		if db.Status.CurrentVersion != "" && db.Spec.Version != db.Status.CurrentVersion {
-			before := db.DeepCopy()
-			db.Spec.Version = db.Status.CurrentVersion
-			if err := r.Patch(ctx, db, client.MergeFrom(before)); err != nil {
+			patched := db.DeepCopy()
+			patched.Spec.Version = db.Status.CurrentVersion
+			if err := r.Patch(ctx, patched, client.MergeFromWithOptions(db, client.MergeFromWithOptimisticLock{})); err != nil {
 				return ctrl.Result{}, err
 			}
+			db.ObjectMeta, db.Spec.Version = patched.ObjectMeta, patched.Spec.Version
 		}
 		db.Status.Phase = appv1alpha1.DBPhaseFailed
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
