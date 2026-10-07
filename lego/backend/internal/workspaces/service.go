@@ -244,6 +244,9 @@ type WorkspacePurger interface {
 // endpoints still answer 200.
 type IdentityReader interface {
 	Lookup(ctx context.Context, subject string) (IdentityAttrs, bool)
+	// LookupMany resolves a list's subjects at once (w5/116). A subject that
+	// did not resolve is absent, and the caller omits its fields.
+	LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs
 }
 
 // IdentityAttrs are the IdP attributes a Render owner/member object needs that the
@@ -854,14 +857,16 @@ func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView
 	if err != nil {
 		return nil, err
 	}
+	var identities map[string]IdentityAttrs
+	if s.Identities != nil {
+		identities = s.Identities.LookupMany(ctx, subjects)
+	}
 	out := make([]MemberView, 0, len(rows))
 	for _, m := range rows {
 		mv := MemberView{Subject: m.Subject, Role: m.Role}
 		mv.OwnerID = ownIDs[m.Subject]
-		if s.Identities != nil {
-			if attrs, ok := s.Identities.Lookup(ctx, m.Subject); ok {
-				mv.Email, mv.Name, mv.MFAEnabled = attrs.Email, attrs.Name, attrs.MFAEnabled
-			}
+		if attrs, ok := identities[m.Subject]; ok {
+			mv.Email, mv.Name, mv.MFAEnabled = attrs.Email, attrs.Name, attrs.MFAEnabled
 		}
 		out = append(out, mv)
 	}

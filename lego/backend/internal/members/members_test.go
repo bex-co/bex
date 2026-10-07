@@ -146,6 +146,16 @@ func (f fakeIdentities) LookupIdentity(_ context.Context, subject string) (Ident
 	return attrs, ok
 }
 
+func (f fakeIdentities) LookupIdentities(_ context.Context, subjects []string) map[string]IdentityAttrs {
+	out := map[string]IdentityAttrs{}
+	for _, subject := range subjects {
+		if attrs, ok := f[subject]; ok {
+			out[subject] = attrs
+		}
+	}
+	return out
+}
+
 func (f *fakeStore) seedMember(subject, role string) {
 	f.members[subject] = store.TenantMember{TenantID: "tea-1", Subject: subject, Role: role, CreatedAt: time.Unix(1, 0)}
 }
@@ -1487,5 +1497,47 @@ func TestTheStoreLastAdminBackstopIsCoded(t *testing.T) {
 	err := mapStoreErr(fmt.Errorf("remove member: %w", store.ErrLastAdmin))
 	if !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != ErrorLastAdmin || err.Error() != errLastAdmin().Error() {
 		t.Fatalf("mapStoreErr(ErrLastAdmin) = %v (code %q), want the service guard's %s refusal", err, codedErrorCode(err), ErrorLastAdmin)
+	}
+}
+
+// countingIdentities counts the per-subject and the batch identity reads.
+type countingIdentities struct {
+	fakeIdentities
+	single, batches int
+}
+
+func (c *countingIdentities) LookupIdentity(ctx context.Context, subject string) (IdentityAttrs, bool) {
+	c.single++
+	return c.fakeIdentities.LookupIdentity(ctx, subject)
+}
+
+func (c *countingIdentities) LookupIdentities(ctx context.Context, subjects []string) map[string]IdentityAttrs {
+	c.batches++
+	return c.fakeIdentities.LookupIdentities(ctx, subjects)
+}
+
+// TestListAndTheMemberCheckResolveMembersInOneRead (w5/116): List and the
+// invite's already-a-member check each resolve the workspace's members in one
+// batch read, not one lookup per member.
+func TestListAndTheMemberCheckResolveMembersInOneRead(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("dev-1", "developer")
+	st.seedMember("dev-2", "developer")
+	identities := &countingIdentities{fakeIdentities: fakeIdentities{
+		"admin-1": {Email: "admin@example.com"}, "dev-1": {Email: "dev1@example.com"},
+	}}
+	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "admin"})
+	s.Identities = identities
+
+	ms, err := s.List(ctxWith("admin-1"), "tea-1")
+	if err != nil || len(ms) != 3 {
+		t.Fatalf("list: %d members, %v", len(ms), err)
+	}
+	if member, err := s.memberWithEmail(ctxWith("admin-1"), "tea-1", "dev1@example.com"); err != nil || !member {
+		t.Fatalf("memberWithEmail = %v, %v; want dev-1 found", member, err)
+	}
+	if identities.batches != 2 || identities.single != 0 {
+		t.Fatalf("identity reads: %d batches and %d single lookups, want one batch each and no single lookups", identities.batches, identities.single)
 	}
 }
