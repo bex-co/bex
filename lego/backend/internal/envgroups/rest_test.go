@@ -96,9 +96,15 @@ func TestREST_EnvGroupsLifecycle(t *testing.T) {
 		t.Fatalf("sibling env var should remain, got %d", c)
 	}
 
-	// Link a service => 204, and the App picks up the group refs.
-	if c := serveREST(svc, "POST", "/v1/env-groups/"+g.ID+"/services/web", "").Code; c != 204 {
-		t.Fatalf("link => 204, got %d", c)
+	// Link a service => 200 with the updated group (Render's envGroup), and
+	// the App picks up the group refs.
+	w = serveREST(svc, "POST", "/v1/env-groups/"+g.ID+"/services/web", "")
+	var linked struct {
+		ID           string
+		ServiceLinks []struct{ ID, Name, Type string }
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &linked); w.Code != 200 || err != nil || linked.ID != g.ID || len(linked.ServiceLinks) != 1 || linked.ServiceLinks[0].Name != "web" {
+		t.Fatalf("link => %d %s, want 200 with the group and its one link object", w.Code, w.Body.String())
 	}
 	web := getApp(t, svc.Client, "web")
 	if !slices.Contains(web.Spec.EnvFromSecrets, envSecretName(g.ID)) {
