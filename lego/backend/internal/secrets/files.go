@@ -24,8 +24,10 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -303,13 +305,63 @@ func (s *Service) prepareProjection(ctx context.Context, a *appv1alpha1.App, kin
 	if _, versioned := s.Store.(core.VersionedSecretKV); versioned {
 		setProjectedRevision(sec, kind, committedAt(write.version))
 	}
-	if err := s.Client.Create(ctx, sec); err != nil {
-		if deleteErr := s.Store.Delete(ctx, path); deleteErr != nil {
-			return errors.Join(err, fmt.Errorf("roll back %s: %w", path, deleteErr))
+	if err := s.createPreparedSecret(ctx, a, sec); err != nil {
+		rollbackCtx, cancel := compensationContext(ctx)
+		defer cancel()
+		if deleteErr := s.Store.Delete(rollbackCtx, path); deleteErr != nil {
+			return core.HideCause(err, fmt.Errorf("roll back %s: %w", path, deleteErr))
 		}
 		return err
 	}
 	return nil
+}
+
+// compensationContext bounds a write that undoes part of a failed create. It
+// outlives the request's cancellation, so a client gone mid-create cannot
+// strand what the create already wrote.
+func compensationContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+}
+
+// errSecretNameHeld refuses a create whose projection Secret is still held:
+// by a live App, a create in progress, or a deleted one's Secret still going.
+var errSecretNameHeld = fmt.Errorf("%w: a service of this name is still being created or deleted; retry shortly", core.ErrConflict)
+
+// createPreparedSecret creates sec, ownerless, for a's create. A deleted
+// namesake's Secret that garbage collection has not reached is taken over and
+// left ownerless as a fresh one would be, until adoptPreparedSecret makes the
+// new App its controller: the create-time half of w5/118's takeover (w5/128).
+// Any other holder refuses the create with errSecretNameHeld.
+func (s *Service) createPreparedSecret(ctx context.Context, a *appv1alpha1.App, sec *corev1.Secret) error {
+	for attempt := 0; attempt <= casMaxRetries; attempt++ {
+		err := s.Client.Create(ctx, sec)
+		if !apierrors.IsAlreadyExists(err) {
+			return err
+		}
+		held := &corev1.Secret{}
+		if err := s.Client.Get(ctx, client.ObjectKeyFromObject(sec), held); apierrors.IsNotFound(err) {
+			continue // collected since the create
+		} else if err != nil {
+			return err
+		}
+		vacated, err := s.ownedByDeletedNamesake(ctx, a, held)
+		if err != nil {
+			return err
+		}
+		if !vacated || held.DeletionTimestamp != nil {
+			return errSecretNameHeld
+		}
+		held.OwnerReferences = nil
+		held.Labels = sec.Labels
+		held.Annotations = sec.Annotations // the revision this create's store write committed
+		held.Data = sec.Data
+		err = s.Client.Update(ctx, held)
+		if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
+			continue
+		}
+		return err
+	}
+	return errSecretNameHeld
 }
 
 // adoptPreparedSecret restores owner-reference garbage collection on one
@@ -440,37 +492,57 @@ func (s createSecretsSeeder) CheckCreateSecrets(files []core.SecretFile, env map
 }
 
 // PrepareCreateSecrets runs both legs; each is a no-op for an empty input, so a
-// create carrying only one of the two writes only that one.
+// create carrying only one of the two writes only that one. A failed prepare
+// leaves nothing behind: an env leg that fails removes the files leg before it.
 func (s createSecretsSeeder) PrepareCreateSecrets(ctx context.Context, service string, a *appv1alpha1.App, files []core.SecretFile, env map[string]string) error {
 	if err := s.service.prepareSecretFiles(ctx, service, a, files); err != nil {
 		return err
 	}
-	return s.service.prepareCreateEnvVars(ctx, service, a, env)
+	if err := s.service.prepareCreateEnvVars(ctx, service, a, env); err != nil {
+		abortCtx, cancel := compensationContext(ctx)
+		defer cancel()
+		if abortErr := s.AbortCreateSecrets(abortCtx, service, a); abortErr != nil {
+			return core.HideCause(err, fmt.Errorf("abort create secrets: %w", abortErr))
+		}
+		return err
+	}
+	return nil
 }
 
 // CommitCreateSecrets adopts exactly the projections prepare actually wrote —
 // identified by the spec references it set, so a create with only one of the
 // two legs never looks for a Secret that was never prepared.
 func (s createSecretsSeeder) CommitCreateSecrets(ctx context.Context, service string, a *appv1alpha1.App) error {
+	files, env := preparedLegs(a)
 	var errs []error
-	if slices.Contains(a.Spec.FilesFromSecrets, filesSecretName(a.Name)) {
+	if files {
 		errs = append(errs, s.service.commitSecretFiles(ctx, service, a))
 	}
-	if a.Spec.EnvFromSecret == envSecretName(a.Name) {
+	if env {
 		errs = append(errs, s.service.adoptPreparedSecret(ctx, a, envSecretName(a.Name)))
 	}
 	return errors.Join(errs...)
 }
 
-// AbortCreateSecrets removes every write PrepareCreateSecrets could have made.
-// Each operation is idempotent, so it is safe after any failed phase — and
-// unconditional, because the App it rolls back is brand new and therefore owns
-// nothing either path could be destroying.
+// preparedLegs reports which legs PrepareCreateSecrets wrote: each sets its
+// spec reference only once both its store map and its Secret are written.
+func preparedLegs(a *appv1alpha1.App) (files, env bool) {
+	return slices.Contains(a.Spec.FilesFromSecrets, filesSecretName(a.Name)), a.Spec.EnvFromSecret == envSecretName(a.Name)
+}
+
+// AbortCreateSecrets removes the legs PrepareCreateSecrets wrote (preparedLegs).
+// A leg it never wrote is left alone: its Secret name may be a namesake's
+// (w5/128). Each removal is idempotent, so it is safe after any failed phase.
 func (s createSecretsSeeder) AbortCreateSecrets(ctx context.Context, service string, a *appv1alpha1.App) error {
-	return errors.Join(
-		s.service.abortSecretFiles(ctx, service, a),
-		s.service.abortCreateEnvVars(ctx, service, a),
-	)
+	files, env := preparedLegs(a)
+	var errs []error
+	if files {
+		errs = append(errs, s.service.abortSecretFiles(ctx, service, a))
+	}
+	if env {
+		errs = append(errs, s.service.abortCreateEnvVars(ctx, service, a))
+	}
+	return errors.Join(errs...)
 }
 
 // NewCreateSecretsSeeder wraps Service for apps.Service wiring.

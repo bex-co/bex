@@ -2676,11 +2676,18 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 		return core.ErrSecretsUnavailable
 	}
 	if err := s.CreateSecrets.PrepareCreateSecrets(ctx, publicName, a, seed.files, seed.env); err != nil {
+		if core.IsPublicError(err) {
+			return err // its message is the caller's answer
+		}
 		return fmt.Errorf("prepare create secrets: %w", err)
 	}
 	abort := func(cause error) error {
-		if err := s.CreateSecrets.AbortCreateSecrets(ctx, publicName, a); err != nil {
-			return errors.Join(cause, fmt.Errorf("abort create secrets: %w", err))
+		// Detached, so a client gone mid-create cannot strand the prepared
+		// Secrets, and kept out of cause, whose message may be the answer.
+		abortCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		if err := s.CreateSecrets.AbortCreateSecrets(abortCtx, publicName, a); err != nil {
+			return core.HideCause(cause, fmt.Errorf("abort create secrets: %w", err))
 		}
 		return cause
 	}
