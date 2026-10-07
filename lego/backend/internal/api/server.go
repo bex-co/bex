@@ -1034,6 +1034,13 @@ func (a identityEmailLookup) LookupIdentities(ctx context.Context, subjects []st
 	return out
 }
 
+func (a identityEmailLookup) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+	if a.Identities == nil {
+		return nil
+	}
+	return a.Identities.LookupEmails(ctx, subjects)
+}
+
 func memberAttrs(attrs workspaces.IdentityAttrs) members.IdentityAttrs {
 	return members.IdentityAttrs{Email: attrs.Email, MFAEnabled: attrs.MFAEnabled}
 }

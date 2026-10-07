@@ -139,7 +139,7 @@ func TestKratosIdentitiesEmailVerified(t *testing.T) {
 // UUID except missing, records each request's ids, and refuses a whole batch
 // over one id that is not a UUID, as Kratos does. failing names ids whose
 // batch answers 500.
-func fakeKratosList(t *testing.T, missing string, failing ...string) (*KratosIdentities, func() [][]string) {
+func fakeKratosList(t *testing.T, include []string, missing string, failing ...string) (*KratosIdentities, func() [][]string) {
 	t.Helper()
 	var mu sync.Mutex
 	var batches [][]string
@@ -148,9 +148,9 @@ func fakeKratosList(t *testing.T, missing string, failing ...string) (*KratosIde
 		mu.Lock()
 		batches = append(batches, q["ids"])
 		mu.Unlock()
-		if r.URL.Path != "/admin/identities" || !slices.Equal(q["include_credential"], []string{"webauthn"}) ||
+		if r.URL.Path != "/admin/identities" || !slices.Equal(q["include_credential"], include) ||
 			q.Get("page_size") != strconv.Itoa(len(q["ids"])) {
-			t.Errorf("request %s, want one page of the batch read with the webauthn credential", r.URL)
+			t.Errorf("request %s, want one page of the batch read including credentials %v", r.URL, include)
 		}
 		for _, id := range q["ids"] {
 			if uuid.Validate(id) != nil {
@@ -162,10 +162,15 @@ func fakeKratosList(t *testing.T, missing string, failing ...string) (*KratosIde
 				return
 			}
 		}
+		// Kratos lists credentials only when one is included (w5/127).
+		credentials := ""
+		if len(q["include_credential"]) > 0 {
+			credentials = `,"credentials":{"totp":{"type":"totp"}}`
+		}
 		var found []string
 		for _, id := range q["ids"] {
 			if id != missing {
-				found = append(found, fmt.Sprintf(`{"id":%q,"traits":{"email":"%s@example.com"},"credentials":{"totp":{"type":"totp"}}}`, id, id))
+				found = append(found, fmt.Sprintf(`{"id":%q,"traits":{"email":"%s@example.com"}%s}`, id, id, credentials))
 			}
 		}
 		fmt.Fprintf(w, "[%s]", strings.Join(found, ","))
@@ -186,7 +191,7 @@ func fakeKratosList(t *testing.T, missing string, failing ...string) (*KratosIde
 // identity fields.
 func TestListMembersResolvesItsIdentitiesInOneRequest(t *testing.T) {
 	unknown := uuid.NewString()
-	k, batches := fakeKratosList(t, unknown)
+	k, batches := fakeKratosList(t, []string{"webauthn"}, unknown)
 	st := newFakeStore()
 	svc := &Service{Base: &core.Base{Authz: &fakeChecker{allow: true}}, Store: st, Identities: k}
 	creator := uuid.NewString()
@@ -222,7 +227,7 @@ func TestListMembersResolvesItsIdentitiesInOneRequest(t *testing.T) {
 func TestKratosIdentitiesLookupManyChunksAndFailsPerBatch(t *testing.T) {
 	subjects := uuidsN(2*kratosBatchSize + 50)
 	poison := subjects[kratosBatchSize] // the second batch's first id
-	k, batches := fakeKratosList(t, "", poison)
+	k, batches := fakeKratosList(t, []string{"webauthn"}, "", poison)
 
 	got := k.LookupMany(context.Background(), subjects)
 	var sizes []int
@@ -247,10 +252,43 @@ func TestKratosIdentitiesLookupManyChunksAndFailsPerBatch(t *testing.T) {
 // nothing unasked comes back.
 func TestKratosIdentitiesLookupManyAnswersTheSubjectsAsked(t *testing.T) {
 	lower, upper := uuid.NewString(), strings.ToUpper(uuid.NewString())
-	k, _ := fakeKratosList(t, "")
+	k, _ := fakeKratosList(t, []string{"webauthn"}, "")
 	got := k.LookupMany(context.Background(), []string{lower, upper, "bex-bootstrap"})
 	if len(got) != 2 || got[lower].Email != lower+"@example.com" || got[upper].Email != strings.ToLower(upper)+"@example.com" {
 		t.Fatalf("LookupMany = %v, want the two UUID subjects keyed as asked", got)
+	}
+}
+
+// TestOwnerListsAskKratosForNoCredentials (w5/133): an owner list reports
+// only each workspace's contact email, so its one batch read includes no
+// credential. The member list, which reports MFA, still includes webauthn
+// (TestListMembersResolvesItsIdentitiesInOneRequest).
+func TestOwnerListsAskKratosForNoCredentials(t *testing.T) {
+	k, batches := fakeKratosList(t, nil, "")
+	svc := &Service{Base: &core.Base{Authz: &fakeChecker{allow: true}}, Store: newFakeStore(), Identities: k}
+	owner := uuid.NewString()
+	if _, err := svc.Create(ctxAs(owner), "acme", "pro"); err != nil {
+		t.Fatal(err)
+	}
+	owners, err := svc.ListOwners(ctxAs(owner), OwnerFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(owners) != 1 || owners[0].Email != owner+"@example.com" || len(batches()) != 1 {
+		t.Fatalf("owners = %+v after %d reads, want acme's owner email from one read", owners, len(batches()))
+	}
+}
+
+// TestKratosIdentitiesLookupEmailsAsksForNoCredentials (w5/133): owner lists
+// and the invite check read only emails, yet their batch read included the
+// webauthn credential, so Kratos loaded the batch's credentials on every list.
+// The email read includes none.
+func TestKratosIdentitiesLookupEmailsAsksForNoCredentials(t *testing.T) {
+	subjects := uuidsN(3)
+	k, batches := fakeKratosList(t, nil, subjects[2])
+	got := k.LookupEmails(context.Background(), subjects)
+	if len(batches()) != 1 || len(got) != 2 || got[subjects[0]] != subjects[0]+"@example.com" || got[subjects[1]] != subjects[1]+"@example.com" {
+		t.Fatalf("LookupEmails = %v, want the two known subjects' emails from one read", got)
 	}
 }
 

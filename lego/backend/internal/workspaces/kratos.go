@@ -38,8 +38,8 @@ import (
 // look up OTHER members' identities, not just the caller's own session.
 
 // KratosIdentities looks up identity attributes at Kratos' admin API
-// (GET /admin/identities/{id}; LookupMany uses ?ids=…). Satisfies
-// IdentityReader.
+// (GET /admin/identities/{id}; LookupMany and LookupEmails use ?ids=…).
+// Satisfies IdentityReader.
 type KratosIdentities struct {
 	AdminURL string // Kratos admin base URL, e.g. http://kratos-admin.auth.svc:4434
 	Client   *http.Client
@@ -102,19 +102,41 @@ func (k *KratosIdentities) Lookup(ctx context.Context, subject string) (Identity
 	return id.attrs(), true
 }
 
-// kratosBatchSize keeps one LookupMany request inside Kratos' limits (at most
+// kratosBatchSize keeps one batch request inside Kratos' limits (at most
 // 500 ids, a default page of 250); 100 ids is about 4 KB of query string.
 const kratosBatchSize = 100
 
 // LookupMany resolves many identities with one admin request per
 // kratosBatchSize subjects (w5/116), with the same credential include as
 // Lookup. This list endpoint lists credentials only when one is included, so
-// the webauthn include also keeps TOTP enrollments visible. It returns the subjects that resolved, keyed as asked. A subject
-// Kratos does not know is absent, and so is one that is not a UUID, such as a
-// named platform client (bex-bootstrap), which is never sent: Kratos refuses a
-// whole batch over one malformed id. A failed batch leaves its subjects absent
-// too, so the caller omits their fields, as with Lookup.
+// the webauthn include also keeps TOTP enrollments visible.
 func (k *KratosIdentities) LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs {
+	return k.lookupMany(ctx, subjects, "webauthn")
+}
+
+// LookupEmails resolves many identities' emails; an identity with no email
+// trait maps to "". With no credential included, Kratos' list endpoint loads
+// none (w5/133).
+func (k *KratosIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+	return emailsOf(k.lookupMany(ctx, subjects))
+}
+
+// emailsOf keeps only each identity's email.
+func emailsOf(identities map[string]IdentityAttrs) map[string]string {
+	out := make(map[string]string, len(identities))
+	for subject, attrs := range identities {
+		out[subject] = attrs.Email
+	}
+	return out
+}
+
+// lookupMany reads subjects in batches of kratosBatchSize, including the
+// named credentials. It returns the subjects that resolved, keyed as asked. A
+// subject Kratos does not know is absent, and so is one that is not a UUID,
+// such as a named platform client (bex-bootstrap), which is never sent: Kratos
+// refuses a whole batch over one malformed id. A failed batch leaves its
+// subjects absent too, so the caller omits their fields, as with Lookup.
+func (k *KratosIdentities) lookupMany(ctx context.Context, subjects []string, credentials ...string) map[string]IdentityAttrs {
 	asked := map[string][]string{} // Kratos' canonical id → the subjects spelling it
 	var ids []string
 	for _, subject := range subjects {
@@ -131,9 +153,11 @@ func (k *KratosIdentities) LookupMany(ctx context.Context, subjects []string) ma
 	out := make(map[string]IdentityAttrs, len(subjects))
 	for batch := range slices.Chunk(ids, kratosBatchSize) {
 		query := url.Values{
-			"ids":                batch,
-			"include_credential": {"webauthn"},
-			"page_size":          {strconv.Itoa(len(batch))},
+			"ids":       batch,
+			"page_size": {strconv.Itoa(len(batch))},
+		}
+		if len(credentials) > 0 {
+			query["include_credential"] = credentials
 		}
 		var found []kratosIdentity
 		if !k.get(ctx, "/admin/identities?"+query.Encode(), &found) {
