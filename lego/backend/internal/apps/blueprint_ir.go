@@ -200,6 +200,7 @@ func NormalizeBlueprintIR(source *BlueprintSource) (BlueprintIR, []BlueprintSour
 		}
 		byName[resource.Name] = resource
 	}
+	problems = append(problems, blueprintDuplicateHostProblems(source, ir)...)
 	sort.SliceStable(ir.Resources, func(i, j int) bool {
 		return blueprintResourceOrder(ir.Resources[i], ir.Resources[j])
 	})
@@ -354,4 +355,50 @@ func blueprintResourceRank(kind BlueprintResourceKind) int {
 	default:
 		return 4
 	}
+}
+
+// blueprintDuplicateHostProblems refuses a host two declarations claim, or a
+// host and its www/apex sibling, which a claim reserves too
+// (hostClaims.claimedElsewhere). The apply would create the first service and
+// refuse the second, half-applying the Blueprint; validation never saw it,
+// because its host checks compare each service with existing ones only
+// (w5/105). One service may list its own sibling.
+func blueprintDuplicateHostProblems(source *BlueprintSource, ir BlueprintIR) []BlueprintSourceProblem {
+	type claim struct {
+		resource int
+		pointer  string
+	}
+	claimed := map[string]claim{}
+	var problems []BlueprintSourceProblem
+	for index, resource := range ir.Resources {
+		check := func(value any, pointer string) {
+			host, _ := value.(string)
+			if host = normalizeHostname(host); host == "" {
+				return
+			}
+			for _, key := range []string{host, wwwSibling(host)} {
+				if first, ok := claimed[key]; ok && first.resource != index {
+					location := source.Locations[pointer]
+					problems = append(problems, BlueprintSourceProblem{
+						Code: "BLUEPRINT_DUPLICATE_HOST", Path: pointer,
+						Message: fmt.Sprintf("host %q is already claimed at %s; a host, and its www or apex sibling, can belong to one service", host, first.pointer),
+						Line:    location.Line, Column: location.Column,
+					})
+					return
+				}
+			}
+			if _, ok := claimed[host]; !ok {
+				claimed[host] = claim{index, pointer}
+			}
+		}
+		domains, _ := resource.Fields["domains"].Value.([]any)
+		for i, value := range domains {
+			check(value, fmt.Sprintf("%s/domains/%d", resource.SourcePath, i))
+		}
+		// parseService reads domain only when domains is empty.
+		if field, ok := resource.Fields["domain"]; ok && len(domains) == 0 {
+			check(field.Value, resource.SourcePath+"/domain")
+		}
+	}
+	return problems
 }

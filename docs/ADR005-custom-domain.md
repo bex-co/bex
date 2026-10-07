@@ -37,6 +37,8 @@ Migration `0086_domain_claim_state` adds the closed `pending | verified` state, 
 
 `domains.host` remains globally unique across both states. Same-App add is idempotent and returns the same row/challenge; a different App receives the existing non-enumerating conflict. `ReplaceDomainClaims` preserves unchanged verified rows and challenges, inserts only new declarations pending, and deletes declarations removed by service/Blueprint intent. `ListDesiredApps` reads verified rows only and emits a redirect only when both source and target are verified.
 
+A Blueprint is held to the same uniqueness before anything is written (w5/105). Two of its declarations that claim one host, or a host and its www or apex sibling, which a claim reserves too, are refused as `BLUEPRINT_DUPLICATE_HOST` at the second declaration's `domains[i]` (or `domain`). Validation, preview and apply all compile the manifest, so the apply no longer creates the first service and then refuses the second. One service may list its own apex and www.
+
 Storeless bex-api has nowhere durable to hold pending state, so it retains the older fail-closed behavior: verify the deterministic app-bound TXT before writing the App spec. It never serves an unverified host.
 
 ## Projection and certificates
