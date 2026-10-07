@@ -98,9 +98,13 @@ type AgentSession struct {
 	Turns         int
 	DeliveryMode  string
 	FailureReason string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	CanceledAt    *time.Time
+	// FailureReasonCode is a stable code for the failure's cause when a client
+	// acts on it, such as SANDBOX_CAPACITY_LIMIT; empty otherwise (w5/m132). Only
+	// AbandonAgentDispatch writes one; every other failure write clears it.
+	FailureReasonCode string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	CanceledAt        *time.Time
 	// Hibernation (ADR059 D2/D3, w2/m68). Pinned removes the retention delete
 	// edge; SnapshotRef is the object-storage key (empty ⇒ no durable snapshot);
 	// SnapshotBytes is the storage-metering + quota dimension; HibernatedAt/
@@ -122,7 +126,7 @@ type AgentSession struct {
 
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, evidence, turns, delivery_mode,
-	failure_reason, created_at, updated_at, canceled_at,
+	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	pinned, snapshot_ref, snapshot_bytes, snapshot_sha, hibernated_at, retain_until,
 	archived_at`
 
@@ -130,7 +134,7 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
-		&s.Evidence, &s.Turns, &s.DeliveryMode, &s.FailureReason,
+		&s.Evidence, &s.Turns, &s.DeliveryMode, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt,
 		&s.Pinned, &s.SnapshotRef, &s.SnapshotBytes, &s.SnapshotSHA,
 		&s.HibernatedAt, &s.RetainUntil, &s.ArchivedAt)
@@ -210,7 +214,7 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 		out, err = scanAgentSession(tx.QueryRow(ctx, `
 			UPDATE agent_sessions
 			SET sandbox_id='', phase=$2, status=$3, turns=turns+1,
-			    failure_reason='', updated_at=now()
+			    failure_reason='', failure_reason_code='', updated_at=now()
 			WHERE id=$1
 			RETURNING `+agentSessionColumns, id, phase, status))
 		if err != nil {
@@ -414,7 +418,7 @@ func (s *PGStore) SetAgentSessionFailure(ctx context.Context, id, sandboxID, rea
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
 		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
-		    phase='failed', status='failed', failure_reason=$3, updated_at=now()
+		    phase='failed', status='failed', failure_reason=$3, failure_reason_code='', updated_at=now()
 		WHERE id=$1
 		RETURNING `+agentSessionColumns, id, sandboxID, reason))
 	if err != nil {
@@ -784,7 +788,7 @@ func (s *PGStore) ExpireHibernatedAgentSession(ctx context.Context, id, snapshot
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
 		SET phase='canceled', status='canceled', canceled_at=now(),
-		    failure_reason='hibernation retention window elapsed',
+		    failure_reason='hibernation retention window elapsed', failure_reason_code='',
 		    snapshot_ref='', snapshot_bytes=0, snapshot_sha='',
 		    retain_until=NULL, archived_at=COALESCE(archived_at, now()), updated_at=now()
 		WHERE id=$1 AND phase='hibernated' AND snapshot_ref=$2
@@ -830,7 +834,7 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 		}
 		var err error
 		out, err = scanAgentSession(tx.QueryRow(ctx, `UPDATE agent_sessions
-			SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5, failure_reason='', updated_at=now()
+			SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5, failure_reason='', failure_reason_code='', updated_at=now()
 			WHERE id=$1 RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
 		if err != nil {
 			return err
@@ -885,7 +889,7 @@ func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, 
 			    pr_url   = CASE WHEN $5 <> '' THEN $5 ELSE pr_url END,
 			    pr_number = CASE WHEN $6 <> 0 THEN $6 ELSE pr_number END,
 			    evidence = CASE WHEN $7::jsonb IS NOT NULL THEN $7::jsonb ELSE evidence END,
-			    failure_reason=$8, updated_at=now()
+			    failure_reason=$8, failure_reason_code='', updated_at=now()
 			WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching','hibernating')
 			RETURNING `+agentSessionColumns,
 			id, phase, phase, headSHA, prURL, prNumber, nullableJSON(evidence), failureReason))
