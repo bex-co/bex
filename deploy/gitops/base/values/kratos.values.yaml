@@ -111,6 +111,11 @@ kratos:
           enabled: true
         totp:
           enabled: true
+          # bex-api learns that a member has TOTP from the credential's presence
+          # in admin reads that include only webauthn. Verified on Kratos v26.2.0
+          # (chart 0.62.1, dev-5 2026-10-07) to list a TOTP enrollment without
+          # its config, which holds the secret (w5/127). RE-PROBE on every
+          # Kratos version bump: .pm/w5/done/127.md records the probe.
           config:
             # Names the entry in the user's authenticator app (issuer field of
             # the otpauth:// URI). Human-facing only; safe to read, never secret.
