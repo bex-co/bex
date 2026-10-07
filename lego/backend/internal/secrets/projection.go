@@ -151,8 +151,13 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		// collection has not reached yet. A service recreated under the same
 		// name restarts its store at version 1, so the old revision must not
 		// outrank it: the Secret is replaced, and owned by a (w5/118).
-		predecessor := controlledByAnother(sec, a)
-		if predecessor {
+		owner := metav1.GetControllerOfNoCopy(sec)
+		predecessor := owner != nil && owner.UID != a.UID
+		// Any Secret a does not control yet, a predecessor's or one a create
+		// prepared ownerless, becomes a's only while a is still the App at its
+		// name. A write in flight for a deleted App would otherwise take over its
+		// namesake's prepared Secret (w5/147).
+		if !metav1.IsControlledBy(sec, a) {
 			if err := s.confirmLiveApp(ctx, a); err != nil {
 				return out, err
 			}
@@ -213,14 +218,6 @@ func (s *Service) stampProjection(a *appv1alpha1.App, sec *corev1.Secret, kind p
 	sec.Type = corev1.SecretTypeOpaque
 	sec.Data = envBytes(data)
 	return controllerutil.SetControllerReference(a, sec, s.Client.Scheme())
-}
-
-// controlledByAnother reports whether a controller other than a, in practice
-// a deleted namesake App, controls sec. A Secret no one controls yet, one
-// create-time preparation wrote ahead of its App, is not another's.
-func controlledByAnother(sec *corev1.Secret, a *appv1alpha1.App) bool {
-	owner := metav1.GetControllerOfNoCopy(sec)
-	return owner != nil && owner.UID != a.UID
 }
 
 // vacated reports whether a's create may take sec, the Secret at one of its

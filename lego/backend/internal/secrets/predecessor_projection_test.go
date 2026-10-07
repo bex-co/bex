@@ -19,6 +19,7 @@ package secrets
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"testing"
 
@@ -142,5 +143,61 @@ func TestACASRollbackRemovesAPredecessorsSecretItReplaced(t *testing.T) {
 	sec := &corev1.Secret{}
 	if err := failing.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, sec); !apierrors.IsNotFound(err) {
 		t.Fatalf("the replaced predecessor's Secret = %v (%v), want it removed", sec.Data, err)
+	}
+}
+
+// TestADeletedServicesWriteLeavesItsNamesakesPreparedSecretAlone (w5/147): a
+// write in flight for a deleted service, landing after a create under its name
+// prepared the projection Secret, made the dead App that Secret's controller
+// and replaced the create's data. Garbage collection then removed the new
+// service's Secret, or the new service adopted the dead one's values. The
+// write now refuses as the service having changed, and the prepared Secret
+// stays ownerless with the create's data, its revision stamped or not; an
+// unstamped one still takes the create's stamp.
+func TestADeletedServicesWriteLeavesItsNamesakesPreparedSecretAlone(t *testing.T) {
+	for _, c := range projectionCases {
+		for _, stamped := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s, stamped %v", c.name, stamped), func(t *testing.T) {
+				svc, store := c.setup(nil, map[string]string{"old": "1"})
+				ctx := context.Background()
+				name := c.kind.secretName("web")
+				prepared := map[string]string{"new": "1"}
+				claim := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"}, Data: envBytes(prepared)}
+				var namesake error
+				store.afterGet = func() {
+					namesake = func() error {
+						// The service is deleted, garbage collection removes its
+						// Secret, and a create under its name claims the name.
+						if err := svc.Client.Delete(ctx, sampleApp("web")); err != nil {
+							return err
+						}
+						if err := svc.Client.Delete(ctx, getSecret(t, svc.Client, name)); err != nil {
+							return err
+						}
+						setPreparedAt(claim, svc.Now())
+						if err := svc.createPreparedSecret(ctx, sampleApp("web"), c.kind, claim); err != nil || !stamped {
+							return err
+						}
+						return svc.stampPreparedRevision(ctx, claim, c.kind, committedAt(1))
+					}()
+				}
+
+				err := c.write(svc, "stale")
+				if namesake != nil {
+					t.Fatalf("the namesake's create: %v", namesake)
+				}
+				if !errors.Is(err, core.ErrConflict) || err.Error() != errServiceReplaced.Error() {
+					t.Fatalf("the deleted service's write = %v, want only the conflict that the service changed", err)
+				}
+				if sec := getSecret(t, svc.Client, name); len(sec.OwnerReferences) != 0 || !equalSecretData(sec.Data, prepared) {
+					t.Fatalf("the prepared Secret holds %v, owned by %+v, want the create's %v and no owner", sec.Data, sec.OwnerReferences, prepared)
+				}
+				if !stamped {
+					if err := svc.stampPreparedRevision(ctx, claim, c.kind, committedAt(1)); err != nil {
+						t.Fatalf("the create's stamp after the deleted service's write: %v", err)
+					}
+				}
+			})
+		}
 	}
 }
