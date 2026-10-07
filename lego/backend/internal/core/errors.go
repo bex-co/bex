@@ -23,6 +23,7 @@ limitations under the License.
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -118,10 +119,12 @@ var (
 	// ErrUsageUnavailable is returned by the usage verb when the store isn't
 	// wired (BEX_CP_DB_URI unset); adapters surface it as 503.
 	ErrUsageUnavailable = Unavailable("usage unavailable")
-	// ErrBillingUnavailable is returned by the customer-billing onboarding
-	// verbs when Stripe is disabled or cannot be reached. It is deliberately
-	// distinct from ErrUsageUnavailable: advisory usage remains available while
-	// hosted Checkout, Portal, and payment readiness fail closed.
+	// ErrBillingUnavailable is returned by the customer-billing verbs, the
+	// paid-intent gate and workspace creation when Stripe is disabled or cannot
+	// be reached, or a billing record cannot be read: billing fails closed as
+	// one unit. It is deliberately distinct from ErrUsageUnavailable: advisory
+	// usage remains available while hosted Checkout, Portal, and payment
+	// readiness fail closed.
 	ErrBillingUnavailable = Unavailable("billing integration unavailable")
 	// ErrBillingEnforced blocks new billable work and tenant-driven resumes
 	// while the durable dunning lifecycle owns reversible suspension.
@@ -283,6 +286,19 @@ func MCPError(err error) error {
 		return errors.New("internal error")
 	}
 	return err
+}
+
+// HideCause answers refusal, a public error, without cause's text, and logs
+// the cause server-side. A public error's whole message reaches REST, GraphQL
+// and MCP, and a dependency's error (a provider response, a store error, a
+// stream failure) can name hosts, accounts and internal addresses (w5/123).
+// The cause is not wrapped, so errors.Is and errors.As see only the refusal.
+// A canceled request is the caller's own doing, so it is not logged.
+func HideCause(refusal, cause error) error {
+	if !errors.Is(cause, context.Canceled) {
+		log.Printf("bex-api: %v: %v", refusal, cause)
+	}
+	return refusal
 }
 
 // NewPlanLimitError returns a *CodedError for plan capacity and role

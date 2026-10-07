@@ -174,6 +174,27 @@ func TestExecBufferedFailsClosedWithoutExitEvent(t *testing.T) {
 	}
 }
 
+// failingBody yields an exec stream's first event, then fails the way a
+// dropped connection does, naming the gateway's internal address.
+type failingBody struct{ events io.Reader }
+
+func (b failingBody) Read(p []byte) (int, error) {
+	if n, err := b.events.Read(p); err != io.EOF {
+		return n, err
+	}
+	return 0, errors.New("read tcp 10.0.4.2:50122->10.0.9.9:8443: connection reset by peer")
+}
+
+// TestAFailedExecStreamAnswersWithoutItsCause (w5/123): a stream that breaks
+// mid-exec answers "sandbox exec stream failed" without the read error, whose
+// text names internal addresses.
+func TestAFailedExecStreamAnswersWithoutItsCause(t *testing.T) {
+	_, err := bufferExec(&http.Response{Body: io.NopCloser(failingBody{strings.NewReader("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"partial\"}\n\n")})})
+	if !errors.Is(err, core.ErrSandboxesUnavailable) || !strings.HasSuffix(err.Error(), "sandbox exec stream failed") {
+		t.Fatalf("broken stream = %v, want ErrSandboxesUnavailable ending in the fixed sentence", err)
+	}
+}
+
 func TestBufferExecMapsTerminalGatewayCodeToNotFound(t *testing.T) {
 	// The gateway's real shape since w7/m147 (pinned CLI keys + internal code).
 	resp := &http.Response{Body: io.NopCloser(strings.NewReader(

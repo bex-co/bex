@@ -130,11 +130,16 @@ type creationBillingFake struct {
 	preparedWorkspace string
 	verified          int
 	contracted        int
+	setupErr          error
 	verifyErr         error
+	contractErr       error
 }
 
 func (f *creationBillingFake) PrepareWorkspaceSetup(_ context.Context, _, workspaceID, _, _, _ string) (billing.WorkspaceSetup, error) {
 	f.preparedWorkspace = workspaceID
+	if f.setupErr != nil {
+		return billing.WorkspaceSetup{}, f.setupErr
+	}
 	return billing.WorkspaceSetup{CustomerID: "cus-new", SetupIntentID: "seti-new", ClientSecret: "seti_secret", PublishableKey: "pk_test", Livemode: false}, nil
 }
 
@@ -148,7 +153,65 @@ func (f *creationBillingFake) VerifyWorkspaceSetup(context.Context, string, stri
 
 func (f *creationBillingFake) PrepareWorkspaceContract(context.Context, string, string, string, string) (string, error) {
 	f.contracted++
+	if f.contractErr != nil {
+		return "", f.contractErr
+	}
 	return "sub-new", nil
+}
+
+// TestAWorkspaceCreationProviderFailureAnswersWithoutItsCause (w5/123): the
+// payment setup, its resume, the verification and the contract each answer a
+// provider failure as "billing integration unavailable", without the
+// provider's text.
+func TestAWorkspaceCreationProviderFailureAnswersWithoutItsCause(t *testing.T) {
+	const cause = "stripe: account acct_1Restricted is restricted (req_9Xyz)"
+	for name, fail := range map[string]func(*testing.T, *Service, *creationBillingFake) error{
+		"setup": func(t *testing.T, svc *Service, provider *creationBillingFake) error {
+			provider.setupErr = errors.New(cause)
+			_, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "pro", "billing@example.com", "", true)
+			return err
+		},
+		"resumed setup": func(t *testing.T, svc *Service, provider *creationBillingFake) error {
+			attempt, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "pro", "billing@example.com", "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider.setupErr = errors.New(cause)
+			_, err = svc.ResumeWorkspaceCreation(ctxAs("user-a"), attempt.ID)
+			return err
+		},
+		"verification": func(t *testing.T, svc *Service, provider *creationBillingFake) error {
+			attempt, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "pro", "billing@example.com", "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider.verifyErr = errors.New(cause)
+			_, err = svc.FinalizeWorkspaceCreation(ctxAs("user-a"), attempt.ID)
+			return err
+		},
+		"contract": func(t *testing.T, svc *Service, provider *creationBillingFake) error {
+			attempt, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "pro", "billing@example.com", "", true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider.contractErr = errors.New(cause)
+			_, err = svc.FinalizeWorkspaceCreation(ctxAs("user-a"), attempt.ID)
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			baseStore := newFakeStore()
+			provider := &creationBillingFake{}
+			svc := allowSvc(baseStore, &fakeGranter{}, &fakeRevoker{}, nil)
+			svc.CreationStore = newCreationStoreFake(baseStore)
+			svc.CreationBilling = provider
+			svc.Payment = rejectingPaymentGate{}
+			err := fail(t, svc, provider)
+			if !errors.Is(err, core.ErrBillingUnavailable) || err.Error() != core.ErrBillingUnavailable.Error() {
+				t.Fatalf("error = %v, want %q alone", err, core.ErrBillingUnavailable)
+			}
+		})
+	}
 }
 
 func TestWorkspaceCreationAllModeOwnsBillingBeforeTenantExists(t *testing.T) {

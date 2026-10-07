@@ -169,6 +169,18 @@ Services, Postgres, Key Values and workspaces share one name rule, `appv1alpha1.
 
 Render's error body has no `code`, so these are extensions a Render client ignores. `api/refusal_codes_test.go` pins each code on every surface.
 
+**A refusal does not carry its dependency's text (w5/112, w5/123).** A public refusal's whole message reaches REST, GraphQL and MCP, and a dependency's error can name hosts, accounts and internal addresses. A refusal that keeps its status therefore answers its own fixed sentence, and `core.HideCause` logs the dependency's error server-side:
+
+- Billing fails closed as one unit, so each of these answers `billing integration unavailable` (503):
+  - billing status's provider readiness, payment-method marker and lifecycle reads;
+  - a hosted checkout or portal session the provider fails;
+  - the paid-intent gate's marker read;
+  - workspace creation's payment setup, verification and contract calls.
+- An exec stream that breaks mid-command answers `sandbox runtime not configured: sandbox exec stream failed` (503).
+- A malformed Postgres server CA answers that the CA is malformed (503), without the parse error.
+
+A failure with no refusal of its own is not classified at all: it answers an uncoded `internal error` (500), as the metrics router lookup does.
+
 **Private-image registry binding (`registryCredentialId`, w6/m31).** Render places the optional string at `image.registryCredentialId` for a prebuilt image. REST create/PATCH, GraphQL `createService(registryCredentialId:)` + `setRegistryCredential`, MCP `create_web_service`/`create_cron_job` + `update_service(registryCredentialId:)`, and the dashboard Existing Image picker all delegate to the same Core resolution. Omission preserves the legacy newest-credential-by-host behavior; a non-empty id pins that exact credential; an explicit empty string clears the binding and suppresses host fallback (the dashboard's “None” option sends this explicit empty value). The resolver first authorizes the service/workspace, then classifies an unknown id as 404, an existing credential owned by another workspace as 403, and a credential whose host does not match the proposed image as 400. Successful intent is persisted on both the control-plane App row and `App.spec.registryCredentialId`; bex materializes the exact credential into the deterministic ownerless `<app>-registry-pull` Secret and projects its reference after CR recreation and every later resync. REST service reads expose Render's canonical `registryCredential: {id,name}` summary and retain `registryCredentialId` as a bex convenience extension. Registry-record CRUD is available only at Render's canonical `/v1/registrycredentials` spelling; the official CLI uses that route to resolve `--registry-credential` before create/update. The current Render/OpenAPI/CLI contract and the one Docker-build divergence are captured in [render-artifacts/registry-credential-service-binding.md](render-artifacts/registry-credential-service-binding.md).
 
 Create returns Render's `{service}` envelope (with no fabricated `deployId`); delete returns Render's **204 with an empty body** and removes the App CR. The operator's ownerRefs cascade the Deployment, Service, Ingress, CronJob, and NetworkPolicy. The one resource left behind is the cert-manager TLS Secret (`<app>-tls*`): its Certificate is owned by the Ingress and dies with it, but cert-manager retains the issued Secret by default. Delete requires the same `can_create` scope as create; with the store on, the service row is deleted first so a projector resync cannot resurrect the CR.

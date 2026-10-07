@@ -74,4 +74,8 @@ func TestPaymentGateFailsClosedWhenLocalSnapshotCannotBeRead(t *testing.T) {
 	if !errors.Is(err, core.ErrBillingUnavailable) {
 		t.Fatalf("error = %v, want ErrBillingUnavailable", err)
 	}
+	// The store's text stays in the server log (w5/123).
+	if err.Error() != core.ErrBillingUnavailable.Error() {
+		t.Fatalf("error = %q, want %q alone", err, core.ErrBillingUnavailable)
+	}
 }

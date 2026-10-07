@@ -122,6 +122,10 @@ func TestConnectionInfoRejectsMalformedServerCA(t *testing.T) {
 	if strings.Contains(rec.Body.String(), "PRIVATE KEY") {
 		t.Fatal("refusal must not echo the material")
 	}
+	// Nor the parse error, which stays in the server log (w5/123).
+	if strings.Contains(rec.Body.String(), "non-certificate block") {
+		t.Fatalf("refusal carries its parse error: %s", rec.Body.String())
+	}
 }
 
 // An internal-only database has no verify-full external edge: no CA is read,

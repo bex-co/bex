@@ -419,7 +419,7 @@ func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, e
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return finish(), fmt.Errorf("%w: sandbox exec stream failed: %v", core.ErrSandboxesUnavailable, err)
+		return finish(), core.HideCause(fmt.Errorf("%w: sandbox exec stream failed", core.ErrSandboxesUnavailable), err)
 	}
 	if !exitSeen {
 		return finish(), fmt.Errorf("%w: sandbox exec stream ended without an exit event", core.ErrSandboxesUnavailable)

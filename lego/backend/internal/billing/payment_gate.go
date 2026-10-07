@@ -44,7 +44,7 @@ func (g *PaymentGate) RequirePaymentMethod(ctx context.Context, workspaceID stri
 	}
 	eligibility, err := g.Store.PaymentEligibility(ctx, workspaceID)
 	if err != nil {
-		return fmt.Errorf("%w: read payment-method marker: %v", core.ErrBillingUnavailable, err)
+		return core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("read payment-method marker: %w", err))
 	}
 	if eligibility.AllowsPaidIntent() {
 		return nil

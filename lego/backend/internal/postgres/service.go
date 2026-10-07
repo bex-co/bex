@@ -916,7 +916,7 @@ func (s *Service) serverCACertificate(ctx context.Context, d *appv1alpha1.Databa
 	}
 	bundle, err := certificateOnlyPEM(sec.Data["ca.crt"])
 	if err != nil {
-		return "", fmt.Errorf("%w: Postgres %q server CA is malformed: %v", core.ErrUnavailable, d.Name, err)
+		return "", core.HideCause(fmt.Errorf("%w: Postgres %q server CA is malformed", core.ErrUnavailable, d.Name), err)
 	}
 	return bundle, nil
 }
