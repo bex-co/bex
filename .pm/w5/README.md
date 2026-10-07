@@ -71,7 +71,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **103** — [ci-schedule-drift lists runs through the runs API's event search, the same lagging path as a branch filter](done/103.md) (~30m) ← found by w5/082's quality review — **DONE 2026-10-07**: the drift checker lists each scheduled workflow's newest 100 runs and keeps the scheduled ones in jq, instead of GitHub's lagging event search. Its "never fired" count now counts scheduled runs only, and a stub-`gh` case through the real fetch path fails if the event filter returns.
 - [x] **104** — [Listing members rewrites each member's owner-id row](done/104.md) (~45m) ← found by w5/087's reuse review — **DONE 2026-10-07**: a members list reads its owner ids in one query and writes only a subject seen for the first time, instead of one upsert (and one row version) per member on every 30s Team poll. A Postgres test pins unchanged `xmin`. Follow-up: w5/116.
 - [x] **105** — [Two new services in one Blueprint can declare the same host](done/105.md) (~45m) ← found by w5/m126's efficiency review — **DONE 2026-10-07**: the Blueprint compiler refuses a host, or a host and its www or apex sibling, that two services declare. The refusal is `BLUEPRINT_DUPLICATE_HOST` at the second declaration, citing the first, and comes before anything is written. An apply no longer creates the first service and then refuses the second.
-- [ ] **106** — [A deleted secret-files Secret records no revision, so a late projection can recreate it](106.md) (~1h) ← found by w5/m127
+- [x] **106** — [A deleted secret-files Secret records no revision, so a late projection can recreate it](done/106.md) (~1h) ← found by w5/m127 — **DONE 2026-10-07**: emptying a map keeps its projection Secret, empty and stamped with its revision, so a stalled write's late projection loses to it instead of recreating it. The files mount follows what the Secret holds, so a late first write no longer re-mounts a map a delete emptied. Compensation keeps the Secret too, and emptying clears a staged save-only mount. Follow-ups: w5/117, w5/118.
 - [ ] **107** — [The api test suite builds the MCP server twice per test server](107.md) (~30m) ← found by w5/093's efficiency review
 - [ ] **108** — [A finished build's artifact lives only in memory until the pass's first status write](108.md) (~45m) ← found by w5/095's efficiency review
 - [ ] **109** — [A stale scale-down stamp lets a later dip skip the autoscaler's stabilization window](109.md) (~30m) ← found by w5/096's efficiency review
@@ -82,6 +82,8 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **114** — [Blueprint ownership checks query one resource at a time, and an apply lists datastores twice](114.md) (~1h) ← found by w5/098's efficiency review
 - [ ] **115** — [Blueprint claim kinds are bare strings at about twenty call sites](115.md) (~45m) ← found by w5/098's reviews
 - [ ] **116** — [Listing members looks up each member's identity in Kratos one request at a time](116.md) (~45m) ← found by w5/104's efficiency review
+- [ ] **117** — [A write that empties the files map can drop the mount a later write added](117.md) (~1h) ← found by w5/106's quality review
+- [ ] **118** — [A recreated service inherits its predecessor's uncollected projection Secrets](118.md) (~45m) ← found by w5/106's quality review
 
 ## Approved queue — 2026-10-01
 
