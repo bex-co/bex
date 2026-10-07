@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -1251,6 +1252,60 @@ projects:
 	}
 	if gotIDs["shared"] != "evg-shared" {
 		t.Errorf("environment-group resource id = %q, want evg-shared", gotIDs["shared"])
+	}
+}
+
+// TestABlueprintReadsResourcesOutsideItsWorkspaceNamespace (w5/125): a
+// workspace's resources may still sit in the shared namespace (ADR043 D8), so
+// the read lists them by tenant label, as the apply does. Mid-cutover, a
+// Postgres or an App has a twin in each namespace and reads as the copy in
+// the workspace's own namespace, whichever the list returns first.
+func TestABlueprintReadsResourcesOutsideItsWorkspaceNamespace(t *testing.T) {
+	t.Parallel()
+	// The fake lists by namespace, so "default" puts the shared copies before
+	// the workspace's and "workloads" after them.
+	for _, shared := range []string{"default", "workloads"} {
+		t.Run(shared, func(t *testing.T) {
+			t.Parallel()
+			labels := map[string]string{core.LabelTenant: "tea-test"}
+			// The stale twins name another Blueprint, so reading one instead
+			// of the live copy drops the resource.
+			stale := map[string]string{core.LabelTenant: "tea-test", core.LabelBlueprint: "blp-old"}
+			objects := []client.Object{
+				&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: shared, Labels: labels}},
+				&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: shared, Labels: stale}},
+				&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-test", Labels: labels}},
+				&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders", Namespace: shared, Labels: stale}, Spec: appv1alpha1.DatabaseSpec{Name: "orders"}},
+				&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders", Namespace: "tea-test", Labels: labels}, Spec: appv1alpha1.DatabaseSpec{Name: "orders"}},
+				&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-events", Namespace: shared, Labels: labels}, Spec: appv1alpha1.DatabaseSpec{Name: "events"}},
+				&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-cache", Namespace: shared, Labels: labels}, Spec: appv1alpha1.KeyValueSpec{Name: "cache"}},
+				// Another workspace's Key Value of the same name stays out.
+				&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-other", Namespace: shared, Labels: map[string]string{core.LabelTenant: "tea-other"}}, Spec: appv1alpha1.KeyValueSpec{Name: "cache"}},
+			}
+			svc := &Service{Base: &core.Base{Client: fakeClient(objects...), Namespace: shared}}
+			manifest := `services:
+  - name: api
+    type: web
+    runtime: docker
+  - name: web
+    type: web
+    runtime: docker
+  - name: cache
+    type: keyvalue
+    ipAllowList: []
+databases:
+  - name: orders
+  - name: events
+`
+			got := map[string]string{}
+			for _, resource := range svc.resolveBlueprintResources(context.Background(), store.Blueprint{TenantID: "tea-test", Manifest: manifest}) {
+				got[resource.Name] = resource.ID
+			}
+			want := map[string]string{"api": "api", "web": "web", "orders": "dpg-orders", "events": "dpg-events", "cache": "red-cache"}
+			if !maps.Equal(got, want) {
+				t.Fatalf("resources = %v, want %v", got, want)
+			}
+		})
 	}
 }
 
