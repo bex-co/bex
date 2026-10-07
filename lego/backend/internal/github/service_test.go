@@ -22,6 +22,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -1023,6 +1024,43 @@ func TestResolveCommitPublicFallback(t *testing.T) {
 		if len(cl.gotCommitRef) != 4 || cl.gotCommitRef[0] != "" {
 			t.Errorf("GetCommit auth = %v, want empty token (unauthenticated)", cl.gotCommitRef)
 		}
+	})
+
+	// w5/152: the tip the lookup returns pins the build, and it was memoized
+	// for five minutes, so a create or deploy right after a push built the
+	// commit from before it. A hit now lasts only a burst of lookups, while a
+	// refused lookup, which leaves the build on the branch, is not re-asked
+	// inside its longer window.
+	t.Run("a pushed tip pins the next build within seconds", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			cl := &fakeClient{commit: Commit{SHA: "before-push"}}
+			svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+			url := "https://github.com/render-examples/express-hello-world"
+			if c, _, _ := svc.resolveCommit(ctx, "default", url, "main"); c.Hash != "before-push" {
+				t.Fatalf("first resolve = %q, want the tip before the push", c.Hash)
+			}
+			cl.commit = Commit{SHA: "after-push"}
+			time.Sleep(15 * time.Second)
+			if c, _, _ := svc.resolveCommit(ctx, "default", url, "main"); c.Hash != "after-push" {
+				t.Fatalf("15s after a push the build pins %q, want the pushed tip", c.Hash)
+			}
+		})
+	})
+
+	t.Run("a refused lookup is not re-asked inside its window", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			cl := &fakeClient{commitErr: &APIError{Status: 429}}
+			svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+			for range 2 {
+				if c, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/render-examples/express-hello-world", "main"); ok || err != nil || c.Hash != "" {
+					t.Fatalf("refused lookup = %+v,%v,%v, want the build left unpinned", c, ok, err)
+				}
+				time.Sleep(15 * time.Second)
+			}
+			if cl.getCommitCalls != 1 {
+				t.Fatalf("GetCommit calls = %d, want 1 inside the refusal's window", cl.getCommitCalls)
+			}
+		})
 	})
 
 	t.Run("caches per repo ref", func(t *testing.T) {
