@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -233,5 +234,57 @@ func TestAPassBehindTheArtifactWriteMetersNothing(t *testing.T) {
 
 	if got := testutil.ToFloat64(buildOutcomesTotal.WithLabelValues(buildOutcomeSucceeded)) - succeeded; got != 1 {
 		t.Fatalf("the build was metered %v times, want once", got)
+	}
+}
+
+// TestAStoredBuildPrunesEarlierReleasesKpackArtifacts (w5/129): every
+// buildpack release builds its own kpack Image. The pass that stores release
+// 2's artifact deletes the Image release 1 left and keeps its own, so leftover
+// Images stop growing with release history.
+func TestAStoredBuildPrunesEarlierReleasesKpackArtifacts(t *testing.T) {
+	ctx := context.Background()
+	app := activeApp("tea-pruned-build")
+	app.UID = "uid-web" // the fake client assigns none; build artifacts are keyed on it
+	r, cl, nn := lifecycleFixture(t, app)
+	kpackImage := func(generation int64) *unstructured.Unstructured {
+		return build.KpackImage(build.Options{
+			Name: nn.Name, AppUID: "uid-web", Namespace: r.buildNamespace(nn.Namespace), Revision: appv1alpha1.BuildRevision(generation),
+			Repo: "https://example.invalid/repo.git",
+		})
+	}
+	built := func(image *unstructured.Unstructured) {
+		t.Helper()
+		image.Object["status"] = map[string]any{
+			"conditions":  []any{map[string]any{"type": "Ready", "status": "True"}},
+			"latestImage": "zot.bex-registry.svc:5000/web@sha256:" + image.GetLabels()["app.bex.co/build-revision"],
+		}
+	}
+	serveReleaseOne(t, r, cl, nn)
+	earlier := kpackImage(1)
+	built(earlier)
+	if err := cl.Create(ctx, earlier); err != nil {
+		t.Fatal(err)
+	}
+	releaseTwoFromSource(t, cl, nn)
+	updateApp(t, cl, nn, func(a *appv1alpha1.App) { a.Spec.Builder = build.BuilderBuildpack })
+	reconcileOnce(t, r, nn)
+	own := kpackImage(2)
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(own), own); err != nil {
+		t.Fatalf("setup: release 2's kpack Image was never dispatched: %v", err)
+	}
+	built(own)
+	if err := cl.Update(ctx, own); err != nil {
+		t.Fatal(err)
+	}
+
+	reconcileOnce(t, r, nn)
+	if live := liveApp(t, cl, nn); live.Status.ArtifactImage == "" {
+		t.Fatal("release 2's artifact was not stored")
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(earlier), earlier.DeepCopy()); !apierrors.IsNotFound(err) {
+		t.Fatalf("release 1's kpack Image outlived release 2's stored build: %v", err)
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(own), own.DeepCopy()); err != nil {
+		t.Fatalf("release 2's own kpack Image did not survive its stored build: %v", err)
 	}
 }

@@ -78,11 +78,8 @@ func ReclaimAppArtifacts(ctx context.Context, identity execution.ArtifactIdentit
 		errs = append(errs, inspectErr)
 	}
 	deleteObject := func(kind string, obj client.Object, options ...client.DeleteOption) {
-		if !obj.GetDeletionTimestamp().IsZero() {
-			return
-		}
-		if deleteErr := cl.Delete(ctx, obj, options...); deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
-			errs = append(errs, fmt.Errorf("delete %s %s: %w", kind, obj.GetName(), deleteErr))
+		if deleteErr := deleteArtifact(ctx, cl, kind, obj, options...); deleteErr != nil {
+			errs = append(errs, deleteErr)
 		}
 	}
 	for _, obj := range objects.jobs {
@@ -107,6 +104,68 @@ func ReclaimAppArtifacts(ctx context.Context, identity execution.ArtifactIdentit
 		deleteObject("kpack Image", obj)
 	}
 	return false, inventory, errors.Join(errs...)
+}
+
+// deleteArtifact deletes obj unless its deletion is already under way; an
+// object already gone is not an error.
+func deleteArtifact(ctx context.Context, cl client.Client, kind string, obj client.Object, options ...client.DeleteOption) error {
+	if !obj.GetDeletionTimestamp().IsZero() {
+		return nil
+	}
+	if err := cl.Delete(ctx, obj, options...); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("delete %s %s: %w", kind, obj.GetName(), err)
+	}
+	return nil
+}
+
+// PruneKpackRevisions deletes an App's kpack Images, service accounts and
+// credential Secrets from every build revision but keep. Each release builds
+// under its own revision, so without this they last as long as the App: every
+// build list grows with release history, and kpack rebuilds each Image whenever
+// its branch moves or the ClusterBuilder changes (w5/129). The caller has
+// stored keep's artifact, and a build runs to completion before the next
+// release dispatches (ADR060 §D1a), so every other revision is spent, including
+// an Image kpack is rebuilding on its own. kpack's Builds go with their Image,
+// their controller owner.
+func PruneKpackRevisions(ctx context.Context, cl client.Client, namespace string, identity execution.ArtifactIdentity, keep string) error {
+	if identity.UID == "" {
+		return errors.New("prune kpack revisions: empty App UID")
+	}
+	keep = kpackRevision(Options{Revision: keep})
+	sel := AppBuildSelector(identity.Name, identity.UID)
+	images, err := listKpackImages(ctx, cl, namespace, sel)
+	if err != nil {
+		return err
+	}
+	var secrets corev1.SecretList
+	var accounts corev1.ServiceAccountList
+	credentials := []client.ListOption{client.InNamespace(namespace), sel, client.HasLabels{kpackPurposeLabel}}
+	if err := cl.List(ctx, &secrets, credentials...); err != nil {
+		return fmt.Errorf("list kpack credential Secrets: %w", err)
+	}
+	if err := cl.List(ctx, &accounts, credentials...); err != nil {
+		return fmt.Errorf("list kpack service accounts: %w", err)
+	}
+	var errs []error
+	prune := func(kind string, obj client.Object) {
+		revision, ok := obj.GetLabels()[kpackRevisionLabel]
+		if !ok || revision == keep || !appArtifactOwned(identity, obj) {
+			return
+		}
+		if err := deleteArtifact(ctx, cl, kind, obj); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for i := range images {
+		prune("kpack Image", &images[i])
+	}
+	for i := range secrets.Items {
+		prune("Secret", &secrets.Items[i])
+	}
+	for i := range accounts.Items {
+		prune("ServiceAccount", &accounts.Items[i])
+	}
+	return errors.Join(errs...)
 }
 
 func inspectAppArtifacts(ctx context.Context, identity execution.ArtifactIdentity, namespace string, cl client.Client) (artifactObjects, []client.Object, []client.Object, error) {

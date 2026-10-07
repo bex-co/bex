@@ -1076,6 +1076,12 @@ func (r *AppReconciler) storeBuiltArtifact(ctx context.Context, app *appv1alpha1
 	if err := r.Status().Update(ctx, app); err != nil {
 		return "", ctrl.Result{}, true, err
 	}
+	// Earlier releases' kpack artifacts are spent once this one is stored. A
+	// failed prune is retried by the next stored build and swept with the App.
+	owner := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID)}
+	if err := build.PruneKpackRevisions(ctx, r.buildPlaneClient(), buildNs, owner, releaseBuildRevision(app)); err != nil {
+		logf.FromContext(ctx).Error(err, "prune earlier releases' kpack artifacts", "app", app.Name)
+	}
 	// Meter once per build, not once per reconcile: only the pass whose write
 	// above stored the artifact gets here. ObservedGeneration, the same gate the
 	// user-cancel counter uses (settleCanceledRelease), stays as a backstop.
@@ -1122,10 +1128,7 @@ func (r *AppReconciler) consumeClearCacheAnnotation(ctx context.Context, app *ap
 func (r *AppReconciler) deleteSiblingBuildJobs(ctx context.Context, app *appv1alpha1.App, buildNs, keepRevision string) error {
 	keep := build.JobName(app.Name, keepRevision)
 	var jobs batchv1.JobList
-	sel := client.MatchingLabels{"app.bex.co/build": app.Name}
-	if app.UID != "" {
-		sel[execution.LabelAppUID] = string(app.UID)
-	}
+	sel := build.AppBuildSelector(app.Name, string(app.UID))
 	if err := r.buildPlaneClient().List(ctx, &jobs, client.InNamespace(buildNs), sel); err != nil {
 		return err
 	}
