@@ -297,7 +297,7 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		activatePendingProjectionReferences(a)
 		s.bumpRestart(a)
 	} else {
-		stagePendingProjectionReferences(a, txn.originalApp, env, files, txn.env.changed, txn.files.changed)
+		stagePendingProjectionReferences(a, txn.originalApp, env, txn.env.changed, txn.files.changed)
 		if a.Annotations == nil {
 			a.Annotations = map[string]string{}
 		}
@@ -403,7 +403,7 @@ func (s *Service) projectCASEnv(ctx context.Context, service string, a *appv1alp
 	if snapshot.Version != ownerVersion || !maps.Equal(snapshot.Data, env) {
 		return ownership, envRevisionConflict()
 	}
-	projection, err := s.projectSource(ctx, a, envProjection, env, committedAt(ownerVersion), false)
+	projection, err := s.projectSource(ctx, a, envProjection, env, committedAt(ownerVersion))
 	ownership.ExistedBefore = projection.ExistedBefore
 	if err != nil {
 		return ownership, safeCASProjectionError(err)
@@ -443,7 +443,10 @@ func equalSecretData(data map[string][]byte, env map[string]string) bool {
 // status controller observes its notification, while the runtime controller
 // consumes the pending name only on the next release. Existing references stay
 // untouched, so updating a projected Secret never changes the pod template.
-func stagePendingProjectionReferences(a, original *appv1alpha1.App, env, files map[string]string, envChanged, filesChanged bool) {
+func stagePendingProjectionReferences(a, original *appv1alpha1.App, env map[string]string, envChanged, filesChanged bool) {
+	// projectFiles decided the mount from what the Secret holds, which a late
+	// write's own map does not tell (w5/106).
+	mountFiles := slices.Contains(a.Spec.FilesFromSecrets, filesSecretName(a.Name))
 	a.Spec.EnvFromSecret = original.Spec.EnvFromSecret
 	a.Spec.FilesFromSecrets = append([]string(nil), original.Spec.FilesFromSecrets...)
 	if a.Annotations == nil {
@@ -458,7 +461,7 @@ func stagePendingProjectionReferences(a, original *appv1alpha1.App, env, files m
 	}
 	if filesChanged {
 		name := filesSecretName(a.Name)
-		if !slices.Contains(original.Spec.FilesFromSecrets, name) && len(files) > 0 {
+		if !slices.Contains(original.Spec.FilesFromSecrets, name) && mountFiles {
 			a.Annotations[appv1alpha1.PendingFilesSecretAnnotation] = name
 		} else {
 			delete(a.Annotations, appv1alpha1.PendingFilesSecretAnnotation)
@@ -507,22 +510,17 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 	if txn.cas {
 		return s.compensateCASEnvironment(ctx, txn.service, app, txn.env.prior, txn.env.version, txn.casProjection)
 	}
-	envSecret, filesSecret := envSecretName(app.Name), filesSecretName(app.Name)
 	var compensation []error
 	superseded := false
 	for _, m := range []struct {
-		write      mapWrite
-		path       string
-		kind       projectionKind
-		label      string
-		referenced bool
-	}{{
-		write: txn.env, path: envPath(txn.service), kind: envProjection, label: "environment",
-		referenced: app.Spec.EnvFromSecret == envSecret || app.Annotations[appv1alpha1.PendingEnvSecretAnnotation] == envSecret,
-	}, {
-		write: txn.files, path: filesPath(txn.service), kind: filesProjection, label: "secret-file",
-		referenced: slices.Contains(app.Spec.FilesFromSecrets, filesSecret) || app.Annotations[appv1alpha1.PendingFilesSecretAnnotation] == filesSecret,
-	}} {
+		write mapWrite
+		path  string
+		kind  projectionKind
+		label string
+	}{
+		{write: txn.env, path: envPath(txn.service), kind: envProjection, label: "environment"},
+		{write: txn.files, path: filesPath(txn.service), kind: filesProjection, label: "secret-file"},
+	} {
 		if !m.write.changed {
 			continue
 		}
@@ -536,12 +534,10 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 			continue
 		}
 		// The restored map goes back at the revision its restore committed, so
-		// it cannot overwrite a projection a newer write landed since. Only a
-		// Secret this write created for an empty map is removed. The App this
-		// call read decides no more than that: a concurrent first write may
-		// have referenced the Secret since, and the restored map is its own.
-		remove := len(m.write.prior) == 0 && !m.referenced
-		if _, err := s.projectSource(ctx, app, m.kind, m.write.prior, committedAt(restored), remove); err != nil {
+		// it cannot overwrite a projection a newer write landed since. An empty
+		// one keeps its Secret, emptied, as the record a late projection loses
+		// to (w5/106).
+		if _, err := s.projectSource(ctx, app, m.kind, m.write.prior, committedAt(restored)); err != nil {
 			compensation = append(compensation, fmt.Errorf("restore %s projection: %w", m.label, err))
 		}
 	}

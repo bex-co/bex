@@ -72,13 +72,13 @@ func TestSecretFiles_RoundTripAndProjection(t *testing.T) {
 		t.Errorf("unknown file => \"secret file not found\" (w4/154), got %v", err)
 	}
 
-	// Deleting the last file removes the Secret and drops the mount reference.
+	// Deleting the last file empties the Secret, which stays as the record of
+	// its revision (w5/106), and drops the mount reference.
 	if err := svc.DeleteSecretFile(ctx, "web", "ca.pem"); err != nil {
 		t.Fatalf("DeleteSecretFile: %v", err)
 	}
-	var gone corev1.Secret
-	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &gone); !apierrors.IsNotFound(err) {
-		t.Errorf("<svc>-files Secret should be deleted once empty, got %v", err)
+	if data := secretData(t, svc.Client, "web-files"); len(data) != 0 {
+		t.Errorf("<svc>-files Secret should be empty once its last file goes, got %v", data)
 	}
 	app = getApp(t, svc.Client, "web")
 	if slices.Contains(app.Spec.FilesFromSecrets, "web-files") {
