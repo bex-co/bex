@@ -26,13 +26,10 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/rollout"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -273,31 +270,40 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 // finalizeEnvironmentPatch projects the changed maps onto the derived Secrets
 // and persists at most one App patch, staging or activating the projection
 // references per saveMode. Any failure compensates through txn.
+//
+// The App patch is locked (w5/m131, through rollApp), so its mutate can run
+// again on a re-read App. The env projection therefore runs once, before it:
+// its reference is only ever set, and a CAS projection retried after a later
+// env write would refuse a save the store already holds. The files projection
+// runs with each attempt, because it decides whether the files reference stays.
 func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.App, txn envPatchTxn, saveMode SaveMode, env, files map[string]string, result EnvironmentPatchResult) (EnvironmentPatchResult, error) {
-	before := rollout.Before(a)
-	base := client.MergeFrom(txn.originalApp)
 	if txn.env.changed {
 		var err error
 		if txn.cas {
-			txn.casProjection, err = s.projectCASEnv(ctx, txn.service, a, env, txn.env.version)
+			txn.casProjection, err = s.projectCASEnv(ctx, txn.service, a.DeepCopy(), env, txn.env.version)
 		} else {
-			err = s.projectEnv(ctx, a, env, committedAt(txn.env.version))
+			err = s.projectEnv(ctx, a.DeepCopy(), env, committedAt(txn.env.version))
 		}
 		if err != nil {
 			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
-	if txn.files.changed {
-		if err := s.projectFiles(ctx, a, files, committedAt(txn.files.version)); err != nil {
-			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
+	err := s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
+		read := a.DeepCopy()
+		if txn.env.changed {
+			a.Spec.EnvFromSecret = envSecretName(a.Name)
 		}
-	}
-	rolledOut := saveMode == SaveModeDeploy
-	if rolledOut {
-		activatePendingProjectionReferences(a)
-		s.bumpRestart(a)
-	} else {
-		stagePendingProjectionReferences(a, txn.originalApp, env, txn.env.changed, txn.files.changed)
+		if txn.files.changed {
+			if err := s.projectFiles(ctx, a, files, committedAt(txn.files.version)); err != nil {
+				return err
+			}
+		}
+		if saveMode == SaveModeDeploy {
+			activatePendingProjectionReferences(a)
+			s.bumpRestart(a)
+			return nil
+		}
+		stagePendingProjectionReferences(a, read, env, txn.env.changed, txn.files.changed)
 		if a.Annotations == nil {
 			a.Annotations = map[string]string{}
 		}
@@ -306,24 +312,17 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		// notification wakes only the operator's status reconciliation. Do not
 		// use a timestamp: consecutive saves can share a clock tick.
 		a.Annotations[appv1alpha1.AnnotationSavedConfigRevision] = rand.Text()
-	}
-	if apiequality.Semantic.DeepEqual(txn.originalApp, a) {
-		// No runtime identity changed. Effective Save-only writes always carry
-		// a fresh notification above; source no-ops return before finalization.
-		return result, nil
-	}
-	tracked := before.Stamp(a)
-	if err := s.Client.Patch(ctx, a, base); err != nil {
+		return nil
+	})
+	if err != nil {
 		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 	}
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbPatchEnvironment)
 	// save_only stages the projection references without touching release
-	// identity, so only the deploying mode opens a row — exactly the rollout the
-	// user just asked for, and nothing for the save they explicitly deferred.
-	if tracked {
-		s.Rollout.Open(ctx, before, a, store.TriggerConfigChange)
-	}
-	result.RolledOut = rolledOut
+	// identity, so only the deploying mode rolls out (and rollApp opens its
+	// deploy row) — exactly the rollout the user just asked for, and nothing for
+	// the save they explicitly deferred.
+	result.RolledOut = saveMode == SaveModeDeploy
 	return result, nil
 }
 

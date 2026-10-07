@@ -18,11 +18,20 @@ package rollout
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -87,5 +96,84 @@ func TestOpenKeepsEmptyCommitWithoutPrior(t *testing.T) {
 	got := ds.created[0]
 	if got.Commit != "" || got.CommitMessage != "" || got.CommitAuthorAt != nil {
 		t.Fatalf("commit = %+v, want empty CommitInfo for image-backed / no prior", got)
+	}
+}
+
+func lockedPatchFixture(t *testing.T, funcs interceptor.Funcs) (client.Client, *appv1alpha1.App) {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Labels: map[string]string{
+			store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-web",
+		}},
+		Spec: appv1alpha1.AppSpec{Image: "web:v1"},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithInterceptorFuncs(funcs).Build()
+	read := &appv1alpha1.App{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(app), read); err != nil {
+		t.Fatal(err)
+	}
+	return cl, read
+}
+
+// TestPatchLockedDecidesAgainAfterAConflict (w5/m131): a write that loses the
+// App race re-reads the App and runs its mutate again, so its patch lands on
+// what the winner left instead of overwriting it, and the rollout it requests
+// is recorded once.
+func TestPatchLockedDecidesAgainAfterAConflict(t *testing.T) {
+	cl, read := lockedPatchFixture(t, interceptor.Funcs{})
+	winner := read.DeepCopy()
+	winner.Spec.FilesFromSecrets = []string{"web-files"}
+	if err := cl.Update(context.Background(), winner); err != nil {
+		t.Fatal(err)
+	}
+	ds := &fakeDeployStore{}
+	var seen [][]string
+	err := (&Tracker{Store: ds}).PatchLocked(context.Background(), cl, read, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+		seen = append(seen, a.Spec.FilesFromSecrets)
+		a.Spec.FilesFromSecrets = append(a.Spec.FilesFromSecrets, "web-group-files")
+		a.Spec.RestartedAt = fmt.Sprintf("restart-%d", len(seen))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := &appv1alpha1.App{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(read), live); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 2 || len(seen[1]) != 1 || seen[1][0] != "web-files" {
+		t.Fatalf("mutate saw %v, want a second run on the winner's App", seen)
+	}
+	if got := live.Spec.FilesFromSecrets; len(got) != 2 || got[0] != "web-files" || live.Spec.RestartedAt != "restart-2" {
+		t.Fatalf("live App = %v %q, want the winner's reference kept and the retry's write", got, live.Spec.RestartedAt)
+	}
+	if len(ds.created) != 1 {
+		t.Fatalf("deploy rows = %d, want one for the patch that landed", len(ds.created))
+	}
+}
+
+// TestPatchLockedGivesUpUnderPersistentContention (w5/m131): a write that
+// keeps losing answers core.ErrConflict after lockedPatchAttempts tries, not
+// the raw Kubernetes conflict an API surface would report as an internal
+// error, and records no rollout.
+func TestPatchLockedGivesUpUnderPersistentContention(t *testing.T) {
+	cl, read := lockedPatchFixture(t, interceptor.Funcs{
+		Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+			return apierrors.NewConflict(schema.GroupResource{Group: "app.bex.co", Resource: "apps"}, "web", fmt.Errorf("changed"))
+		},
+	})
+	ds := &fakeDeployStore{}
+	runs := 0
+	err := (&Tracker{Store: ds}).PatchLocked(context.Background(), cl, read, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+		runs++
+		a.Spec.RestartedAt = "restart"
+		return nil
+	})
+	if !errors.Is(err, core.ErrConflict) || runs != lockedPatchAttempts || len(ds.created) != 0 {
+		t.Fatalf("err = %v after %d runs and %d rows, want the conflict after %d runs and no row", err, runs, len(ds.created), lockedPatchAttempts)
 	}
 }
