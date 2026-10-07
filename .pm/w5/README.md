@@ -106,9 +106,11 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **138** — [A new service's first build follows its branch, not the commit its deploy records](138.md) (~30m) ← found by w5/129's efficiency review
 - [ ] **139** — [A sandbox file transfer revoked mid-stream answers 503, not the exec stream's 403](139.md) (~30m) ← found by w5/131's quality review
 - [ ] **140** — [Two git-proxy tests read their captured log while the proxy may still be writing it](140.md) (~15m) ← found while verifying w5/131
-- [ ] **m133** — [A Blueprint apply updates only the services its plan names, inside the deploy's workspace](m133/README.md) (7 tasks) ← found by w5/132's reviews: an MCP or ownerless REST deploy by a multi-workspace member patched another workspace's same-named service, and a manifest name matched a service's displayed name
+- [x] **m133** — [A Blueprint apply updates only the services its plan names, inside the deploy's workspace](done/m133/README.md) (7 tasks; 4h total) ← found by w5/132's reviews — **DONE 2026-10-07**: the plan and the apply resolve a declared service the same way: in the deploy's own workspace, by the name the manifest declares, from one listing. An ownerless deploy (MCP `deploy`) by a member of two workspaces no longer patches the other workspace's same-named service, a manifest name no longer matches a displayed name, and a service still only in the shared namespace is planned as the update the apply makes. Env-group links, seeds and maintenance mode reach the App the apply wrote. App lists per apply fell about 75%. Follow-ups: w5/142, w5/143, w5/144.
 - [ ] **141** — [A Blueprint create lists each declared kind twice after its apply](141.md) (~30m) ← found by w5/132's efficiency review
 - [ ] **142** — [Each new service with domains lists every App on the platform during a Blueprint apply](142.md) (~45m) ← found by w5/132's efficiency review
+- [ ] **143** — [A Blueprint apply links a new service's env groups twice](143.md) (~30m) ← found by w5/m133's efficiency review
+- [ ] **144** — [An App without a service-name label still reaches a Blueprint apply's env and maintenance verbs by name](144.md) (~30m) ← found by w5/m133's quality review
 
 ## Approved queue — 2026-10-01
 
