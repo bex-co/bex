@@ -115,6 +115,35 @@ func (s *PGStore) TenantOwnerSubject(ctx context.Context, tenantID string) (stri
 	return *owner, nil
 }
 
+// TenantContactSubjects returns, for each of tenantIDs, the subject whose email
+// is the workspace's contact: its owner binding when set, else its oldest user
+// admin, ties broken by subject (w5/126). One query serves a whole list.
+// Unknown ids and workspaces with neither are absent.
+func (s *PGStore) TenantContactSubjects(ctx context.Context, tenantIDs []string) (map[string]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT t.id, COALESCE(NULLIF(t.owner_identity_id, ''), (
+			SELECT m.subject FROM tenant_members m
+			WHERE m.tenant_id = t.id AND m.kind = 'user' AND m.role = 'admin'
+			ORDER BY m.created_at, m.subject LIMIT 1))
+		FROM tenants t WHERE t.id = ANY($1)`, tenantIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]string, len(tenantIDs))
+	for rows.Next() {
+		var id string
+		var subject *string
+		if err := rows.Scan(&id, &subject); err != nil {
+			return nil, err
+		}
+		if subject != nil {
+			out[id] = *subject
+		}
+	}
+	return out, rows.Err()
+}
+
 // GetTenant reads one tenant by id (ErrNotFound when absent).
 func (s *PGStore) GetTenant(ctx context.Context, id string) (Tenant, error) {
 	var t Tenant

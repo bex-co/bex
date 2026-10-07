@@ -27,6 +27,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/mail"
 	"slices"
 	"strings"
@@ -168,10 +169,9 @@ type WorkspaceStore interface {
 	DeleteTenant(ctx context.Context, id string) error
 	ListTenantsForSubject(ctx context.Context, subject string) ([]store.Tenant, error)
 	ListTenantMembers(ctx context.Context, tenantID string) ([]store.TenantMember, error)
-	// TenantOwnerSubject is the workspace's onboarding owner binding, "" when
-	// unset — what ownerEmail resolves before falling back to the oldest admin
-	// (w5/m103).
-	TenantOwnerSubject(ctx context.Context, tenantID string) (string, error)
+	// TenantContactSubjects answers each workspace's contact subject: its
+	// owner binding, else its oldest user admin (w5/m103, w5/126).
+	TenantContactSubjects(ctx context.Context, tenantIDs []string) (map[string]string, error)
 	// ListInvites returns a workspace's OUTSTANDING invites (unaccepted,
 	// unexpired) — the seats ChangePlan's downgrade guards must count alongside
 	// the members, since each one becomes a member on its recipient's next login.
@@ -658,8 +658,8 @@ type UserView struct {
 // gate's ClientID stamp, no probing — resolves through the key's created-by
 // binding (KeyOwners, w4/m25) to the human who minted it. A key with no
 // resolvable owning human (minted before the created-by stamp, or a
-// service-account-style key) degrades to the bound workspace's earliest-admin
-// email with no name and no fabricated id — the documented honest subset. No
+// service-account-style key) degrades to the bound workspace's contact email
+// (ownerEmails) with no name and no fabricated id — the documented honest subset. No
 // GraphQL/MCP equivalent: the dashboard authenticates with its Kratos session
 // directly rather than this REST-only endpoint, and no MCP tool needs "who am I".
 func (s *Service) CurrentUser(ctx context.Context) (UserView, error) {
@@ -714,12 +714,19 @@ func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, e
 	if err != nil {
 		return nil, err
 	}
-	out := make([]OwnerView, 0, len(ws))
+	named := make([]WorkspaceView, 0, len(ws))
+	ids := make([]string, 0, len(ws))
 	for _, w := range ws {
 		if len(f.Names) > 0 && !slices.Contains(f.Names, w.Name) {
 			continue
 		}
-		email := s.ownerEmail(ctx, w.ID)
+		named = append(named, w)
+		ids = append(ids, w.ID)
+	}
+	emails := s.ownerEmails(ctx, ids)
+	out := make([]OwnerView, 0, len(named))
+	for _, w := range named {
+		email := emails[w.ID]
 		if len(f.Emails) > 0 && !slices.Contains(f.Emails, email) {
 			continue
 		}
@@ -733,8 +740,7 @@ func (s *Service) ListOwners(ctx context.Context, f OwnerFilter) ([]OwnerView, e
 // membership-scoped workspace query resolves every unique id in a list
 // response; an id absent from that result is omitted, so a resource adapter
 // can never use this seam to reveal another workspace. Email remains
-// best-effort and is looked up once per unique workspace, not once per
-// resource.
+// best-effort, resolved for every workspace in the response at once.
 func (s *Service) ResolveResourceOwners(ctx context.Context, ownerIDs []string) map[string]resourcemeta.Owner {
 	if s.Store == nil || len(ownerIDs) == 0 {
 		return nil
@@ -756,19 +762,29 @@ func (s *Service) ResolveResourceOwners(ctx context.Context, ownerIDs []string) 
 	if err != nil {
 		return nil
 	}
-	out := make(map[string]resourcemeta.Owner, len(wanted))
+	tenants = slices.DeleteFunc(tenants, func(tenant store.Tenant) bool {
+		_, ok := wanted[tenant.ID]
+		return !ok
+	})
+	ids := make([]string, len(tenants))
+	for i, tenant := range tenants {
+		ids[i] = tenant.ID
+	}
+	emails := s.ownerEmails(ctx, ids)
+	out := make(map[string]resourcemeta.Owner, len(tenants))
 	for _, tenant := range tenants {
-		if _, ok := wanted[tenant.ID]; !ok {
-			continue
-		}
-		out[tenant.ID] = resourcemeta.Owner{
-			ID: tenant.ID, Name: tenant.Name, Email: s.ownerEmail(ctx, tenant.ID), Type: "team",
-		}
+		out[tenant.ID] = resourcemeta.Owner{ID: tenant.ID, Name: tenant.Name, Email: emails[tenant.ID], Type: "team"}
 	}
 	return out
 }
 
-// ownerEmail resolves the workspace's contact email.
+// ownerEmail is ownerEmails for one workspace.
+func (s *Service) ownerEmail(ctx context.Context, tenantID string) string {
+	return s.ownerEmails(ctx, []string{tenantID})[tenantID]
+}
+
+// ownerEmails resolves each workspace's contact email, with one store read and
+// one identity lookup for the whole list (w5/126).
 //
 // It follows the OWNER BINDING first (w5/m103): tenants.owner_identity_id is
 // the subject onboarding minted the workspace for, and it is the only thing in
@@ -782,35 +798,26 @@ func (s *Service) ResolveResourceOwners(ctx context.Context, ownerIDs []string) 
 // first-login onboarding). That is a contact address, not a claim of ownership,
 // and it is the only case where one is guessed.
 //
-// Best-effort throughout: "" when Identities is nil, the reads fail, or the
-// lookup misses (the honest subset IdentityReader documents).
-func (s *Service) ownerEmail(ctx context.Context, tenantID string) string {
-	if s.Identities == nil || s.Store == nil {
-		return ""
+// Best-effort throughout: a workspace is absent when Identities is nil, the
+// read fails, or the lookup misses (the honest subset IdentityReader
+// documents). A bound owner whose identity does not resolve is absent too:
+// naming the oldest admin instead would claim somebody else owns it.
+func (s *Service) ownerEmails(ctx context.Context, tenantIDs []string) map[string]string {
+	if s.Identities == nil || s.Store == nil || len(tenantIDs) == 0 {
+		return nil
 	}
-	if owner, err := s.Store.TenantOwnerSubject(ctx, tenantID); err == nil && owner != "" {
-		if attrs, ok := s.Identities.Lookup(ctx, owner); ok {
-			return attrs.Email
+	contacts, err := s.Store.TenantContactSubjects(ctx, tenantIDs)
+	if err != nil || len(contacts) == 0 {
+		return nil
+	}
+	identities := s.Identities.LookupMany(ctx, slices.Collect(maps.Values(contacts)))
+	emails := make(map[string]string, len(contacts))
+	for tenantID, subject := range contacts {
+		if attrs, ok := identities[subject]; ok {
+			emails[tenantID] = attrs.Email
 		}
-		// The workspace HAS an owner whose identity did not resolve. Falling
-		// through to the oldest admin here would name somebody who is not the
-		// owner as if they were — exactly the substitution this fixes.
-		return ""
 	}
-	members, err := s.Store.ListTenantMembers(ctx, tenantID)
-	if err != nil {
-		return ""
-	}
-	for _, m := range members { // oldest first
-		if m.Role != "admin" {
-			continue
-		}
-		if attrs, ok := s.Identities.Lookup(ctx, m.Subject); ok {
-			return attrs.Email
-		}
-		return ""
-	}
-	return ""
+	return emails
 }
 
 // MemberView is a workspace member with the identity attributes Render's
