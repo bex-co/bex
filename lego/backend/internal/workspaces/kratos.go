@@ -90,9 +90,13 @@ type kratosIdentity struct {
 // (not found, admin API unreachable, bad response) — the honest-omit contract
 // IdentityReader documents; a Kratos outage degrades the owners/members
 // responses (fields missing) rather than failing the request.
+//
+// Only the webauthn credential is included. Kratos v26.2.0 (chart 0.62.1) lists
+// every credential type, with config only for the included ones, so a TOTP
+// enrollment shows without its config, which holds the secret (w5/127).
 func (k *KratosIdentities) Lookup(ctx context.Context, subject string) (IdentityAttrs, bool) {
 	var id kratosIdentity
-	if !k.get(ctx, "/admin/identities/"+url.PathEscape(subject)+"?include_credential=totp&include_credential=webauthn", &id) {
+	if !k.get(ctx, "/admin/identities/"+url.PathEscape(subject)+"?include_credential=webauthn", &id) {
 		return IdentityAttrs{}, false
 	}
 	return id.attrs(), true
@@ -103,8 +107,9 @@ func (k *KratosIdentities) Lookup(ctx context.Context, subject string) (Identity
 const kratosBatchSize = 100
 
 // LookupMany resolves many identities with one admin request per
-// kratosBatchSize subjects (w5/116), with the same credential includes as
-// Lookup. It returns the subjects that resolved, keyed as asked. A subject
+// kratosBatchSize subjects (w5/116), with the same credential include as
+// Lookup. This list endpoint lists credentials only when one is included, so
+// the webauthn include also keeps TOTP enrollments visible. It returns the subjects that resolved, keyed as asked. A subject
 // Kratos does not know is absent, and so is one that is not a UUID, such as a
 // named platform client (bex-bootstrap), which is never sent: Kratos refuses a
 // whole batch over one malformed id. A failed batch leaves its subjects absent
@@ -127,7 +132,7 @@ func (k *KratosIdentities) LookupMany(ctx context.Context, subjects []string) ma
 	for batch := range slices.Chunk(ids, kratosBatchSize) {
 		query := url.Values{
 			"ids":                batch,
-			"include_credential": {"totp", "webauthn"},
+			"include_credential": {"webauthn"},
 			"page_size":          {strconv.Itoa(len(batch))},
 		}
 		var found []kratosIdentity
