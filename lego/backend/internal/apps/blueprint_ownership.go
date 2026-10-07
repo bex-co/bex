@@ -114,16 +114,15 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string
 	}
 
 	if len(st.services) > 0 {
-		// Cluster-wide and label-scoped (the DatastoreListOptions shape): a
-		// workspace's resources may straddle the shared and per-tenant
-		// namespaces.
-		var apps appv1alpha1.AppList
-		if err := s.Client.List(ctx, &apps, client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
+		// A workspace's Apps may straddle the shared and its own namespace; a
+		// stale twin's label must not decide the owner.
+		apps, err := s.listWorkspaceApps(ctx, tenantID)
+		if err != nil {
 			return nil, err
 		}
 		byName := map[string]string{}
-		for i := range apps.Items {
-			byName[core.AppPublicName(&apps.Items[i])] = apps.Items[i].Labels[core.LabelBlueprint]
+		for name, app := range apps {
+			byName[name] = app.Labels[core.LabelBlueprint]
 		}
 		for _, svc := range st.services {
 			record(store.BlueprintClaimService, svc.req.Name, byName[svc.req.Name])

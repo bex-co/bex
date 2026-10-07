@@ -657,6 +657,26 @@ func (s *Service) listWorkspaceDatabases(ctx context.Context, tenantID string) (
 	return list, nil
 }
 
+// listWorkspaceApps lists a workspace's Apps the way listWorkspaceDatabases
+// lists its Databases, keyed by public name. Of a legacy bare-named App and
+// its store-managed twin, the copy in the workspace's own namespace answers,
+// else the first listed: the rule store's projector applies (w5/125).
+func (s *Service) listWorkspaceApps(ctx context.Context, tenantID string) (map[string]*appv1alpha1.App, error) {
+	var apps appv1alpha1.AppList
+	if err := s.ListByTenant(ctx, &apps, tenantID); err != nil {
+		return nil, err
+	}
+	byName := make(map[string]*appv1alpha1.App, len(apps.Items))
+	for i := range apps.Items {
+		app := &apps.Items[i]
+		name := core.AppPublicName(app)
+		if seen, twin := byName[name]; !twin || (!core.AppInOwnWorkspaceNamespace(seen) && core.AppInOwnWorkspaceNamespace(app)) {
+			byName[name] = app
+		}
+	}
+	return byName, nil
+}
+
 // listWorkspaceKeyValues is listWorkspaceDatabases' KeyValue twin.
 func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (*appv1alpha1.KeyValueList, error) {
 	list := &appv1alpha1.KeyValueList{}

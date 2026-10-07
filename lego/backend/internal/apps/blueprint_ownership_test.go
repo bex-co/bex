@@ -411,6 +411,22 @@ databases:
 	}
 }
 
+// TestAnOwnershipCheckReadsAnAppTwinsLiveCopy (w5/125): a stale twin in the
+// shared namespace still carries the Blueprint label it had before the
+// cutover. With no claim row, the ownership check falls back to the label of
+// the live copy, so the stale one cannot report a conflict. The shared
+// namespace sorts after the workspace's, so the stale copy lists last.
+func TestAnOwnershipCheckReadsAnAppTwinsLiveCopy(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", Labels: map[string]string{core.LabelTenant: "tea-a", core.LabelBlueprint: "blp-a"}}},
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "workloads", Labels: map[string]string{core.LabelTenant: "tea-a", core.LabelBlueprint: "blp-old"}}},
+	), Namespace: "workloads"}}
+	conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "blp-a", parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}, &datastoreSnapshot{s: svc, tenantID: "tea-a"})
+	if err != nil || len(conflicts) != 0 {
+		t.Fatalf("conflicts = %+v, %v; want none, as the live copy is blp-a's", conflicts, err)
+	}
+}
+
 // TestAServicesOnlyApplyListsNoDatastores (w5/114): the post-write ownership
 // stamp lists a datastore kind only when the manifest declares one.
 func TestAServicesOnlyApplyListsNoDatastores(t *testing.T) {

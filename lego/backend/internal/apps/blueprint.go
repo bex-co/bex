@@ -33,8 +33,6 @@ import (
 	"strings"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
@@ -1767,48 +1765,42 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 	}
 
 	tenantID := b.TenantID
-	ns := s.AppNamespace(tenantID)
-	opts := []client.ListOption{
-		client.InNamespace(ns),
-		client.MatchingLabels{core.LabelTenant: tenantID},
+	declared := map[BlueprintResourceKind]bool{}
+	for _, resource := range ir.Resources {
+		declared[resource.Kind] = true
 	}
-
 	appByName := map[string]*appv1alpha1.App{}
 	dbByName := map[string]*appv1alpha1.Database{}
 	keyValueByName := map[string]*appv1alpha1.KeyValue{}
+	// Each kind the manifest declares is listed as the apply lists it, by
+	// tenant label across namespaces, since a workspace's resources may still
+	// sit in the shared namespace (ADR043 D8, w5/125). A failed list leaves its
+	// kind unreported.
 	if s.Client != nil {
-		var appList appv1alpha1.AppList
-		if err := s.Client.List(ctx, &appList, opts...); err == nil {
-			for i := range appList.Items {
-				a := &appList.Items[i]
-				appByName[core.AppPublicName(a)] = a
+		if declared[BlueprintResourceService] {
+			if apps, err := s.listWorkspaceApps(ctx, tenantID); err == nil {
+				appByName = apps
 			}
 		}
-
-		var dbList appv1alpha1.DatabaseList
-		if err := s.Client.List(ctx, &dbList, opts...); err == nil {
-			for i := range dbList.Items {
-				d := &dbList.Items[i]
-				dbByName[d.Spec.Name] = d
+		if declared[BlueprintResourcePostgres] {
+			if dbList, err := s.listWorkspaceDatabases(ctx, tenantID); err == nil {
+				for i := range dbList.Items {
+					d := &dbList.Items[i]
+					dbByName[d.Spec.Name] = d
+				}
 			}
 		}
-		var keyValueList appv1alpha1.KeyValueList
-		if err := s.Client.List(ctx, &keyValueList, opts...); err == nil {
-			for i := range keyValueList.Items {
-				kv := &keyValueList.Items[i]
-				keyValueByName[kv.Spec.Name] = kv
+		if declared[BlueprintResourceKeyValue] {
+			if keyValueList, err := s.listWorkspaceKeyValues(ctx, tenantID); err == nil {
+				for i := range keyValueList.Items {
+					kv := &keyValueList.Items[i]
+					keyValueByName[kv.Spec.Name] = kv
+				}
 			}
 		}
 	}
 	envGroupByName := map[string]string{}
-	hasEnvGroups := false
-	for _, resource := range ir.Resources {
-		if resource.Kind == BlueprintResourceEnvVarGroup {
-			hasEnvGroups = true
-			break
-		}
-	}
-	if hasEnvGroups && s.EnvGroups != nil {
+	if declared[BlueprintResourceEnvVarGroup] && s.EnvGroups != nil {
 		if groups, err := s.EnvGroups.GroupIDsByName(ctx); err == nil {
 			envGroupByName = groups
 		}
