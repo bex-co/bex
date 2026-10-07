@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -64,8 +65,10 @@ func TestACreateTakesOverItsDeletedNamesakesSecret(t *testing.T) {
 
 // TestACreateRefusesASecretAnotherServiceHolds (w5/128): a Secret a live App
 // controls, or one another create prepared and has not adopted yet, refuses
-// the create with a conflict, not a 500. The Secret is left as it was, and the
-// store write is rolled back.
+// the create with a conflict, not a 500. The Secret is left as it was, and so
+// is the holder's store map: the refused create used to write over it and
+// then delete it, leaving the holder's Secret with no source of truth
+// (w5/134).
 func TestACreateRefusesASecretAnotherServiceHolds(t *testing.T) {
 	live := sampleApp("web")
 	theirs := map[string]string{"theirs": "x"}
@@ -84,6 +87,7 @@ func TestACreateRefusesASecretAnotherServiceHolds(t *testing.T) {
 	} {
 		t.Run(holder, func(t *testing.T) {
 			store := newFakeSecretStore()
+			store.m[filesPath("web")] = map[string]string{"theirs": "x"}
 			svc := newService(store, objs...)
 			err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"), []core.SecretFile{{Name: "token", Content: "new"}}, nil)
 			if !errors.Is(err, core.ErrConflict) {
@@ -92,10 +96,86 @@ func TestACreateRefusesASecretAnotherServiceHolds(t *testing.T) {
 			if sec := getSecret(t, svc.Client, "web-files"); string(sec.Data["theirs"]) != "x" || len(sec.Data) != 1 {
 				t.Errorf("the held Secret changed: files %v", keysOf(sec.Data))
 			}
-			if _, ok := store.m[filesPath("web")]; ok {
-				t.Error("the refused create left its files in the store")
+			if got := store.m[filesPath("web")]; len(got) != 1 || got["theirs"] != "x" {
+				t.Errorf("the refused create changed the holder's store map: %v", got)
 			}
 		})
+	}
+}
+
+// TestAFailedPrepareReleasesTheName (w5/134): prepare claims the name with its
+// Secret, then writes the store and stamps the revision it committed. When the
+// write or the stamp fails, both halves go, so a retry can create the service.
+func TestAFailedPrepareReleasesTheName(t *testing.T) {
+	refused := errors.New("refused")
+	for name, setup := range map[string]func() (core.SecretKV, func(*Service), map[string]map[string]string){
+		"store write": func() (core.SecretKV, func(*Service), map[string]map[string]string) {
+			store := newFakeSecretStore()
+			store.failPut = refused
+			return store, func(*Service) {}, store.m
+		},
+		"versioned store write": func() (core.SecretKV, func(*Service), map[string]map[string]string) {
+			store := newVersionedFakeSecretStore()
+			store.failCASCall = 1
+			return store, func(*Service) {}, store.m
+		},
+		"revision stamp": func() (core.SecretKV, func(*Service), map[string]map[string]string) {
+			store := newVersionedFakeSecretStore()
+			return store, func(svc *Service) {
+				svc.Client = interceptor.NewClient(svc.Client.(client.WithWatch), interceptor.Funcs{
+					Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+						return refused
+					},
+				})
+			}, store.m
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			store, wire, maps := setup()
+			svc := newService(store)
+			wire(svc)
+			if err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(ctx, "web", sampleApp("web"), []core.SecretFile{{Name: "token", Content: "new"}}, nil); err == nil {
+				t.Fatal("prepare succeeded")
+			}
+			if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+				t.Errorf("the failed prepare kept its claim on the name: %v", err)
+			}
+			if _, ok := maps[filesPath("web")]; ok {
+				t.Error("the failed prepare left its map in the store")
+			}
+		})
+	}
+}
+
+// claimCheckingStore records, at each store delete, whether the files Secret
+// still held the name.
+type claimCheckingStore struct {
+	*fakeSecretStore
+	cl           client.Client
+	heldAtDelete []bool
+}
+
+func (c *claimCheckingStore) Delete(ctx context.Context, path string) error {
+	c.heldAtDelete = append(c.heldAtDelete, c.cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}) == nil)
+	return c.fakeSecretStore.Delete(ctx, path)
+}
+
+// TestAnAbortDeletesTheMapWhileStillHoldingTheName (w5/134): an abort released
+// the name before it deleted the store map, so a create that claimed the name
+// in between could have its fresh map deleted. The map now goes first.
+func TestAnAbortDeletesTheMapWhileStillHoldingTheName(t *testing.T) {
+	live := sampleApp("web")
+	store := &claimCheckingStore{fakeSecretStore: newFakeSecretStore()}
+	svc := newService(store, live, predecessorSecret(envProjection, live.UID, map[string]string{"THEIRS": "x"}))
+	store.cl = svc.Client
+	err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"),
+		[]core.SecretFile{{Name: "token", Content: "new"}}, map[string]string{"MESSAGE": "new"})
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("prepare = %v, want the env leg's conflict", err)
+	}
+	if len(store.heldAtDelete) != 1 || !store.heldAtDelete[0] {
+		t.Fatalf("the files leg's map was deleted with the name held = %v, want held", store.heldAtDelete)
 	}
 }
 
@@ -107,11 +187,14 @@ func (failingDeletes) Delete(context.Context, string) error {
 }
 
 // TestARefusedCreateHidesItsRollbackFailure (w5/128): the refusal is the
-// caller's whole answer. A rollback that fails is logged, never joined into it,
-// since its text names the store's internal address.
+// caller's whole answer. An env leg refused after the files leg wrote rolls
+// the files leg back; a rollback that fails is logged, never joined into the
+// answer, since its text names the store's internal address.
 func TestARefusedCreateHidesItsRollbackFailure(t *testing.T) {
-	svc := newService(failingDeletes{newFakeSecretStore()}, projectedSecret(filesProjection, committedAt(1), map[string]string{"theirs": "x"}))
-	err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"), []core.SecretFile{{Name: "token", Content: "new"}}, nil)
+	live := sampleApp("web")
+	svc := newService(failingDeletes{newFakeSecretStore()}, live, predecessorSecret(envProjection, live.UID, map[string]string{"THEIRS": "x"}))
+	err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"),
+		[]core.SecretFile{{Name: "token", Content: "new"}}, map[string]string{"MESSAGE": "new"})
 	if !errors.Is(err, core.ErrConflict) || err.Error() != errSecretNameHeld.Error() {
 		t.Fatalf("prepare = %q, want the refusal alone", err)
 	}
