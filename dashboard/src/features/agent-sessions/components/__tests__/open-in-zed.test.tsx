@@ -6,6 +6,7 @@ import { ApolloProvider } from "@apollo/client/react";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import type { HasSSHKeyState } from "@/features/ssh-keys/hooks/use-has-ssh-key";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 // The header's back link uses the router; the Connect control doesn't, so a
 // stub Link keeps the render provider-free.
@@ -50,43 +51,15 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
 }));
 
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
-  return {
+  return agentSessionView({
     id: "ags-1",
-    ownerId: "tea-1",
-    repo: "acme/widgets",
-    branch: "bex-agent/fix",
-    agentConfig: {
-      agent: "claude",
-      model: null,
-      modelEndpoint: null,
-      task: "do the thing",
-      template: null,
-    },
+    task: "do the thing",
     sandboxId: "os-x",
     sshAddress: "ags-1@ssh.bex.co",
-    phase: "running",
     status: "working",
-    headSha: null,
-    prUrl: null,
-    prNumber: null,
     turns: 1,
-    deliveryMode: null,
-    failureReason: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    canceledAt: null,
-    pinned: false,
-    snapshotBytes: 0,
-    hibernatedAt: null,
-    retainUntil: null,
-    archivedAt: null,
-    isHibernated: false,
-    isArchived: false,
-    isFinished: false,
-    isTerminal: false,
-    isSteerable: false,
     ...over,
-  };
+  });
 }
 
 function renderHeader(session: AgentSessionView) {

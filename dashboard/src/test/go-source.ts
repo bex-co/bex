@@ -19,6 +19,16 @@ export function goReasonConstants(): Map<string, string> {
   );
 }
 
+/** The value of the Go string constant `name` declared in the file at path. */
+export function goStringConstant(path: string, name: string): string {
+  const source = readFileSync(`${REPO_ROOT}/${path}`, "utf8");
+  const value = source.match(
+    new RegExp(`^\\s*(?:const\\s+)?${name}\\s*=\\s*"([^"]*)"`, "m"),
+  )?.[1];
+  if (value === undefined) throw new Error(`${path} declares no ${name}`);
+  return value;
+}
+
 /**
  * A Go `var <name> = map[string]string{appv1alpha1.ReasonFoo: "…"}` in the
  * file at path: reason constant name → sentence.

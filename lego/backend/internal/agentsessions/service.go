@@ -44,7 +44,7 @@ const ticketTTL = 90 * time.Second
 type Store interface {
 	CreateAgentSession(context.Context, store.AgentSession) (store.AgentSession, error)
 	ListAgentDispatchesDue(context.Context, time.Time) ([]store.AgentDispatch, error)
-	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, string) (store.TerminalTurnFact, error)
+	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, store.AgentSessionFailure) (store.TerminalTurnFact, error)
 	DeferAgentDispatchCleanup(context.Context, store.AgentDispatch, time.Time) error
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
 	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
@@ -550,21 +550,21 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		// unreadable cross-origin), which hid a real create failure during the
 		// w3/m43 live E2E. Never logs the model placeholder or any env value.
 		log.Printf("agent-session dispatch: sandbox create failed (session=%s repo=%s): %v", record.ID, record.Repo, err)
-		// Record a distinct reason for a plan-limit refusal so the dashboard can
-		// offer an upgrade action instead of a dead-end retry (the common local /
-		// free-tier failure: too many live sandboxes for the workspace's quota).
-		reason := "sandbox create failed"
+		// Record a plan-limit refusal with its code so the dashboard can offer an
+		// upgrade action instead of a dead-end retry (the common local / free-tier
+		// failure: too many live sandboxes for the workspace's quota).
+		failure := store.AgentSessionFailure{Reason: "sandbox create failed"}
 		if sandbox.IsCapacityLimit(err) {
-			reason = sandbox.CapacityFailureReason
+			failure = store.AgentSessionFailure{Reason: sandbox.CapacityFailureReason, Code: sandbox.CodeSandboxCapacityLimit}
 		}
-		s.abandonDispatch(ctx, record, spec.turn, reason)
+		s.abandonDispatch(ctx, record, spec.turn, failure)
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox provisioning failed")
 		return store.AgentSession{}, err
 	}
 	s.Metrics.observeProvision(provisionRunning, time.Since(provisionStart))
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
-		s.abandonDispatch(ctx, record, spec.turn, "egress phase transition failed")
+		s.abandonDispatch(ctx, record, spec.turn, store.AgentSessionFailure{Reason: "egress phase transition failed"})
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox egress transition failed")
 		return store.AgentSession{}, err
 	}
@@ -577,7 +577,7 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	// the just-created sandbox back down rather than orphan it.
 	bound, err := s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery, spec.turn)
 	if err != nil {
-		s.abandonDispatch(ctx, record, spec.turn, "sandbox dispatch record failed")
+		s.abandonDispatch(ctx, record, spec.turn, store.AgentSessionFailure{Reason: "sandbox dispatch record failed"})
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox dispatch record failed")
 		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
@@ -1683,7 +1683,8 @@ func viewOf(record store.AgentSession) (View, error) {
 	return View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
 		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber, Evidence: evidence,
-		Turns: record.Turns, DeliveryMode: record.DeliveryMode, FailureReason: record.FailureReason,
+		Turns: record.Turns, DeliveryMode: record.DeliveryMode,
+		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
 		Pinned: record.Pinned, SnapshotBytes: record.SnapshotBytes,
 		HibernatedAt: record.HibernatedAt, RetainUntil: record.RetainUntil,

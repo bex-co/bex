@@ -3,6 +3,7 @@ import {
   agentSessionDurationMs,
   agentSessionStatusPhraseKey,
   isSandboxCapacityFailure,
+  SANDBOX_CAPACITY_LIMIT,
   isSteerablePhase,
   isTerminalPhase,
   toAgentSessionTicket,
@@ -13,6 +14,8 @@ import type {
   AgentSessionMintFieldsFragment,
 } from "@/graphql/definitions";
 import type { AgentSessionPhase } from "@/features/agent-sessions/types";
+import { goStringConstant } from "@/test/go-source";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 const ALL_PHASES: AgentSessionPhase[] = [
   "creating",
@@ -52,6 +55,7 @@ function wire(
     turns: 0,
     deliveryMode: null,
     failureReason: null,
+    failureReasonCode: null,
     createdAt: "2026-08-02T00:00:00.000Z",
     updatedAt: "2026-08-02T00:00:00.000Z",
     canceledAt: null,
@@ -93,6 +97,8 @@ describe("toAgentSessionView", () => {
         prNumber: 7,
         turns: 3,
         deliveryMode: "redispatch",
+        failureReason: "the workspace is at its sandbox limit",
+        failureReasonCode: "SANDBOX_CAPACITY_LIMIT",
         agentConfig: {
           __typename: "AgentSessionConfig",
           agent: "gemini",
@@ -116,6 +122,8 @@ describe("toAgentSessionView", () => {
       prNumber: 7,
       turns: 3,
       deliveryMode: "redispatch",
+      failureReason: "the workspace is at its sandbox limit",
+      failureReasonCode: "SANDBOX_CAPACITY_LIMIT",
       isTerminal: true,
       isSteerable: true,
     });
@@ -129,9 +137,12 @@ describe("toAgentSessionView", () => {
   });
 
   it("normalizes null/absent optionals to their defaults", () => {
-    const view = toAgentSessionView(wire({ turns: null }));
+    const view = toAgentSessionView(
+      wire({ turns: null, failureReasonCode: undefined }),
+    );
     expect(view.turns).toBe(0);
     expect(view.deliveryMode).toBeNull();
+    expect(view.failureReasonCode).toBeNull();
     expect(view.isTerminal).toBe(false); // phase "running"
     expect(view.isSteerable).toBe(false);
   });
@@ -254,30 +265,45 @@ describe("agentSessionStatusPhraseKey", () => {
 });
 
 describe("isSandboxCapacityFailure", () => {
-  const failed = (over: { failureReason?: string | null; status?: string }) => ({
-    phase: "failed" as const,
-    failureReason: over.failureReason ?? null,
-    status: over.status ?? "",
-  });
-
-  it("detects the capacity reason on the lifecycle status", () => {
-    expect(isSandboxCapacityFailure(failed({ status: "sandbox capacity reached" }))).toBe(true);
-  });
-
-  it("detects it on failureReason too, case-insensitively", () => {
+  it("decides by the code, whatever the sentence says", () => {
     expect(
-      isSandboxCapacityFailure(failed({ failureReason: "Sandbox Capacity Reached" })),
+      isSandboxCapacityFailure(
+        agentSessionView({
+          phase: "failed",
+          failureReason: "the workspace is at its sandbox limit",
+          failureReasonCode: SANDBOX_CAPACITY_LIMIT,
+        }),
+      ),
     ).toBe(true);
   });
 
-  it("is false for other failures", () => {
-    expect(isSandboxCapacityFailure(failed({ status: "sandbox create failed" }))).toBe(false);
-    expect(isSandboxCapacityFailure(failed({ failureReason: "agent turn failed" }))).toBe(false);
+  it("uses bex-api's capacity code", () => {
+    expect(SANDBOX_CAPACITY_LIMIT).toBe(
+      goStringConstant(
+        "lego/backend/internal/sandbox/service.go",
+        "CodeSandboxCapacityLimit",
+      ),
+    );
+  });
+
+  it("is false for a failure without the code, even one that mentions capacity", () => {
+    expect(
+      isSandboxCapacityFailure(
+        agentSessionView({
+          phase: "failed",
+          failureReason: "sandbox capacity reached",
+          status: "sandbox capacity reached",
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("is false for a non-failed session", () => {
     expect(
-      isSandboxCapacityFailure({ phase: "running", failureReason: "sandbox capacity reached", status: "" }),
+      isSandboxCapacityFailure({
+        phase: "running",
+        failureReasonCode: SANDBOX_CAPACITY_LIMIT,
+      }),
     ).toBe(false);
   });
 });
