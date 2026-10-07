@@ -21,8 +21,8 @@ limitations under the License.
 // and bounds usage_hourly's growth by compacting months older than the hot
 // window into usage_monthly aggregates daily (m4, docs/ADR023-usage-metering.md).
 // The loop needs BEX_CP_DB_URI (store); metering additionally needs
-// BEX_PROM_URL (Prometheus) — with the store absent the package is a no-op
-// and the rest of bex-api is byte-for-byte unchanged.
+// BEX_PROM_URL (Prometheus). Without the store the loop never starts and the
+// read verbs answer core.ErrUsageUnavailable (503).
 package usage
 
 import (

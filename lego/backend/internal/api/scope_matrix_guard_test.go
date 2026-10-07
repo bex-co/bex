@@ -29,10 +29,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
-	"github.com/bex-co/bex/lego/backend/internal/usage"
 )
 
 type revokeRegistrar struct{}
@@ -42,15 +40,11 @@ func (revokeRegistrar) RegisterREST(mux *http.ServeMux) {
 }
 
 // matrixServer wires every optional feature that registers a surface so the
-// classification table covers sandbox routes and store-gated GraphQL fields.
+// classification table covers sandbox routes.
 func matrixServer(t *testing.T) *Server {
 	t.Helper()
 	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}
-	srv := NewServer(base, Deps{
-		Usage:         &usage.Service{Base: base},
-		Audit:         &audit.Service{Base: base},
-		SandboxClient: &sandbox.Client{},
-	})
+	srv := NewServer(base, Deps{SandboxClient: &sandbox.Client{}})
 	srv.HydraAdminURL = fakeHydraURL(t)
 	return srv
 }

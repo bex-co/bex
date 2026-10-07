@@ -24,10 +24,8 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
 
-	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
-	"github.com/bex-co/bex/lego/backend/internal/usage"
 )
 
 // TestDumpGraphQLSchema is a developer tool, not an assertion: set
@@ -39,14 +37,10 @@ func TestDumpGraphQLSchema(t *testing.T) {
 	if path == "" {
 		t.Skip("set SCHEMA_DUMP_PATH to dump the introspection JSON")
 	}
-	// Usage, Audit, and Sandbox register fields only when their dependencies
-	// are wired. Empty test dependencies include their schema without live calls.
+	// Sandbox registers fields only when its client is wired. An empty client
+	// includes its schema without live calls.
 	base := &core.Base{Namespace: "default"}
-	srv := NewServer(base, Deps{
-		Usage:         &usage.Service{Base: base},
-		SandboxClient: &sandbox.Client{},
-		Audit:         &audit.Service{Base: base},
-	})
+	srv := NewServer(base, Deps{SandboxClient: &sandbox.Client{}})
 	schema, err := srv.newSchema()
 	if err != nil {
 		t.Fatalf("build schema: %v", err)
