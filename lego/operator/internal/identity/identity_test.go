@@ -38,7 +38,7 @@ func TestLegacyByteIdentity(t *testing.T) {
 	if got, want := id.StaticPrefix("rev-7"), "hello/rev-7/"; got != want {
 		t.Errorf("StaticPrefix = %q, want %q", got, want)
 	}
-	if got, want := id.CacheRepo(), "hello-cache"; got != want {
+	if got, want := id.CacheRepo(), "hello_cache"; got != want {
 		t.Errorf("CacheRepo = %q, want %q", got, want)
 	}
 	if id.DualRead() {
@@ -67,8 +67,8 @@ func TestWorkspaceScopedFormats(t *testing.T) {
 	if got, want := id.StaticPrefix("rev-7"), ws+"/hello/rev-7/"; got != want {
 		t.Errorf("StaticPrefix = %q, want %q", got, want)
 	}
-	if got, want := id.CacheRepo(), ws+"/hello-cache"; got != want {
-		t.Errorf("CacheRepo = %q, want %q — last-component -cache, not a third segment", got, want)
+	if got, want := id.CacheRepo(), ws+"/hello_cache"; got != want {
+		t.Errorf("CacheRepo = %q, want %q — last-component _cache, not a third segment", got, want)
 	}
 	if got, want := id.LegacyRepo(), "hello"; got != want {
 		t.Errorf("LegacyRepo = %q, want %q", got, want)
@@ -144,9 +144,28 @@ func TestPurgePrefixesTombstoneAddsLegacy(t *testing.T) {
 
 func TestCharsetNoColonOrUnderscore(t *testing.T) {
 	id := ForApp("hello-go", "tea-c185th5c2rvvnhbfiltg")
-	for _, s := range []string{id.Repo(), id.ZotUsername(), id.PullSecretName(), id.CacheRepo()} {
+	for _, s := range []string{id.Repo(), id.ZotUsername(), id.PullSecretName()} {
 		if strings.ContainsAny(s, ":_") {
 			t.Errorf("%q contains illegal ':' or '_'", s)
+		}
+	}
+	if strings.Contains(id.CacheRepo(), ":") {
+		t.Errorf("%q contains illegal ':'", id.CacheRepo())
+	}
+}
+
+// TestCacheRepoIsNeverAnAppsImageRepository (w5/m135): the cache used to be
+// Repo()+"-cache", the image repository of an App named <name>-cache, and the
+// two Apps' grants, revocations and deletions reached each other. App names
+// are DNS labels, which never contain the "_" the cache now carries.
+func TestCacheRepoIsNeverAnAppsImageRepository(t *testing.T) {
+	for _, ws := range []string{"", "tea-c185th5c2rvvnhbfiltg"} {
+		web, sibling := ForApp("web", ws), ForApp("web-cache", ws)
+		if web.CacheRepo() == sibling.Repo() {
+			t.Errorf("workspace %q: web's cache %q is web-cache's image repository", ws, web.CacheRepo())
+		}
+		if web.PriorCacheRepo() != sibling.Repo() {
+			t.Errorf("workspace %q: PriorCacheRepo = %q, want the name web-cache owns, %q", ws, web.PriorCacheRepo(), sibling.Repo())
 		}
 	}
 }

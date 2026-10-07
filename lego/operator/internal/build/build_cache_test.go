@@ -113,7 +113,7 @@ func TestBuildCacheGateOffLeavesTheBuildJobUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	for _, token := range []string{cacheInMount, cacheOutMount, "-cache", "cache-restore", "cache-save"} {
+	for _, token := range []string{cacheInMount, cacheOutMount, "-cache", "_cache", "cache-restore", "cache-save"} {
 		if strings.Contains(string(raw), token) {
 			t.Errorf("gate-off Job spec mentions %q", token)
 		}
@@ -191,13 +191,13 @@ func TestBuildCacheRefComesFromTheAppIdentity(t *testing.T) {
 	// from identity rather than string-building it is what makes that true by
 	// construction — docs/ADR034 §6 isolation rests on it.
 	o := cacheOpts()
-	if got, want := o.CacheRef(), "zot.bex-registry.svc:5000/tea-w1/hello-cache:cache"; got != want {
+	if got, want := o.CacheRef(), "zot.bex-registry.svc:5000/tea-w1/hello_cache:cache"; got != want {
 		t.Errorf("CacheRef = %q, want %q", got, want)
 	}
 	// Legacy (unlabeled) Apps keep the flat column, exactly as their image does.
 	legacy := cacheOpts()
 	legacy.Workspace = ""
-	if got, want := legacy.CacheRef(), "zot.bex-registry.svc:5000/hello-cache:cache"; got != want {
+	if got, want := legacy.CacheRef(), "zot.bex-registry.svc:5000/hello_cache:cache"; got != want {
 		t.Errorf("legacy CacheRef = %q, want %q", got, want)
 	}
 	// Two workspaces owning the same App name must not share a cache. This is

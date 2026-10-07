@@ -224,6 +224,17 @@ func addZotRepoUser(data map[string]any, repo, user string, actions []string) {
 	zotReposFor(data)[repo] = entry
 }
 
+// dropZotRepoUser takes user off repo's policies when it holds one, leaving
+// other users' policies there, and reports whether it did. The platform
+// builder repository is never touched.
+func dropZotRepoUser(data map[string]any, repo, user string) bool {
+	if repo == platformBuilderRepository || !zotRepoHasUser(data, repo, user) {
+		return false
+	}
+	removeZotRepoUser(data, repo, user)
+	return true
+}
+
 // removeZotRepoUser drops every policy that names user from repo. The
 // repository entry is deleted when no policies remain.
 func removeZotRepoUser(data map[string]any, repo, user string) {

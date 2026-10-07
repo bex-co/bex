@@ -94,7 +94,7 @@ func TestUnlabeledAppsGetACacheRepositoryToo(t *testing.T) {
 		t.Fatalf("EnsureCredsFor: %v", err)
 	}
 	data := storedConfig(t, c)
-	if got, want := id.CacheRepo(), "legacyapp-cache"; got != want {
+	if got, want := id.CacheRepo(), "legacyapp_cache"; got != want {
 		t.Errorf("legacy CacheRepo = %q, want %q", got, want)
 	}
 	if !zotRepoGrants(data, id.CacheRepo(), id.ZotUsername(), zotReadWriteActions) {
@@ -162,6 +162,10 @@ func TestTombstonedAppDropsItsLegacyCacheGrant(t *testing.T) {
 		t.Fatalf("EnsureCredsFor(legacy): %v", err)
 	}
 	scoped := identity.Identity{Name: "hello", Workspace: "tea-w1", Tombstoned: true}
+	// and, built before w5/m135, the cache's prior name
+	if _, err := c.ensureZotConfigEntry(ctx, scoped.LegacyZotUsername(), zotReadWriteActions, scoped.LegacyPriorCacheRepo()); err != nil {
+		t.Fatal(err)
+	}
 	if err := c.EnsureCredsFor(ctx, scoped, "default"); err != nil {
 		t.Fatalf("EnsureCredsFor(scoped): %v", err)
 	}
@@ -170,10 +174,111 @@ func TestTombstonedAppDropsItsLegacyCacheGrant(t *testing.T) {
 	}
 	repos := zotRepos(storedConfig(t, c))
 	for _, repo := range []string{
-		scoped.Repo(), scoped.CacheRepo(), scoped.LegacyRepo(), scoped.LegacyCacheRepo(),
+		scoped.Repo(), scoped.CacheRepo(), scoped.LegacyRepo(), scoped.LegacyCacheRepo(), scoped.LegacyPriorCacheRepo(),
 	} {
 		if _, ok := repos[repo]; ok {
 			t.Errorf("ACL entry for %q survived a tombstoned revocation", repo)
 		}
+	}
+}
+
+// TestASiblingNamedLikeThePriorCacheKeepsItsGrant (w5/m135): the cache used to
+// be <repo>-cache, so App web's exclusive grant on it and App web-cache's grant
+// on its own image repository overwrote each other on every reconcile, and each
+// overwrite reset the losing App's activation. web gives its claim back in the
+// hold that grants its cache, the two converge, and revoking web leaves
+// web-cache's grant alone.
+func TestASiblingNamedLikeThePriorCacheKeepsItsGrant(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret(), zotConfigSecret((&Creds{}).baseZotConfig()))
+	web, sibling := identity.ForApp("web", "tea-w1"), identity.ForApp("web-cache", "tea-w1")
+	if _, err := c.ensureZotConfigEntry(ctx, web.ZotUsername(), zotReadWriteActions, web.PriorCacheRepo()); err != nil {
+		t.Fatal(err)
+	}
+	ensureBoth := func() {
+		t.Helper()
+		for _, id := range []identity.Identity{sibling, web} {
+			if err := c.EnsureCredsFor(ctx, id, "default"); err != nil {
+				t.Fatalf("EnsureCredsFor(%s): %v", id.Key(), err)
+			}
+		}
+	}
+	ensureBoth()
+	first := storedConfig(t, c)
+	if !zotRepoGrants(first, sibling.Repo(), sibling.ZotUsername(), zotReadWriteActions) || zotRepoHasUser(first, sibling.Repo(), web.ZotUsername()) {
+		t.Fatalf("policies on web-cache's image repository = %v, want web-cache's grant alone", zotRepos(first)[sibling.Repo()])
+	}
+	converged := readSecret(t, c, testZotNS, "zot-config").ResourceVersion
+	ensureBoth()
+	if got := readSecret(t, c, testZotNS, "zot-config").ResourceVersion; got != converged {
+		t.Errorf("a second round of both Apps' credential passes rewrote zot-config (rv %s -> %s): they still overwrite each other", converged, got)
+	}
+
+	if err := c.RevokeCredsFor(ctx, web); err != nil {
+		t.Fatalf("RevokeCredsFor(web): %v", err)
+	}
+	after := storedConfig(t, c)
+	if !zotRepoGrants(after, sibling.Repo(), sibling.ZotUsername(), zotReadWriteActions) {
+		t.Error("revoking web took web-cache's grant on its own image repository")
+	}
+	for _, repo := range []string{web.Repo(), web.CacheRepo()} {
+		if _, ok := zotRepos(after)[repo]; ok {
+			t.Errorf("ACL entry for %q survived web's revocation", repo)
+		}
+	}
+}
+
+// TestAnAppGivesBackItsPriorCacheGrant (w5/m135): an App that built before its
+// cache moved to <repo>_cache gives the old name back on its next credential
+// pass, or when it is revoked first, leaving no grant on a repository another
+// App may come to own.
+func TestAnAppGivesBackItsPriorCacheGrant(t *testing.T) {
+	ctx := context.Background()
+	id := identity.ForApp("web", "tea-w1")
+	for name, pass := range map[string]func(*Creds) error{
+		"on its next credential pass": func(c *Creds) error { return c.EnsureCredsFor(ctx, id, "default") },
+		"when revoked first":          func(c *Creds) error { return c.RevokeCredsFor(ctx, id) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := newTestCreds(t, htpasswdSecret(), zotConfigSecret((&Creds{}).baseZotConfig()))
+			if _, err := c.ensureZotConfigEntry(ctx, id.ZotUsername(), zotReadWriteActions, id.Repo(), id.PriorCacheRepo()); err != nil {
+				t.Fatal(err)
+			}
+			// A dual-read grant beside it, as an App named web-cache can hold.
+			if _, err := c.grantZotRepoUser(ctx, id.PriorCacheRepo(), "app-reader", zotReadOnlyActions); err != nil {
+				t.Fatal(err)
+			}
+			if err := pass(c); err != nil {
+				t.Fatal(err)
+			}
+			data := storedConfig(t, c)
+			if zotRepoHasUser(data, id.PriorCacheRepo(), id.ZotUsername()) {
+				t.Errorf("web still holds %q, its cache's prior name", id.PriorCacheRepo())
+			}
+			if !zotRepoGrants(data, id.PriorCacheRepo(), "app-reader", zotReadOnlyActions) {
+				t.Errorf("giving back web's claim on %q took another user's grant too", id.PriorCacheRepo())
+			}
+		})
+	}
+}
+
+// TestATombstonedRevocationLeavesALegacySiblingsGrant (w5/m135): an unlabeled
+// App named hello-cache, possibly another tenant's, owns the repository that
+// was hello's legacy cache. Tombstoning hello takes back only hello's claim.
+func TestATombstonedRevocationLeavesALegacySiblingsGrant(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret(), zotConfigSecret((&Creds{}).baseZotConfig()))
+	sibling := identity.ForApp("hello-cache", "")
+	scoped := identity.Identity{Name: "hello", Workspace: "tea-w1", Tombstoned: true}
+	for _, id := range []identity.Identity{sibling, scoped} {
+		if err := c.EnsureCredsFor(ctx, id, "default"); err != nil {
+			t.Fatalf("EnsureCredsFor(%s): %v", id.Key(), err)
+		}
+	}
+	if err := c.RevokeCredsFor(ctx, scoped); err != nil {
+		t.Fatalf("RevokeCredsFor: %v", err)
+	}
+	if !zotRepoGrants(storedConfig(t, c), sibling.Repo(), sibling.ZotUsername(), zotReadWriteActions) {
+		t.Errorf("tombstoning hello took %s's grant on its own image repository", sibling.Repo())
 	}
 }

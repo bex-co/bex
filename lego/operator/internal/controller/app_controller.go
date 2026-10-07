@@ -6480,6 +6480,10 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 	// cache was enabled and deleted after it was turned off must still be
 	// reclaimed, and a repository that never existed answers 404, which
 	// deleteRegistryRepoNamed already treats as done.
+	//
+	// The cache's name before w5/m135 (PriorCacheRepo) is left alone: this
+	// App's credential pass gave its claim on it back, and an App named
+	// <name>-cache may own it as its image repository.
 	repos := []string{id.Repo(), id.CacheRepo()}
 	if id.Tombstoned && id.LegacyRepo() != id.Repo() {
 		// No legacy cache repository exists: the cache postdates that scheme.
@@ -6487,12 +6491,23 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 	}
 	for _, repo := range repos {
 		done, err := r.deleteRegistryRepoNamed(ctx, app, repo)
+		if repo == id.CacheRepo() && errors.Is(err, errRegistryDenied) {
+			// Zot honors a new grant only once it restarts, and the cache phases
+			// push with this same credential: a cache grant it has not honored
+			// let nothing be written.
+			continue
+		}
 		if err != nil || !done {
 			return done, err
 		}
 	}
 	return true, nil
 }
+
+// errRegistryDenied is the registry refusing this App's credential a
+// repository. Zot answers 403 for a repository the user holds no grant on,
+// whether or not it exists.
+var errRegistryDenied = errors.New("registry denied the App's credential")
 
 func (r *AppReconciler) deleteRegistryRepoNamed(ctx context.Context, app *appv1alpha1.App, repo string) (bool, error) {
 	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
@@ -6544,6 +6559,9 @@ func (r *AppReconciler) deleteRegistryRepoNamed(ctx context.Context, app *appv1a
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusNotFound {
 		return true, nil
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return false, fmt.Errorf("list tags of %s: status %d: %w", repo, resp.StatusCode, errRegistryDenied)
 	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := boundedhttp.ReadAll(resp.Body)
