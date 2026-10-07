@@ -100,7 +100,7 @@ func (r *KeyValueReconciler) prepareKeyValuePersistenceWith(ctx context.Context,
 			current := kv.DeepCopy()
 			current.Spec.PersistenceMode = keyValueSnapshotMode
 			if err := r.reconcileKeyValueWorkload(ctx, current, sts, *intent); err != nil {
-				result, failErr := r.kvFail(ctx, kv, "StatefulSetFailed", err)
+				result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonStatefulSetFailed, err)
 				return result, true, failErr
 			}
 			return r.deferKeyValuePersistence(ctx, kv, nil)
@@ -150,15 +150,15 @@ func (r *KeyValueReconciler) prepareKeyValuePersistenceWith(ctx context.Context,
 }
 
 func (r *KeyValueReconciler) deferKeyValuePersistence(ctx context.Context, kv *appv1alpha1.KeyValue, err error) (ctrl.Result, bool, error) {
-	reason, message := "PersistenceTransition", "preparing the current keyspace journal before restarting Valkey"
+	reason, message := appv1alpha1.ReasonPersistenceTransition, "preparing the current keyspace journal before restarting Valkey"
 	delay := 2 * time.Second
 	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
 	if err != nil {
 		// Do not copy a Redis/network error into status: it may contain connection
 		// details. The previous pod keeps serving and the next reconcile retries.
-		reason, message = "PersistenceTransitionFailed", "could not prepare the journal; the previous Valkey workload is retained and preparation will retry"
+		reason, message = appv1alpha1.ReasonPersistenceTransitionFailed, "could not prepare the journal; the previous Valkey workload is retained and preparation will retry"
 		if errors.Is(err, errKeyValuePersistenceSourceUnknown) {
-			reason = "PersistenceSourceUnknown"
+			reason = appv1alpha1.ReasonPersistenceSourceUnknown
 			message = "a platform operator must establish this legacy volume's last applied persistence mode before migration or resume; no data files were changed"
 		}
 		kv.Status.Phase = appv1alpha1.KVPhaseFailed

@@ -74,6 +74,112 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "未知",
     description: "Key Value status badge for an unrecognized status",
   },
+  "keyvalue.statusReasonStatefulSetReadFailed": {
+    message: "无法检查 Key Value 的工作负载状态。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StatefulSetReadFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStatefulSetFailed": {
+    message: "无法更新 Key Value 的工作负载，最近的更改未能生效。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StatefulSetFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPVCReadFailed": {
+    message: "无法检查存储卷的状态。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PVCReadFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPVCResizeFailed": {
+    message: "无法调整 Key Value 存储卷的大小。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PVCResizeFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonSecretFailed": {
+    message: "无法保存 Key Value 的连接信息。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's SecretFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonCredentialSecretFailed": {
+    message: "无法保存 Key Value 的凭据。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's CredentialSecretFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonSecretRecreateFailed": {
+    message: "无法重建 Key Value 的连接信息。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's SecretRecreateFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonServiceFailed": {
+    message: "无法设置 Key Value 的内部地址。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's ServiceFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonNetworkPolicyFailed": {
+    message: "无法应用 Key Value 的网络策略。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's NetworkPolicyFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonBackupNetworkPolicyFailed": {
+    message: "无法应用备份任务的网络策略。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's BackupNetworkPolicyFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonBackupCronJobFailed": {
+    message: "无法更新每日备份计划。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's BackupCronJobFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonTLSIssuerMissing": {
+    message: "无法启用公网访问：未配置证书签发者。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's TLSIssuerMissing Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonCertificateFailed": {
+    message: "无法为公网访问签发证书。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's CertificateFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonCertificateCleanupFailed": {
+    message: "无法移除公网访问的证书。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's CertificateCleanupFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageClassMissing": {
+    message: "存储卷没有存储类，因此无法扩容。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageClassMissing Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageClassNotFound": {
+    message: "找不到存储卷的存储类，因此无法扩容。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageClassNotFound Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageClassNotExpandable": {
+    message: "存储卷的存储类不允许扩容。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageClassNotExpandable Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageBlockedByQuota": {
+    message: "存储卷无法扩容：工作区的存储配额不足。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageBlockedByQuota Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPersistenceTransitionFailed": {
+    message: "启动前准备已存储的数据失败；数据会保留，并将重试。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PersistenceTransitionFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPersistenceSourceUnknown": {
+    message:
+      "已存储数据的持久化模式未知，在平台运维人员确认之前 Key Value 无法启动。数据未作任何更改。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PersistenceSourceUnknown Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageShrinkRejected": {
+    message: "Key Value 存储只能扩容：存储卷不能小于当前大小。",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageShrinkRejected Ready reason (bex-api statusReasonCode)",
+  },
   // --- List states ---
   "keyvalue.errorTitle": {
     message: "无法加载键值存储",

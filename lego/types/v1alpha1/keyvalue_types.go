@@ -146,6 +146,61 @@ const (
 // immutable connection Secret is rebuilt: a refusal of intent, not an outage.
 const ReasonConnectionSecretRebuilding = "ConnectionSecretRebuilding"
 
+// Ready-condition reasons the operator sets on a Key Value. A failed one is
+// what bex-api publishes as an unavailable Key Value's statusReasonCode, which
+// clients translate (w5/m129), so renaming one is an API change. A Key Value
+// also uses Database's Provisioned, NetworkPolicyFailed and
+// StorageShrinkRejected.
+const (
+	// The Key Value is converging (phase Provisioning).
+	ReasonProvisioning            = "Provisioning"
+	ReasonPodUnready              = "PodUnready"
+	ReasonPersistenceTransition   = "PersistenceTransition"
+	ReasonWaitingForPVC           = "WaitingForPVC"
+	ReasonWaitingForPVCBinding    = "WaitingForPVCBinding"
+	ReasonPVCResizePending        = "PVCResizePending"
+	ReasonFileSystemResizePending = "FileSystemResizePending"
+
+	// The storage gate's ready reason, on the StorageReady condition only.
+	ReasonStorageProvisioned = "StorageProvisioned"
+
+	// The Key Value failed (phase Failed); bex-api reports it unavailable.
+	ReasonStatefulSetReadFailed       = "StatefulSetReadFailed"
+	ReasonStatefulSetFailed           = "StatefulSetFailed"
+	ReasonPVCReadFailed               = "PVCReadFailed"
+	ReasonPVCResizeFailed             = "PVCResizeFailed"
+	ReasonSecretFailed                = "SecretFailed"
+	ReasonCredentialSecretFailed      = "CredentialSecretFailed"
+	ReasonSecretRecreateFailed        = "SecretRecreateFailed"
+	ReasonServiceFailed               = "ServiceFailed"
+	ReasonBackupNetworkPolicyFailed   = "BackupNetworkPolicyFailed"
+	ReasonBackupCronJobFailed         = "BackupCronJobFailed"
+	ReasonTLSIssuerMissing            = "TLSIssuerMissing"
+	ReasonCertificateFailed           = "CertificateFailed"
+	ReasonCertificateCleanupFailed    = "CertificateCleanupFailed"
+	ReasonStorageClassMissing         = "StorageClassMissing"
+	ReasonStorageClassNotFound        = "StorageClassNotFound"
+	ReasonStorageClassNotExpandable   = "StorageClassNotExpandable"
+	ReasonStorageBlockedByQuota       = "StorageBlockedByQuota"
+	ReasonPersistenceTransitionFailed = "PersistenceTransitionFailed"
+	ReasonPersistenceSourceUnknown    = "PersistenceSourceUnknown"
+)
+
+// KeyValueFailedReasons is every reason the operator fails a Key Value with
+// (phase Failed). bex-api explains each one, and the operator's tests keep the
+// controller from failing with a reason missing here.
+var KeyValueFailedReasons = []string{
+	ReasonStatefulSetReadFailed, ReasonStatefulSetFailed,
+	ReasonPVCReadFailed, ReasonPVCResizeFailed,
+	ReasonSecretFailed, ReasonCredentialSecretFailed, ReasonSecretRecreateFailed,
+	ReasonServiceFailed, ReasonNetworkPolicyFailed,
+	ReasonBackupNetworkPolicyFailed, ReasonBackupCronJobFailed,
+	ReasonTLSIssuerMissing, ReasonCertificateFailed, ReasonCertificateCleanupFailed,
+	ReasonStorageClassMissing, ReasonStorageClassNotFound, ReasonStorageClassNotExpandable,
+	ReasonStorageBlockedByQuota, ReasonStorageShrinkRejected,
+	ReasonPersistenceTransitionFailed, ReasonPersistenceSourceUnknown,
+}
+
 // KeyValueStatus is the observed state of a KeyValue.
 type KeyValueStatus struct {
 	// Phase is the high-level lifecycle state.

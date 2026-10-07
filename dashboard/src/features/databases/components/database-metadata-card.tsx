@@ -1,5 +1,6 @@
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
+import { StatusWithReason } from "@/common/components/status-with-reason";
 import { RelativeAge } from "@/common/components/relative-time";
 import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
@@ -8,6 +9,7 @@ import {
   statusReasonLabel,
 } from "@/features/databases/lib/labels";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
+import { deriveStatus } from "@/features/databases/lib/status";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 /**
@@ -30,11 +32,16 @@ export function DatabaseMetadataCard({
   // Cache-first catalog: fall back to the plan id while it is empty.
   const planName =
     instanceTypes.find((it) => it.id === database.plan)?.name ?? database.plan;
-  const reasonKey = statusReasonLabel(database.statusReasonCode);
+  // Only beside "Unavailable": the list query refreshes the cached status
+  // without the reason, so a recovered database could still hold a stale one.
   // The shrink refusal names the allocated size, which diskSizeGB reports.
-  const reason = reasonKey
-    ? t(reasonKey, { size: database.diskSizeGB ?? "" })
-    : database.statusReason;
+  const reasonKey = statusReasonLabel(database.statusReasonCode);
+  const reason =
+    deriveStatus(database).key === "unavailable"
+      ? reasonKey
+        ? t(reasonKey, { size: database.diskSizeGB ?? "" })
+        : database.statusReason
+      : null;
   return (
     <MetadataList
       title={t("databases.metaTitle")}
@@ -45,13 +52,11 @@ export function DatabaseMetadataCard({
         // beside it (w1/m159, from w1/085).
         {
           label: t("databases.metaStatus"),
-          value: reason ? (
-            <span className="flex flex-col gap-0.5">
-              <span>{t(statusLabel(database))}</span>
-              <span className="text-muted-foreground text-xs">{reason}</span>
-            </span>
-          ) : (
-            t(statusLabel(database))
+          value: (
+            <StatusWithReason
+              status={t(statusLabel(database))}
+              reason={reason}
+            />
           ),
         },
         { label: t("databases.metaPlan"), value: planName ?? "—" },

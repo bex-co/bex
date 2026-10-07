@@ -82,8 +82,17 @@ type KeyValueView struct {
 	Version   string `json:"version,omitempty"`
 	Status    string `json:"status"`    // Render keyValueStatus enum
 	Suspended string `json:"suspended"` // Render string enum (like services/postgres)
-	CreatedAt string `json:"createdAt,omitempty"`
-	UpdatedAt string `json:"updatedAt,omitempty"`
+	// StatusReason says why an unavailable Key Value is unavailable (bex extra,
+	// w5/m129): a fixed sentence per operator failure, never raw error text.
+	// Omitted for every other status.
+	StatusReason string `json:"statusReason,omitempty"`
+	// StatusReasonCode is the Ready-condition reason behind StatusReason (one
+	// of lego/types' Reason* constants, or one a client may not know yet), so
+	// a client can show the reason in its own language. Omitted with
+	// StatusReason, and when no failed Ready condition names one.
+	StatusReasonCode string `json:"statusReasonCode,omitempty"`
+	CreatedAt        string `json:"createdAt,omitempty"`
+	UpdatedAt        string `json:"updatedAt,omitempty"`
 
 	// MaxmemoryPolicy / PersistenceMode mirror Render's Key Value settings, read
 	// from the CR spec (empty until set — the operator applies its default then).
@@ -240,26 +249,32 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	if !kv.DeletionTimestamp.IsZero() {
 		status = "deleting"
 	}
+	var reason, reasonCode string
+	if status == "unavailable" {
+		reason, reasonCode = core.DatastoreStatusReason(kv.Status.Conditions, "Key Value", unavailableReasons)
+	}
 	// ipAllowList is required in Render's schema — an unrestricted instance
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return KeyValueView{
-		ID:              kv.Name,
-		Name:            kv.Spec.Name,
-		Plan:            kv.Spec.Plan,
-		Version:         kv.Spec.EffectiveVersion(),
-		Status:          status,
-		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
-		CreatedAt:       created,
-		UpdatedAt:       resourcemeta.UpdatedAt(kv),
-		IPAllowList:     core.AllowListOrEmpty(core.AllowListFromSpec(kv.Spec.IPAllowList)),
-		MaxmemoryPolicy: crdToRender(kv.Spec.MaxmemoryPolicy),
-		PersistenceMode: crdToRender(kv.Spec.PersistenceMode),
-		ExternalHost:    kv.Status.ExternalHost,
-		Public:          kv.Spec.Public,
-		OwnerID:         kv.Labels[core.LabelTenant],
-		ProjectID:       kv.Labels[core.LabelProject],
-		EnvironmentID:   id.EnvironmentPublicID(kv.Labels[core.LabelEnvironment]),
-		BlueprintID:     kv.Labels[core.LabelBlueprint],
+		ID:               kv.Name,
+		Name:             kv.Spec.Name,
+		Plan:             kv.Spec.Plan,
+		Version:          kv.Spec.EffectiveVersion(),
+		Status:           status,
+		StatusReason:     reason,
+		StatusReasonCode: reasonCode,
+		Suspended:        core.SuspendedEnum(kv.Spec.Suspended),
+		CreatedAt:        created,
+		UpdatedAt:        resourcemeta.UpdatedAt(kv),
+		IPAllowList:      core.AllowListOrEmpty(core.AllowListFromSpec(kv.Spec.IPAllowList)),
+		MaxmemoryPolicy:  crdToRender(kv.Spec.MaxmemoryPolicy),
+		PersistenceMode:  crdToRender(kv.Spec.PersistenceMode),
+		ExternalHost:     kv.Status.ExternalHost,
+		Public:           kv.Spec.Public,
+		OwnerID:          kv.Labels[core.LabelTenant],
+		ProjectID:        kv.Labels[core.LabelProject],
+		EnvironmentID:    id.EnvironmentPublicID(kv.Labels[core.LabelEnvironment]),
+		BlueprintID:      kv.Labels[core.LabelBlueprint],
 	}
 }
 

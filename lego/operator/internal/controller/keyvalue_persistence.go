@@ -232,10 +232,10 @@ func (r *KeyValueReconciler) keyValuePersistenceProgress(ctx context.Context, kv
 		}
 		if (status.State.Terminated != nil && status.State.Terminated.ExitCode != 0) ||
 			(status.State.Waiting != nil && status.State.Waiting.Reason == "CrashLoopBackOff") {
-			return "PersistenceTransitionFailed", "persistence conversion failed; the source format is retained and initialization will retry"
+			return appv1alpha1.ReasonPersistenceTransitionFailed, "persistence conversion failed; the source format is retained and initialization will retry"
 		}
 		if status.State.Terminated == nil {
-			return "PersistenceTransition", "converting durable data before starting Valkey"
+			return appv1alpha1.ReasonPersistenceTransition, "converting durable data before starting Valkey"
 		}
 	}
 	return "", ""
