@@ -120,16 +120,22 @@ func TestCancelDeletesInFlightBuildJob(t *testing.T) {
 	}
 }
 
+// TestCancelDeletesInFlightKpackImage covers the buildpack path: the operator
+// names a release's kpack Image by a hash of the App's UID and revision, not
+// like its build Job, so Cancel finds the Image by the labels the operator
+// stamps (w5/136).
 func TestCancelDeletesInFlightKpackImage(t *testing.T) {
 	ds := newFakeStore()
 	first, _ := ds.CreateDeploy(context.Background(), "srv-1", "create", "", 3, store.CommitInfo{}, "")
 	app := sampleApp("web", "srv-1")
+	app.UID = "uid-web"
 	app.Spec.Image = ""
 	app.Spec.Repo = "https://example.invalid/acme/web.git"
 	image := &unstructured.Unstructured{}
 	image.SetGroupVersionKind(schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Image"})
-	image.SetName(buildJobName("web", 3))
+	image.SetName("bld-web-gen-3-0123456789ab")
 	image.SetNamespace("default")
+	image.SetLabels(appv1alpha1.ReleaseBuildLabels("web", string(app.UID), appv1alpha1.BuildRevision(3)))
 	svc, cl := newService(ds, app, image)
 
 	if _, err := svc.Cancel(context.Background(), "web", first.ID); err != nil {
