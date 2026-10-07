@@ -51,6 +51,12 @@ const scaleDownStabilizationWindow = 5 * time.Minute
 // stabilization window has passed.
 const annotAutoscaleScaleDown = "app.bex.co/autoscale-scale-down-at"
 
+// annotAutoscaleScaleDownTo records the highest replica count the autoscaler
+// asked for while the scale-down window runs, which is what the window commits
+// (w5/120): like HPA's stabilization, one deep reading at the end of a shallow
+// dip does not scale past what the whole window supports.
+const annotAutoscaleScaleDownTo = "app.bex.co/autoscale-scale-down-to"
+
 // annotAutoscaleReplicas persists the autoscaler's last decided replica count
 // between reconcile passes. Stored as an annotation (not spec.replicas) so it
 // doesn't bump metadata.generation — a spec change bumps generation, which
@@ -190,10 +196,7 @@ func autoscaleDesired(as *appv1alpha1.AutoscalingSpec, usage []PodUsage, tier st
 		return 0, true // no metrics or not enabled — skip
 	}
 
-	minR := max(as.MinReplicas, 1)
-	maxR := max(as.MaxReplicas, minR)
-	minR = min(minR, appv1alpha1.MaxReplicas)
-	maxR = min(maxR, appv1alpha1.MaxReplicas)
+	minR, maxR := autoscaleBounds(as)
 
 	current := int32(len(usage))
 
@@ -263,14 +266,24 @@ func tierLimits(tier string) (cpuCores float64, memBytes float64) {
 	return cpuCores, memBytes
 }
 
+// autoscaleBounds is the replica range autoscaling may choose from: the spec's
+// min and max, at least one and at most appv1alpha1.MaxReplicas.
+func autoscaleBounds(as *appv1alpha1.AutoscalingSpec) (minR, maxR int32) {
+	minR = min(max(as.MinReplicas, 1), appv1alpha1.MaxReplicas)
+	maxR = min(max(as.MaxReplicas, minR), appv1alpha1.MaxReplicas)
+	return minR, maxR
+}
+
 // applyAutoscaling runs the autoscaling decision and, if action is needed,
 // records the desired count in annotAutoscaleReplicas. It respects the
-// scale-down stabilization window: annotAutoscaleScaleDown is stamped when a
-// downward decision is first made, the replica count is lowered only once the
-// window has elapsed, and any other decision clears the stamp (w5/109).
-// Returns the replica count to use and whether to requeue.
+// scale-down stabilization window: a first downward decision stamps
+// annotAutoscaleScaleDown, annotAutoscaleScaleDownTo tracks the highest count
+// asked for, and that count is committed once the window elapses. Any other
+// decision clears both (w5/109, w5/120). Returns the replica count to use and
+// whether to requeue.
 func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.App, current int32) (desired int32, requeue bool) {
 	if r.MetricsReader == nil {
+		r.dropScaleDownWindow(ctx, app)
 		return current, false
 	}
 	as := app.Spec.Autoscaling
@@ -298,19 +311,37 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	now := time.Now().UTC()
 
 	if want < current {
-		// Scale-down: respect the stabilization window.
-		stamped := app.Annotations[annotAutoscaleScaleDown]
-		if stamped == "" {
-			// First downward signal — stamp now and hold.
+		// Scale-down: respect the stabilization window. It holds a dip for its
+		// whole length from the first low reading, then commits the highest
+		// count any reading in it asked for (w5/120).
+		started, err := time.Parse(time.RFC3339, app.Annotations[annotAutoscaleScaleDown])
+		if err != nil {
+			// First downward signal, or a stamp that cannot be read: stamp now
+			// and hold.
 			_ = r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
 				metav1.SetMetaDataAnnotation(meta, annotAutoscaleScaleDown, now.Format(time.RFC3339))
+				metav1.SetMetaDataAnnotation(meta, annotAutoscaleScaleDownTo, strconv.Itoa(int(want)))
 			})
 			return current, true
 		}
-		t, err := time.Parse(time.RFC3339, stamped)
-		if err != nil || now.Sub(t) < scaleDownStabilizationWindow {
+		ceiling := want
+		if n, err := strconv.ParseInt(app.Annotations[annotAutoscaleScaleDownTo], 10, 32); err == nil {
+			ceiling = max(ceiling, int32(n))
+		}
+		if now.Sub(started) < scaleDownStabilizationWindow {
+			// A failed write loses only this reading's rise, as a failed stamp
+			// loses only this pass's hold.
+			if recorded := strconv.Itoa(int(ceiling)); recorded != app.Annotations[annotAutoscaleScaleDownTo] {
+				_ = r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+					metav1.SetMetaDataAnnotation(meta, annotAutoscaleScaleDownTo, recorded)
+				})
+			}
 			return current, true // window not yet elapsed — hold
 		}
+		// The record predates any change to the bounds; this pass's reading
+		// already honors them, so only a lowered max can bind it.
+		_, maxR := autoscaleBounds(as)
+		want = min(ceiling, current, maxR)
 	}
 
 	// Persist the desired count in an annotation, not spec.replicas.
@@ -323,9 +354,9 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	// The stamp is cleared in the same patch, so a failure cannot clear it yet
 	// keep the old count, which would restart the window.
 	replicas := strconv.Itoa(int(want))
-	if app.Annotations[annotAutoscaleScaleDown] != "" || replicas != app.Annotations[annotAutoscaleReplicas] {
+	if scaleDownPending(app) || replicas != app.Annotations[annotAutoscaleReplicas] {
 		if err := r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
-			delete(meta.Annotations, annotAutoscaleScaleDown)
+			clearScaleDownWindow(meta)
 			metav1.SetMetaDataAnnotation(meta, annotAutoscaleReplicas, replicas)
 		}); err != nil {
 			return current, true
@@ -342,6 +373,28 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	}
 
 	return want, true // always requeue while autoscaling is on
+}
+
+// scaleDownPending reports whether a scale-down window is recorded on app.
+func scaleDownPending(app *appv1alpha1.App) bool {
+	return app.Annotations[annotAutoscaleScaleDown] != "" || app.Annotations[annotAutoscaleScaleDownTo] != ""
+}
+
+// dropScaleDownWindow clears a pending scale-down window when autoscaling does
+// not run for app (disabled, unwired or suspended). The window must hold a dip
+// for its whole length on readings it saw, so a stamp from before a pause must
+// not let one low reading after it commit (w5/120).
+func (r *AppReconciler) dropScaleDownWindow(ctx context.Context, app *appv1alpha1.App) {
+	if !scaleDownPending(app) {
+		return
+	}
+	_ = r.patchAppMeta(ctx, app, clearScaleDownWindow)
+}
+
+// clearScaleDownWindow removes a scale-down window's stamp and its record.
+func clearScaleDownWindow(meta *metav1.ObjectMeta) {
+	delete(meta.Annotations, annotAutoscaleScaleDown)
+	delete(meta.Annotations, annotAutoscaleScaleDownTo)
 }
 
 func completeAutoscalingTransition(app *appv1alpha1.App, replicas, ready int32, now time.Time) {

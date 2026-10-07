@@ -2766,6 +2766,8 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 			}
 		}
 		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
+	} else {
+		r.dropScaleDownWindow(ctx, app)
 	}
 	f.replicas = clampReplicas(app, replicas)
 	plan := planRelease(f, now)

@@ -472,3 +472,128 @@ func TestACommittedScaleDownSettlesInOneWrite(t *testing.T) {
 		t.Fatalf("the retry scaled to %d, want 1: a failed write must not restart the window", got)
 	}
 }
+
+// TestAnUnreadableScaleDownStampRestartsTheWindow (w5/120): a stamp that does
+// not parse held every dip and was never written again, so a sustained dip
+// never scaled down. It is now treated as no stamp: the pass stamps anew and
+// holds for a full window from there.
+func TestAnUnreadableScaleDownStampRestartsTheWindow(t *testing.T) {
+	app := autoscaledApp(time.Now())
+	app.Annotations[annotAutoscaleScaleDown] = "not-a-time"
+	r := &AppReconciler{
+		Client:        fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).Build(),
+		MetricsReader: func(context.Context, string, string) ([]PodUsage, error) { return threePodsAt(0.05), nil },
+	}
+
+	if got, _ := r.applyAutoscaling(context.Background(), app, 3); got != 3 {
+		t.Fatalf("the dip scaled to %d at once, want it held", got)
+	}
+	if stamped, err := time.Parse(time.RFC3339, app.Annotations[annotAutoscaleScaleDown]); err != nil || time.Since(stamped) > time.Minute {
+		t.Fatalf("scale-down stamp = %q, want a fresh one", app.Annotations[annotAutoscaleScaleDown])
+	}
+	if got := app.Annotations[annotAutoscaleScaleDownTo]; got != "1" {
+		t.Fatalf("the fresh window records %q, want the first reading's 1", got)
+	}
+}
+
+// TestAScaleDownWindowCommitsTheHighestCountItAskedFor (w5/120): a shallow
+// dip stamped the window, and one deep reading at its end committed the deep
+// count at once. As HPA's stabilization does, the window now commits the
+// highest count any reading in it asked for. A shallower reading while it runs
+// raises that record.
+func TestAScaleDownWindowCommitsTheHighestCountItAskedFor(t *testing.T) {
+	ctx := context.Background()
+	usage := threePodsAt(0.2) // wants two of three: a shallow dip
+	app := autoscaledApp(time.Now().Add(-time.Minute))
+	app.Annotations[annotAutoscaleScaleDownTo] = "1"
+	r := &AppReconciler{
+		Client:        fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).Build(),
+		MetricsReader: func(context.Context, string, string) ([]PodUsage, error) { return usage, nil },
+	}
+
+	if got, _ := r.applyAutoscaling(ctx, app, 3); got != 3 {
+		t.Fatalf("the shallow reading scaled to %d inside the window, want it held", got)
+	}
+	if got := app.Annotations[annotAutoscaleScaleDownTo]; got != "2" {
+		t.Fatalf("the window records %q, want the shallower 2", got)
+	}
+
+	app.Annotations[annotAutoscaleScaleDown] = time.Now().Add(-scaleDownStabilizationWindow - time.Minute).UTC().Format(time.RFC3339)
+	if err := r.Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	usage = threePodsAt(0.05) // wants one: a deep reading at the end
+	if got, _ := r.applyAutoscaling(ctx, app, 3); got != 2 {
+		t.Fatalf("the window committed %d, want the 2 the whole window supports", got)
+	}
+	if scaleDownPending(app) {
+		t.Fatalf("the committed window is still recorded: %v", app.Annotations)
+	}
+}
+
+// TestAPauseInAutoscalingClearsAPendingScaleDown (w5/120): desiredReplicas
+// skips the autoscaler while the App is suspended or autoscaling is off, so a
+// stamp from before the pause survived it. After the window, the first low
+// reading committed at once. A pass that skips autoscaling now clears the
+// window, and the dip after the pause waits a full window again.
+func TestAPauseInAutoscalingClearsAPendingScaleDown(t *testing.T) {
+	for name, pause := range map[string]func(*appv1alpha1.App){
+		"suspended":         func(a *appv1alpha1.App) { a.Spec.Suspended = true },
+		"autoscaling off":   func(a *appv1alpha1.App) { a.Spec.Autoscaling.Enabled = false },
+		"autoscaling unset": func(a *appv1alpha1.App) { a.Spec.Autoscaling = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			app := autoscaledApp(time.Now().Add(-20 * time.Minute)) // a dip from before the pause
+			app.Annotations[annotAutoscaleScaleDownTo] = "1"
+			r := &AppReconciler{
+				Client:        fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).Build(),
+				MetricsReader: func(context.Context, string, string) ([]PodUsage, error) { return threePodsAt(0.05), nil },
+			}
+			paused := app.DeepCopy()
+			pause(paused)
+			r.desiredReplicas(ctx, paused, effectiveReplicas(paused), releaseObservation{})
+			if scaleDownPending(paused) {
+				t.Fatalf("the paused pass left the window recorded: %v", paused.Annotations)
+			}
+
+			resumed := paused.DeepCopy()
+			resumed.Spec = app.Spec
+			if got, _ := r.applyAutoscaling(ctx, resumed, 3); got != 3 {
+				t.Fatalf("the first dip after the pause scaled to %d, want it held for a full window", got)
+			}
+		})
+	}
+}
+
+// TestAScaleDownWindowHonorsAMaxLoweredWhileItRan (w5/120): the window's
+// record predates a change to the bounds. When max is lowered below it, the
+// window commits within the new max rather than at the old record.
+func TestAScaleDownWindowHonorsAMaxLoweredWhileItRan(t *testing.T) {
+	app := autoscaledApp(time.Now().Add(-scaleDownStabilizationWindow - time.Minute))
+	app.Annotations[annotAutoscaleReplicas] = "5"
+	app.Annotations[annotAutoscaleScaleDownTo] = "4"
+	app.Spec.Autoscaling.MaxReplicas = 2
+	fivePods := append(threePodsAt(0.05), PodUsage{Pod: "d", CPUCores: 0.05}, PodUsage{Pod: "e", CPUCores: 0.05})
+	r := &AppReconciler{
+		Client:        fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).Build(),
+		MetricsReader: func(context.Context, string, string) ([]PodUsage, error) { return fivePods, nil },
+	}
+
+	if got, _ := r.applyAutoscaling(context.Background(), app, 5); got != 2 {
+		t.Fatalf("the window committed %d, want the new max 2", got)
+	}
+}
+
+// TestUnwiredMetricsClearAPendingScaleDown (w5/120): an operator without a
+// metrics reader never runs the autoscaler, so a window recorded before it
+// lost one must not survive to commit on the first reading after.
+func TestUnwiredMetricsClearAPendingScaleDown(t *testing.T) {
+	app := autoscaledApp(time.Now().Add(-20 * time.Minute))
+	r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).Build()}
+
+	r.desiredReplicas(context.Background(), app, effectiveReplicas(app), releaseObservation{})
+	if scaleDownPending(app) {
+		t.Fatalf("the unwired pass left the window recorded: %v", app.Annotations)
+	}
+}
