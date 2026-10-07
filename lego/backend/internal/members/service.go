@@ -193,10 +193,10 @@ type MembersStore interface {
 	// the direct-accept path (w1/m33); plan/seat guards run at redemption
 	// exactly like the login-time email match.
 	AcceptInviteByToken(ctx context.Context, token, subject string) (store.Invite, error)
-	// OwnerIDForSubject resolves a subject's stable opaque "own-" id, minting one
-	// on first sight — the same identity enrichment the owners API performs
-	// (workspaces.WorkspaceStore, w6/m7). *store.PGStore already satisfies it.
-	OwnerIDForSubject(ctx context.Context, subject string) (string, error)
+	// OwnerIDsForSubjects resolves each subject's stable opaque "own-" id,
+	// minting one on first sight — the same identity enrichment the owners API
+	// performs (workspaces.WorkspaceStore, w6/m7). *store.PGStore satisfies it.
+	OwnerIDsForSubjects(ctx context.Context, subjects []string) (map[string]string, error)
 }
 
 // RoleReconciliationStore is the durable Postgres outbox used to converge an
@@ -493,19 +493,23 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 		return nil, mapStoreErr(err)
 	}
 	caller, _ := core.IdentityFrom(ctx)
+	// Resolve the opaque own- ids (minted on first sight) in one read — the
+	// same enrichment workspaces.Service.ListMembers performs for the owners
+	// API. A store error surfaces to the caller (5xx) rather than a silent blank.
+	subjects := make([]string, 0, len(ms))
+	for _, m := range ms {
+		subjects = append(subjects, m.Subject)
+	}
+	ownIDs, err := s.Store.OwnerIDsForSubjects(ctx, subjects)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]MemberView, 0, len(ms))
 	for _, m := range ms {
 		mv := memberView(m)
 		mv.IsOwner = owner != "" && m.Subject == owner
 		mv.IsSelf = caller.Subject != "" && m.Subject == caller.Subject
-		// Resolve the opaque own- id (minted on first sight) — the same
-		// enrichment workspaces.Service.ListMembers performs for the owners API.
-		// A store error surfaces to the caller (5xx) rather than a silent blank.
-		ownID, err := s.Store.OwnerIDForSubject(ctx, m.Subject)
-		if err != nil {
-			return nil, err
-		}
-		mv.UserID = ownID
+		mv.UserID = ownIDs[m.Subject]
 		mv.IdentityResolved = true
 		if s.Identities != nil {
 			if attrs, ok := s.Identities.LookupIdentity(ctx, m.Subject); ok {
