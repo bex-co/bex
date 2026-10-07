@@ -420,7 +420,7 @@ func (s *Service) PrepareWorkspaceCreation(ctx context.Context, name, plan, bill
 	}
 	setup, err := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
 	if err != nil {
-		return WorkspaceCreationAttemptView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+		return WorkspaceCreationAttemptView{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("workspace %s payment setup: %w", attempt.WorkspaceID, err))
 	}
 	attempt, err = s.CreationStore.SetWorkspaceCreationSetup(ctx, attempt.ID, id.Subject, setup.CustomerID, setup.SetupIntentID, setup.Livemode)
 	if err != nil {
@@ -448,7 +448,7 @@ func (s *Service) ResumeWorkspaceCreation(ctx context.Context, attemptID string)
 	if attempt.State == store.WorkspaceCreationSetupPending && s.CreationBilling != nil {
 		setup, setupErr := s.CreationBilling.PrepareWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.BillingEmail, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
 		if setupErr != nil {
-			return WorkspaceCreationAttemptView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, setupErr)
+			return WorkspaceCreationAttemptView{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("workspace %s resumed payment setup: %w", attempt.WorkspaceID, setupErr))
 		}
 		result.ClientSecret = setup.ClientSecret
 		result.PublishableKey = setup.PublishableKey
@@ -488,7 +488,7 @@ func (s *Service) FinalizeWorkspaceCreation(ctx context.Context, attemptID strin
 			if billing.IsInputError(verifyErr) {
 				return WorkspaceView{}, core.NewPaymentRequiredError()
 			}
-			return WorkspaceView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, verifyErr)
+			return WorkspaceView{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("workspace %s payment verification: %w", attempt.WorkspaceID, verifyErr))
 		}
 		attempt, err = s.CreationStore.MarkWorkspaceCreationSetupSucceeded(ctx, attempt.ID, id.Subject, verified.PaymentMethodID)
 		if err != nil {
@@ -504,7 +504,7 @@ func (s *Service) FinalizeWorkspaceCreation(ctx context.Context, attemptID strin
 		}
 		subscriptionID, contractErr := s.CreationBilling.PrepareWorkspaceContract(ctx, attempt.ID, attempt.WorkspaceID, attempt.ProviderCustomerID, attempt.ProviderPaymentMethodID)
 		if contractErr != nil {
-			return WorkspaceView{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, contractErr)
+			return WorkspaceView{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("workspace %s contract: %w", attempt.WorkspaceID, contractErr))
 		}
 		if err := s.CreationStore.SetWorkspaceCreationSubscription(ctx, attempt.ID, id.Subject, subscriptionID); err != nil {
 			return WorkspaceView{}, mapWorkspaceCreationStoreErr(err)

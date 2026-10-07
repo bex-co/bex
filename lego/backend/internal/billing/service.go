@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -130,17 +129,20 @@ func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, er
 	}
 	status, err := s.Provider.Readiness(ctx, tenantID)
 	if err != nil {
-		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+		return Readiness{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("readiness: %w", err))
 	}
 	status.WorkspaceID = tenantID
 	status.PaymentMethodRequired = s.Payment != nil
 	status.PaymentMethodOnboardingRequired, err = s.onboardingRequired(ctx, tenantID)
+	if errors.Is(err, core.ErrBillingUnavailable) {
+		return Readiness{}, err // the payment gate already hid and logged its cause
+	}
 	if err != nil {
-		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+		return Readiness{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("onboarding marker: %w", err))
 	}
 	status.Lifecycle, err = s.lifecycle(ctx, tenantID)
 	if err != nil {
-		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+		return Readiness{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("lifecycle: %w", err))
 	}
 	return status, nil
 }
@@ -274,6 +276,5 @@ func classifyProviderError(err error) error {
 	// surface. A workspace whose checkout dead-ends because a BillableMeterNames
 	// dimension was added without rerunning scripts/stripe-billing-setup.py (the
 	// disk_gb_hours live-catalog gap) must be diagnosable from bex-api logs.
-	log.Printf("bex-api billing: hosted-session provider error: %v", err)
-	return fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
+	return core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("hosted-session provider error: %w", err))
 }
