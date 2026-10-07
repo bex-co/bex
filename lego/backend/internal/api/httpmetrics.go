@@ -434,7 +434,7 @@ func graphqlOutcome(err error) string {
 	}
 }
 
-// mcpMetricsMiddleware times tool calls. It is added LAST in MCPServer, which
+// mcpMetricsMiddleware times tool calls. It is added LAST in buildMCPServer, which
 // makes it the outermost receiving middleware, so a call the workspace/scope
 // gate refuses is observed as denied rather than vanishing.
 //
