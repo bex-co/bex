@@ -52,6 +52,11 @@ func TestACreateTakesOverItsDeletedNamesakesSecret(t *testing.T) {
 	if revision, _ := projectedRevision(sec, filesProjection); revision != committedAt(1) {
 		t.Fatalf("prepared Secret revision = %+v, want the new store's first", revision)
 	}
+	// The takeover dates its own claim: the Secret keeps the deleted
+	// service's creationTimestamp (w5/135).
+	if got := sec.Annotations[preparedAtAnnotation]; got != fixedNow().Format(time.RFC3339) {
+		t.Fatalf("prepared Secret claimed at %q, want now", got)
+	}
 	if err := svc.Client.Create(ctx, app); err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +65,80 @@ func TestACreateTakesOverItsDeletedNamesakesSecret(t *testing.T) {
 	}
 	if sec := getSecret(t, svc.Client, "web-files"); len(sec.OwnerReferences) != 1 || sec.OwnerReferences[0].UID != app.UID {
 		t.Fatalf("committed Secret owners = %v, want the new App", sec.OwnerReferences)
+	} else if _, dated := sec.Annotations[preparedAtAnnotation]; dated {
+		t.Fatal("the adopted Secret still carries its claim's date")
 	}
+}
+
+// preparedSecret is a create's ownerless files Secret, holding data, claimed
+// at claimedAt (unset when zero), the object itself created at createdAt.
+func preparedSecret(claimedAt, createdAt time.Time, data map[string]string) *corev1.Secret {
+	sec := projectedSecret(filesProjection, committedAt(1), data)
+	sec.CreationTimestamp = metav1.NewTime(createdAt)
+	if !claimedAt.IsZero() {
+		setPreparedAt(sec, claimedAt)
+	}
+	return sec
+}
+
+// TestACreateTakesOverAnAbandonedPreparation (w5/135): a create that crashed
+// between prepare and commit left its Secret ownerless for good, so every
+// later create of the name was refused as "still being created", whatever
+// the wait. A preparation claimed longer ago than any create runs is now
+// taken over, with the map the crashed create left. One that may still be
+// running is not, nor one at a live App's name, nor an ownerless Secret that
+// is no create's.
+func TestACreateTakesOverAnAbandonedPreparation(t *testing.T) {
+	long, recent := fixedNow().Add(-time.Hour), fixedNow().Add(-time.Minute)
+	theirs := map[string]string{"theirs": "x"}
+	notAProjection := preparedSecret(time.Time{}, long, theirs) // an env group's, say
+	delete(notAProjection.Annotations, filesProjection.annotation)
+	controller := false
+	referenced := preparedSecret(long, long, theirs)
+	referenced.OwnerReferences = []metav1.OwnerReference{{APIVersion: "v1", Kind: "ConfigMap", Name: "holder", UID: "uid-holder", Controller: &controller}}
+	for name, tc := range map[string]struct {
+		objs      []client.Object
+		takenOver bool
+	}{
+		"abandoned":                          {[]client.Object{preparedSecret(long, long, theirs)}, true},
+		"abandoned before claims were dated": {[]client.Object{preparedSecret(time.Time{}, long, theirs)}, true},
+		"still preparing":                    {[]client.Object{preparedSecret(recent, recent, theirs)}, false},
+		// A takeover's claim keeps the Secret's first creationTimestamp.
+		"claimed recently, created long ago": {[]client.Object{preparedSecret(recent, long, theirs)}, false},
+		"abandoned at a live App's name":     {[]client.Object{sampleApp("web"), preparedSecret(long, long, theirs)}, false},
+		"old, but no create's":               {[]client.Object{notAProjection}, false},
+		"old, with another owner":            {[]client.Object{referenced}, false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := newFakeSecretStore()
+			store.m[filesPath("web")] = map[string]string{"theirs": "x"}
+			svc := newService(store, tc.objs...)
+			err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"), []core.SecretFile{{Name: "token", Content: "new"}}, nil)
+			sec := getSecret(t, svc.Client, "web-files")
+			if tc.takenOver {
+				if err != nil || len(sec.Data) != 1 || string(sec.Data["token"]) != "new" || sec.Annotations[preparedAtAnnotation] != fixedNow().Format(time.RFC3339) {
+					t.Fatalf("prepare = %v with files %v, want the abandoned Secret taken over and claimed now", err, keysOf(sec.Data))
+				}
+				if got := store.m[filesPath("web")]; len(got) != 1 || got["token"] != "new" {
+					t.Fatalf("store map = %v, want the crashed create's replaced", got)
+				}
+				return
+			}
+			if !errors.Is(err, core.ErrConflict) || string(sec.Data["theirs"]) != "x" || len(sec.OwnerReferences) != len(getSecretOwners(tc.objs)) {
+				t.Fatalf("prepare = %v with files %v, want a conflict and the Secret untouched", err, keysOf(sec.Data))
+			}
+		})
+	}
+}
+
+// getSecretOwners is the owner references the fixture's files Secret had.
+func getSecretOwners(objs []client.Object) []metav1.OwnerReference {
+	for _, obj := range objs {
+		if sec, ok := obj.(*corev1.Secret); ok {
+			return sec.OwnerReferences
+		}
+	}
+	return nil
 }
 
 // TestACreateRefusesASecretAnotherServiceHolds (w5/128): a Secret a live App
@@ -80,7 +158,8 @@ func TestACreateRefusesASecretAnotherServiceHolds(t *testing.T) {
 	otherName := predecessorSecret(filesProjection, "uid-other", theirs)
 	otherName.OwnerReferences[0].Name = "other"
 	for holder, objs := range map[string][]client.Object{
-		"a live App":                   {live, predecessorSecret(filesProjection, live.UID, theirs)},
+		"a live App": {live, predecessorSecret(filesProjection, live.UID, theirs)},
+		// No claim date and no creation time: of unknown age, never abandoned.
 		"another create":               {projectedSecret(filesProjection, committedAt(1), theirs)},
 		"a deleted namesake, deleting": {terminating},
 		"an App of another name":       {otherName},
