@@ -515,7 +515,7 @@ type parsedService struct {
 	databaseRefs  []bexEnvVar       // resolved after database IDs are known
 	kvRefs        []bexEnvVar       // resolved after keyvalue CR names are known
 	hostRefs      []hostRef         // fromService host/hostport — resolved after sibling slugs are known
-	groupLinks    []string          // fromGroup names to link after create
+	groupLinks    []string          // fromGroup names, linked as a create writes the service or after an update
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
 	promptKeys    []string          // sync:false keys without a manifest value
@@ -905,6 +905,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 			svc.req.EnvironmentSpecified = true
 		}
 		svc.req.initialEnvGroups = svc.groupLinks
+		created := appsByName[svc.req.Name] == nil
 		v, app, err := s.applyStackService(ctx, svc.req, svc.fields, appsByName)
 		if err != nil {
 			return nil, err
@@ -914,16 +915,21 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		if len(laterRefs) > 0 {
 			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
 		}
-		// Link fromGroup groups (idempotent) and seed sync:false/generateValue vars
-		// (seed-once) now that the service exists.
-		for _, g := range svc.groupLinks {
-			if err := requireDeployAuthority(ctx, s); err != nil {
-				return nil, err
-			}
-			if err := s.EnvGroups.LinkEnvGroup(ctx, g, ref); err != nil {
-				return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
+		// A service the apply created linked its fromGroup groups as it was
+		// written (initialEnvGroups); one that existed links them here, which is
+		// idempotent (w5/143).
+		if !created {
+			for _, g := range svc.groupLinks {
+				if err := requireDeployAuthority(ctx, s); err != nil {
+					return nil, err
+				}
+				if err := s.EnvGroups.LinkEnvGroup(ctx, g, ref); err != nil {
+					return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
+				}
 			}
 		}
+		// Seed sync:false/generateValue vars (seed-once) now that the service
+		// exists.
 		if len(svc.seedLiterals) > 0 || len(svc.seedGenerates) > 0 {
 			if err := requireDeployAuthority(ctx, s); err != nil {
 				return nil, err
@@ -2125,7 +2131,7 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 // req.Env directly; the rest is deferred to apply time or resolved in pass 2.
 type serviceEnv struct {
 	refVars       []bexEnvVar       // fromDatabase / fromService — resolved once every name is known
-	groupLinks    []string          // fromGroup names to link after create
+	groupLinks    []string          // fromGroup names, linked as a create writes the service or after an update
 	seedLiterals  map[string]string // sync:false literals, seeded once into the mutable env store
 	seedGenerates []string          // generateValue keys, minted + seeded once
 	promptKeys    []string          // sync:false keys with no manifest value
