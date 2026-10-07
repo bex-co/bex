@@ -1,13 +1,11 @@
 import type { en } from "@/i18n";
 
-// Manifest kinds as plan actions name them, and the display spellings bex-api's
-// ownership conflicts use ("database", "key value").
+// Manifest kinds, as plan actions and bex-api's ownership conflicts name them
+// (w5/098).
 const KIND_LABEL: Record<string, keyof typeof en> = {
   service: "blueprints.previewKindService",
   postgres: "blueprints.previewKindPostgres",
-  database: "blueprints.previewKindPostgres",
   key_value: "blueprints.previewKindKeyValue",
-  "key value": "blueprints.previewKindKeyValue",
   env_var_group: "blueprints.previewKindEnvGroup",
 };
 

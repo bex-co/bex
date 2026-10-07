@@ -65,12 +65,12 @@ describe("Blueprint takeover classification (w4/189)", () => {
     );
   });
 
-  // w5/m125: the kind and an unnamed owner arrive as server English ("key
-  // value", "another blueprint"); the dialog translates both.
+  // w5/m125: an unnamed owner arrives as server English ("another blueprint")
+  // and the kind as the manifest kind (w5/098); the dialog translates both.
   it("renders a zh resource takeover with no English fragments", () => {
     const err = codedGraphQLError("BLUEPRINT_RESOURCE_CONFLICT", {
       resource: "cache",
-      kind: "key value",
+      kind: "key_value",
       owningBlueprintId: "another blueprint",
       confirm: "takeover blueprint another blueprint",
     });
@@ -78,12 +78,12 @@ describe("Blueprint takeover classification (w4/189)", () => {
     expect(copy.description).toBe(
       "Key Value “cache” 由另一个 Blueprint 管理。继续将把它转移到此 Blueprint。请输入下方命令以继续。",
     );
-    expect(copy.description).not.toMatch(/another|key value/);
+    expect(copy.description).not.toMatch(/another|key[ _]value/);
   });
 
   it.each([
     ["service", "服务"],
-    ["database", "Postgres"],
+    ["postgres", "Postgres"],
     ["key_value", "Key Value"],
   ])("labels a %s takeover in zh", (kind, label) => {
     const err = codedGraphQLError("BLUEPRINT_RESOURCE_CONFLICT", {
@@ -97,7 +97,7 @@ describe("Blueprint takeover classification (w4/189)", () => {
   });
 
   it("leaves a protected-environment refusal on the protected path", () => {
-    // bex-api's own refusal (core.ProtectedEnvironmentConfirmationRequired)
+    // bex-api's own refusal (core.RequireProtectedConfirmation)
     // carries its phrase in extensions, like a takeover, under its own code.
     const err = codedGraphQLError(
       "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
