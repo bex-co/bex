@@ -114,18 +114,18 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string
 	}
 
 	if len(st.services) > 0 {
-		// A workspace's Apps may straddle the shared and its own namespace; a
-		// stale twin's label must not decide the owner.
-		apps, err := snap.apps(ctx)
+		// The service the apply updates decides the owner, not a stale twin
+		// left in the shared namespace (w5/m133).
+		services, err := snap.services(ctx)
 		if err != nil {
 			return nil, err
 		}
-		byName := map[string]string{}
-		for name, app := range foldWorkspaceApps(apps.Items) {
-			byName[name] = app.Labels[core.LabelBlueprint]
-		}
 		for _, svc := range st.services {
-			record(store.BlueprintClaimService, svc.req.Name, byName[svc.req.Name])
+			var labelOwner string
+			if app := services[svc.req.Name]; app != nil {
+				labelOwner = app.Labels[core.LabelBlueprint]
+			}
+			record(store.BlueprintClaimService, svc.req.Name, labelOwner)
 		}
 	}
 	if len(st.databases) > 0 {
@@ -627,19 +627,26 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 		}
 	}
 	// fromService `property: host` may name a service outside the file (an
-	// existing workspace service). Apply resolves it with GetApp; validate
-	// used to skip it, so a target that existed nowhere validated clean
-	// (w8/026). Same lookup, same located wording as the file-scoped check.
+	// existing workspace service). Validate used to skip it, so a target that
+	// existed nowhere validated clean (w8/026). It resolves as the apply does,
+	// with the file-scoped check's located wording.
 	declared := make(map[string]bool, len(st.services))
 	for _, svc := range st.services {
 		declared[svc.req.Name] = true
+	}
+	// The apply resolves a fromService target as it resolves a declared
+	// service: by manifest name in this workspace (w5/m133). A read failure
+	// leaves the check to the apply, as above.
+	services, err := snap.services(ctx)
+	if err != nil {
+		return out
 	}
 	for _, svc := range st.services {
 		for _, ref := range svc.hostRefs {
 			if declared[ref.target] {
 				continue
 			}
-			if _, err := s.GetApp(ctx, core.RelCanView, ref.target); errors.Is(err, core.ErrNotFound) {
+			if services[ref.target] == nil {
 				msg := fmt.Sprintf("service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", svc.req.Name, ref.target)
 				if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
 					out = append(out, blueprintLocatedError(source, msg, pointer))

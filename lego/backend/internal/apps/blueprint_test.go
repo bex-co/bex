@@ -797,6 +797,18 @@ func planActionsForTest(ctx context.Context, t *testing.T, svc *Service, manifes
 	return validation.Plan.Actions
 }
 
+// applyServiceForTest applies one declared service the way a stack apply does,
+// resolving it against a fresh read of the workspace.
+func applyServiceForTest(ctx context.Context, t *testing.T, svc *Service, req CreateRequest, fields map[string]BlueprintField) (AppView, error) {
+	t.Helper()
+	services, err := svc.newWorkspaceSnapshot(ctx).services(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, _, err := svc.applyStackService(ctx, req, fields, services)
+	return v, err
+}
+
 func parseBlueprintStackForTest(t *testing.T, manifest string) parsedStack {
 	t.Helper()
 	source, ir, problems := CompileBlueprintIR(manifest)
@@ -838,7 +850,7 @@ func TestValidateBlueprintCurrentStatePlanPredictsStoreManagedApply(t *testing.T
 	}
 
 	st := parseBlueprintStackForTest(t, manifest)
-	if _, err := svc.applyBlueprintCreate(ctx, st.services[0].req, st.services[0].fields); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, st.services[0].req, st.services[0].fields); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	created := getTenantApp(t, cl, "tea-a", "qa-bp")
@@ -884,7 +896,7 @@ func TestValidateBlueprintCurrentStatePlanPredictsStoreManagedApply(t *testing.T
 	}
 
 	st = parseBlueprintStackForTest(t, changed)
-	if _, err := svc.applyBlueprintCreate(ctx, st.services[0].req, st.services[0].fields); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, st.services[0].req, st.services[0].fields); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 	after := getTenantApp(t, cl, "tea-a", "qa-bp")

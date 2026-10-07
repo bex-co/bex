@@ -113,7 +113,7 @@ func TestStaticRouteDestinationPersistenceAcrossAdapters(t *testing.T) {
 				}
 				stack := parseBlueprintStackForTest(t, manifest)
 				parsed := stack.services[0]
-				if _, err := svc.applyBlueprintCreate(context.Background(), parsed.req, parsed.fields); err != nil {
+				if _, err := applyServiceForTest(context.Background(), t, svc, parsed.req, parsed.fields); err != nil {
 					t.Fatal(err)
 				}
 				assertRoutes(t, staticRouteViews(getApp(t, cl, "site").Spec.Routes))

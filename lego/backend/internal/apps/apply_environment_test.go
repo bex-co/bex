@@ -42,7 +42,7 @@ func TestApplyCreateRollsBackStoreRowWhenCRCreateFails(t *testing.T) {
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
 
-	if _, err := svc.applyCreate(ctx, CreateRequest{Name: "web", Image: "nginx:1"}); !errors.Is(err, wantErr) {
+	if _, err := applyServiceForTest(ctx, t, svc, CreateRequest{Name: "web", Image: "nginx:1"}, nil); !errors.Is(err, wantErr) {
 		t.Fatalf("applyCreate error = %v, want wrapped CR create error", err)
 	}
 	if len(rec.appCreates) != 1 {
@@ -95,14 +95,14 @@ func TestApplyCreateMovesExistingServiceBetweenEnvironments(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
 
 	req := CreateRequest{Name: "web", Image: "nginx:1"}
-	if _, err := svc.applyCreate(ctx, req); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, req, nil); err != nil {
 		t.Fatalf("initial applyCreate: %v", err)
 	}
 
 	join := req
 	join.EnvironmentSpecified = true
 	join.EnvironmentID = "evm-1"
-	if _, err := svc.applyCreate(ctx, join); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, join, nil); err != nil {
 		t.Fatalf("join environment: %v", err)
 	}
 	a := getTenantApp(t, cl, "tea-a", "web")
@@ -120,7 +120,7 @@ func TestApplyCreateMovesExistingServiceBetweenEnvironments(t *testing.T) {
 	}
 
 	// Re-applying the identical assignment must short-circuit before any write.
-	if _, err := svc.applyCreate(ctx, join); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, join, nil); err != nil {
 		t.Fatalf("idempotent re-apply: %v", err)
 	}
 	if len(st.assignCalls) != 1 {
@@ -129,7 +129,7 @@ func TestApplyCreateMovesExistingServiceBetweenEnvironments(t *testing.T) {
 
 	leave := req
 	leave.EnvironmentSpecified = true
-	if _, err := svc.applyCreate(ctx, leave); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, leave, nil); err != nil {
 		t.Fatalf("leave environment: %v", err)
 	}
 	a = getTenantApp(t, cl, "tea-a", "web")

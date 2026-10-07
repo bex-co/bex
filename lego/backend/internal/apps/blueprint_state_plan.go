@@ -64,7 +64,6 @@ type blueprintActionResolver struct {
 
 func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *workspaceSnapshot) (*blueprintActionResolver, error) {
 	resolver := &blueprintActionResolver{
-		services:  map[string]*appv1alpha1.App{},
 		databases: map[string]*appv1alpha1.Database{},
 		keyValues: map[string]*appv1alpha1.KeyValue{},
 		envGroups: map[string]string{},
@@ -78,39 +77,11 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		resolver.envGroups = groups
 	}
 	tenantID, scoped := s.Tenant(ctx)
-	apps, err := snap.apps(ctx)
+	services, err := snap.services(ctx)
 	if err != nil {
 		return nil, err
 	}
-	// The plan resolves a service against its copy in the workspace's own
-	// namespace, not a stale twin left in the shared one; a service only there
-	// is not yet resolved (w5/142). An empty namespace listed every namespace,
-	// so it filters nothing.
-	namespace := s.AppNamespace(tenantID)
-	for i := range apps.Items {
-		app := &apps.Items[i]
-		if (namespace != "" && app.Namespace != namespace) || (scoped && app.Labels[core.LabelTenant] != tenantID) {
-			continue
-		}
-		// Key by the manifest-facing service name, not the Kubernetes object
-		// name: store-managed Apps carry a tenant prefix (CRName), so indexing
-		// by app.Name while ResolveBlueprintResource looks up by the bare
-		// manifest name misses every store-managed service and reports live
-		// resources as fresh creates in the pre-sync plan an approver reviews
-		// (round-21 finding 7). Databases and key-value stores below already key
-		// by their manifest-facing Spec.Name.
-		//
-		// Two Apps resolving to one public name (a legacy bare-named CR beside
-		// its store-managed twin) would otherwise let list order pick which spec
-		// the plan diffs against; refuse, the way the datastore loops below do,
-		// so the plan never describes a different object than apply touches
-		// (w6/m125).
-		name := core.AppPublicName(app)
-		if _, duplicate := resolver.services[name]; duplicate {
-			return nil, fmt.Errorf("%w: service name %q is already used more than once in this workspace", core.ErrConflict, name)
-		}
-		resolver.services[name] = app
-	}
+	resolver.services = services
 	databases, err := snap.databases(ctx)
 	if err != nil {
 		return nil, err

@@ -163,7 +163,7 @@ func TestPrivateServiceIsNeverPubliclyRoutableThroughBlueprintSync(t *testing.T)
 	req := CreateRequest{Name: "pserv", Type: appv1alpha1.TypePrivateService, Image: "nginx:alpine"}
 
 	// First sync creates it.
-	if _, err := svc.applyCreate(ctx, req); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, req, nil); err != nil {
 		t.Fatalf("blueprint first sync: %v", err)
 	}
 	assertPrivate(t, "blueprint create", getApp(t, cl, "pserv"))
@@ -171,7 +171,7 @@ func TestPrivateServiceIsNeverPubliclyRoutableThroughBlueprintSync(t *testing.T)
 	// A re-sync of the SAME service is the idempotent-upsert path
 	// (applyCreateToSpec's straight `dst.Expose = want.Expose`): it must never
 	// flip a private service public on the way through.
-	if _, err := svc.applyCreate(ctx, req); err != nil {
+	if _, err := applyServiceForTest(ctx, t, svc, req, nil); err != nil {
 		t.Fatalf("blueprint re-sync: %v", err)
 	}
 	assertPrivate(t, "blueprint re-sync", getApp(t, cl, "pserv"))

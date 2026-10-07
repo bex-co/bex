@@ -18,7 +18,9 @@ package apps
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -34,6 +36,7 @@ type workspaceSnapshot struct {
 	s            *Service
 	tenantID     string
 	appList      *appv1alpha1.AppList
+	serviceMap   map[string]*appv1alpha1.App
 	databaseList *appv1alpha1.DatabaseList
 	keyValueList *appv1alpha1.KeyValueList
 }
@@ -56,6 +59,64 @@ func (snap *workspaceSnapshot) apps(ctx context.Context) (*appv1alpha1.AppList, 
 		snap.appList = list
 	}
 	return snap.appList, nil
+}
+
+// services keys the workspace's Apps by the name a manifest declares them
+// under: the one resolution a Blueprint's plan and its apply share, so the
+// apply updates the object the plan names (w5/m133).
+//
+//   - The key is the manifest-facing name (core.AppPublicName), never the
+//     object name or a displayed name: store-managed Apps carry a tenant
+//     prefix (CRName), and keying by object name reported live services as
+//     fresh creates in the plan an approver reviews (round-21 finding 7).
+//   - Only the workspace's own Apps count, whatever else the caller can reach;
+//     a request with no workspace counts only Apps no workspace owns.
+//   - Of a name's copies, the one in its workspace's own namespace answers; a
+//     service still only in the shared namespace (mid ADR043 D8) answers from
+//     there. Two copies in the answering namespace are refused: list order
+//     would otherwise pick which one the plan diffs against (w6/m125).
+func (snap *workspaceSnapshot) services(ctx context.Context) (map[string]*appv1alpha1.App, error) {
+	if snap.serviceMap != nil {
+		return snap.serviceMap, nil
+	}
+	apps, err := snap.apps(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	copies := map[string][]*appv1alpha1.App{}
+	for i := range apps.Items {
+		app := &apps.Items[i]
+		if app.Labels[core.LabelTenant] != snap.tenantID {
+			continue
+		}
+		name := core.AppPublicName(app)
+		if copies[name] == nil {
+			names = append(names, name)
+		}
+		copies[name] = append(copies[name], app)
+	}
+	byName := make(map[string]*appv1alpha1.App, len(names))
+	for _, name := range names {
+		answering := copies[name][0].Namespace
+		for _, app := range copies[name] {
+			if core.AppInOwnWorkspaceNamespace(app) {
+				answering = app.Namespace
+				break
+			}
+		}
+		for _, app := range copies[name] {
+			if app.Namespace != answering {
+				continue
+			}
+			if byName[name] != nil {
+				return nil, fmt.Errorf("%w: service name %q is already used more than once in this workspace", core.ErrConflict, name)
+			}
+			byName[name] = app
+		}
+	}
+	snap.serviceMap = byName
+	return byName, nil
 }
 
 func (snap *workspaceSnapshot) databases(ctx context.Context) (*appv1alpha1.DatabaseList, error) {
