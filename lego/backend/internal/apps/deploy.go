@@ -2791,7 +2791,7 @@ func (s *Service) applyBlueprintCreate(ctx context.Context, req CreateRequest, f
 }
 
 func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, fields map[string]BlueprintField) (AppView, error) {
-	if err := s.claimBlueprintResourceName(ctx, "service", req.Name); err != nil {
+	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimService, req.Name); err != nil {
 		return AppView{}, err
 	}
 	desired, err := specFromCreate(req)
@@ -3108,7 +3108,7 @@ func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map
 // re-apply is a no-op. databases is deployParsedStack's pre-fetched workspace
 // snapshot.
 func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment, databases []appv1alpha1.Database) (StackDatabaseView, error) {
-	if err := s.claimBlueprintResourceName(ctx, "database", db.name); err != nil {
+	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimDatabase, db.name); err != nil {
 		return StackDatabaseView{}, err
 	}
 	tenantID, scoped := s.Tenant(ctx)
@@ -3173,7 +3173,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	// of the same render.yaml entry must match on the user-facing name (w9/m6,
 	// mirroring applyDatabase). keyValues is deployParsedStack's pre-fetched
 	// workspace snapshot.
-	if err := s.claimBlueprintResourceName(ctx, "key_value", kv.name); err != nil {
+	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimKeyValue, kv.name); err != nil {
 		return StackKeyValueView{}, err
 	}
 	tenantID, scoped := s.Tenant(ctx)
