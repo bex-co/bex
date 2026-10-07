@@ -74,6 +74,118 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Unknown",
     description: "Key Value status badge for an unrecognized status",
   },
+  "keyvalue.statusReasonStatefulSetReadFailed": {
+    message: "The Key Value's workload status could not be checked.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StatefulSetReadFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStatefulSetFailed": {
+    message:
+      "The Key Value's workload could not be updated, so the latest change was not applied.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StatefulSetFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPVCReadFailed": {
+    message: "The storage volume's status could not be checked.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PVCReadFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPVCResizeFailed": {
+    message: "The Key Value's storage volume could not be resized.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PVCResizeFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonSecretFailed": {
+    message: "The Key Value's connection details could not be saved.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's SecretFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonCredentialSecretFailed": {
+    message: "The Key Value's credentials could not be saved.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's CredentialSecretFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonSecretRecreateFailed": {
+    message: "The Key Value's connection details could not be rebuilt.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's SecretRecreateFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonServiceFailed": {
+    message: "The Key Value's internal address could not be set up.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's ServiceFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonNetworkPolicyFailed": {
+    message: "The Key Value's network policy could not be applied.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's NetworkPolicyFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonBackupNetworkPolicyFailed": {
+    message: "The backup job's network policy could not be applied.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's BackupNetworkPolicyFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonBackupCronJobFailed": {
+    message: "The daily backup schedule could not be updated.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's BackupCronJobFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonTLSIssuerMissing": {
+    message:
+      "Public access can't be enabled: no certificate issuer is configured.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's TLSIssuerMissing Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonCertificateFailed": {
+    message: "The certificate for public access could not be issued.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's CertificateFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonCertificateCleanupFailed": {
+    message: "The certificate for public access could not be removed.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's CertificateCleanupFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageClassMissing": {
+    message: "The storage volume has no storage class, so it cannot grow.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageClassMissing Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageClassNotFound": {
+    message:
+      "The storage volume's storage class was not found, so it cannot grow.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageClassNotFound Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageClassNotExpandable": {
+    message: "The storage volume's storage class does not allow it to grow.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageClassNotExpandable Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageBlockedByQuota": {
+    message:
+      "The storage volume can't grow: the workspace's storage quota has no room for it.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageBlockedByQuota Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPersistenceTransitionFailed": {
+    message:
+      "Preparing the stored data for startup failed; the data is kept and this will retry.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PersistenceTransitionFailed Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonPersistenceSourceUnknown": {
+    message:
+      "The stored data's persistence mode is unknown, so the Key Value can't start until a platform operator confirms it. No data was changed.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's PersistenceSourceUnknown Ready reason (bex-api statusReasonCode)",
+  },
+  "keyvalue.statusReasonStorageShrinkRejected": {
+    message:
+      "Key Value storage is grow-only: the volume can't be made smaller than its current size.",
+    description:
+      "Why an unavailable Key Value is unavailable: the operator's StorageShrinkRejected Ready reason (bex-api statusReasonCode)",
+  },
   // --- List states ---
   "keyvalue.errorTitle": {
     message: "Couldn't load Key Value stores",

@@ -1,9 +1,11 @@
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MetadataList } from "@/common/components/metadata-list";
+import { StatusWithReason } from "@/common/components/status-with-reason";
 import { RelativeAge } from "@/common/components/relative-time";
 import { KeyValueNameRow } from "@/features/keyvalue/components/key-value-name-row";
-import { statusLabel } from "@/features/keyvalue/lib/labels";
+import { statusLabel, statusReasonLabel } from "@/features/keyvalue/lib/labels";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
+import { deriveStatus } from "@/features/keyvalue/lib/status";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 /**
@@ -25,6 +27,15 @@ export function KeyValueMetadataCard({
   // the plan id rather than showing nothing.
   const planName =
     instanceTypes.find((it) => it.id === keyValue.plan)?.name ?? keyValue.plan;
+  // Only beside "Unavailable": the list query refreshes the cached status
+  // without the reason, so a recovered store could still hold a stale one.
+  const reasonKey = statusReasonLabel(keyValue.statusReasonCode);
+  const reason =
+    deriveStatus(keyValue).key === "unavailable"
+      ? reasonKey
+        ? t(reasonKey)
+        : keyValue.statusReason
+      : null;
   return (
     <MetadataList
       title={t("keyvalue.metaTitle")}
@@ -39,7 +50,15 @@ export function KeyValueMetadataCard({
         // The same label the header badge shows: a suspended store still
         // reports status "available", so printing the wire value made this row
         // contradict the badge beside it (w1/m159, from w1/085).
-        { label: t("keyvalue.metaStatus"), value: t(statusLabel(keyValue)) },
+        {
+          label: t("keyvalue.metaStatus"),
+          value: (
+            <StatusWithReason
+              status={t(statusLabel(keyValue))}
+              reason={reason}
+            />
+          ),
+        },
         { label: t("keyvalue.metaPlan"), value: planName ?? "—" },
         {
           label: t("keyvalue.metaVersion"),

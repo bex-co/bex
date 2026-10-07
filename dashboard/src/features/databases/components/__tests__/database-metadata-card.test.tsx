@@ -115,6 +115,19 @@ describe("DatabaseMetadataCard", () => {
       ).toBeInTheDocument();
     });
 
+    // The list query refreshes a cached database's status without its reason,
+    // so one that recovered can still hold the old one (w5/m129).
+    it("shows no reason beside a healthy database's status, even a stale one", () => {
+      renderCard(
+        db({
+          status: "available",
+          statusReason: "The connection pooler could not be provisioned.",
+          statusReasonCode: "PoolerFailed",
+        }),
+      );
+      expect(screen.queryByText(/connection pooler/)).not.toBeInTheDocument();
+    });
+
     it("falls back to bex-api's sentence for an unknown code", async () => {
       await i18n.changeLanguage("zh");
       renderCard(
