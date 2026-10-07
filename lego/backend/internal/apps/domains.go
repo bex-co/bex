@@ -1020,22 +1020,65 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, owner *appv1alpha1.A
 // that arms the memo (w5/094): their sweep is the one cost that grows with the
 // platform rather than with the request. A create checks its hosts in its plan
 // and again as it writes (w5/m116), as a patch does a maintenance URI in both
-// its passes (w9/m166).
+// its passes (w9/m166). A Blueprint apply indexes once for all its services
+// and records each write's claims as it goes (withHostClaimScope, w5/142).
 func (s *Service) hostClaimIndex(ctx context.Context) (hostClaims, error) {
-	return memoized(ctx, "apps:host-claims", func() (hostClaims, error) {
-		// A host is unique across the whole platform, and Apps are spread across
-		// per-tenant namespaces (ADR043), so the sweep is cluster-wide.
-		var list appv1alpha1.AppList
-		if err := s.Client.List(ctx, &list); err != nil {
-			return nil, err
+	if scope, ok := ctx.Value(hostClaimScopeKey{}).(*hostClaimScope); ok {
+		if scope.claims == nil {
+			claims, err := s.listHostClaims(ctx)
+			if err != nil {
+				return nil, err
+			}
+			scope.claims = claims
 		}
-		return indexHostClaims(list.Items), nil
+		return scope.claims, nil
+	}
+	return memoized(ctx, "apps:host-claims", func() (hostClaims, error) {
+		return s.listHostClaims(ctx)
 	})
+}
+
+// listHostClaims sweeps the platform's Apps into an index of their hosts. A
+// host is unique across the whole platform, and Apps are spread across
+// per-tenant namespaces (ADR043), so the sweep is cluster-wide.
+func (s *Service) listHostClaims(ctx context.Context) (hostClaims, error) {
+	var list appv1alpha1.AppList
+	if err := s.Client.List(ctx, &list); err != nil {
+		return nil, err
+	}
+	return indexHostClaims(list.Items), nil
+}
+
+// hostClaimScope holds the one host-claim index a Blueprint apply shares
+// across its services, built on first need.
+type hostClaimScope struct{ claims hostClaims }
+
+type hostClaimScopeKey struct{}
+
+// withHostClaimScope shares one index of the platform's host claims across a
+// Blueprint apply: its preflight and each service it writes. The apply's
+// writes, which run one at a time, keep it current (recordHostClaims). Only
+// the index is shared; every other request-memoized answer stays per service
+// (w5/142).
+func withHostClaimScope(ctx context.Context) context.Context {
+	return context.WithValue(ctx, hostClaimScopeKey{}, &hostClaimScope{})
+}
+
+// recordHostClaims updates the apply's shared host-claim index, if one was
+// built, with app as a write left it: the checks after the write see the hosts
+// app claims now and no longer the ones it dropped. A service's stored
+// maintenance page, which its manifest need not restate, can name a host an
+// earlier service in the same apply gives up.
+func recordHostClaims(ctx context.Context, app *appv1alpha1.App) {
+	if scope, ok := ctx.Value(hostClaimScopeKey{}).(*hostClaimScope); ok && scope.claims != nil {
+		scope.claims.replace(app)
+	}
 }
 
 // hostClaims maps each host an App stores, normalized, to that App's
 // identity (appClaimIdentity), or to contestedClaim when several Apps store
-// it. A request's memo shares it, so it is read-only once built.
+// it. A request's memo shares it read-only; an apply's host-claim scope also
+// updates it as the apply writes.
 type hostClaims map[string]string
 
 // contestedClaim marks a host more than one App stores. It is never an App's
@@ -1051,26 +1094,44 @@ func indexHostClaims(items []appv1alpha1.App) hostClaims {
 		size += claimedHostCount(&items[i])
 	}
 	claims := make(hostClaims, size)
-	add := func(host, claimant string) {
-		if host = normalizeHostname(host); host == "" {
-			return
-		}
-		if prior, ok := claims[host]; ok && prior != claimant {
-			claimant = contestedClaim
-		}
-		claims[host] = claimant
-	}
 	for i := range items {
-		if claimedHostCount(&items[i]) == 0 {
-			continue
-		}
-		claimant := appClaimIdentity(&items[i])
-		add(items[i].Spec.Host, claimant)
-		for _, h := range items[i].Spec.Hosts {
-			add(h, claimant)
-		}
+		claims.add(&items[i])
 	}
 	return claims
+}
+
+// add records the hosts app stores.
+func (c hostClaims) add(app *appv1alpha1.App) {
+	if claimedHostCount(app) == 0 {
+		return
+	}
+	claimant := appClaimIdentity(app)
+	c.addHost(app.Spec.Host, claimant)
+	for _, host := range app.Spec.Hosts {
+		c.addHost(host, claimant)
+	}
+}
+
+func (c hostClaims) addHost(host, claimant string) {
+	if host = normalizeHostname(host); host == "" {
+		return
+	}
+	if prior, ok := c[host]; ok && prior != claimant {
+		claimant = contestedClaim
+	}
+	c[host] = claimant
+}
+
+// replace drops the hosts app stored and records the ones it stores now. A
+// contested host stays contested.
+func (c hostClaims) replace(app *appv1alpha1.App) {
+	claimant := appClaimIdentity(app)
+	for host, holder := range c {
+		if holder == claimant {
+			delete(c, host)
+		}
+	}
+	c.add(app)
 }
 
 // claimedElsewhere reports whether an App other than owner stores host or its
