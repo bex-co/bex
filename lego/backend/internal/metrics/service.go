@@ -1036,7 +1036,11 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		var err error
 		routers, err = s.TraefikRouterNames(ctx, app)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
+			// Unclassified on purpose (w5/112): the source is configured, so a
+			// failed router lookup is an internal fault the adapters redact,
+			// not METRICS_UNAVAILABLE. Fail closed: an empty router list would
+			// read as a real zero.
+			return nil, err
 		}
 	}
 	return s.readRequestSeries(ctx, s.RequestMetrics, q, app, routers)
@@ -1174,7 +1178,7 @@ func (s *Service) MonthToDateBandwidth(ctx context.Context, app string) (MonthTo
 	}
 	routers, err := s.TraefikRouterNames(ctx, resolved)
 	if err != nil {
-		return MonthToDateBandwidth{}, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
+		return MonthToDateBandwidth{}, err // unclassified on purpose: see requestMetric (w5/112)
 	}
 	now := s.Now().UTC()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -1294,7 +1298,7 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App,
 	if req.RouterScoped {
 		routers, err := s.TraefikRouterNames(ctx, app)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
+			return nil, err // unclassified on purpose: see requestMetric (w5/112)
 		}
 		req.Routers = routers
 	}

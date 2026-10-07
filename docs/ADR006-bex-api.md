@@ -155,7 +155,7 @@ Services, Postgres, Key Values and workspaces share one name rule, `appv1alpha1.
 - 503s for a dependency the deployment never wired:
   - `LOGS_UNAVAILABLE`: no pod-log source;
   - `LOG_STORE_UNAVAILABLE`: request logs, build-log history, structured log filters or label discovery without the durable store;
-  - `METRICS_UNAVAILABLE`;
+  - `METRICS_UNAVAILABLE`: no metrics backend. Bandwidth and static-site request metrics also need the App's Traefik routers. When that lookup fails, the fault is the platform's, not a missing backend: the answer is an uncoded `internal error` (500 on REST) and the cause is logged. An App without public hosts reads zero (w5/112);
   - `SECRETS_UNAVAILABLE`;
   - `AUDIT_LOG_UNAVAILABLE`;
   - `GITHUB_UNAVAILABLE`: no GitHub App;

@@ -204,6 +204,23 @@ func TestTraefikRouterNamesDistinguishPrivateZeroFromMissingPublicIngress(t *tes
 		t.Fatalf("Running public App missing Ingress: got %v, want unresolved error", err)
 	}
 
+	// Exposed, but with the subdomain disabled and no custom domain left, the
+	// operator keeps no Ingress: zero egress, not a missing Ingress (w5/112).
+	for _, spec := range []appv1alpha1.AppSpec{
+		{Expose: true, SubdomainPolicy: appv1alpha1.SubdomainPolicyDisabled},
+		{Type: appv1alpha1.TypeStaticSite, Expose: true, SubdomainPolicy: appv1alpha1.SubdomainPolicyDisabled},
+	} {
+		noHosts := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-unlisted", Namespace: "default"},
+			Spec:       spec,
+			Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning},
+		}
+		names, err = base.TraefikRouterNames(context.Background(), noHosts)
+		if err != nil || len(names) != 0 {
+			t.Fatalf("Running %q App without public hosts: got names=%v err=%v, want successful empty", spec.Type, names, err)
+		}
+	}
+
 	failedPublic := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "web-failed", Namespace: "default"},
 		Spec:       appv1alpha1.AppSpec{Expose: true},
