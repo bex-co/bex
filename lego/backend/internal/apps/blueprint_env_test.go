@@ -58,12 +58,19 @@ func newFakeEnvGroups(preexisting ...string) *fakeEnvGroups {
 	return &fakeEnvGroups{preexisting: preexisting, applied: map[string]appliedGroup{}, environments: map[string]string{}}
 }
 
-func (f *fakeEnvGroups) WithInitialEnvGroups(_ context.Context, _ []string, _ *appv1alpha1.App, create, complete func() error) error {
+// WithInitialEnvGroups links names to the App it creates once the creation
+// completes, as the real service commits them, in the LinkEnvGroup log.
+func (f *fakeEnvGroups) WithInitialEnvGroups(_ context.Context, names []string, a *appv1alpha1.App, create, complete func() error) error {
 	if err := create(); err != nil {
 		return err
 	}
 	if complete != nil {
-		return complete()
+		if err := complete(); err != nil {
+			return err
+		}
+	}
+	for _, name := range names {
+		f.links = append(f.links, name+"->"+stackServiceRef(a))
 	}
 	return nil
 }

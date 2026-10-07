@@ -277,7 +277,9 @@ func (r *resolvingSeeder) SeedEnvVars(ctx context.Context, service string, _ map
 // TestTheApplysLaterVerbsReachTheServiceItWrote (w5/m133): after writing a
 // service, the apply links its env groups and seeds its generated values by
 // name, and a name resolves the service displayed under it. Both now reach the
-// App the apply wrote, whether it updated or created it.
+// App the apply wrote, whether it updated or created it. A service it creates
+// has its groups linked as it is written, so only the update links by name
+// (w5/143).
 func TestTheApplysLaterVerbsReachTheServiceItWrote(t *testing.T) {
 	web, api := renamedTwins()
 	svc, _, ctx := tenantStackService(web, api)
@@ -294,9 +296,14 @@ func TestTheApplysLaterVerbsReachTheServiceItWrote(t *testing.T) {
 ` + env}); err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
-	want := []string{web.Name, core.CRName("tea-a", "worker")}
-	if !reflect.DeepEqual(groups.reached, want) || !reflect.DeepEqual(seeder.reached, want) {
-		t.Errorf("links reached %v and seeds %v, want %v", groups.reached, seeder.reached, want)
+	if want := []string{web.Name}; !reflect.DeepEqual(groups.reached, want) {
+		t.Errorf("links by name reached %v, want %v", groups.reached, want)
+	}
+	if len(groups.links) != 1 {
+		t.Errorf("groups linked as services were created = %v, want the worker's one", groups.links)
+	}
+	if want := []string{web.Name, core.CRName("tea-a", "worker")}; !reflect.DeepEqual(seeder.reached, want) {
+		t.Errorf("seeds reached %v, want %v", seeder.reached, want)
 	}
 }
 
