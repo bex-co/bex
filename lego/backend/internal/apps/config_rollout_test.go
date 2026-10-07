@@ -338,3 +338,25 @@ func TestOperationalOnlyPatchIsNoDeploy(t *testing.T) {
 		t.Fatalf("an operational-only patch opened %d deploy rows, want none", len(st.deployCalls))
 	}
 }
+
+// TestSourceUpdateClearsTheBuildPin (w5/138): a pinned commit belongs to the
+// repository and branch it was resolved from. Update Source is saved for the
+// next deploy, and a configuration rollout counts as one, so a pin left behind
+// would build the old commit against the new branch, or fail to fetch it from
+// the new repository.
+func TestSourceUpdateClearsTheBuildPin(t *testing.T) {
+	repo, branch := "https://github.com/bex-co/other.git", "release"
+	for name, patch := range map[string]sourcePatch{"repository": {Repo: &repo}, "branch": {Branch: &branch}} {
+		t.Run(name, func(t *testing.T) {
+			pinned := managedRepoApp("web")
+			pinned.Spec.BuildCommit = "1111111111111111111111111111111111111111"
+			svc, cl := newService(&recordingStore{}, pinned)
+			if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", patch); err != nil {
+				t.Fatalf("SetSourceAndRegistryCredential: %v", err)
+			}
+			if got := getApp(t, cl, "web").Spec.BuildCommit; got != "" {
+				t.Errorf("spec.buildCommit = %q after a %s change, want it cleared", got, name)
+			}
+		})
+	}
+}

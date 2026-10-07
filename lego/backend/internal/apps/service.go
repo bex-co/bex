@@ -2310,17 +2310,21 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 // from the store's narrower projection of the desired spec (for example after
 // a stale CRD rejects a newly added field). That applies to the stack path
 // too: "the next apply re-converges" only helps if a next apply ever comes.
+
 // provisionAppIdentity opens the control-plane row (when the store is on and a
 // tenant is resolved) and stamps the CR's identity: the managed-by/app-id/
 // workspace labels the projector and lifecycle verbs key on, plus the globally
-// unique slug that drives the platform host. It returns the created row's id
-// (empty when no row was written, so the caller knows whether to roll back) and
-// the first deploy id the create opened.
+// unique slug that drives the platform host. It pins the first build to the
+// commit the first deploy row records. It returns the created row's id (empty
+// when no row was written, so the caller knows whether to roll back) and the
+// first deploy id the create opened.
 func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment) (createdRowID, firstDeployID string, err error) {
 	if a.Labels == nil {
 		a.Labels = map[string]string{}
 	}
 	if s.Store != nil && tenantID != "" {
+		// The branch tip this create will build, resolved best-effort.
+		firstCommit := s.resolveDeployCommit(ctx, tenantID, req.Repo, a.Spec.Branch)
 		row, err := s.Store.CreateApp(ctx, store.App{
 			TenantID: tenantID,
 			Name:     req.Name,
@@ -2340,9 +2344,8 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 			Tier:                 a.Spec.Tier,
 			ProjectID:            environment.ProjectID,
 			EnvironmentID:        environment.ID,
-			// Provenance for the first deploy row CreateApp opens (w9/001):
-			// the branch tip this create will build, resolved best-effort.
-			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, a.Spec.Branch),
+			// Provenance for the first deploy row CreateApp opens (w9/001).
+			FirstDeployCommit: firstCommit,
 			CreationPending:   len(req.initialEnvGroups) > 0,
 		})
 		if err != nil {
@@ -2355,6 +2358,13 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		// finds this CR on its next pass (avoiding a duplicate create) and
 		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
 		stampAppIdentity(a, tenantID, row.ID, true)
+		// Build the commit the row records, as every later trigger does: a
+		// push landing before the build starts must not leave the row naming a
+		// commit that was never built (w5/138). An unresolved tip builds the
+		// branch.
+		if firstCommit.Hash != "" {
+			a.Spec.BuildCommit = firstCommit.Hash
+		}
 		// The globally-unique slug (w4/m19) drives the platform host
 		// (operator effectiveHosts) — never req.Name, which is only
 		// workspace-unique and can collide across tenants.
@@ -4170,6 +4180,11 @@ type sourceFields struct {
 func (f sourceFields) applySourceChange(a *appv1alpha1.App) {
 	if f.repo != a.Spec.Repo {
 		a.Spec.CloneSecret = ""
+	}
+	// A pinned commit belongs to the repository and branch it was resolved
+	// from; the next deploy builds the new source's own (w5/138).
+	if f.repo != a.Spec.Repo || f.branch != a.Spec.Branch {
+		a.Spec.BuildCommit = ""
 	}
 	f.applyTo(a)
 }

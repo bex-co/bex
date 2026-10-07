@@ -1247,7 +1247,10 @@ func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref s
 		return store.CommitInfo{}, false, nil
 	}
 	owner, repo, ok := ownerRepo(repoURL)
-	if !ok {
+	// Only a github.com repository has a commit an installation can name:
+	// another host's owner/repo that matches a connected account must not
+	// resolve to a GitHub SHA, which a pinned build then fails to fetch.
+	if !ok || !strings.HasPrefix(core.CanonicalRepo(repoURL), "github.com/") {
 		return store.CommitInfo{}, false, nil
 	}
 	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)

@@ -2124,3 +2124,37 @@ func TestScaleSavedCountOverridesRollbackCountWithoutDeployingSavedConfig(t *tes
 }
 
 func (r *recordingStore) CompleteAppCreation(context.Context, string) error { return r.err }
+
+// commitsAt resolves every ref to the one commit it names, or to nothing when
+// it names none.
+type commitsAt string
+
+func (c commitsAt) ResolveCommit(context.Context, string, string, string) (store.CommitInfo, bool, error) {
+	return store.CommitInfo{Hash: string(c)}, c != "", nil
+}
+
+// TestCreatePinsTheFirstBuildToTheCommitItsDeployRecords (w5/138): create
+// resolved the branch tip for its first deploy row but never pinned it, so the
+// build cloned whatever the branch held when it started, and a push in between
+// left the row naming a commit that was never built. Every later trigger pins
+// its commit; a tip create cannot resolve still builds the branch.
+func TestCreatePinsTheFirstBuildToTheCommitItsDeployRecords(t *testing.T) {
+	const sha = "0123456789abcdef0123456789abcdef01234567"
+	for name, resolved := range map[string]commitsAt{"resolved": sha, "unresolved": ""} {
+		t.Run(name, func(t *testing.T) {
+			rec := &recordingStore{}
+			svc, cl := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, rec)
+			svc.Commits = resolved
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+			if _, err := svc.create(ctx, CreateRequest{Name: "web", Repo: "https://github.com/acme/web", Runtime: "docker"}); err != nil {
+				t.Fatalf("create: %v", err)
+			}
+			if got := rec.appCreates[0].FirstDeployCommit.Hash; got != string(resolved) {
+				t.Fatalf("first deploy row commit = %q, want %q", got, resolved)
+			}
+			if got := getTenantApp(t, cl, "tea-a", "web").Spec.BuildCommit; got != string(resolved) {
+				t.Errorf("spec.buildCommit = %q, want %q: the first build checks out the commit its deploy row records", got, resolved)
+			}
+		})
+	}
+}
