@@ -404,11 +404,16 @@ func (s *Service) adoptPreparedSecret(ctx context.Context, a *appv1alpha1.App, n
 
 // abortProjection removes both halves of one prepared leg: the store map
 // first, while the Secret still holds the name, so a create that claims the
-// name next cannot have its map deleted under it (w5/134). Each operation is
-// idempotent, so callers can use it after any failed phase.
+// name next cannot have its map deleted under it (w5/134). A map it could not
+// remove keeps its Secret, still holding the name, so the create that later
+// takes the abandoned claim over removes or replaces the map, rather than
+// finding no Secret and leaving the map to the next service (w5/148). Each
+// operation is idempotent, so callers can use it after any failed phase.
 func (s *Service) abortProjection(ctx context.Context, a *appv1alpha1.App, name, path string) error {
-	storeErr := s.Store.Delete(ctx, path)
-	return errors.Join(storeErr, s.deleteSecret(ctx, a.Namespace, name))
+	if err := s.Store.Delete(ctx, path); err != nil {
+		return err
+	}
+	return s.deleteSecret(ctx, a.Namespace, name)
 }
 
 func (s *Service) commitSecretFiles(ctx context.Context, _ string, a *appv1alpha1.App) error {
@@ -516,10 +521,14 @@ func (s createSecretsSeeder) CheckCreateSecrets(files []core.SecretFile, env map
 	return nil
 }
 
-// PrepareCreateSecrets runs both legs; each is a no-op for an empty input, so a
-// create carrying only one of the two writes only that one. A failed prepare
-// leaves nothing behind: an env leg that fails removes the files leg before it.
+// PrepareCreateSecrets runs both legs. A leg the create does not seed writes
+// nothing, but first releases any leftover at its name (releaseUnseededLegs), a
+// create seeding neither leg included. A failed prepare leaves nothing behind:
+// an env leg that fails removes the files leg before it.
 func (s createSecretsSeeder) PrepareCreateSecrets(ctx context.Context, service string, a *appv1alpha1.App, files []core.SecretFile, env map[string]string) error {
+	if err := s.service.releaseUnseededLegs(ctx, service, a, len(files) == 0, len(env) == 0); err != nil {
+		return err
+	}
 	if err := s.service.prepareSecretFiles(ctx, service, a, files); err != nil {
 		return err
 	}
@@ -530,6 +539,48 @@ func (s createSecretsSeeder) PrepareCreateSecrets(ctx context.Context, service s
 			return core.HideCause(err, fmt.Errorf("abort create secrets: %w", abortErr))
 		}
 		return err
+	}
+	return nil
+}
+
+// releaseUnseededLegs claims, then at once releases, each leg a create does
+// not seed whose Secret exists: the claim prepareProjection makes, so it takes
+// over a crashed create's abandoned preparation or a deleted namesake's Secret
+// and refuses one anybody still holds, as a seeded leg does. The release
+// removes the store map, then the Secret, so the new service inherits neither
+// the leftover's keys nor its revision (w5/148).
+func (s *Service) releaseUnseededLegs(ctx context.Context, service string, a *appv1alpha1.App, files, env bool) error {
+	if s.Store == nil {
+		return nil
+	}
+	ctx, service = scopeApp(ctx, a, service)
+	for _, leg := range []struct {
+		unseeded bool
+		kind     projectionKind
+		path     string
+	}{{files, filesProjection, filesPath(service)}, {env, envProjection, envPath(service)}} {
+		if !leg.unseeded {
+			continue
+		}
+		name := leg.kind.secretName(a.Name)
+		if err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: name}, &corev1.Secret{}); apierrors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		claim := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace}}
+		setPreparedAt(claim, s.Now())
+		if err := s.createPreparedSecret(ctx, a, leg.kind, claim); err != nil {
+			return err
+		}
+		// Detached like a failed prepare's rollback: a client gone after the
+		// claim must not leave the name held for the whole preparation window.
+		releaseCtx, cancel := compensationContext(ctx)
+		err := s.abortProjection(releaseCtx, a, name, leg.path)
+		cancel()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

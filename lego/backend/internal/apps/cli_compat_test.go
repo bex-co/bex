@@ -216,6 +216,29 @@ func TestRESTCreateSeedsOfficialCLISecretFiles(t *testing.T) {
 	}
 }
 
+// TestACreateWithoutSecretsStillPrepares (w5/148): a create that seeds no
+// secret files or env vars skipped preparation, so a crashed create's
+// leftover legs at its name outlived it and the new service inherited them.
+// It now prepares through the seeder too, which releases them, and commits
+// within the same bound.
+func TestACreateWithoutSecretsStillPrepares(t *testing.T) {
+	seeder := &recordingCreateSecretsSeeder{}
+	svc, _ := newService(nil)
+	svc.CreateSecrets = seeder
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine"}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST without secrets = %d: %s", rec.Code, rec.Body.String())
+	}
+	if seeder.service != "web" || len(seeder.files) != 0 || len(seeder.env) != 0 || seeder.commitDeadline.IsZero() {
+		t.Fatalf("seeder saw service %q, %d files, %d env vars and a commit by %v; want an empty prepare and a bounded commit for web", seeder.service, len(seeder.files), len(seeder.env), seeder.commitDeadline)
+	}
+}
+
 // TestACreatesPreparedSecretsRunWithinTheirBound (w5/135): another create may
 // take over a prepared Secret still ownerless far past
 // core.CreateSecretsTimeout, so the create that prepared it runs from prepare

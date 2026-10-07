@@ -310,3 +310,161 @@ func keysOf(data map[string][]byte) []string {
 	}
 	return keys
 }
+
+// crashedCreate is a store and client holding both legs of a create of "web"
+// that prepared an hour ago and crashed before its App existed.
+func crashedCreate(t *testing.T) (*versionedFakeSecretStore, client.Client) {
+	t.Helper()
+	store := newVersionedFakeSecretStore()
+	crashed := newService(store)
+	crashed.Clock = func() time.Time { return fixedNow().Add(-time.Hour) }
+	files := []core.SecretFile{{Name: "crashed.txt", Content: "1"}}
+	if err := NewCreateSecretsSeeder(crashed).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"), files, map[string]string{"CRASHED": "1"}); err != nil {
+		t.Fatal(err)
+	}
+	return store, crashed.Client
+}
+
+// TestACreateReleasesTheLegsItDoesNotSeed (w5/148): a create took over only
+// the leg it seeded of a crashed create's preparation. The other leg's store
+// map stayed, so the new service inherited the crashed create's keys on its
+// first write, and its ownerless Secret kept the crashed data. A create now
+// releases each leg it does not seed, map and Secret, and a later write
+// projects only the new service's map.
+func TestACreateReleasesTheLegsItDoesNotSeed(t *testing.T) {
+	for name, seed := range map[string][]core.SecretFile{
+		"seeding only files": {{Name: "new.txt", Content: "1"}},
+		"seeding nothing":    nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			store, cl := crashedCreate(t)
+			svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: store}
+			app := sampleApp("web")
+			seeder := NewCreateSecretsSeeder(svc)
+			if err := seeder.PrepareCreateSecrets(ctx, "web", app, seed, nil); err != nil {
+				t.Fatalf("prepare = %v, want the crashed create's legs taken over or released", err)
+			}
+			if _, kept := store.m[envPath("web")]; kept {
+				t.Fatalf("the crashed create's env map survived: %v", store.m[envPath("web")])
+			}
+			if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-env"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+				t.Fatalf("the crashed create's env Secret: %v, want it gone", err)
+			}
+			if seed == nil {
+				if _, kept := store.m[filesPath("web")]; kept {
+					t.Fatalf("the crashed create's files map survived: %v", store.m[filesPath("web")])
+				}
+				if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+					t.Fatalf("the crashed create's files Secret: %v, want it gone", err)
+				}
+			}
+			if err := cl.Create(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := seeder.CommitCreateSecrets(ctx, "web", app); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, err := svc.SetEnvVar(ctx, "web", "KEY", EnvVarWrite{Value: "v"}); err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]string{"KEY": "v"}
+			if got := store.m[envPath("web")]; len(got) != 1 || got["KEY"] != "v" {
+				t.Fatalf("the new service's env map = %v, want only its own %v", got, want)
+			}
+			if sec := getSecret(t, cl, "web-env"); !equalSecretData(sec.Data, want) || !metav1.IsControlledBy(sec, app) {
+				t.Fatalf("the env Secret holds %v, controlled by %+v, want only the new service's %v", keysOf(sec.Data), metav1.GetControllerOf(sec), want)
+			}
+		})
+	}
+}
+
+// TestACreateLeavesAHeldUnseededLegAlone (w5/148): releasing a leg a create
+// does not seed claims it first, so a leg another create may still be
+// preparing refuses the create, as a seeded one does, with that create's
+// Secret and map untouched.
+func TestACreateLeavesAHeldUnseededLegAlone(t *testing.T) {
+	ctx := context.Background()
+	store := newVersionedFakeSecretStore()
+	svc := newService(store)
+	if err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(ctx, "web", sampleApp("web"), nil, map[string]string{"THEIRS": "1"}); err != nil {
+		t.Fatal(err)
+	}
+	err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(ctx, "web", sampleApp("web"), []core.SecretFile{{Name: "mine.txt", Content: "1"}}, nil)
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("a create beside another's preparation = %v, want a conflict", err)
+	}
+	if got := store.m[envPath("web")]; len(got) != 1 || got["THEIRS"] != "1" {
+		t.Fatalf("the other create's env map = %v, want it untouched", got)
+	}
+	if sec := getSecret(t, svc.Client, "web-env"); string(sec.Data["THEIRS"]) != "1" {
+		t.Fatalf("the other create's env Secret holds %v, want it untouched", keysOf(sec.Data))
+	}
+	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("the refused create's files Secret: %v, want none prepared", err)
+	}
+}
+
+// TestAServiceReplacesAnAbandonedPreparationAtItsName (w5/148): a service
+// created beside a crashed create's leftover leg found that leg's ownerless
+// Secret stamped with a revision its own store had not reached, so its writes
+// answered OK while the Secret kept the crashed data. The abandoned
+// preparation is now its predecessor, replaced by the service's first write.
+func TestAServiceReplacesAnAbandonedPreparationAtItsName(t *testing.T) {
+	leftover := projectedSecret(envProjection, committedAt(5), map[string]string{"CRASHED": "1"})
+	setPreparedAt(leftover, fixedNow().Add(-time.Hour))
+	app := sampleApp("web")
+	svc := newService(newVersionedFakeSecretStore(), app, leftover)
+	if _, err := svc.SetEnvVar(context.Background(), "web", "KEY", EnvVarWrite{Value: "v"}); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"KEY": "v"}
+	if sec := getSecret(t, svc.Client, "web-env"); !equalSecretData(sec.Data, want) || !metav1.IsControlledBy(sec, app) {
+		t.Fatalf("the env Secret holds %v, controlled by %+v, want the service's %v", keysOf(sec.Data), metav1.GetControllerOf(sec), want)
+	}
+}
+
+// failNextDelete is a versioned store whose next delete fails.
+type failNextDelete struct {
+	*versionedFakeSecretStore
+	fail bool
+}
+
+func (f *failNextDelete) Delete(ctx context.Context, path string) error {
+	if f.fail {
+		f.fail = false
+		return errors.New("store unavailable")
+	}
+	return f.versionedFakeSecretStore.Delete(ctx, path)
+}
+
+// TestAReleaseThatCannotRemoveTheMapKeepsTheName (w5/148): a release whose
+// store delete failed removed the Secret anyway, so the next create found no
+// Secret at the name, skipped the leg, and its service inherited the map. The
+// Secret now stays, holding the name, and the create that takes the abandoned
+// claim over releases both.
+func TestAReleaseThatCannotRemoveTheMapKeepsTheName(t *testing.T) {
+	ctx := context.Background()
+	store, cl := crashedCreate(t)
+	flaky := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: &failNextDelete{versionedFakeSecretStore: store, fail: true}}
+	if err := NewCreateSecretsSeeder(flaky).PrepareCreateSecrets(ctx, "web", sampleApp("web"), nil, nil); err == nil {
+		t.Fatal("a release whose store delete failed succeeded")
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); err != nil {
+		t.Fatalf("the files Secret whose map survived: %v, want it still holding the name", err)
+	}
+
+	later := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: func() time.Time { return fixedNow().Add(time.Hour) }}, Store: store}
+	if err := NewCreateSecretsSeeder(later).PrepareCreateSecrets(ctx, "web", sampleApp("web"), nil, nil); err != nil {
+		t.Fatalf("a create after the stranded claim was abandoned = %v, want it released", err)
+	}
+	for _, leg := range []struct{ secret, path string }{{"web-files", filesPath("web")}, {"web-env", envPath("web")}} {
+		if _, kept := store.m[leg.path]; kept {
+			t.Errorf("the map at %s survived: %v", leg.path, store.m[leg.path])
+		}
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: leg.secret}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+			t.Errorf("%s: %v, want it gone", leg.secret, err)
+		}
+	}
+}

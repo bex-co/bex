@@ -2677,13 +2677,14 @@ func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *app
 // the very first pod. Both projection Secrets and their App references are
 // prepared before the App exists; after Kubernetes assigns the App UID, Commit
 // adopts them. Every failure removes the pre-created projections and their
-// OpenBao paths.
+// OpenBao paths. A create that seeds neither still prepares, so the leftovers
+// of a crashed create under its name are released before it (w5/148).
 func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1alpha1.App, seed createSeed) error {
-	if seed.empty() {
-		return serviceCountCap.CreateError(s.Client.Create(ctx, a))
-	}
 	if s.CreateSecrets == nil {
-		return core.ErrSecretsUnavailable
+		if !seed.empty() {
+			return core.ErrSecretsUnavailable
+		}
+		return serviceCountCap.CreateError(s.Client.Create(ctx, a))
 	}
 	// The prepared Secrets' whole ownerless life, prepare to commit, stays
 	// within the bound past which another create may take them over (w5/135).
