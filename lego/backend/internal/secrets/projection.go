@@ -222,6 +222,22 @@ func controlledByAnother(sec *corev1.Secret, a *appv1alpha1.App) bool {
 	return owner != nil && owner.UID != a.UID
 }
 
+// ownedByDeletedNamesake reports whether sec's controller is the App that held
+// a's name and no longer exists: a deleted service's Secret that garbage
+// collection has not reached. A live App at the name, or any other controller,
+// still holds it.
+func (s *Service) ownedByDeletedNamesake(ctx context.Context, a *appv1alpha1.App, sec *corev1.Secret) (bool, error) {
+	owner := metav1.GetControllerOfNoCopy(sec)
+	if owner == nil || owner.APIVersion != appv1alpha1.SchemeGroupVersion.String() || owner.Kind != "App" || owner.Name != a.Name {
+		return false, nil
+	}
+	err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), &appv1alpha1.App{})
+	if apierrors.IsNotFound(err) {
+		return true, nil
+	}
+	return false, err
+}
+
 // confirmLiveApp refuses a write whose App is no longer the one at its name. A
 // request that spanned a delete and a recreate under the same name would
 // otherwise take the new service's Secret over as its predecessor's.
