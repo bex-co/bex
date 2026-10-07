@@ -1066,7 +1066,7 @@ func (s *Service) materializeEnv(ctx context.Context, a *appv1alpha1.App, env ma
 // comparison or request a rollout. The older single-item verbs keep calling
 // materializeEnv and retain their immediate-roll behavior.
 func (s *Service) projectEnv(ctx context.Context, a *appv1alpha1.App, env map[string]string, revision sourceRevision) error {
-	if _, err := s.projectSource(ctx, a, envProjection, env, revision, false); err != nil {
+	if _, err := s.projectSource(ctx, a, envProjection, env, revision); err != nil {
 		return err
 	}
 	a.Spec.EnvFromSecret = envSecretName(a.Name)

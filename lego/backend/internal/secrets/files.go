@@ -478,9 +478,10 @@ func (s *Service) SecretFileContent(ctx context.Context, service, name string) (
 
 // materializeFiles projects a service's secret files into its <service>-files
 // Secret and ensures the App mounts it, rolling the pods. When the set empties the
-// Secret is deleted and the reference removed, so no empty /etc/secrets mount
-// lingers. The operator merges this Secret with any linked env-group file Secrets
-// into the single /etc/secrets projected volume (docs/ADR013-secrets.md).
+// reference is removed, so no empty /etc/secrets mount lingers, while the emptied
+// Secret stays as the record of its revision (w5/106). The operator merges this
+// Secret with any linked env-group file Secrets into the single /etc/secrets
+// projected volume (docs/ADR013-secrets.md).
 func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string, revision sourceRevision) error {
 	return s.rollApp(ctx, a, func(a *appv1alpha1.App) error {
 		if err := s.projectFiles(ctx, a, files, revision); err != nil {
@@ -497,24 +498,31 @@ func (s *Service) materializeFiles(ctx context.Context, a *appv1alpha1.App, file
 // top for existing clients.
 func (s *Service) projectFiles(ctx context.Context, a *appv1alpha1.App, files map[string]string, revision sourceRevision) error {
 	name := filesSecretName(a.Name)
-	projection, err := s.projectSource(ctx, a, filesProjection, files, revision, len(files) == 0)
+	projection, err := s.projectSource(ctx, a, filesProjection, files, revision)
 	if err != nil {
 		return err
 	}
+	// The mount follows the Secret. A projection a later write superseded
+	// mounts it only if that write left files there, and leaves a removal to
+	// that write, so a late write never remounts a map a delete emptied since
+	// (w5/106).
 	switch {
-	case len(files) > 0:
+	case projection.HoldsData:
 		a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, name)
 	case !projection.Superseded:
-		// A removal a later write superseded keeps the reference: the Secret
-		// that write projected is still there, and mounted.
 		a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, name)
+		// Nor may a save-only write's staged mount bring it back next release.
+		if a.Annotations[appv1alpha1.PendingFilesSecretAnnotation] == name {
+			delete(a.Annotations, appv1alpha1.PendingFilesSecretAnnotation)
+		}
 	}
 	return nil
 }
 
-// deleteSecret removes a projection Secret by name in namespace (idempotent —
-// absence is fine). namespace is the App's namespace (its pod mounted the
-// Secret), the per-tenant `<ws>` namespace under ADR043; callers pass a.Namespace.
+// deleteSecret removes a prepared projection Secret by name in namespace
+// (idempotent — absence is fine), for a create that aborted before its App
+// existed. namespace is the App's namespace, the per-tenant `<ws>` namespace
+// under ADR043; callers pass a.Namespace.
 func (s *Service) deleteSecret(ctx context.Context, namespace, name string) error {
 	sec := &corev1.Secret{}
 	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, sec); err != nil {

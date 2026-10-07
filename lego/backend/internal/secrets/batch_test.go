@@ -215,6 +215,41 @@ func TestPatchEnvironmentMixedSaveOnlyPreservesOmittedSecrets(t *testing.T) {
 	}
 }
 
+// Emptying the files map clears a mount a save-only write staged, through the
+// single-key delete and a deploying batch alike, so the next release mounts no
+// empty /etc/secrets (w5/106).
+func TestEmptyingTheFilesMapClearsAStagedMount(t *testing.T) {
+	for name, empty := range map[string]func(*Service) error{
+		"single-key delete": func(svc *Service) error { return svc.DeleteSecretFile(context.Background(), "web", "token") },
+		"deploying batch": func(svc *Service) error {
+			_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+				SaveMode: SaveModeDeploy, SecretFiles: []SecretFilePatch{{Name: "token", Delete: true}},
+			})
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := newService(newVersionedFakeSecretStore(), sampleApp("web"))
+			if _, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+				SaveMode: SaveModeOnly, SecretFiles: []SecretFilePatch{{Name: "token", Content: "v"}},
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if staged := getApp(t, svc.Client, "web"); staged.Annotations[appv1alpha1.PendingFilesSecretAnnotation] != "web-files" {
+				t.Fatalf("save-only staged %#v, want the files mount", staged.Annotations)
+			}
+
+			if err := empty(svc); err != nil {
+				t.Fatal(err)
+			}
+			app := getApp(t, svc.Client, "web")
+			if slices.Contains(app.Spec.FilesFromSecrets, "web-files") || app.Annotations[appv1alpha1.PendingFilesSecretAnnotation] != "" {
+				t.Fatalf("an emptied files map is still mounted or staged: spec %v, annotations %#v", app.Spec.FilesFromSecrets, app.Annotations)
+			}
+		})
+	}
+}
+
 func TestPatchEnvironmentDeployActivatesAllPendingSaveOnlyProjections(t *testing.T) {
 	store := newFakeSecretStore()
 	baseClient := fakeClient(sampleApp("web"))
@@ -674,9 +709,9 @@ func TestPatchEnvironmentCASRollbackDoesNotClobberProjectionLandedAfterSourceRes
 }
 
 // A failed App patch puts both maps back and their Secrets with them: over a
-// restored map the Secret holds that map, never the failed write's value, and
-// one the patch created over an empty map is removed. Deleting a Secret over a
-// non-empty map could break a concurrent first write that references it.
+// restored map the Secret holds that map, never the failed write's value. One
+// the patch created over an empty map stays, emptied (w5/106), and the App
+// still references neither.
 func TestPatchEnvironmentCompensatesStoreAndProjectionsWhenAppPatchFails(t *testing.T) {
 	for name, prior := range map[string]struct{ env, files map[string]string }{
 		"over stored maps": {map[string]string{"OLD": "env-before"}, map[string]string{"old.pem": "file-before"}},
@@ -701,17 +736,8 @@ func TestPatchEnvironmentCompensatesStoreAndProjectionsWhenAppPatchFails(t *test
 				t.Fatalf("source compensation failed: env=%#v files=%#v", store.m[envPath("web")], store.m[filesPath("web")])
 			}
 			for name, want := range map[string]map[string]string{"web-env": prior.env, "web-files": prior.files} {
-				var obj corev1.Secret
-				err := failing.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &obj)
-				switch {
-				case len(want) == 0:
-					if !apierrors.IsNotFound(err) {
-						t.Fatalf("projection %s the patch created remained after compensation: %v", name, err)
-					}
-				case err != nil:
-					t.Fatalf("projection %s: %v", name, err)
-				case !equalSecretData(obj.Data, want):
-					t.Fatalf("projection %s = %q, want the restored map %v", name, obj.Data, want)
+				if got := secretData(t, failing, name); !maps.Equal(got, want) {
+					t.Fatalf("projection %s = %q, want the restored map %v", name, got, want)
 				}
 			}
 			if app := getApp(t, failing, "web"); app.Spec.RestartedAt != "" || app.Spec.EnvFromSecret != "" || len(app.Spec.FilesFromSecrets) != 0 {

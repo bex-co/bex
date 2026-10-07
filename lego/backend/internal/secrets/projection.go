@@ -85,35 +85,33 @@ func (r sourceRevision) after(o sourceRevision) bool {
 }
 
 // sourceProjection is what projectSource found: whether the Secret existed,
-// and whether a newer revision already owned it, so this projection was left
-// to that write.
+// whether a newer revision already owned it, so this projection was left to
+// that write, and whether the Secret as the call left it holds any key.
 type sourceProjection struct {
 	ExistedBefore bool
 	Superseded    bool
+	HoldsData     bool
 }
 
 // projectSource writes data into kind's Secret for a as the store revision it
-// carries, or removes the Secret when remove is set, data then being empty
-// (w5/m127).
+// carries (w5/m127). An emptied map is written too: its Secret stays, empty, as
+// the record of that revision, so a projection that arrives late loses to it
+// rather than recreating the Secret (w5/106).
 //
 // A Secret a later revision already holds is left to that write: the result
 // is Superseded, or errProjectionConflict for a delete's provisional revision,
-// whose commit can then only conflict. A Secret removed when its map emptied
-// records no revision, so a late projection can recreate it (w5/106). The same
-// committed revision with the same data is a no-op, and with other data a
-// conflict, since one revision holds one map. Two deletes that read one
-// revision project the same provisional one, and the Secret keeps only what
-// both keep, so neither mounts the key the other revoked. An update carries the
-// read object's resourceVersion, and a delete also its UID, so a concurrent
-// change is judged again rather than overwritten. A store without versions
-// (test doubles) has no order to keep, and its writes are unconditional.
-func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind projectionKind, data map[string]string, revision sourceRevision, remove bool) (sourceProjection, error) {
+// whose commit can then only conflict. The same committed revision with the
+// same data is a no-op, and with other data a conflict, since one revision
+// holds one map. Two deletes that read one revision project the same
+// provisional one, and the Secret keeps only what both keep, so neither mounts
+// the key the other revoked. An update carries the read object's
+// resourceVersion, so a concurrent change is judged again rather than
+// overwritten. A store without versions (test doubles) has no order to keep,
+// and its writes are unconditional.
+func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind projectionKind, data map[string]string, revision sourceRevision) (sourceProjection, error) {
 	name := kind.secretName(a.Name)
 	if _, versioned := s.Store.(core.VersionedSecretKV); !versioned {
-		if remove {
-			return sourceProjection{}, s.deleteSecret(ctx, a.Namespace, name)
-		}
-		return sourceProjection{}, s.upsertSecret(ctx, a, name, data)
+		return sourceProjection{HoldsData: len(data) > 0}, s.upsertSecret(ctx, a, name, data)
 	}
 	var out sourceProjection
 	for attempt := 0; attempt <= casMaxRetries; attempt++ {
@@ -121,9 +119,6 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: name}, sec)
 		if apierrors.IsNotFound(err) {
 			out.ExistedBefore = false
-			if remove {
-				return out, nil
-			}
 			sec = &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace}}
 			if err := s.stampProjection(a, sec, kind, data, revision); err != nil {
 				return out, err
@@ -134,6 +129,7 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 				}
 				return out, err
 			}
+			out.HoldsData = len(data) > 0
 			return out, nil
 		}
 		if err != nil {
@@ -143,13 +139,13 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		project := data
 		if current, known := projectedRevision(sec, kind); known {
 			if current.after(revision) {
-				out.Superseded = true
+				out.Superseded, out.HoldsData = true, len(sec.Data) > 0
 				if revision.provisional {
 					return out, errProjectionConflict
 				}
 				return out, nil
 			}
-			if current == revision && !remove {
+			if current == revision {
 				if !equalSecretData(sec.Data, data) {
 					if !revision.provisional {
 						return out, errProjectionConflict
@@ -157,22 +153,19 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 					project = keptByBoth(sec.Data, data)
 				}
 				if equalSecretData(sec.Data, project) {
+					out.HoldsData = len(project) > 0
 					return out, nil
 				}
 			}
 		}
-		if remove {
-			uid, resourceVersion := sec.UID, sec.ResourceVersion
-			err = s.Client.Delete(ctx, sec, client.Preconditions{UID: &uid, ResourceVersion: &resourceVersion})
-		} else {
-			if err := s.stampProjection(a, sec, kind, project, revision); err != nil {
-				return out, err
-			}
-			err = s.Client.Update(ctx, sec)
+		if err := s.stampProjection(a, sec, kind, project, revision); err != nil {
+			return out, err
 		}
+		err = s.Client.Update(ctx, sec)
 		if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 			continue // changed since the read: judge the new object
 		}
+		out.HoldsData = len(project) > 0
 		return out, err
 	}
 	return out, errProjectionConflict

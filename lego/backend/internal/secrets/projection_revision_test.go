@@ -56,8 +56,7 @@ func TestAProjectionNeverMovesItsSecretToAnEarlierRevision(t *testing.T) {
 		current        *corev1.Secret // nil: not projected yet
 		data           map[string]string
 		revision       sourceRevision
-		remove         bool
-		wantData       map[string]string // nil: no Secret
+		wantData       map[string]string
 		wantRevision   sourceRevision
 		wantSuperseded bool
 		wantConflict   bool
@@ -106,16 +105,21 @@ func TestAProjectionNeverMovesItsSecretToAnEarlierRevision(t *testing.T) {
 		current: projectedSecret(envProjection, provisionalAt(2), withoutA),
 		data:    withoutB, revision: provisionalAt(2), wantData: map[string]string{"C": "1"}, wantRevision: provisionalAt(2),
 	}, {
-		name:     "a removal deletes an earlier revision",
-		current:  projectedSecret(envProjection, committedAt(1), v1),
-		revision: committedAt(2), remove: true,
+		name:    "an emptied map keeps its Secret, empty, at its revision",
+		current: projectedSecret(envProjection, committedAt(1), v1),
+		data:    map[string]string{}, revision: committedAt(2), wantData: map[string]string{}, wantRevision: committedAt(2),
 	}, {
-		name:     "a removal leaves a later revision",
-		current:  projectedSecret(envProjection, committedAt(2), v2),
-		revision: committedAt(1), remove: true, wantData: v2, wantRevision: committedAt(2), wantSuperseded: true, untouched: true,
+		name:    "an emptied map is left to a later revision",
+		current: projectedSecret(envProjection, committedAt(2), v2),
+		data:    map[string]string{}, revision: committedAt(1), wantData: v2, wantRevision: committedAt(2), wantSuperseded: true, untouched: true,
 	}, {
-		name:     "a removal of a Secret never projected changes nothing",
-		revision: committedAt(1), remove: true,
+		name:    "an emptied map re-projected at its revision changes nothing",
+		current: projectedSecret(envProjection, committedAt(2), map[string]string{}),
+		data:    map[string]string{}, revision: committedAt(2), wantData: map[string]string{}, wantRevision: committedAt(2), untouched: true,
+	}, {
+		// The record a late projection of an earlier revision loses to (w5/106).
+		name: "an emptied map never projected is recorded at its revision",
+		data: map[string]string{}, revision: committedAt(1), wantData: map[string]string{}, wantRevision: committedAt(1),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			objs := []client.Object{sampleApp("web")}
@@ -128,7 +132,7 @@ func TestAProjectionNeverMovesItsSecretToAnEarlierRevision(t *testing.T) {
 				before = getSecret(t, svc.Client, "web-env").ResourceVersion
 			}
 
-			got, err := svc.projectSource(context.Background(), sampleApp("web"), envProjection, tc.data, tc.revision, tc.remove)
+			got, err := svc.projectSource(context.Background(), sampleApp("web"), envProjection, tc.data, tc.revision)
 			if tc.wantConflict {
 				if !errors.Is(err, errProjectionConflict) {
 					t.Fatalf("projectSource error = %v, want errProjectionConflict", err)
@@ -139,11 +143,8 @@ func TestAProjectionNeverMovesItsSecretToAnEarlierRevision(t *testing.T) {
 			if got.Superseded != tc.wantSuperseded {
 				t.Fatalf("superseded = %v, want %v", got.Superseded, tc.wantSuperseded)
 			}
-			if tc.wantData == nil {
-				if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
-					t.Fatalf("the Secret is still there (get error %v)", err)
-				}
-				return
+			if holds := len(tc.wantData) > 0; !tc.wantConflict && got.HoldsData != holds {
+				t.Fatalf("holds data = %v, want %v: the Secret as the call left it", got.HoldsData, holds)
 			}
 			if mounted := secretData(t, svc.Client, "web-env"); !maps.Equal(mounted, tc.wantData) {
 				t.Fatalf("the Secret mounts %v, want %v", mounted, tc.wantData)
@@ -159,53 +160,39 @@ func TestAProjectionNeverMovesItsSecretToAnEarlierRevision(t *testing.T) {
 	}
 }
 
-// interleavedClient runs between once, just before the next Secret update or
-// delete: another projection landing between projectSource's read and its
-// write.
+// interleavedClient runs between once, just before the next Secret update:
+// another projection landing between projectSource's read and its write.
 type interleavedClient struct {
 	client.Client
 	between func()
 }
 
-func (c *interleavedClient) interleave(obj client.Object) {
+func (c *interleavedClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	if _, ok := obj.(*corev1.Secret); ok && c.between != nil {
 		between := c.between
 		c.between = nil
 		between()
 	}
-}
-
-func (c *interleavedClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
-	c.interleave(obj)
 	return c.Client.Update(ctx, obj, opts...)
 }
 
-func (c *interleavedClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
-	c.interleave(obj)
-	return c.Client.Delete(ctx, obj, opts...)
-}
-
-// TestAProjectionRejudgesASecretChangedSinceItsRead (w5/m127): an update or a
-// delete carries the resourceVersion projectSource read, so a later revision
-// projected in between is judged, and kept, rather than overwritten or removed.
+// TestAProjectionRejudgesASecretChangedSinceItsRead (w5/m127): an update, an
+// emptying one included, carries the resourceVersion projectSource read, so a
+// later revision projected in between is judged, and kept, rather than
+// overwritten.
 func TestAProjectionRejudgesASecretChangedSinceItsRead(t *testing.T) {
-	for name, remove := range map[string]bool{"update": false, "delete": true} {
+	for name, data := range map[string]map[string]string{"update": {"A": "2"}, "emptying": {}} {
 		t.Run(name, func(t *testing.T) {
 			ctx := context.Background()
 			cl := &interleavedClient{Client: fakeClient(sampleApp("web"), projectedSecret(envProjection, committedAt(1), map[string]string{"A": "1"}))}
 			svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: newVersionedFakeSecretStore()}
 			later := map[string]string{"A": "3"}
 			cl.between = func() {
-				if _, err := svc.projectSource(ctx, sampleApp("web"), envProjection, later, committedAt(3), false); err != nil {
+				if _, err := svc.projectSource(ctx, sampleApp("web"), envProjection, later, committedAt(3)); err != nil {
 					t.Fatalf("the later projection: %v", err)
 				}
 			}
-			var data map[string]string
-			if !remove {
-				data = map[string]string{"A": "2"}
-			}
-
-			got, err := svc.projectSource(ctx, sampleApp("web"), envProjection, data, committedAt(2), remove)
+			got, err := svc.projectSource(ctx, sampleApp("web"), envProjection, data, committedAt(2))
 			if err != nil || !got.Superseded {
 				t.Fatalf("projectSource = %+v, %v; want superseded by the later revision", got, err)
 			}
@@ -256,15 +243,20 @@ var projectionCases = []projectionCase{{
 }}
 
 // setup is a service whose store holds data at version 1, projected and
-// referenced, behind wrap's client when wrap is set.
+// referenced, behind wrap's client when wrap is set. With nil data nothing has
+// been written yet: no map, no Secret and no reference.
 func (c projectionCase) setup(wrap func(client.Client) client.Client, data map[string]string) (*Service, *versionedFakeSecretStore) {
 	store := newVersionedFakeSecretStore()
-	store.m[c.path] = maps.Clone(data)
-	store.versions[c.path] = 1
 	app := sampleApp("web")
-	app.Spec.EnvFromSecret = envSecretName("web")
-	app.Spec.FilesFromSecrets = []string{filesSecretName("web")}
-	cl := fakeClient(app, projectedSecret(c.kind, committedAt(1), data))
+	objs := []client.Object{app}
+	if data != nil {
+		store.m[c.path] = maps.Clone(data)
+		store.versions[c.path] = 1
+		app.Spec.EnvFromSecret = envSecretName("web")
+		app.Spec.FilesFromSecrets = []string{filesSecretName("web")}
+		objs = append(objs, projectedSecret(c.kind, committedAt(1), data))
+	}
+	cl := fakeClient(objs...)
 	if wrap != nil {
 		cl = wrap(cl)
 	}
@@ -272,8 +264,9 @@ func (c projectionCase) setup(wrap func(client.Client) client.Client, data map[s
 }
 
 // expectMatchesStore checks the Secret mounts the store's map at the store's
-// version, and the App references it. A delete that committed keeps its
-// provisional mark, so the mark is not checked.
+// version, and the App references it: always for env, and for files while the
+// store holds any, so an emptied files map leaves no mount. A delete that
+// committed keeps its provisional mark, so the mark is not checked.
 func (c projectionCase) expectMatchesStore(t *testing.T, svc *Service, store *versionedFakeSecretStore) {
 	t.Helper()
 	name := c.kind.secretName("web")
@@ -284,8 +277,9 @@ func (c projectionCase) expectMatchesStore(t *testing.T, svc *Service, store *ve
 		t.Fatalf("the Secret records version %d (known %v), want the store's %d", got.version, known, store.versions[c.path])
 	}
 	spec := getApp(t, svc.Client, "web").Spec
-	if referenced := spec.EnvFromSecret == name || slices.Contains(spec.FilesFromSecrets, name); !referenced {
-		t.Fatalf("the App does not reference %s: %+v", name, spec)
+	want := name == envSecretName("web") || len(store.m[c.path]) > 0
+	if referenced := spec.EnvFromSecret == name || slices.Contains(spec.FilesFromSecrets, name); referenced != want {
+		t.Fatalf("the App references %s: %v, want %v (%+v)", name, referenced, want, spec)
 	}
 }
 
@@ -441,9 +435,31 @@ func TestADeleteProjectsTheRevisionItsCommitWillCreate(t *testing.T) {
 				}
 			})
 
+			t.Run("two deletes that together empty the Secret leave no files mount", func(t *testing.T) {
+				svc, store := c.setup(nil, map[string]string{"first": "1", "second": "1"})
+				var first error
+				store.afterGet = func() { first = c.delete(svc, "first") }
+				store.failCASCall = 2 // the second delete's commit, after the first's
+
+				if err := c.delete(svc, "second"); err == nil {
+					t.Fatal("the second delete, whose commit failed, succeeded")
+				}
+				if first != nil {
+					t.Fatalf("the first delete: %v", first)
+				}
+				name := c.kind.secretName("web")
+				if mounted := secretData(t, svc.Client, name); len(mounted) != 0 {
+					t.Fatalf("the Secret mounts %v, want neither revoked key", mounted)
+				}
+				spec := getApp(t, svc.Client, "web").Spec
+				want := name == envSecretName("web") // env keeps its envFrom
+				if referenced := spec.EnvFromSecret == name || slices.Contains(spec.FilesFromSecrets, name); referenced != want {
+					t.Fatalf("the App references %s: %v, want %v", name, referenced, want)
+				}
+			})
+
 			t.Run("an absent key's repair leaves a first write's projection", func(t *testing.T) {
-				store := newVersionedFakeSecretStore() // nothing written yet: version 0
-				svc := newService(store, sampleApp("web"))
+				svc, store := c.setup(nil, nil)
 				var concurrent error
 				store.afterGet = func() { concurrent = c.write(svc, "w") }
 
@@ -479,6 +495,137 @@ func TestASupersededFilesRemovalKeepsTheMount(t *testing.T) {
 		t.Fatalf("the racing write: %v", concurrent)
 	}
 	c.expectMatchesStore(t, svc, store)
+}
+
+// lateWriteStarts are the states a stalled write starts from: a mounted map,
+// and nothing yet, where the stalled write is the service's first. Only there
+// would its App patch carry the files reference, since the App it read had
+// none, so only there does a wrong mount decision show.
+var lateWriteStarts = map[string]map[string]string{"over a mounted map": {"last": "1"}, "as the first write": nil}
+
+// TestALateWriteNeverRemountsAnEmptiedMap (w5/106): a write commits and stalls
+// before it projects. A delete of the last key reads that version, projects the
+// emptied map, drops the files mount and commits. Emptying used to delete the
+// files Secret, which then recorded no revision, so the stalled write recreated
+// it with the deleted file, and as a first write mounted it again. The emptied
+// Secret now stays, recording the delete's version, and the late write loses to
+// it.
+func TestALateWriteNeverRemountsAnEmptiedMap(t *testing.T) {
+	for _, c := range projectionCases {
+		for start, prior := range lateWriteStarts {
+			t.Run(c.name+" "+start, func(t *testing.T) {
+				svc, store := c.setup(nil, prior)
+				base := store.versions[c.path]
+				var deleted error
+				afterCASAt(store, base+1, func() { deleted = c.delete(svc, "last") })
+
+				if err := c.write(svc, "last"); err != nil {
+					t.Fatalf("the stalled write: %v", err)
+				}
+				if deleted != nil {
+					t.Fatalf("the delete: %v", deleted)
+				}
+				if len(store.m[c.path]) != 0 || store.versions[c.path] != base+2 {
+					t.Fatalf("store = %v at version %d, want the delete's empty map at %d", store.m[c.path], store.versions[c.path], base+2)
+				}
+				c.expectMatchesStore(t, svc, store)
+			})
+		}
+	}
+}
+
+// TestALateWriteMountsTheMapARestoreKept (w5/106): the stalled write is the
+// service's first, and a later write that adds to it fails its App patch, so
+// its restore commits the stalled write's map again, above it. The late write
+// is superseded, and the mount follows the Secret that won: it holds files,
+// so the late write mounts it, as the restore never patches the App.
+func TestALateWriteMountsTheMapARestoreKept(t *testing.T) {
+	for _, c := range projectionCases {
+		t.Run(c.name, func(t *testing.T) {
+			var failing *deleteFailureClient
+			svc, store := c.setup(func(cl client.Client) client.Client {
+				failing = &deleteFailureClient{Client: cl}
+				return failing
+			}, nil)
+			var failed error
+			afterCASAt(store, 1, func() {
+				failing.failAppPatches = 1
+				failed = c.write(svc, "next")
+			})
+
+			if err := c.write(svc, "first"); err != nil {
+				t.Fatalf("the stalled write: %v", err)
+			}
+			if failed == nil {
+				t.Fatal("the write whose App patch failed succeeded")
+			}
+			if want := map[string]string{"first": "v"}; !maps.Equal(store.m[c.path], want) || store.versions[c.path] != 3 {
+				t.Fatalf("store = %v at version %d, want the restored %v at 3", store.m[c.path], store.versions[c.path], want)
+			}
+			c.expectMatchesStore(t, svc, store)
+		})
+	}
+}
+
+// TestALateSaveOnlyWriteStagesNoMountForAnEmptiedMap (w5/106): the stalled
+// write is a save-only batch adding the service's first file. Its projection
+// loses to the delete's emptied Secret, so it must not stage the files mount
+// for the next deploy either.
+func TestALateSaveOnlyWriteStagesNoMountForAnEmptiedMap(t *testing.T) {
+	c := projectionCases[1]
+	svc, store := c.setup(nil, nil)
+	var deleted error
+	afterCASAt(store, 1, func() { deleted = c.delete(svc, "first") })
+
+	if _, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeOnly, SecretFiles: []SecretFilePatch{{Name: "first", Content: "v"}},
+	}); err != nil {
+		t.Fatalf("the stalled save-only write: %v", err)
+	}
+	if deleted != nil {
+		t.Fatalf("the delete: %v", deleted)
+	}
+	c.expectMatchesStore(t, svc, store)
+	if pending := getApp(t, svc.Client, "web").Annotations[appv1alpha1.PendingFilesSecretAnnotation]; pending != "" {
+		t.Fatalf("the save-only write staged %q, which the next deploy would mount empty", pending)
+	}
+}
+
+// TestAnEmptyRestoreKeepsTheRecordALateWriteLosesTo (w5/106): the same window
+// through a compensation. Behind the stalled write, a delete empties the map,
+// then a write commits and projects, and its App patch fails. Its restore
+// commits the empty map again and used to delete the Secret that write had
+// created, so the stalled write recreated it.
+func TestAnEmptyRestoreKeepsTheRecordALateWriteLosesTo(t *testing.T) {
+	for _, c := range projectionCases {
+		for start, prior := range lateWriteStarts {
+			t.Run(c.name+" "+start, func(t *testing.T) {
+				var failing *deleteFailureClient
+				svc, store := c.setup(func(cl client.Client) client.Client {
+					failing = &deleteFailureClient{Client: cl}
+					return failing
+				}, prior)
+				base := store.versions[c.path]
+				var deleted, failed error
+				afterCASAt(store, base+1, func() {
+					deleted = c.delete(svc, "last")
+					failing.failAppPatches = 1
+					failed = c.write(svc, "next")
+				})
+
+				if err := c.write(svc, "last"); err != nil {
+					t.Fatalf("the stalled write: %v", err)
+				}
+				if deleted != nil || failed == nil {
+					t.Fatalf("delete = %v, failing write = %v; want the delete to land and the write to fail", deleted, failed)
+				}
+				if len(store.m[c.path]) != 0 || store.versions[c.path] != base+4 {
+					t.Fatalf("store = %v at version %d, want the restored empty map at %d", store.m[c.path], store.versions[c.path], base+4)
+				}
+				c.expectMatchesStore(t, svc, store)
+			})
+		}
+	}
 }
 
 // restoreKeepsLosing fails the next App patch with an error naming internal
