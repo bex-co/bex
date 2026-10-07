@@ -6,8 +6,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   graphQLErrorExtensions,
-  graphQLErrorMessage,
   mutationErrorMessage,
+  workspaceCapMessage,
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
@@ -87,15 +87,15 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
         return id;
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return null;
-        const msg = graphQLErrorMessage(err) ?? "";
         // A name PostgreSQL owns is refused by code, whichever field held it
         // (w5/m118), and worded in the user's language.
         const reserved = graphQLErrorExtensions(
           err,
           "POSTGRES_IDENTIFIER_RESERVED",
         );
-        if (msg.toLowerCase().includes("workspace is limited")) {
-          setCapLimit(msg);
+        const capMessage = workspaceCapMessage(err);
+        if (capMessage !== null) {
+          setCapLimit(capMessage);
         } else if (reserved) {
           const name =
             reserved["field"] === "databaseName"

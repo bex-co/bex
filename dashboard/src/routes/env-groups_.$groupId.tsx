@@ -34,7 +34,6 @@ import { useServices } from "@/features/services/hooks/use-services";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { EnvGroupDocument } from "@/graphql/definitions";
 import {
-  isNotFoundError,
   loadRouteResource,
   routeResourceTitle,
   titleHead,
@@ -66,7 +65,6 @@ export const Route = createFileRoute("/env-groups_/$groupId")({
           errorPolicy: "all",
         }),
       (data) => (data?.envGroup?.name?.trim() ? data.envGroup : null),
-      isNotFoundError,
     ),
   head: ({ loaderData, match }) =>
     titleHead(

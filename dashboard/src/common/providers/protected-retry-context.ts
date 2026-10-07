@@ -16,9 +16,14 @@ import { createContext, useContext } from "react";
  * The phrase is never constructed here — `askForConfirmation` is only ever
  * called with the string parsed out of the server's error, which is ADR032's
  * rule ("the dashboard does not precompute the phrase") and the reason a
- * verb-word change in bex-api cannot desynchronize the UI.
+ * verb-word change in bex-api cannot desynchronize the UI. resourceName is the
+ * refusal's own `name` param, so the dialog names the resource without parsing
+ * the phrase either (w5/m130).
  */
-export type AskForConfirmation = (phrase: string) => Promise<string | null>;
+export type AskForConfirmation = (
+  phrase: string,
+  resourceName: string,
+) => Promise<string | null>;
 
 export const ProtectedRetryContext = createContext<AskForConfirmation | null>(
   null,

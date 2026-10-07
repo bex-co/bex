@@ -111,6 +111,7 @@ describe("Blueprint takeover classification (w4/189)", () => {
     expect(blueprintConfirmationFromError(err)).toEqual({
       status: "confirmation_required",
       confirmation: "sudo deploy service api",
+      resourceName: "api",
     });
   });
 });

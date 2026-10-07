@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import { render, screen, waitFor } from "@testing-library/react";
 import {
   RouterProvider,
@@ -103,7 +104,7 @@ beforeEach(() => {
 
 describe("service detail, dead id (w6/m44 — regression of w9/m55)", () => {
   it("redirects home when bex-api reports the id as not found", async () => {
-    serverState.error = new Error("not found");
+    serverState.error = codedGraphQLError("NOT_FOUND", {}, "not found");
     const router = renderDetail();
 
     expect(await screen.findByText("home page")).toBeInTheDocument();
@@ -121,7 +122,7 @@ describe("service detail, dead id (w6/m44 — regression of w9/m55)", () => {
   // instead of rendering `phase: Deleting` plus a dead URL. This pins that the
   // deleting-service contract is served by the not-found branch, not a new one.
   it("redirects with the deleted toast when a deleting service reads not-found", async () => {
-    serverState.error = new Error("not found");
+    serverState.error = codedGraphQLError("NOT_FOUND", {}, "not found");
     const router = renderDetail();
 
     expect(await screen.findByText("home page")).toBeInTheDocument();

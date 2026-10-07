@@ -660,7 +660,11 @@ describe("EnvGroupDetailPage", () => {
   });
 
   it("redirects a dead group id home instead of a generic crash (w9/m55)", async () => {
-    detailState.error = new Error("environment group not found");
+    detailState.error = codedGraphQLError(
+      "NOT_FOUND",
+      {},
+      "environment group not found",
+    );
     const router = renderDetail("missing");
 
     expect(await screen.findByText("services home")).toBeInTheDocument();

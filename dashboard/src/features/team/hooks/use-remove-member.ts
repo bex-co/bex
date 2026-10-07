@@ -6,7 +6,10 @@ import {
   RevokeWorkspaceInviteDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 
 export interface UseRemoveMemberResult {
   /** Removes an accepted member; resolves true on success. */
@@ -37,9 +40,8 @@ export function useRemoveMember(workspaceId: string): UseRemoveMemberResult {
         toast.success(t("team.removeSuccess"));
         return true;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "";
         toast.error(
-          msg.toLowerCase().includes("last admin")
+          hasGraphQLErrorCode(e, "LAST_ADMIN")
             ? t("team.lastAdminError")
             : mutationErrorMessage(e, t("team.removeError")),
         );

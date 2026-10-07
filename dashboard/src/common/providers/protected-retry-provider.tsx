@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
-import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   type AskForConfirmation,
@@ -9,6 +8,7 @@ import {
 
 interface PendingAsk {
   phrase: string;
+  resourceName: string;
   resolve: (confirmation: string | null) => void;
 }
 
@@ -34,12 +34,12 @@ export function ProtectedRetryProvider({
     setPending(null);
   }, []);
 
-  const ask = useCallback<AskForConfirmation>((phrase) => {
+  const ask = useCallback<AskForConfirmation>((phrase, resourceName) => {
     // One dialog at a time: a second refusal while one is open means an earlier
     // save is still unresolved, and stacking dialogs would hide it.
     pendingRef.current?.resolve(null);
     return new Promise<string | null>((resolve) => {
-      const next = { phrase, resolve };
+      const next = { phrase, resourceName, resolve };
       pendingRef.current = next;
       setPending(next);
     });
@@ -50,7 +50,7 @@ export function ProtectedRetryProvider({
       {children}
       <ProtectedConfirmationDialog
         open={pending !== null}
-        resourceName={pending ? protectedServiceName(pending.phrase) : ""}
+        resourceName={pending?.resourceName ?? ""}
         requiredConfirmation={pending?.phrase ?? ""}
         actionLabel={t("common.protectedConfirmationRetry")}
         busy={false}

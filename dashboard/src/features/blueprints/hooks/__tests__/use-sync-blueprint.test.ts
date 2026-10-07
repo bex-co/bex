@@ -37,6 +37,7 @@ describe("useSyncBlueprint", () => {
     mutate.mockRejectedValue(
       codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
         confirm: "sudo deploy service api",
+        name: "api",
       }),
     );
     const { result } = renderHook(() => useSyncBlueprint());
@@ -49,6 +50,7 @@ describe("useSyncBlueprint", () => {
     expect(outcome).toEqual({
       status: "confirmation_required",
       confirmation: "sudo deploy service api",
+      resourceName: "api",
     });
     expect(toastError).not.toHaveBeenCalled();
   });

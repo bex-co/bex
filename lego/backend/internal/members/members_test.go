@@ -981,8 +981,8 @@ func TestChangeRoleRefusesDemotingLastAdmin(t *testing.T) {
 	// rule needs a target that is not the caller.
 	st.seedMember("dev-1", "developer")
 	s := svc(st, newFakeGranter(), nil, nil)
-	if _, err := s.ChangeRole(ctxWith("dev-1"), "tea-1", "admin-1", "developer"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("demote last admin: want ErrBadRequest, got %v", err)
+	if _, err := s.ChangeRole(ctxWith("dev-1"), "tea-1", "admin-1", "developer"); !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != ErrorLastAdmin {
+		t.Fatalf("demote last admin: want ErrBadRequest coded %s, got %v", ErrorLastAdmin, err)
 	}
 	if st.members["admin-1"].Role != "admin" {
 		t.Errorf("last admin demoted anyway: %q", st.members["admin-1"].Role)
@@ -1023,8 +1023,8 @@ func TestRemoveRefusesLastAdmin(t *testing.T) {
 	// self-removal shape, so the last-admin rule is proven on a teammate.
 	st.seedMember("dev-1", "developer")
 	s := svc(st, newFakeGranter(), nil, nil)
-	if err := s.Remove(ctxWith("dev-1"), "tea-1", "admin-1"); !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("remove last admin: want ErrBadRequest, got %v", err)
+	if err := s.Remove(ctxWith("dev-1"), "tea-1", "admin-1"); !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != ErrorLastAdmin {
+		t.Fatalf("remove last admin: want ErrBadRequest coded %s, got %v", ErrorLastAdmin, err)
 	}
 	if _, ok := st.members["admin-1"]; !ok {
 		t.Error("last admin removed anyway")
@@ -1477,5 +1477,15 @@ func TestFailedRemovalRecordsNoRevocationClaim(t *testing.T) {
 		if ev.Verb == core.AuditVerbMemberRemoved && ev.Outcome == core.AuditAllowed {
 			t.Fatalf("a failed removal wrote an allowed members.Remove row: %+v", ev)
 		}
+	}
+}
+
+// TestTheStoreLastAdminBackstopIsCoded (w5/m130): the store's transactional
+// guard refuses with the service guard's own coded error, so a removal that
+// raced past the service check reads the same as one it caught.
+func TestTheStoreLastAdminBackstopIsCoded(t *testing.T) {
+	err := mapStoreErr(fmt.Errorf("remove member: %w", store.ErrLastAdmin))
+	if !errors.Is(err, core.ErrBadRequest) || codedErrorCode(err) != ErrorLastAdmin || err.Error() != errLastAdmin().Error() {
+		t.Fatalf("mapStoreErr(ErrLastAdmin) = %v (code %q), want the service guard's %s refusal", err, codedErrorCode(err), ErrorLastAdmin)
 	}
 }

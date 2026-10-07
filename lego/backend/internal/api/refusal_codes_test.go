@@ -93,13 +93,14 @@ func (want codedRefusal) carries(got map[string]any) bool {
 	return true
 }
 
-// TestTheDashboardsRefusalsAreCodedOnEverySurface (w5/m128): the refusals the
-// dashboard branches on carry one code on REST, GraphQL and MCP, so rewording a
-// message can no longer change what the dashboard shows. Render CLI users read
-// the messages, so they are unchanged. The one exception is the
-// protected-environment refusal, which drops the `bad request: ` prefix as
-// every coded 400 does. That refusal is made in two places, the service guard
-// and the datastores', and both are pinned.
+// TestTheDashboardsRefusalsAreCodedOnEverySurface (w5/m128, w5/m130): the
+// refusals the dashboard branches on carry one code on REST, GraphQL and MCP, so
+// rewording a message can no longer change what the dashboard shows. Render CLI
+// users read the messages, so they are unchanged, except that a coded refusal
+// drops the sentinel prefix every coded error drops (`bad request: `,
+// `conflict: `), and MCP's text gains the `CODE: ` prefix. The protected
+// refusal is made in two places, the service guard and the datastores', and
+// both are pinned.
 func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 	unavailable := func(code, msg string) codedRefusal {
 		return codedRefusal{status: http.StatusServiceUnavailable, code: code, msg: msg}
@@ -114,8 +115,10 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		deny         bool          // the checker refuses every relation
+		overQuota    bool          // the workspace already holds its 25 services
 		setup        func(*Server) // state the refusal needs, set after wiring
 		method, path string
+		body         string
 		want         codedRefusal
 		query, tool  string
 		args         map[string]any
@@ -144,6 +147,16 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 		want:  unavailable("AUDIT_LOG_UNAVAILABLE", "audit log store not configured"),
 		query: `{ auditLogs(ownerId: "tea-a") { id } }`,
 	}, {
+		name: "not found", method: http.MethodGet, path: "/v1/services/missing",
+		want:  codedRefusal{status: http.StatusNotFound, code: "NOT_FOUND", msg: "not found"},
+		query: `{ service(id: "missing") { id } }`,
+		tool:  "get_service", args: map[string]any{"serviceId": "missing"},
+	}, {
+		name: "a named resource not found", method: http.MethodGet, path: "/v1/services/web/custom-domains/shop.example.com",
+		want:  codedRefusal{status: http.StatusNotFound, code: "NOT_FOUND", msg: "custom domain not found"},
+		query: `{ customDomain(id: "web", name: "shop.example.com") { name } }`,
+		tool:  "get_custom_domain", args: map[string]any{"serviceId": "web", "name": "shop.example.com"},
+	}, {
 		name: "forbidden", deny: true, method: http.MethodGet, path: "/v1/services",
 		want:  codedRefusal{status: http.StatusForbidden, code: "FORBIDDEN", msg: "forbidden"},
 		query: `{ services { id } }`,
@@ -164,6 +177,40 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 		want:  protected("orders", "sudo suspend database orders"),
 		query: `mutation { suspendDatabase(id: "dpg-orders") { id } }`,
 		tool:  "suspend_postgres", args: map[string]any{"postgresId": "dpg-orders"},
+	}, {
+		name: "Postgres name taken", method: http.MethodPost, path: "/v1/postgres", body: `{"name":"orders","plan":"free"}`,
+		want: codedRefusal{
+			status: http.StatusConflict, code: "CONFLICT",
+			msg: `a Postgres database named "orders" already exists in this workspace`,
+		},
+		query: `mutation { createDatabase(name: "orders", plan: "free") { id } }`,
+		tool:  "create_postgres", args: map[string]any{"name": "orders", "plan": "free"},
+	}, {
+		name: "Key Value name taken", method: http.MethodPost, path: "/v1/key-value", body: `{"name":"cache","plan":"free"}`,
+		want: codedRefusal{
+			status: http.StatusConflict, code: "CONFLICT",
+			msg: `a key-value store named "cache" already exists in this workspace`,
+		},
+		query: `mutation { createKeyValue(name: "cache", plan: "free") { id } }`,
+		tool:  "create_key_value", args: map[string]any{"name": "cache", "plan": "free"},
+	}, {
+		name: "workspace at its service cap", overQuota: true,
+		method: http.MethodPost, path: "/v1/services", body: `{"name":"web2","ownerId":"default","image":{"ownerId":"default","imagePath":"nginx"}}`,
+		want: codedRefusal{
+			status: http.StatusBadRequest, code: "WORKSPACE_RESOURCE_LIMIT",
+			msg: "workspace is limited to 25 services; delete an existing service to create another", params: map[string]any{"limit": float64(25)},
+		},
+		query: `mutation { createService(name: "web2", image: "nginx") { id } }`,
+		tool:  "create_web_service", args: map[string]any{"name": "web2", "image": "nginx", "runtime": "image"},
+	}, {
+		name: "GitHub integration unconfigured", method: http.MethodGet, path: "/v1/git/connections?ownerId=default",
+		want:  unavailable("GITHUB_UNAVAILABLE", "github integration not configured"),
+		query: `{ gitConnections(ownerId: "default") { installationId } }`,
+		tool:  "list_git_connections", args: map[string]any{},
+	}, {
+		name: "web shell unconfigured", method: http.MethodPost, path: "/v1/services/web/shell-ticket",
+		want:  unavailable("SHELL_UNAVAILABLE", "web shell transport not configured"),
+		query: `mutation { createShellSession(id: "web") { ticket } }`,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			web := sampleApp("web")
@@ -172,7 +219,16 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders", Namespace: "default", Labels: map[string]string{core.LabelEnvironment: "env-1"}},
 				Spec:       appv1alpha1.DatabaseSpec{Name: "orders", Plan: "free"},
 			}
-			base := &core.Base{Client: fakeClient(web, orders), Namespace: "default", Authz: &fakeChecker{allow: !tc.deny}}
+			cache := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "red-cache", Namespace: "default"},
+				Spec:       appv1alpha1.KeyValueSpec{Name: "cache", Plan: "free"},
+			}
+			adm := &admission{}
+			if tc.overQuota {
+				adm.limits = map[string]int{store.AppsQuotaCountKey: 25}
+				adm.used = map[string]int{store.AppsQuotaCountKey: 25}
+			}
+			base := &core.Base{Client: adm.client(web, orders, cache), Namespace: "default", Authz: &fakeChecker{allow: !tc.deny}}
 			// Every other source is simply left nil; the audit log is mounted
 			// only when its service is, so it is wired without a store.
 			h, srv := serverWith(t, base, Deps{Audit: &audit.Service{Base: base}})
@@ -180,11 +236,11 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 				tc.setup(srv)
 			}
 
-			t.Run("REST", func(t *testing.T) { tc.want.onREST(t, h, tc.method, tc.path, "") })
+			t.Run("REST", func(t *testing.T) { tc.want.onREST(t, h, tc.method, tc.path, tc.body) })
 			t.Run("GraphQL", func(t *testing.T) { tc.want.onGraphQL(t, h, tc.query) })
 			t.Run("MCP", func(t *testing.T) {
 				if tc.tool == "" {
-					t.Skip("the audit log has no MCP tool")
+					t.Skip("no MCP tool makes this refusal")
 				}
 				tc.want.onMCP(t, mcpSessionAs(t, srv, "dana"), tc.tool, tc.args)
 			})

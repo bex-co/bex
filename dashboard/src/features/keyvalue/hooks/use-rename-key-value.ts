@@ -5,6 +5,7 @@ import { RenameKeyValueDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   hasGraphQLErrorCode,
+  isNameConflictError,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
 
@@ -26,8 +27,7 @@ export function useRenameKeyValue(): UseRenameKeyValueResult {
         toast.success(t("keyvalue.nameSuccess", { name }));
         return true;
       } catch (error) {
-        const message = error instanceof Error ? error.message : "";
-        if (message.includes("already exists")) {
+        if (isNameConflictError(error)) {
           toast.error(t("keyvalue.nameConflict"));
         } else if (hasGraphQLErrorCode(error, "RESOURCE_NAME_INVALID")) {
           toast.error(t("keyvalue.nameInvalid"));

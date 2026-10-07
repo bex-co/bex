@@ -30,7 +30,7 @@ const keys = { success: "services.sourceUpdateSuccess", error: "x" };
 // the phrase out of its extensions rather than rebuild it (ADR032).
 const REFUSAL = codedGraphQLError(
   "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
-  { confirm: "sudo repoint service web" },
+  { confirm: "sudo repoint service web", name: "web" },
 );
 
 beforeEach(() => {
@@ -69,7 +69,7 @@ describe("useFieldMutation protected-environment retry", () => {
 
     expect(ok).toBe(true);
     // The phrase handed to the dialog is the server's, character for character.
-    expect(ask).toHaveBeenCalledWith("sudo repoint service web");
+    expect(ask).toHaveBeenCalledWith("sudo repoint service web", "web");
     expect(mutate).toHaveBeenNthCalledWith(2, {
       variables: {
         id: "srv-1",

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { CreateShellSessionDocument } from "@/graphql/definitions";
+import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 
 export interface ShellSession {
   /** The signed exec ticket to present to the gateway WebSocket. */
@@ -40,11 +41,14 @@ export function useShellSession() {
           expiresAt: session.expiresAt ?? "",
         };
       } catch (err) {
-        // The backend returns ErrShellUnavailable (503, "…not configured") when
+        // The backend returns ErrShellUnavailable (503, SHELL_UNAVAILABLE) when
         // BEX_SHELL_TICKET_SECRET/BEX_SHELL_WS_URL are unset — a distinct,
         // actionable state the terminal surfaces differently from a transient
         // failure.
-        if (err instanceof Error && /not configured/i.test(err.message)) {
+        if (
+          err instanceof Error &&
+          hasGraphQLErrorCode(err, "SHELL_UNAVAILABLE")
+        ) {
           throw new ShellUnavailableError(err.message);
         }
         throw err;

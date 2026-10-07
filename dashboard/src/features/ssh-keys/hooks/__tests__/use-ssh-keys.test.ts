@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const createMutation = vi.fn();
 const deleteMutation = vi.fn();
@@ -98,7 +99,11 @@ describe("useSSHKeys", () => {
     const { result } = renderHook(() => useSSHKeys());
 
     createMutation.mockRejectedValueOnce(
-      new Error("SSH public key is already registered"),
+      codedGraphQLError(
+        "SSH_KEY_EXISTS",
+        {},
+        "SSH public key is already registered",
+      ),
     );
     await act(async () => {
       expect(
@@ -106,6 +111,17 @@ describe("useSSHKeys", () => {
       ).toBe(false);
     });
     expect(toastError).toHaveBeenLastCalledWith("sshKeys.duplicateError");
+
+    // The duplicate is recognized by SSH_KEY_EXISTS, not its wording (w5/m130).
+    createMutation.mockRejectedValueOnce(
+      uncodedGraphQLError("SSH public key is already registered"),
+    );
+    await act(async () => {
+      expect(
+        await result.current.create("worded", "ssh-ed25519 AAAATEST"),
+      ).toBe(false);
+    });
+    expect(toastError).not.toHaveBeenLastCalledWith("sshKeys.duplicateError");
 
     createMutation.mockRejectedValueOnce(new Error("forbidden"));
     await act(async () => {

@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import {
   protectedConfirmationFromError,
-  protectedServiceName,
+  protectedRefusalFromError,
+  withProtectedRetry,
 } from "../protected-confirmation";
 
 const REFUSAL = "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED";
@@ -55,22 +56,68 @@ describe("protectedConfirmationFromError", () => {
   });
 });
 
-// w4/m126 added verbs whose names are more than one word ("take offline"), and
-// w4/m127 added the datastore phrases, so the resource-name extraction cannot
-// assume a single-token verb or the word "service".
-describe("protectedServiceName", () => {
+// The dialog names the resource from the refusal's own `name` param (w5/m130),
+// so a multi-word verb ("take offline") or a datastore phrase needs no parsing,
+// and a phrase the server rewords cannot change the name shown.
+describe("protectedRefusalFromError", () => {
   it.each([
-    ["sudo repoint service web", "web"],
     ["sudo take offline service web", "web"],
     ["sudo fail over database pg-1", "pg-1"],
-    ["sudo delete key value kv-1", "kv-1"],
-  ])("reads the resource name out of %s", (phrase, want) => {
-    expect(protectedServiceName(phrase)).toBe(want);
+    ["the server may word the phrase however it likes", "kv-1"],
+  ])(
+    "reads the name the refusal carries, whatever the phrase (%s)",
+    (confirm, name) => {
+      expect(
+        protectedRefusalFromError(
+          codedGraphQLError(REFUSAL, { confirm, name }),
+        ),
+      ).toEqual({ confirm, name });
+    },
+  );
+
+  it("names the phrase when the refusal carries no name", () => {
+    expect(
+      protectedRefusalFromError(
+        codedGraphQLError(REFUSAL, { confirm: "sudo delete service web" }),
+      ),
+    ).toEqual({
+      confirm: "sudo delete service web",
+      name: "sudo delete service web",
+    });
   });
 
-  it("falls back to the whole phrase when it does not parse", () => {
-    expect(protectedServiceName("takeover blueprint blp-abc")).toBe(
-      "takeover blueprint blp-abc",
+  it("finds nothing without the code", () => {
+    expect(
+      protectedRefusalFromError(
+        uncodedGraphQLError('"web" is a member of a protected environment'),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("withProtectedRetry", () => {
+  it("asks with the phrase and the refusal's name, then retries with the confirmation", async () => {
+    const asked: Array<[string, string | undefined]> = [];
+    const attempts: Array<string | undefined> = [];
+    const result = await withProtectedRetry(
+      async (phrase, name) => {
+        asked.push([phrase, name]);
+        return phrase;
+      },
+      async (confirm) => {
+        attempts.push(confirm);
+        if (!confirm) {
+          throw codedGraphQLError(REFUSAL, {
+            confirm: "sudo take offline service web",
+            verb: "take offline",
+            name: "web",
+          });
+        }
+        return "done";
+      },
     );
+    expect(result).toBe("done");
+    expect(asked).toEqual([["sudo take offline service web", "web"]]);
+    expect(attempts).toEqual([undefined, "sudo take offline service web"]);
   });
 });

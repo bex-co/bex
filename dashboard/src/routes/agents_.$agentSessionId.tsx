@@ -5,7 +5,6 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { requireAgentsFeature } from "@/common/lib/growthbook/require-agents-feature";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
 import {
-  isNotFoundError,
   loadRouteResource,
   routeResourceTitle,
   titleHead,
@@ -89,7 +88,6 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
         data?.agentSession?.id
           ? agentSessionNameSource(data.agentSession)
           : null,
-      isNotFoundError,
     ),
   head: ({ loaderData, match }) =>
     titleHead(
