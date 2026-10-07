@@ -135,8 +135,7 @@ func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.Ap
 	return nil
 }
 
-// lockedPatchAttempts bounds PatchAppLocked's re-reads under contention, as
-// deploys.openRelease bounds its own.
+// lockedPatchAttempts bounds PatchAppLocked's re-reads under contention.
 const lockedPatchAttempts = 5
 
 // PatchLocked is Patch under an optimistic lock (w5/m131), through
@@ -165,7 +164,10 @@ func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alp
 // PatchAppLocked applies mutate to a and merge-patches it with the
 // resourceVersion a was read at (w5/m131). On a conflict it re-reads a and runs
 // mutate again, so mutate must be safe to run more than once. A write that
-// keeps losing answers core.ErrConflict after lockedPatchAttempts tries.
+// keeps losing answers core.ErrConflict after lockedPatchAttempts tries. A
+// re-read that finds another App at a's name answers core.ErrServiceReplaced
+// without running mutate again, leaving a with the mutation that never landed
+// (w5/157).
 func PatchAppLocked(ctx context.Context, cl client.Client, a *appv1alpha1.App, mutate func(*appv1alpha1.App) error) error {
 	for attempt := 1; ; attempt++ {
 		base := client.MergeFromWithOptions(a.DeepCopy(), client.MergeFromWithOptimisticLock{})
@@ -179,7 +181,7 @@ func PatchAppLocked(ctx context.Context, cl client.Client, a *appv1alpha1.App, m
 		if attempt == lockedPatchAttempts {
 			return fmt.Errorf("%w: too many concurrent updates to service %q; retry", core.ErrConflict, a.Name)
 		}
-		if err := cl.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+		if err := core.RereadApp(ctx, cl, a); err != nil {
 			return err
 		}
 	}

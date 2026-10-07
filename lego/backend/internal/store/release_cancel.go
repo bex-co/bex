@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -71,9 +72,10 @@ func CancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, gen
 // markReleaseCanceled stamps generation unless an equal or newer cancel is
 // already in place. It re-reads the App and patches under that resourceVersion:
 // the caller's copy can be a whole reconcile pass old, and a blind merge could
-// overwrite a newer release's cancel that landed since.
+// overwrite a newer release's cancel that landed since. A namesake recreated
+// since is never stamped (w5/157).
 func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64) error {
-	if err := c.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+	if err := core.RereadApp(ctx, c, a); err != nil {
 		return fmt.Errorf("mark canceled release: %w", err)
 	}
 	if marked, ok := canceledReleaseGeneration(a); ok && marked >= generation {
