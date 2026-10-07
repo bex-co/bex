@@ -75,7 +75,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **107** — [The api test suite builds the MCP server twice per test server](done/107.md) (~30m) ← found by w5/093's efficiency review — **DONE 2026-10-07**: each `Server` builds its MCP server once, still at startup through `Handler`, and every server shares one process-wide schema cache. The api suite runs in about 4–5 s instead of about 16 s, and in about 6.6 s of user CPU instead of about 27 s.
 - [x] **108** — [A finished build's artifact lives only in memory until the pass's first status write](done/108.md) (~45m) ← found by w5/095's efficiency review — **DONE 2026-10-07**: the pass that finds a build succeeded stores the artifact first, with an unconditional status write, and meters the build only after that write. Later passes reuse the artifact instead of re-admitting, re-pinning and re-metering the build. The build caps gate only a new dispatch, so a finished build, succeeded or failed, is no longer parked as `BuildQueued` behind other builds. Follow-up: w5/119 (kpack).
 - [x] **109** — [A stale scale-down stamp lets a later dip skip the autoscaler's stabilization window](done/109.md) (~30m) ← found by w5/096's efficiency review — **DONE 2026-10-07**: any autoscaler decision except a held scale-down clears a pending scale-down stamp, so a dip after a recovery waits out a full window again. The stamp's clear and the new replica count go in one metadata patch, so a failed write cannot restart the window. Follow-up: w5/120.
-- [ ] **110** — [Two more writes lose a reconcile pass's unsaved status](110.md) (~1h) ← found by w5/096's reviews
+- [x] **110** — [Two more writes lose a reconcile pass's unsaved status](done/110.md) (~1h) ← found by w5/096's reviews — **DONE 2026-10-07**: `desiredReplicas` takes the pass's own App and the configured count, so the last-active stamp and the autoscaler no longer write to the projected copy of a selected release config. The pass's status write keeps its resourceVersion, and the autoscaler's `Started` record survives. The Database failed-upgrade revert patches a copy under the read resourceVersion, so the Failed status records the cluster's version. Follow-up: w5/121.
 - [ ] **111** — [The dashboard still decides four refusals by their wording](111.md) (>1h, promote when taken) ← found by w5/m128's sweep
 - [ ] **112** — [A failed router lookup answers "metrics source not configured" with the lookup's internal error text](112.md) (~45m) ← found by w5/m128
 - [ ] **113** — [Without a control-plane database the audit log is unmounted, not the documented 503](113.md) (~30m) ← found by w5/m128's cross-surface test
@@ -86,6 +86,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **118** — [A recreated service inherits its predecessor's uncollected projection Secrets](118.md) (~45m) ← found by w5/106's quality review
 - [ ] **119** — [A finished kpack build still waits for a build slot](119.md) (~45m) ← found by w5/108
 - [ ] **120** — [The autoscaler's scale-down window has three more gaps](120.md) (~1h) ← found by w5/109's quality review
+- [ ] **121** — [Two cron status patches replace a pass's unsaved release decision](121.md) (~45m) ← found by w5/110's reuse review
 
 ## Approved queue — 2026-10-01
 

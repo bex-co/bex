@@ -200,3 +200,31 @@ func TestReconcileFailedMajorVersionUpgradeRollsBackIntent(t *testing.T) {
 		t.Errorf("failed upgrade phase = %q", db.Status.Phase)
 	}
 }
+
+// TestAFailedMajorUpgradeRecordsTheClustersVersion (w5/110): reverting a failed
+// major upgrade's spec.version patched the Database itself, and the server's
+// object replaced the status the pass had read from the cluster but not yet
+// written. The Failed status then saved the version stored before the pass.
+func TestAFailedMajorUpgradeRecordsTheClustersVersion(t *testing.T) {
+	ctx := context.Background()
+	r, cl, req := newMajorUpgradeReconciler(t, "Failed to upgrade Postgres major version")
+	var db appv1alpha1.Database
+	if err := cl.Get(ctx, req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	db.Status.CurrentVersion = "15" // stored before the cluster reached 16
+	if err := cl.Status().Update(ctx, &db); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	if db.Spec.Version != "16" || db.Status.Phase != appv1alpha1.DBPhaseFailed || db.Status.CurrentVersion != "16" {
+		t.Fatalf("failed upgrade = spec %q, phase %q, current %q; want the revert to the cluster's 16, Failed, recording 16",
+			db.Spec.Version, db.Status.Phase, db.Status.CurrentVersion)
+	}
+}

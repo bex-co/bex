@@ -139,7 +139,7 @@ func TestDesiredReplicas(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &AppReconciler{ActivatorService: tc.activator}
-			replicas, requeue, plan := r.desiredReplicas(context.Background(), tc.app, releaseObservation{})
+			replicas, requeue, plan := r.desiredReplicas(context.Background(), tc.app, effectiveReplicas(tc.app), releaseObservation{})
 			if replicas != tc.wantReplicas {
 				t.Errorf("replicas = %d, want %d", replicas, tc.wantReplicas)
 			}

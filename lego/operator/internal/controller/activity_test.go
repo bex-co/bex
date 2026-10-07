@@ -143,7 +143,7 @@ func TestIdleDecisionConsultsServedTraffic(t *testing.T) {
 			calls := 0
 			r, cl := activityReconciler(t, app, tc.reader(&calls))
 
-			_, _, plan := r.desiredReplicas(ctx, app, releaseObservation{})
+			_, _, plan := r.desiredReplicas(ctx, app, effectiveReplicas(app), releaseObservation{})
 			sleeping := plan.autoHibernating
 			if sleeping != tc.wantSleep {
 				t.Fatalf("auto-hibernating = %v, want %v", sleeping, tc.wantSleep)
@@ -169,7 +169,7 @@ func TestIdleDecisionConsultsServedTraffic(t *testing.T) {
 func TestIdleDecisionWithoutAReaderUsesTheStamp(t *testing.T) {
 	app := activityApp(time.Now().Add(-time.Hour))
 	r, _ := activityReconciler(t, app, nil)
-	if _, _, plan := r.desiredReplicas(context.Background(), app, releaseObservation{}); !plan.autoHibernating {
+	if _, _, plan := r.desiredReplicas(context.Background(), app, effectiveReplicas(app), releaseObservation{}); !plan.autoHibernating {
 		t.Fatal("with no activity reader an App past its window must still hibernate")
 	}
 }
@@ -181,7 +181,7 @@ func TestRequeueAfterTrafficIsTimedFromTheTraffic(t *testing.T) {
 	app := activityApp(now.Add(-time.Hour))
 	r, _ := activityReconciler(t, app, seenAt(now.Add(-time.Minute))(new(int)))
 
-	if _, _, plan := r.desiredReplicas(context.Background(), app, releaseObservation{}); plan.autoHibernating {
+	if _, _, plan := r.desiredReplicas(context.Background(), app, effectiveReplicas(app), releaseObservation{}); plan.autoHibernating {
 		t.Fatal("recent traffic must keep the service awake")
 	}
 	res, err := r.runningRequeue(context.Background(), app, false)
