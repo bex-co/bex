@@ -74,7 +74,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **106** — [A deleted secret-files Secret records no revision, so a late projection can recreate it](done/106.md) (~1h) ← found by w5/m127 — **DONE 2026-10-07**: emptying a map keeps its projection Secret, empty and stamped with its revision, so a stalled write's late projection loses to it instead of recreating it. The files mount follows what the Secret holds, so a late first write no longer re-mounts a map a delete emptied. Compensation keeps the Secret too, and emptying clears a staged save-only mount. Follow-ups: w5/117, w5/118.
 - [x] **107** — [The api test suite builds the MCP server twice per test server](done/107.md) (~30m) ← found by w5/093's efficiency review — **DONE 2026-10-07**: each `Server` builds its MCP server once, still at startup through `Handler`, and every server shares one process-wide schema cache. The api suite runs in about 4–5 s instead of about 16 s, and in about 6.6 s of user CPU instead of about 27 s.
 - [x] **108** — [A finished build's artifact lives only in memory until the pass's first status write](done/108.md) (~45m) ← found by w5/095's efficiency review — **DONE 2026-10-07**: the pass that finds a build succeeded stores the artifact first, with an unconditional status write, and meters the build only after that write. Later passes reuse the artifact instead of re-admitting, re-pinning and re-metering the build. The build caps gate only a new dispatch, so a finished build, succeeded or failed, is no longer parked as `BuildQueued` behind other builds. Follow-up: w5/119 (kpack).
-- [ ] **109** — [A stale scale-down stamp lets a later dip skip the autoscaler's stabilization window](109.md) (~30m) ← found by w5/096's efficiency review
+- [x] **109** — [A stale scale-down stamp lets a later dip skip the autoscaler's stabilization window](done/109.md) (~30m) ← found by w5/096's efficiency review — **DONE 2026-10-07**: any autoscaler decision except a held scale-down clears a pending scale-down stamp, so a dip after a recovery waits out a full window again. The stamp's clear and the new replica count go in one metadata patch, so a failed write cannot restart the window. Follow-up: w5/120.
 - [ ] **110** — [Two more writes lose a reconcile pass's unsaved status](110.md) (~1h) ← found by w5/096's reviews
 - [ ] **111** — [The dashboard still decides four refusals by their wording](111.md) (>1h, promote when taken) ← found by w5/m128's sweep
 - [ ] **112** — [A failed router lookup answers "metrics source not configured" with the lookup's internal error text](112.md) (~45m) ← found by w5/m128
@@ -85,6 +85,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **117** — [A write that empties the files map can drop the mount a later write added](117.md) (~1h) ← found by w5/106's quality review
 - [ ] **118** — [A recreated service inherits its predecessor's uncollected projection Secrets](118.md) (~45m) ← found by w5/106's quality review
 - [ ] **119** — [A finished kpack build still waits for a build slot](119.md) (~45m) ← found by w5/108
+- [ ] **120** — [The autoscaler's scale-down window has three more gaps](120.md) (~1h) ← found by w5/109's quality review
 
 ## Approved queue — 2026-10-01
 
