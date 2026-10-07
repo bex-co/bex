@@ -900,8 +900,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	// gate is skipped when this pass only observes the App's own build.
 	caps := r.buildCaps(app)
 	if len(caps) > 0 {
-		observing, err := build.ObservingAppBuild(ctx, buildClient, buildNs, app.Name, string(app.UID),
-			build.JobName(app.Name, releaseBuildRevision(app)))
+		observing, err := build.ObservingAppBuild(ctx, buildClient, buildNs, app.Name, string(app.UID), releaseBuildRevision(app))
 		if err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting app builds: %w", err)))
 		}
