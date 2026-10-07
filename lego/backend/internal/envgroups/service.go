@@ -38,6 +38,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -1314,7 +1315,17 @@ func (s *Service) dropDeletedLink(ctx context.Context, gid, service string, notF
 
 // detach removes the group's Secret refs from a service and rolls it, tolerating a
 // service that no longer exists (a deleted service simply drops from the group).
+// A service deleted, or deleted and recreated, since its read is judged again:
+// the App now at service is detached if it mounts the group (w5/158).
 func (s *Service) detach(ctx context.Context, gid, service string) error {
+	err := s.detachOnce(ctx, gid, service)
+	if errors.Is(err, core.ErrServiceReplaced) || apierrors.IsNotFound(err) {
+		err = s.detachOnce(ctx, gid, service)
+	}
+	return err
+}
+
+func (s *Service) detachOnce(ctx context.Context, gid, service string) error {
 	a, err := s.GetApp(ctx, core.RelCanCreate, service)
 	if errors.Is(err, core.ErrNotFound) {
 		return nil // a since-deleted service just drops from the group
