@@ -94,13 +94,16 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **126** — [Owner lists resolve each workspace's owner email with its own store read and Kratos lookup](done/126.md) (~1h) ← found by w5/116's reviews — **DONE 2026-10-07**: `ListOwners` and every REST resource list's owner metadata resolve contact emails with one store query (owner binding, else oldest user admin) and one batched Kratos lookup, not one of each per workspace. An unresolvable owner still answers empty rather than another admin.
 - [x] **127** — [Identity lookups fetch every member's TOTP secret just to learn whether MFA is on](done/127.md) (~30m) ← found by w5/116's efficiency review — **DONE 2026-10-07**: verified live on dev-5 (Kratos v26.2.0) with a TOTP enrollment: an admin read that includes only webauthn lists TOTP's presence without its secret. Both identity reads now ask only for webauthn, so no bex-api path fetches a TOTP secret, and MFA still shows. Follow-up: w5/133.
 - [x] **128** — [Creating a service whose deleted namesake's Secrets await garbage collection answers 500](done/128.md) (~45m) ← found while closing w5/118 — **DONE 2026-10-07**: a create takes over a deleted namesake's Secret, ownerless at its own revision, instead of answering 500. Any other holder answers an uncoded 409. A failed prepare removes only the legs it wrote, so an abort can no longer delete a namesake's Secret. Compensation runs detached, and its errors never reach the refusal's text. Follow-ups: w5/134, w5/135.
-- [ ] **129** — [Every kpack release leaves its Image behind for the App's lifetime](129.md) (~1h) ← found by w5/119's efficiency review
+- [x] **129** — [Every kpack release leaves its Image behind for the App's lifetime](done/129.md) (~1h) ← found by w5/119's efficiency review — **DONE 2026-10-07**: the pass that stores a build's artifact deletes the App's kpack Images, service accounts and credential Secrets from every other revision (`build.PruneKpackRevisions`), so they no longer grow with release history. Under ADR060 §D1a no other build of the App is in flight then, so an Image kpack is rebuilding on its own goes too. Follow-ups: w5/136, w5/137, w5/138.
 - [ ] **130** — [Re-enabling autoscaling resumes from the count it last chose, not the service's own](130.md) (~30m) ← found by w5/120's reuse review
 - [ ] **131** — [The sandbox-files endpoint answers an executor failure with the executor's text](131.md) (~30m) ← found by w5/123's reuse review
 - [ ] **132** — [A Blueprint sync and preview still list the workspace's Apps two or three times](132.md) (~45m) ← found by w5/124's efficiency review
 - [ ] **133** — [Email-only identity reads still make Kratos load every credential](133.md) (~30m) ← found by w5/127's efficiency review
 - [ ] **134** — [A refused service create overwrites, then deletes, its namesake's secrets store map](134.md) (~45m) ← found while closing w5/128
 - [ ] **135** — [An ownerless Secret a crashed service create left behind blocks that name for good](135.md) (~30m) ← found by w5/128's quality review
+- [ ] **136** — [Cancelling a buildpack release never stops its kpack build](136.md) (~45m) ← found by w5/129's quality review
+- [ ] **137** — [Every buildpack release builds with an empty cache](137.md) (~45m) ← found by w5/129's efficiency review
+- [ ] **138** — [A new service's first build follows its branch, not the commit its deploy records](138.md) (~30m) ← found by w5/129's efficiency review
 
 ## Approved queue — 2026-10-01
 
