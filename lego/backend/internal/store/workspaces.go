@@ -267,22 +267,58 @@ func (s *PGStore) ListTenantMembers(ctx context.Context, tenantID string) ([]Ten
 }
 
 // OwnerIDForSubject returns the stable opaque "own-" id for a subject, minting
-// and persisting one on first sight (w6/m7). The Render owners members surface
-// reports userId as this id instead of leaking the raw Kratos/Hydra subject.
-// The upsert is race-safe and idempotent: a concurrent first-sight for the same
-// subject yields exactly one row (the unique PK is the gate), and DO UPDATE is a
-// no-op that only lets RETURNING surface the EXISTING own_id rather than the
-// freshly-minted candidate.
+// and persisting one on first sight (w6/m7): OwnerIDsForSubjects for one
+// subject. The Render owners members surface reports userId as this id instead
+// of leaking the raw Kratos/Hydra subject.
 func (s *PGStore) OwnerIDForSubject(ctx context.Context, subject string) (string, error) {
-	var ownID string
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO owner_ids (subject, own_id) VALUES ($1, $2)
-		 ON CONFLICT (subject) DO UPDATE SET subject = EXCLUDED.subject
-		 RETURNING own_id`,
-		subject, ids.New(ids.Owner),
-	).Scan(&ownID)
+	ownIDs, err := s.OwnerIDsForSubjects(ctx, []string{subject})
 	if err != nil {
-		return "", classify("owner_id", err)
+		return "", err
 	}
-	return ownID, nil
+	return ownIDs[subject], nil
+}
+
+// OwnerIDsForSubjects returns each subject's opaque own- id, minting one on
+// first sight. The ids a list already has are read in one query, and only a
+// subject without one is written (w5/104): the Team page polls its members
+// every 30s, and an upsert writes a row version even when its DO UPDATE changes
+// nothing. A miss still goes through the upsert, so a concurrent first sight of
+// the same subject yields exactly one row (the subject is the primary key), and
+// RETURNING surfaces the stored id rather than the freshly minted candidate.
+func (s *PGStore) OwnerIDsForSubjects(ctx context.Context, subjects []string) (map[string]string, error) {
+	out := make(map[string]string, len(subjects))
+	if len(subjects) == 0 {
+		return out, nil
+	}
+	rows, err := s.Pool.Query(ctx, `SELECT subject, own_id FROM owner_ids WHERE subject = ANY($1)`, subjects)
+	if err != nil {
+		return nil, classify("owner_id", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var subject, ownID string
+		if err := rows.Scan(&subject, &ownID); err != nil {
+			return nil, classify("owner_id", err)
+		}
+		out[subject] = ownID
+	}
+	if err := rows.Err(); err != nil {
+		return nil, classify("owner_id", err)
+	}
+	for _, subject := range subjects {
+		if _, ok := out[subject]; ok {
+			continue
+		}
+		var ownID string
+		if err := s.Pool.QueryRow(ctx,
+			`INSERT INTO owner_ids (subject, own_id) VALUES ($1, $2)
+			 ON CONFLICT (subject) DO UPDATE SET subject = EXCLUDED.subject
+			 RETURNING own_id`,
+			subject, ids.New(ids.Owner),
+		).Scan(&ownID); err != nil {
+			return nil, classify("owner_id", err)
+		}
+		out[subject] = ownID
+	}
+	return out, nil
 }

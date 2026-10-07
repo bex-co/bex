@@ -1650,9 +1650,8 @@ func assertOneTenantOneMember(ctx context.Context, t *testing.T, pool *pgxpool.P
 	}
 }
 
-// TestTenantForIdentityAndClient exercises the resolver's read path
-// (tenant_members.subject, shared by human identities and API-key client ids)
-// plus AddMember/BindClient/UnbindClient against a real database.
+// TestOwnerIDForSubject: a subject's own- id is minted once and stable, and a
+// list reads ids it already has without rewriting their rows (w5/104).
 func TestOwnerIDForSubject(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -1689,8 +1688,47 @@ func TestOwnerIDForSubject(t *testing.T) {
 	if err != nil || b1 == a1 {
 		t.Fatalf("distinct subjects share an id: a=%q b=%q (err %v)", a1, b1, err)
 	}
+
+	// A members list resolves its subjects in one read and rewrites no row it
+	// already has (w5/104): the Team page polls it every 30s, and the upsert's
+	// no-op DO UPDATE wrote a row version per member just to return the id.
+	rowVersions := func() map[string]string {
+		t.Helper()
+		rows, err := pool.Query(ctx, `SELECT subject, xmin::text FROM owner_ids`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		out := map[string]string{}
+		for rows.Next() {
+			var subject, xmin string
+			if err := rows.Scan(&subject, &xmin); err != nil {
+				t.Fatal(err)
+			}
+			out[subject] = xmin
+		}
+		return out
+	}
+	before := rowVersions()
+	listed, err := s.OwnerIDsForSubjects(ctx, []string{"identity-a", "identity-b", "identity-c"})
+	if err != nil || listed["identity-a"] != a1 || listed["identity-b"] != b1 || listed["identity-c"] == "" {
+		t.Fatalf("list = %v (err %v), want a's and b's ids and a new one for c", listed, err)
+	}
+	again, err := s.OwnerIDsForSubjects(ctx, []string{"identity-a", "identity-b", "identity-c"})
+	if err != nil || again["identity-c"] != listed["identity-c"] {
+		t.Fatalf("second list = %v (err %v), want the same ids", again, err)
+	}
+	after := rowVersions()
+	for _, subject := range []string{"identity-a", "identity-b"} {
+		if before[subject] == "" || after[subject] != before[subject] {
+			t.Fatalf("listing rewrote %s's row: xmin %s then %s", subject, before[subject], after[subject])
+		}
+	}
 }
 
+// TestTenantForIdentityAndClient exercises the resolver's read path
+// (tenant_members.subject, shared by human identities and API-key client ids)
+// plus AddMember/BindClient/UnbindClient against a real database.
 func TestTenantForIdentityAndClient(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
