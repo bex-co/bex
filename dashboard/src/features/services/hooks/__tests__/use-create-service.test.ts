@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { renderHook, act } from "@testing-library/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
@@ -233,5 +234,43 @@ describe("useCreateService", () => {
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't create web. Please try again.",
     );
+  });
+});
+
+// The workspace cap is recognized by its code, WORKSPACE_RESOURCE_LIMIT, not by
+// "workspace is limited" in its wording; its own message fills the cap dialog
+// (w5/m130).
+describe("useCreateService at the workspace cap", () => {
+  const cap =
+    "workspace is limited to 1 services; delete an existing service to create another";
+
+  it("opens the cap dialog with the refusal's message", async () => {
+    mockUseMutation.mockReturnValue([
+      vi
+        .fn()
+        .mockRejectedValue(
+          codedGraphQLError("WORKSPACE_RESOURCE_LIMIT", { limit: 1 }, cap),
+        ),
+      { loading: false },
+    ]);
+    const { result } = renderHook(() => useCreateService());
+    await act(async () => {
+      await result.current.create({ name: "web", type: "web_service" });
+    });
+    expect(result.current.capLimit).toBe(cap);
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("does not read the cap from the wording alone", async () => {
+    mockUseMutation.mockReturnValue([
+      vi.fn().mockRejectedValue(uncodedGraphQLError(cap)),
+      { loading: false },
+    ]);
+    const { result } = renderHook(() => useCreateService());
+    await act(async () => {
+      await result.current.create({ name: "web", type: "web_service" });
+    });
+    expect(result.current.capLimit).toBeNull();
+    expect(toastError).toHaveBeenCalledTimes(1);
   });
 });

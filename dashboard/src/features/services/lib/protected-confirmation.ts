@@ -1,31 +1,36 @@
 import { graphQLErrorExtensions } from "@/common/lib/graphql-error";
+import type { AskForConfirmation } from "@/common/providers/protected-retry-context";
 
 export type ProtectedActionResult =
   | { status: "success" }
   | { status: "confirmation_required"; confirmation: string }
   | { status: "error" };
 
+const PROTECTED_REFUSAL = "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED";
+
 /**
- * Pulls the authoritative retry phrase out of bex-api's protected-environment
- * error. The server computes the phrase from the actual verb and immutable
- * service name; the dashboard deliberately does not duplicate that rule.
+ * bex-api's protected-environment refusal: the authoritative retry phrase, and
+ * the resource it names (the refusal's `name` param, w5/m130), or null for any
+ * other error. The server computes the phrase from the actual verb and
+ * immutable name; the dashboard deliberately does not duplicate that rule. The
+ * name is display only, and falls back to the phrase.
  */
-export function protectedConfirmationFromError(err: unknown): string | null {
-  const confirm = graphQLErrorExtensions(
-    err,
-    "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
-  )?.["confirm"];
-  return typeof confirm === "string" && confirm !== "" ? confirm : null;
+export function protectedRefusalFromError(
+  err: unknown,
+): { confirm: string; name: string } | null {
+  const extensions = graphQLErrorExtensions(err, PROTECTED_REFUSAL);
+  const confirm = extensions?.["confirm"];
+  if (typeof confirm !== "string" || confirm === "") return null;
+  const name = extensions?.["name"];
+  return {
+    confirm,
+    name: typeof name === "string" && name !== "" ? name : confirm,
+  };
 }
 
-/** Best-effort display name; authorization still relies on the full phrase. */
-export function protectedServiceName(confirmation: string): string {
-  // The verb is not always one word — "fail over" a database, "take offline" a
-  // service — so match lazily up to the resource kind rather than assuming it.
-  return (
-    confirmation.match(/^sudo .+? (?:service|database|key value) (.+)$/)?.[1] ??
-    confirmation
-  );
+/** The refusal's retry phrase, for a caller that names the resource itself. */
+export function protectedConfirmationFromError(err: unknown): string | null {
+  return protectedRefusalFromError(err)?.confirm ?? null;
 }
 
 /**
@@ -51,15 +56,15 @@ export class ProtectedConfirmationDismissed extends Error {
  * propagates untouched, so each call site keeps its own error copy.
  */
 export async function withProtectedRetry<T>(
-  ask: (phrase: string) => Promise<string | null>,
+  ask: AskForConfirmation,
   attempt: (confirm?: string) => Promise<T>,
 ): Promise<T> {
   try {
     return await attempt();
   } catch (err) {
-    const phrase = protectedConfirmationFromError(err);
-    if (!phrase) throw err;
-    const confirmation = await ask(phrase);
+    const refusal = protectedRefusalFromError(err);
+    if (!refusal) throw err;
+    const confirmation = await ask(refusal.confirm, refusal.name);
     if (confirmation === null) throw new ProtectedConfirmationDismissed();
     return attempt(confirmation);
   }

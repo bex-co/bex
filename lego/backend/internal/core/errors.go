@@ -40,8 +40,10 @@ var (
 	// ErrNotFound is returned when a resource does not exist. Its text is
 	// neutral: it once read "app not found", which every 404 inherited — a
 	// missing deploy on a real service read as a missing service (w8/021).
-	// Use NotFound to name the resource.
-	ErrNotFound = errors.New("not found")
+	// Use NotFound to name the resource. It is coded NOT_FOUND on every
+	// surface, so a client decides on the code, not on "not found" in the
+	// wording (w5/m130).
+	ErrNotFound error = &CodedError{Code: NotFoundCode, msg: "not found"}
 	// ErrUnavailable is the class every "…Unavailable" sentinel below belongs to:
 	// the verb exists but its backing dependency isn't wired. WriteErr maps the
 	// class once (503) instead of naming each sentinel, so a feature declaring a
@@ -141,7 +143,7 @@ var (
 	// App is not configured (BEX_GITHUB_APP_* unset) or the control-plane store
 	// isn't wired (BEX_CP_DB_URI unset) — adapters surface it as 503
 	// (docs/ADR026-github-integration.md).
-	ErrGitHubUnavailable = Unavailable("github integration not configured")
+	ErrGitHubUnavailable error = NewUnavailableError("GITHUB_UNAVAILABLE", "github integration not configured", nil)
 	// ErrEventsUnavailable is returned by the service-events feed when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503. BOTH of the feed's sources (deploys, audit_events) are control-plane
@@ -189,7 +191,7 @@ var (
 	// BEX_SHELL_WS_URL unset); adapters surface it as 503. Native `ssh` is
 	// unaffected — the copy-ready command still works (docs/ADR035-ssh.md
 	// § Browser Web Shell).
-	ErrShellUnavailable = Unavailable("web shell transport not configured")
+	ErrShellUnavailable error = NewUnavailableError("SHELL_UNAVAILABLE", "web shell transport not configured", nil)
 )
 
 // unavailableErr carries its own message while reporting membership in the
@@ -344,6 +346,10 @@ func NewForbiddenError(code, msg string, params map[string]any) *CodedError {
 func NewNotFoundError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrNotFound, msg: msg}
 }
+
+// NotFoundCode is a missing resource's code: ErrNotFound's, and NotFound's.
+// A feature-specific not-found keeps its own (NewNotFoundError).
+const NotFoundCode = "NOT_FOUND"
 
 // CodeQueryTimeout marks a read that ran out of its execution budget. Retrying
 // the same request will time out again, so clients should narrow it instead
@@ -510,10 +516,7 @@ func NewInsufficientScopeError(required string) *CodedError {
 
 // NotFound is ErrNotFound naming the missing resource ("deploy not found"), so
 // the message points at what is actually absent while status mapping, GraphQL
-// and MCP still see errors.Is(err, ErrNotFound).
-func NotFound(resource string) error { return notFoundError{resource: resource} }
-
-type notFoundError struct{ resource string }
-
-func (e notFoundError) Error() string        { return e.resource + " not found" }
-func (e notFoundError) Is(target error) bool { return target == ErrNotFound }
+// and MCP still see errors.Is(err, ErrNotFound) and its code.
+func NotFound(resource string) error {
+	return NewNotFoundError(NotFoundCode, resource+" not found", nil)
+}

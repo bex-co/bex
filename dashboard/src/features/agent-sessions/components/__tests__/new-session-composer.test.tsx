@@ -2,10 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
-import {
-  AgentSessionError,
-  AgentSessionsUnavailableError,
-} from "@/features/agent-sessions/lib/errors";
+import { AgentSessionError } from "@/features/agent-sessions/lib/errors";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
 
@@ -482,7 +479,13 @@ describe("NewSessionComposer", () => {
   });
 
   it("renders the house callout when the backend reports the feature unavailable (503)", async () => {
-    create.mockRejectedValue(new AgentSessionsUnavailableError());
+    create.mockRejectedValue(
+      new AgentSessionError(
+        "AGENT_SESSION_NOT_CONFIGURED",
+        "agent sessions are not configured",
+        {},
+      ),
+    );
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);

@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
@@ -46,7 +47,11 @@ describe("useRenameDatabase", () => {
 
   it("surfaces a workspace name collision", async () => {
     mockUseMutation.mockReturnValue([
-      vi.fn().mockRejectedValue(new Error("already exists in this workspace")),
+      vi
+        .fn()
+        .mockRejectedValue(
+          codedGraphQLError("CONFLICT", {}, "already exists in this workspace"),
+        ),
     ]);
     const { result } = renderHook(() => useRenameDatabase());
 
@@ -91,6 +96,30 @@ describe("useRenameDatabase", () => {
     });
     expect(toastError).toHaveBeenLastCalledWith(
       "Name must use lowercase letters",
+    );
+  });
+});
+
+// A taken name is recognized by bex-api's CONFLICT code (w6/m49), not by
+// "already exists" in its wording (w5/m130).
+describe("useRenameDatabase without a code", () => {
+  it("does not read a name collision from the wording alone", async () => {
+    mockUseMutation.mockReturnValue([
+      vi
+        .fn()
+        .mockRejectedValue(
+          uncodedGraphQLError(
+            `a Postgres database named "taken" already exists in this workspace`,
+          ),
+        ),
+    ]);
+    const { result } = renderHook(() => useRenameDatabase());
+    await act(async () => {
+      await result.current.rename("dpg-stable", "taken");
+    });
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(toastError).not.toHaveBeenCalledWith(
+      "A database with that name already exists in this workspace.",
     );
   });
 });

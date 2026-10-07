@@ -150,16 +150,22 @@ Environment variable and secret-file names are checked by Kubernetes' own Secret
 
 Services, Postgres, Key Values and workspaces share one name rule, `appv1alpha1.ValidResourceName`, worded once as `core.ResourceNameRule`. Postgres and Key Value names pass one check on every way in (`resourcename.CheckDatastore`), so Blueprint validation now checks a Key Value name too. GraphQL keeps the code of a coded error a resolver wrapped, as REST and MCP always did.
 
-**Refusals a client branches on carry codes (w5/m128).** The dashboard decides what to show from these refusals, so each carries a stable code on REST (`code`, `params`), GraphQL (`extensions`) and MCP (the `CODE: ` prefix). Render CLI users read the messages, so they are unchanged. The one exception is the protected-environment refusal, which drops the `bad request: ` prefix as every coded 400 does:
+**Refusals a client branches on carry codes (w5/m128, w5/m130).** The dashboard decides what to show from these refusals, so each carries a stable code on REST (`code`, `params`), GraphQL (`extensions`) and MCP (the `CODE: ` prefix). Render CLI users read the messages, so they are unchanged, except that a coded refusal drops the sentinel prefix every coded error drops (`bad request: `, `conflict: `):
 
 - 503s for a dependency the deployment never wired:
   - `LOGS_UNAVAILABLE`: no pod-log source;
   - `LOG_STORE_UNAVAILABLE`: request logs, build-log history, structured log filters or label discovery without the durable store;
   - `METRICS_UNAVAILABLE`;
   - `SECRETS_UNAVAILABLE`;
-  - `AUDIT_LOG_UNAVAILABLE`.
+  - `AUDIT_LOG_UNAVAILABLE`;
+  - `GITHUB_UNAVAILABLE`: no GitHub App;
+  - `SHELL_UNAVAILABLE`: no browser-shell transport.
+- The 404 `NOT_FOUND`. `core.ErrNotFound` and `core.NotFound(resource)` carry it, so every refusal that wraps the sentinel answers the code. A feature's own not-found, built with `core.NewNotFoundError`, keeps its `*_NOT_FOUND` code. The dashboard reads either one, never "not found" in the message. A transport 404 is not a missing resource: bex-api answers one with 200 and a coded error.
 - The 403 `FORBIDDEN`. `core.ErrForbidden` carries it, so every refusal that wraps the sentinel answers the code. A refusal with a more specific 403 code, such as `INSUFFICIENT_SCOPE` or `EMAIL_VERIFICATION_REQUIRED`, keeps its own.
-- The 400 `PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED`, with params `confirm`, `verb` and `name`. `confirm` is the phrase a retry must send. Services, Postgres and Key Values refuse with it alike through one check, `core.RequireProtectedConfirmation`. The dashboard reads the phrase from `confirm` rather than from the message.
+- The 400 `PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED`, with params `confirm`, `verb` and `name`. `confirm` is the phrase a retry must send. Services, Postgres and Key Values refuse with it alike through one check, `core.RequireProtectedConfirmation`. The dashboard reads the phrase from `confirm` and the resource's name from `name`, never from the message.
+- The 400 `WORKSPACE_RESOURCE_LIMIT`, with param `limit`: a create past the workspace's count cap.
+- The 400 `LAST_ADMIN`: removing or demoting a workspace's last admin.
+- The 409 `SSH_KEY_EXISTS`: an SSH public key registered twice. A name taken in its workspace keeps the shared `CONFLICT` code (w6/m49).
 
 Render's error body has no `code`, so these are extensions a Render client ignores. `api/refusal_codes_test.go` pins each code on every surface.
 

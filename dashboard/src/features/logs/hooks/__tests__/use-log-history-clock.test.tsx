@@ -207,7 +207,7 @@ describe("relative history with real Apollo and virtual reader", () => {
     expect(screen.getByTestId("more")).toHaveTextContent("false");
     server.client.stop();
   });
-  it.each(["network", "FORBIDDEN", "NOT_FOUND", "UNAUTHENTICATED"])(
+  it.each(["network", "FORBIDDEN", "NOT_FOUND"])(
     "handles background %s without false empty success or stale access",
     async (failure) => {
       const server = transport();

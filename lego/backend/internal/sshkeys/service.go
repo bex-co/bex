@@ -130,7 +130,7 @@ func (s *Service) Create(ctx context.Context, name, rawPublicKey string) (store.
 		PublicKey: canonical, Fingerprint: fingerprint,
 	})
 	if errors.Is(err, store.ErrConflict) {
-		return store.SSHKey{}, fmt.Errorf("%w: SSH public key is already registered", core.ErrConflict)
+		return store.SSHKey{}, core.NewConflictError("SSH_KEY_EXISTS", "SSH public key is already registered", nil)
 	}
 	if errors.Is(err, store.ErrAccountDeletionPending) {
 		return store.SSHKey{}, core.NewAccountDeletionPendingError()

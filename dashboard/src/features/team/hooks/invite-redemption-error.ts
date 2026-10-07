@@ -1,4 +1,5 @@
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
+import { graphQLErrorCodes } from "@/common/lib/graphql-error";
 
 export type InviteRedemptionFailure =
   | "already-accepted"
@@ -22,10 +23,7 @@ export function classifyInviteRedemptionError(
   error: unknown,
 ): InviteRedemptionFailure {
   if (CombinedGraphQLErrors.is(error)) {
-    const codes = error.errors.flatMap((item) => {
-      const code = item.extensions?.["code"];
-      return typeof code === "string" ? [code] : [];
-    });
+    const codes = graphQLErrorCodes(error);
     if (codes.includes("INVITE_ALREADY_ACCEPTED")) return "already-accepted";
     if (codes.includes("INVITE_EXPIRED")) return "expired";
     if (codes.includes("INVITE_PLAN_LIMIT")) return "plan-limit";

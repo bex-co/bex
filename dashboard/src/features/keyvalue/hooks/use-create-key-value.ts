@@ -5,8 +5,8 @@ import { CreateKeyValueDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
-  graphQLErrorMessage,
   mutationErrorMessage,
+  workspaceCapMessage,
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
@@ -83,9 +83,9 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
         return id;
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return null;
-        const msg = graphQLErrorMessage(err) ?? "";
-        if (msg.toLowerCase().includes("workspace is limited")) {
-          setCapLimit(msg);
+        const capMessage = workspaceCapMessage(err);
+        if (capMessage !== null) {
+          setCapLimit(capMessage);
         } else {
           toast.error(
             mutationErrorMessage(

@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate, type NavigateOptions } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { isNotFoundError, translatedText } from "@/common/lib/document-head";
+import { translatedText } from "@/common/lib/document-head";
+import { isNotFoundError } from "@/common/lib/graphql-error";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
 
 /**

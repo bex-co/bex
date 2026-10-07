@@ -36,7 +36,6 @@ import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import {
   AgentSessionError,
-  AgentSessionsUnavailableError,
   agentSessionAvailabilityCopy,
   toAgentSessionError,
 } from "@/features/agent-sessions/lib/errors";
@@ -201,10 +200,6 @@ export function NewSessionComposer() {
     // The user closed the ADR075 D7 payment dialog — their own choice, not an
     // error to report.
     if (isPaymentOnboardingCancelled(err)) return;
-    if (err instanceof AgentSessionsUnavailableError) {
-      setAvailabilityError(err);
-      return;
-    }
     if (!(err instanceof AgentSessionError)) {
       setSubmitError(err instanceof Error ? err.message : String(err));
       return;

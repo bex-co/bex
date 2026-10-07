@@ -1,7 +1,7 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import type { useTranslations } from "@/common/hooks/use-translations";
 import { blueprintKindLabel } from "@/features/blueprints/lib/kind-labels";
-import { protectedConfirmationFromError } from "@/features/services/lib/protected-confirmation";
+import { protectedRefusalFromError } from "@/features/services/lib/protected-confirmation";
 import type { BlueprintValidationError } from "@/features/blueprints/types";
 
 /** bex-api's code for a repo+branch a live Blueprint already tracks (w4/m125). */
@@ -96,6 +96,8 @@ export interface BlueprintConfirmationRequired {
   confirmation: string;
   /** Set when the refusal is a Blueprint takeover, not a protected env. */
   takeover?: BlueprintTakeover;
+  /** The protected resource the refusal names, for the dialog's copy. */
+  resourceName?: string;
 }
 
 /** The typed-confirmation retry a refused Blueprint create or sync asks for. */
@@ -110,9 +112,13 @@ export function blueprintConfirmationFromError(
       takeover,
     };
   }
-  const phrase = protectedConfirmationFromError(err);
-  return phrase
-    ? { status: "confirmation_required", confirmation: phrase }
+  const refusal = protectedRefusalFromError(err);
+  return refusal
+    ? {
+        status: "confirmation_required",
+        confirmation: refusal.confirm,
+        resourceName: refusal.name,
+      }
     : null;
 }
 

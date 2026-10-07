@@ -6,8 +6,8 @@ import {
   ServicesDocument,
 } from "@/graphql/definitions";
 import type { ServerQuery } from "@/graphql/definitions";
+import { isNotFoundError } from "@/common/lib/graphql-error";
 import {
-  isNotFoundError,
   titleLoaderFetchPolicy,
   type RouteResource,
 } from "@/common/lib/document-head";

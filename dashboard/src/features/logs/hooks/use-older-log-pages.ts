@@ -2,10 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useApolloClient } from "@apollo/client/react";
 import { ServerError } from "@apollo/client/errors";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
-import {
-  hasGraphQLErrorCode,
-  isForbiddenError,
-} from "@/common/lib/graphql-error";
+import { isForbiddenError, isNotFoundError } from "@/common/lib/graphql-error";
 import {
   LogsDocument,
   type LogsQuery,
@@ -20,13 +17,8 @@ export function logReadAccessDenied(error: Error | undefined): boolean {
   return (
     isUnauthenticatedError(error) ||
     isForbiddenError(error) ||
-    (ServerError.is(error) && [403, 404].includes(error.statusCode)) ||
-    ["UNAUTHENTICATED", "NOT_FOUND"].some((code) =>
-      hasGraphQLErrorCode(error, code),
-    ) ||
-    /not found|unauthenticated|unauthorized|session expired/i.test(
-      error?.message ?? "",
-    )
+    isNotFoundError(error) ||
+    (ServerError.is(error) && [403, 404].includes(error.statusCode))
   );
 }
 

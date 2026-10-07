@@ -176,11 +176,12 @@ func TestSSHKeysRESTGraphQLMCPParity(t *testing.T) {
 	if first.Code != http.StatusCreated {
 		t.Fatalf("duplicate fixture create = %d", first.Code)
 	}
-	_, gqlErrors, _ = rawGraphQL(t, h, fmt.Sprintf(`mutation { createSSHKey(name: "duplicate", publicKey: %q) { id } }`, restPublicKey))
-	if len(gqlErrors) == 0 {
-		t.Fatal("GraphQL duplicate key succeeded")
-	}
-	callToolError(t, client, "add_ssh_key", map[string]any{"name": "duplicate", "publicKey": restPublicKey})
+	// A key registered twice is coded on every surface, so the dashboard
+	// recognizes it by code, not by its wording (w5/m130).
+	exists := codedRefusal{status: http.StatusConflict, code: "SSH_KEY_EXISTS", msg: "SSH public key is already registered"}
+	exists.onREST(t, h, http.MethodPost, "/v1/ssh-keys", string(duplicateBody))
+	exists.onGraphQL(t, h, fmt.Sprintf(`mutation { createSSHKey(name: "duplicate", publicKey: %q) { id } }`, restPublicKey))
+	exists.onMCP(t, client, "add_ssh_key", map[string]any{"name": "duplicate", "publicKey": restPublicKey})
 
 	foreignID := ids.New(ids.SSHKey)
 	st.keys[foreignID] = store.SSHKey{ID: foreignID, Subject: "foreign-subject", Name: "foreign", PublicKey: surfacePublicKey(t), Fingerprint: "SHA256:foreign"}

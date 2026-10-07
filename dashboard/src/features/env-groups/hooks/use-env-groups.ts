@@ -26,7 +26,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-import { isNotFoundError } from "@/common/lib/document-head";
+import { isNotFoundError } from "@/common/lib/graphql-error";
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
@@ -671,5 +671,5 @@ export function secretFileNames(group: EnvGroupView | null): SecretFileName[] {
 }
 
 export function isEnvGroupNotFound(error: Error | undefined): boolean {
-  return !!error && isNotFoundError(error);
+  return isNotFoundError(error);
 }

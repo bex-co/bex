@@ -24,7 +24,7 @@ import { codedGraphQLError } from "@/test/mocks/apollo";
 
 const REFUSAL = codedGraphQLError(
   "PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED",
-  { confirm: "sudo repoint service web" },
+  { confirm: "sudo repoint service web", name: "web" },
 );
 
 beforeEach(() => {
@@ -49,7 +49,7 @@ describe("useTriggerDeploy protected-environment retry", () => {
     });
 
     expect(id).toBe("dep-2");
-    expect(ask).toHaveBeenCalledWith("sudo repoint service web");
+    expect(ask).toHaveBeenCalledWith("sudo repoint service web", "web");
     expect(triggerDeploy).toHaveBeenNthCalledWith(2, {
       variables: {
         serviceId: "srv-1",

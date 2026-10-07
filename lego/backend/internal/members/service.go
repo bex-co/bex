@@ -103,6 +103,9 @@ const (
 	// owner, because leaving would strand the owner binding exactly as a removal
 	// would. Ownership transfer is the owner's exit and remains deferred.
 	ErrorOwnerCannotLeave = "OWNER_CANNOT_LEAVE"
+	// ErrorLastAdmin refuses removing or demoting a workspace's last admin,
+	// which would leave nobody to administer it.
+	ErrorLastAdmin = "LAST_ADMIN"
 	// ErrorMemberIsMachine refuses a member verb aimed at an API key's binding
 	// (w5/m103). Such a row exists so the key resolves to its workspace and
 	// authorizes there; it is not a teammate. Before this, promoting one to
@@ -1405,6 +1408,12 @@ func (s *Service) guardOwner(ctx context.Context, workspaceID, subject, newRole 
 	return errOwnerRoleCannotChange()
 }
 
+// errLastAdmin is minted once, for the service guard and the store backstop
+// (mapStoreErr) alike, so the refusal reads the same whichever layer caught it.
+func errLastAdmin() error {
+	return core.NewBadRequestError(ErrorLastAdmin, "cannot remove or demote the last admin of a workspace", nil)
+}
+
 // The owner refusals are minted in one place: the service guard and the store
 // backstop (mapStoreErr) must answer with byte-identical messages, or the same
 // refusal would read differently depending on which layer caught it.
@@ -1430,7 +1439,7 @@ func (s *Service) guardLastAdmin(ctx context.Context, workspaceID, currentRole, 
 		return err
 	}
 	if admins <= 1 {
-		return fmt.Errorf("%w: cannot remove or demote the last admin of a workspace", core.ErrBadRequest)
+		return errLastAdmin()
 	}
 	return nil
 }
@@ -1580,6 +1589,8 @@ func mapStoreErr(err error) error {
 		return errOwnerCannotBeRemoved()
 	case errors.Is(err, store.ErrOwnerRole):
 		return errOwnerRoleCannotChange()
+	case errors.Is(err, store.ErrLastAdmin):
+		return errLastAdmin()
 	case errors.Is(err, store.ErrConflict), errors.Is(err, store.ErrInvalid):
 		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 	default:

@@ -6,22 +6,6 @@
 
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
 
-/**
- * Thrown when bex-api reports the agent-session surface is unconfigured
- * (`core.ErrAgentSessionsUnavailable` → 503 REST / "agent sessions not
- * configured" GraphQL error, when `BEX_AGENT_SESSION_GATEWAY_URL`/ticket secret
- * are unset). A distinct degraded state — the page says the feature is off
- * rather than surfacing a transient failure.
- */
-export class AgentSessionsUnavailableError extends Error {
-  readonly code = "AGENT_SESSION_NOT_CONFIGURED";
-
-  constructor(message = "agent sessions are not configured") {
-    super(message);
-    this.name = "AgentSessionsUnavailableError";
-  }
-}
-
 /** Structured params carried on a coded agent-session error's extensions. */
 export interface AgentSessionErrorParams {
   /** Egress-allowlist rejection reason (AGENT_SESSION_EGRESS_ALLOWLIST_INVALID). */
@@ -76,8 +60,6 @@ export function agentSessionErrorMessage(
   return err instanceof Error ? err.message : String(err);
 }
 
-const UNAVAILABLE = /not configured/i;
-
 export interface AgentSessionAvailabilityCopy {
   titleKey: string;
   bodyKey: string;
@@ -106,13 +88,9 @@ const AVAILABILITY_COPY: Record<string, AgentSessionAvailabilityCopy> = {
 export function agentSessionAvailabilityCopy(
   err: unknown,
 ): AgentSessionAvailabilityCopy | null {
-  const code =
-    err instanceof AgentSessionsUnavailableError
-      ? err.code
-      : err instanceof AgentSessionError
-        ? err.code
-        : null;
-  return code ? (AVAILABILITY_COPY[code] ?? null) : null;
+  return err instanceof AgentSessionError
+    ? (AVAILABILITY_COPY[err.code] ?? null)
+    : null;
 }
 
 /** Pulls the flattened extension params (minus `code`) off one GraphQL error. */
@@ -130,9 +108,10 @@ function extensionParams(
 
 /**
  * Normalizes an Apollo operation rejection into a typed agent-session error:
- * coded GraphQL failures preserve their `AGENT_SESSION_*` code, a cause-less
- * transport 503 becomes dependency-unavailable, and the legacy uncoded "not
- * configured" message remains compatible. Other failures stay unchanged.
+ * coded GraphQL failures preserve their `AGENT_SESSION_*` code (an
+ * unconfigured platform is AGENT_SESSION_NOT_CONFIGURED), and a cause-less
+ * transport 503 becomes dependency-unavailable. Other failures, wording that
+ * merely says "not configured" included, stay unchanged (w5/m130).
  */
 export function toAgentSessionError(err: unknown): unknown {
   // A raw non-GraphQL 503 carries no cause code. Treat it as retryable rather
@@ -155,10 +134,6 @@ export function toAgentSessionError(err: unknown): unknown {
           extensionParams(item.extensions as Record<string, unknown>),
         );
       }
-    }
-    // No agent-session code but the feature is off → "not configured" message.
-    if (err.errors.some((item) => UNAVAILABLE.test(item.message))) {
-      return new AgentSessionsUnavailableError(err.errors[0]?.message);
     }
   }
   return err;

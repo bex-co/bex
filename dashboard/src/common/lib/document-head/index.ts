@@ -2,6 +2,7 @@ import type { TOptions } from "i18next";
 import { getActiveI18n } from "@/i18n/request-scope";
 import type { SupportedLanguage } from "@/i18n";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
+import { isNotFoundError } from "@/common/lib/graphql-error";
 
 export { DashboardDocumentTitle } from "./document-title";
 export { getDashboardOrigin } from "./origin";
@@ -132,10 +133,6 @@ export async function loadRouteResource<TData, TResource>(
     if (isUnauthenticatedError(error)) return { state: "unauthenticated" };
     return isNotFound(error) ? { state: "not-found" } : { state: "error" };
   }
-}
-
-export function isNotFoundError(error: unknown): boolean {
-  return error instanceof Error && /\bnot[ -]?found\b/i.test(error.message);
 }
 
 /**

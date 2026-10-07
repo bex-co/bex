@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { afterEach, describe, expect, it } from "vitest";
 import i18n from "@/i18n/init";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import {
   DASHBOARD_NAME,
   formatDashboardTitle,
@@ -409,11 +410,20 @@ describe("dynamic route resource policy", () => {
     await expect(
       loadRouteResource(
         async () => {
-          throw new Error("resource not found");
+          throw codedGraphQLError("NOT_FOUND");
         },
         () => null,
       ),
     ).resolves.toEqual({ state: "not-found" });
+    // The wording alone decides nothing (w5/m130).
+    await expect(
+      loadRouteResource(
+        async () => {
+          throw new Error("resource not found");
+        },
+        () => null,
+      ),
+    ).resolves.toEqual({ state: "error" });
   });
 
   it("never uses an opaque id in settled or fallback titles", () => {

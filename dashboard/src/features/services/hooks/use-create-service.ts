@@ -5,9 +5,9 @@ import { CreateServiceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
-  graphQLErrorMessage,
   isNameConflictError,
   mutationErrorMessage,
+  workspaceCapMessage,
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
@@ -140,9 +140,9 @@ export function useCreateService(): UseCreateServiceResult {
         // text) — a raced duplicate the debounced check missed; same inline
         // treatment, not a toast. Any other refusal is toasted in the server's
         // own words, since only it says what to fix (w1/m145).
-        const msg = graphQLErrorMessage(err) ?? "";
-        if (msg.toLowerCase().includes("workspace is limited")) {
-          setCapLimit(msg);
+        const capMessage = workspaceCapMessage(err);
+        if (capMessage !== null) {
+          setCapLimit(capMessage);
         } else if (isNameConflictError(err)) {
           setNameConflict(true);
         } else {

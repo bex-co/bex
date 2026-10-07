@@ -134,7 +134,7 @@ func TestHandleByIDMapsAServiceError(t *testing.T) {
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", w.Code)
 	}
-	want := `{"error":"not found","id":"not_found","message":"not found"}` + "\n"
+	want := `{"code":"NOT_FOUND","error":"not found","id":"not_found","message":"not found","params":null}` + "\n"
 	if got := w.Body.String(); got != want {
 		t.Fatalf("body = %q, want %q", got, want)
 	}
