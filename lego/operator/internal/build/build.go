@@ -276,7 +276,7 @@ const (
 	// deadline, so the worst case costs minutes rather than the build.
 	cacheCommandTimeout = "5m"
 
-	// cacheTag is the single tag the layer cache occupies in <repo>-cache. One
+	// cacheTag is the single tag the layer cache occupies in <repo>_cache. One
 	// tag, rewritten every build: a cache is a rolling artifact, not a history,
 	// so nothing is gained by keeping older ones and Zot's retention has less to
 	// reason about.
@@ -569,11 +569,11 @@ func (o Options) KpackImageRef() string {
 
 // KpackCacheRef is where every kpack Image of the App caches buildpack layers:
 // one tag in the App's image repository, so a release restores the layers the
-// previous release cached. Not CachePath: an App named <name>-cache owns that
-// repository name. kpack reads and writes the one tag and cannot skip restoring
-// it, so a clear-cache deploy moves the App to a tag named for its release
-// generation (KpackCacheGeneration); the tag it leaves is never pushed again
-// and ages out of retention with old release tags.
+// previous release cached. kpack reads and writes the one tag and cannot skip
+// restoring it, so a clear-cache deploy moves the App to a tag named for its
+// release generation (KpackCacheGeneration). Kept beside the release tags
+// rather than in CachePath, the tag it leaves is never pushed again and ages
+// out of retention with them.
 func (o Options) KpackCacheRef() string {
 	tag := kpackCacheTag
 	if o.KpackCacheGeneration > 0 {

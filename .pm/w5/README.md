@@ -116,7 +116,8 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **147** — [A deleted namesake's in-flight secrets write can take over a create's prepared Secret](147.md) (~45m) ← found by w5/134's quality review
 - [ ] **148** — [A crashed create's other projection leg outlives the service that takes its name](148.md) (~45m) ← found by w5/135's quality review
 - [ ] **149** — [A build the cancel's one delete misses runs to the end: the operator's settle never stops it](149.md) (~45m) ← found by w5/136's reviews
-- [ ] **150** — [Deleting an App deletes the images of a workspace sibling named `<app>-cache`](150.md) (~1h, may promote) ← found by w5/m134's quality review
+- [ ] **151** — [Reclaim the build-cache trial's caches left under the old `<repo>-cache` names](151.md) (~45m) ← found by w5/m135's reviews
+- [x] **m135** — [An App's build cache lives in a repository no other App can own](done/m135/README.md) (6 tasks; 2h35m total) ← promoted from inbox `150` (found by w5/m134's quality review) — **DONE 2026-10-07**: the build cache moved from `<repo>-cache`, the image repository of any App named `<name>-cache`, to `<repo>_cache`, which no App's can be. Two such Apps stop overwriting each other's Zot grant, which reset activation and could restart the registry. Deleting or revoking one no longer deletes the other's images or access. Each App gives its old claim back in the same config hold, and deletion survives a cache grant Zot has not honored yet. Follow-up: w5/151.
 
 ## Approved queue — 2026-10-01
 
