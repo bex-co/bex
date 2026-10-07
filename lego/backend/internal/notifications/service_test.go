@@ -810,19 +810,54 @@ func (b billingOwners) ListBillingOwnerSubjects(context.Context, string) ([]stri
 	return b.owners, nil
 }
 
-// TestABillingNoticeReadsItsOwnersAtOnce (w5/145): a billing notice resolves
-// every owner's address in one batched read. An owner without one is
-// reported, and the others are still mailed.
+// TestABillingNoticeReadsItsOwnersAtOnce (w5/145, w5/153): a billing notice
+// resolves every owner's address in one batched read. An owner without one
+// used to fail the notice. Claims never stop retrying, so each retry mailed
+// the other owners again while that owner stayed unreachable. Such an owner
+// is now skipped, and the notice completes once the others are mailed.
 func TestABillingNoticeReadsItsOwnersAtOnce(t *testing.T) {
 	mailer := &fakeMailer{}
 	emails := &countingEmails{fakeIdentities: fakeIdentities{"alice": "alice@example.com"}}
 	svc := newTestService(billingOwners{fakeStore: newFakeStore(), owners: []string{"alice", "carol"}}, nil, mailer, emails)
 
-	err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"})
-	if err == nil || !strings.Contains(err.Error(), "carol") {
-		t.Errorf("notifyBilling = %v, want carol reported without an address", err)
+	if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err != nil {
+		t.Errorf("notifyBilling = %v, want the notice complete without carol, who has no address", err)
 	}
 	if len(emails.batches) != 1 || len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
 		t.Fatalf("email reads %v and sends %+v, want one read and alice mailed", emails.batches, mailer.sent)
+	}
+}
+
+// failingFor is fakeMailer, except that sends to one address fail.
+type failingFor struct {
+	fakeMailer
+	addr string
+}
+
+func (f *failingFor) Send(ctx context.Context, to, subject, text, html string) error {
+	if to == f.addr {
+		return errors.New("smtp: 451 try again later")
+	}
+	return f.fakeMailer.Send(ctx, to, subject, text, html)
+}
+
+// TestABillingNoticeStillRetriesWhatARetryCanFix (w5/153): a notice no owner
+// could be mailed for, as an identity outage leaves it, and one with an
+// owner's send failed, while another owner was mailed, both fail, so the
+// worker retries them rather than drop them.
+func TestABillingNoticeStillRetriesWhatARetryCanFix(t *testing.T) {
+	for name, tc := range map[string]struct {
+		emails fakeIdentities
+		mailer Mailer
+	}{
+		"no owner resolved": {fakeIdentities{}, &fakeMailer{}},
+		"a send failed":     {fakeIdentities{"alice": "alice@example.com", "carol": "carol@example.com"}, &failingFor{addr: "carol@example.com"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := newTestService(billingOwners{fakeStore: newFakeStore(), owners: []string{"alice", "carol"}}, nil, tc.mailer, tc.emails)
+			if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err == nil {
+				t.Fatal("notifyBilling succeeded, want a failure the worker retries")
+			}
+		})
 	}
 }
