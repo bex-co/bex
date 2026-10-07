@@ -113,6 +113,11 @@ var (
 	// current state (e.g. triggering a deploy on a suspended service); adapters
 	// map it to 409.
 	ErrConflict = errors.New("conflict")
+	// ErrServiceReplaced refuses a write whose service was deleted, or deleted
+	// and recreated under its name, since the request read it: an App at that
+	// name now is another service, which the write must not touch (w5/118,
+	// w5/157). It is a conflict.
+	ErrServiceReplaced = fmt.Errorf("%w: the service changed since this request read it; refresh and retry", ErrConflict)
 	// ErrAuthzUnavailable is returned when a wired authorization checker cannot be
 	// consulted — requests fail closed (503), never pass through.
 	ErrAuthzUnavailable = Unavailable("authorization service unavailable")

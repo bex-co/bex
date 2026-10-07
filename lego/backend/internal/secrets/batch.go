@@ -504,14 +504,17 @@ func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
 // latest (restoreMap), and its Secret then goes back with it, at the revision
 // the restore committed (w5/m127). A map a newer committed write superseded is
 // left to that write, and the call answers ENVIRONMENT_RESTORATION_FAILED: its
-// own change may survive there.
+// own change may survive there. A write whose service was replaced still takes
+// back a change its store write merged into the namesake's map while it is
+// the latest, but projects nothing: the Secrets at its name are the
+// namesake's, and the answer is the replacement (w5/157).
 func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, cause error) error {
 	app := txn.originalApp
 	if txn.cas {
 		return s.compensateCASEnvironment(ctx, txn.service, app, txn.env.prior, txn.env.version, txn.casProjection)
 	}
 	var compensation []error
-	superseded := false
+	superseded, replaced := false, errors.Is(cause, core.ErrServiceReplaced)
 	for _, m := range []struct {
 		write mapWrite
 		path  string
@@ -533,19 +536,24 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 			superseded = true
 			continue
 		}
+		if replaced {
+			continue
+		}
 		// The restored map goes back at the revision its restore committed, so
 		// it cannot overwrite a projection a newer write landed since. An empty
 		// one keeps its Secret, emptied, as the record a late projection loses
 		// to (w5/106).
 		// A restore for an App since replaced is not ours to project: the new
 		// service's own writes project its map.
-		if _, err := s.projectSource(ctx, app, m.kind, m.write.prior, committedAt(restored)); err != nil && !errors.Is(err, errServiceReplaced) {
+		if _, err := s.projectSource(ctx, app, m.kind, m.write.prior, committedAt(restored)); err != nil && !errors.Is(err, core.ErrServiceReplaced) {
 			compensation = append(compensation, fmt.Errorf("restore %s projection: %w", m.label, err))
 		}
 	}
 	switch {
 	case len(compensation) > 0:
 		return errors.Join(append([]error{cause}, compensation...)...)
+	case replaced:
+		return cause
 	case superseded:
 		return envRestorationFailed()
 	case errors.Is(cause, errProjectionConflict):

@@ -72,3 +72,52 @@ func TestDeployWritesOnADeletingServiceAre404(t *testing.T) {
 		})
 	}
 }
+
+// lockWaitStore is fakeStore with the trigger lock, whose whileWaiting runs
+// once before the lock is granted: what lands while a trigger waits for it.
+type lockWaitStore struct {
+	*fakeStore
+	whileWaiting func()
+}
+
+func (l *lockWaitStore) WithAppAdvisoryLock(_ context.Context, _ string, fn func() error) error {
+	if hook := l.whileWaiting; hook != nil {
+		l.whileWaiting = nil
+		hook()
+	}
+	return fn()
+}
+
+// TestADeployForARecreatedServiceLeavesItsNamesakeAlone (w5/157): a trigger
+// whose service was deleted and recreated under its name while it waited for
+// the trigger lock re-read the App by name and released the namesake, filing
+// the release under the deleted service's history. It now refuses as the
+// service having changed and writes nothing.
+func TestADeployForARecreatedServiceLeavesItsNamesakeAlone(t *testing.T) {
+	ds := &lockWaitStore{fakeStore: newFakeStore()}
+	svc, cl := newService(ds, sampleApp("svc", "srv-11"))
+	ctx := context.Background()
+	var recreated error
+	ds.whileWaiting = func() {
+		recreated = func() error {
+			if err := cl.Delete(ctx, sampleApp("svc", "srv-11")); err != nil {
+				return err
+			}
+			namesake := sampleApp("svc", "srv-22")
+			namesake.UID = "uid-namesake"
+			return cl.Create(ctx, namesake)
+		}()
+	}
+
+	_, err := svc.Trigger(ctx, "svc", TriggerParams{ImageURL: "svc:v2"})
+	if recreated != nil {
+		t.Fatalf("recreate: %v", recreated)
+	}
+	if !errors.Is(err, core.ErrServiceReplaced) {
+		t.Fatalf("the trigger = %v, want the conflict that the service changed", err)
+	}
+	namesake := getApp(t, cl, "svc")
+	if len(ds.byApp) != 0 || len(ds.setImage) != 0 || namesake.UID != "uid-namesake" || namesake.Spec.Image != "svc:v1" {
+		t.Fatalf("the trigger wrote rows %v and images %v, and left the namesake %s at %q; want nothing written", ds.byApp, ds.setImage, namesake.UID, namesake.Spec.Image)
+	}
+}

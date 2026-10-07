@@ -207,7 +207,7 @@ func (s *Service) writeDeployHookToken(ctx context.Context, a *appv1alpha1.App, 
 		} else if !apierrors.IsConflict(err) {
 			return "", err
 		}
-		if err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+		if err := core.RereadApp(ctx, s.Client, a); err != nil {
 			return "", err
 		}
 		// A rotate that lost a conflict still must replace the value it refetched;

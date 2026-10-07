@@ -33,10 +33,8 @@ import (
 	"sync"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -248,7 +246,9 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 	mutate func(a *appv1alpha1.App, release int64), open func(release int64) (store.Deploy, error)) (store.Deploy, error) {
 	var d store.Deploy
 	err := s.withTriggerLock(ctx, appID, func() error {
-		if err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+		// Deleted and recreated under its name while the trigger waited for
+		// the lock, the App there is another service's (w5/157).
+		if err := core.RereadApp(ctx, s.Client, a); err != nil {
 			return err
 		}
 		// Deleted while the trigger waited for the lock (w8/023).
@@ -260,23 +260,17 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 				return err
 			}
 		}
-		for range 5 {
-			previous := a.Generation
-			base := client.MergeFromWithOptions(a.DeepCopy(), client.MergeFromWithOptimisticLock{})
+		var previous int64
+		if err := rollout.PatchAppLocked(ctx, s.Client, a, func(a *appv1alpha1.App) error {
+			previous = a.Generation
 			mutate(a, previous+1)
-			err := s.Client.Patch(ctx, a, base)
-			if err == nil {
-				d, err = open(patchedGeneration(previous, a.Generation))
-				return err
-			}
-			if !apierrors.IsConflict(err) {
-				return err
-			}
-			if err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
-				return err
-			}
+			return nil
+		}); err != nil {
+			return err
 		}
-		return fmt.Errorf("%w: too many concurrent updates to service %q; retry the deploy", core.ErrConflict, a.Name)
+		var err error
+		d, err = open(patchedGeneration(previous, a.Generation))
+		return err
 	})
 	return d, err
 }

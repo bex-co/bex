@@ -177,3 +177,50 @@ func TestPatchLockedGivesUpUnderPersistentContention(t *testing.T) {
 		t.Fatalf("err = %v after %d runs and %d rows, want the conflict after %d runs and no row", err, runs, len(ds.created), lockedPatchAttempts)
 	}
 }
+
+// TestPatchLockedLeavesARecreatedNamesakeAlone (w5/157): a write whose App was
+// deleted and recreated under its name before its patch landed lost the
+// patch's lock, re-read the App by name and ran its mutate again on the
+// namesake. It now refuses with core.ErrServiceReplaced after one run, keeps
+// its own App rather than the namesake's, and records no rollout.
+func TestPatchLockedLeavesARecreatedNamesakeAlone(t *testing.T) {
+	recreated := false
+	cl, read := lockedPatchFixture(t, interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if !recreated {
+				recreated = true
+				if err := c.Delete(ctx, &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}); err != nil {
+					return err
+				}
+				namesake := &appv1alpha1.App{
+					ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", UID: "uid-namesake"},
+					Spec:       appv1alpha1.AppSpec{Image: "web:namesake"},
+				}
+				if err := c.Create(ctx, namesake); err != nil {
+					return err
+				}
+			}
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	})
+	ds := &fakeDeployStore{}
+	runs := 0
+	err := (&Tracker{Store: ds}).PatchLocked(context.Background(), cl, read, store.TriggerConfigChange, func(a *appv1alpha1.App) error {
+		runs++
+		a.Spec.RestartedAt = "restart"
+		return nil
+	})
+	if !errors.Is(err, core.ErrServiceReplaced) || runs != 1 || len(ds.created) != 0 {
+		t.Fatalf("err = %v after %d runs and %d rows, want the replaced-service conflict after one run and no row", err, runs, len(ds.created))
+	}
+	if read.UID == "uid-namesake" || read.Spec.Image != "web:v1" {
+		t.Fatalf("the write's App became %s %q, want its own", read.UID, read.Spec.Image)
+	}
+	live := &appv1alpha1.App{}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(read), live); err != nil {
+		t.Fatal(err)
+	}
+	if live.UID != "uid-namesake" || live.Spec.RestartedAt != "" {
+		t.Fatalf("the namesake = %s restarted at %q, want it untouched", live.UID, live.Spec.RestartedAt)
+	}
+}

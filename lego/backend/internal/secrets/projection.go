@@ -19,7 +19,6 @@ package secrets
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,10 +45,6 @@ const (
 // names no object or revision and wraps no public error, so each caller
 // chooses its own answer.
 var errProjectionConflict = errors.New("the projection lost to a concurrent write")
-
-// errServiceReplaced refuses a write whose App was deleted, or deleted and
-// recreated under its name, since the request read it (w5/118).
-var errServiceReplaced = fmt.Errorf("%w: the service changed since this request read it; refresh before saving", core.ErrConflict)
 
 // projectionKind is one derived Secret a service's store map projects into:
 // its name and the annotation that records the store revision it holds.
@@ -278,7 +273,7 @@ func (s *Service) confirmLiveApp(ctx context.Context, a *appv1alpha1.App) error 
 	live := &appv1alpha1.App{}
 	err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), live)
 	if apierrors.IsNotFound(err) || err == nil && live.UID != a.UID {
-		return errServiceReplaced
+		return core.ErrServiceReplaced
 	}
 	return err
 }

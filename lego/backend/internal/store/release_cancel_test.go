@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -129,9 +130,9 @@ func cancelTestClient(t *testing.T, app *appv1alpha1.App, funcs interceptor.Func
 // w5/136: a buildpack release's kpack Image is named by a hash of the App's UID
 // and revision, so a cancel that addressed it by the build Job's name never
 // stopped it. The cancel selects it by the labels the operator stamps instead,
-// using the UID it re-reads rather than the caller's copy: the canceled
-// release's build goes, whichever shape it took, while a recreated namesake
-// App's build of the same revision and the App's later release stay. bex-api
+// the App's UID among them: the canceled release's build goes, whichever shape
+// it took, while a recreated namesake App's build of the same revision and the
+// App's later release stay. bex-api
 // may list kpack Images only in the build namespace. Nothing retries a cancel
 // once its stamp lands, so a failed Job delete must not spare the Image, and a
 // cluster without kpack has no Image to stop.
@@ -166,9 +167,7 @@ func TestCancelReleaseStopsItsBuild(t *testing.T) {
 			return c.List(ctx, list, opts...)
 		},
 	}, append(kept, job, canceled)...)
-	caller := app.DeepCopy()
-	caller.UID = ""
-	if err := CancelRelease(ctx, cl, caller, 7, "bex-build"); err != nil {
+	if err := CancelRelease(ctx, cl, app.DeepCopy(), 7, "bex-build"); err != nil {
 		t.Fatal(err)
 	}
 	for _, obj := range []client.Object{job, canceled} {
@@ -201,6 +200,33 @@ func TestCancelReleaseStopsItsBuild(t *testing.T) {
 	})
 	if err := deleteReleaseBuild(ctx, withoutKpack, app, 7, "bex-build"); err != nil {
 		t.Fatalf("cancel where kpack is not installed = %v, want nothing to report", err)
+	}
+}
+
+// w5/157: a cancel whose service was deleted and recreated under its name
+// since its caller read it re-read the namesake by name and stamped it, ending
+// the namesake's release of the same generation. It refuses as the service
+// having changed, stamps nothing and stops none of the namesake's builds.
+func TestCancelReleaseLeavesARecreatedNamesakeAlone(t *testing.T) {
+	ctx := context.Background()
+	namesake := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-namesake"},
+		Spec: appv1alpha1.AppSpec{Repo: "https://example.invalid/acme/web.git"}}
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.BuildJobName("web", appv1alpha1.BuildRevision(7)), Namespace: "tea-a"}}
+	cl := cancelTestClient(t, namesake, interceptor.Funcs{}, job)
+	deleted := namesake.DeepCopy()
+	deleted.UID = "uid-deleted"
+	if err := CancelRelease(ctx, cl, deleted, 7, ""); !errors.Is(err, core.ErrServiceReplaced) {
+		t.Fatalf("a cancel for the deleted service = %v, want the conflict that the service changed", err)
+	}
+	var stored appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(namesake), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if _, stamped := canceledReleaseGeneration(&stored); stamped {
+		t.Fatalf("the namesake carries the cancel stamp %q", stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration])
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(job), &batchv1.Job{}); err != nil {
+		t.Fatalf("the namesake's build Job: %v, want it running", err)
 	}
 }
 

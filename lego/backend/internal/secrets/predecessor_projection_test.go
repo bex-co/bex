@@ -111,7 +111,7 @@ func TestARequestThatSpansARecreateLeavesTheNewServicesSecretAlone(t *testing.T)
 	if recreated != nil {
 		t.Fatalf("recreate: %v", recreated)
 	}
-	if !errors.Is(err, core.ErrConflict) || err.Error() != errServiceReplaced.Error() {
+	if !errors.Is(err, core.ErrConflict) || err.Error() != core.ErrServiceReplaced.Error() {
 		t.Fatalf("the stale write = %v, want only the conflict that the service changed", err)
 	}
 	sec := getSecret(t, svc.Client, c.kind.secretName("web"))
@@ -186,7 +186,7 @@ func TestADeletedServicesWriteLeavesItsNamesakesPreparedSecretAlone(t *testing.T
 				if namesake != nil {
 					t.Fatalf("the namesake's create: %v", namesake)
 				}
-				if !errors.Is(err, core.ErrConflict) || err.Error() != errServiceReplaced.Error() {
+				if !errors.Is(err, core.ErrConflict) || err.Error() != core.ErrServiceReplaced.Error() {
 					t.Fatalf("the deleted service's write = %v, want only the conflict that the service changed", err)
 				}
 				if sec := getSecret(t, svc.Client, name); len(sec.OwnerReferences) != 0 || !equalSecretData(sec.Data, prepared) {
@@ -199,5 +199,129 @@ func TestADeletedServicesWriteLeavesItsNamesakesPreparedSecretAlone(t *testing.T
 				}
 			})
 		}
+	}
+}
+
+// TestAWriteRetriedAfterItsServiceWasRecreatedLeavesTheNamesakeAlone
+// (w5/157): a write whose service was deleted and recreated between its
+// projection and its App patch lost the patch's lock, re-read the App by name
+// and ran again as the namesake. The namesake's Secret took the dead write's
+// map and the write answered OK. It now refuses as the service having changed,
+// restores nothing into the store paths the namesake holds now, and leaves the
+// namesake's Secret, store map and App as its create left them.
+func TestAWriteRetriedAfterItsServiceWasRecreatedLeavesTheNamesakeAlone(t *testing.T) {
+	for _, c := range projectionCases {
+		t.Run(c.name, func(t *testing.T) {
+			var hooked *beforeFirstAppPatch
+			svc, store := c.setup(func(cl client.Client) client.Client {
+				hooked = &beforeFirstAppPatch{Client: cl}
+				return hooked
+			}, map[string]string{"old": "1"})
+			ctx := context.Background()
+			name := c.kind.secretName("web")
+			prepared := map[string]string{"new": "1"}
+			namesake := sampleApp("web")
+			namesake.UID = "uid-namesake"
+			namesake.Spec.EnvFromSecret = envSecretName("web")
+			namesake.Spec.FilesFromSecrets = []string{filesSecretName("web")}
+			var recreated error
+			hooked.hook = func() {
+				recreated = func() error {
+					// The service is deleted with its store paths and Secret, and a
+					// create under its name prepares, creates and adopts its own.
+					if err := svc.Client.Delete(ctx, sampleApp("web")); err != nil {
+						return err
+					}
+					delete(store.m, c.path)
+					delete(store.versions, c.path)
+					if err := svc.Client.Delete(ctx, getSecret(t, svc.Client, name)); err != nil {
+						return err
+					}
+					if err := svc.prepareProjection(ctx, sampleApp("web"), c.kind, c.path, prepared); err != nil {
+						return err
+					}
+					if err := svc.Client.Create(ctx, namesake.DeepCopy()); err != nil {
+						return err
+					}
+					return svc.adoptPreparedSecret(ctx, namesake, name)
+				}()
+			}
+
+			err := c.write(svc, "stale")
+			if recreated != nil {
+				t.Fatalf("the namesake's create: %v", recreated)
+			}
+			if !errors.Is(err, core.ErrServiceReplaced) {
+				t.Fatalf("the deleted service's write = %v, want the conflict that the service changed", err)
+			}
+			sec := getSecret(t, svc.Client, name)
+			if owner := metav1.GetControllerOf(sec); owner == nil || owner.UID != namesake.UID || !equalSecretData(sec.Data, prepared) {
+				t.Fatalf("the namesake's Secret holds %v, controlled by %+v, want its create's %v", sec.Data, owner, prepared)
+			}
+			if stored := store.m[c.path]; !maps.Equal(stored, prepared) || store.versions[c.path] != 1 {
+				t.Fatalf("the namesake's store map = %v at version %d, want its create's %v at 1", stored, store.versions[c.path], prepared)
+			}
+			if live := getApp(t, svc.Client, "web"); live.UID != namesake.UID || live.Spec.RestartedAt != "" {
+				t.Fatalf("the namesake's App = %s restarted at %q, want it as its create left it", live.UID, live.Spec.RestartedAt)
+			}
+		})
+	}
+}
+
+// TestAReplacedWritesMergeIntoItsNamesakesMapIsTakenBack (w5/157): a write
+// whose store write retried after its service was deleted and recreated
+// merged its key into the namesake's map before its projection refused. Its
+// compensation takes the key back while that write is still the latest,
+// projects nothing, and answers that the service changed.
+func TestAReplacedWritesMergeIntoItsNamesakesMapIsTakenBack(t *testing.T) {
+	for _, c := range projectionCases {
+		t.Run(c.name, func(t *testing.T) {
+			svc, store := c.setup(nil, map[string]string{"old": "1"})
+			ctx := context.Background()
+			name := c.kind.secretName("web")
+			namesake := sampleApp("web")
+			namesake.UID = "uid-namesake"
+			var recreated error
+			store.afterGet = func() {
+				recreated = func() error {
+					if err := svc.Client.Delete(ctx, sampleApp("web")); err != nil {
+						return err
+					}
+					delete(store.m, c.path)
+					delete(store.versions, c.path)
+					if err := svc.Client.Delete(ctx, getSecret(t, svc.Client, name)); err != nil {
+						return err
+					}
+					if err := svc.prepareProjection(ctx, sampleApp("web"), c.kind, c.path, map[string]string{"new": "1"}); err != nil {
+						return err
+					}
+					if err := svc.Client.Create(ctx, namesake.DeepCopy()); err != nil {
+						return err
+					}
+					if err := svc.adoptPreparedSecret(ctx, namesake, name); err != nil {
+						return err
+					}
+					// The namesake's own write moves its map past the version the
+					// deleted service's write read, so that write's compare-and-set
+					// retries on the namesake's map.
+					return c.write(svc, "next")
+				}()
+			}
+
+			err := c.write(svc, "stale")
+			if recreated != nil {
+				t.Fatalf("the namesake's create and write: %v", recreated)
+			}
+			if !errors.Is(err, core.ErrServiceReplaced) {
+				t.Fatalf("the deleted service's write = %v, want the conflict that the service changed", err)
+			}
+			want := map[string]string{"new": "1", "next": "v"}
+			if stored := store.m[c.path]; !maps.Equal(stored, want) {
+				t.Fatalf("the namesake's store map = %v, want its own %v", stored, want)
+			}
+			if sec := getSecret(t, svc.Client, name); !equalSecretData(sec.Data, want) {
+				t.Fatalf("the namesake's Secret holds %v, want its own %v", sec.Data, want)
+			}
+		})
 	}
 }
