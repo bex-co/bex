@@ -42,3 +42,20 @@ func (r *AppReconciler) patchAppMeta(ctx context.Context, app *appv1alpha1.App, 
 	app.ObjectMeta = patched.ObjectMeta
 	return nil
 }
+
+// patchAppStatus is patchAppMeta for a status change: it patches the change
+// mutate makes to a copy of app's status, under app's resourceVersion, then
+// gives app the status it sent and the new resourceVersion. The server's status
+// is never decoded into app, so status the pass has set but not yet written,
+// such as its release decision, survives (w5/121).
+func (r *AppReconciler) patchAppStatus(ctx context.Context, app *appv1alpha1.App, mutate func(*appv1alpha1.AppStatus)) error {
+	patched := app.DeepCopy()
+	mutate(&patched.Status)
+	sent := patched.Status.DeepCopy()
+	if err := r.Status().Patch(ctx, patched, client.MergeFromWithOptions(app, client.MergeFromWithOptimisticLock{})); err != nil {
+		return err
+	}
+	app.Status = *sent
+	app.ResourceVersion = patched.ResourceVersion
+	return nil
+}

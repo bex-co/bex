@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -62,6 +63,32 @@ func TestAMetadataPatchKeepsThePassUnsavedStatus(t *testing.T) {
 	}
 }
 
+// TestAStatusPatchKeepsThePassUnsavedStatus (w5/121): a cron pass that
+// acknowledged a manual run, or recorded a preempted one, status-patched the
+// App it held, and the server's status came back over the release decision the
+// pass had set but not yet written. patchAppStatus patches a copy.
+func TestAStatusPatchKeepsThePassUnsavedStatus(t *testing.T) {
+	ctx := t.Context()
+	r, app, _ := manualIntentFixture(t)
+	app.Status.ReleaseGeneration = 7
+	if err := r.acknowledgeManualRun(ctx, app); err != nil {
+		t.Fatalf("acknowledgeManualRun: %v", err)
+	}
+	if app.Status.ReleaseGeneration != 7 || app.Status.ManualRunHandledAt != app.Spec.RunAt {
+		t.Fatalf("after the patch: release generation %d, manual run handled at %q; want 7 and %q", app.Status.ReleaseGeneration, app.Status.ManualRunHandledAt, app.Spec.RunAt)
+	}
+	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
+		t.Fatalf("the pass's status write after the patch: %v", err)
+	}
+	var stored appv1alpha1.App
+	if err := r.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status.ReleaseGeneration != 7 {
+		t.Fatalf("stored release generation %d, want the pass's 7", stored.Status.ReleaseGeneration)
+	}
+}
+
 // TestAMetadataPatchConflictsWithAnAppChangedSinceTheRead (w5/096): the patch
 // holds the resourceVersion the pass read, so it lands only on that App. A
 // change since, to its spec or to status another controller wrote, makes it
@@ -92,14 +119,30 @@ func TestAMetadataPatchConflictsWithAnAppChangedSinceTheRead(t *testing.T) {
 	}
 }
 
-// TestPassesPatchTheirAppOnlyThroughPatchAppMeta (w5/096): patching the App
-// a pass holds decodes the server's App over it. A reconcile pass patches its
-// App's metadata through patchAppMeta, which patches a copy. Only a pass that
-// holds no unsaved status may patch app itself.
-func TestPassesPatchTheirAppOnlyThroughPatchAppMeta(t *testing.T) {
-	allowed := map[string]string{
-		"reclaimAppExternalArtifacts": "the deletion pass holds no unsaved status, and its finalizer Update needs the server's spec with the server's resourceVersion",
+// TestPassesWriteTheObjectTheyHoldThroughACopy (w5/096, w5/121): a patch,
+// or an Update of the object itself, decodes the server's object over the one
+// the pass holds, and the status the pass has set but not yet written is lost.
+// A reconcile pass patches its App's metadata through patchAppMeta and its
+// status through patchAppStatus, both of which patch a copy. Only a pass that
+// holds no unsaved status may write app, db, kv or a cleanup Job's parent
+// itself. A status Update writes the pass's status instead of losing it.
+func TestPassesWriteTheObjectTheyHoldThroughACopy(t *testing.T) {
+	allowed := map[string]bool{}
+	for _, fns := range [][]string{
+		// A deletion pass holds no unsaved status, and the App's finalizer
+		// Update needs the server's spec with the server's resourceVersion.
+		{"handleAppDeletion", "reclaimAppExternalArtifacts", "handleDBDeletion", "handleKeyValueDeletion", "driveCleanupJob"},
+		// The Database pass runs its disk autoscaler before it sets any status.
+		{"applyDiskAutoscaling", "setDiskGrowthBlockedByQuota", "clearDiskGrowthBlockedByQuota", "recordDiskSampleFailure", "resetDiskSampleFailures"},
+		// The KeyValue pass writes its TLS finalizer and certificate before it
+		// sets any status.
+		{"ensureKeyValueTLSFinalizer", "rememberKeyValueTLSCertificate"},
+	} {
+		for _, fn := range fns {
+			allowed[fn] = true
+		}
 	}
+	held := map[string]bool{"app": true, "db": true, "kv": true, "parent": true}
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
@@ -124,19 +167,30 @@ func TestPassesPatchTheirAppOnlyThroughPatchAppMeta(t *testing.T) {
 					return true
 				}
 				sel, ok := call.Fun.(*ast.SelectorExpr)
-				if !ok || sel.Sel.Name != "Patch" {
+				if !ok || sel.Sel.Name != "Patch" && (sel.Sel.Name != "Update" || statusWriter(sel.X)) {
 					return true
 				}
-				if recv, ok := sel.X.(*ast.Ident); !ok || recv.Name != "r" {
-					return true // a status patch, r.Status().Patch, or another client
+				target := call.Args[1]
+				if addr, ok := target.(*ast.UnaryExpr); ok && addr.Op == token.AND {
+					target = addr.X
 				}
-				if target, ok := call.Args[1].(*ast.Ident); ok && target.Name == "app" {
-					if _, ok := allowed[fn.Name.Name]; !ok {
-						t.Errorf("%s: %s patches the pass's App directly; use patchAppMeta", fset.Position(call.Pos()), fn.Name.Name)
+				if id, ok := target.(*ast.Ident); ok && held[id.Name] {
+					if !allowed[fn.Name.Name] {
+						t.Errorf("%s: %s writes the pass's %s directly; patch a copy, as patchAppMeta and patchAppStatus do", fset.Position(call.Pos()), fn.Name.Name, id.Name)
 					}
 				}
 				return true
 			})
 		}
 	}
+}
+
+// statusWriter reports whether x is a status writer, x.Status().
+func statusWriter(x ast.Expr) bool {
+	call, ok := x.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	return ok && sel.Sel.Name == "Status"
 }
