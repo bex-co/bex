@@ -42,7 +42,7 @@ type fakeStore struct {
 	invites  map[string]store.Invite       // id -> row
 	nextInv  int
 	ownerIDs map[string]string // subject -> own- id, mint-on-first-sight
-	ownIDErr error             // when set, OwnerIDForSubject fails every call
+	ownIDErr error             // when set, OwnerIDsForSubjects fails every call
 	// ownerSubject mirrors tenants.owner_identity_id — "" is the unbound
 	// workspace (CreateWorkspace), a subject is the onboarding owner (w5/m101).
 	ownerSubject string
@@ -116,21 +116,25 @@ func newFakeStore(plan string) *fakeStore {
 	}
 }
 
-// OwnerIDForSubject mints a stable, well-formed own- id per subject (matches
+// OwnerIDsForSubjects mints a stable, well-formed own- id per subject (matches
 // the PGStore's get-or-create semantics for tests).
-func (f *fakeStore) OwnerIDForSubject(_ context.Context, subject string) (string, error) {
+func (f *fakeStore) OwnerIDsForSubjects(_ context.Context, subjects []string) (map[string]string, error) {
 	if f.ownIDErr != nil {
-		return "", f.ownIDErr
+		return nil, f.ownIDErr
 	}
 	if f.ownerIDs == nil {
 		f.ownerIDs = map[string]string{}
 	}
-	if id, ok := f.ownerIDs[subject]; ok {
-		return id, nil
+	out := make(map[string]string, len(subjects))
+	for _, subject := range subjects {
+		id, ok := f.ownerIDs[subject]
+		if !ok {
+			id = fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
+			f.ownerIDs[subject] = id
+		}
+		out[subject] = id
 	}
-	id := fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
-	f.ownerIDs[subject] = id
-	return id, nil
+	return out, nil
 }
 
 // fakeIdentities is the one IdentityLookup fake — subject -> attrs (email +
@@ -729,7 +733,7 @@ func TestListOwnerIDStoreErrorSurfaces(t *testing.T) {
 	st.ownIDErr = errors.New("db unavailable")
 	s := svc(st, newFakeGranter(), nil, roleChecker{relation: "viewer"})
 	if _, err := s.List(ctxWith("viewer-1"), "tea-1"); err == nil {
-		t.Fatal("list: want error from OwnerIDForSubject, got nil")
+		t.Fatal("list: want error from OwnerIDsForSubjects, got nil")
 	}
 }
 

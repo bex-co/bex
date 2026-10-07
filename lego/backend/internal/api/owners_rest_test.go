@@ -124,19 +124,24 @@ func (f *fakeWSStore) CountWorkspacesForSubjectPlan(context.Context, string, str
 	return 0, nil
 }
 
-// OwnerIDForSubject mints a stable, well-formed own- id per subject (w6/m7).
-func (f *fakeWSStore) OwnerIDForSubject(_ context.Context, subject string) (string, error) {
+// OwnerIDsForSubjects mints a stable, well-formed own- id per subject (the
+// PGStore's get-or-create semantics, for tests).
+func (f *fakeWSStore) OwnerIDsForSubjects(_ context.Context, subjects []string) (map[string]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.ownerIDs == nil {
 		f.ownerIDs = map[string]string{}
 	}
-	if id, ok := f.ownerIDs[subject]; ok {
-		return id, nil
+	out := make(map[string]string, len(subjects))
+	for _, subject := range subjects {
+		id, ok := f.ownerIDs[subject]
+		if !ok {
+			id = fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
+			f.ownerIDs[subject] = id
+		}
+		out[subject] = id
 	}
-	id := fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
-	f.ownerIDs[subject] = id
-	return id, nil
+	return out, nil
 }
 
 // addMember is a test-only helper to add a second member with a given role

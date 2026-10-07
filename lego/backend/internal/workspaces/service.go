@@ -181,10 +181,10 @@ type WorkspaceStore interface {
 	// suspended) — ChangePlan's downgrade guard against the target plan's
 	// MaxServices, the same count internal/store/api.go's create-time cap uses.
 	CountAppsForTenant(ctx context.Context, tenantID string) (int, error)
-	// OwnerIDForSubject returns the stable opaque "own-" id for a subject
+	// OwnerIDsForSubjects returns each subject's stable opaque "own-" id
 	// (minted on first sight) — the Render userId the members surface reports
 	// instead of the raw subject (w6/m7).
-	OwnerIDForSubject(ctx context.Context, subject string) (string, error)
+	OwnerIDsForSubjects(ctx context.Context, subjects []string) (map[string]string, error)
 }
 
 // WorkspaceGranter writes a subject's OpenFGA membership on a workspace (the
@@ -844,15 +844,20 @@ func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView
 	if err != nil {
 		return nil, err
 	}
+	// Resolve the opaque own- ids (minted on first sight), the Render userId, in
+	// one read.
+	subjects := make([]string, 0, len(rows))
+	for _, m := range rows {
+		subjects = append(subjects, m.Subject)
+	}
+	ownIDs, err := s.Store.OwnerIDsForSubjects(ctx, subjects)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]MemberView, 0, len(rows))
 	for _, m := range rows {
 		mv := MemberView{Subject: m.Subject, Role: m.Role}
-		// Resolve the opaque own- id (minted on first sight) — the Render userId.
-		ownID, err := s.Store.OwnerIDForSubject(ctx, m.Subject)
-		if err != nil {
-			return nil, err
-		}
-		mv.OwnerID = ownID
+		mv.OwnerID = ownIDs[m.Subject]
 		if s.Identities != nil {
 			if attrs, ok := s.Identities.Lookup(ctx, m.Subject); ok {
 				mv.Email, mv.Name, mv.MFAEnabled = attrs.Email, attrs.Name, attrs.MFAEnabled

@@ -181,20 +181,24 @@ func (f *fakeStore) invite(tenantID, email, role string) {
 		store.Invite{TenantID: tenantID, Email: email, Role: role})
 }
 
-// OwnerIDForSubject mints a stable, well-formed own- id per subject (matches the
-// PGStore's get-or-create semantics for tests).
-func (f *fakeStore) OwnerIDForSubject(_ context.Context, subject string) (string, error) {
+// OwnerIDsForSubjects mints a stable, well-formed own- id per subject (the
+// PGStore's get-or-create semantics, for tests).
+func (f *fakeStore) OwnerIDsForSubjects(_ context.Context, subjects []string) (map[string]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.ownerIDs == nil {
 		f.ownerIDs = map[string]string{}
 	}
-	if id, ok := f.ownerIDs[subject]; ok {
-		return id, nil
+	out := make(map[string]string, len(subjects))
+	for _, subject := range subjects {
+		id, ok := f.ownerIDs[subject]
+		if !ok {
+			id = fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
+			f.ownerIDs[subject] = id
+		}
+		out[subject] = id
 	}
-	id := fmt.Sprintf("own-%020d", len(f.ownerIDs)+1)
-	f.ownerIDs[subject] = id
-	return id, nil
+	return out, nil
 }
 
 func (f *fakeStore) CountWorkspacesForSubjectPlan(_ context.Context, subject, plan string) (int, error) {
