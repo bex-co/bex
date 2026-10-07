@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Route, ServiceMetricsPage } from "../services.$serviceId.metrics";
-import type { RangeSearch } from "@/features/metrics/lib/range";
+import {
+  CLEARED_RANGE_SEARCH,
+  type RangeSearch,
+} from "@/features/metrics/lib/range";
 import type { ServiceView } from "@/features/services/types";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 
@@ -61,12 +64,12 @@ describe("metrics range search contract (w6/065)", () => {
     });
   });
 
-  it("drops malformed values so the 12h default still applies", () => {
-    expect(validate({})).toEqual({});
-    expect(validate({ range: "6h" })).toEqual({}); // retired id
-    expect(validate({ range: "custom" })).toEqual({}); // no bounds
+  it("rejects malformed values so the 12h default still applies", () => {
+    expect(validate({})).toStrictEqual(CLEARED_RANGE_SEARCH);
+    expect(validate({ range: "6h" })).toStrictEqual(CLEARED_RANGE_SEARCH); // retired id
+    expect(validate({ range: "custom" })).toStrictEqual(CLEARED_RANGE_SEARCH); // no bounds
     // The Logs page's `r` Render alias is deliberately not honored here.
-    expect(validate({ r: "1h" })).toEqual({});
+    expect(validate({ r: "1h" })).toStrictEqual(CLEARED_RANGE_SEARCH);
   });
 });
 

@@ -30,10 +30,10 @@ import { SessionChatColumn } from "@/features/agent-sessions/components/session-
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import {
-  AGENT_SESSION_PHASES,
+  parseAgentSessionArchivedFilter,
+  parseAgentSessionPhase,
   type AgentSessionArchivedFilter,
   type AgentSessionPhase,
-  parseAgentSessionArchivedFilter,
 } from "@/features/agent-sessions/types";
 import { AgentSessionDocument } from "@/graphql/definitions";
 
@@ -66,17 +66,10 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
   },
   validateSearch: (
     search: Record<string, unknown>,
-  ): AgentSessionDetailSearch => {
-    const out: AgentSessionDetailSearch = {};
-    out.fromArchived = parseAgentSessionArchivedFilter(search.fromArchived);
-    if (
-      typeof search.fromPhase === "string" &&
-      AGENT_SESSION_PHASES.includes(search.fromPhase as AgentSessionPhase)
-    ) {
-      out.fromPhase = search.fromPhase as AgentSessionPhase;
-    }
-    return out;
-  },
+  ): AgentSessionDetailSearch => ({
+    fromArchived: parseAgentSessionArchivedFilter(search.fromArchived),
+    fromPhase: parseAgentSessionPhase(search.fromPhase),
+  }),
   // Title loader, the shape every other detail route uses: the tab used to read
   // the constant "Session" for every session at once, so two open sessions were
   // indistinguishable in the tab strip (w1/m90 t004). The select keeps only the

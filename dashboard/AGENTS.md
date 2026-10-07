@@ -45,6 +45,7 @@ Add new non-auth feature code under `src/features/<name>/`, following a self-con
 - React 19+ patterns: no `FC` type, use plain function components.
 - Every user-visible string goes through `useTranslations()`'s `t()`, not a hardcoded literal — see Internationalization below.
 - Tests live in `__tests__` directories adjacent to the code they test, e.g. `src/common/hooks/__tests__/use-mobile.test.ts`.
+- A route's `validateSearch` returns every key it owns, `undefined` when the value is rejected, and never omits one. TanStack Router builds `match.search` as `{...raw, ...validated}`, so an omitted key hands its raw query value to every reader: `?type=bogus` reached bex-api, and `?git_error=1` showed a GitHub error. A link carrying a rejected value redirects once to its canonical URL. Pin each validator in `src/routes/__tests__/search-validators.test.ts` with `toStrictEqual`, since `toEqual` cannot tell an omitted key from an undefined one (w5/078, w5/100).
 - Don't hand-roll auth forms — `@ory/elements-react`'s flow components already track whatever methods/fields Kratos's config actually enables; hardcoding form shapes would drift out of sync with it.
 
 ## Destructive confirmations (w7/053, w7/057)

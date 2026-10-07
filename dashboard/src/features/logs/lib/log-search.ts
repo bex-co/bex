@@ -1,6 +1,7 @@
 import {
   parseCustomRange,
   parseRangePreset,
+  parseRangeSearch,
   type RangePreset,
   type RangePresetID,
   type RangeSelection,
@@ -53,6 +54,18 @@ const SEARCH_KEYS = [
   "live",
 ] as const;
 
+/**
+ * Explicit `undefined`s for every key this route owns plus the inbound-only
+ * `t`/`r` aliases: the router retains raw query params across navigations
+ * unless they are explicitly written as `undefined` (verified live, w7/m42 —
+ * an omitted key lingers in the URL; stringification drops the undefineds).
+ * Spread this first, then the keys to keep. Derived from SEARCH_KEYS so a new
+ * filter field can't silently drift out of the clear-set.
+ */
+export const CLEARED_LOG_SEARCH = Object.fromEntries(
+  ["t", "r", ...SEARCH_KEYS].map((key) => [key, undefined]),
+) as Partial<Record<"t" | "r" | (typeof SEARCH_KEYS)[number], undefined>>;
+
 // Render's `r` tokens without an exact bex preset (Render's grammar is
 // 15m|1h|6h|24h|7d — the captured deploy-page contract, see
 // features/deploys/lib/log-range.ts) map onto the nearest bex preset; the
@@ -88,35 +101,21 @@ function parseRangeAlias(value: unknown): RangePreset | null {
 }
 
 export function parseLogSearch(search: Record<string, unknown>): LogSearch {
-  const out: LogSearch = {};
+  // Every owned key comes back, undefined when rejected: the router merges this
+  // over the raw search, so an omitted `?type=bogus` would reach bex-api.
+  //
   // Render's logs URL keys `t` (type) and `r` (range) are accepted as
   // inbound-only aliases so a Render-shaped deep link (`?t=app&r=1h`) prefills
   // the view (w7/m42/t003). bex's canonical keys win when both are present,
   // and the tombstones (see LogSearch) make the aliases leave the URL on the
   // first write, so it self-heals to bex's shape (the w7/m39
   // alias-normalization pattern).
-  if ("t" in search) out.t = undefined;
-  if ("r" in search) out.r = undefined;
-  // A custom absolute range (w5/m56) carries its own start/end; only accept it
-  // when both parse into a valid window, else fall through to the preset path.
-  if (search.range === "custom") {
-    const start = str(search.rangeStart);
-    const end = str(search.rangeEnd);
-    if (start && end && parseCustomRange(start, end)) {
-      out.range = "custom";
-      out.rangeStart = start;
-      out.rangeEnd = end;
-    }
-  } else {
-    const range = parseRangePreset(search.range) ?? parseRangeAlias(search.r);
-    if (range) out.range = range.id;
+  const out: LogSearch = { ...CLEARED_LOG_SEARCH, ...parseRangeSearch(search) };
+  if (!out.range && search.range !== "custom") {
+    out.range = parseRangeAlias(search.r)?.id;
   }
-  const type = parseType(search.type) ?? parseType(search.t);
-  if (type) out.type = type;
-  for (const key of TEXT_KEYS) {
-    const value = str(search[key]);
-    if (value) out[key] = value;
-  }
+  out.type = parseType(search.type) ?? parseType(search.t);
+  for (const key of TEXT_KEYS) out[key] = str(search[key]);
   if (
     search.live === 0 ||
     search.live === "0" ||
@@ -182,15 +181,3 @@ export function logFiltersToSearch(
 export function logSearchEquals(a: LogSearch, b: LogSearch): boolean {
   return SEARCH_KEYS.every((key) => a[key] === b[key]);
 }
-
-/**
- * Explicit `undefined`s for every key this route owns plus the inbound-only
- * `t`/`r` aliases: the router retains raw query params across navigations
- * unless they are explicitly written as `undefined` (verified live, w7/m42 —
- * an omitted key lingers in the URL; stringification drops the undefineds).
- * Spread this first, then the keys to keep. Derived from SEARCH_KEYS so a new
- * filter field can't silently drift out of the clear-set.
- */
-export const CLEARED_LOG_SEARCH = Object.fromEntries(
-  ["t", "r", ...SEARCH_KEYS].map((key) => [key, undefined]),
-) as Partial<Record<"t" | "r" | (typeof SEARCH_KEYS)[number], undefined>>;

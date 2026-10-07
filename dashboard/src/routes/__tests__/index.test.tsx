@@ -8,7 +8,7 @@ import {
   createRoute,
   createMemoryHistory,
 } from "@tanstack/react-router";
-import { HomePage } from "../index";
+import { HomePage, Route } from "../index";
 import type { ServiceView } from "@/features/services/types";
 import type {
   DatabaseView,
@@ -270,12 +270,7 @@ function renderHomePage(initialPath = "/") {
     getParentRoute: () => rootRoute,
     path: "/",
     component: HomePage,
-    validateSearch: (
-      search: Record<string, unknown>,
-    ): { new?: "database" | "project" } =>
-      search.new === "database" || search.new === "project"
-        ? { new: search.new }
-        : {},
+    validateSearch: Route.options.validateSearch,
   });
   const databaseRoute = createRoute({
     getParentRoute: () => rootRoute,

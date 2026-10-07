@@ -1,4 +1,4 @@
-import { useSearch } from "@tanstack/react-router";
+import { getRouteApi } from "@tanstack/react-router";
 import { Settings } from "@ory/elements-react/theme";
 import { SessionProvider } from "@ory/elements-react/client";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
@@ -20,6 +20,8 @@ import { ConnectGithubCard } from "@/features/git/components/connect-github-card
 import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
 import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
 
+const settingsRoute = getRouteApi("/settings");
+
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
  * also where the recovery flow (forgot-password) lands once its code is
@@ -27,11 +29,7 @@ import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
  * `settings_ui_url` to let the user set a new password.
  */
 export default function SettingsPage() {
-  const search = useSearch({ strict: false }) as {
-    flow?: string;
-    git_error?: string;
-    git_claim_selection?: string;
-  };
+  const search = settingsRoute.useSearch();
   const flow = useOryFlow("settings", search.flow);
   const { t } = useTranslations();
   const oryConfig = useOryConfig();

@@ -7,8 +7,8 @@
 /**
  * The session lifecycle enum (backend `models.go` Phase* constants). Terminal
  * phases are completed/failed/canceled; every other phase is still converging.
- * The const list is the single source (the list page's phase filter renders
- * it); the union derives from it.
+ * The const list is the single source (route search parses against it); the
+ * union derives from it.
  */
 export const AGENT_SESSION_PHASES = [
   "creating",
@@ -36,6 +36,13 @@ export function parseAgentSessionArchivedFilter(
     return "archived";
   }
   return value === "all" ? "all" : undefined;
+}
+
+/** A route search's phase filter, when it names a known phase. */
+export function parseAgentSessionPhase(
+  value: unknown,
+): AgentSessionPhase | undefined {
+  return AGENT_SESSION_PHASES.find((phase) => phase === value);
 }
 
 /** Translate the UI's `archived` name to the backend's `true` wire value. */

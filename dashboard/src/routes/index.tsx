@@ -101,10 +101,12 @@ export const Route = createFileRoute("/")({
   // as workspace.settings' validateSearch.
   validateSearch: (
     search: Record<string, unknown>,
-  ): { new?: "database" | "project" } =>
-    search.new === "database" || search.new === "project"
-      ? { new: search.new }
-      : {},
+  ): { new?: "database" | "project" } => ({
+    new:
+      search.new === "database" || search.new === "project"
+        ? search.new
+        : undefined,
+  }),
   head: ({ match }) => {
     if (match.search.new === "database") {
       return translatedTitleHead("databases.createTitle", match);

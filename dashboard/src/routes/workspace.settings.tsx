@@ -25,10 +25,11 @@ export const Route = createFileRoute("/workspace/settings")({
   // the change-plan dialog straight away, so an invite the plan refused is one
   // click from the upgrade that would allow it. Advisory: anything else just
   // renders the settings page.
-  // Optional, not `plan: undefined` — an always-present key would make `search`
-  // mandatory on every navigation to this route (the switcher's included).
-  validateSearch: (search: Record<string, unknown>): { plan?: "change" } =>
-    search.plan === "change" ? { plan: "change" } : {},
+  // Typed optional (`plan?:`) so a navigation to this route (the switcher's
+  // included) needn't pass `search`; the value always carries the key.
+  validateSearch: (search: Record<string, unknown>): { plan?: "change" } => ({
+    plan: search.plan === "change" ? "change" : undefined,
+  }),
   head: ({ match }) =>
     translatedTitleHead("workspaces.switcherSettings", match),
 });

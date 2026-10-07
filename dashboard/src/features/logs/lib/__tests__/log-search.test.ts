@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLEARED_LOG_SEARCH,
   logFiltersFromSearch,
   logFiltersToSearch,
   logRangeFromSearch,
@@ -15,9 +16,9 @@ describe("log range URL state", () => {
     expect(logRangeFromSearch(restored).id).toBe("12h");
   });
 
-  it("drops malformed values and restores the one-hour default", () => {
+  it("rejects malformed values and restores the one-hour default", () => {
     const restored = parseLogSearch({ range: "31d" });
-    expect(restored).toEqual({});
+    expect(restored).toStrictEqual(CLEARED_LOG_SEARCH);
     expect(logRangeFromSearch(restored).id).toBe("1h");
   });
 
@@ -51,8 +52,10 @@ describe("log range URL state", () => {
         }),
       ).id,
     ).toBe("1h");
-    // range=custom with no bounds is dropped entirely
-    expect(parseLogSearch({ range: "custom" })).toEqual({});
+    // range=custom with no bounds is rejected entirely
+    expect(parseLogSearch({ range: "custom" })).toStrictEqual(
+      CLEARED_LOG_SEARCH,
+    );
   });
 });
 
@@ -119,18 +122,18 @@ describe("log filter URL state (w7/m42)", () => {
     expect(parseLogSearch({ statusCode: 404 })).toEqual({ statusCode: "404" });
   });
 
-  it("drops a malformed type without crashing", () => {
+  it("rejects a malformed type without crashing", () => {
     const search = parseLogSearch({ type: "bogus" });
-    expect(search).toEqual({});
+    expect(search).toStrictEqual(CLEARED_LOG_SEARCH);
     expect(logFiltersFromSearch(search).type).toBe("all");
   });
 
-  it("treats live=0 / false as off and everything else as on (omitted)", () => {
+  it("treats live=0 / false as off and everything else as on (undefined)", () => {
     expect(parseLogSearch({ live: 0 })).toEqual({ live: 0 });
     expect(parseLogSearch({ live: "0" })).toEqual({ live: 0 });
     expect(parseLogSearch({ live: false })).toEqual({ live: 0 });
-    expect(parseLogSearch({ live: 1 })).toEqual({});
-    expect(parseLogSearch({ live: true })).toEqual({});
+    expect(parseLogSearch({ live: 1 })).toStrictEqual(CLEARED_LOG_SEARCH);
+    expect(parseLogSearch({ live: true })).toStrictEqual(CLEARED_LOG_SEARCH);
   });
 });
 
@@ -163,7 +166,7 @@ describe("Render deep-link aliases (w7/m42/t003)", () => {
 
   it("falls back to defaults for an r value bex has no preset for", () => {
     const search = parseLogSearch({ r: "45m" });
-    expect(search).toEqual({});
+    expect(search).toStrictEqual(CLEARED_LOG_SEARCH);
     expect(logRangeFromSearch(search).id).toBe("1h");
   });
 

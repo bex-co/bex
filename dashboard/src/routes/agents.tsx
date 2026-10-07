@@ -19,9 +19,9 @@ import {
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { SessionList } from "@/features/agent-sessions/components/session-list";
 import {
-  AGENT_SESSION_PHASES,
   agentSessionArchivedQueryValue,
   parseAgentSessionArchivedFilter,
+  parseAgentSessionPhase,
   type AgentSessionArchivedFilter,
   type AgentSessionListSearch,
   type AgentSessionPhase,
@@ -71,18 +71,13 @@ export const Route = createFileRoute("/agents")({
   // (ADR065 D3 — the sidebar's Archived entry targets `?archived=archived`);
   // legacy `?archived=true` is still accepted for old links and maps to "archived".
   // `?phase=` is still honored if linked; the page no longer offers a dropdown.
-  validateSearch: (search: Record<string, unknown>): AgentsSearch => {
-    const out: AgentsSearch = {};
-    if (search.view === "list") out.view = "list";
-    out.archived = parseAgentSessionArchivedFilter(search.archived);
-    if (
-      typeof search.phase === "string" &&
-      AGENT_SESSION_PHASES.includes(search.phase as AgentSessionPhase)
-    ) {
-      out.phase = search.phase as AgentSessionPhase;
-    }
-    return out;
-  },
+  // A rejected value is undefined, not omitted: the router merges this over the
+  // raw search, so `?phase=bogus` would otherwise reach the list query (w5/100).
+  validateSearch: (search: Record<string, unknown>): AgentsSearch => ({
+    view: search.view === "list" ? "list" : undefined,
+    archived: parseAgentSessionArchivedFilter(search.archived),
+    phase: parseAgentSessionPhase(search.phase),
+  }),
   head: ({ match }) => translatedTitleHead("agentSessions.pageTitle", match),
 });
 
