@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"errors"
+	"maps"
 	"testing"
 	"time"
 )
@@ -46,6 +47,19 @@ func TestPGClaimBlueprintResource(t *testing.T) {
 	// Stale expected owner after intervening takeover.
 	if err := st.ClaimBlueprintResource(ctx, tenant.ID, "service", "web", a.ID, a.ID); !errors.Is(err, ErrBlueprintResourceConflict) {
 		t.Fatalf("stale takeover = %v, want conflict", err)
+	}
+	if err := st.ClaimBlueprintResource(ctx, tenant.ID, "database", "web", a.ID, ""); err != nil {
+		t.Fatal(err)
+	}
+	other := lifecycleTenant(t, st, "claim-other")
+	otherBlueprint := lifecycleBlueprint(t, st, other, "claim-other")
+	if err := st.ClaimBlueprintResource(ctx, other.ID, "service", "api", otherBlueprint.ID, ""); err != nil {
+		t.Fatal(err)
+	}
+	owners, err := st.BlueprintResourceOwners(ctx, tenant.ID)
+	want := map[BlueprintResourceKey]string{{Kind: "service", Name: "web"}: b.ID, {Kind: "database", Name: "web"}: a.ID}
+	if err != nil || !maps.Equal(owners, want) {
+		t.Fatalf("workspace owners = %v (%v), want %v and no other workspace's claim", owners, err, want)
 	}
 	if err := st.ReleaseBlueprintResourceClaims(ctx, tenant.ID, b.ID); err != nil {
 		t.Fatal(err)
