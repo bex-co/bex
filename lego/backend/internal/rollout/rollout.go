@@ -33,10 +33,12 @@ package rollout
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"sync"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -131,6 +133,56 @@ func (t *Tracker) Patch(ctx context.Context, cl client.Client, a *appv1alpha1.Ap
 		t.Open(ctx, before, a, trigger)
 	}
 	return nil
+}
+
+// lockedPatchAttempts bounds PatchAppLocked's re-reads under contention, as
+// deploys.openRelease bounds its own.
+const lockedPatchAttempts = 5
+
+// PatchLocked is Patch under an optimistic lock (w5/m131), through
+// PatchAppLocked: a write that loses the App race decides again from what the
+// winner left rather than overwriting it. The deploy row is opened once, for
+// the patch that lands.
+func (t *Tracker) PatchLocked(ctx context.Context, cl client.Client, a *appv1alpha1.App, trigger string, mutate func(*appv1alpha1.App) error) error {
+	var before Snapshot
+	tracked := false
+	if err := PatchAppLocked(ctx, cl, a, func(a *appv1alpha1.App) error {
+		before = Before(a)
+		if err := mutate(a); err != nil {
+			return err
+		}
+		tracked = before.Stamp(a)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if tracked {
+		t.Open(ctx, before, a, trigger)
+	}
+	return nil
+}
+
+// PatchAppLocked applies mutate to a and merge-patches it with the
+// resourceVersion a was read at (w5/m131). On a conflict it re-reads a and runs
+// mutate again, so mutate must be safe to run more than once. A write that
+// keeps losing answers core.ErrConflict after lockedPatchAttempts tries.
+func PatchAppLocked(ctx context.Context, cl client.Client, a *appv1alpha1.App, mutate func(*appv1alpha1.App) error) error {
+	for attempt := 1; ; attempt++ {
+		base := client.MergeFromWithOptions(a.DeepCopy(), client.MergeFromWithOptimisticLock{})
+		if err := mutate(a); err != nil {
+			return err
+		}
+		err := cl.Patch(ctx, a, base)
+		if !apierrors.IsConflict(err) {
+			return err
+		}
+		if attempt == lockedPatchAttempts {
+			return fmt.Errorf("%w: too many concurrent updates to service %q; retry", core.ErrConflict, a.Name)
+		}
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(a), a); err != nil {
+			return err
+		}
+	}
 }
 
 // Open records the deploy row for a stamped patch that has been applied. a must
