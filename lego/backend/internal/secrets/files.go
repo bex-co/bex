@@ -273,9 +273,14 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 }
 
 // prepareProjection is the write tail both create-time prepare phases share:
-// the map into the store (source of truth), then its projection Secret — and
-// the store path rolled back if that Secret cannot be written, so a failed
-// prepare leaves nothing behind either side.
+// the projection Secret, then the map into the store (source of truth). A
+// failure after the Secret is claimed removes both, so a failed prepare leaves
+// nothing behind.
+//
+// The Secret comes first because creating it is the claim on the name. A
+// create refused because another holds the name never touches the store map
+// at path, which is the holder's; it used to overwrite and then delete it
+// (w5/134).
 //
 // The Secret is deliberately OWNERLESS for this prepare window because
 // Kubernetes has not assigned the App UID yet; adoptPreparedSecret restores
@@ -283,16 +288,6 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 // caller points the App spec at the Secret afterward — that reference is what
 // tells the commit phase which legs actually ran.
 func (s *Service) prepareProjection(ctx context.Context, a *appv1alpha1.App, kind projectionKind, path string, values map[string]string) error {
-	// The map replaces whatever a purge left at path, and the version this
-	// write commits is the revision its Secret carries (w5/m127).
-	_, write, err := s.updateMapCAS(ctx, path, func(current map[string]string) bool {
-		clear(current)
-		maps.Copy(current, values)
-		return true
-	})
-	if err != nil {
-		return err
-	}
 	sec := &corev1.Secret{
 		// The pod consumes this Secret (envFrom for env vars, a projected volume
 		// for files) and later owns it, so it MUST share the App's namespace — the
@@ -302,18 +297,39 @@ func (s *Service) prepareProjection(ctx context.Context, a *appv1alpha1.App, kin
 		Type:       corev1.SecretTypeOpaque,
 		Data:       envBytes(values),
 	}
-	if _, versioned := s.Store.(core.VersionedSecretKV); versioned {
-		setProjectedRevision(sec, kind, committedAt(write.version))
-	}
 	if err := s.createPreparedSecret(ctx, a, sec); err != nil {
+		return err
+	}
+	// The map replaces whatever a purge left at path, and the version this
+	// write commits is the revision its Secret carries (w5/m127).
+	_, write, err := s.updateMapCAS(ctx, path, func(current map[string]string) bool {
+		clear(current)
+		maps.Copy(current, values)
+		return true
+	})
+	if _, versioned := s.Store.(core.VersionedSecretKV); versioned && err == nil {
+		err = s.stampPreparedRevision(ctx, sec, kind, committedAt(write.version))
+	}
+	if err != nil {
 		rollbackCtx, cancel := compensationContext(ctx)
 		defer cancel()
-		if deleteErr := s.Store.Delete(rollbackCtx, path); deleteErr != nil {
-			return core.HideCause(err, fmt.Errorf("roll back %s: %w", path, deleteErr))
+		if undoErr := s.abortProjection(rollbackCtx, a, sec.Name, path); undoErr != nil {
+			return core.HideCause(err, fmt.Errorf("roll back the prepared %s: %w", sec.Name, undoErr))
 		}
 		return err
 	}
 	return nil
+}
+
+// stampPreparedRevision records on the claimed Secret the store revision its
+// data now projects. The patch carries only that annotation, under the claim's
+// resourceVersion: a Secret changed since the claim is no longer this create's
+// to stamp.
+func (s *Service) stampPreparedRevision(ctx context.Context, claimed *corev1.Secret, kind projectionKind, revision sourceRevision) error {
+	stamp := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: claimed.Name, Namespace: claimed.Namespace, ResourceVersion: claimed.ResourceVersion}}
+	unstamped := stamp.DeepCopy()
+	setProjectedRevision(stamp, kind, revision)
+	return s.Client.Patch(ctx, stamp, client.MergeFromWithOptions(unstamped, client.MergeFromWithOptimisticLock{}))
 }
 
 // compensationContext bounds a write that undoes part of a failed create. It
@@ -353,11 +369,14 @@ func (s *Service) createPreparedSecret(ctx context.Context, a *appv1alpha1.App, 
 		}
 		held.OwnerReferences = nil
 		held.Labels = sec.Labels
-		held.Annotations = sec.Annotations // the revision this create's store write committed
+		held.Annotations = sec.Annotations // none yet: the store write stamps its revision
 		held.Data = sec.Data
 		err = s.Client.Update(ctx, held)
 		if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 			continue
+		}
+		if err == nil {
+			held.DeepCopyInto(sec) // the claim is now the taken-over Secret
 		}
 		return err
 	}
@@ -377,13 +396,13 @@ func (s *Service) adoptPreparedSecret(ctx context.Context, a *appv1alpha1.App, n
 	return s.Client.Update(ctx, sec)
 }
 
-// abortProjection removes both halves of one prepared leg. Each operation is
+// abortProjection removes both halves of one prepared leg: the store map
+// first, while the Secret still holds the name, so a create that claims the
+// name next cannot have its map deleted under it (w5/134). Each operation is
 // idempotent, so callers can use it after any failed phase.
 func (s *Service) abortProjection(ctx context.Context, a *appv1alpha1.App, name, path string) error {
-	return errors.Join(
-		s.deleteSecret(ctx, a.Namespace, name),
-		s.Store.Delete(ctx, path),
-	)
+	storeErr := s.Store.Delete(ctx, path)
+	return errors.Join(storeErr, s.deleteSecret(ctx, a.Namespace, name))
 }
 
 func (s *Service) commitSecretFiles(ctx context.Context, _ string, a *appv1alpha1.App) error {
