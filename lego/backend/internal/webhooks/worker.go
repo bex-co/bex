@@ -164,7 +164,10 @@ type Mailer interface {
 // EmailLookup resolves a caller subject to a verified email address. nil (or
 // a miss) => the notice for that endpoint is logged, not mailed.
 type EmailLookup interface {
-	LookupEmail(ctx context.Context, subject string) (string, bool)
+	// LookupEmails resolves subjects' emails in one read that asks the
+	// identity provider for no credentials; a subject that did not resolve
+	// is absent.
+	LookupEmails(ctx context.Context, subjects []string) map[string]string
 }
 
 // Worker runs the dispatcher + sender. Zero-value fields take the defaults
@@ -757,8 +760,8 @@ func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookAttempt, f
 		log.Printf("webhooks: %s (no SMTP relay configured; notice not emailed)", subject)
 		return
 	}
-	to, ok := w.Emails.LookupEmail(ctx, d.CreatedBy)
-	if !ok || to == "" {
+	to := w.Emails.LookupEmails(ctx, []string{d.CreatedBy})[d.CreatedBy]
+	if to == "" {
 		log.Printf("webhooks: %s (no email address for %s; notice not emailed)", subject, d.CreatedBy)
 		return
 	}

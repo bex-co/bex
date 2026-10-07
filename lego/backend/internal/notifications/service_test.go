@@ -311,9 +311,14 @@ func (f *fakeMailer) Send(_ context.Context, to, subject, text, html string) err
 // fakeIdentities is a map-backed EmailLookup.
 type fakeIdentities map[string]string
 
-func (f fakeIdentities) LookupEmail(_ context.Context, subject string) (string, bool) {
-	email, ok := f[subject]
-	return email, ok
+func (f fakeIdentities) LookupEmails(_ context.Context, subjects []string) map[string]string {
+	out := map[string]string{}
+	for _, subject := range subjects {
+		if email, ok := f[subject]; ok {
+			out[subject] = email
+		}
+	}
+	return out
 }
 
 func newTestService(st NotificationsStore, ws core.WorkspaceResolver, mailer Mailer, identities EmailLookup) *Service {
@@ -414,6 +419,44 @@ func TestNotifyDeploySendsOnlyToRecipientsWhoWantIt(t *testing.T) {
 
 	if len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
 		t.Fatalf("sent = %+v, want exactly one mail to alice (bob opted out, carol has no email)", mailer.sent)
+	}
+}
+
+// countingEmails records each batched email read.
+type countingEmails struct {
+	fakeIdentities
+	batches [][]string
+}
+
+func (c *countingEmails) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+	c.batches = append(c.batches, slices.Clone(subjects))
+	return c.fakeIdentities.LookupEmails(ctx, subjects)
+}
+
+// TestADeployNotificationReadsItsRecipientsAtOnce (w5/145): the fan-out read
+// each recipient's address in turn, one identity read apiece. One read now
+// resolves every recipient who wants the mail, and each still gets it.
+func TestADeployNotificationReadsItsRecipientsAtOnce(t *testing.T) {
+	st := newFakeStore()
+	st.recipients["tea-a"] = []store.NotifyRecipient{
+		{Subject: "alice", DeployFailed: true},
+		{Subject: "bob", DeployFailed: true},
+		{Subject: "carol", DeployFailed: true},
+		{Subject: "dave"}, // opted out
+	}
+	mailer := &fakeMailer{}
+	emails := &countingEmails{fakeIdentities: fakeIdentities{
+		"alice": "alice@example.com", "bob": "bob@example.com", "carol": "carol@example.com", "dave": "dave@example.com",
+	}}
+	svc := newTestService(st, nil, mailer, emails)
+
+	svc.NotifyDeploy(context.Background(), store.DeployNotification{TenantID: "tea-a", AppName: "web", Status: store.DeployUpdateFailed, NotifyOnFail: "default"})
+
+	if len(emails.batches) != 1 || !slices.Equal(emails.batches[0], []string{"alice", "bob", "carol"}) {
+		t.Fatalf("email reads %v, want one batch of the three recipients", emails.batches)
+	}
+	if len(mailer.sent) != 3 {
+		t.Fatalf("sent %d mails, want one to each of the three recipients", len(mailer.sent))
 	}
 }
 
@@ -753,5 +796,33 @@ func TestNotifyDeployFailedIncludesCommitAndLink(t *testing.T) {
 	}
 	if !strings.Contains(body, "https://dashboard.bex.co/services/web/deploys/dep-123") {
 		t.Errorf("failure mail missing View Logs link:\n%s", body)
+	}
+}
+
+// billingOwners is a notifications store that lists a workspace's billing
+// owners.
+type billingOwners struct {
+	*fakeStore
+	owners []string
+}
+
+func (b billingOwners) ListBillingOwnerSubjects(context.Context, string) ([]string, error) {
+	return b.owners, nil
+}
+
+// TestABillingNoticeReadsItsOwnersAtOnce (w5/145): a billing notice resolves
+// every owner's address in one batched read. An owner without one is
+// reported, and the others are still mailed.
+func TestABillingNoticeReadsItsOwnersAtOnce(t *testing.T) {
+	mailer := &fakeMailer{}
+	emails := &countingEmails{fakeIdentities: fakeIdentities{"alice": "alice@example.com"}}
+	svc := newTestService(billingOwners{fakeStore: newFakeStore(), owners: []string{"alice", "carol"}}, nil, mailer, emails)
+
+	err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"})
+	if err == nil || !strings.Contains(err.Error(), "carol") {
+		t.Errorf("notifyBilling = %v, want carol reported without an address", err)
+	}
+	if len(emails.batches) != 1 || len(mailer.sent) != 1 || mailer.sent[0].to != "alice@example.com" {
+		t.Fatalf("email reads %v and sends %+v, want one read and alice mailed", emails.batches, mailer.sent)
 	}
 }

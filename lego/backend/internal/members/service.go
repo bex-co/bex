@@ -233,7 +233,6 @@ type IdentityAttrs struct {
 // Nil (BEX_KRATOS_ADMIN_URL unset) or a lookup miss => Email/MFAEnabled
 // omitted (honest subset) — List still succeeds.
 type IdentityLookup interface {
-	LookupIdentity(ctx context.Context, subject string) (IdentityAttrs, bool)
 	// LookupIdentities resolves a list's subjects at once (w5/116). A subject
 	// that did not resolve is absent.
 	LookupIdentities(ctx context.Context, subjects []string) map[string]IdentityAttrs
@@ -810,9 +809,7 @@ func (s *Service) PreviewInvite(ctx context.Context, token string) (InvitePrevie
 		view.Role = wireRole(member.Role)
 	}
 	if s.Identities != nil && inv.InvitedBy != "" {
-		if attrs, ok := s.Identities.LookupIdentity(ctx, inv.InvitedBy); ok {
-			view.InviterEmail = attrs.Email
-		}
+		view.InviterEmail = s.Identities.LookupEmails(ctx, []string{inv.InvitedBy})[inv.InvitedBy]
 	}
 	return view, nil
 }

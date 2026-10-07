@@ -363,8 +363,8 @@ func (s *Service) validateWorkspaceCreation(ctx context.Context, id core.Identit
 		return "", "", err
 	}
 	if normalizedPlan == store.PlanHobby && s.Identities != nil {
-		if attrs, ok := s.Identities.Lookup(ctx, id.Subject); ok && attrs.Email != "" {
-			accountEmail, normalizeErr := normalizeBillingEmail(attrs.Email)
+		if address := s.Identities.LookupEmails(ctx, []string{id.Subject})[id.Subject]; address != "" {
+			accountEmail, normalizeErr := normalizeBillingEmail(address)
 			if normalizeErr != nil || email != accountEmail {
 				return "", "", fmt.Errorf("%w: Hobby billing email must match the account email", core.ErrBadRequest)
 			}
