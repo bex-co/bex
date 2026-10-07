@@ -1770,11 +1770,9 @@ func bumpNativeEnvRevision(prev string) string {
 	return strconv.FormatUint(n+1, 10)
 }
 
-// effectiveDeployRef is the git ref a source clone checks out: the tracked
-// branch, overridden for one build by a commitId from the deploy API
-// (spec.BuildCommit). The next trigger without a commitId resets BuildCommit to
-// "" via the API patch, so Branch HEAD is the default for every subsequent
-// deploy. Both the build path and the static-site direct publish resolve
+// effectiveDeployRef is the git ref a source clone checks out: spec.BuildCommit,
+// the commit bex-api pinned for the release (see AppSpec.BuildCommit), else the
+// tracked branch. Both the build path and the static-site direct publish resolve
 // through here — they are required to agree, and drifted while they were two
 // copies.
 func effectiveDeployRef(spec appv1alpha1.AppSpec) string {
