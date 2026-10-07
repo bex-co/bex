@@ -659,11 +659,13 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
 	}
 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+	// The validation writes nothing, so its checks share one workspace snapshot.
+	snap := s.newWorkspaceSnapshot(ctx)
 	var refused blueprintResourceErrors
 	if errors.As(err, &refused) {
 		// Some declarations were refused; the services that parsed still get
 		// their own checks, which do not depend on the refused ones.
-		if svcErr := s.validateBlueprintServices(ctx, st); svcErr != nil {
+		if svcErr := s.validateBlueprintServices(ctx, st, snap); svcErr != nil {
 			var more blueprintResourceErrors
 			if !errors.As(svcErr, &more) {
 				return BlueprintValidation{}, svcErr
@@ -672,13 +674,11 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		}
 		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
 	}
-	// The validation writes nothing, so its checks share one workspace snapshot.
-	snap := s.newWorkspaceSnapshot(ctx)
 	if err == nil {
 		err = s.resolveBlueprintRegistryCredentials(ctx, &st)
 	}
 	if err == nil {
-		err = s.validateBlueprintServices(ctx, st)
+		err = s.validateBlueprintServices(ctx, st, snap)
 	}
 	if err == nil {
 		// w4/118: fromDatabase and fromService→KeyValue resolve against the
@@ -1772,18 +1772,19 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 	appByName := map[string]*appv1alpha1.App{}
 	dbByName := map[string]*appv1alpha1.Database{}
 	keyValueByName := map[string]*appv1alpha1.KeyValue{}
-	// Each kind the manifest declares is listed as the apply lists it, by
-	// tenant label across namespaces, since a workspace's resources may still
-	// sit in the shared namespace (ADR043 D8, w5/125). A failed list leaves its
-	// kind unreported.
+	// Each kind the manifest declares is read as the apply reads it, across
+	// namespaces, since a workspace's resources may still sit in the shared
+	// namespace (ADR043 D8, w5/125); a service as the apply resolves it
+	// (w5/m133). A failed read leaves its kind unreported.
 	if s.Client != nil {
+		snap := &workspaceSnapshot{s: s, tenantID: tenantID}
 		if declared[BlueprintResourceService] {
-			if apps, err := s.listWorkspaceApps(ctx, tenantID); err == nil {
-				appByName = apps
+			if services, err := snap.services(ctx); err == nil {
+				appByName = services
 			}
 		}
 		if declared[BlueprintResourcePostgres] {
-			if dbList, err := s.listWorkspaceDatabases(ctx, tenantID); err == nil {
+			if dbList, err := snap.databases(ctx); err == nil {
 				for i := range dbList.Items {
 					d := &dbList.Items[i]
 					dbByName[d.Spec.Name] = d
@@ -1791,7 +1792,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			}
 		}
 		if declared[BlueprintResourceKeyValue] {
-			if keyValueList, err := s.listWorkspaceKeyValues(ctx, tenantID); err == nil {
+			if keyValueList, err := snap.keyValues(ctx); err == nil {
 				for i := range keyValueList.Items {
 					kv := &keyValueList.Items[i]
 					keyValueByName[kv.Spec.Name] = kv

@@ -657,32 +657,6 @@ func (s *Service) listWorkspaceDatabases(ctx context.Context, tenantID string) (
 	return list, nil
 }
 
-// listWorkspaceApps lists a workspace's Apps the way listWorkspaceDatabases
-// lists its Databases, keyed by public name (foldWorkspaceApps).
-func (s *Service) listWorkspaceApps(ctx context.Context, tenantID string) (map[string]*appv1alpha1.App, error) {
-	var apps appv1alpha1.AppList
-	if err := s.ListByTenant(ctx, &apps, tenantID); err != nil {
-		return nil, err
-	}
-	return foldWorkspaceApps(apps.Items), nil
-}
-
-// foldWorkspaceApps keys a workspace's Apps by public name. Of a legacy
-// bare-named App and its store-managed twin, the copy in the workspace's own
-// namespace answers, else the first listed: the rule store's projector applies
-// (w5/125).
-func foldWorkspaceApps(apps []appv1alpha1.App) map[string]*appv1alpha1.App {
-	byName := make(map[string]*appv1alpha1.App, len(apps))
-	for i := range apps {
-		app := &apps[i]
-		name := core.AppPublicName(app)
-		if seen, twin := byName[name]; !twin || (!core.AppInOwnWorkspaceNamespace(seen) && core.AppInOwnWorkspaceNamespace(app)) {
-			byName[name] = app
-		}
-	}
-	return byName
-}
-
 // listWorkspaceKeyValues is listWorkspaceDatabases' KeyValue twin.
 func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (*appv1alpha1.KeyValueList, error) {
 	list := &appv1alpha1.KeyValueList{}
@@ -723,7 +697,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	}
 	// The preflight writes nothing, so one index of the platform's host claims
 	// serves every service it checks.
-	if err := s.validateBlueprintServices(withRequestMemo(ctx), st); err != nil {
+	if err := s.validateBlueprintServices(withRequestMemo(ctx), st, snap); err != nil {
 		return StackResult{}, err
 	}
 	if err := s.preflightBlueprintOwnership(ctx, req, st, snap); err != nil {
@@ -768,33 +742,30 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.applyStackDatastores(ctx, st, assignments, snap, databaseIDs, kvCRNames, &res); err != nil {
 		return res, err
 	}
-	// Sibling slugs for fromService host/hostport refs (ADR041 D3), filled
-	// lazily and memoized: a target that already exists (re-sync, or declared
-	// earlier in this apply) resolves before its referrer is written — no spec
-	// churn; a ref to a service created later in this same first apply is
-	// deferred to the post-create patch pass below. "" memoizes known-absent so
-	// a shared forward target is looked up at most once.
+	// The apply resolves each declared service as the plan did (w5/m133).
+	appsByName, err := snap.services(ctx)
+	if err != nil {
+		return res, err
+	}
+	// Sibling slugs for fromService host/hostport refs (ADR041 D3): a target
+	// that already exists (re-sync, or declared earlier in this apply) resolves
+	// before its referrer is written — no spec churn; a ref to a service created
+	// later in this same first apply is deferred to the post-create patch pass
+	// below.
 	serviceSlugs := make(map[string]string, len(st.services))
-	lookupSlug := func(target string) (string, error) {
+	lookupSlug := func(target string) string {
 		if slug, ok := serviceSlugs[target]; ok {
-			return slug, nil
+			return slug
 		}
-		existing, err := s.GetApp(ctx, core.RelCanCreate, target)
-		if errors.Is(err, core.ErrNotFound) {
-			serviceSlugs[target] = ""
-			return "", nil
+		if existing := appsByName[target]; existing != nil {
+			return existing.Spec.PlatformSubdomain(existing.Name)
 		}
-		if err != nil {
-			return "", err
-		}
-		slug := existing.Spec.PlatformSubdomain(existing.Name)
-		serviceSlugs[target] = slug
-		return slug, nil
+		return ""
 	}
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	deferred, err := s.applyStackServices(ctx, st, assignments, databaseIDs, kvCRNames, serviceSlugs, lookupSlug, &res)
+	deferred, err := s.applyStackServices(ctx, st, appsByName, assignments, databaseIDs, kvCRNames, serviceSlugs, lookupSlug, &res)
 	if err != nil {
 		return res, err
 	}
@@ -909,13 +880,14 @@ type deferredService struct {
 	req    CreateRequest
 	fields map[string]BlueprintField
 	refs   []hostRef
+	app    *appv1alpha1.App // what the first pass wrote
 }
 
 // applyStackServices is the first service pass: each stack service is applied
 // with every already-resolvable reference on its env and its applied view
 // appended onto res; the services whose host refs were forward references are
 // returned for the post-create patch pass.
-func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames, serviceSlugs map[string]string, lookupSlug func(string) (string, error), res *StackResult) ([]deferredService, error) {
+func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames, serviceSlugs map[string]string, lookupSlug func(string) string, res *StackResult) ([]deferredService, error) {
 	var deferred []deferredService
 	for _, svc := range st.services {
 		if err := requireDeployAuthority(ctx, s); err != nil {
@@ -932,13 +904,14 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assign
 			svc.req.EnvironmentSpecified = true
 		}
 		svc.req.initialEnvGroups = svc.groupLinks
-		v, err := s.applyBlueprintCreate(ctx, svc.req, svc.fields)
+		v, app, err := s.applyStackService(ctx, svc.req, svc.fields, appsByName)
 		if err != nil {
 			return nil, err
 		}
+		ref := stackServiceRef(app)
 		serviceSlugs[svc.req.Name] = v.Slug
 		if len(laterRefs) > 0 {
-			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs})
+			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
 		}
 		// Link fromGroup groups (idempotent) and seed sync:false/generateValue vars
 		// (seed-once) now that the service exists.
@@ -946,7 +919,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assign
 			if err := requireDeployAuthority(ctx, s); err != nil {
 				return nil, err
 			}
-			if err := s.EnvGroups.LinkEnvGroup(ctx, g, svc.req.Name); err != nil {
+			if err := s.EnvGroups.LinkEnvGroup(ctx, g, ref); err != nil {
 				return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
 			}
 		}
@@ -954,7 +927,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assign
 			if err := requireDeployAuthority(ctx, s); err != nil {
 				return nil, err
 			}
-			if err := s.EnvSeeder.SeedEnvVars(ctx, svc.req.Name, svc.seedLiterals, svc.seedGenerates); err != nil {
+			if err := s.EnvSeeder.SeedEnvVars(ctx, ref, svc.seedLiterals, svc.seedGenerates); err != nil {
 				return nil, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
 			}
 		}
@@ -978,7 +951,8 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 			}
 			d.req.Env = append(d.req.Env, ref.env(slug))
 		}
-		if _, err := s.applyBlueprintCreate(ctx, d.req, d.fields); err != nil {
+		// The first pass wrote this service, so it is re-applied to that App.
+		if _, _, err := s.applyStackService(ctx, d.req, d.fields, map[string]*appv1alpha1.App{d.req.Name: d.app}); err != nil {
 			return err
 		}
 	}
@@ -989,7 +963,7 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 // resolved database/key-value env vars and every already-resolvable host ref
 // are appended onto svc.req.Env; the forward host refs (sibling not created
 // yet) are returned for the post-create patch pass.
-func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupSlug func(string) (string, error)) ([]hostRef, error) {
+func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupSlug func(string) string) ([]hostRef, error) {
 	for _, ref := range svc.databaseRefs {
 		ev, err := resolveDatabaseRef(ref, databaseIDs)
 		if err != nil {
@@ -1006,10 +980,7 @@ func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]st
 	}
 	var laterRefs []hostRef
 	for _, ref := range svc.hostRefs {
-		slug, err := lookupSlug(ref.target)
-		if err != nil {
-			return nil, err
-		}
+		slug := lookupSlug(ref.target)
 		if slug == "" {
 			laterRefs = append(laterRefs, ref) // forward ref — sibling not created yet
 			continue
@@ -1292,10 +1263,19 @@ func (s *Service) resolveBlueprintRegistryCredentials(ctx context.Context, st *p
 // parsed service before deployStack writes groupings or resources. URL
 // ownership needs the configured base domain, so it lives here rather than in
 // the context-free YAML parser and is shared by ValidateBlueprint.
-func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack) error {
+func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack, snap *workspaceSnapshot) error {
+	if len(st.services) == 0 {
+		return nil
+	}
+	// A duplicate name in the workspace is the workspace's problem, not any one
+	// declared service's.
+	appsByName, err := snap.services(ctx)
+	if err != nil {
+		return err
+	}
 	var problems blueprintResourceErrors
 	for _, svc := range st.services {
-		err := s.validateBlueprintService(ctx, svc)
+		err := s.validateBlueprintService(ctx, svc, appsByName)
 		if err == nil {
 			continue
 		}
@@ -1312,7 +1292,7 @@ func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack)
 	return problems
 }
 
-func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService) error {
+func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
 	desired, err := specFromCreate(svc.req)
 	if err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
@@ -1320,7 +1300,7 @@ func (s *Service) validateBlueprintService(ctx context.Context, svc parsedServic
 	if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
-	if err := s.previewBlueprintHosts(ctx, svc.req.Name, desired); err != nil {
+	if err := s.previewBlueprintHosts(ctx, svc.req.Name, desired, appsByName[svc.req.Name]); err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
 	return nil
@@ -1332,15 +1312,16 @@ func (s *Service) validateBlueprintService(ctx context.Context, svc parsedServic
 // will (w8/055). An existing service is checked as itself — its CR name and
 // immutable slug — so a re-sync re-stating its own hosts, including its own
 // `<slug>.<base>`, is not self-refused; a new one exempts nothing under the
-// base domain, as a create dry run does (w8/045).
-func (s *Service) previewBlueprintHosts(ctx context.Context, name string, desired appv1alpha1.AppSpec) error {
+// base domain, as a create dry run does (w8/045). current is the existing
+// service the apply will update, nil for a new one (w5/m133).
+func (s *Service) previewBlueprintHosts(ctx context.Context, name string, desired appv1alpha1.AppSpec, current *appv1alpha1.App) error {
 	if desired.Host == "" && len(desired.Hosts) == 0 {
 		return nil
 	}
 	probe := &appv1alpha1.App{Spec: desired}
 	probe.Name = name
 	existing := false
-	if current, err := s.GetApp(ctx, core.RelCanView, name); err == nil {
+	if current != nil {
 		// Its identity (srv- id label, UID) is what the collision sweep skips.
 		probe = current.DeepCopy()
 		probe.Spec = desired
@@ -2737,38 +2718,41 @@ func manifestType(t, runtime string) (string, error) {
 	}
 }
 
-// applyCreate is the stack path's idempotent service upsert: create when absent,
-// else re-apply the request's owned fields and — unlike the interactive Create
-// path — only bump restartedAt (and open a deploy record) when something
-// actually changed. An unchanged re-apply is a true no-op: zero spec diff, zero
-// new deploy records, no clone-token churn (w1/m24 DoD).
-func (s *Service) applyCreate(ctx context.Context, req CreateRequest) (AppView, error) {
-	return s.applyCreateWithFields(ctx, req, nil)
-}
-
-// applyBlueprintCreate applies a compiled Blueprint service. Unlike the
-// interactive create surface, a Blueprint retains source-field presence, so
-// an omitted field can preserve an existing value (except buildFilter, whose
+// applyStackService is the stack path's idempotent service upsert: create when
+// absent, else re-apply the request's owned fields and — unlike the
+// interactive Create path — only bump restartedAt (and open a deploy record)
+// when something actually changed. An unchanged re-apply is a true no-op: zero
+// spec diff, zero new deploy records, no clone-token churn (w1/m24 DoD). A
+// compiled Blueprint service retains source-field presence (fields), so an
+// omitted field can preserve an existing value (except buildFilter, whose
 // documented omission semantics clear it).
-func (s *Service) applyBlueprintCreate(ctx context.Context, req CreateRequest, fields map[string]BlueprintField) (AppView, error) {
-	return s.applyCreateWithFields(ctx, req, fields)
-}
-
-func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, fields map[string]BlueprintField) (AppView, error) {
+//
+// appsByName is the workspace's Apps keyed by manifest name
+// (workspaceSnapshot.services), the resolution the plan used, so the service
+// it updates is the one the plan named: never another workspace's, nor one
+// only displayed under the name (w5/m133). It returns the App it wrote, which
+// the stack's next by-name verbs address through stackServiceRef.
+func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, appsByName map[string]*appv1alpha1.App) (AppView, *appv1alpha1.App, error) {
 	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimService, req.Name); err != nil {
-		return AppView{}, err
+		return AppView{}, nil, err
 	}
 	desired, err := specFromCreate(req)
 	if err != nil {
-		return AppView{}, err
+		return AppView{}, nil, err
 	}
-	existing, err := s.GetApp(ctx, core.RelCanCreate, req.Name)
-	if err != nil && !errors.Is(err, core.ErrNotFound) {
-		return AppView{}, err
+	existing, err := s.currentStackService(ctx, appsByName[req.Name])
+	if err != nil {
+		return AppView{}, nil, err
 	}
-	if errors.Is(err, core.ErrNotFound) {
+	if existing == nil {
 		return s.createFromStack(ctx, req, desired)
 	}
+	v, err := s.updateStackService(ctx, req, fields, desired, existing)
+	return v, existing, err
+}
+
+// updateStackService re-applies a stack service to its existing App.
+func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, desired appv1alpha1.AppSpec, existing *appv1alpha1.App) (AppView, error) {
 	// One index of the platform's host claims serves this update's checks: it
 	// changes only this App's own claims, which are exempt.
 	ctx = withRequestMemo(ctx)
@@ -2835,20 +2819,47 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	})
 }
 
+// currentStackService reads listed, a declared service's App, afresh: services
+// holds a shared listing, and the apply patches what it reads. nil means the
+// stack creates the service, as when it was deleted since the listing.
+func (s *Service) currentStackService(ctx context.Context, listed *appv1alpha1.App) (*appv1alpha1.App, error) {
+	if listed == nil {
+		return nil, nil
+	}
+	var app appv1alpha1.App
+	if err := s.Client.Get(ctx, client.ObjectKeyFromObject(listed), &app); err != nil {
+		return nil, client.IgnoreNotFound(err)
+	}
+	return &app, nil
+}
+
 // createFromStack is the stack upsert's create-when-absent half: planStackApp's
 // plan, then the interactive create's write tail — the store row and first
 // deploy record when the store is on, a clone secret for a private repo, and
 // the CR — so the stack path creates services identically to the interactive
 // create (w1/m24).
-func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
+func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, *appv1alpha1.App, error) {
 	// Per create, not per stack: a later service's check must see the hosts
 	// this stack has already claimed (hostClaimIndex).
 	ctx = withRequestMemo(ctx)
 	plan, err := s.planStackApp(ctx, req, desired)
 	if err != nil {
-		return AppView{}, err
+		return AppView{}, nil, err
 	}
-	return s.materializeNewApp(ctx, req, plan.app, plan.tenantID, plan.environment, plan.seed)
+	v, err := s.materializeNewApp(ctx, req, plan.app, plan.tenantID, plan.environment, plan.seed)
+	return v, plan.app, err
+}
+
+// stackServiceRef names an App a stack apply wrote for the by-name verbs it
+// calls next (env-group link, env seeding, maintenance mode): its public id,
+// which no displayed name or other workspace's service can shadow (w5/m133).
+// An App without a service-name label keeps its object name, which is also the
+// name its secrets path is keyed by.
+func stackServiceRef(app *appv1alpha1.App) string {
+	if app.Labels[core.LabelServiceName] == "" {
+		return app.Name
+	}
+	return core.AppPublicID(app)
 }
 
 // stackEnvironmentChange probes the environment half of a stack re-apply:
@@ -2874,7 +2885,7 @@ func (s *Service) stackEnvironmentChange(ctx context.Context, req CreateRequest,
 	return assignment, environmentChanged, nil
 }
 
-// stackChanges is what applyCreateWithFields' change probes computed about an
+// stackChanges is what updateStackService's change probes computed about an
 // existing service: which halves changed and the resolved environment
 // assignment to apply.
 type stackChanges struct {
@@ -2918,7 +2929,7 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	actualSpecChanged := !reflect.DeepEqual(existing.Spec, final.Spec)
 	maintenanceOnly := actualSpecChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
 	if maintenanceOnly && !changes.environmentChanged {
-		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
+		return s.ConfigureMaintenanceMode(ctx, stackServiceRef(existing), maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	maintenanceChanged := !reflect.DeepEqual(existing.Spec.MaintenanceMode, final.Spec.MaintenanceMode)
 	var currentMaintenance *appv1alpha1.MaintenanceModeSpec
@@ -2969,7 +2980,7 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		s.Kick()
 	}
 	if maintenanceChanged {
-		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
+		return s.ConfigureMaintenanceMode(ctx, stackServiceRef(existing), maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	return s.view(existing), nil
 }

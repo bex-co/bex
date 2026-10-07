@@ -384,7 +384,7 @@ func TestBlueprintRejectsEveryExistingServiceTypeTransition(t *testing.T) {
 				req.Repo = "https://github.com/bex-co/site"
 				req.PublishPath = "dist"
 			}
-			_, err := svc.applyCreate(context.Background(), req)
+			_, err := applyServiceForTest(context.Background(), t, svc, req, nil)
 			if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "spec.type is immutable") {
 				t.Fatalf("Blueprint %s -> %s error = %v", source, target, err)
 			}
