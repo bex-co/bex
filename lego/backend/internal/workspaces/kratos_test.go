@@ -21,7 +21,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strconv"
+	"strings"
+	"sync"
 	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // kratos_test.go covers the KratosIdentities admin-API reader: trait parsing
@@ -119,4 +128,131 @@ func TestKratosIdentitiesEmailVerified(t *testing.T) {
 			t.Errorf("%s: EmailVerified = %v (ok=%v), want %v", subject, attrs.EmailVerified, ok, want)
 		}
 	}
+}
+
+// fakeKratosList serves Kratos v26's GET /admin/identities?ids=… for every
+// UUID except missing, records each request's ids, and refuses a whole batch
+// over one id that is not a UUID, as Kratos does. failing names ids whose
+// batch answers 500.
+func fakeKratosList(t *testing.T, missing string, failing ...string) (*KratosIdentities, func() [][]string) {
+	t.Helper()
+	var mu sync.Mutex
+	var batches [][]string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		mu.Lock()
+		batches = append(batches, q["ids"])
+		mu.Unlock()
+		if r.URL.Path != "/admin/identities" || !slices.Equal(q["include_credential"], []string{"totp", "webauthn"}) ||
+			q.Get("page_size") != strconv.Itoa(len(q["ids"])) {
+			t.Errorf("request %s, want one page of the batch read with the MFA credentials", r.URL)
+		}
+		for _, id := range q["ids"] {
+			if uuid.Validate(id) != nil {
+				http.Error(w, "invalid UUID value for parameter ids", http.StatusBadRequest)
+				return
+			}
+			if slices.Contains(failing, id) {
+				http.Error(w, "unavailable", http.StatusInternalServerError)
+				return
+			}
+		}
+		var found []string
+		for _, id := range q["ids"] {
+			if id != missing {
+				found = append(found, fmt.Sprintf(`{"id":%q,"traits":{"email":"%s@example.com"},"credentials":{"totp":{"type":"totp"}}}`, id, id))
+			}
+		}
+		fmt.Fprintf(w, "[%s]", strings.Join(found, ","))
+	}))
+	t.Cleanup(srv.Close)
+	return NewKratosIdentities(srv.URL), func() [][]string {
+		mu.Lock()
+		defer mu.Unlock()
+		return batches
+	}
+}
+
+// TestListMembersResolvesItsIdentitiesInOneRequest (w5/116): listing members
+// asked Kratos for each member's identity in turn, 20 serial requests for a
+// 20-member workspace on every Team-page poll. One request now resolves them
+// all. A member that is a named platform client, whose id would make Kratos
+// refuse the whole batch, and a member Kratos does not know are left without
+// identity fields.
+func TestListMembersResolvesItsIdentitiesInOneRequest(t *testing.T) {
+	unknown := uuid.NewString()
+	k, batches := fakeKratosList(t, unknown)
+	st := newFakeStore()
+	svc := &Service{Base: &core.Base{Authz: &fakeChecker{allow: true}}, Store: st, Identities: k}
+	creator := uuid.NewString()
+	w, err := svc.Create(ctxAs(creator), "acme", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, subject := range append([]string{"bex-bootstrap", unknown}, uuidsN(18)...) {
+		st.members[w.ID] = append(st.members[w.ID], store.TenantMember{TenantID: w.ID, Subject: subject, Role: "developer"})
+	}
+
+	members, err := svc.ListMembers(ctxAs(creator), w.ID)
+	if err != nil || len(members) != 21 {
+		t.Fatalf("ListMembers: %d members, %v", len(members), err)
+	}
+	if got := batches(); len(got) != 1 || len(got[0]) != 20 {
+		t.Fatalf("Kratos requests = %d (ids %v), want one carrying the 20 Kratos ids", len(got), got)
+	}
+	for _, m := range members {
+		want := m.Subject + "@example.com"
+		if m.Subject == "bex-bootstrap" || m.Subject == unknown {
+			want = ""
+		}
+		if m.Email != want || m.MFAEnabled != (want != "") {
+			t.Errorf("member %s = %q (MFA %v), want %q", m.Subject, m.Email, m.MFAEnabled, want)
+		}
+	}
+}
+
+// TestKratosIdentitiesLookupManyChunksAndFailsPerBatch (w5/116): ids go out
+// kratosBatchSize at a time, and a failed batch leaves only its own subjects
+// unresolved.
+func TestKratosIdentitiesLookupManyChunksAndFailsPerBatch(t *testing.T) {
+	subjects := uuidsN(2*kratosBatchSize + 50)
+	poison := subjects[kratosBatchSize] // the second batch's first id
+	k, batches := fakeKratosList(t, "", poison)
+
+	got := k.LookupMany(context.Background(), subjects)
+	var sizes []int
+	for _, batch := range batches() {
+		sizes = append(sizes, len(batch))
+	}
+	slices.Sort(sizes)
+	if !slices.Equal(sizes, []int{50, kratosBatchSize, kratosBatchSize}) {
+		t.Fatalf("batch sizes = %v, want %d, %d, 50", sizes, kratosBatchSize, kratosBatchSize)
+	}
+	for i, subject := range subjects {
+		_, resolved := got[subject]
+		if failed := i >= kratosBatchSize && i < 2*kratosBatchSize; resolved == failed {
+			t.Fatalf("subject %d resolved=%v, want only the failed batch's %d unresolved", i, resolved, kratosBatchSize)
+		}
+	}
+}
+
+// TestKratosIdentitiesLookupManyAnswersTheSubjectsAsked (w5/116): Kratos
+// answers with its canonical, lowercase ids, and each result is keyed by the
+// subject as asked, so a differently spelled subject still resolves and
+// nothing unasked comes back.
+func TestKratosIdentitiesLookupManyAnswersTheSubjectsAsked(t *testing.T) {
+	lower, upper := uuid.NewString(), strings.ToUpper(uuid.NewString())
+	k, _ := fakeKratosList(t, "")
+	got := k.LookupMany(context.Background(), []string{lower, upper, "bex-bootstrap"})
+	if len(got) != 2 || got[lower].Email != lower+"@example.com" || got[upper].Email != strings.ToLower(upper)+"@example.com" {
+		t.Fatalf("LookupMany = %v, want the two UUID subjects keyed as asked", got)
+	}
+}
+
+func uuidsN(n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		out[i] = uuid.NewString()
+	}
+	return out
 }

@@ -37,6 +37,21 @@ func (f fakeIdentities) Lookup(_ context.Context, subject string) (IdentityAttrs
 	return a, ok
 }
 
+func (f fakeIdentities) LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs {
+	return lookupEach(ctx, f, subjects)
+}
+
+// lookupEach is LookupMany for a fake reader: one Lookup per subject.
+func lookupEach(ctx context.Context, r IdentityReader, subjects []string) map[string]IdentityAttrs {
+	out := map[string]IdentityAttrs{}
+	for _, subject := range subjects {
+		if attrs, ok := r.Lookup(ctx, subject); ok {
+			out[subject] = attrs
+		}
+	}
+	return out
+}
+
 // --- GetWorkspace ------------------------------------------------------------
 
 func TestGetWorkspace_OwnPrefixResolvesToCallersOldestWorkspace(t *testing.T) {
