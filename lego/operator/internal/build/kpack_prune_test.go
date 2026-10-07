@@ -21,6 +21,7 @@ import (
 	"slices"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,5 +91,62 @@ func TestPruneKpackRevisions(t *testing.T) {
 				t.Errorf("%s %T %s was pruned", name, obj, obj.GetName())
 			}
 		}
+	}
+}
+
+// TestStopRevision (w5/149): a canceled release's build ran to the end unless
+// bex-api's one delete caught it. StopRevision deletes that revision's build
+// Job while it runs and its kpack Image, and nothing else: not a finished Job,
+// not a later revision's build, not a namesake App's build of the revision.
+func TestStopRevision(t *testing.T) {
+	ctx := context.Background()
+	at := func(appUID, revision string) Options {
+		o := opts()
+		o.AppUID, o.Revision = appUID, revision
+		return o
+	}
+	uid := opts().AppUID
+	finished := BuildJob(at(uid, "gen-3"), "zot/hello:gen-3")
+	finished.Status.Succeeded = 1
+	finished.Status.Conditions = []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}}
+	// A first attempt that failed leaves the Job retrying, not finished: it
+	// still holds a build-cap slot.
+	retrying := BuildJob(at(uid, "gen-3"), "zot/hello:gen-3")
+	retrying.Status.Failed = 1
+	for name, tc := range map[string]struct {
+		job     *batchv1.Job
+		stopped bool
+	}{
+		"its running Job":          {BuildJob(at(uid, "gen-3"), "zot/hello:gen-3"), true},
+		"its retrying Job":         {retrying, true},
+		"its finished Job":         {finished, false},
+		"a namesake's running Job": {BuildJob(at("uid-namesake", "gen-3"), "zot/hello:gen-3"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			canceled, later, namesakes := KpackImage(at(uid, "gen-3")), KpackImage(at(uid, "gen-4")), KpackImage(at("uid-namesake", "gen-3"))
+			cl := fakeClient(tc.job, canceled, later, namesakes)
+			if err := StopRevision(ctx, cl, opts().Namespace, execution.ArtifactIdentity{Name: opts().Name, UID: uid}, "gen-3"); err != nil {
+				t.Fatalf("stop: %v", err)
+			}
+			present := func(obj client.Object) bool {
+				t.Helper()
+				err := cl.Get(ctx, client.ObjectKeyFromObject(obj), obj.DeepCopyObject().(client.Object))
+				if err != nil && !apierrors.IsNotFound(err) {
+					t.Fatal(err)
+				}
+				return err == nil
+			}
+			if present(tc.job) == tc.stopped {
+				t.Errorf("the Job is present = %t after the stop, want stopped = %t", present(tc.job), tc.stopped)
+			}
+			if present(canceled) {
+				t.Error("the canceled revision's kpack Image survived the stop")
+			}
+			for which, obj := range map[string]client.Object{"gen-4's": later, "the namesake's": namesakes} {
+				if !present(obj) {
+					t.Errorf("%s kpack Image was stopped", which)
+				}
+			}
+		})
 	}
 }

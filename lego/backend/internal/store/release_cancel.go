@@ -112,8 +112,9 @@ func deleteReleaseBuild(ctx context.Context, c client.Client, a *appv1alpha1.App
 	ns := cmp.Or(buildNamespace, a.Namespace)
 	revision := appv1alpha1.BuildRevision(generation)
 	// builder=auto may resolve to either shape, and cancellation must not race
-	// that resolution: stop both. Nothing retries a cancel once its stamp lands,
-	// so failing to stop one must not spare the other.
+	// that resolution: stop both. This is the fast path, run once after the
+	// stamp lands; the operator's canceled passes retry the stop (w5/149).
+	// Failing to stop one still must not spare the other.
 	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.BuildJobName(a.Name, revision), Namespace: ns}}
 	var jobErr error
 	if err := deleteBuildArtifact(ctx, c, job); err != nil {

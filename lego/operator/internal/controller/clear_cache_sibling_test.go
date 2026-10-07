@@ -80,7 +80,7 @@ func TestDeleteSiblingBuildJobsKeepsCurrentClearsActivePeers(t *testing.T) {
 			},
 		},
 		Spec:   batchv1.JobSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "c", Image: "busybox"}}}}},
-		Status: batchv1.JobStatus{Succeeded: 1},
+		Status: batchv1.JobStatus{Succeeded: 1, Conditions: []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}}},
 	}
 	otherApp := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
