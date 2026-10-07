@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"sort"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -34,7 +32,7 @@ import (
 // mutable secret values behind a deliberately write-only seam: an absent group
 // is a create, while an existing group is conservatively an update because a
 // no-op cannot be proved without revealing its values.
-func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string, snap *datastoreSnapshot) (BlueprintPlan, bool, error) {
+func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string, snap *workspaceSnapshot) (BlueprintPlan, bool, error) {
 	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
 		return BlueprintPlan{}, false, checkBlueprintDatabaseCreates(st)
 	}
@@ -64,7 +62,7 @@ type blueprintActionResolver struct {
 	parsed    parsedStack
 }
 
-func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *datastoreSnapshot) (*blueprintActionResolver, error) {
+func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *workspaceSnapshot) (*blueprintActionResolver, error) {
 	resolver := &blueprintActionResolver{
 		services:  map[string]*appv1alpha1.App{},
 		databases: map[string]*appv1alpha1.Database{},
@@ -80,13 +78,18 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		resolver.envGroups = groups
 	}
 	tenantID, scoped := s.Tenant(ctx)
-	var apps appv1alpha1.AppList
-	if err := s.Client.List(ctx, &apps, client.InNamespace(s.AppNamespace(tenantID))); err != nil {
+	apps, err := snap.apps(ctx)
+	if err != nil {
 		return nil, err
 	}
+	// The plan resolves a service against its copy in the workspace's own
+	// namespace, not a stale twin left in the shared one; a service only there
+	// is not yet resolved (w5/142). An empty namespace listed every namespace,
+	// so it filters nothing.
+	namespace := s.AppNamespace(tenantID)
 	for i := range apps.Items {
 		app := &apps.Items[i]
-		if scoped && app.Labels[core.LabelTenant] != tenantID {
+		if (namespace != "" && app.Namespace != namespace) || (scoped && app.Labels[core.LabelTenant] != tenantID) {
 			continue
 		}
 		// Key by the manifest-facing service name, not the Kubernetes object

@@ -100,7 +100,7 @@ func blueprintResourceOwner(owners map[store.BlueprintResourceKey]string, kind s
 // wired (w8/m40); falls back to CR labels. selfID "" means "no blueprint
 // identity" (a bare validate): every owned resource conflicts. It reads snap's
 // workspace.
-func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string, st parsedStack, snap *datastoreSnapshot) ([]blueprintOwnershipConflict, error) {
+func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string, st parsedStack, snap *workspaceSnapshot) ([]blueprintOwnershipConflict, error) {
 	tenantID := snap.tenantID
 	if len(st.services) == 0 && len(st.databases) == 0 && len(st.keyValues) == 0 {
 		return nil, nil
@@ -116,12 +116,12 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string
 	if len(st.services) > 0 {
 		// A workspace's Apps may straddle the shared and its own namespace; a
 		// stale twin's label must not decide the owner.
-		apps, err := s.listWorkspaceApps(ctx, tenantID)
+		apps, err := snap.apps(ctx)
 		if err != nil {
 			return nil, err
 		}
 		byName := map[string]string{}
-		for name, app := range apps {
+		for name, app := range foldWorkspaceApps(apps.Items) {
 			byName[name] = app.Labels[core.LabelBlueprint]
 		}
 		for _, svc := range st.services {
@@ -161,7 +161,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string
 // another blueprint's resources — before any write — unless the request
 // carries the exact takeover confirmation, which transfers ownership (the
 // post-apply stamp rewrites the label). Non-blueprint deploys are exempt.
-func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployRequest, st parsedStack, snap *datastoreSnapshot) error {
+func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployRequest, st parsedStack, snap *workspaceSnapshot) error {
 	if req.BlueprintID == "" {
 		return nil
 	}
@@ -316,23 +316,25 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 		return s.labelBlueprintOwnership(ctx, blueprintID, obj)
 	}
 
-	var apps appv1alpha1.AppList
-	if err := s.Client.List(ctx, &apps, client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
-		return fmt.Errorf("listing apps for ownership stamp: %w", err)
-	}
-	wantedSvc := map[string]bool{}
-	for _, svc := range st.services {
-		wantedSvc[svc.req.Name] = true
-	}
-	for i := range apps.Items {
-		if wantedSvc[core.AppPublicName(&apps.Items[i])] {
-			if err := claimAndLabel(store.BlueprintClaimService, core.AppPublicName(&apps.Items[i]), &apps.Items[i]); err != nil {
-				return err
+	// A kind the manifest does not declare has nothing to stamp, so it is not
+	// listed.
+	if len(st.services) > 0 {
+		var apps appv1alpha1.AppList
+		if err := s.ListByTenant(ctx, &apps, tenantID); err != nil {
+			return fmt.Errorf("listing apps for ownership stamp: %w", err)
+		}
+		wantedSvc := map[string]bool{}
+		for _, svc := range st.services {
+			wantedSvc[svc.req.Name] = true
+		}
+		for i := range apps.Items {
+			if wantedSvc[core.AppPublicName(&apps.Items[i])] {
+				if err := claimAndLabel(store.BlueprintClaimService, core.AppPublicName(&apps.Items[i]), &apps.Items[i]); err != nil {
+					return err
+				}
 			}
 		}
 	}
-	// A datastore kind the manifest does not declare has nothing to stamp, so
-	// it is not listed.
 	if len(st.databases) > 0 {
 		databases, err := s.listWorkspaceDatabases(ctx, tenantID)
 		if err != nil {
@@ -526,7 +528,7 @@ func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, bluepri
 // pre-sync preview never conflicts with itself; a not-yet-created blueprint
 // conflicts with any owner. Scan failures are swallowed (the apply-path
 // preflight is the enforcement point).
-func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch string, st parsedStack, snap *datastoreSnapshot) []BlueprintValidationError {
+func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch string, st parsedStack, snap *workspaceSnapshot) []BlueprintValidationError {
 	tenantID, ok := s.Tenant(ctx)
 	if !ok {
 		return nil
@@ -586,7 +588,7 @@ func (s *Service) previewConnectionConflict(ctx context.Context, tenantID, repo,
 // A caller with no resolved workspace (the store-less dev path) is skipped: it
 // has no workspace for a name to resolve against, and failing there would be an
 // answer about the environment rather than the manifest.
-func (s *Service) validateWorkspaceReferences(ctx context.Context, source *BlueprintSource, ir BlueprintIR, st parsedStack, snap *datastoreSnapshot) []BlueprintValidationError {
+func (s *Service) validateWorkspaceReferences(ctx context.Context, source *BlueprintSource, ir BlueprintIR, st parsedStack, snap *workspaceSnapshot) []BlueprintValidationError {
 	if s.Client == nil {
 		return nil
 	}
