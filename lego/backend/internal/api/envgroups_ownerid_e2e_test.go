@@ -174,8 +174,9 @@ func TestEnvGroupReadSideOwnerIDTargetingE2E(t *testing.T) {
 	if resp := call(dana, "POST", "/v1/env-groups/"+groupB.ID+"/services/"+svcName, ""); resp.StatusCode != http.StatusForbidden {
 		t.Errorf("link bravo's group into alpha's service: %d, want 403", resp.StatusCode)
 	}
-	if resp := call(dana, "POST", "/v1/env-groups/"+groupA.ID+"/services/"+svcName, ""); resp.StatusCode != http.StatusNoContent {
-		t.Errorf("link alpha's own group into alpha's service: %d, want 204", resp.StatusCode)
+	// Render answers a link with the updated envGroup (w8/063).
+	if resp := call(dana, "POST", "/v1/env-groups/"+groupA.ID+"/services/"+svcName, ""); resp.StatusCode != http.StatusOK {
+		t.Errorf("link alpha's own group into alpha's service: %d, want 200", resp.StatusCode)
 	}
 }
 
