@@ -41,6 +41,8 @@ describe("toKeyValueViews", () => {
       public: true,
       suspended: false,
       region: null,
+      statusReason: null,
+      statusReasonCode: null,
     });
   });
 

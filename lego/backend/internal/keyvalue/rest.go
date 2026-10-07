@@ -52,23 +52,27 @@ type keyValueOptionsView struct {
 // Region/dashboardUrl are propagated from KeyValueView (populated by Service.view).
 // Version is the one field genuinely omitted — bex doesn't track it.
 type renderKeyValue struct {
-	ID            string                  `json:"id"`
-	Name          string                  `json:"name"`
-	Plan          string                  `json:"plan"`
-	Status        string                  `json:"status"`
-	Suspended     string                  `json:"suspended"`
-	CreatedAt     string                  `json:"createdAt,omitempty"`
-	UpdatedAt     string                  `json:"updatedAt,omitempty"`
-	Owner         *keyValueOwner          `json:"owner,omitempty"`
-	Region        string                  `json:"region,omitempty"`
-	DashboardURL  string                  `json:"dashboardUrl,omitempty"`
-	Version       string                  `json:"version,omitempty"`
-	Options       keyValueOptionsView     `json:"options"`
-	IPAllowList   []core.IPAllowListEntry `json:"ipAllowList"`
-	EnvironmentID string                  `json:"environmentId,omitempty"`
-	ExternalHost  string                  `json:"externalHost,omitempty"`
-	Public        bool                    `json:"public"`
-	ProjectID     string                  `json:"projectId,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Plan      string `json:"plan"`
+	Status    string `json:"status"`
+	Suspended string `json:"suspended"`
+	// StatusReason and StatusReasonCode say why an unavailable instance is
+	// unavailable (bex extensions, w5/m129; see KeyValueView).
+	StatusReason     string                  `json:"statusReason,omitempty"`
+	StatusReasonCode string                  `json:"statusReasonCode,omitempty"`
+	CreatedAt        string                  `json:"createdAt,omitempty"`
+	UpdatedAt        string                  `json:"updatedAt,omitempty"`
+	Owner            *keyValueOwner          `json:"owner,omitempty"`
+	Region           string                  `json:"region,omitempty"`
+	DashboardURL     string                  `json:"dashboardUrl,omitempty"`
+	Version          string                  `json:"version,omitempty"`
+	Options          keyValueOptionsView     `json:"options"`
+	IPAllowList      []core.IPAllowListEntry `json:"ipAllowList"`
+	EnvironmentID    string                  `json:"environmentId,omitempty"`
+	ExternalHost     string                  `json:"externalHost,omitempty"`
+	Public           bool                    `json:"public"`
+	ProjectID        string                  `json:"projectId,omitempty"`
 	// BlueprintID names the Blueprint managing this instance (w4/m125); a bex
 	// extension, since Render does not enforce Blueprint ownership.
 	BlueprintID string `json:"blueprintId,omitempty"`
@@ -80,16 +84,18 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 	// already coalesces; this REST-only wrapper defends the wire shape on its
 	// own, matching environments' toRenderEnvironment.
 	return renderKeyValue{
-		ID:           kv.ID,
-		Name:         kv.Name,
-		Plan:         kv.Plan,
-		Status:       kv.Status,
-		Suspended:    kv.Suspended,
-		CreatedAt:    kv.CreatedAt,
-		UpdatedAt:    kv.UpdatedAt,
-		Region:       kv.Region,
-		DashboardURL: kv.DashboardURL,
-		Version:      kv.Version,
+		ID:               kv.ID,
+		Name:             kv.Name,
+		Plan:             kv.Plan,
+		Status:           kv.Status,
+		StatusReason:     kv.StatusReason,
+		StatusReasonCode: kv.StatusReasonCode,
+		Suspended:        kv.Suspended,
+		CreatedAt:        kv.CreatedAt,
+		UpdatedAt:        kv.UpdatedAt,
+		Region:           kv.Region,
+		DashboardURL:     kv.DashboardURL,
+		Version:          kv.Version,
 		Options: keyValueOptionsView{
 			MaxmemoryPolicy: kv.MaxmemoryPolicy,
 			PersistenceMode: kv.PersistenceMode,

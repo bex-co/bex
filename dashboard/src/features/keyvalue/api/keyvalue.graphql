@@ -4,9 +4,8 @@
 # matching bex's own KeyValue CRD (the postgres feature's `database` noun is the
 # sibling precedent). `status` is Render's keyValueStatus enum
 # (available/unavailable/creating); `suspended` is the string enum shared with
-# services/databases. There is no separate detail-only field set — `keyValue(id)`
-# returns the same shape as the list (unlike Database, whose detail query adds
-# databaseName/databaseUser/highAvailabilityEnabled).
+# services/databases. `keyValue(id)` adds the detail-only statusReason and
+# statusReasonCode (w5/m129); the list leaves them out, as Database's does.
 
 # ownerId scopes the list to one workspace (w6/m4/t002's REST/GraphQL filter) —
 # the dashboard's workspace switcher (w6/m3) passes the selected workspace's id;
@@ -35,6 +34,10 @@ query KeyValue($id: String!) {
     plan
     version
     status
+    # Why an unavailable store is unavailable; the code is translated by
+    # STATUS_REASON_LABEL (w5/m129).
+    statusReason
+    statusReasonCode
     suspended
     createdAt
     updatedAt

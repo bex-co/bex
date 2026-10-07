@@ -23,7 +23,8 @@ type KeyValueNode = NonNullable<
 type KeyValueDetailNode = NonNullable<KeyValueQuery["keyValue"]>;
 
 /** Map a wire `KeyValue` node onto the normalized KeyValueView. Shared by the
- * list and detail queries — there's no separate detail-only field set. */
+ * list and detail queries; the detail-only reason fields are null from a list
+ * node. */
 export function toKeyValueView(
   d: KeyValueNode | KeyValueDetailNode,
 ): KeyValueView {
@@ -42,6 +43,9 @@ export function toKeyValueView(
     public: d.public ?? false,
     suspended: isSuspended(d.suspended ?? null),
     region: "region" in d ? d.region || null : null,
+    statusReason: "statusReason" in d ? d.statusReason || null : null,
+    statusReasonCode:
+      "statusReasonCode" in d ? d.statusReasonCode || null : null,
   };
 }
 

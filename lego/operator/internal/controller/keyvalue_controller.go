@@ -55,7 +55,6 @@ import (
 )
 
 const (
-	reasonKVCertificateFailed = "CertificateFailed"
 	// kvStorageClass is the StorageClass for Valkey data volumes (same class the
 	// Database controller uses for Postgres PVCs).
 	kvStorageClass = "hcloud-volumes"
@@ -397,14 +396,14 @@ func (r *KeyValueReconciler) keyValueStorageIntent(
 ) (*appsv1.StatefulSet, int32, ctrl.Result, bool, error) {
 	sts := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
 	if err := r.Get(ctx, client.ObjectKeyFromObject(sts), sts); err != nil && !apierrors.IsNotFound(err) {
-		result, failErr := r.kvFail(ctx, kv, "StatefulSetReadFailed", err)
+		result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonStatefulSetReadFailed, err)
 		return nil, 0, result, true, failErr
 	}
 	pvc := &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{
 		Name: keyValuePVCName(kv.Name), Namespace: kv.Namespace,
 	}}
 	if err := r.Get(ctx, client.ObjectKeyFromObject(pvc), pvc); err != nil && !apierrors.IsNotFound(err) {
-		result, failErr := r.kvFail(ctx, kv, "PVCReadFailed", err)
+		result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonPVCReadFailed, err)
 		return nil, 0, result, true, failErr
 	}
 	currentGB, effectiveGB, shrink := growOnlyIntent(
@@ -426,7 +425,7 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 ) (string, error) {
 	if public && r.ClusterIssuer == "" {
 		kv.Status.ExternalHost = ""
-		return "TLSIssuerMissing", fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint")
+		return appv1alpha1.ReasonTLSIssuerMissing, fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint")
 	}
 	certificate := &unstructured.Unstructured{}
 	certificate.SetGroupVersionKind(certManagerCertificateGVK)
@@ -434,12 +433,12 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 	certificate.SetNamespace(kv.Namespace)
 	if !public {
 		if err := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(certificate), certificate); err != nil {
-			return "CertificateCleanupFailed", client.IgnoreNotFound(err)
+			return appv1alpha1.ReasonCertificateCleanupFailed, client.IgnoreNotFound(err)
 		}
 		if _, err := r.rememberKeyValueTLSCertificate(ctx, kv, certificate); err != nil {
-			return "CertificateCleanupFailed", err
+			return appv1alpha1.ReasonCertificateCleanupFailed, err
 		}
-		return "CertificateCleanupFailed", deleteKeyValueTLSObject(ctx, r.Client, certificate)
+		return appv1alpha1.ReasonCertificateCleanupFailed, deleteKeyValueTLSObject(ctx, r.Client, certificate)
 	}
 	// Do not let secretTemplate provenance relabel an unrelated or previous
 	// lifetime's private key into this lifetime's cleanup authority.
@@ -447,22 +446,22 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 	if err := r.secretClient().Get(ctx, client.ObjectKeyFromObject(certificate), secret); err == nil {
 		identity, identityErr := r.keyValueTLSIdentity(kv)
 		if identityErr != nil {
-			return reasonKVCertificateFailed, identityErr
+			return appv1alpha1.ReasonCertificateFailed, identityErr
 		}
 		existing := certificate.DeepCopy()
 		if readErr := cmp.Or(r.APIReader, client.Reader(r.Client)).Get(ctx, client.ObjectKeyFromObject(existing), existing); readErr == nil {
 			if _, err := r.rememberKeyValueTLSCertificate(ctx, kv, existing); err != nil {
-				return reasonKVCertificateFailed, err
+				return appv1alpha1.ReasonCertificateFailed, err
 			}
 			identity, identityErr = r.keyValueTLSIdentity(kv)
 			if identityErr != nil {
-				return reasonKVCertificateFailed, identityErr
+				return appv1alpha1.ReasonCertificateFailed, identityErr
 			}
 		} else if !apierrors.IsNotFound(readErr) {
-			return reasonKVCertificateFailed, readErr
+			return appv1alpha1.ReasonCertificateFailed, readErr
 		}
 		if err := validateKeyValueTLSSecret(kv, secret, identity); err != nil {
-			return reasonKVCertificateFailed, err
+			return appv1alpha1.ReasonCertificateFailed, err
 		}
 		// Bind verified legacy issuance before changing the producer. Deletion
 		// can then recognize its old output even before cert-manager has copied
@@ -471,11 +470,11 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 			patch := client.MergeFromWithOptions(secret.DeepCopy(), client.MergeFromWithOptimisticLock{})
 			metav1.SetMetaDataLabel(&secret.ObjectMeta, execution.LabelKeyValueUID, string(kv.UID))
 			if err := r.secretClient().Patch(ctx, secret, patch); err != nil {
-				return reasonKVCertificateFailed, err
+				return appv1alpha1.ReasonCertificateFailed, err
 			}
 		}
 	} else if !apierrors.IsNotFound(err) {
-		return reasonKVCertificateFailed, err
+		return appv1alpha1.ReasonCertificateFailed, err
 	}
 	host := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
 	spec := map[string]any{
@@ -495,7 +494,7 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 		}
 		return controllerutil.SetControllerReference(kv, certificate, r.Scheme)
 	})
-	return reasonKVCertificateFailed, err
+	return appv1alpha1.ReasonCertificateFailed, err
 }
 
 func (r *KeyValueReconciler) reconcileKeyValueCredentials(
@@ -508,7 +507,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 	// rotates an existing store.
 	connection := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
 	if err := r.secretClient().Get(ctx, client.ObjectKeyFromObject(connection), connection); err != nil && !apierrors.IsNotFound(err) {
-		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
+		result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonSecretFailed, err)
 		return nil, result, true, failErr
 	}
 	seedPassword := connection.Data[kvPasswordKey]
@@ -532,14 +531,14 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		auth.Immutable = new(true)
 		return controllerutil.SetControllerReference(kv, auth, r.Scheme)
 	}); err != nil {
-		result, failErr := r.kvFail(ctx, kv, "CredentialSecretFailed", err)
+		result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonCredentialSecretFailed, err)
 		return nil, result, true, failErr
 	}
 	desiredData := keyValueConnectionSecretData(string(auth.Data[kvPasswordKey]), internalHost,
 		kv.Spec.Public && r.KvDomain != "", kv.Name, r.KvDomain)
 	if connection.Immutable != nil && *connection.Immutable && !secretDataEqual(connection.Data, desiredData) {
 		if err := r.Delete(ctx, connection); err != nil && !apierrors.IsNotFound(err) {
-			result, failErr := r.kvFail(ctx, kv, "SecretRecreateFailed", err)
+			result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonSecretRecreateFailed, err)
 			return nil, result, true, failErr
 		}
 		kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
@@ -555,7 +554,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 		connection.Immutable = new(true)
 		return controllerutil.SetControllerReference(kv, connection, r.Scheme)
 	}); err != nil {
-		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
+		result, failErr := r.kvFail(ctx, kv, appv1alpha1.ReasonSecretFailed, err)
 		return nil, result, true, failErr
 	}
 	return auth, ctrl.Result{}, false, nil
@@ -986,18 +985,18 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	intent.credentialRevision = appv1alpha1.KeyValueCredentialRevision(auth.Data[kvPasswordKey])
 	platform, err := r.reconcileKeyValuePlatformCredential(ctx, &kv)
 	if err != nil {
-		return r.kvFail(ctx, &kv, "CredentialSecretFailed", err)
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonCredentialSecretFailed, err)
 	}
 	intent.platformSecretName = platform.Name
 
 	if err := r.reconcileKeyValueService(ctx, &kv, intent); err != nil {
-		return r.kvFail(ctx, &kv, "ServiceFailed", err)
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonServiceFailed, err)
 	}
 	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, platform, &intent); done || err != nil {
 		return result, err
 	}
 	if err := r.reconcileKeyValueWorkload(ctx, &kv, sts, intent); err != nil {
-		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonStatefulSetFailed, err)
 	}
 	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &kv, kv.Labels[labelEnvironment], "-environment-ingress", map[string]string{labelKeyValue: kv.Name}); err != nil {
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonNetworkPolicyFailed, err)
@@ -1006,11 +1005,11 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// The backup/purge Jobs need egress the platform-wide Cilium node/metadata
 	// deny withholds by default — install their allow before the CronJob fires.
 	if err := r.reconcileKeyValueBackupNetworkPolicy(ctx, &kv); err != nil {
-		return r.kvFail(ctx, &kv, "BackupNetworkPolicyFailed", err)
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonBackupNetworkPolicyFailed, err)
 	}
 
 	if err := r.reconcileKeyValueBackup(ctx, &kv, plan, intent.platformSecretName); err != nil {
-		return r.kvFail(ctx, &kv, "BackupCronJobFailed", err)
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonBackupCronJobFailed, err)
 	}
 
 	// --- optional external SNI endpoint via the metered Key Value front door ---
@@ -1032,7 +1031,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	storageState, err := r.reconcileKeyValueStorage(ctx, &kv, sts, storageGB)
 	if err != nil {
-		return r.kvFail(ctx, &kv, "PVCResizeFailed", err)
+		return r.kvFail(ctx, &kv, appv1alpha1.ReasonPVCResizeFailed, err)
 	}
 	if result, done, err := r.applyKeyValueStorageState(ctx, &kv, storageState); done || err != nil {
 		return result, err
@@ -1108,13 +1107,13 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 	}
 
 	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
-	reason, message := "Provisioning", "waiting for the current Valkey StatefulSet revision"
+	reason, message := appv1alpha1.ReasonProvisioning, "waiting for the current Valkey StatefulSet revision"
 	if rolloutReady && !podsReady {
-		reason, message = "PodUnready", "a current Valkey pod is not Ready"
+		reason, message = appv1alpha1.ReasonPodUnready, "a current Valkey pod is not Ready"
 	}
 	if persistenceReason, persistenceMessage := r.keyValuePersistenceProgress(ctx, kv, sts); persistenceReason != "" {
 		reason, message = persistenceReason, persistenceMessage
-		if reason == "PersistenceTransitionFailed" {
+		if reason == appv1alpha1.ReasonPersistenceTransitionFailed {
 			kv.Status.Phase = appv1alpha1.KVPhaseFailed
 		}
 	}
@@ -1224,7 +1223,7 @@ func awaitKeyValuePVC(kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, desired
 	kv.Status.AllocatedStorageGB = max(desiredGB, statefulSetStorageGB(sts))
 	kv.Status.ObservedStorageGB = kv.Spec.StorageGB
 	kv.Status.StorageCapacityGB = 0
-	state := keyValueStorageState{reason: "WaitingForPVC", message: "waiting for the Valkey PVC to be created", requeue: kvStorageRequeue}
+	state := keyValueStorageState{reason: appv1alpha1.ReasonWaitingForPVC, message: "waiting for the Valkey PVC to be created", requeue: kvStorageRequeue}
 	setKeyValueStorageCondition(kv, state)
 	return state
 }
@@ -1249,17 +1248,17 @@ func (r *KeyValueReconciler) expandKeyValuePVC(ctx context.Context, kv *appv1alp
 	case pvcExpanded:
 		return nil, nil
 	case pvcExpandWaitingForBinding:
-		return block(keyValueStorageState{reason: "WaitingForPVCBinding", message: "waiting for the Valkey PVC to bind before requesting expansion", requeue: kvStorageRequeue})
+		return block(keyValueStorageState{reason: appv1alpha1.ReasonWaitingForPVCBinding, message: "waiting for the Valkey PVC to bind before requesting expansion", requeue: kvStorageRequeue})
 	case pvcExpandStorageClassMissing:
-		return block(keyValueStorageState{failed: true, reason: "StorageClassMissing", message: "Valkey PVC has no StorageClass; online expansion is unavailable", requeue: kvStorageFailureRequeue})
+		return block(keyValueStorageState{failed: true, reason: appv1alpha1.ReasonStorageClassMissing, message: "Valkey PVC has no StorageClass; online expansion is unavailable", requeue: kvStorageFailureRequeue})
 	case pvcExpandStorageClassNotFound:
-		return block(keyValueStorageState{failed: true, reason: "StorageClassNotFound", message: fmt.Sprintf("StorageClass %q was not found; cannot expand Valkey PVC", className), requeue: kvStorageFailureRequeue})
+		return block(keyValueStorageState{failed: true, reason: appv1alpha1.ReasonStorageClassNotFound, message: fmt.Sprintf("StorageClass %q was not found; cannot expand Valkey PVC", className), requeue: kvStorageFailureRequeue})
 	case pvcExpandNotExpandable:
-		return block(keyValueStorageState{failed: true, reason: "StorageClassNotExpandable", message: fmt.Sprintf("StorageClass %q does not allow volume expansion", className), requeue: kvStorageFailureRequeue})
+		return block(keyValueStorageState{failed: true, reason: appv1alpha1.ReasonStorageClassNotExpandable, message: fmt.Sprintf("StorageClass %q does not allow volume expansion", className), requeue: kvStorageFailureRequeue})
 	case pvcExpandQuotaBlocked:
 		return block(keyValueStorageState{
 			failed:  true,
-			reason:  "StorageBlockedByQuota",
+			reason:  appv1alpha1.ReasonStorageBlockedByQuota,
 			message: fmt.Sprintf("Valkey PVC expansion to %d GB is blocked by the namespace storage quota; growth resumes when quota headroom is available", desiredGB),
 			requeue: kvStorageFailureRequeue,
 		})
@@ -1273,11 +1272,11 @@ func finalizeKeyValueStorage(kv *appv1alpha1.KeyValue, pvc *corev1.PersistentVol
 	kv.Status.AllocatedStorageGB = max(desiredGB, requestedGB)
 	kv.Status.ObservedStorageGB = kv.Spec.StorageGB
 	kv.Status.StorageCapacityGB = capacityGB
-	state := keyValueStorageState{ready: true, reason: "StorageProvisioned", message: fmt.Sprintf("Valkey PVC capacity is %d GB", capacityGB)}
+	state := keyValueStorageState{ready: true, reason: appv1alpha1.ReasonStorageProvisioned, message: fmt.Sprintf("Valkey PVC capacity is %d GB", capacityGB)}
 	if capacityGB < desiredGB {
-		reason, subject := "PVCResizePending", "Valkey PVC expansion"
+		reason, subject := appv1alpha1.ReasonPVCResizePending, "Valkey PVC expansion"
 		if pvcFileSystemResizePending(pvc) {
-			reason, subject = "FileSystemResizePending", "Valkey filesystem resize"
+			reason, subject = appv1alpha1.ReasonFileSystemResizePending, "Valkey filesystem resize"
 		}
 		state = keyValueStorageState{
 			reason:  reason,

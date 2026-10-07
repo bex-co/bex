@@ -1,4 +1,5 @@
 import type { en } from "@/i18n";
+import { ownValue } from "@/common/lib/own-value";
 import { deriveStatus } from "@/features/databases/lib/status";
 import type { DatabaseStatusKey } from "@/features/databases/types";
 
@@ -43,9 +44,7 @@ const STATUS_REASON_LABEL: Record<string, keyof typeof en> = {
 export function statusReasonLabel(
   code: string | null | undefined,
 ): keyof typeof en | undefined {
-  return code && Object.hasOwn(STATUS_REASON_LABEL, code)
-    ? STATUS_REASON_LABEL[code]
-    : undefined;
+  return ownValue(STATUS_REASON_LABEL, code);
 }
 
 /**

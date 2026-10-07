@@ -17,6 +17,8 @@ limitations under the License.
 package core
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -60,4 +62,24 @@ func DatastoreNotReadyStatus(servedBefore bool) string {
 		return DatastoreConfigRestart
 	}
 	return DatastoreCreating
+}
+
+// DatastoreStatusReason explains an unavailable datastore from its Ready
+// condition: a fixed sentence from sentences, keyed by the condition's reason,
+// and that reason as the code a client translates (w5/079, w5/m129). The
+// condition's own message can carry raw API-server text, so it is never
+// published, except StorageShrinkRejected's, which the operator authors from
+// the sizes alone. noun names the datastore in the fallback sentences.
+func DatastoreStatusReason(conditions []metav1.Condition, noun string, sentences map[string]string) (sentence, code string) {
+	c := meta.FindStatusCondition(conditions, appv1alpha1.ConditionReady)
+	if c == nil || c.Status == metav1.ConditionTrue {
+		return fmt.Sprintf("The %s failed to reconcile.", noun), ""
+	}
+	if c.Reason == appv1alpha1.ReasonStorageShrinkRejected {
+		return c.Message, c.Reason
+	}
+	if sentence, ok := sentences[c.Reason]; ok {
+		return sentence, c.Reason
+	}
+	return fmt.Sprintf("The %s failed to reconcile (%s).", noun, c.Reason), c.Reason
 }

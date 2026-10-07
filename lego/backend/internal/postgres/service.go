@@ -32,7 +32,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -450,22 +449,6 @@ var unavailableReasons = map[string]string{
 	appv1alpha1.ReasonScheduledBackupCleanupFailed: "The daily backup schedule could not be removed.",
 }
 
-// statusReason explains an unavailable database from its Ready condition: a
-// sentence, and the condition's reason as its code.
-func statusReason(d *appv1alpha1.Database) (sentence, code string) {
-	c := meta.FindStatusCondition(d.Status.Conditions, appv1alpha1.ConditionReady)
-	if c == nil || c.Status == metav1.ConditionTrue {
-		return "The database failed to reconcile.", ""
-	}
-	if c.Reason == appv1alpha1.ReasonStorageShrinkRejected {
-		return c.Message, c.Reason
-	}
-	if reason, ok := unavailableReasons[c.Reason]; ok {
-		return reason, c.Reason
-	}
-	return fmt.Sprintf("The database failed to reconcile (%s).", c.Reason), c.Reason
-}
-
 func pgView(d *appv1alpha1.Database) PostgresView {
 	created := ""
 	if !d.CreationTimestamp.IsZero() {
@@ -500,7 +483,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 	}
 	var reason, reasonCode string
 	if status == "unavailable" {
-		reason, reasonCode = statusReason(d)
+		reason, reasonCode = core.DatastoreStatusReason(d.Status.Conditions, "database", unavailableReasons)
 	}
 	// ipAllowList is required in Render's schema — an empty stored list
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).

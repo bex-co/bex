@@ -28,6 +28,10 @@ export interface KeyValueView {
   suspended: boolean;
   /** Explicit installation placement (`BEX_REGION`), never browser-inferred. */
   region?: string | null;
+  /** Why an unavailable store is unavailable (bex-api statusReason), else null; detail query only. */
+  statusReason?: string | null;
+  /** The code of statusReason (the operator's Ready reason), else null. */
+  statusReasonCode?: string | null;
 }
 
 /** The connection strings, fetched on demand (never in the list). The

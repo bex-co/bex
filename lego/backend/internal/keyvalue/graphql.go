@@ -37,6 +37,8 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"version":            gqlutil.StrField(func(v KeyValueView) any { return v.Version }),
 		"status":             gqlutil.StrField(func(v KeyValueView) any { return v.Status }),
 		"suspended":          gqlutil.StrField(func(v KeyValueView) any { return v.Suspended }),
+		"statusReason":       gqlutil.OptionalStrField(func(v KeyValueView) any { return v.StatusReason }),
+		"statusReasonCode":   gqlutil.OptionalStrField(func(v KeyValueView) any { return v.StatusReasonCode }),
 		"createdAt":          gqlutil.StrField(func(v KeyValueView) any { return v.CreatedAt }),
 		"updatedAt":          gqlutil.StrField(func(v KeyValueView) any { return v.UpdatedAt }),
 		"region":             gqlutil.StrField(func(v KeyValueView) any { return v.Region }),

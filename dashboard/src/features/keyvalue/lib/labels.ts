@@ -1,4 +1,5 @@
 import type { en } from "@/i18n";
+import { ownValue } from "@/common/lib/own-value";
 import { deriveStatus } from "@/features/keyvalue/lib/status";
 import type { KeyValueStatusKey } from "@/features/keyvalue/types";
 
@@ -15,6 +16,43 @@ export const STATUS_LABEL: Record<KeyValueStatusKey, keyof typeof en> = {
   suspended: "keyvalue.statusSuspended",
   unknown: "keyvalue.statusUnknown",
 };
+
+/**
+ * An unavailable store's reason by bex-api's statusReasonCode, the operator's
+ * Ready-condition reason (w5/m129). A code missing here shows bex-api's
+ * English sentence instead.
+ */
+const STATUS_REASON_LABEL: Record<string, keyof typeof en> = {
+  StatefulSetReadFailed: "keyvalue.statusReasonStatefulSetReadFailed",
+  StatefulSetFailed: "keyvalue.statusReasonStatefulSetFailed",
+  PVCReadFailed: "keyvalue.statusReasonPVCReadFailed",
+  PVCResizeFailed: "keyvalue.statusReasonPVCResizeFailed",
+  SecretFailed: "keyvalue.statusReasonSecretFailed",
+  CredentialSecretFailed: "keyvalue.statusReasonCredentialSecretFailed",
+  SecretRecreateFailed: "keyvalue.statusReasonSecretRecreateFailed",
+  ServiceFailed: "keyvalue.statusReasonServiceFailed",
+  NetworkPolicyFailed: "keyvalue.statusReasonNetworkPolicyFailed",
+  BackupNetworkPolicyFailed: "keyvalue.statusReasonBackupNetworkPolicyFailed",
+  BackupCronJobFailed: "keyvalue.statusReasonBackupCronJobFailed",
+  TLSIssuerMissing: "keyvalue.statusReasonTLSIssuerMissing",
+  CertificateFailed: "keyvalue.statusReasonCertificateFailed",
+  CertificateCleanupFailed: "keyvalue.statusReasonCertificateCleanupFailed",
+  StorageClassMissing: "keyvalue.statusReasonStorageClassMissing",
+  StorageClassNotFound: "keyvalue.statusReasonStorageClassNotFound",
+  StorageClassNotExpandable: "keyvalue.statusReasonStorageClassNotExpandable",
+  StorageBlockedByQuota: "keyvalue.statusReasonStorageBlockedByQuota",
+  PersistenceTransitionFailed:
+    "keyvalue.statusReasonPersistenceTransitionFailed",
+  PersistenceSourceUnknown: "keyvalue.statusReasonPersistenceSourceUnknown",
+  StorageShrinkRejected: "keyvalue.statusReasonStorageShrinkRejected",
+};
+
+/** The translation key of an unavailable store's reason, if this dashboard knows its code. */
+export function statusReasonLabel(
+  code: string | null | undefined,
+): keyof typeof en | undefined {
+  return ownValue(STATUS_REASON_LABEL, code);
+}
 
 /**
  * The i18n label for a store's displayed status — one composition shared by the
