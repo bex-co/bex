@@ -132,7 +132,8 @@ type Service struct {
 	runtimeDetectionFlight       singleflight.Group
 	// Public-repo commit resolve (w4/m108 t004): unauthenticated GitHub
 	// GET /commits/{ref} when no App installation exists for the owner.
-	// Cached aggressively — GitHub's anonymous limit is 60 req/h/IP.
+	// Memoized per burst, misses longer: GitHub's anonymous limit is 60
+	// req/h/IP (publicCommitCacheTTL).
 	publicCommitOnce   sync.Once
 	publicCommitCache  *core.TTLCache[cachedPublicCommit]
 	publicCommitFlight singleflight.Group
@@ -153,7 +154,12 @@ const (
 	repoTreeProbeTimeout       = 5 * time.Second
 	// Public commit resolve (w4/m108 t004): short TTLs under GitHub's
 	// unauthenticated 60 req/h/IP budget; a hung call must not delay deploy open.
-	publicCommitCacheTTL       = 5 * time.Minute
+	// A resolved tip pins the build, so a hit lasts only a burst of
+	// lookups, such as a Blueprint's services built from one repository: a
+	// longer memo built a commit from before the latest push (w5/152). A miss,
+	// including a lookup the rate limit refused, leaves the build unpinned, on
+	// the branch, and may last longer.
+	publicCommitCacheTTL       = 10 * time.Second
 	publicCommitMissTTL        = 2 * time.Minute
 	publicCommitResolveTimeout = 5 * time.Second
 )
