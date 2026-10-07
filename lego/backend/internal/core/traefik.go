@@ -41,9 +41,11 @@ const traefikIngressClass = "traefik"
 const traefikTLSEntrypoint = "websecure"
 
 // TraefikRouterNames resolves the exact metric-label identities Traefik 3.7.5
-// emits for an App's operator-owned Ingress. A private App with no Ingress has
-// no public HTTP egress and returns an empty slice. An App that declares public
-// exposure but whose Ingress is missing is unresolved only while Running —
+// emits for an App's operator-owned Ingress. An App without public hosts
+// (AppSpec.HasPublicHosts) has no Ingress and no public HTTP egress, and
+// returns an empty slice. That includes an exposed service whose subdomain is
+// disabled and whose last custom domain was deleted (w5/112). An App with
+// public hosts whose Ingress is missing is unresolved only while Running —
 // Failed/Building/etc. have no live public surface to meter (prod: Failed
 // build-never-Ingress Apps were flooding usage catch-up logs as unavailable).
 func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]string, error) {
@@ -57,11 +59,8 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 	var ingress networkingv1.Ingress
 	err := b.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: app.Name}, &ingress)
 	if apierrors.IsNotFound(err) {
-		if app.Spec.Host != "" || app.Spec.Expose || len(app.Spec.Hosts) > 0 {
-			if app.Status.Phase == appv1alpha1.PhaseRunning {
-				return nil, fmt.Errorf("resolve Traefik routers: expected Ingress %s/%s is missing", namespace, app.Name)
-			}
-			return []string{}, nil
+		if app.Spec.HasPublicHosts() && app.Status.Phase == appv1alpha1.PhaseRunning {
+			return nil, fmt.Errorf("resolve Traefik routers: expected Ingress %s/%s is missing", namespace, app.Name)
 		}
 		return []string{}, nil
 	}
