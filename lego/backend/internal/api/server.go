@@ -481,8 +481,9 @@ type Deps struct {
 	// tenant for a human identity on first login (w1/m9). nil => store off: no mint.
 	Onboard          Onboarding
 	OAuthRevocations RevocationStore
-	// Usage, when set (store + Prom wired), provides the month-to-date usage
-	// verb (w8/m2). nil => the verb reports ErrUsageUnavailable (503).
+	// Usage is the month-to-date usage verb (w8/m2), built with the
+	// control-plane store. nil => NewServer mounts it store-less, answering
+	// core.ErrUsageUnavailable (503).
 	Usage *usage.Service
 	// Billing is the Stripe-hosted customer-onboarding provider. nil preserves a
 	// stable REST/GraphQL/MCP contract whose verbs fail with 503 while Stripe is
@@ -493,10 +494,9 @@ type Deps struct {
 	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
 	// fields (honest subset) rather than failing the request.
 	Identities workspaces.IdentityReader
-	// Audit, when set (store + Prom-independent — only BEX_CP_DB_URI is
-	// needed), backs the audit-log read verb (w4/m10). Constructed and its
-	// retention loop started in cmd/api/main.go, same as Usage. nil => the
-	// verb reports core.ErrAuditUnavailable (503).
+	// Audit backs the audit-log read verb (w4/m10). cmd/api/main.go builds it
+	// and starts its retention loop when BEX_CP_DB_URI is set. nil => NewServer
+	// mounts it store-less, answering core.ErrAuditUnavailable (503).
 	Audit *audit.Service
 	// StripeWebhook mounts outside OAuth because Stripe authenticates with its
 	// webhook signature. The handler itself must fail closed on a bad signature.
@@ -984,9 +984,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 		CLITelemetry:     telSvc,
 		Onboard:          d.Onboard,
 		OAuthRevocations: d.OAuthRevocations,
-		Usage:            d.Usage,
-		Audit:            d.Audit,
-		StripeWebhook:    d.StripeWebhook,
+		// main.go builds Usage and Audit only with the control-plane store.
+		// Without it they mount store-less and answer 503 (w5/113).
+		Usage:         cmp.Or(d.Usage, &usage.Service{Base: base}),
+		Audit:         cmp.Or(d.Audit, &audit.Service{Base: base}),
+		StripeWebhook: d.StripeWebhook,
 	}
 	// Request-time deploy-start notifications use the same feature service as
 	// the reconciler's close-time success/failure fan-out, but are wired at the
@@ -1037,8 +1039,6 @@ type (
 	mcpRegistrar        interface{ RegisterMCP(*mcp.Server) }
 )
 
-// features lists the wired (non-nil) feature services in a stable order. A typed
-// nil stored in an interface is not == nil, so each is checked explicitly.
 // sandboxService constructs the sandbox feature when an OpenSandbox client is
 // wired (BEX_OPENSANDBOX_URL set), else nil so features() skips it and the verbs
 // report ErrSandboxesUnavailable — byte-identical to before pillar 5 (ADR042).

@@ -236,7 +236,7 @@ func TestAuditReadSurfaceAuthMatrix(t *testing.T) {
 
 	t.Run("store-less sees 503", func(t *testing.T) {
 		base := &core.Base{Client: fakeClient(), Namespace: "default", Authz: &fakeChecker{allow: true}}
-		h, _ := serverWith(t, base, Deps{Audit: &audit.Service{Base: base, Store: nil}})
+		h, _ := serverWith(t, base, Deps{}) // mounted store-less by NewServer (w5/113)
 		if code := do(t, h, "GET", "/v1/owners/tea-a/audit-logs", testToken, "").Code; code != 503 {
 			t.Errorf("store-less => 503, got %d", code)
 		}
