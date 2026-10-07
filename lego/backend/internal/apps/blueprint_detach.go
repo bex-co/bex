@@ -32,8 +32,9 @@ type blueprintDetachment struct {
 
 // Only durable claims belonging to this blueprint can become detach actions.
 // Missing resources are not advertised as continuing to run, and resources
-// declared by other blueprints never enter this diff.
-func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintID string, st parsedStack, resolver *blueprintActionResolver) ([]blueprintDetachment, error) {
+// declared by other blueprints never enter this diff. resolve supplies the
+// resolver, asked only once a claim needs resolving.
+func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintID string, st parsedStack, resolve func() (*blueprintActionResolver, error)) ([]blueprintDetachment, error) {
 	out := []blueprintDetachment{}
 	if blueprintID == "" || s.Blueprints == nil {
 		return out, nil
@@ -43,13 +44,13 @@ func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintI
 		return nil, fmt.Errorf("listing Blueprint detach candidates: %w", err)
 	}
 	declared := blueprintDeclaredClaims(st)
+	var resolver *blueprintActionResolver
 	for _, claim := range claims {
 		if declared[claim.Key()] {
 			continue
 		}
 		if resolver == nil {
-			resolver, err = newBlueprintActionResolver(ctx, s, parsedStack{})
-			if err != nil {
+			if resolver, err = resolve(); err != nil {
 				return nil, err
 			}
 		}

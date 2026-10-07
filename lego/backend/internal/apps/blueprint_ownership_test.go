@@ -275,10 +275,10 @@ func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
 			&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-1", Namespace: "default", Labels: owned}, Spec: appv1alpha1.DatabaseSpec{Name: "orders"}},
 			&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-1", Namespace: "default", Labels: owned}, Spec: appv1alpha1.KeyValueSpec{Name: "cache"}},
 		), Namespace: "default"}}
-		conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "tea-a", "blp-b", parsedStack{
+		conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "blp-b", parsedStack{
 			databases: []parsedDatabase{{name: "orders"}},
 			keyValues: []parsedKeyValue{{name: "cache"}},
-		}, nil, nil)
+		}, &datastoreSnapshot{s: svc, tenantID: "tea-a"})
 		if err != nil || len(conflicts) != 2 {
 			t.Fatalf("conflicts = %+v, %v; want the Postgres and the Key Value", conflicts, err)
 		}
@@ -367,7 +367,7 @@ databases:
 		fs.ownersReads, fs.ownerLookups = 0, 0
 		lists.databases.Store(0)
 		lists.keyValues.Store(0)
-		_, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st)
+		_, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st, svc.newDatastoreSnapshot(ctx))
 		return err
 	}
 	read := func() []BlueprintResource {
@@ -429,7 +429,7 @@ func TestAServicesOnlyApplyListsNoDatastores(t *testing.T) {
 	}
 	lists.databases.Store(0)
 	lists.keyValues.Store(0)
-	if _, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st); err != nil {
+	if _, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st, svc.newDatastoreSnapshot(ctx)); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if databases, keyValues := lists.databases.Load(), lists.keyValues.Load(); databases != 0 || keyValues != 0 {

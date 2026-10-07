@@ -48,7 +48,7 @@ func TestBlueprintDetachCandidatesAreOwnedSurvivingResources(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := svc.blueprintDetachments(ctx, connOwner, bp.ID, parsedStack{}, resolver)
+	got, err := svc.blueprintDetachments(ctx, connOwner, bp.ID, parsedStack{}, func() (*blueprintActionResolver, error) { return resolver, nil })
 	want := []blueprintDetachment{
 		{BlueprintResource{ID: kvID, Name: "cache", Type: "key_value"}, BlueprintResourceKeyValue},
 		{BlueprintResource{ID: dbID, Name: "data", Type: "postgres"}, BlueprintResourcePostgres},

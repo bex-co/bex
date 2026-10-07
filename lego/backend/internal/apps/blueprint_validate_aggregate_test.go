@@ -315,7 +315,7 @@ func TestValidateBlueprintReportsEveryDanglingWorkspaceReference(t *testing.T) {
 		t.Fatalf("parseStack: %v", err)
 	}
 	for run := 0; run < 10; run++ {
-		_, _, err := svc.resolveExistingBlueprintReferences(ownershipCtx(), st, nil, nil)
+		_, _, err := svc.resolveExistingBlueprintReferences(ownershipCtx(), st, svc.newDatastoreSnapshot(ownershipCtx()))
 		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `"qa-bp4-missing-a"`) {
 			t.Fatalf("apply resolver run %d = %v, want the sorted-first missing database", run, err)
 		}

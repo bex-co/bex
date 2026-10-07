@@ -34,11 +34,11 @@ import (
 // mutable secret values behind a deliberately write-only seam: an absent group
 // is a create, while an existing group is conservatively an update because a
 // no-op cannot be proved without revealing its values.
-func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string) (BlueprintPlan, bool, error) {
+func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack, blueprintID string, snap *datastoreSnapshot) (BlueprintPlan, bool, error) {
 	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
 		return BlueprintPlan{}, false, checkBlueprintDatabaseCreates(st)
 	}
-	resolver, err := newBlueprintActionResolver(ctx, s, st)
+	resolver, err := newBlueprintActionResolver(ctx, s, st, snap)
 	if err != nil {
 		return BlueprintPlan{}, false, err
 	}
@@ -46,7 +46,7 @@ func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st pa
 	if err != nil {
 		return BlueprintPlan{}, false, err
 	}
-	detached, err := s.blueprintDetachments(ctx, s.resolveTenantID(ctx), blueprintID, st, resolver)
+	detached, err := s.blueprintDetachments(ctx, s.resolveTenantID(ctx), blueprintID, st, func() (*blueprintActionResolver, error) { return resolver, nil })
 	if err != nil {
 		return BlueprintPlan{}, false, err
 	}
@@ -64,7 +64,7 @@ type blueprintActionResolver struct {
 	parsed    parsedStack
 }
 
-func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack) (*blueprintActionResolver, error) {
+func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *datastoreSnapshot) (*blueprintActionResolver, error) {
 	resolver := &blueprintActionResolver{
 		services:  map[string]*appv1alpha1.App{},
 		databases: map[string]*appv1alpha1.Database{},
@@ -108,7 +108,7 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		}
 		resolver.services[name] = app
 	}
-	databases, err := s.listWorkspaceDatabases(ctx, tenantID)
+	databases, err := snap.databases(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		}
 		resolver.databases[database.Spec.Name] = database
 	}
-	keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
+	keyValues, err := snap.keyValues(ctx)
 	if err != nil {
 		return nil, err
 	}

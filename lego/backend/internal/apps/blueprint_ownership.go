@@ -98,10 +98,10 @@ func blueprintResourceOwner(owners map[store.BlueprintResourceKey]string, kind s
 // blueprintOwnershipConflicts lists the parsed stack's resources that a
 // DIFFERENT blueprint currently owns. Prefers the durable claim table when
 // wired (w8/m40); falls back to CR labels. selfID "" means "no blueprint
-// identity" (a bare validate): every owned resource conflicts. databases and
-// keyValues are deployParsedStack's pre-fetched workspace snapshots; nil means
-// fetch here.
-func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, selfID string, st parsedStack, databases *appv1alpha1.DatabaseList, keyValues *appv1alpha1.KeyValueList) ([]blueprintOwnershipConflict, error) {
+// identity" (a bare validate): every owned resource conflicts. It reads snap's
+// workspace.
+func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string, st parsedStack, snap *datastoreSnapshot) ([]blueprintOwnershipConflict, error) {
+	tenantID := snap.tenantID
 	if len(st.services) == 0 && len(st.databases) == 0 && len(st.keyValues) == 0 {
 		return nil, nil
 	}
@@ -130,11 +130,9 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 		}
 	}
 	if len(st.databases) > 0 {
-		if databases == nil {
-			var err error
-			if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
-				return nil, err
-			}
+		databases, err := snap.databases(ctx)
+		if err != nil {
+			return nil, err
 		}
 		byName := map[string]string{}
 		for i := range databases.Items {
@@ -145,11 +143,9 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 		}
 	}
 	if len(st.keyValues) > 0 {
-		if keyValues == nil {
-			var err error
-			if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
-				return nil, err
-			}
+		keyValues, err := snap.keyValues(ctx)
+		if err != nil {
+			return nil, err
 		}
 		byName := map[string]string{}
 		for i := range keyValues.Items {
@@ -166,15 +162,14 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 // another blueprint's resources — before any write — unless the request
 // carries the exact takeover confirmation, which transfers ownership (the
 // post-apply stamp rewrites the label). Non-blueprint deploys are exempt.
-func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployRequest, st parsedStack, databases *appv1alpha1.DatabaseList, keyValues *appv1alpha1.KeyValueList) error {
+func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployRequest, st parsedStack, snap *datastoreSnapshot) error {
 	if req.BlueprintID == "" {
 		return nil
 	}
-	tenantID, ok := s.Tenant(ctx)
-	if !ok {
+	if _, ok := s.Tenant(ctx); !ok {
 		return nil
 	}
-	conflicts, err := s.blueprintOwnershipConflicts(ctx, tenantID, req.BlueprintID, st, databases, keyValues)
+	conflicts, err := s.blueprintOwnershipConflicts(ctx, req.BlueprintID, st, snap)
 	if err != nil {
 		return fmt.Errorf("checking Blueprint resource ownership: %w", err)
 	}
@@ -532,7 +527,7 @@ func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, bluepri
 // pre-sync preview never conflicts with itself; a not-yet-created blueprint
 // conflicts with any owner. Scan failures are swallowed (the apply-path
 // preflight is the enforcement point).
-func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch string, st parsedStack) []BlueprintValidationError {
+func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch string, st parsedStack, snap *datastoreSnapshot) []BlueprintValidationError {
 	tenantID, ok := s.Tenant(ctx)
 	if !ok {
 		return nil
@@ -541,7 +536,7 @@ func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch st
 	if b, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, repo, branch); err == nil {
 		selfID = b.ID
 	}
-	conflicts, err := s.blueprintOwnershipConflicts(ctx, tenantID, selfID, st, nil, nil)
+	conflicts, err := s.blueprintOwnershipConflicts(ctx, selfID, st, snap)
 	if err != nil {
 		return nil
 	}
@@ -592,7 +587,7 @@ func (s *Service) previewConnectionConflict(ctx context.Context, tenantID, repo,
 // A caller with no resolved workspace (the store-less dev path) is skipped: it
 // has no workspace for a name to resolve against, and failing there would be an
 // answer about the environment rather than the manifest.
-func (s *Service) validateWorkspaceReferences(ctx context.Context, source *BlueprintSource, ir BlueprintIR, st parsedStack) []BlueprintValidationError {
+func (s *Service) validateWorkspaceReferences(ctx context.Context, source *BlueprintSource, ir BlueprintIR, st parsedStack, snap *datastoreSnapshot) []BlueprintValidationError {
 	if s.Client == nil {
 		return nil
 	}
@@ -600,7 +595,7 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 		return nil
 	}
 	var out []BlueprintValidationError
-	if _, _, err := s.resolveExistingBlueprintReferences(ctx, st, nil, nil); err != nil {
+	if _, _, err := s.resolveExistingBlueprintReferences(ctx, st, snap); err != nil {
 		var refused blueprintResourceErrors
 		if !errors.As(err, &refused) {
 			// A cluster read failure is not a manifest problem; the apply path
