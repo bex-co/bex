@@ -38,6 +38,16 @@ func (metadataIdentities) Lookup(_ context.Context, subject string) (workspaces.
 	return workspaces.IdentityAttrs{Email: subject + "@example.com"}, true
 }
 
+func (m metadataIdentities) LookupMany(ctx context.Context, subjects []string) map[string]workspaces.IdentityAttrs {
+	out := map[string]workspaces.IdentityAttrs{}
+	for _, subject := range subjects {
+		if attrs, ok := m.Lookup(ctx, subject); ok {
+			out[subject] = attrs
+		}
+	}
+	return out
+}
+
 func metadataResources(ownerID string) (*appv1alpha1.App, *appv1alpha1.Database, *appv1alpha1.KeyValue) {
 	created := metav1.NewTime(time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC))
 	annotations := map[string]string{resourcemeta.UpdatedAtAnnotation: "2026-07-15T12:05:00Z"}

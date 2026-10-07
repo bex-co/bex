@@ -1019,7 +1019,23 @@ func (a identityEmailLookup) LookupIdentity(ctx context.Context, subject string)
 		return members.IdentityAttrs{}, false
 	}
 	attrs, ok := a.Identities.Lookup(ctx, subject)
-	return members.IdentityAttrs{Email: attrs.Email, MFAEnabled: attrs.MFAEnabled}, ok
+	return memberAttrs(attrs), ok
+}
+
+func (a identityEmailLookup) LookupIdentities(ctx context.Context, subjects []string) map[string]members.IdentityAttrs {
+	if a.Identities == nil {
+		return nil
+	}
+	found := a.Identities.LookupMany(ctx, subjects)
+	out := make(map[string]members.IdentityAttrs, len(found))
+	for subject, attrs := range found {
+		out[subject] = memberAttrs(attrs)
+	}
+	return out
+}
+
+func memberAttrs(attrs workspaces.IdentityAttrs) members.IdentityAttrs {
+	return members.IdentityAttrs{Email: attrs.Email, MFAEnabled: attrs.MFAEnabled}
 }
 
 // LookupEmail keeps the same adapter serving notifications.EmailLookup (the

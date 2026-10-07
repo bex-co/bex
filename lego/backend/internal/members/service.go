@@ -234,6 +234,9 @@ type IdentityAttrs struct {
 // omitted (honest subset) — List still succeeds.
 type IdentityLookup interface {
 	LookupIdentity(ctx context.Context, subject string) (IdentityAttrs, bool)
+	// LookupIdentities resolves a list's subjects at once (w5/116). A subject
+	// that did not resolve is absent.
+	LookupIdentities(ctx context.Context, subjects []string) map[string]IdentityAttrs
 }
 
 // RoleGranter writes a member's OpenFGA role tuple on a workspace (the authz
@@ -507,6 +510,10 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 	if err != nil {
 		return nil, err
 	}
+	var identities map[string]IdentityAttrs
+	if s.Identities != nil {
+		identities = s.Identities.LookupIdentities(ctx, subjects)
+	}
 	out := make([]MemberView, 0, len(ms))
 	for _, m := range ms {
 		mv := memberView(m)
@@ -515,7 +522,7 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 		mv.UserID = ownIDs[m.Subject]
 		mv.IdentityResolved = true
 		if s.Identities != nil {
-			if attrs, ok := s.Identities.LookupIdentity(ctx, m.Subject); ok {
+			if attrs, ok := identities[m.Subject]; ok {
 				mv.Email = attrs.Email
 				mv.MFAEnabled = attrs.MFAEnabled
 			} else {
@@ -570,8 +577,7 @@ func (s *Service) seatsUsed(ctx context.Context, workspaceID string) (int, error
 //
 // Membership is keyed by subject; the address lives in the identity provider, so
 // this resolves the workspace's members through the same Identities seam List
-// uses. Member counts are small and inviting is a rare admin action, so the
-// per-member lookup is affordable here.
+// uses.
 //
 // Without an identity reader (BEX_KRATOS_ADMIN_URL unset) no address can be
 // resolved, so the answer is an honest "not known to be a member" and the invite
@@ -586,9 +592,12 @@ func (s *Service) memberWithEmail(ctx context.Context, workspaceID, email string
 	if err != nil {
 		return false, mapStoreErr(err)
 	}
+	subjects := make([]string, 0, len(ms))
 	for _, m := range ms {
-		attrs, ok := s.Identities.LookupIdentity(ctx, m.Subject)
-		if ok && strings.EqualFold(strings.TrimSpace(attrs.Email), email) {
+		subjects = append(subjects, m.Subject)
+	}
+	for _, attrs := range s.Identities.LookupIdentities(ctx, subjects) {
+		if strings.EqualFold(strings.TrimSpace(attrs.Email), email) {
 			return true, nil
 		}
 	}

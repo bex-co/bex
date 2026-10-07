@@ -41,6 +41,10 @@ func (e emailLookup) Lookup(_ context.Context, subject string) (IdentityAttrs, b
 	return IdentityAttrs{Email: email}, true
 }
 
+func (e emailLookup) LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs {
+	return lookupEach(ctx, e, subjects)
+}
+
 func TestOwnerEmailFollowsTheOwnerBindingNotTheOldestAdmin(t *testing.T) {
 	st := newFakeStore()
 	st.tenants["tea-1"] = store.Tenant{ID: "tea-1", Name: "acme", Plan: store.PlanPro}
