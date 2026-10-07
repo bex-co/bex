@@ -46,9 +46,11 @@ func TestQuotaCapError_MapsExceededQuotaToRenderShapedMessage(t *testing.T) {
 	if !errors.Is(mapped, ErrBadRequest) {
 		t.Errorf("mapped error = %v, want it to wrap ErrBadRequest", mapped)
 	}
+	// Coded, so it carries no "bad request: " prefix (w5/m130).
 	const want = "workspace is limited to 25 services; delete an existing service to create another"
-	if got := mapped.Error(); got != fmt.Sprintf("%s: %s", ErrBadRequest, want) {
-		t.Errorf("mapped message = %q, want it to end with %q", got, want)
+	var coded *CodedError
+	if got := mapped.Error(); got != want || !errors.As(mapped, &coded) || coded.Code != WorkspaceResourceLimitCode || coded.Params["limit"] != int64(25) {
+		t.Errorf("mapped = %q %+v, want %q coded %s with limit 25", got, coded, want, WorkspaceResourceLimitCode)
 	}
 }
 
@@ -108,8 +110,8 @@ func TestQuotaCapError_MapsDatastoreDimensions(t *testing.T) {
 		if !errors.Is(mapped, ErrBadRequest) {
 			t.Errorf("%s: mapped error = %v, want it to wrap ErrBadRequest", tc.resource, mapped)
 		}
-		if got := mapped.Error(); got != fmt.Sprintf("%s: %s", ErrBadRequest, tc.want) {
-			t.Errorf("%s: mapped message = %q, want it to end with %q", tc.resource, got, tc.want)
+		if got := mapped.Error(); got != tc.want {
+			t.Errorf("%s: mapped message = %q, want %q", tc.resource, got, tc.want)
 		}
 	}
 }

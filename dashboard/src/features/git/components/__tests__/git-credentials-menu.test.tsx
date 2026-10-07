@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GitCredentialsMenu } from "@/features/git/components/git-credentials-menu";
@@ -169,13 +170,29 @@ describe("GitCredentialsMenu", () => {
   });
 
   it("shows the unavailable state when the GitHub App is not configured", async () => {
-    state.error = new Error("github integration not configured");
+    state.error = codedGraphQLError(
+      "GITHUB_UNAVAILABLE",
+      {},
+      "github integration not configured",
+    );
     const user = userEvent.setup();
     render(<GitCredentialsMenu />);
     await user.click(screen.getByRole("button", { name: /Credentials/ }));
     expect(
       screen.getByText("GitHub integration not configured"),
     ).toBeInTheDocument();
+  });
+
+  // GitHub is recognized as unconfigured by GITHUB_UNAVAILABLE, not by "not
+  // configured" in the wording (w5/m130).
+  it("does not read the unavailable state from the wording alone", async () => {
+    state.error = uncodedGraphQLError("github integration not configured");
+    const user = userEvent.setup();
+    render(<GitCredentialsMenu />);
+    await user.click(screen.getByRole("button", { name: /Credentials/ }));
+    expect(
+      screen.queryByText("GitHub integration not configured"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a generic error state on a load failure", async () => {

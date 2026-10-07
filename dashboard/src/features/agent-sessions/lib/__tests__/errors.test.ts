@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
 import {
   AgentSessionError,
-  AgentSessionsUnavailableError,
   agentSessionAvailabilityCopy,
   toAgentSessionError,
 } from "@/features/agent-sessions/lib/errors";
@@ -63,12 +62,16 @@ describe("toAgentSessionError", () => {
     expect(toAgentSessionError(err)).toBe(err);
   });
 
-  it("maps a 'not configured' GraphQL error to AgentSessionsUnavailableError, keeping the message", () => {
-    const out = toAgentSessionError(
-      gqlError(undefined, "agent sessions not configured"),
+  it("decides an unconfigured platform by code, not by 'not configured' in the wording (w5/m130)", () => {
+    const coded = toAgentSessionError(
+      gqlError("AGENT_SESSION_NOT_CONFIGURED", "reworded by the server"),
     );
-    expect(out).toBeInstanceOf(AgentSessionsUnavailableError);
-    expect((out as Error).message).toBe("agent sessions not configured");
+    expect(coded).toBeInstanceOf(AgentSessionError);
+    expect(agentSessionAvailabilityCopy(coded)?.titleKey).toBe(
+      "agentSessions.unavailableTitle",
+    );
+    const worded = gqlError(undefined, "agent sessions not configured");
+    expect(toAgentSessionError(worded)).toBe(worded);
   });
 
   it.each(CODES)(
@@ -106,7 +109,7 @@ describe("toAgentSessionError", () => {
 
   it("returns the original error unchanged for an unknown code (no AGENT_SESSION_ prefix)", () => {
     const err = gqlError("PLAN_LIMIT", "over the limit");
-    // No agent-session code and not a 'not configured' message → passthrough.
+    // No agent-session code → passthrough.
     expect(toAgentSessionError(err)).toBe(err);
   });
 

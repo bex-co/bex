@@ -74,10 +74,9 @@ export interface UseAgentSessionMutationsResult {
 /**
  * Write wrappers over bex-api's agent-session mutations (ADR047 D9). Every verb
  * runs `no-cache` (the polled queries own the cache) and re-throws through
- * `toAgentSessionError`, so a caller catches a typed
- * `AgentSessionsUnavailableError` (503) or `AgentSessionError` (coded
- * `AGENT_SESSION_*`, egress errors carrying `{reason, entry}`) — never a raw
- * Apollo error. bex-api authorizes + mints; the browser presents the returned
+ * `toAgentSessionError`, so a caller catches a typed `AgentSessionError` (coded
+ * `AGENT_SESSION_*`: an unconfigured platform, egress errors carrying
+ * `{reason, entry}`) — never a raw Apollo error. bex-api authorizes + mints; the browser presents the returned
  * ticket to the m43 stream endpoint (t002).
  */
 

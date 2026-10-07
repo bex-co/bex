@@ -5,6 +5,7 @@ import { RenameDatabaseDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   hasGraphQLErrorCode,
+  isNameConflictError,
   mutationErrorMessage,
 } from "@/common/lib/graphql-error";
 
@@ -26,8 +27,7 @@ export function useRenameDatabase(): UseRenameDatabaseResult {
         toast.success(t("databases.nameSuccess", { name }));
         return true;
       } catch (error) {
-        const message = error instanceof Error ? error.message : "";
-        if (message.includes("already exists")) {
+        if (isNameConflictError(error)) {
           toast.error(t("databases.nameConflict"));
         } else if (hasGraphQLErrorCode(error, "RESOURCE_NAME_INVALID")) {
           toast.error(t("databases.nameInvalid"));

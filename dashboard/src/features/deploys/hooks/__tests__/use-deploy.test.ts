@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import { renderHook } from "@testing-library/react";
 import { useDeploy } from "@/features/deploys/hooks/use-deploy";
 
@@ -113,7 +114,7 @@ describe("useDeploy", () => {
     mockUseQuery.mockReturnValue({
       data: { deploy: null },
       loading: false,
-      error: new Error('deploy "dep-nope" not found'),
+      error: codedGraphQLError("NOT_FOUND", {}, 'deploy "dep-nope" not found'),
       previousData: undefined,
       stopPolling,
     });

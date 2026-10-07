@@ -11,7 +11,10 @@ import {
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 import type { SSHKeyView } from "@/features/ssh-keys/types";
 
 export function useSSHKeys() {
@@ -51,11 +54,8 @@ export function useSSHKeys() {
         toast.success(t("sshKeys.createSuccess", { name }));
         return true;
       } catch (cause) {
-        const duplicate =
-          cause instanceof Error &&
-          cause.message.toLowerCase().includes("already registered");
         toast.error(
-          duplicate
+          hasGraphQLErrorCode(cause, "SSH_KEY_EXISTS")
             ? t("sshKeys.duplicateError")
             : mutationErrorMessage(cause, t("sshKeys.createError")),
         );

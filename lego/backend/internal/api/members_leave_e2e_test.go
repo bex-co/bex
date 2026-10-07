@@ -168,8 +168,8 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 	//    leaving them be and checking the true single-admin case on `keep`,
 	//    where the leaver is the sole admin of their own workspace).
 	rec = e2eCall(mux, ctx, leaver, "DELETE", "/v1/workspaces/"+keep.ID+"/members/me", "")
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("last admin leaving: %d %s, want 400", rec.Code, rec.Body)
+	if rec.Code != http.StatusBadRequest || codeOf(t, rec.Body.Bytes()) != members.ErrorLastAdmin {
+		t.Fatalf("last admin leaving: %d %s, want 400 coded %s", rec.Code, rec.Body, members.ErrorLastAdmin)
 	}
 	if _, err := st.GetTenantMember(ctx, keep.ID, leaver); err != nil {
 		t.Fatalf("last admin's row gone after a refused leave: %v", err)

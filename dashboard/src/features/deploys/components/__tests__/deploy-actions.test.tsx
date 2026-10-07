@@ -210,6 +210,7 @@ describe("DeployActions", () => {
       .mockRejectedValueOnce(
         codedGraphQLError("PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED", {
           confirm: "sudo repoint service web",
+          name: "web",
         }),
       )
       .mockResolvedValueOnce({
@@ -232,7 +233,7 @@ describe("DeployActions", () => {
         "/services/web/deploys/dep-rollback",
       );
     });
-    expect(ask).toHaveBeenCalledWith("sudo repoint service web");
+    expect(ask).toHaveBeenCalledWith("sudo repoint service web", "web");
     expect(rollbackService).toHaveBeenNthCalledWith(2, {
       variables: {
         serviceId: "web",

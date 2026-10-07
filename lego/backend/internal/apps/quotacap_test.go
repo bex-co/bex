@@ -47,8 +47,8 @@ func TestServiceCountCapCreateError(t *testing.T) {
 		t.Fatalf("serviceCountCap.CreateError(quota rejection) = %v, want it to wrap core.ErrBadRequest", got)
 	}
 	const wantMsg = "workspace is limited to 25 services; delete an existing service to create another"
-	if got.Error() != fmt.Sprintf("%s: %s", core.ErrBadRequest, wantMsg) {
-		t.Errorf("serviceCountCap.CreateError message = %q, want it to end with %q", got.Error(), wantMsg)
+	if got.Error() != wantMsg {
+		t.Errorf("serviceCountCap.CreateError message = %q, want %q", got.Error(), wantMsg)
 	}
 
 	if got := serviceCountCap.CreateError(nil); got != nil {

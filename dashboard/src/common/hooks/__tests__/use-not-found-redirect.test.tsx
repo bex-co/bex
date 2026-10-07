@@ -14,6 +14,7 @@ import {
   useNotFoundRedirect,
 } from "../use-not-found-redirect";
 import { ServerError } from "@apollo/client/errors";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
@@ -82,12 +83,38 @@ describe("useNotFoundRedirect (w9/m55)", () => {
 // and /webhook.
 describe("resourceNotFound / resourceFailed (w6/m44)", () => {
   const resource = { id: "srv-1" };
-  const notFoundErr = new Error("not found");
+  const notFoundErr = codedGraphQLError("NOT_FOUND");
   const outage = new Error("Failed to fetch");
 
   it("a dead id is not-found even though the backend reports it as an error", () => {
     expect(resourceNotFound(null, false, notFoundErr)).toBe(true);
     expect(resourceFailed(null, false, notFoundErr)).toBe(false);
+  });
+
+  // The code decides (w5/m130): a feature's own *_NOT_FOUND counts, and the
+  // wording alone, without a code, no longer does.
+  // bex-api answers a missing resource 200 with a coded error, so a transport
+  // 404 is an ingress or proxy failure: retry, never redirect away.
+  it("treats a transport 404 as a failure, not a missing resource", () => {
+    const proxy404 = new ServerError("status 404", {
+      response: new Response("no", { status: 404 }),
+      bodyText: "no",
+    });
+    expect(resourceNotFound(null, false, proxy404)).toBe(false);
+    expect(resourceFailed(null, false, proxy404)).toBe(true);
+  });
+
+  it("decides not-found by code, not by 'not found' in the wording", () => {
+    expect(
+      resourceNotFound(
+        null,
+        false,
+        codedGraphQLError("AGENT_SESSION_NOT_FOUND"),
+      ),
+    ).toBe(true);
+    const worded = uncodedGraphQLError("deploy not found");
+    expect(resourceNotFound(null, false, worded)).toBe(false);
+    expect(resourceFailed(null, false, worded)).toBe(true);
   });
 
   it("a genuine failure is an error, never a redirect", () => {
@@ -133,7 +160,7 @@ describe("resourceUnauthenticated (w3/m80)", () => {
     response: new Response("no", { status: 502 }),
     bodyText: "no",
   });
-  const notFoundErr = new Error("not found");
+  const notFoundErr = codedGraphQLError("NOT_FOUND");
 
   it("claims a 401 and takes it away from resourceFailed", () => {
     expect(resourceUnauthenticated(null, false, unauthorized)).toBe(true);

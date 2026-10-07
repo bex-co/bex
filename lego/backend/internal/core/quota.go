@@ -66,7 +66,11 @@ func QuotaCapError(err error, countKey, noun string) (mapped error, ok bool) {
 	if end == 0 {
 		return nil, false
 	}
-	return quotaCapExceeded(digits[:end], noun), true
+	limit, err := strconv.ParseInt(digits[:end], 10, 64)
+	if err != nil {
+		return nil, false
+	}
+	return quotaCapExceeded(limit, noun), true
 }
 
 // CountCap names one per-kind workspace cap: the ResourceQuota key that
@@ -101,9 +105,15 @@ func (c CountCap) Room(q *corev1.ResourceQuota) (room, limit int64, ok bool) {
 // Exceeded is the refusal of a create past this cap's limit: what CreateError
 // maps admission's quota refusal to.
 func (c CountCap) Exceeded(limit int64) error {
-	return quotaCapExceeded(strconv.FormatInt(limit, 10), c.Noun)
+	return quotaCapExceeded(limit, c.Noun)
 }
 
-func quotaCapExceeded(limit, noun string) error {
-	return fmt.Errorf("%w: workspace is limited to %s %ss; delete an existing %s to create another", ErrBadRequest, limit, noun, noun)
+// WorkspaceResourceLimitCode is a create refused past its workspace's count
+// cap, so a client recognizes the cap by code, not by its wording (w5/m130).
+const WorkspaceResourceLimitCode = "WORKSPACE_RESOURCE_LIMIT"
+
+func quotaCapExceeded(limit int64, noun string) error {
+	return NewBadRequestError(WorkspaceResourceLimitCode,
+		fmt.Sprintf("workspace is limited to %d %ss; delete an existing %s to create another", limit, noun, noun),
+		map[string]any{"limit": limit})
 }

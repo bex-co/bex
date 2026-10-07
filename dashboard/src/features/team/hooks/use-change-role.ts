@@ -3,7 +3,10 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { ChangeWorkspaceMemberRoleDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 import type { Role } from "@/features/team/types";
 
 export interface UseChangeRoleResult {
@@ -31,9 +34,8 @@ export function useChangeRole(workspaceId: string): UseChangeRoleResult {
         toast.success(t("team.roleChanged"));
         return true;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "";
         toast.error(
-          msg.toLowerCase().includes("last admin")
+          hasGraphQLErrorCode(e, "LAST_ADMIN")
             ? t("team.lastAdminError")
             : mutationErrorMessage(e, t("team.roleChangeError")),
         );

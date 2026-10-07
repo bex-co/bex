@@ -49,6 +49,41 @@ export function classifyRefusal(
   return "generic";
 }
 
+/** The code of every GraphQL error in Apollo's combined response. */
+export function graphQLErrorCodes(err: unknown): string[] {
+  if (!CombinedGraphQLErrors.is(err)) return [];
+  return err.errors.flatMap((item) => {
+    const code = item.extensions?.["code"];
+    return typeof code === "string" ? [code] : [];
+  });
+}
+
+/**
+ * A missing resource, decided by bex-api's code rather than its wording
+ * (w5/m130): the shared NOT_FOUND, or a feature's own `*_NOT_FOUND`, which
+ * always wraps it (core.NewNotFoundError). A transport 404 is not one: bex-api
+ * answers a missing resource 200 with errors, so a 404 status is an ingress or
+ * proxy failure, which a page retries rather than redirects away from.
+ */
+export function isNotFoundError(err: unknown): boolean {
+  return graphQLErrorCodes(err).some(
+    (code) => code === "NOT_FOUND" || code.endsWith("_NOT_FOUND"),
+  );
+}
+
+/**
+ * The workspace-cap refusal's own message, which the create dialogs show as
+ * is, or null for any other error (WORKSPACE_RESOURCE_LIMIT, w5/m130).
+ */
+export function workspaceCapMessage(err: unknown): string | null {
+  if (!CombinedGraphQLErrors.is(err)) return null;
+  return (
+    err.errors.find(
+      (item) => item.extensions?.["code"] === "WORKSPACE_RESOURCE_LIMIT",
+    )?.message ?? null
+  );
+}
+
 /** True when any GraphQL error in Apollo's combined response has code. */
 export function hasGraphQLErrorCode(err: unknown, code: string): boolean {
   return graphQLErrorExtensions(err, code) !== null;

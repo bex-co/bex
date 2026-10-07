@@ -4,7 +4,6 @@ import {
   takeoverCopy,
   type BlueprintConfirmationRequired,
 } from "@/features/blueprints/lib/takeover";
-import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 
 /**
  * The typed-phrase retry for a Blueprint create or sync bex-api refused: a
@@ -29,7 +28,7 @@ export function BlueprintConfirmationDialog({
     <ProtectedConfirmationDialog
       key={pending ? `open:${pending.confirmation}` : "closed"}
       open={pending !== null}
-      resourceName={pending ? protectedServiceName(pending.confirmation) : ""}
+      resourceName={pending?.resourceName ?? ""}
       requiredConfirmation={pending?.confirmation ?? ""}
       actionLabel={actionLabel}
       {...(pending?.takeover ? takeoverCopy(pending.takeover, t) : {})}
