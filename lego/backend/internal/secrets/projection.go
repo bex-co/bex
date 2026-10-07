@@ -111,10 +111,13 @@ type sourceProjection struct {
 // overwritten. A store without versions (test doubles) has no order to keep,
 // and its writes are unconditional.
 //
-// The one exception to the order is a Secret another App controls: a deleted
-// namesake's, which garbage collection has not reached. Its revision belongs
-// to a store the purge removed, so a's write replaces it whatever it records,
-// provided a is still the App at that name (w5/118).
+// Two Secrets are exceptions to the order. One is a Secret another App
+// controls: a deleted namesake's, which garbage collection has not reached.
+// Its revision belongs to a store the purge removed, so a's write replaces it
+// whatever it records, provided a is still the App at that name (w5/118). The
+// other is a preparation its create abandoned, ownerless long past any
+// create's window: no store's write ever stamped it after the preparation's,
+// so a's write replaces it too (w5/148).
 func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind projectionKind, data map[string]string, revision sourceRevision) (sourceProjection, error) {
 	name := kind.secretName(a.Name)
 	if _, versioned := s.Store.(core.VersionedSecretKV); !versioned {
@@ -146,8 +149,12 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		// collection has not reached yet. A service recreated under the same
 		// name restarts its store at version 1, so the old revision must not
 		// outrank it: the Secret is replaced, and owned by a (w5/118).
+		// An abandoned preparation is replaced too, but counts as a's own
+		// Secret when it existed: it may be a's, if a's adoption crashed, and a
+		// failed write must restore it rather than remove it (w5/148).
 		owner := metav1.GetControllerOfNoCopy(sec)
-		predecessor := owner != nil && owner.UID != a.UID
+		replaced := owner != nil && owner.UID != a.UID
+		predecessor := replaced || abandonedPreparation(sec, kind, s.Now())
 		// Any Secret a does not control yet, a predecessor's or one a create
 		// prepared ownerless, becomes a's only while a is still the App at its
 		// name. A write in flight for a deleted App would otherwise take over its
@@ -157,7 +164,7 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 				return out, err
 			}
 		}
-		out.ExistedBefore = !predecessor
+		out.ExistedBefore = !replaced
 		project := data
 		if current, known := projectedRevision(sec, kind); known && !predecessor {
 			if current.after(revision) {
@@ -224,7 +231,7 @@ func (s *Service) stampProjection(a *appv1alpha1.App, sec *corev1.Secret, kind p
 // other controller, or a preparation that may still be running holds it.
 func (s *Service) vacated(ctx context.Context, a *appv1alpha1.App, kind projectionKind, sec *corev1.Secret) (bool, error) {
 	if owner := metav1.GetControllerOfNoCopy(sec); owner == nil {
-		if len(sec.OwnerReferences) != 0 || !abandonedPreparation(sec, kind, s.Now()) {
+		if !abandonedPreparation(sec, kind, s.Now()) {
 			return false, nil
 		}
 	} else if owner.APIVersion != appv1alpha1.SchemeGroupVersion.String() || owner.Kind != "App" || owner.Name != a.Name {
@@ -250,12 +257,15 @@ func setPreparedAt(sec *corev1.Secret, at time.Time) {
 	metav1.SetMetaDataAnnotation(&sec.ObjectMeta, preparedAtAnnotation, at.UTC().Format(time.RFC3339))
 }
 
-// abandonedPreparation reports whether ownerless sec, at kind's name, is a
-// preparation claimed longer ago than any create runs. One from before claims
-// were dated is dated by its creation, but only if it carries kind's
-// projection revision: other ownerless Secrets (an env group's) are never a
-// create's. One of unknown age is never abandoned.
+// abandonedPreparation reports whether sec, at kind's name, is a preparation
+// left ownerless longer than any create runs. One from before claims were
+// dated is dated by its creation, but only if it carries kind's projection
+// revision: other ownerless Secrets (an env group's) are never a create's. One
+// of unknown age, or with any owner, is never abandoned.
 func abandonedPreparation(sec *corev1.Secret, kind projectionKind, now time.Time) bool {
+	if len(sec.OwnerReferences) != 0 {
+		return false
+	}
 	claimed, err := time.Parse(time.RFC3339, sec.Annotations[preparedAtAnnotation])
 	if err != nil {
 		if _, projected := projectedRevision(sec, kind); !projected {

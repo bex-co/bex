@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -323,5 +324,37 @@ func TestAReplacedWritesMergeIntoItsNamesakesMapIsTakenBack(t *testing.T) {
 				t.Fatalf("the namesake's Secret holds %v, want its own %v", sec.Data, want)
 			}
 		})
+	}
+}
+
+// TestACASRollbackRestoresAServicesOwnUnadoptedSecret (w5/148): a service whose
+// create crashed after the App existed but before adoption keeps its own
+// prepared env Secret ownerless, and in time it looks abandoned. A CAS save
+// replaces it as a predecessor would be, but when the save fails the rollback
+// restores the Secret the service's envFrom names rather than removing it,
+// since it counted as the service's own.
+func TestACASRollbackRestoresAServicesOwnUnadoptedSecret(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")], store.versions[envPath("web")] = map[string]string{"TOKEN": "before"}, 1
+	own := projectedSecret(envProjection, committedAt(1), map[string]string{"TOKEN": "before"})
+	setPreparedAt(own, fixedNow().Add(-time.Hour))
+	app := sampleApp("web")
+	app.Spec.EnvFromSecret = envSecretName("web")
+	failing := &patchCountingClient{Client: fakeClient(app, own), fail: errors.New("injected App patch failure")}
+	svc := &Service{Base: &core.Base{Client: failing, Namespace: "default", Clock: fixedNow}, Store: store}
+	revision := encodeEnvRevision(1)
+
+	if _, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
+		SaveMode: SaveModeDeploy, ExpectedEnvRevision: &revision,
+		EnvVars: []EnvVarPatch{{Key: "TOKEN", Value: "after"}},
+	}); err == nil {
+		t.Fatal("a save whose App patch failed succeeded")
+	}
+	sec := &corev1.Secret{}
+	if err := failing.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-env"}, sec); err != nil {
+		t.Fatalf("the service's own env Secret: %v, want it restored", err)
+	}
+	if string(sec.Data["TOKEN"]) != "before" {
+		t.Fatalf("the service's own env Secret holds %v, want its value before the failed save", keysOf(sec.Data))
 	}
 }
