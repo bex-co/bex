@@ -605,8 +605,8 @@ func (s *Service) renderService(a AppView) renderService {
 	return toRenderServiceWithMetadata(a, s.Metadata)
 }
 
-// restServices enriches a whole page through one owner batch lookup and one
-// registry-credential batch lookup (each at most one query per page).
+// restServices enriches a whole page through one owner batch lookup (one
+// ResolveResourceOwners call) and one registry-credential batch query.
 func (s *Service) restServices(ctx context.Context, apps []AppView) []renderService {
 	ownerIDs := make([]string, 0, len(apps))
 	for _, app := range apps {

@@ -45,6 +45,7 @@ type fakeStore struct {
 	// ownerSubjects mirrors tenants.owner_identity_id — absent means the
 	// unbound (CreateWorkspace) shape, which is what most fixtures are.
 	ownerSubjects map[string]string
+	contactReads  int // TenantContactSubjects calls
 }
 
 func newFakeStore() *fakeStore {
@@ -146,13 +147,26 @@ func (f *fakeStore) ListTenantsForSubject(_ context.Context, subject string) ([]
 	return out, nil
 }
 
-// ownerSubjects mirrors tenants.owner_identity_id per workspace ("" = unbound,
-// the CreateWorkspace shape). ownerEmail resolves it before falling back to the
-// oldest admin (w5/m103).
-func (f *fakeStore) TenantOwnerSubject(_ context.Context, id string) (string, error) {
+// TenantContactSubjects mirrors PGStore's: the owner binding (ownerSubjects),
+// else the oldest user admin. contactReads counts the calls.
+func (f *fakeStore) TenantContactSubjects(_ context.Context, ids []string) (map[string]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.ownerSubjects[id], nil
+	f.contactReads++
+	out := map[string]string{}
+	for _, id := range ids {
+		if owner := f.ownerSubjects[id]; owner != "" {
+			out[id] = owner
+			continue
+		}
+		for _, m := range f.members[id] {
+			if m.Role == "admin" && (m.Kind == "" || m.Kind == "user") {
+				out[id] = m.Subject
+				break
+			}
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeStore) ListTenantMembers(_ context.Context, id string) ([]store.TenantMember, error) {
