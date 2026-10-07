@@ -34,6 +34,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/types/k8sname"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const (
@@ -45,7 +46,6 @@ const (
 	kpackSucceededCondition   = "Succeeded"
 	kpackServiceAccountPrefix = "bex-kpack-"
 	kpackPurposeLabel         = "app.bex.co/kpack-purpose"
-	kpackRevisionLabel        = "app.bex.co/build-revision"
 )
 
 var (
@@ -120,29 +120,17 @@ func KpackImage(o Options) *unstructured.Unstructured {
 		spec["cosign"] = map[string]any{}
 	}
 
-	appNamespace := ""
-	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
-		appNamespace = o.AppNamespace
-	}
-	commonLabels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
-	labels := make(map[string]any, len(commonLabels)+1)
-	for key, value := range commonLabels {
-		labels[key] = value
-	}
-	labels["app.bex.co/build"] = o.Name
-	labels[kpackPurposeLabel] = kpackImagePurpose
-	labels[kpackRevisionLabel] = kpackRevision(o)
-
-	return &unstructured.Unstructured{Object: map[string]any{
+	image := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": kpackAPIVersion,
 		"kind":       "Image",
 		"metadata": map[string]any{
 			"name":      kpackImageName(o),
 			"namespace": o.Namespace,
-			"labels":    labels,
 		},
 		"spec": spec,
 	}}
+	image.SetLabels(kpackArtifactLabels(o, kpackImagePurpose))
+	return image
 }
 
 // ensureBuildpack is the kpack (Cloud Native Buildpack) mirror of EnsureBuild:
@@ -315,7 +303,7 @@ func kpackServiceAccountName(o Options) string {
 func kpackArtifactLabels(o Options, purpose string) map[string]string {
 	labels := buildLabels(o)
 	labels[kpackPurposeLabel] = purpose
-	labels[kpackRevisionLabel] = kpackRevision(o)
+	labels[appv1alpha1.LabelBuildRevision] = kpackRevision(o)
 	return labels
 }
 
@@ -325,7 +313,7 @@ func checkKpackArtifact(obj metav1.Object, o Options, purpose string) error {
 		return err
 	}
 	labels := obj.GetLabels()
-	if labels[kpackPurposeLabel] != purpose || labels[kpackRevisionLabel] != kpackRevision(o) {
+	if labels[kpackPurposeLabel] != purpose || labels[appv1alpha1.LabelBuildRevision] != kpackRevision(o) {
 		return fmt.Errorf("artifact %s/%s has mismatched kpack purpose or revision", obj.GetNamespace(), obj.GetName())
 	}
 	return nil
@@ -479,7 +467,7 @@ func buildLabels(o Options) map[string]string {
 		appNamespace = o.AppNamespace
 	}
 	labels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
-	labels["app.bex.co/build"] = o.Name
+	labels[appv1alpha1.LabelBuild] = o.Name
 	return labels
 }
 

@@ -1353,9 +1353,6 @@ func (s *Service) queryEgressSourcesEvidence(ctx context.Context, resourceID str
 
 // --- t004: build-Job duration metering ---
 
-// labelBuild is the label key on BuildKit Jobs (operator/internal/build/build.go).
-const labelBuild = "app.bex.co/build"
-
 // queryBuildSeconds sums the durations of completed build Jobs whose
 // completionTime falls in [window, end). It lists Jobs by the app-name label in
 // the namespace the operator actually runs them in — BEX_BUILD_NAMESPACE, or
@@ -1372,7 +1369,7 @@ func (s *Service) queryBuildSeconds(ctx context.Context, crName, namespace strin
 	var jobs batchv1.JobList
 	if err := s.Client.List(ctx, &jobs,
 		client.InNamespace(namespace),
-		client.MatchingLabels{labelBuild: crName},
+		client.MatchingLabels{appv1alpha1.LabelBuild: crName},
 	); err != nil {
 		log.Printf("usage: build_seconds list jobs for %s: %v", crName, err)
 		return 0, false

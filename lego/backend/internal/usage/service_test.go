@@ -1138,7 +1138,7 @@ func TestBuildSecondsFromFakeJobs(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-myapp-abc",
 			Namespace: "default",
-			Labels:    map[string]string{labelBuild: "myapp"},
+			Labels:    map[string]string{appv1alpha1.LabelBuild: "myapp"},
 		},
 		Status: batchv1.JobStatus{
 			StartTime:      &start,
@@ -1149,7 +1149,7 @@ func TestBuildSecondsFromFakeJobs(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-myapp-xyz",
 			Namespace: "default",
-			Labels:    map[string]string{labelBuild: "myapp"},
+			Labels:    map[string]string{appv1alpha1.LabelBuild: "myapp"},
 		},
 		Status: batchv1.JobStatus{
 			StartTime:      &start,
@@ -1837,7 +1837,7 @@ func TestBuildSecondsSelectsCRNameInBuildNamespace(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-tea-b-myapp-abc",
 			Namespace: "bex-build",
-			Labels:    map[string]string{labelBuild: "tea-b-myapp"},
+			Labels:    map[string]string{appv1alpha1.LabelBuild: "tea-b-myapp"},
 		},
 		Status: batchv1.JobStatus{StartTime: &start, CompletionTime: &done},
 	}
@@ -1846,7 +1846,7 @@ func TestBuildSecondsSelectsCRNameInBuildNamespace(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-myapp-xyz",
 			Namespace: "default",
-			Labels:    map[string]string{labelBuild: "myapp"},
+			Labels:    map[string]string{appv1alpha1.LabelBuild: "myapp"},
 		},
 		Status: batchv1.JobStatus{StartTime: &start, CompletionTime: &done},
 	}

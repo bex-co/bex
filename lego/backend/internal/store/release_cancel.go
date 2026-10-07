@@ -19,6 +19,7 @@ package store
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -107,19 +108,34 @@ func deleteReleaseBuild(ctx context.Context, c client.Client, a *appv1alpha1.App
 		return nil
 	}
 	ns := cmp.Or(buildNamespace, a.Namespace)
-	name := appv1alpha1.BuildJobName(a.Name, appv1alpha1.BuildRevision(generation))
-	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}
-	if err := deleteBuildArtifact(ctx, c, job); err != nil {
-		return fmt.Errorf("cancel build job: %w", err)
-	}
+	revision := appv1alpha1.BuildRevision(generation)
 	// builder=auto may resolve to either shape, and cancellation must not race
-	// that resolution: delete the kpack Image of the same name too.
-	image := &unstructured.Unstructured{}
-	image.SetGroupVersionKind(kpackImageGVK)
-	image.SetName(name)
-	image.SetNamespace(ns)
-	if err := deleteBuildArtifact(ctx, c, image); err != nil {
-		return fmt.Errorf("cancel kpack image: %w", err)
+	// that resolution: stop both. Nothing retries a cancel once its stamp lands,
+	// so failing to stop one must not spare the other.
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.BuildJobName(a.Name, revision), Namespace: ns}}
+	var jobErr error
+	if err := deleteBuildArtifact(ctx, c, job); err != nil {
+		jobErr = fmt.Errorf("cancel build job: %w", err)
+	}
+	return errors.Join(jobErr, deleteReleaseKpackImage(ctx, c, a, revision, ns))
+}
+
+// deleteReleaseKpackImage deletes the release's kpack Image. Its name hashes
+// the App's UID, so it is selected by the labels the operator stamps.
+func deleteReleaseKpackImage(ctx context.Context, c client.Client, a *appv1alpha1.App, revision, ns string) error {
+	images := &unstructured.UnstructuredList{}
+	images.SetGroupVersionKind(kpackImageGVK.GroupVersion().WithKind("ImageList"))
+	err := c.List(ctx, images, client.InNamespace(ns), client.MatchingLabels(appv1alpha1.ReleaseBuildLabels(a.Name, string(a.UID), revision)))
+	if meta.IsNoMatchError(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("list kpack images: %w", err)
+	}
+	for i := range images.Items {
+		if err := deleteBuildArtifact(ctx, c, &images.Items[i]); err != nil {
+			return fmt.Errorf("cancel kpack image %s: %w", images.Items[i].GetName(), err)
+		}
 	}
 	return nil
 }

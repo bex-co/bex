@@ -103,7 +103,7 @@ func buildPodFor(app, name, namespace, container string, created time.Time) *cor
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
 			Namespace:         namespace,
-			Labels:            map[string]string{core.PodLabelBuild: app},
+			Labels:            map[string]string{appv1alpha1.LabelBuild: app},
 			CreationTimestamp: metav1.NewTime(created),
 		},
 		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: container}}},

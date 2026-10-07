@@ -44,10 +44,6 @@ const (
 	PodLabelApp      = "app.bex.co/app"
 	PodLabelRevision = "app.bex.co/revision"
 	AppContainer     = "app"
-	// PodLabelBuild identifies the build Job/Build pods for one App (w7/m28).
-	// Build containers are discovered from the Pod status rather than named here:
-	// BuildKit, signed BuildKit, and kpack use different container names.
-	PodLabelBuild = "app.bex.co/build"
 	// PodLabelPreDeploy + PreDeployContainer name the pre-deploy step's Job pod
 	// (w1/m33, lego/operator/internal/predeploy) so the logs feature can read a
 	// migration's output. Kept in sync by hand, like PodLabelApp above.
@@ -2033,9 +2029,11 @@ func (b *Base) PreDeployPods(ctx context.Context, app, namespace string) ([]core
 	return pods.Items, nil
 }
 
-// BuildPods lists an App's build pods in the operator's build namespace. Both
-// the ephemeral BuildKit Job and kpack stamp app.bex.co/build=<app>, so the logs
-// feature can follow either implementation without importing the operator.
+// BuildPods lists an App's build pods in the operator's build namespace (w7/m28).
+// Both the ephemeral BuildKit Job and kpack stamp appv1alpha1.LabelBuild=<app>,
+// so the logs feature can follow either implementation without importing the
+// operator. Their containers are discovered from the Pod status rather than
+// named here: BuildKit, signed BuildKit, and kpack name them differently.
 func (b *Base) BuildPods(ctx context.Context, app, namespace string) ([]corev1.Pod, error) {
 	if namespace == "" {
 		namespace = b.Namespace
@@ -2043,7 +2041,7 @@ func (b *Base) BuildPods(ctx context.Context, app, namespace string) ([]corev1.P
 	var pods corev1.PodList
 	if err := b.Client.List(ctx, &pods,
 		client.InNamespace(namespace),
-		client.MatchingLabels{PodLabelBuild: app}); err != nil {
+		client.MatchingLabels{appv1alpha1.LabelBuild: app}); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
