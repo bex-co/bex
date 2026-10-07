@@ -250,6 +250,8 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.SandboxExecution.Prefix():         {"sandboxes", "a token handshake under its sandbox"},
 	ids.GitClaimSelection.Prefix():        {"git", ""},
 	ids.Sandbox.Prefix():                  {"sandboxes", ""},
+	ids.StaticRoute.Prefix():              {"", "a derived rule listed under its static site; no per-rule verb yet"},
+	ids.StaticHeader.Prefix():             {"", "a derived rule listed under its static site; no per-rule verb yet"},
 }
 
 // TestEveryIDKindIsClassifiedForByIDRouting closes the gap the route walk

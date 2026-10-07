@@ -126,12 +126,16 @@ var (
 	// rejects anything else), so the substrate's own UUID can never be the
 	// public identity (w9/m94).
 	Sandbox = Kind{prefix: "sbx", desc: "hosted agent sandbox"}
+	// StaticRoute / StaticHeader are static-site rules stored as plain lists on
+	// the App spec, so their ids are derived (Derive, never New) — w8/062.
+	StaticRoute  = Kind{prefix: "rte", desc: "static site redirect/rewrite rule (derived)"}
+	StaticHeader = Kind{prefix: "hdr", desc: "static site custom response header rule (derived)"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }
