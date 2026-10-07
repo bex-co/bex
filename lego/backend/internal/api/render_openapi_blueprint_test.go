@@ -196,6 +196,10 @@ func (f *blueprintFixtureStore) GetBlueprintResourceOwner(context.Context, strin
 	return "", nil
 }
 
+func (f *blueprintFixtureStore) BlueprintResourceOwners(context.Context, string) (map[store.BlueprintResourceKey]string, error) {
+	return nil, nil
+}
+
 // blueprintRESTHandler composes what the milestone's coverage gap was missing:
 // the REAL apps.Service REST routes behind the REAL Render OpenAPI validator.
 // The existing blueprint REST test builds a bare http.NewServeMux() and calls

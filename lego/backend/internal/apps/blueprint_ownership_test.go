@@ -24,9 +24,11 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -275,7 +277,7 @@ func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
 		conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "tea-a", "blp-b", parsedStack{
 			databases: []parsedDatabase{{name: "orders"}},
 			keyValues: []parsedKeyValue{{name: "cache"}},
-		})
+		}, nil, nil)
 		if err != nil || len(conflicts) != 2 {
 			t.Fatalf("conflicts = %+v, %v; want the Postgres and the Key Value", conflicts, err)
 		}
@@ -309,4 +311,127 @@ func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
 		}
 		expect(t, svc.stampBlueprintOwnership(ctx, "blp-b", 0, "", parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}}), keyValue)
 	})
+}
+
+// datastoreListCounter counts the Database and KeyValue Lists a Service makes.
+// An apply lists both kinds concurrently.
+type datastoreListCounter struct {
+	client.Client
+	databases, keyValues atomic.Int32
+}
+
+func (c *datastoreListCounter) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	switch list.(type) {
+	case *appv1alpha1.DatabaseList:
+		c.databases.Add(1)
+	case *appv1alpha1.KeyValueList:
+		c.keyValues.Add(1)
+	}
+	return c.Client.List(ctx, list, opts...)
+}
+
+// TestABlueprintApplyAndReadEachReadTheClaimsOnce (w5/114): ownership cost one
+// claim query per declared resource on every apply and Blueprint read, and
+// deployParsedStack listed the workspace's datastores for its ownership
+// preflight and again for itself. Each now reads the claims once, and a claim
+// still outranks a stale CR label.
+func TestABlueprintApplyAndReadEachReadTheClaimsOnce(t *testing.T) {
+	const manifest = ownershipManifest + `  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+  - type: keyvalue
+    name: cache
+    plan: free
+    ipAllowList: []
+databases:
+  - name: orders
+    plan: free
+`
+	svc, fs := ownershipService(t)
+	svc.GitFetcher = fakeBlueprintFetcher{contents: manifest, sha: "abc1234"}
+	lists := &datastoreListCounter{Client: svc.Client}
+	svc.Client = lists
+	ctx := ownershipCtx()
+	bp, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	req := DeployRequest{Manifest: manifest, BlueprintID: bp.ID}
+	st, _, err := compileStack(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	apply := func() error {
+		fs.ownersReads, fs.ownerLookups = 0, 0
+		lists.databases.Store(0)
+		lists.keyValues.Store(0)
+		_, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st)
+		return err
+	}
+	read := func() []BlueprintResource {
+		fs.ownersReads, fs.ownerLookups = 0, 0
+		view, err := svc.GetBlueprintByID(ctx, bp.ID, "tea-a")
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		if fs.ownersReads != 1 || fs.ownerLookups != 0 {
+			t.Errorf("the read read the workspace's claims %d times and looked up %d resources, want one read", fs.ownersReads, fs.ownerLookups)
+		}
+		return view.Resources
+	}
+
+	if err := apply(); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if fs.ownersReads != 1 || fs.ownerLookups != 0 {
+		t.Errorf("the apply read the workspace's claims %d times and looked up %d resources, want one read", fs.ownersReads, fs.ownerLookups)
+	}
+	// Once before the writes, and once for the post-write ownership stamp.
+	if databases, keyValues := lists.databases.Load(), lists.keyValues.Load(); databases > 2 || keyValues > 2 {
+		t.Errorf("the apply listed Databases %d and Key Values %d times, want at most twice each", databases, keyValues)
+	}
+	if resources := read(); len(resources) != 4 {
+		t.Fatalf("read %d resources, want the two services, the Postgres and the Key Value", len(resources))
+	}
+
+	// Another Blueprint takes the Postgres over. Its CR label still names bp,
+	// but the claim decides: the read no longer lists it, and the preflight
+	// refuses the re-apply before any write-time claim has to.
+	if err := fs.ClaimBlueprintResource(ctx, "tea-a", "database", "orders", "blp-other", bp.ID); err != nil {
+		t.Fatal(err)
+	}
+	if resources := read(); len(resources) != 3 {
+		t.Fatalf("read %d resources after the takeover, want 3", len(resources))
+	}
+	var coded *core.CodedError
+	if err := apply(); !errors.As(err, &coded) || coded.Params["owningBlueprintId"] != "blp-other" || fs.ownerLookups != 0 {
+		t.Fatalf("re-apply = %v after %d lookups, want the preflight's refusal naming blp-other", err, fs.ownerLookups)
+	}
+}
+
+// TestAServicesOnlyApplyListsNoDatastores (w5/114): the post-write ownership
+// stamp lists a datastore kind only when the manifest declares one.
+func TestAServicesOnlyApplyListsNoDatastores(t *testing.T) {
+	svc, _ := ownershipService(t)
+	lists := &datastoreListCounter{Client: svc.Client}
+	svc.Client = lists
+	ctx := ownershipCtx()
+	bp, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	req := DeployRequest{Manifest: ownershipManifest, BlueprintID: bp.ID}
+	st, _, err := compileStack(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lists.databases.Store(0)
+	lists.keyValues.Store(0)
+	if _, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if databases, keyValues := lists.databases.Load(), lists.keyValues.Load(); databases != 0 || keyValues != 0 {
+		t.Errorf("a services-only apply listed Databases %d and Key Values %d times, want none", databases, keyValues)
+	}
 }

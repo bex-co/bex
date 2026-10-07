@@ -55,6 +55,9 @@ type fakeBlueprintStore struct {
 	syncs      map[string]store.BlueprintSync
 	// claims keys are tenant|kind|name → blueprint id (w8/m40).
 	claims map[string]string
+	// ownersReads and ownerLookups count the workspace-wide and the
+	// per-resource claim reads (w5/114).
+	ownersReads, ownerLookups int
 	// autoSyncIntents keys are delivery_digest|blueprint_id (w8/m38).
 	autoSyncIntents map[string]store.BlueprintAutoSyncIntent
 	// enqueueIntentErr, when set, fails EnqueueBlueprintAutoSyncIntent.
@@ -631,7 +634,24 @@ func (f *fakeBlueprintStore) ListBlueprintResourceClaims(_ context.Context, tena
 func (f *fakeBlueprintStore) GetBlueprintResourceOwner(_ context.Context, tenantID, kind, name string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.ownerLookups++
 	return f.claims[claimKey(tenantID, kind, name)], nil
+}
+
+func (f *fakeBlueprintStore) BlueprintResourceOwners(_ context.Context, tenantID string) (map[store.BlueprintResourceKey]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ownersReads++
+	owners := map[store.BlueprintResourceKey]string{}
+	prefix := tenantID + "|"
+	for k, v := range f.claims {
+		if rest, ok := strings.CutPrefix(k, prefix); ok {
+			if kind, name, ok := strings.Cut(rest, "|"); ok {
+				owners[store.BlueprintResourceKey{Kind: kind, Name: name}] = v
+			}
+		}
+	}
+	return owners, nil
 }
 
 // --- helpers ---

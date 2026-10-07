@@ -672,8 +672,8 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 //
 // Orchestration sequence (all-or-nothing, with dependencies):
 // 1. Validate service specs (URL ownership, maintenance mode)
-// 2. Gate on payment method (if any resource uses a paid plan)
-// 3. Fetch workspace datastore snapshots (databases, key-values) in parallel
+// 2. Fetch workspace datastore snapshots (databases, key-values) in parallel
+// 3. Refuse another Blueprint's resources, then gate on payment method (paid plans)
 // 4. Resolve cross-references to existing resources (by name → id/CR name)
 // 5. Preflight env-groups and env-vars (seam availability checks)
 // 6. Apply groupings (projects, environments) — asserts Blueprint execution first
@@ -699,14 +699,17 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.validateBlueprintServices(withRequestMemo(ctx), st); err != nil {
 		return StackResult{}, err
 	}
-	if err := s.preflightBlueprintOwnership(ctx, req, st); err != nil {
+	// The ownership preflight writes nothing, so it reads the same datastore
+	// snapshots as the rest of the apply (w5/114); the post-write stamp lists
+	// again to see the CRs this apply creates.
+	databases, keyValues, err := s.stackDatastoreSnapshots(ctx, st)
+	if err != nil {
+		return StackResult{}, err
+	}
+	if err := s.preflightBlueprintOwnership(ctx, req, st, databases, keyValues); err != nil {
 		return StackResult{}, err
 	}
 	if err := s.requireStackBilling(ctx, st); err != nil {
-		return StackResult{}, err
-	}
-	databases, keyValues, err := s.stackDatastoreSnapshots(ctx, st)
-	if err != nil {
 		return StackResult{}, err
 	}
 	databaseIDs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st, databases, keyValues)
@@ -798,8 +801,8 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 }
 
 // stackDatastoreSnapshots fetches one workspace-scoped Database/KeyValue List
-// each for the whole apply: the display-name lookups
-// (resolveExistingBlueprintReferences and the applyDatabase/applyKeyValue
+// each for the whole apply: the ownership preflight and the display-name
+// lookups (resolveExistingBlueprintReferences and the applyDatabase/applyKeyValue
 // upserts) share these snapshots instead of re-Listing per stack entry. Safe
 // because stack entry names are unique (registerUniqueName), so no lookup
 // targets an object this same apply creates.
