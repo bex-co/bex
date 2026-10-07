@@ -83,11 +83,11 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 	}
 	different, compareErr := r.servingConfigurationDiffers(ctx, app)
 	if app.Status.UndeployedChanges != different {
-		base := client.MergeFromWithOptions(app.DeepCopy(), client.MergeFromWithOptimisticLock{})
-		app.Status.UndeployedChanges = different
 		// A concurrent save or serving-revision change invalidates the comparison.
 		// Patch only this field and retry the complete read on a conflict.
-		if err := r.Status().Patch(ctx, app, base); err != nil {
+		if err := r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
+			status.UndeployedChanges = different
+		}); err != nil {
 			return ctrl.Result{}, err
 		}
 	}

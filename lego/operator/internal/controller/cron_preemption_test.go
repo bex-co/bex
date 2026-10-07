@@ -78,6 +78,8 @@ func TestCronPreemptionWaitsForEveryActiveRun(t *testing.T) {
 			r := wakeReconciler(cl, scheme)
 			template := corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{labelApp: app.Name}}, Spec: corev1.PodSpec{RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "app", Image: "busybox:latest"}}}}
 			manualKey := client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}
+			// A release decision the pass has set but not yet written (w5/121).
+			app.Status.ReleaseGeneration = 7
 			for range 2 {
 				res, err := r.convergeCronRuntime(ctx, app, template)
 				if err != nil {
@@ -97,6 +99,9 @@ func TestCronPreemptionWaitsForEveryActiveRun(t *testing.T) {
 				if res.RequeueAfter == 0 {
 					t.Error("pending preemption must requeue")
 				}
+			}
+			if app.Status.ReleaseGeneration != 7 {
+				t.Errorf("recording the cancellation discarded the pass's unsaved status: release generation %d", app.Status.ReleaseGeneration)
 			}
 			for _, untouched := range []*batchv1.Job{terminal, foreign} {
 				var live batchv1.Job
@@ -152,4 +157,30 @@ func assertCronRunCanceled(t *testing.T, runs []appv1alpha1.CronRun, name string
 		}
 	}
 	t.Errorf("cancellation for %s not persisted before Job deletion", name)
+}
+
+// TestARecordedCancellationKeepsItsFinishTime (w5/121): a preempted run is
+// recorded canceled once. A pass that waits for its Pods to go sends no second
+// record, so the run keeps the finish time it was first given.
+func TestARecordedCancellationKeepsItsFinishTime(t *testing.T) {
+	app := cronAppAt(nil, nil)
+	app.UID = "cron-preemption-app"
+	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.CronJobName(app.Name), Namespace: app.Namespace, UID: "cron-scheduler"}}
+	active := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: app.Name + "-scheduled", Namespace: app.Namespace,
+		Labels: map[string]string{labelApp: app.Name}, Finalizers: []string{"test.bex.co/pods-running"},
+		OwnerReferences: []metav1.OwnerReference{{APIVersion: "batch/v1", Kind: "CronJob", Name: cron.Name, UID: cron.UID, Controller: new(true)}},
+	}}
+	const canceledAt = "2026-01-02T03:04:05Z"
+	app.Status.Runs = []appv1alpha1.CronRun{{Name: active.Name, Status: appv1alpha1.CronRunCanceled, FinishedAt: canceledAt}}
+	scheme := wakeScheme()
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, cron, active).WithStatusSubresource(&appv1alpha1.App{}, &batchv1.Job{}).Build()
+	r := wakeReconciler(cl, scheme)
+
+	if pending, err := r.preemptOtherCronRuns(t.Context(), app, cron); err != nil || !pending {
+		t.Fatalf("preemptOtherCronRuns = %v, %v; want the run still pending", pending, err)
+	}
+	if got := app.Status.Runs[0].FinishedAt; got != canceledAt {
+		t.Fatalf("the canceled run finished at %s, want the recorded %s", got, canceledAt)
+	}
 }
