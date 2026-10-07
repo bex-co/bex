@@ -22,12 +22,16 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"k8s.io/client-go/tools/remotecommand"
@@ -109,6 +113,9 @@ func TestUploadPublishesOnlyAfterCompleteValidation(t *testing.T) {
 	valid := archive(t, &tar.Header{Name: "empty", Typeflag: tar.TypeReg, Mode: 0644})
 	badGzip := gzipBytes(t, valid)
 	badGzip = badGzip[:len(badGzip)-4]
+	// The gzip footer opens with the CRC-32 of everything before it.
+	badChecksum := gzipBytes(t, valid)
+	badChecksum[len(badChecksum)-8] ^= 0xff
 	for _, tc := range []struct {
 		name            string
 		body            []byte
@@ -121,6 +128,7 @@ func TestUploadPublishesOnlyAfterCompleteValidation(t *testing.T) {
 		{"gzip directory", gzipBytes(t, valid), "application/x-tar", "gzip", 204},
 		{"truncated tar boundary", valid[:512], "application/x-tar", "", 400},
 		{"truncated gzip footer", badGzip, "application/x-tar", "gzip", 400},
+		{"corrupt gzip checksum", badChecksum, "application/x-tar", "gzip", 400},
 		{"traversal", archive(t, &tar.Header{Name: "../escape", Typeflag: tar.TypeReg}), "application/x-tar", "", 400},
 		{"symlink", archive(t, &tar.Header{Name: "escape", Typeflag: tar.TypeSymlink, Linkname: "../outside"}), "application/x-tar", "", 400},
 		{"hardlink", archive(t, &tar.Header{Name: "link", Typeflag: tar.TypeLink, Linkname: "file"}), "application/x-tar", "", 400},
@@ -383,4 +391,83 @@ func TestUploadRevocationStopsBodyAndDoesNotPublish(t *testing.T) {
 	if w.Code == 204 || published.Load() {
 		t.Fatal("revoked transfer published")
 	}
+}
+
+// TestAnExecutorFailureAnswersWithoutItsText (w5/131): the endpoint wrote an
+// executor's error to the client, and a Kubernetes exec error names the API
+// server, the pod and the node. One wrapping io.ErrUnexpectedEOF or a deadline
+// was even answered as the client's bad upload (400) or a timeout (504). An
+// executor's failure now answers the fixed 503 sentence and its cause is
+// logged, as is any other unclassified failure's, such as a failed read of the
+// upload. A terminated target still answers its own 404.
+func TestAnExecutorFailureAnswersWithoutItsText(t *testing.T) {
+	var logs bytes.Buffer
+	prev := log.Writer()
+	log.SetOutput(&logs)
+	t.Cleanup(func() { log.SetOutput(prev) })
+	answers := func(t *testing.T, s *Server, r *http.Request, status int, body, logged string) {
+		t.Helper()
+		logs.Reset()
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, r)
+		if w.Code != status || w.Body.String() != body {
+			t.Fatalf("answered %d %q, want %d %q", w.Code, w.Body.String(), status, body)
+		}
+		if logged != "" && !strings.Contains(logs.String(), logged) {
+			t.Fatalf("the cause was not logged: %q", logs.String())
+		}
+	}
+	const failed = "sandbox file operation failed\n"
+	const execURL = "https://10.96.0.1:443/api/v1/namespaces/tea-a-sandbox/pods/os-a/exec"
+	for name, tc := range map[string]struct {
+		err          error
+		status       int
+		body, logged string
+	}{
+		"dropped stream":    {&url.Error{Op: "Post", URL: execURL, Err: io.ErrUnexpectedEOF}, http.StatusServiceUnavailable, failed, execURL},
+		"exec deadline":     {&url.Error{Op: "Post", URL: execURL, Err: context.DeadlineExceeded}, http.StatusServiceUnavailable, failed, execURL},
+		"terminated target": {fmt.Errorf("%w: pod no longer exists", sshgateway.ErrTargetTerminated), http.StatusNotFound, "sandbox target terminated: pod no longer exists\n", ""},
+	} {
+		for _, method := range []string{http.MethodPut, http.MethodGet} {
+			t.Run(name+"/"+method, func(t *testing.T) {
+				s := serverFor(func(_ context.Context, _ []string, input io.Reader, _ io.Writer) (int, error) {
+					if input != nil {
+						_, _ = io.Copy(io.Discard, input)
+					}
+					return 126, tc.err
+				})
+				answers(t, s, requestFor(t, method, []byte("data")), tc.status, tc.body, tc.logged)
+			})
+		}
+	}
+
+	const readFailure = "read tcp 10.244.0.7:2222->10.244.1.9:40312: i/o timeout"
+	drained := serverFor(func(_ context.Context, _ []string, input io.Reader, _ io.Writer) (int, error) {
+		if input != nil {
+			_, _ = io.Copy(io.Discard, input)
+		}
+		return 0, nil
+	})
+	t.Run("unreadable upload", func(t *testing.T) {
+		r := requestFor(t, http.MethodPut, nil)
+		r.Body, r.ContentLength = io.NopCloser(iotest.ErrReader(errors.New(readFailure))), -1
+		answers(t, drained, r, http.StatusServiceUnavailable, failed, readFailure)
+	})
+	t.Run("unreadable archive", func(t *testing.T) {
+		valid := archive(t, &tar.Header{Name: "file", Typeflag: tar.TypeReg, Size: 4, Mode: 0644})
+		r := requestFor(t, http.MethodPut, nil)
+		r.Header.Set("Content-Type", "application/x-tar")
+		r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(valid[:100]), iotest.ErrReader(errors.New(readFailure))))
+		answers(t, drained, r, http.StatusServiceUnavailable, failed, readFailure)
+	})
+	t.Run("bad download marker", func(t *testing.T) {
+		// Refusing the marker cancels the stream; the log names the refusal,
+		// not that cancellation.
+		s := serverFor(func(ctx context.Context, _ []string, _ io.Reader, out io.Writer) (int, error) {
+			_, _ = io.WriteString(out, "symlink\n")
+			<-ctx.Done()
+			return 126, ctx.Err()
+		})
+		answers(t, s, requestFor(t, http.MethodGet, nil), http.StatusServiceUnavailable, failed, "invalid sandbox transfer response")
+	})
 }
