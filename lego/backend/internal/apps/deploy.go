@@ -910,7 +910,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		if err != nil {
 			return nil, err
 		}
-		ref := stackServiceRef(app)
+		verbCtx, ref := stackServiceTarget(ctx, app)
 		serviceSlugs[svc.req.Name] = v.Slug
 		if len(laterRefs) > 0 {
 			deferred = append(deferred, deferredService{req: svc.req, fields: svc.fields, refs: laterRefs, app: app})
@@ -923,7 +923,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 				if err := requireDeployAuthority(ctx, s); err != nil {
 					return nil, err
 				}
-				if err := s.EnvGroups.LinkEnvGroup(ctx, g, ref); err != nil {
+				if err := s.EnvGroups.LinkEnvGroup(verbCtx, g, ref); err != nil {
 					return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
 				}
 			}
@@ -934,7 +934,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 			if err := requireDeployAuthority(ctx, s); err != nil {
 				return nil, err
 			}
-			if err := s.EnvSeeder.SeedEnvVars(ctx, ref, svc.seedLiterals, svc.seedGenerates); err != nil {
+			if err := s.EnvSeeder.SeedEnvVars(verbCtx, ref, svc.seedLiterals, svc.seedGenerates); err != nil {
 				return nil, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
 			}
 		}
@@ -2738,7 +2738,7 @@ func manifestType(t, runtime string) (string, error) {
 // (workspaceSnapshot.services), the resolution the plan used, so the service
 // it updates is the one the plan named: never another workspace's, nor one
 // only displayed under the name (w5/m133). It returns the App it wrote, which
-// the stack's next by-name verbs address through stackServiceRef.
+// the stack's next by-name verbs address through stackServiceTarget.
 func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, appsByName map[string]*appv1alpha1.App) (AppView, *appv1alpha1.App, error) {
 	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimService, req.Name); err != nil {
 		return AppView{}, nil, err
@@ -2872,6 +2872,15 @@ func stackServiceRef(app *appv1alpha1.App) string {
 	return core.AppPublicID(app)
 }
 
+// stackServiceTarget is stackServiceRef with ctx scoped to the App's own
+// workspace. An App going by its object name is otherwise resolved through the
+// names displayed in every workspace the caller belongs to, when the deploy
+// names none, so another workspace's service displayed under that name took
+// the verb's write: its env-group link, seeds or maintenance mode (w5/144).
+func stackServiceTarget(ctx context.Context, app *appv1alpha1.App) (context.Context, string) {
+	return core.WithWorkspace(ctx, app.Labels[core.LabelTenant]), stackServiceRef(app)
+}
+
 // stackEnvironmentChange probes the environment half of a stack re-apply:
 // whether the request's explicit grouping differs from the existing service's
 // environment/project/isolation labels. An unspecified environment reports no
@@ -2939,7 +2948,8 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	actualSpecChanged := !reflect.DeepEqual(existing.Spec, final.Spec)
 	maintenanceOnly := actualSpecChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
 	if maintenanceOnly && !changes.environmentChanged {
-		return s.ConfigureMaintenanceMode(ctx, stackServiceRef(existing), maintenanceModeView(final.Spec.MaintenanceMode))
+		verbCtx, ref := stackServiceTarget(ctx, existing)
+		return s.ConfigureMaintenanceMode(verbCtx, ref, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	maintenanceChanged := !reflect.DeepEqual(existing.Spec.MaintenanceMode, final.Spec.MaintenanceMode)
 	var currentMaintenance *appv1alpha1.MaintenanceModeSpec
@@ -2996,7 +3006,8 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		s.Kick()
 	}
 	if maintenanceChanged {
-		return s.ConfigureMaintenanceMode(ctx, stackServiceRef(existing), maintenanceModeView(final.Spec.MaintenanceMode))
+		verbCtx, ref := stackServiceTarget(ctx, existing)
+		return s.ConfigureMaintenanceMode(verbCtx, ref, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	return s.view(existing), nil
 }

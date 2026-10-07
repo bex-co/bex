@@ -387,3 +387,62 @@ func TestAFromServiceReferenceToADisplayedNameIsUnknown(t *testing.T) {
 		t.Fatalf("validation = %+v, want api refused as unknown", validation)
 	}
 }
+
+// TestALabellessServicesLaterVerbsStayInItsWorkspace (w5/144): an App without
+// a service-name label goes by its object name, and an ownerless deploy's
+// by-name verbs resolved that through the names displayed in every workspace
+// the caller belongs to. Another workspace's service displayed under the name
+// then took the verbs' writes, or made them refuse as ambiguous. They now look
+// in the App's own workspace: its env groups, seeds and maintenance mode reach
+// it, whether maintenance changes alone or with the rest of the service.
+func TestALabellessServicesLaterVerbsStayInItsWorkspace(t *testing.T) {
+	for name, displayedAsFrontend := range map[string]bool{"sharing its displayed name": false, "displayed under another name": true} {
+		t.Run(name, func(t *testing.T) {
+			ours := webApp("tea-a", "web", "nginx:1")
+			ours.Name = "web" // a bare name, from before w4/m19
+			delete(ours.Labels, core.LabelServiceName)
+			if displayedAsFrontend {
+				ours.Spec.DisplayName = "frontend"
+			}
+			theirs := webApp("tea-b", "site", "nginx:1")
+			theirs.Spec.DisplayName, theirs.Spec.Tier = "web", "starter"
+			svc, cl := newTenantStoreService(coretest.Workspaces{"tea-a", "tea-b"}, &recordingStore{}, ours, theirs)
+			svc.MemberWorkspaceIDs = func(context.Context, core.Identity) ([]string, error) { return []string{"tea-a", "tea-b"}, nil }
+			groups, seeder := &resolvingEnvGroups{fakeEnvGroups: newFakeEnvGroups("shared"), svc: svc}, &resolvingSeeder{svc: svc}
+			svc.EnvGroups, svc.EnvSeeder = groups, seeder
+
+			manifest := `services:
+  - name: web
+    type: web
+    runtime: image
+    plan: starter
+    envVars:
+      - {fromGroup: shared}
+      - {key: TOKEN, generateValue: true}
+`
+			for _, m := range []string{
+				manifest + "    image: {url: nginx:2}\n",
+				manifest + "    image: {url: nginx:2}\n    maintenanceMode:\n      enabled: true\n",
+				manifest + "    image: {url: nginx:3}\n    maintenanceMode:\n      enabled: false\n",
+			} {
+				if _, err := svc.DeployStack(ctxAs("id-a"), DeployRequest{Manifest: m}); err != nil {
+					t.Fatalf("deploy: %v", err)
+				}
+			}
+			if len(groups.reached) == 0 || len(seeder.reached) == 0 {
+				t.Fatalf("links reached %v and seeds %v, want tea-a's web", groups.reached, seeder.reached)
+			}
+			for _, reached := range append(append([]string{}, groups.reached...), seeder.reached...) {
+				if reached != ours.Name {
+					t.Errorf("a link or seed for web reached %q, want only tea-a's %q", reached, ours.Name)
+				}
+			}
+			if got := stored(t, cl, theirs); got.Spec.MaintenanceMode != nil {
+				t.Errorf("tea-b's %s got maintenance mode %+v, want it untouched", theirs.Name, got.Spec.MaintenanceMode)
+			}
+			if got := stored(t, cl, ours); got.Spec.MaintenanceMode == nil || got.Spec.MaintenanceMode.Enabled {
+				t.Errorf("tea-a's web maintenance mode = %+v, want it set and then turned off with its image change", got.Spec.MaintenanceMode)
+			}
+		})
+	}
+}
