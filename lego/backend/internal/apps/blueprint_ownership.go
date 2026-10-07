@@ -65,33 +65,54 @@ func blueprintClaimResourceKind(claimKind string) BlueprintResourceKind {
 	return BlueprintResourceKind(claimKind)
 }
 
+// blueprintResourceOwners reads the workspace's durable claims (w8/m40) once
+// for a whole manifest (w5/114). A failed read, like an unwired store, returns
+// nil and the CR labels decide; the claim each write takes still enforces
+// ownership.
+func (s *Service) blueprintResourceOwners(ctx context.Context, tenantID string) map[store.BlueprintResourceKey]string {
+	if s.Blueprints == nil {
+		return nil
+	}
+	owners, err := s.Blueprints.BlueprintResourceOwners(ctx, tenantID)
+	if err != nil {
+		return nil
+	}
+	return owners
+}
+
+// blueprintResourceOwner prefers the durable claim and falls back to the CR
+// label.
+func blueprintResourceOwner(owners map[store.BlueprintResourceKey]string, kind, name, labelOwner string) string {
+	if owner := owners[store.BlueprintResourceKey{Kind: kind, Name: name}]; owner != "" {
+		return owner
+	}
+	return labelOwner
+}
+
 // blueprintOwnershipConflicts lists the parsed stack's resources that a
 // DIFFERENT blueprint currently owns. Prefers the durable claim table when
 // wired (w8/m40); falls back to CR labels. selfID "" means "no blueprint
-// identity" (a bare validate): every owned resource conflicts.
-func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, selfID string, st parsedStack) ([]blueprintOwnershipConflict, error) {
-	// Cluster-wide, label-scoped lists (the DatastoreListOptions shape): a
-	// workspace's resources may straddle the shared and per-tenant namespaces.
-	opts := []client.ListOption{client.MatchingLabels{core.LabelTenant: tenantID}}
-
-	var conflicts []blueprintOwnershipConflict
-	ownerOf := func(kind, name, labelOwner string) string {
-		if s.Blueprints != nil {
-			if claimOwner, err := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name); err == nil && claimOwner != "" {
-				return claimOwner
-			}
-		}
-		return labelOwner
+// identity" (a bare validate): every owned resource conflicts. databases and
+// keyValues are deployParsedStack's pre-fetched workspace snapshots; nil means
+// fetch here.
+func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, selfID string, st parsedStack, databases *appv1alpha1.DatabaseList, keyValues *appv1alpha1.KeyValueList) ([]blueprintOwnershipConflict, error) {
+	if len(st.services) == 0 && len(st.databases) == 0 && len(st.keyValues) == 0 {
+		return nil, nil
 	}
+	owners := s.blueprintResourceOwners(ctx, tenantID)
+	var conflicts []blueprintOwnershipConflict
 	record := func(kind, name, labelOwner string) {
-		if owner := ownerOf(kind, name, labelOwner); owner != "" && owner != selfID {
+		if owner := blueprintResourceOwner(owners, kind, name, labelOwner); owner != "" && owner != selfID {
 			conflicts = append(conflicts, blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
 		}
 	}
 
 	if len(st.services) > 0 {
+		// Cluster-wide and label-scoped (the DatastoreListOptions shape): a
+		// workspace's resources may straddle the shared and per-tenant
+		// namespaces.
 		var apps appv1alpha1.AppList
-		if err := s.Client.List(ctx, &apps, opts...); err != nil {
+		if err := s.Client.List(ctx, &apps, client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
 			return nil, err
 		}
 		byName := map[string]string{}
@@ -103,9 +124,11 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 		}
 	}
 	if len(st.databases) > 0 {
-		databases, err := s.listWorkspaceDatabases(ctx, tenantID)
-		if err != nil {
-			return nil, err
+		if databases == nil {
+			var err error
+			if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
+				return nil, err
+			}
 		}
 		byName := map[string]string{}
 		for i := range databases.Items {
@@ -116,9 +139,11 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 		}
 	}
 	if len(st.keyValues) > 0 {
-		keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
-		if err != nil {
-			return nil, err
+		if keyValues == nil {
+			var err error
+			if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
+				return nil, err
+			}
 		}
 		byName := map[string]string{}
 		for i := range keyValues.Items {
@@ -135,7 +160,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 // another blueprint's resources — before any write — unless the request
 // carries the exact takeover confirmation, which transfers ownership (the
 // post-apply stamp rewrites the label). Non-blueprint deploys are exempt.
-func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployRequest, st parsedStack) error {
+func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployRequest, st parsedStack, databases *appv1alpha1.DatabaseList, keyValues *appv1alpha1.KeyValueList) error {
 	if req.BlueprintID == "" {
 		return nil
 	}
@@ -143,7 +168,7 @@ func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployReq
 	if !ok {
 		return nil
 	}
-	conflicts, err := s.blueprintOwnershipConflicts(ctx, tenantID, req.BlueprintID, st)
+	conflicts, err := s.blueprintOwnershipConflicts(ctx, tenantID, req.BlueprintID, st, databases, keyValues)
 	if err != nil {
 		return fmt.Errorf("checking Blueprint resource ownership: %w", err)
 	}
@@ -306,9 +331,13 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 			}
 		}
 	}
-	if databases, err := s.listWorkspaceDatabases(ctx, tenantID); err != nil {
-		return fmt.Errorf("listing databases for ownership stamp: %w", err)
-	} else {
+	// A datastore kind the manifest does not declare has nothing to stamp, so
+	// it is not listed.
+	if len(st.databases) > 0 {
+		databases, err := s.listWorkspaceDatabases(ctx, tenantID)
+		if err != nil {
+			return fmt.Errorf("listing databases for ownership stamp: %w", err)
+		}
 		wanted := map[string]bool{}
 		for _, db := range st.databases {
 			wanted[db.name] = true
@@ -321,9 +350,11 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 			}
 		}
 	}
-	if keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
-		return fmt.Errorf("listing key values for ownership stamp: %w", err)
-	} else {
+	if len(st.keyValues) > 0 {
+		keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
+		if err != nil {
+			return fmt.Errorf("listing key values for ownership stamp: %w", err)
+		}
 		wanted := map[string]bool{}
 		for _, kv := range st.keyValues {
 			wanted[kv.name] = true
@@ -504,7 +535,7 @@ func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch st
 	if b, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, repo, branch); err == nil {
 		selfID = b.ID
 	}
-	conflicts, err := s.blueprintOwnershipConflicts(ctx, tenantID, selfID, st)
+	conflicts, err := s.blueprintOwnershipConflicts(ctx, tenantID, selfID, st, nil, nil)
 	if err != nil {
 		return nil
 	}

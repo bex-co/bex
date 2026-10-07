@@ -118,6 +118,9 @@ type BlueprintStore interface {
 	ListBlueprintResourceClaims(ctx context.Context, tenantID, blueprintID string) ([]store.BlueprintResourceClaim, error)
 	// GetBlueprintResourceOwner returns the owning blueprint id, or "" if none.
 	GetBlueprintResourceOwner(ctx context.Context, tenantID, kind, name string) (string, error)
+	// BlueprintResourceOwners maps every claimed resource in the workspace to
+	// its owning blueprint id (w5/114).
+	BlueprintResourceOwners(ctx context.Context, tenantID string) (map[store.BlueprintResourceKey]string, error)
 	// ReleaseBlueprintResourceClaim drops one claim, and only while this
 	// blueprint still holds it (w4/m125).
 	ReleaseBlueprintResourceClaim(ctx context.Context, tenantID, kind, name, blueprintID string) error
@@ -1744,18 +1747,6 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	return s.resolveBlueprintResourcesFromIR(ctx, b, ir)
 }
 
-// resourceOwnedByBlueprint reports whether the durable claim (preferred) or CR
-// label attributes the resource to b (w8/m40). Unclaimed resources that only
-// match the manifest by name are not reported as managed.
-func (s *Service) resourceOwnedByBlueprint(ctx context.Context, b store.Blueprint, kind, name, labelOwner string) bool {
-	if s.Blueprints != nil {
-		if owner, err := s.Blueprints.GetBlueprintResourceOwner(ctx, b.TenantID, kind, name); err == nil && owner != "" {
-			return owner == b.ID
-		}
-	}
-	return labelOwner == b.ID
-}
-
 func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.Blueprint, ir BlueprintIR) []BlueprintResource {
 	if len(ir.Resources) == 0 {
 		return nil
@@ -1809,6 +1800,13 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 		}
 	}
 
+	// The durable claim (preferred) or CR label attributes a resource to b
+	// (w8/m40). Unclaimed resources that only match the manifest by name are
+	// not reported as managed.
+	owners := s.blueprintResourceOwners(ctx, tenantID)
+	owned := func(kind, name, labelOwner string) bool {
+		return blueprintResourceOwner(owners, kind, name, labelOwner) == b.ID
+	}
 	var resources []BlueprintResource
 	for _, resource := range ir.Resources {
 		switch resource.Kind {
@@ -1817,7 +1815,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if !ok {
 				continue
 			}
-			if !s.resourceOwnedByBlueprint(ctx, b, "service", resource.Name, a.Labels[core.LabelBlueprint]) {
+			if !owned("service", resource.Name, a.Labels[core.LabelBlueprint]) {
 				continue
 			}
 			resourceID := store.ManagedAppID(a.Labels)
@@ -1830,7 +1828,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if !ok {
 				continue
 			}
-			if !s.resourceOwnedByBlueprint(ctx, b, "database", resource.Name, d.Labels[core.LabelBlueprint]) {
+			if !owned("database", resource.Name, d.Labels[core.LabelBlueprint]) {
 				continue
 			}
 			resources = append(resources, BlueprintResource{ID: d.Name, Name: resource.Name, Type: "postgres"})
@@ -1839,7 +1837,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if !ok {
 				continue
 			}
-			if !s.resourceOwnedByBlueprint(ctx, b, "key_value", resource.Name, kv.Labels[core.LabelBlueprint]) {
+			if !owned("key_value", resource.Name, kv.Labels[core.LabelBlueprint]) {
 				continue
 			}
 			resources = append(resources, BlueprintResource{ID: kv.Name, Name: resource.Name, Type: "key_value"})

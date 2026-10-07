@@ -101,6 +101,32 @@ func (s *PGStore) ListBlueprintResourceClaims(ctx context.Context, tenantID, blu
 	return out, rows.Err()
 }
 
+// BlueprintResourceKey names one claimable resource in a workspace: its claim
+// kind (service | database | key_value) and name.
+type BlueprintResourceKey struct{ Kind, Name string }
+
+// BlueprintResourceOwners maps every claimed resource in the workspace to its
+// owning blueprint id, so an ownership check over a whole manifest costs one
+// query rather than one per declared resource (w5/114).
+func (s *PGStore) BlueprintResourceOwners(ctx context.Context, tenantID string) (map[BlueprintResourceKey]string, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT kind, name, blueprint_id FROM blueprint_resource_claims WHERE tenant_id = $1`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	owners := map[BlueprintResourceKey]string{}
+	for rows.Next() {
+		var key BlueprintResourceKey
+		var owner string
+		if err := rows.Scan(&key.Kind, &key.Name, &owner); err != nil {
+			return nil, err
+		}
+		owners[key] = owner
+	}
+	return owners, rows.Err()
+}
+
 // GetBlueprintResourceOwner returns the owning blueprint id, or "" if unclaimed.
 func (s *PGStore) GetBlueprintResourceOwner(ctx context.Context, tenantID, kind, name string) (string, error) {
 	var owner string
