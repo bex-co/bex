@@ -169,6 +169,47 @@ func PruneKpackRevisions(ctx context.Context, cl client.Client, namespace string
 	return errors.Join(errs...)
 }
 
+// StopRevision deletes one build revision's work while it may still run: its
+// build Job, unless the Job has finished (StopBuildJob), and its kpack Image. A canceled
+// release's build otherwise runs to the end and holds a build-cap slot,
+// though it can never promote (w5/149). Only identity's objects go: a
+// namesake App's build of the same revision carries another UID. kpack's
+// Builds go with their Image, their controller owner, and a cluster without
+// kpack has no Image to stop.
+func StopRevision(ctx context.Context, cl client.Client, namespace string, identity execution.ArtifactIdentity, revision string) error {
+	if identity.UID == "" {
+		return errors.New("stop build revision: empty App UID")
+	}
+	var errs []error
+	job := &batchv1.Job{}
+	switch err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: JobName(identity.Name, revision)}, job); {
+	case apierrors.IsNotFound(err):
+	case err != nil:
+		errs = append(errs, fmt.Errorf("get build Job: %w", err))
+	case appArtifactOwned(identity, job):
+		errs = append(errs, StopBuildJob(ctx, cl, job))
+	}
+	images, err := listKpackImages(ctx, cl, namespace, client.MatchingLabels(appv1alpha1.ReleaseBuildLabels(identity.Name, identity.UID, kpackRevision(Options{Revision: revision}))))
+	errs = append(errs, err)
+	for i := range images {
+		if appArtifactOwned(identity, &images[i]) {
+			errs = append(errs, deleteArtifact(ctx, cl, "kpack Image", &images[i]))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// StopBuildJob deletes job unless it has finished. A Job between retries is
+// still running and still holds a build-cap slot, so it goes too; a finished
+// one stays for its history.
+func StopBuildJob(ctx context.Context, cl client.Client, job *batchv1.Job) error {
+	if execution.JobFinished(job) {
+		return nil
+	}
+	uid := job.UID
+	return deleteArtifact(ctx, cl, "build Job", job, client.Preconditions{UID: &uid}, client.PropagationPolicy(metav1.DeletePropagationBackground))
+}
+
 func inspectAppArtifacts(ctx context.Context, identity execution.ArtifactIdentity, namespace string, cl client.Client) (artifactObjects, []client.Object, []client.Object, error) {
 	owned := func(obj client.Object) bool { return appArtifactOwned(identity, obj) }
 	out, errs := inspectNamespacedArtifacts(ctx, namespace, cl, owned)
