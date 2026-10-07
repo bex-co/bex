@@ -507,7 +507,7 @@ func listKpackImages(ctx context.Context, cl client.Client, namespace string, se
 		if missingKpack(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("list kpack builds in %s: %w", namespace, err)
+		return nil, fmt.Errorf("list kpack Images in %s: %w", namespace, err)
 	}
 	return images.Items, nil
 }

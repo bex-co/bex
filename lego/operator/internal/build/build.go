@@ -1547,15 +1547,8 @@ func ActiveBuilds(ctx context.Context, cl client.Client, namespace string) (int,
 // only a NEW dispatch: never stall observation of a running build, and never
 // hold a finished one for a slot it no longer needs (w5/108, w5/119 for kpack,
 // whose Image is per revision too, matched as ensureBuildpack takes it over).
-// appUID scopes to the App's
-// globally-unique UID (round-5 finding 5): the build namespace is shared, so a
-// name-only selector would also count a same-named App's builds in ANOTHER
-// workspace.
 func ObservingAppBuild(ctx context.Context, cl client.Client, namespace, name, appUID, revision string) (bool, error) {
-	sel := client.MatchingLabels{"app.bex.co/build": name}
-	if appUID != "" {
-		sel[execution.LabelAppUID] = appUID
-	}
+	sel := AppBuildSelector(name, appUID)
 	jobs, err := listBuildJobs(ctx, cl, namespace, sel)
 	if err != nil {
 		return false, err
@@ -1578,6 +1571,18 @@ func ObservingAppBuild(ctx context.Context, cl client.Client, namespace, name, a
 		}
 	}
 	return false, nil
+}
+
+// AppBuildSelector selects one App's build artifacts. appUID scopes it to the
+// App's globally-unique UID (round-5 finding 5): the build namespace is shared,
+// so a name-only selector would also match a same-named App's builds in ANOTHER
+// workspace.
+func AppBuildSelector(name, appUID string) client.MatchingLabels {
+	sel := client.MatchingLabels{"app.bex.co/build": name}
+	if appUID != "" {
+		sel[execution.LabelAppUID] = appUID
+	}
+	return sel
 }
 
 // workspaceSelector selects the platform's build artifacts, narrowed to one
