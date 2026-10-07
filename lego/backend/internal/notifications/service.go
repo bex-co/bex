@@ -185,15 +185,25 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 	text, html := msg.Text(), msg.HTML()
 	emails := s.Identities.LookupEmails(ctx, subjects)
 	var errs []error
+	mailed := 0
 	for _, owner := range subjects {
 		addr := emails[owner]
 		if addr == "" {
-			errs = append(errs, fmt.Errorf("owner %s email unavailable", owner))
+			// Failing for this owner would retry without end, mailing the
+			// other owners again each time (w5/153).
+			log.Printf("notifications: billing %s for %s not emailed to owner %s (no address)", n.Status, n.WorkspaceID, owner)
 			continue
 		}
 		if err := s.Mailer.Send(ctx, addr, subject, text, html); err != nil {
 			errs = append(errs, err)
+			continue
 		}
+		mailed++
+	}
+	if len(subjects) > 0 && mailed == 0 && len(errs) == 0 {
+		// No owner resolved at all, which an identity outage looks like too:
+		// retry rather than drop the notice.
+		return fmt.Errorf("no owner of %s has an email address", n.WorkspaceID)
 	}
 	return errors.Join(errs...)
 }
