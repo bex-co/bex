@@ -695,6 +695,7 @@ func TestGitProxyResponseBudgetAbortsLoudly(t *testing.T) {
 	if readErr == nil && int64(len(body)) >= 8192 {
 		t.Fatal("over-budget response was streamed in full — the cap did not abort")
 	}
+	front.Close() // the handler may still be logging the abort the client already saw
 	if !strings.Contains(logged.String(), "response_cap") {
 		t.Fatalf("cap overflow not logged: %q", logged.String())
 	}
@@ -739,6 +740,7 @@ func TestGitProxyUpstreamStreamErrorAbortsLoudly(t *testing.T) {
 			t.Fatal("broken upstream stream produced a full-looking body")
 		}
 	}
+	front.Close() // the handler may still be logging the abort the client already saw
 	if !strings.Contains(logged.String(), "stream failure") {
 		t.Fatalf("stream error not logged: %q", logged.String())
 	}
