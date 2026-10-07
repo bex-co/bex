@@ -26,7 +26,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -235,9 +234,9 @@ func TestTheDashboardsRefusalsAreCodedOnEverySurface(t *testing.T) {
 				adm.used = map[string]int{store.AppsQuotaCountKey: 25}
 			}
 			base := &core.Base{Client: adm.client(web, orders, cache), Namespace: "default", Authz: &fakeChecker{allow: !tc.deny}}
-			// Every other source is simply left nil; the audit log is mounted
-			// only when its service is, so it is wired without a store.
-			h, srv := serverWith(t, base, Deps{Audit: &audit.Service{Base: base}})
+			// Nothing is wired, as without the control-plane store; the
+			// audit-log row relies on NewServer mounting it anyway (w5/113).
+			h, srv := serverWith(t, base, Deps{})
 			if tc.setup != nil {
 				tc.setup(srv)
 			}

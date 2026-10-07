@@ -132,6 +132,7 @@ var unreachableArrayRoutes = map[string]string{
 	"GET /v1/blueprints":                         "BEX_CP_DB_URI; make([]BlueprintView, len(bs)) (apps/blueprint.go)",
 	"GET /v1/blueprints/{id}/syncs":              "BEX_CP_DB_URI; make([]BlueprintSyncView, len(runs)) (apps/blueprint.go)",
 	"GET /v1/disks":                              "BEX_CP_DB_URI; toDiskList make (apps/disks.go)",
+	"GET /v1/usage":                              "BEX_CP_DB_URI; toUsageResponse makes services (usage/rest.go)",
 	"GET /v1/disks/{diskId}/snapshots":           "BEX_CP_DB_URI; make([]DiskSnapshotView, 0, len(objects)) (apps/disk_snapshots.go)",
 	"GET /v1/services/{id}/jobs":                 "BEX_CP_DB_URI; toJobList make (jobs/rest.go)",
 	"GET /v1/services/{id}/runs":                 "needs a cron App; toCronJobRunList make (apps/render.go)",
