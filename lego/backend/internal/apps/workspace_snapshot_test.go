@@ -29,10 +29,10 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// preWriteLists is datastoreListCounter until the first cluster write: it
-// counts only the Database and Key Value lists made before that write.
+// preWriteLists is workspaceListCounter until the first cluster write: it
+// counts only the lists made before that write.
 type preWriteLists struct {
-	datastoreListCounter
+	workspaceListCounter
 	wrote atomic.Bool
 }
 
@@ -40,7 +40,7 @@ func (c *preWriteLists) List(ctx context.Context, list client.ObjectList, opts .
 	if c.wrote.Load() {
 		return c.Client.List(ctx, list, opts...)
 	}
-	return c.datastoreListCounter.List(ctx, list, opts...)
+	return c.workspaceListCounter.List(ctx, list, opts...)
 }
 
 func (c *preWriteLists) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
@@ -58,13 +58,15 @@ func (c *preWriteLists) Patch(ctx context.Context, obj client.Object, patch clie
 	return c.Client.Patch(ctx, obj, patch, opts...)
 }
 
-// TestABlueprintRequestListsEachDatastoreKindOnceBeforeItWrites (w5/124): the
+// TestABlueprintRequestListsEachResourceKindOnceBeforeItWrites (w5/124): the
 // action plan, the ownership check, reference resolution and the apply's
 // lookups read one snapshot, so a sync and a preview each list the
 // workspace's Databases and Key Values once before the first write; they
 // listed them two or three times. A create lists them twice: its apply reads
-// them again after admission, which serializes the Blueprint's applies.
-func TestABlueprintRequestListsEachDatastoreKindOnceBeforeItWrites(t *testing.T) {
+// them again after admission, which serializes the Blueprint's applies. The
+// plan, the detachment check and the ownership check read their Apps from it
+// too (w5/132), so Apps are listed as often as each datastore kind.
+func TestABlueprintRequestListsEachResourceKindOnceBeforeItWrites(t *testing.T) {
 	// web reads an existing Postgres the manifest does not declare, so
 	// reference resolution reads the Databases too.
 	const manifest = `services:
@@ -93,14 +95,15 @@ databases:
 	if err := svc.Client.Create(ctx, legacy); err != nil {
 		t.Fatal(err)
 	}
-	lists := &preWriteLists{datastoreListCounter: datastoreListCounter{Client: svc.Client}}
+	lists := &preWriteLists{workspaceListCounter: workspaceListCounter{Client: svc.Client}}
 	svc.Client = lists
 	listed := func(t *testing.T, request string, want int32) {
 		t.Helper()
-		if databases, keyValues := lists.databases.Load(), lists.keyValues.Load(); databases != want || keyValues != want {
-			t.Errorf("%s listed Databases %d and Key Values %d times before its first write, want %d each", request, databases, keyValues, want)
+		if apps, databases, keyValues := lists.apps.Load(), lists.databases.Load(), lists.keyValues.Load(); apps != want || databases != want || keyValues != want {
+			t.Errorf("%s listed Apps %d, Databases %d and Key Values %d times before its first write, want %d each", request, apps, databases, keyValues, want)
 		}
 		lists.wrote.Store(false)
+		lists.apps.Store(0)
 		lists.databases.Store(0)
 		lists.keyValues.Store(0)
 	}
@@ -115,12 +118,13 @@ databases:
 		t.Fatalf("preview = %+v, %v; want a valid preview", preview, err)
 	}
 	listed(t, "the preview", 1)
-	// The sync adds a service, so it writes before the post-write ownership
-	// stamp lists again, and drops the Postgres, so it resolves a detachment.
-	const added = `  - name: api
-    type: web
-    runtime: image
-    image: {url: nginx:1}
+	// The sync adds a Key Value, whose create is its first write, ahead of the
+	// apply's own per-service lookups (w5/141) and the post-write ownership
+	// stamp. It drops the Postgres, so it resolves a detachment.
+	const added = `  - type: keyvalue
+    name: queue
+    plan: free
+    ipAllowList: []
 `
 	synced := strings.Replace(manifest, "  - type: keyvalue", added+"  - type: keyvalue", 1)
 	synced = synced[:strings.Index(synced, "databases:")]

@@ -278,7 +278,7 @@ func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
 		conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "blp-b", parsedStack{
 			databases: []parsedDatabase{{name: "orders"}},
 			keyValues: []parsedKeyValue{{name: "cache"}},
-		}, &datastoreSnapshot{s: svc, tenantID: "tea-a"})
+		}, &workspaceSnapshot{s: svc, tenantID: "tea-a"})
 		if err != nil || len(conflicts) != 2 {
 			t.Fatalf("conflicts = %+v, %v; want the Postgres and the Key Value", conflicts, err)
 		}
@@ -314,15 +314,17 @@ func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
 	})
 }
 
-// datastoreListCounter counts the Database and KeyValue Lists a Service makes.
-// An apply lists both kinds concurrently.
-type datastoreListCounter struct {
+// workspaceListCounter counts the App, Database and KeyValue Lists a Service
+// makes. An apply lists the datastore kinds concurrently.
+type workspaceListCounter struct {
 	client.Client
-	databases, keyValues atomic.Int32
+	apps, databases, keyValues atomic.Int32
 }
 
-func (c *datastoreListCounter) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+func (c *workspaceListCounter) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	switch list.(type) {
+	case *appv1alpha1.AppList:
+		c.apps.Add(1)
 	case *appv1alpha1.DatabaseList:
 		c.databases.Add(1)
 	case *appv1alpha1.KeyValueList:
@@ -351,7 +353,7 @@ databases:
 `
 	svc, fs := ownershipService(t)
 	svc.GitFetcher = fakeBlueprintFetcher{contents: manifest, sha: "abc1234"}
-	lists := &datastoreListCounter{Client: svc.Client}
+	lists := &workspaceListCounter{Client: svc.Client}
 	svc.Client = lists
 	ctx := ownershipCtx()
 	bp, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
@@ -367,7 +369,7 @@ databases:
 		fs.ownersReads, fs.ownerLookups = 0, 0
 		lists.databases.Store(0)
 		lists.keyValues.Store(0)
-		_, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st, svc.newDatastoreSnapshot(ctx))
+		_, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st, svc.newWorkspaceSnapshot(ctx))
 		return err
 	}
 	read := func() []BlueprintResource {
@@ -421,7 +423,7 @@ func TestAnOwnershipCheckReadsAnAppTwinsLiveCopy(t *testing.T) {
 		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", Labels: map[string]string{core.LabelTenant: "tea-a", core.LabelBlueprint: "blp-a"}}},
 		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "workloads", Labels: map[string]string{core.LabelTenant: "tea-a", core.LabelBlueprint: "blp-old"}}},
 	), Namespace: "workloads"}}
-	conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "blp-a", parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}, &datastoreSnapshot{s: svc, tenantID: "tea-a"})
+	conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "blp-a", parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}, &workspaceSnapshot{s: svc, tenantID: "tea-a"})
 	if err != nil || len(conflicts) != 0 {
 		t.Fatalf("conflicts = %+v, %v; want none, as the live copy is blp-a's", conflicts, err)
 	}
@@ -431,7 +433,7 @@ func TestAnOwnershipCheckReadsAnAppTwinsLiveCopy(t *testing.T) {
 // stamp lists a datastore kind only when the manifest declares one.
 func TestAServicesOnlyApplyListsNoDatastores(t *testing.T) {
 	svc, _ := ownershipService(t)
-	lists := &datastoreListCounter{Client: svc.Client}
+	lists := &workspaceListCounter{Client: svc.Client}
 	svc.Client = lists
 	ctx := ownershipCtx()
 	bp, err := svc.CreateBlueprint(ctx, "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
@@ -445,11 +447,26 @@ func TestAServicesOnlyApplyListsNoDatastores(t *testing.T) {
 	}
 	lists.databases.Store(0)
 	lists.keyValues.Store(0)
-	if _, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st, svc.newDatastoreSnapshot(ctx)); err != nil {
+	if _, err := svc.deployParsedStack(withDeployAuthority(ctx, req), req, st, svc.newWorkspaceSnapshot(ctx)); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if databases, keyValues := lists.databases.Load(), lists.keyValues.Load(); databases != 0 || keyValues != 0 {
 		t.Errorf("a services-only apply listed Databases %d and Key Values %d times, want none", databases, keyValues)
+	}
+}
+
+// TestADatastoresOnlyStampListsNoApps (w5/132): the post-write ownership stamp
+// lists the Apps only when the manifest declares a service, as it lists each
+// datastore kind only when one is declared.
+func TestADatastoresOnlyStampListsNoApps(t *testing.T) {
+	svc, _ := ownershipService(t)
+	lists := &workspaceListCounter{Client: svc.Client}
+	svc.Client = lists
+	if err := svc.stampBlueprintOwnership(ownershipCtx(), "blp-a", 0, "", parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if apps := lists.apps.Load(); apps != 0 {
+		t.Errorf("a datastores-only stamp listed Apps %d times, want none", apps)
 	}
 }
 

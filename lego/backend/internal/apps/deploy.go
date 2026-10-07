@@ -636,7 +636,7 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	if err != nil {
 		return StackResult{}, err
 	}
-	snap := s.newDatastoreSnapshot(ctx)
+	snap := s.newWorkspaceSnapshot(ctx)
 	if _, _, err := s.blueprintActionPlan(ctx, ir, st, "", snap); err != nil {
 		return StackResult{}, err
 	}
@@ -658,23 +658,29 @@ func (s *Service) listWorkspaceDatabases(ctx context.Context, tenantID string) (
 }
 
 // listWorkspaceApps lists a workspace's Apps the way listWorkspaceDatabases
-// lists its Databases, keyed by public name. Of a legacy bare-named App and
-// its store-managed twin, the copy in the workspace's own namespace answers,
-// else the first listed: the rule store's projector applies (w5/125).
+// lists its Databases, keyed by public name (foldWorkspaceApps).
 func (s *Service) listWorkspaceApps(ctx context.Context, tenantID string) (map[string]*appv1alpha1.App, error) {
 	var apps appv1alpha1.AppList
 	if err := s.ListByTenant(ctx, &apps, tenantID); err != nil {
 		return nil, err
 	}
-	byName := make(map[string]*appv1alpha1.App, len(apps.Items))
-	for i := range apps.Items {
-		app := &apps.Items[i]
+	return foldWorkspaceApps(apps.Items), nil
+}
+
+// foldWorkspaceApps keys a workspace's Apps by public name. Of a legacy
+// bare-named App and its store-managed twin, the copy in the workspace's own
+// namespace answers, else the first listed: the rule store's projector applies
+// (w5/125).
+func foldWorkspaceApps(apps []appv1alpha1.App) map[string]*appv1alpha1.App {
+	byName := make(map[string]*appv1alpha1.App, len(apps))
+	for i := range apps {
+		app := &apps[i]
 		name := core.AppPublicName(app)
 		if seen, twin := byName[name]; !twin || (!core.AppInOwnWorkspaceNamespace(seen) && core.AppInOwnWorkspaceNamespace(app)) {
 			byName[name] = app
 		}
 	}
-	return byName, nil
+	return byName
 }
 
 // listWorkspaceKeyValues is listWorkspaceDatabases' KeyValue twin.
@@ -693,7 +699,7 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 //
 // Orchestration sequence (all-or-nothing, with dependencies):
 // 1. Validate service specs (URL ownership, maintenance mode)
-// 2. Read the workspace's datastores through the request's snapshot
+// 2. Read the workspace's Apps and datastores through the request's snapshot
 // 3. Refuse another Blueprint's resources, then gate on payment method (paid plans)
 // 4. Resolve cross-references to existing resources (by name → id/CR name)
 // 5. Preflight env-groups and env-vars (seam availability checks)
@@ -702,7 +708,7 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // 8. Patch forward-referenced services (deferred fromService host slugs)
 // 9. Auto-register Blueprint row (enables subsequent sync operations)
 // 10. Stamp ownership only while the admitted (generation, run) claim still holds
-func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack, snap *datastoreSnapshot) (StackResult, error) {
+func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack, snap *workspaceSnapshot) (StackResult, error) {
 	// Every resource created below inherits the Blueprint attribution (w5/m97).
 	// Keyed on the request rather than set by each caller because this is the
 	// one function all three Blueprint paths funnel through — initial create,
@@ -860,7 +866,7 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 // Secret, which only exists once the Database converges — applying the
 // dependent first would leave it Pending on a missing Secret anyway, but
 // applying the DB first starts its provisioning immediately.
-func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *datastoreSnapshot, databaseIDs, kvCRNames map[string]string, res *StackResult) error {
+func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, databaseIDs, kvCRNames map[string]string, res *StackResult) error {
 	// Stack entry names are unique (registerUniqueName), so no lookup below
 	// targets a CR this loop has just created.
 	for _, db := range st.databases {
@@ -1020,7 +1026,7 @@ func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]st
 // credential value. Service envVarKey copying remains same-file-only because
 // its source value is intentionally not a generally readable resource field.
 // snap lists a datastore kind only when a lookup needs it.
-func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st parsedStack, snap *datastoreSnapshot) (map[string]string, map[string]string, error) {
+func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (map[string]string, map[string]string, error) {
 	databaseIDs := make(map[string]string, len(st.databases))
 	keyValueIDs := make(map[string]string, len(st.keyValues))
 	neededDatabases, neededKeyValues := undeclaredBlueprintRefs(st)
@@ -1080,7 +1086,7 @@ func undeclaredBlueprintRefs(st parsedStack) (databases, keyValues map[string]bo
 // out, read from the request's snapshot. Every name
 // that matches no database, or more than one, is refused (sorted by name); err
 // is only a failed workspace read.
-func (s *Service) resolveUndeclaredDatabases(ctx context.Context, st parsedStack, needed map[string]bool, snap *datastoreSnapshot, tenantID string, scoped bool, out map[string]string) (blueprintResourceErrors, error) {
+func (s *Service) resolveUndeclaredDatabases(ctx context.Context, st parsedStack, needed map[string]bool, snap *workspaceSnapshot, tenantID string, scoped bool, out map[string]string) (blueprintResourceErrors, error) {
 	if len(needed) == 0 {
 		return nil, nil
 	}
@@ -1127,7 +1133,7 @@ func poolerRefWithoutPooler(st parsedStack, name string, found *appv1alpha1.Data
 }
 
 // resolveUndeclaredKeyValues is resolveUndeclaredDatabases' Key Value twin.
-func (s *Service) resolveUndeclaredKeyValues(ctx context.Context, needed map[string]bool, snap *datastoreSnapshot, tenantID string, scoped bool, out map[string]string) (blueprintResourceErrors, error) {
+func (s *Service) resolveUndeclaredKeyValues(ctx context.Context, needed map[string]bool, snap *workspaceSnapshot, tenantID string, scoped bool, out map[string]string) (blueprintResourceErrors, error) {
 	if len(needed) == 0 {
 		return nil, nil
 	}

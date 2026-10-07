@@ -942,6 +942,82 @@ func TestValidateBlueprintCurrentStatePlanLegacyAndForeignServices(t *testing.T)
 	}
 }
 
+// TestAnActionPlanReadsAServicesCopyInItsWorkspaceNamespace (w5/132): the plan
+// takes a workspace's Apps from the request's tenant-wide list, which also
+// holds a stale twin a migration left in the shared namespace. The plan still
+// resolves against the copy in the workspace's own namespace, rather than
+// diffing against the stale one or refusing the name as used twice.
+func TestAnActionPlanReadsAServicesCopyInItsWorkspaceNamespace(t *testing.T) {
+	live := sampleApp("web")
+	live.Namespace = "tea-a"
+	live.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	live.Spec.Image, live.Spec.Type, live.Spec.Runtime = "nginx:2", appv1alpha1.TypeWebService, "image"
+	stale := live.DeepCopy()
+	stale.Namespace = "default"
+	stale.Spec.Image = "nginx:1"
+
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, &recordingStore{}, live, stale)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+	actions := planActionsForTest(ctx, t, svc, `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:2}
+`)
+	if len(actions) != 1 || actions[0].Operation != BlueprintPlanNoop {
+		t.Fatalf("actions = %+v, want web unchanged against its live copy", actions)
+	}
+}
+
+// TestTheDefaultWorkspacesPlanSkipsAnotherWorkspacesApp (w5/132): the default
+// workspace's Apps are listed by namespace, the shared one, which also holds
+// other workspaces' un-migrated Apps. Only the tenant label keeps the plan from
+// resolving another workspace's service as its own.
+func TestTheDefaultWorkspacesPlanSkipsAnotherWorkspacesApp(t *testing.T) {
+	foreign := sampleApp(core.CRName("tea-b", "api"))
+	foreign.Namespace = "default"
+	foreign.Labels = map[string]string{core.LabelTenant: "tea-b", core.LabelServiceName: "api"}
+	foreign.Spec.Image, foreign.Spec.Type, foreign.Spec.Runtime = "nginx:1", appv1alpha1.TypeWebService, "image"
+
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": core.DefaultTenant}, &recordingStore{}, foreign)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})
+	validation, err := svc.ValidateBlueprint(ctx, core.DefaultTenant, `services:
+  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+`, "")
+	if err != nil || validation.Plan == nil {
+		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", validation, err)
+	}
+	if actions := validation.Plan.Actions; len(actions) != 1 || actions[0].Operation != BlueprintPlanCreate {
+		t.Fatalf("actions = %+v, want api created, not resolved against tea-b's", actions)
+	}
+}
+
+// TestAPlanWithoutANamespaceResolvesAnExistingService (w5/132): with no
+// workspace resolved and no namespace configured, the request lists Apps in
+// every namespace, and the plan still resolves the service rather than
+// dropping every App for not being in the empty one.
+func TestAPlanWithoutANamespaceResolvesAnExistingService(t *testing.T) {
+	current := sampleApp("web")
+	current.Spec.Image, current.Spec.Type, current.Spec.Runtime = "nginx:1", appv1alpha1.TypeWebService, "image"
+	svc, _ := newTenantStoreService(fakeWorkspace{}, &recordingStore{}, current)
+	svc.Namespace = ""
+	validation, err := svc.ValidateBlueprint(context.Background(), "", `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+`, "")
+	if err != nil || validation.Plan == nil {
+		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", validation, err)
+	}
+	if actions := validation.Plan.Actions; len(actions) != 1 || actions[0].Operation != BlueprintPlanNoop {
+		t.Fatalf("actions = %+v, want web unchanged", actions)
+	}
+}
+
 // w6/m125: a legacy bare-named App beside its store-managed twin would leave
 // list order deciding which spec the plan diffs against. The services loop
 // refuses the way the datastore loops always have.
