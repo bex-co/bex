@@ -35,6 +35,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
@@ -1701,4 +1702,96 @@ func TestEnvGroup_ByIDVerbAuthorizesInTheGroupsWorkspace(t *testing.T) {
 	if got, err := svc.GetEnvGroup(ctx, group.ID); err != nil || got.ID != group.ID {
 		t.Fatalf("GetEnvGroup with a role only in the group's workspace = %+v, %v", got, err)
 	}
+}
+
+// recreateBeforeFirstAppPatch makes svc's client delete "web" and recreate it
+// as a namesake mounting group gid just before the next App patch: a service
+// deleted and recreated between a group write's read and its patch.
+func recreateBeforeFirstAppPatch(t *testing.T, svc *Service, gid string, mounts bool) {
+	t.Helper()
+	recreated := false
+	svc.Base.Client = interceptor.NewClient(svc.Client.(client.WithWatch), interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if _, ok := obj.(*appv1alpha1.App); ok && !recreated {
+				recreated = true
+				if err := c.Delete(ctx, sampleApp("web")); err != nil {
+					return err
+				}
+				namesake := sampleApp("web")
+				namesake.UID = "uid-namesake"
+				if mounts {
+					namesake.Spec.EnvFromSecrets = []string{envSecretName(gid)}
+				}
+				if err := c.Create(ctx, namesake); err != nil {
+					return err
+				}
+			}
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	})
+}
+
+// TestAGroupWriteJudgesARecreatedLinkedServiceAgain (w5/158): since w5/157 a
+// locked App patch refuses an App deleted and recreated since its read. A
+// group delete then stopped partway, and a group save counted the service as
+// a failed rollout. Both now judge the link again against the App now at its
+// name: the delete detaches the namesake that mounts the group, and the save
+// rolls it.
+func TestAGroupWriteJudgesARecreatedLinkedServiceAgain(t *testing.T) {
+	ctx := context.Background()
+	t.Run("a delete", func(t *testing.T) {
+		svc := newService(newFakeStore(), sampleApp("web"))
+		g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+		if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+			t.Fatal(err)
+		}
+		recreateBeforeFirstAppPatch(t, svc, g.ID, true)
+		if err := svc.DeleteEnvGroup(ctx, g.ID); err != nil {
+			t.Fatalf("DeleteEnvGroup = %v, want the namesake detached instead", err)
+		}
+		if web := getApp(t, svc.Client, "web"); web.UID != "uid-namesake" || slices.Contains(web.Spec.EnvFromSecrets, envSecretName(g.ID)) {
+			t.Fatalf("the namesake %s still mounts the deleted group: %v", web.UID, web.Spec.EnvFromSecrets)
+		}
+	})
+	t.Run("a save", func(t *testing.T) {
+		svc := newService(newFakeStore(), sampleApp("web"))
+		g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+		if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+			t.Fatal(err)
+		}
+		g, _ = svc.GetEnvGroup(ctx, g.ID)
+		recreateBeforeFirstAppPatch(t, svc, g.ID, true)
+		result, err := svc.PatchEnvironment(ctx, g.ID, EnvironmentPatch{
+			ExpectedRevision: &g.Revision, SaveMode: SaveModeDeploy,
+			EnvVars: []EnvVarPatch{{Key: "A", Value: "v"}},
+		})
+		if err != nil || len(result.FailedServiceIDs) != 0 || !result.RolledOut {
+			t.Fatalf("save = %+v, %v; want the namesake rolled and no failed rollout", result, err)
+		}
+		if web := getApp(t, svc.Client, "web"); web.UID != "uid-namesake" || web.Spec.RestartedAt == "" {
+			t.Fatalf("the namesake %s was not rolled (restartedAt %q)", web.UID, web.Spec.RestartedAt)
+		}
+	})
+	t.Run("a save whose namesake does not mount the group", func(t *testing.T) {
+		svc := newService(newFakeStore(), sampleApp("web"))
+		g, _ := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+		if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+			t.Fatal(err)
+		}
+		g, _ = svc.GetEnvGroup(ctx, g.ID)
+		recreateBeforeFirstAppPatch(t, svc, g.ID, false)
+		result, err := svc.PatchEnvironment(ctx, g.ID, EnvironmentPatch{
+			ExpectedRevision: &g.Revision, SaveMode: SaveModeDeploy,
+			EnvVars: []EnvVarPatch{{Key: "A", Value: "v"}},
+		})
+		if err != nil || len(result.FailedServiceIDs) != 0 {
+			t.Fatalf("save = %+v, %v; want no failed rollout", result, err)
+		}
+		if got, _ := svc.GetEnvGroup(ctx, g.ID); len(got.ServiceLinks) != 0 {
+			t.Fatalf("the group still links %v, want the stale link dropped", got.ServiceLinks)
+		}
+		if web := getApp(t, svc.Client, "web"); web.Spec.RestartedAt != "" {
+			t.Fatalf("the namesake, which does not mount the group, was rolled")
+		}
+	})
 }
