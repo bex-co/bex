@@ -293,7 +293,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		return result, nil
 	}
 	// Roll (or rebuild) every currently-linked service. A service that no longer
-	// exists (core.ErrNotFound from rollOne's GetApp or RebuildService's own
+	// exists (core.ErrNotFound from rollLink's GetApp or RebuildService's own
 	// AuthorizeApp) is NOT a rollout failure: it can never be retried into
 	// existence, so counting it against FailedServiceIDs would pin a permanent,
 	// un-retryable failure on the group and make RolledOut false forever —
@@ -304,25 +304,11 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	affected := make([]string, 0, len(m.links))
 	var stale []string
 	for _, serviceID := range m.links {
-		a, actionErr := s.GetApp(ctx, core.RelCanCreate, serviceID)
-		if actionErr == nil && !mountsGroup(a, gid) {
-			// Not the service this link named: a name stored before links
-			// were ids can answer for an unrelated, newer service (w5/m120).
-			actionErr = core.ErrNotFound
-		}
-		var skipped bool
-		switch {
-		case actionErr != nil:
-		case patch.SaveMode == SaveModeRebuild:
-			// An explicit rebuild is the caller's deliberate choice, not the
-			// implicit fan-out Render gates on Auto-Deploy, so it is ungated.
-			if s.RebuildService == nil {
-				actionErr = core.ErrDeploysUnavailable
-			} else {
-				actionErr = s.RebuildService(ctx, serviceID)
-			}
-		default:
-			skipped, actionErr = s.rollOne(ctx, a, s.now())
+		skipped, actionErr := s.rollLink(ctx, gid, serviceID, patch.SaveMode)
+		if errors.Is(actionErr, core.ErrServiceReplaced) || apierrors.IsNotFound(actionErr) {
+			// Deleted, or deleted and recreated, since its read: judge the
+			// link again against the App now at serviceID (w5/158).
+			skipped, actionErr = s.rollLink(ctx, gid, serviceID, patch.SaveMode)
 		}
 		if errors.Is(actionErr, core.ErrNotFound) {
 			stale = append(stale, serviceID)
@@ -340,6 +326,29 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	result.RolledOut = len(result.FailedServiceIDs) == 0
 	s.pruneStaleLinks(ctx, gid, m, stale)
 	return result, nil
+}
+
+// rollLink rolls (or rebuilds) the service one link names. A service that is
+// gone, or no longer mounts the group, answers core.ErrNotFound.
+func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode SaveMode) (skipped bool, err error) {
+	a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
+	if err != nil {
+		return false, err
+	}
+	if !mountsGroup(a, gid) {
+		// Not the service this link named: a name stored before links were
+		// ids can answer for an unrelated, newer service (w5/m120).
+		return false, core.ErrNotFound
+	}
+	if saveMode == SaveModeRebuild {
+		// An explicit rebuild is the caller's deliberate choice, not the
+		// implicit fan-out Render gates on Auto-Deploy, so it is ungated.
+		if s.RebuildService == nil {
+			return false, core.ErrDeploysUnavailable
+		}
+		return false, s.RebuildService(ctx, serviceID)
+	}
+	return s.rollOne(ctx, a, s.now())
 }
 
 // pruneStaleLinks removes stale links from the group's persisted link set:
