@@ -46,10 +46,7 @@ func (s *Service) blueprintDetachments(ctx context.Context, tenantID, blueprintI
 				return nil, err
 			}
 		}
-		kind := BlueprintResourceKind(claim.Kind)
-		if claim.Kind == "database" {
-			kind = BlueprintResourcePostgres
-		}
+		kind := blueprintClaimResourceKind(claim.Kind)
 		current, exists, err := resolver.ResolveBlueprintResource(ctx, kind, claim.Name)
 		if err != nil {
 			return nil, err

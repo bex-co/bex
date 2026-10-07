@@ -51,9 +51,18 @@ func BlueprintTakeoverConfirmation(owningBlueprintID string) string {
 
 // blueprintOwnershipConflict is one resource owned by another blueprint.
 type blueprintOwnershipConflict struct {
-	kind  string // service | database | key_value
+	kind  string // the claim kind: service | database | key_value
 	name  string
 	owner string // owning blueprint id
+}
+
+// blueprintClaimResourceKind is a claim kind's manifest kind, as plan actions
+// name it: a claim calls a Postgres "database"; the other kinds match.
+func blueprintClaimResourceKind(claimKind string) BlueprintResourceKind {
+	if claimKind == "database" {
+		return BlueprintResourcePostgres
+	}
+	return BlueprintResourceKind(claimKind)
 }
 
 // blueprintOwnershipConflicts lists the parsed stack's resources that a
@@ -66,11 +75,6 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 	opts := []client.ListOption{client.MatchingLabels{core.LabelTenant: tenantID}}
 
 	var conflicts []blueprintOwnershipConflict
-	record := func(kind, name, owner string) {
-		if owner != "" && owner != selfID {
-			conflicts = append(conflicts, blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
-		}
-	}
 	ownerOf := func(kind, name, labelOwner string) string {
 		if s.Blueprints != nil {
 			if claimOwner, err := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name); err == nil && claimOwner != "" {
@@ -78,6 +82,11 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			}
 		}
 		return labelOwner
+	}
+	record := func(kind, name, labelOwner string) {
+		if owner := ownerOf(kind, name, labelOwner); owner != "" && owner != selfID {
+			conflicts = append(conflicts, blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
+		}
 	}
 
 	if len(st.services) > 0 {
@@ -90,8 +99,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[core.AppPublicName(&apps.Items[i])] = apps.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, svc := range st.services {
-			labelOwner := byName[svc.req.Name]
-			record("service", svc.req.Name, ownerOf("service", svc.req.Name, labelOwner))
+			record("service", svc.req.Name, byName[svc.req.Name])
 		}
 	}
 	if len(st.databases) > 0 {
@@ -104,8 +112,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[databases.Items[i].Spec.Name] = databases.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, db := range st.databases {
-			labelOwner := byName[db.name]
-			record("database", db.name, ownerOf("database", db.name, labelOwner))
+			record("database", db.name, byName[db.name])
 		}
 	}
 	if len(st.keyValues) > 0 {
@@ -118,8 +125,7 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, tenantID, sel
 			byName[keyValues.Items[i].Spec.Name] = keyValues.Items[i].Labels[core.LabelBlueprint]
 		}
 		for _, kv := range st.keyValues {
-			labelOwner := byName[kv.name]
-			record("key value", kv.name, ownerOf("key_value", kv.name, labelOwner))
+			record("key_value", kv.name, byName[kv.name])
 		}
 	}
 	return conflicts, nil
@@ -160,11 +166,23 @@ func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployReq
 	return blueprintOwnershipError(first)
 }
 
+// blueprintOwnershipError refuses a resource another blueprint manages, for
+// an apply and for the preview's validation entries. Its kind param is the
+// manifest kind a client labels it by (w5/098); the message keeps the wording
+// it has always had.
 func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 	phrase := BlueprintTakeoverConfirmation(c.owner)
+	kind := blueprintClaimResourceKind(c.kind)
+	wording := string(kind)
+	switch kind {
+	case BlueprintResourcePostgres:
+		wording = "database"
+	case BlueprintResourceKeyValue:
+		wording = "key value"
+	}
 	return core.NewConflictError("BLUEPRINT_RESOURCE_CONFLICT",
-		fmt.Sprintf("%s %q is managed by blueprint %s; retry with confirm=%q to transfer ownership to this blueprint", c.kind, c.name, c.owner, phrase),
-		map[string]any{"resource": c.name, "kind": c.kind, "owningBlueprintId": c.owner, "confirm": phrase})
+		fmt.Sprintf("%s %q is managed by blueprint %s; retry with confirm=%q to transfer ownership to this blueprint", wording, c.name, c.owner, phrase),
+		map[string]any{"resource": c.name, "kind": string(kind), "owningBlueprintId": c.owner, "confirm": phrase})
 }
 
 // takeoverExpectedOwner returns the owning blueprint id encoded in Confirm, or
@@ -192,19 +210,21 @@ func (s *Service) claimBlueprintResourceName(ctx context.Context, kind, name str
 	if tenantID == "" {
 		return nil
 	}
-	expected := takeoverExpectedOwner(req.Confirm)
-	if err := s.Blueprints.ClaimBlueprintResource(ctx, tenantID, kind, name, req.BlueprintID, expected); err != nil {
-		if errors.Is(err, store.ErrBlueprintResourceConflict) {
-			owner, _ := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name)
-			if owner == "" {
-				owner = "another blueprint"
-			}
-			displayKind := kind
-			if kind == "key_value" {
-				displayKind = "key value"
-			}
-			return blueprintOwnershipError(blueprintOwnershipConflict{kind: displayKind, name: name, owner: owner})
+	return s.claimBlueprintResource(ctx, tenantID, kind, name, req.BlueprintID, takeoverExpectedOwner(req.Confirm))
+}
+
+// claimBlueprintResource takes the durable claim on one resource for
+// blueprintID, refusing with the owning blueprint when another holds it.
+func (s *Service) claimBlueprintResource(ctx context.Context, tenantID, kind, name, blueprintID, expectedOwner string) error {
+	err := s.Blueprints.ClaimBlueprintResource(ctx, tenantID, kind, name, blueprintID, expectedOwner)
+	if errors.Is(err, store.ErrBlueprintResourceConflict) {
+		owner, _ := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name)
+		if owner == "" {
+			owner = "another blueprint"
 		}
+		return blueprintOwnershipError(blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
+	}
+	if err != nil {
 		return fmt.Errorf("claiming Blueprint ownership of %s %q: %w", kind, name, err)
 	}
 	return nil
@@ -264,15 +284,8 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 
 	claimAndLabel := func(kind, name string, obj client.Object) error {
 		if s.Blueprints != nil {
-			if err := s.Blueprints.ClaimBlueprintResource(ctx, tenantID, kind, name, blueprintID, expected); err != nil {
-				if errors.Is(err, store.ErrBlueprintResourceConflict) {
-					owner, _ := s.Blueprints.GetBlueprintResourceOwner(ctx, tenantID, kind, name)
-					if owner == "" {
-						owner = "another blueprint"
-					}
-					return blueprintOwnershipError(blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
-				}
-				return fmt.Errorf("claiming Blueprint ownership of %s %q: %w", kind, name, err)
+			if err := s.claimBlueprintResource(ctx, tenantID, kind, name, blueprintID, expected); err != nil {
+				return err
 			}
 		}
 		return s.labelBlueprintOwnership(ctx, blueprintID, obj)

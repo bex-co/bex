@@ -239,6 +239,8 @@ A sync now diffs its claims against what the manifest still declares and release
 
 The claim is also now readable: `blueprintId` appears on every service, database and Key Value read, projected from the CR label — the claim's mirror, written and cleared in the same window — which is why it is affordable on list reads as well as single ones rather than becoming a per-resource query. A dashboard "Managed by Blueprint" cell was considered and deliberately deferred: the blueprint detail page's `resources[]` is the established direction of that link and is, as of this milestone, finally accurate.
 
+**A resource conflict names the manifest kind (w5/098).** `BLUEPRINT_RESOURCE_CONFLICT` carries params `resource`, `kind`, `owningBlueprintId` and `confirm`. `kind` is the kind plan actions use (`service`, `postgres`, `key_value`), so a client labels a conflict exactly as it labels a plan action. The message keeps its display wording, as in `key value "cache" is managed by blueprint …`. `kind` used to carry that display text, which the dashboard had to accept as a lookup key.
+
 ## Consequences
 
 ### Positive

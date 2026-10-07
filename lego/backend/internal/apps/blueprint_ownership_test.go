@@ -26,6 +26,8 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -244,4 +246,67 @@ func TestBlueprintTakeoverRejectsInterveningOwner(t *testing.T) {
 		t.Fatalf("intervening owner must stay B, got %q", owner)
 	}
 	_ = fs
+}
+
+// TestBlueprintResourceConflictNamesTheManifestKind (w5/098): a resource
+// conflict's kind param is the manifest kind a client labels it by, as plan
+// actions name it, while the message keeps the display wording. Every path that
+// refuses agrees: the pre-write ownership scan, the durable claim, and the
+// post-apply stamp, which used to name a Key Value "key_value".
+func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
+	type want struct{ kind, wording string }
+	expect := func(t *testing.T, err error, w want) {
+		t.Helper()
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_RESOURCE_CONFLICT" || coded.Params["kind"] != w.kind ||
+			!strings.HasPrefix(err.Error(), w.wording+" is managed by blueprint blp-a;") {
+			t.Fatalf("conflict = %v (%+v), want kind %s and the wording %q", err, coded, w.kind, w.wording)
+		}
+	}
+	postgres := want{"postgres", `database "orders"`}
+	keyValue := want{"key_value", `key value "cache"`}
+
+	t.Run("ownership scan", func(t *testing.T) {
+		owned := map[string]string{core.LabelTenant: "tea-a", core.LabelBlueprint: "blp-a"}
+		svc := &Service{Base: &core.Base{Client: fakeClient(
+			&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-1", Namespace: "default", Labels: owned}, Spec: appv1alpha1.DatabaseSpec{Name: "orders"}},
+			&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-1", Namespace: "default", Labels: owned}, Spec: appv1alpha1.KeyValueSpec{Name: "cache"}},
+		), Namespace: "default"}}
+		conflicts, err := svc.blueprintOwnershipConflicts(context.Background(), "tea-a", "blp-b", parsedStack{
+			databases: []parsedDatabase{{name: "orders"}},
+			keyValues: []parsedKeyValue{{name: "cache"}},
+		})
+		if err != nil || len(conflicts) != 2 {
+			t.Fatalf("conflicts = %+v, %v; want the Postgres and the Key Value", conflicts, err)
+		}
+		expect(t, blueprintOwnershipError(conflicts[0]), postgres)
+		expect(t, blueprintOwnershipError(conflicts[1]), keyValue)
+	})
+	t.Run("durable claim", func(t *testing.T) {
+		svc, fs := ownershipService(t)
+		ctx := ownershipCtx()
+		for kind, name := range map[string]string{"database": "orders", "key_value": "cache"} {
+			if err := fs.ClaimBlueprintResource(ctx, "tea-a", kind, name, "blp-a", ""); err != nil {
+				t.Fatal(err)
+			}
+		}
+		ctxB := withDeployAuthority(ctx, DeployRequest{BlueprintID: "blp-b"})
+		expect(t, svc.claimBlueprintResourceName(ctxB, "database", "orders"), postgres)
+		expect(t, svc.claimBlueprintResourceName(ctxB, "key_value", "cache"), keyValue)
+	})
+	t.Run("post-apply stamp", func(t *testing.T) {
+		svc, fs := ownershipService(t)
+		ctx := ownershipCtx()
+		if err := fs.ClaimBlueprintResource(ctx, "tea-a", "key_value", "cache", "blp-a", ""); err != nil {
+			t.Fatal(err)
+		}
+		cache := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: "red-1", Namespace: "default", Labels: map[string]string{core.LabelTenant: "tea-a"}},
+			Spec:       appv1alpha1.KeyValueSpec{Name: "cache"},
+		}
+		if err := svc.Client.Create(ctx, cache); err != nil {
+			t.Fatal(err)
+		}
+		expect(t, svc.stampBlueprintOwnership(ctx, "blp-b", 0, "", parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}}), keyValue)
+	})
 }
