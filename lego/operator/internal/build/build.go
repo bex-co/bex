@@ -1539,20 +1539,33 @@ func ActiveBuilds(ctx context.Context, cl client.Client, namespace string) (int,
 	return countActiveBuilds(ctx, cl, namespace, workspaceSelector(""))
 }
 
-// ActiveAppBuilds counts active (not Complete, not Failed) build Jobs + kpack
-// Images that belong to this exact App (name + immutable UID). Once builds are
-// observed non-blocking across many reconciles (ADR060 §D1), the per-workspace
-// cap must gate only a NEW dispatch, never stall observation of a build this App
-// already started — so the caller skips the cap when this returns non-zero.
-// appUID scopes to the App's globally-unique UID (round-5 finding 5): the build
-// namespace is shared, so a name-only selector would also count a same-named
-// App's builds in ANOTHER workspace.
-func ActiveAppBuilds(ctx context.Context, cl client.Client, namespace, name, appUID string) (int, error) {
+// ObservingAppBuild reports whether a build pass only observes a build this
+// exact App (name + immutable UID) already started: an active (not Complete,
+// not Failed) build Job or kpack Image, or the release's own Job, named job,
+// once it finished. Once builds are observed non-blocking across many
+// reconciles (ADR060 §D1), the build caps must gate only a NEW dispatch: never
+// stall observation of a running build, and never hold a finished one for a
+// slot it no longer needs (w5/108). One kpack Image serves every release, so it
+// counts while active only (w5/119). appUID scopes to the App's globally-unique
+// UID (round-5 finding 5): the build namespace is shared, so a name-only
+// selector would also count a same-named App's builds in ANOTHER workspace.
+func ObservingAppBuild(ctx context.Context, cl client.Client, namespace, name, appUID, job string) (bool, error) {
 	sel := client.MatchingLabels{"app.bex.co/build": name}
 	if appUID != "" {
 		sel[execution.LabelAppUID] = appUID
 	}
-	return countActiveBuilds(ctx, cl, namespace, sel)
+	jobs, err := listBuildJobs(ctx, cl, namespace, sel)
+	if err != nil {
+		return false, err
+	}
+	owner := execution.ArtifactIdentity{Name: name, UID: appUID}
+	for i := range jobs {
+		if !execution.JobFinished(&jobs[i]) || (jobs[i].Name == job && owner.Owns(&jobs[i])) {
+			return true, nil
+		}
+	}
+	active, err := activeKpackImages(ctx, cl, namespace, sel)
+	return active > 0, err
 }
 
 // workspaceSelector selects the platform's build artifacts, narrowed to one
