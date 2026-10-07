@@ -672,8 +672,8 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		}
 		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
 	}
-	// The validation writes nothing, so its checks share one datastore snapshot.
-	snap := s.newDatastoreSnapshot(ctx)
+	// The validation writes nothing, so its checks share one workspace snapshot.
+	snap := s.newWorkspaceSnapshot(ctx)
 	if err == nil {
 		err = s.resolveBlueprintRegistryCredentials(ctx, &st)
 	}
@@ -1038,7 +1038,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if err := s.requireStackBilling(ctx, parsed); err != nil {
 		return BlueprintView{}, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", s.newDatastoreSnapshot(ctx)); err != nil {
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", s.newWorkspaceSnapshot(ctx)); err != nil {
 		return BlueprintView{}, err
 	}
 
@@ -1086,10 +1086,10 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	prepareReq.BlueprintID = b.ID
 	prepareReq.BlueprintGeneration = b.ExecutionGeneration
 	prepareReq.BlueprintRunID = run.ID
-	// The apply reads the datastores again: admission serializes this
+	// The apply reads the workspace again: admission serializes this
 	// Blueprint's applies, and one admitted before it may have created a
-	// datastore since the plan read them.
-	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed, s.newDatastoreSnapshot(ctx))
+	// resource since the plan read them.
+	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed, s.newWorkspaceSnapshot(ctx))
 
 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "create")
 	if cerr != nil {
@@ -1218,7 +1218,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 // so a manifest that cannot be applied never becomes the stored one. Only the
 // manifest (the sync-owned field) is written: current name/path/autoSync
 // settings survive the sync (w8/m37 t005).
-func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, snap *datastoreSnapshot) (store.Blueprint, *parsedStack, error) {
+func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
 	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: manifest})
 	if err != nil {
 		return store.Blueprint{}, nil, err
@@ -1357,9 +1357,9 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 		return SyncBlueprintResult{}, err
 	}
-	// The admitted sync's reads until it writes a datastore share one snapshot;
+	// The admitted sync's reads until it writes a resource share one snapshot;
 	// staging writes only the store.
-	snap := s.newDatastoreSnapshot(ctx)
+	snap := s.newWorkspaceSnapshot(ctx)
 
 	// settleStage terminates an admitted run whose manifest could not be staged
 	// (preflight refusal, or a lost fence on the legacy path) without touching
