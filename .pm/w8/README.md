@@ -76,7 +76,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **062** — [Static `routes`/`headers` REST answers bare items: no `{route|header, cursor}` envelope and no `id`/`priority`, unlike Render's contract](062.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-06 sweep 43.
+- [x] **062** — [Static `routes`/`headers` REST answers bare items: no `{route|header, cursor}` envelope and no `id`/`priority`, unlike Render's contract](done/062.md) (~50m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-06 sweep 43. — **DONE 2026-10-07**
 - [ ] **063** — [Env-group linking and service secret files drift from Render's REST contract: link → 204 no body, `serviceLinks` bare ID strings, bulk `PUT …/secret-files` → 405](063.md) (~55m, minor) ← `/qa-find-bugs-cli` w8 loop, 2026-10-06 sweep 44.
 - [ ] **048** — [Cron jobs are sold on `free`, but Render's API types every cron plan as `paidPlan`](blocked/048.md) — **BLOCKED (product decision from the user: (a) Render parity — cron becomes paid-only, plan-less create defaults to `starter`, existing free crons transition per ADR030 §7, ~50m; or (b) keep free cron as a deliberate differentiator and correct the false "Render sells both that way" premise in `paidOnlyServiceType`, ADR030 §7 and ADR018, ~15m)**. Premise re-verified 2026-10-04: `apps/service.go` `paidOnlyServiceType` still lists only worker + private service.
 

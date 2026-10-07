@@ -25,6 +25,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -1195,9 +1196,24 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 
 	// Static-site edge rules (Render-compatible): /routes (redirects/rewrites) and
 	// /headers (custom response headers). GET lists; PUT replaces the whole list.
-	listRoutes := core.HandleMapped(http.StatusOK, func(r *http.Request) ([]StaticRouteView, error) {
-		return s.ListRoutes(r.Context(), r.PathValue("id"))
-	}, toRenderRoutes)
+	listRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		serviceID := r.PathValue("id")
+		views, err := s.ListRoutes(r.Context(), serviceID)
+		if err != nil {
+			return nil, err
+		}
+		q := r.URL.Query()
+		types, sources, destinations := core.QueryList(q, "type"), core.QueryList(q, "source"), core.QueryList(q, "destination")
+		routes := core.Filter(toRenderRouteObjects(serviceID, views), func(rt renderRoute) bool {
+			return matchesAny(types, rt.Type) && matchesAny(sources, rt.Source) && matchesAny(destinations, rt.Destination)
+		})
+		routes = pageRules(q, routes, func(rt renderRoute) string { return rt.ID })
+		out := make([]routeWithCursor, len(routes))
+		for i, rt := range routes {
+			out[i] = routeWithCursor{Route: rt, Cursor: rt.ID}
+		}
+		return out, nil
+	})
 	putRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		body, err := core.DecodeBody[[]StaticRouteView](r)
 		if err != nil {
@@ -1207,11 +1223,26 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return toRenderRoutes(app.Routes), nil
+		return toRenderRouteObjects(r.PathValue("id"), app.Routes), nil
 	})
-	listHeaders := core.HandleMapped(http.StatusOK, func(r *http.Request) ([]StaticHeaderView, error) {
-		return s.ListHeaders(r.Context(), r.PathValue("id"))
-	}, toRenderHeaders)
+	listHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		serviceID := r.PathValue("id")
+		views, err := s.ListHeaders(r.Context(), serviceID)
+		if err != nil {
+			return nil, err
+		}
+		q := r.URL.Query()
+		paths, names, values := core.QueryList(q, "path"), core.QueryList(q, "name"), core.QueryList(q, "value")
+		headers := core.Filter(toRenderHeaderObjects(serviceID, views), func(h renderHeader) bool {
+			return matchesAny(paths, h.Path) && matchesAny(names, h.Name) && matchesAny(values, h.Value)
+		})
+		headers = pageRules(q, headers, func(h renderHeader) string { return h.ID })
+		out := make([]headerWithCursor, len(headers))
+		for i, h := range headers {
+			out[i] = headerWithCursor{Header: h, Cursor: h.ID}
+		}
+		return out, nil
+	})
 	putHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		body, err := core.DecodeBody[[]StaticHeaderView](r)
 		if err != nil {
@@ -1221,7 +1252,7 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return toRenderHeaders(app.Headers), nil
+		return toRenderHeaderObjects(r.PathValue("id"), app.Headers), nil
 	})
 
 	mux.HandleFunc("GET "+servicesBase+"/{id}/autoscaling", getAutoscaling)
@@ -1676,4 +1707,21 @@ func renderSyncsWithCursor(runs []BlueprintSyncView) []syncWithCursor {
 		}
 	}
 	return out
+}
+
+// matchesAny reports whether value is one of the requested filter values; an
+// empty filter matches everything.
+func matchesAny(filter []string, value string) bool {
+	return len(filter) == 0 || slices.Contains(filter, value)
+}
+
+// pageRules applies cursor/limit paging to static-site rules only when either
+// is given. Unlike StablePage it never re-sorts: route order is priority, the
+// order the rules apply in.
+func pageRules[T any](q url.Values, items []T, cursorOf func(T) string) []T {
+	if !q.Has("cursor") && !q.Has("limit") {
+		return items
+	}
+	after, limit := core.PageParams(q)
+	return core.Page(items, after, limit, cursorOf)
 }

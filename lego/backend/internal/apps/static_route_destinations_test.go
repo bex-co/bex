@@ -71,7 +71,7 @@ func TestStaticRouteDestinationPersistenceAcrossAdapters(t *testing.T) {
 					if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 						t.Fatal(err)
 					}
-					assertRoutes(t, got)
+					assertRoutes(t, unwrapRESTRules(t, method, got, "route"))
 				}
 			case "GraphQL":
 				schema := blueprintSchema(t, svc)
@@ -126,4 +126,25 @@ func TestStaticRouteDestinationPersistenceAcrossAdapters(t *testing.T) {
 			}
 		})
 	}
+}
+
+// unwrapRESTRules strips Render's list envelope ({route|header, cursor}) from a
+// REST GET so a cross-adapter assertion compares the rules themselves; PUT
+// already answers bare id-bearing objects. Each cursor must equal its rule id.
+func unwrapRESTRules(t *testing.T, method string, got any, key string) any {
+	t.Helper()
+	if method != http.MethodGet {
+		return got
+	}
+	items, _ := got.([]any)
+	out := make([]any, len(items))
+	for i, item := range items {
+		envelope, _ := item.(map[string]any)
+		rule, _ := envelope[key].(map[string]any)
+		if rule == nil || envelope["cursor"] == nil || envelope["cursor"] != rule["id"] {
+			t.Fatalf("item %d = %v, want {%s: {id…}, cursor: <id>}", i, item, key)
+		}
+		out[i] = rule
+	}
+	return out
 }

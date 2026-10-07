@@ -20,8 +20,11 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -713,10 +716,9 @@ func toCronJobRunList(runs []CronRunView) []cronJobRunWithCursor {
 	return out
 }
 
-// StaticRouteView / StaticHeaderView already carry Render's own wire shapes
-// (route: type/source/destination, header: path/name/value), so the /routes and
-// /headers endpoints serialize them directly. These two only normalize an empty
-// list to `[]` — Render never returns `null` for either collection.
+// toRenderRoutes / toRenderHeaders keep MCP's bare rule shapes (type/source/
+// destination, path/name/value) and only normalize an empty list to `[]`. REST
+// answers Render's id-bearing objects instead (toRenderRouteObjects).
 func toRenderRoutes(routes []StaticRouteView) []StaticRouteView {
 	if routes == nil {
 		return []StaticRouteView{}
@@ -729,6 +731,67 @@ func toRenderHeaders(headers []StaticHeaderView) []StaticHeaderView {
 		return []StaticHeaderView{}
 	}
 	return headers
+}
+
+// renderRoute / renderHeader are Render's `route` and `header` REST objects
+// (w8/062): the stored rule plus an id and, for routes, its priority (the list
+// index, the order rules apply in). MCP and GraphQL keep the bare rule shape.
+type renderRoute struct {
+	ID          string `json:"id"`
+	Type        string `json:"type"`
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+	Priority    int    `json:"priority"`
+}
+
+type renderHeader struct {
+	ID    string `json:"id"`
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// routeWithCursor / headerWithCursor are Render's list-item envelopes; the
+// cursor is the rule id.
+type routeWithCursor struct {
+	Route  renderRoute `json:"route"`
+	Cursor string      `json:"cursor"`
+}
+
+type headerWithCursor struct {
+	Header renderHeader `json:"header"`
+	Cursor string       `json:"cursor"`
+}
+
+// withRuleIDs maps rules to their Render objects, giving each an id derived
+// from the service, the rule's content and its occurrence ordinal among
+// identical rules: stable across a no-op re-PUT and a reorder, distinct for
+// duplicates. build receives the rule, its id and its index (route priority).
+func withRuleIDs[V, O any](kind id.Kind, serviceID string, rules []V, content func(V) []string, build func(V, string, int) O) []O {
+	seen := make(map[string]int, len(rules))
+	out := make([]O, len(rules))
+	for i, rule := range rules {
+		key := strings.Join(content(rule), "\x00")
+		out[i] = build(rule, id.Derive(kind, serviceID, key, strconv.Itoa(seen[key])), i)
+		seen[key]++
+	}
+	return out
+}
+
+func toRenderRouteObjects(serviceID string, routes []StaticRouteView) []renderRoute {
+	return withRuleIDs(id.StaticRoute, serviceID, routes,
+		func(r StaticRouteView) []string { return []string{r.Type, r.Source, r.Destination} },
+		func(r StaticRouteView, ruleID string, i int) renderRoute {
+			return renderRoute{ID: ruleID, Type: r.Type, Source: r.Source, Destination: r.Destination, Priority: i}
+		})
+}
+
+func toRenderHeaderObjects(serviceID string, headers []StaticHeaderView) []renderHeader {
+	return withRuleIDs(id.StaticHeader, serviceID, headers,
+		func(h StaticHeaderView) []string { return []string{h.Path, h.Name, h.Value} },
+		func(h StaticHeaderView, ruleID string, _ int) renderHeader {
+			return renderHeader{ID: ruleID, Path: h.Path, Name: h.Name, Value: h.Value}
+		})
 }
 
 // toRenderServices maps a slice of AppViews to bare Render service objects (no

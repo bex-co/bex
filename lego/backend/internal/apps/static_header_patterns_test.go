@@ -70,7 +70,7 @@ func TestStaticHeaderWildcardPersistenceAcrossAdapters(t *testing.T) {
 					if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 						t.Fatal(err)
 					}
-					assertHeaders(t, got)
+					assertHeaders(t, unwrapRESTRules(t, method, got, "header"))
 				}
 			case "GraphQL":
 				schema := blueprintSchema(t, svc)
