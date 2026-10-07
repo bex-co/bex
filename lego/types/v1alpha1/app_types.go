@@ -937,6 +937,15 @@ func (s AppSpec) EffectiveHosts(name, baseDomain string) []string {
 	return hosts
 }
 
+// HasPublicHosts reports whether EffectiveHosts yields any host on a platform
+// with a base domain, which is when the operator keeps an Ingress for the App.
+// It is for readers that do not know the base domain, such as bex-api's
+// Traefik router lookup. Any domain answers alike, since it only spells the
+// platform host; asking EffectiveHosts keeps the one rule.
+func (s AppSpec) HasPublicHosts() bool {
+	return len(s.EffectiveHosts("app", "base.invalid")) > 0
+}
+
 // AutoscalingSpec declares the autoscaling policy for a service. When enabled,
 // the operator adjusts spec.replicas within [minReplicas, maxReplicas] based on
 // live CPU/memory utilization vs the declared targets. Mirrors Render's Scaling

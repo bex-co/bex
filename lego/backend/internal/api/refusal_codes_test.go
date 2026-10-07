@@ -35,6 +35,8 @@ import (
 // codedRefusal is what one refusal answers on every surface: REST's status,
 // body code and params, GraphQL's extensions (params flattened) and MCP's
 // "CODE: " text. An empty msg checks the code and params without the wording.
+// An empty code expects an uncoded answer, such as the redacted
+// "internal error".
 type codedRefusal struct {
 	status int
 	code   string
@@ -65,7 +67,7 @@ func (want codedRefusal) onGraphQL(t *testing.T, h http.Handler, query string) {
 	gqlErr, _ := errs[0].(map[string]any)
 	extensions, _ := gqlErr["extensions"].(map[string]any)
 	message, _ := gqlErr["message"].(string)
-	if extensions["code"] != want.code || !want.says(message) || !want.carries(extensions) {
+	if code, _ := extensions["code"].(string); code != want.code || !want.says(message) || !want.carries(extensions) {
 		t.Fatalf("GraphQL error = %s, want %s %q %v", body, want.code, want.msg, want.params)
 	}
 }
@@ -76,8 +78,12 @@ func (want codedRefusal) onMCP(t *testing.T, cs *mcp.ClientSession, tool string,
 	if err != nil || !res.IsError || len(res.Content) == 0 {
 		t.Fatalf("%s = %s, %v; want a tool error", tool, fmtMCP(res), err)
 	}
+	prefix := want.code + ": "
+	if want.code == "" {
+		prefix = ""
+	}
 	text, _ := res.Content[0].(*mcp.TextContent)
-	if text == nil || !strings.HasPrefix(text.Text, want.code+": ") || !want.says(strings.TrimPrefix(text.Text, want.code+": ")) {
+	if text == nil || !strings.HasPrefix(text.Text, prefix) || !want.says(strings.TrimPrefix(text.Text, prefix)) {
 		t.Fatalf("%s error = %s, want %s: %q", tool, fmtMCP(res), want.code, want.msg)
 	}
 }
