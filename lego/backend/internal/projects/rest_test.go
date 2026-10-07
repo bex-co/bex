@@ -23,11 +23,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -329,5 +331,83 @@ func TestProjectOwnerResolutionBatchAndOmit(t *testing.T) {
 	got = decodeRenderProject(t, rec.Body.Bytes())
 	if got.ID != "prj-1" || got.Owner != nil {
 		t.Fatalf("nil Owners response = %+v", got)
+	}
+}
+
+// recordingEnvironmentStore serves projects' environments, recording the
+// project ids each read asks for.
+type recordingEnvironmentStore struct {
+	*fakeProjectStore
+	envs  []store.Environment
+	reads [][]string
+}
+
+func (r *recordingEnvironmentStore) ListEnvironmentsForProjects(_ context.Context, projectIDs []string) ([]store.Environment, error) {
+	r.reads = append(r.reads, slices.Clone(projectIDs))
+	return core.Filter(r.envs, func(e store.Environment) bool { return slices.Contains(projectIDs, e.ProjectID) }), nil
+}
+
+// TestAProjectPageReadsItsEnvironmentsOnce (w5/146): the list read each
+// project's environments separately, a store read per project. One read of
+// the page's projects now serves it, each project keeps its own
+// environmentIds, an empty list included, and an empty page reads nothing.
+func TestAProjectPageReadsItsEnvironmentsOnce(t *testing.T) {
+	created := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	env1a, env1b, env3a := ids.EnvironmentStorageID(ids.New(ids.Environment)), ids.EnvironmentStorageID(ids.New(ids.Environment)), ids.EnvironmentStorageID(ids.New(ids.Environment))
+	st := &recordingEnvironmentStore{
+		fakeProjectStore: newFakeProjectStore(
+			store.Project{ID: "prj-1", TenantID: "tea-1", Name: "a", CreatedAt: created, UpdatedAt: created},
+			store.Project{ID: "prj-2", TenantID: "tea-1", Name: "b", CreatedAt: created, UpdatedAt: created},
+			store.Project{ID: "prj-3", TenantID: "tea-1", Name: "c", CreatedAt: created, UpdatedAt: created},
+		),
+		envs: []store.Environment{
+			{ID: env1a, ProjectID: "prj-1", TenantID: "tea-1"},
+			{ID: env3a, ProjectID: "prj-3", TenantID: "tea-1"},
+			{ID: env1b, ProjectID: "prj-1", TenantID: "tea-1"},
+		},
+	}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Owners: fixedOwnerResolver{}}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	list := func(query string) (page []renderProjectWithCursor, projectIDs []string) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/projects?ownerId=tea-1"+query, nil).WithContext(ctxAs("user-a")))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("list %q = %d: %s", query, rec.Code, rec.Body.String())
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		for _, item := range page {
+			projectIDs = append(projectIDs, item.Project.ID)
+		}
+		return page, projectIDs
+	}
+
+	page, projectIDs := list("")
+	if len(st.reads) != 1 || !slices.Equal(st.reads[0], projectIDs) {
+		t.Errorf("environment reads = %v, want one for the page's %v", st.reads, projectIDs)
+	}
+	want := map[string][]string{
+		"prj-1": {ids.EnvironmentPublicID(env1a), ids.EnvironmentPublicID(env1b)},
+		"prj-2": {},
+		"prj-3": {ids.EnvironmentPublicID(env3a)},
+	}
+	if len(page) != len(want) {
+		t.Fatalf("page len = %d, want %d", len(page), len(want))
+	}
+	for _, item := range page {
+		if got := item.Project.EnvironmentIDs; !slices.Equal(got, want[item.Project.ID]) || got == nil {
+			t.Errorf("project %s environmentIds = %#v, want %#v", item.Project.ID, got, want[item.Project.ID])
+		}
+	}
+
+	if page, projectIDs = list("&limit=2"); len(page) != 2 || len(st.reads) != 2 || !slices.Equal(st.reads[1], projectIDs) {
+		t.Errorf("a page of %d read %v, want one read of its own %v", len(page), st.reads[1:], projectIDs)
+	}
+	if page, _ = list("&name=none"); len(page) != 0 || len(st.reads) != 2 {
+		t.Errorf("an empty page of %d read %v, want no read", len(page), st.reads[2:])
 	}
 }

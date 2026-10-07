@@ -82,29 +82,29 @@ func toRenderProject(p ProjectView, environmentIDs []string, owner resourcemeta.
 }
 
 func (s *Service) renderProject(ctx context.Context, p ProjectView) (renderProject, error) {
-	ids, err := s.environmentIDs(ctx, p.ID)
+	rendered, err := s.renderProjects(ctx, []ProjectView{p})
 	if err != nil {
 		return renderProject{}, err
 	}
-	owners := resourcemeta.ResolveOwners(ctx, s.Owners, []string{p.OwnerID})
-	return toRenderProject(p, ids, owners[p.OwnerID]), nil
+	return rendered[0], nil
 }
 
 // renderProjects enriches a page through one owner batch lookup (at most one
-// ResolveResourceOwners call per request), matching apps/postgres/keyvalue.
+// ResolveResourceOwners call per request), matching apps/postgres/keyvalue, and
+// one read of the page's environments (w5/146).
 func (s *Service) renderProjects(ctx context.Context, ps []ProjectView) ([]renderProject, error) {
 	ownerIDs := make([]string, 0, len(ps))
 	for _, p := range ps {
 		ownerIDs = append(ownerIDs, p.OwnerID)
 	}
 	owners := resourcemeta.ResolveOwners(ctx, s.Owners, ownerIDs)
+	environmentIDs, err := s.environmentIDsByProject(ctx, ps)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]renderProject, 0, len(ps))
 	for _, p := range ps {
-		ids, err := s.environmentIDs(ctx, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, toRenderProject(p, ids, owners[p.OwnerID]))
+		out = append(out, toRenderProject(p, environmentIDs[p.ID], owners[p.OwnerID]))
 	}
 	return out, nil
 }

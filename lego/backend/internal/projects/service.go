@@ -136,30 +136,35 @@ type groupingQuotaStore interface {
 // (BEX_CP_DB_URI unset). Projects have no CR-only equivalent.
 var ErrProjectsUnavailable = core.Unavailable("projects store not configured")
 
-// projectEnvironmentLister is the optional store capability for reading a
-// project's environments; *store.PGStore satisfies it. Kept out of the narrow
+// projectEnvironmentLister is the optional store capability for reading
+// projects' environments; *store.PGStore satisfies it. Kept out of the narrow
 // ProjectStore contract so a store without environments still works.
 type projectEnvironmentLister interface {
-	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
+	ListEnvironmentsForProjects(ctx context.Context, projectIDs []string) ([]store.Environment, error)
 }
 
-// environmentIDs returns the environment ids belonging to a project (or nil when
-// the store does not implement environment listing). It is a read-enrichment
-// helper over an ALREADY-authorized project (List/Get gate the caller), not a
-// standalone verb — kept in the service (w1/m53) so the store access lives in the
-// domain layer instead of a REST fragment and any surface can reuse it.
-func (s *Service) environmentIDs(ctx context.Context, projectID string) ([]string, error) {
+// environmentIDsByProject returns the environment ids of each project in ps,
+// read in one store query for the whole page (w5/146), or none when the store
+// does not implement environment listing. It is a read-enrichment helper over
+// ALREADY-authorized projects (List/Get gate the caller), not a standalone verb
+// — kept in the service (w1/m53) so the store access lives in the domain layer
+// instead of a REST fragment and any surface can reuse it.
+func (s *Service) environmentIDsByProject(ctx context.Context, ps []ProjectView) (map[string][]string, error) {
 	lister, ok := s.Store.(projectEnvironmentLister)
-	if !ok {
+	if !ok || len(ps) == 0 {
 		return nil, nil
 	}
-	environments, err := lister.ListEnvironments(ctx, projectID)
+	projectIDs := make([]string, len(ps))
+	for i, p := range ps {
+		projectIDs[i] = p.ID
+	}
+	environments, err := lister.ListEnvironmentsForProjects(ctx, projectIDs)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]string, len(environments))
-	for i := range environments {
-		out[i] = ids.EnvironmentPublicID(environments[i].ID)
+	out := make(map[string][]string, len(ps))
+	for _, e := range environments {
+		out[e.ProjectID] = append(out[e.ProjectID], ids.EnvironmentPublicID(e.ID))
 	}
 	return out, nil
 }
