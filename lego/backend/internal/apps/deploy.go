@@ -692,11 +692,12 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if req.BlueprintID != "" {
 		ctx = core.WithBlueprintApply(ctx)
 	}
+	// One index of the platform's host claims serves the preflight and every
+	// service the apply writes, each of which records its claims in it.
+	ctx = withHostClaimScope(ctx)
 	if err := s.resolveBlueprintRegistryCredentials(ctx, &st); err != nil {
 		return StackResult{}, err
 	}
-	// The preflight writes nothing, so one index of the platform's host claims
-	// serves every service it checks.
 	if err := s.validateBlueprintServices(withRequestMemo(ctx), st, snap); err != nil {
 		return StackResult{}, err
 	}
@@ -2753,8 +2754,8 @@ func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fiel
 
 // updateStackService re-applies a stack service to its existing App.
 func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, desired appv1alpha1.AppSpec, existing *appv1alpha1.App) (AppView, error) {
-	// One index of the platform's host claims serves this update's checks: it
-	// changes only this App's own claims, which are exempt.
+	// Per update, not per stack: a protection answer must not outlive a move
+	// this apply makes. The host index is the apply's (withHostClaimScope).
 	ctx = withRequestMemo(ctx)
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
 		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
@@ -2839,14 +2840,17 @@ func (s *Service) currentStackService(ctx context.Context, listed *appv1alpha1.A
 // the CR — so the stack path creates services identically to the interactive
 // create (w1/m24).
 func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, *appv1alpha1.App, error) {
-	// Per create, not per stack: a later service's check must see the hosts
-	// this stack has already claimed (hostClaimIndex).
+	// Per create, as an interactive create's: the host index is the apply's
+	// (withHostClaimScope).
 	ctx = withRequestMemo(ctx)
 	plan, err := s.planStackApp(ctx, req, desired)
 	if err != nil {
 		return AppView{}, nil, err
 	}
 	v, err := s.materializeNewApp(ctx, req, plan.app, plan.tenantID, plan.environment, plan.seed)
+	if err == nil {
+		recordHostClaims(ctx, plan.app)
+	}
 	return v, plan.app, err
 }
 
@@ -2981,6 +2985,7 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	if err := s.Client.Patch(ctx, existing, base); err != nil {
 		return AppView{}, err
 	}
+	recordHostClaims(ctx, existing)
 	if s.Kick != nil {
 		s.Kick()
 	}

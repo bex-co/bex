@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -1129,5 +1130,139 @@ func TestABlueprintRedeployBuildsTheCommitItRecords(t *testing.T) {
 				t.Errorf("spec.buildCommit = %q, want %q: the redeploy builds what its row records, not the earlier pin %s", got, resolved, pinned)
 			}
 		})
+	}
+}
+
+// platformAppLists counts the cluster-wide App Lists, the host-claim index's
+// sweep of the platform; a workspace's own listing carries options.
+type platformAppLists struct {
+	client.Client
+	count int
+}
+
+func (c *platformAppLists) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	if _, ok := list.(*appv1alpha1.AppList); ok && len(opts) == 0 {
+		c.count++
+	}
+	return c.Client.List(ctx, list, opts...)
+}
+
+// TestABlueprintApplyIndexesThePlatformsHostsOnce (w5/142): the index of every
+// App's hosts is the heaviest list an apply makes, and the apply built it for
+// its preflight and again for each new service with domains. One index now
+// serves the whole apply.
+func TestABlueprintApplyIndexesThePlatformsHostsOnce(t *testing.T) {
+	svc, _ := newService(nil)
+	lists := &platformAppLists{Client: svc.Client}
+	svc.Client = lists
+	manifest := "services:\n" +
+		"  - {name: shop, type: web, runtime: image, image: {url: nginx:1}, domains: [shop.example.com]}\n" +
+		"  - {name: blog, type: web, runtime: image, image: {url: nginx:1}, domains: [blog.example.com]}\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if lists.count != 1 {
+		t.Errorf("the apply swept the platform's Apps %d times, want once", lists.count)
+	}
+}
+
+// TestABlueprintApplyIndexKnowsItsOwnWrites (w5/142): the apply's one host
+// index records each write's claims. A service's maintenance page may not be
+// another service on the platform, which includes one created or given the
+// host earlier in the same Blueprint, as it did when each write indexed the
+// platform afresh.
+func TestABlueprintApplyIndexKnowsItsOwnWrites(t *testing.T) {
+	const blog = "  - {name: blog, type: web, plan: starter, runtime: image, image: {url: nginx:1}, maintenanceMode: {enabled: true, uri: \"https://shop.example.com/down\"}}\n"
+	shopExists := managedApp("shop", "srv-shop")
+	shopExists.Spec.Image = "nginx:1"
+	for name, existing := range map[string][]*appv1alpha1.App{"created before it": nil, "given the host before it": {shopExists}} {
+		t.Run(name, func(t *testing.T) {
+			svc, cl := newService(&recordingStore{}, existing...)
+			manifest := "services:\n  - {name: shop, type: web, runtime: image, image: {url: nginx:1}, domains: [shop.example.com]}\n" + blog
+			_, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest})
+			if err == nil || !strings.Contains(err.Error(), "cannot point to another service on this platform") {
+				t.Fatalf("DeployStack = %v, want blog's maintenance page refused as shop's", err)
+			}
+			var app appv1alpha1.App
+			if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "blog"}, &app); err == nil {
+				t.Error("blog was written with a maintenance page another service serves")
+			}
+		})
+	}
+}
+
+// TestABlueprintApplyFreesTheHostsItsWritesDrop (w5/142): the apply's shared
+// host index forgets a host a write drops. A service's stored maintenance
+// page, which its manifest need not restate, may name a host an earlier
+// service in the same apply gives up, as when each write indexed the platform
+// afresh; otherwise the apply stops half done.
+func TestABlueprintApplyFreesTheHostsItsWritesDrop(t *testing.T) {
+	shop := managedApp("shop", "srv-shop")
+	shop.Spec.Image, shop.Spec.Hosts = "nginx:1", []string{"x.example.com"}
+	blog := managedApp("blog", "srv-blog")
+	blog.Spec.Image = "nginx:1"
+	blog.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{URI: "https://x.example.com/down"}
+	svc, _ := newService(&recordingStore{}, shop, blog)
+	manifest := "services:\n" +
+		"  - {name: shop, type: web, runtime: image, image: {url: nginx:1}, domains: [y.example.com]}\n" +
+		"  - {name: blog, type: web, runtime: image, image: {url: nginx:1}}\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack = %v, want blog's stored maintenance page allowed once shop gives its host up", err)
+	}
+}
+
+// movingEnvironmentStore answers a service's protection from the environment
+// the apply last moved it to.
+type movingEnvironmentStore struct {
+	*blueprintGroupingTestStore
+	appEnv map[string]string
+}
+
+func (s *movingEnvironmentStore) SetAppEnvironment(_ context.Context, appID, _ string, environmentID string) error {
+	s.appEnv[appID] = environmentID
+	return nil
+}
+
+func (s *movingEnvironmentStore) GetAppProtectedStatus(_ context.Context, id string) (string, error) {
+	for _, e := range s.environments {
+		if e.ID == s.appEnv[id] {
+			return e.ProtectedStatus, nil
+		}
+	}
+	return "unprotected", nil
+}
+
+// TestABlueprintApplyRechecksProtectionAfterAMove (w5/142): only the host
+// index is shared across an apply. An existing service the apply moves into a
+// protected environment, and patches again for a reference to a service
+// created after it, is refused on that second write: its first write's
+// protection answer must not outlive the move.
+func TestABlueprintApplyRechecksProtectionAfterAMove(t *testing.T) {
+	inner, _ := seededProtectedEnvironmentStore()
+	st := &movingEnvironmentStore{blueprintGroupingTestStore: inner, appEnv: map[string]string{}}
+	web := webApp("tea-a", "web", "nginx:alpine")
+	web.Labels[store.LabelManagedBy] = store.ManagedByValue
+	svc, _ := newTenantStoreService(fakeWorkspace{"id-a": "tea-a"}, st, web)
+	svc.BlueprintGroups, svc.Environments = st, st
+	manifest := `version: "1"
+projects:
+  - name: platform
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: web
+            runtime: image
+            image: {url: nginx:alpine}
+            envVars:
+              - {key: API_HOST, fromService: {name: api, type: web, property: host}}
+          - type: web
+            name: api
+            runtime: image
+            image: {url: nginx:alpine}
+`
+	_, err := svc.DeployStack(ctxAs("id-a"), DeployRequest{OwnerID: "tea-a", Manifest: manifest})
+	if err == nil || !strings.Contains(err.Error(), `confirm="sudo deploy service web"`) {
+		t.Fatalf("DeployStack = %v, want the protected environment's confirmation for web", err)
 	}
 }
