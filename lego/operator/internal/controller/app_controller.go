@@ -956,6 +956,14 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		if err := r.deleteSiblingBuildJobs(ctx, app, buildNs, releaseBuildRevision(app)); err != nil {
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("clearing superseded builds before cache reset: %w", err)))
 		}
+		// kpack cannot skip restoring its one cache tag, so the clear moves the
+		// App to a new one (build.Options.KpackCacheRef). Record it before the
+		// build starts: the marker goes once this release builds, or as soon as
+		// the next deploy supersedes it.
+		if generation := releaseGeneration(app); app.Status.BuildCacheGeneration != generation {
+			app.Status.BuildCacheGeneration = generation
+			r.updateStatusRetrying(ctx, app, "buildCacheGeneration")
+		}
 	}
 	obs, err := build.EnsureBuild(ctx, build.Options{
 		Repo: app.Spec.Repo, Ref: ref, ExpectedCommit: expectedGitObjectID(app.Spec.BuildCommit), RootDir: app.Spec.RootDir,
@@ -974,20 +982,21 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		NativeFiles:       native.files,
 		// bex's own image runs the version resolver (w8/m51); unresolved, the
 		// build keeps its runtime's default line.
-		NativeResolverImage: r.BackupHelperImage,
-		Revision:            releaseBuildRevision(app),
-		Namespace:           buildNs,
-		AppNamespace:        app.Namespace,
-		Workspace:           app.Labels[labelWorkspace],
-		CloneSecret:         app.Spec.CloneSecret,
-		SignKeySecret:       r.TenantSignKeySecret,
-		SignImage:           r.TenantSignImage,
-		PushSecret:          r.buildJobPushSecret(app),
-		PullSecret:          buildRegistryPullSecret,
-		RegistryConfig:      usesBuildRegistryConfig(app, builder),
-		BuildCache:          r.buildCacheAllowed(),
-		SkipCacheImport:     skipCacheImport,
-		Client:              buildClient,
+		NativeResolverImage:  r.BackupHelperImage,
+		Revision:             releaseBuildRevision(app),
+		Namespace:            buildNs,
+		AppNamespace:         app.Namespace,
+		Workspace:            app.Labels[labelWorkspace],
+		CloneSecret:          app.Spec.CloneSecret,
+		SignKeySecret:        r.TenantSignKeySecret,
+		SignImage:            r.TenantSignImage,
+		PushSecret:           r.buildJobPushSecret(app),
+		PullSecret:           buildRegistryPullSecret,
+		RegistryConfig:       usesBuildRegistryConfig(app, builder),
+		BuildCache:           r.buildCacheAllowed(),
+		SkipCacheImport:      skipCacheImport,
+		KpackCacheGeneration: app.Status.BuildCacheGeneration,
+		Client:               buildClient,
 	})
 	if err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("dispatching build: %w", err)))
