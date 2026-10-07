@@ -2762,7 +2762,7 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 	// annotation instead of spec.replicas to avoid bumping generation (see annotAutoscaleReplicas).
 	// Web, private, and background_worker all honor autoscaling (w4/m101); cron/static
 	// never reach this path. The API refuses config for types that cannot scale.
-	if app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled && !app.Spec.Suspended {
+	if autoscalingEnabled(app) && !app.Spec.Suspended {
 		if raw := app.Annotations[annotAutoscaleReplicas]; raw != "" {
 			if n, err := strconv.ParseInt(raw, 10, 32); err == nil && n > 0 {
 				replicas = int32(n)
@@ -2770,7 +2770,7 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 		}
 		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
 	} else {
-		r.dropScaleDownWindow(ctx, app)
+		r.skipAutoscaling(ctx, app)
 	}
 	f.replicas = clampReplicas(app, replicas)
 	plan := planRelease(f, now)
