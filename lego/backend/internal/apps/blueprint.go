@@ -1089,14 +1089,17 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	// The apply reads the workspace again: admission serializes this
 	// Blueprint's applies, and one admitted before it may have created a
 	// resource since the plan read them.
-	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed, s.newWorkspaceSnapshot(ctx))
+	snap := s.newWorkspaceSnapshot(ctx)
+	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed, snap)
 
 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "create")
 	if cerr != nil {
 		return BlueprintView{}, cerr
 	}
+	// The apply succeeded, so its last write, the ownership stamp, left snap
+	// as the apply left the workspace.
 	v := toBlueprintView(b)
-	v.Resources = s.resolveBlueprintResourcesFromIR(ctx, b, ir)
+	v.Resources = s.resolveBlueprintResourcesFromIR(ctx, b, ir, snap)
 	return v, nil
 }
 
@@ -1756,10 +1759,12 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	if len(problems) > 0 || len(ir.Resources) == 0 {
 		return nil
 	}
-	return s.resolveBlueprintResourcesFromIR(ctx, b, ir)
+	return s.resolveBlueprintResourcesFromIR(ctx, b, ir, &workspaceSnapshot{s: s, tenantID: b.TenantID})
 }
 
-func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.Blueprint, ir BlueprintIR) []BlueprintResource {
+// resolveBlueprintResourcesFromIR resolves ir's declared resources through
+// snap, which must postdate any write the view should show.
+func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.Blueprint, ir BlueprintIR, snap *workspaceSnapshot) []BlueprintResource {
 	if len(ir.Resources) == 0 {
 		return nil
 	}
@@ -1777,7 +1782,6 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 	// namespace (ADR043 D8, w5/125); a service as the apply resolves it
 	// (w5/m133). A failed read leaves its kind unreported.
 	if s.Client != nil {
-		snap := &workspaceSnapshot{s: s, tenantID: tenantID}
 		if declared[BlueprintResourceService] {
 			if services, err := snap.services(ctx); err == nil {
 				appByName = services

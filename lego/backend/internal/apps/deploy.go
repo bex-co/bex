@@ -785,7 +785,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	if err := s.stampBlueprintOwnership(ctx, req.BlueprintID, req.BlueprintGeneration, req.BlueprintRunID, st); err != nil {
+	if err := s.stampBlueprintOwnership(ctx, req.BlueprintID, req.BlueprintGeneration, req.BlueprintRunID, st, snap); err != nil {
 		return res, err
 	}
 	return res, nil
