@@ -74,6 +74,7 @@ export function toAgentSessionView(
     deliveryMode:
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,
     failureReason: wire.failureReason ?? null,
+    failureReasonCode: wire.failureReasonCode ?? null,
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt,
     canceledAt: wire.canceledAt ?? null,
@@ -244,8 +245,8 @@ export function agentSessionNameSource(wire: {
  * session carries nothing worth reading and the caller should use its generic
  * copy instead.
  *
- * `failureReason` is the Completer's named reason and `status` the lifecycle
- * line a background-provisioning failure stamps, but neither is guaranteed to
+ * `failureReason` is the named reason and `status` the lifecycle line, where a
+ * provisioning failure was stamped before w5/m80, but neither is guaranteed to
  * be informative. Two values in particular are noise: a reason that merely
  * restates the phase ("failed" — the callout's own title already says that),
  * and the literal `[object Object]`, which sessions failed before the driver
@@ -270,19 +271,21 @@ export function agentSessionFailureReason(
   return null;
 }
 
+/** bex-api's `sandbox.CodeSandboxCapacityLimit`, a session failure's code. */
+export const SANDBOX_CAPACITY_LIMIT = "SANDBOX_CAPACITY_LIMIT";
+
 /**
- * True when a failed session's cause is a sandbox capacity / plan-limit refusal
- * (bex-api records `sandbox.CapacityFailureReason` = "sandbox capacity reached"
- * on either `failureReason` or the lifecycle `status`). The failure callout keys
- * an "Upgrade plan" action off this instead of a dead-end retry.
+ * True when a failed session's cause is a sandbox capacity / plan-limit refusal,
+ * which bex-api records as the `SANDBOX_CAPACITY_LIMIT` failure code (w5/m132).
+ * The failure callout keys an "Upgrade plan" action off this instead of a
+ * dead-end retry.
  */
 export function isSandboxCapacityFailure(
-  view: Pick<AgentSessionView, "phase" | "failureReason" | "status">,
+  view: Pick<AgentSessionView, "phase" | "failureReasonCode">,
 ): boolean {
-  if (view.phase !== "failed") return false;
-  const reason =
-    `${view.failureReason ?? ""} ${view.status ?? ""}`.toLowerCase();
-  return reason.includes("sandbox capacity");
+  return (
+    view.phase === "failed" && view.failureReasonCode === SANDBOX_CAPACITY_LIMIT
+  );
 }
 
 /** The i18n keys a status phrase resolves to; the settled phases reuse the

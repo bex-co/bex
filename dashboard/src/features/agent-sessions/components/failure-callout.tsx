@@ -26,14 +26,15 @@ export interface FailureCalloutProps {
 
 /**
  * The inline failure callout for a `failed` session (w2/m64). It surfaces the
- * recorded reason — `failureReason` when the Completer named one, else the
- * lifecycle `status` a background-provisioning failure stamps ("sandbox create
- * failed"), else a generic fallback so the callout is never empty or filled with
- * noise (see `agentSessionFailureReason`) — and offers a
- * one-click **Retry** that re-runs the session's original task through the steer
- * (redispatch) mutation. Retry rides the same fast, accept-then-provision path,
- * so the button releases as soon as the new turn is accepted; the header refetch
- * then surfaces the redispatching phase.
+ * recorded reason — `failureReason`, else the lifecycle `status` where a
+ * provisioning failure was stamped before w5/m80, else a generic fallback so the
+ * callout is never empty or filled with noise (see `agentSessionFailureReason`)
+ * — and offers a one-click **Retry** that re-runs the session's original task
+ * through the steer (redispatch) mutation. A sandbox-capacity failure
+ * (`isSandboxCapacityFailure`) leads with an **Upgrade plan** action instead.
+ * Retry rides the same fast, accept-then-provision path, so the button releases
+ * as soon as the new turn is accepted; the header refetch then surfaces the
+ * redispatching phase.
  */
 export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
   const { t } = useTranslations();

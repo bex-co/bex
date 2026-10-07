@@ -71,6 +71,13 @@ func (s *PGStore) ListAgentDispatchesDue(ctx context.Context, now time.Time) ([]
 	return out, rows.Err()
 }
 
+// AgentSessionFailure is why a dispatch failed: a sentence for the reader and,
+// when a client acts on the cause, a stable code (w5/m132).
+type AgentSessionFailure struct {
+	Reason string
+	Code   string
+}
+
 // AbandonAgentDispatch serializes against binding and atomically settles only
 // the accepted turn that owns the intent. A canceled/deleted/newer session
 // still leaves a cleanup tombstone, but its lifecycle is never overwritten.
@@ -78,7 +85,7 @@ func (s *PGStore) ListAgentDispatchesDue(ctx context.Context, now time.Time) ([]
 // the returned TerminalTurnFact carries timing for metrics (w5/m88); a zero
 // Turn means no session terminalization occurred (tombstone-only or already
 // bound — the latter returns ErrNotFound).
-func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now time.Time, reason string) (TerminalTurnFact, error) {
+func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now time.Time, failure AgentSessionFailure) (TerminalTurnFact, error) {
 	bound := false
 	terminalized := false
 	var fact TerminalTurnFact
@@ -120,8 +127,8 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 		if tag.RowsAffected() == 0 {
 			return ErrNotFound
 		}
-		tag, err = tx.Exec(ctx, `UPDATE agent_sessions SET phase='failed', status='failed', failure_reason=$3, updated_at=$4
-    WHERE id=$1 AND turns=$2 AND sandbox_id='' AND phase IN ('creating','redispatching')`, d.SessionID, d.Turn, reason, now)
+		tag, err = tx.Exec(ctx, `UPDATE agent_sessions SET phase='failed', status='failed', failure_reason=$3, failure_reason_code=$4, updated_at=$5
+    WHERE id=$1 AND turns=$2 AND sandbox_id='' AND phase IN ('creating','redispatching')`, d.SessionID, d.Turn, failure.Reason, failure.Code, now)
 		if err != nil {
 			return err
 		}
@@ -133,7 +140,7 @@ func (s *PGStore) AbandonAgentDispatch(ctx context.Context, d AgentDispatch, now
 		fact.TerminalAt = now
 		err = tx.QueryRow(ctx, `UPDATE agent_session_turns SET completed_at=COALESCE(completed_at,$3), transcript_complete=false, truncation_reason=$4
     WHERE session_id=$1 AND turn=$2 AND completed_at IS NULL
-    RETURNING created_at, started_at, completed_at`, d.SessionID, d.Turn, now, reason).
+    RETURNING created_at, started_at, completed_at`, d.SessionID, d.Turn, now, failure.Reason).
 			Scan(&fact.AcceptedAt, &fact.StartedAt, &fact.TerminalAt)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {

@@ -34,6 +34,7 @@ fragment AgentSessionFields on AgentSession {
   turns
   deliveryMode
   failureReason
+  failureReasonCode
   createdAt
   updatedAt
   canceledAt

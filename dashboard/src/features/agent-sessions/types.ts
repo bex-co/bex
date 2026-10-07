@@ -113,6 +113,11 @@ export interface AgentSessionView {
   deliveryMode: AgentSessionDeliveryMode | null;
   /** Populated on a failed session — the named reason (ADR047 D4). */
   failureReason: string | null;
+  /**
+   * A stable code beside `failureReason` when the UI acts on the cause, such as
+   * `SANDBOX_CAPACITY_LIMIT` (w5/m132). Decide by this, never by the wording.
+   */
+  failureReasonCode: string | null;
   createdAt: string;
   updatedAt: string;
   canceledAt: string | null;

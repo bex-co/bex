@@ -45,6 +45,7 @@ export function agentSessionView({
     turns: 0,
     deliveryMode: null,
     failureReason: null,
+    failureReasonCode: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     canceledAt: null,

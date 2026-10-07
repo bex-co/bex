@@ -169,9 +169,14 @@ type View struct {
 	Turns         int         `json:"turns,omitempty"`
 	DeliveryMode  string      `json:"deliveryMode,omitempty"`
 	FailureReason string      `json:"failureReason,omitempty"`
-	CreatedAt     time.Time   `json:"createdAt"`
-	UpdatedAt     time.Time   `json:"updatedAt"`
-	CanceledAt    *time.Time  `json:"canceledAt,omitempty"`
+	// FailureReasonCode is a stable code for the failure's cause when a client
+	// acts on it: SANDBOX_CAPACITY_LIMIT for a dispatch refused at the
+	// workspace's sandbox limit (w5/m132). Clients decide by it, never by the
+	// sentence's wording.
+	FailureReasonCode string     `json:"failureReasonCode,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
+	CanceledAt        *time.Time `json:"canceledAt,omitempty"`
 	// SSHAddress is the Render-shaped `ags-<xid>@<BEX_SSH_HOST>` an editor uses to
 	// open the session's sandbox over SSH (ADR054 D5 — "Open in Zed"). Present only
 	// when BEX_SSH_HOST is configured AND the sandbox is live (the exact condition

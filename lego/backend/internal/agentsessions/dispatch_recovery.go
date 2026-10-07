@@ -26,9 +26,9 @@ import (
 
 const interruptedDispatchReason = "Sandbox provisioning was interrupted before it could be recorded. Send the prompt again to retry."
 
-func (s *Service) abandonDispatch(ctx context.Context, row store.AgentSession, turn int, reason string) {
+func (s *Service) abandonDispatch(ctx context.Context, row store.AgentSession, turn int, failure store.AgentSessionFailure) {
 	d := store.AgentDispatch{SessionID: row.ID, WorkspaceID: row.WorkspaceID, Turn: turn}
-	fact, err := s.Store.AbandonAgentDispatch(ctx, d, time.Now(), reason)
+	fact, err := s.Store.AbandonAgentDispatch(ctx, d, time.Now(), failure)
 	if err != nil {
 		log.Printf("agent-session dispatch: failure persistence failed (session=%s turn=%d): %v", row.ID, turn, err)
 		return
@@ -54,7 +54,7 @@ func (c *Completer) recoverDispatches(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		fact, err := c.Store.AbandonAgentDispatch(ctx, d, c.now(), interruptedDispatchReason)
+		fact, err := c.Store.AbandonAgentDispatch(ctx, d, c.now(), store.AgentSessionFailure{Reason: interruptedDispatchReason})
 		if err != nil {
 			continue
 		}

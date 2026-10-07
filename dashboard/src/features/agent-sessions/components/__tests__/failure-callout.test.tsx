@@ -124,9 +124,13 @@ describe("FailureCallout", () => {
 
   it("offers an Upgrade plan CTA (opening the change-plan dialog) on a capacity failure", async () => {
     const user = userEvent.setup();
+    // The code decides, whatever the sentence beside it says (w5/m132).
     render(
       <FailureCallout
-        session={view("failed", { status: "sandbox capacity reached" })}
+        session={view("failed", {
+          failureReason: "the workspace is at its sandbox limit",
+          failureReasonCode: "SANDBOX_CAPACITY_LIMIT",
+        })}
       />,
     );
 
@@ -136,7 +140,7 @@ describe("FailureCallout", () => {
       screen.getByText(/reached its plan's limit on concurrent sandboxes/),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText("sandbox capacity reached"),
+      screen.queryByText("the workspace is at its sandbox limit"),
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Upgrade plan" }));
@@ -158,6 +162,18 @@ describe("FailureCallout", () => {
       screen.queryByRole("button", { name: "Upgrade plan" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("shows no Upgrade CTA for a reason that only mentions sandbox capacity", () => {
+    render(
+      <FailureCallout
+        session={view("failed", { failureReason: "sandbox capacity reached" })}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Upgrade plan" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("sandbox capacity reached")).toBeInTheDocument();
   });
 
   it("toasts an error and does not converge when the retry is rejected", async () => {

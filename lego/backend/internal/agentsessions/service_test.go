@@ -239,7 +239,7 @@ func (f *fakeStore) ExpireHibernatedAgentSession(_ context.Context, id, ref stri
 	if !ok || row.Phase != PhaseHibernated || row.SnapshotRef != ref {
 		return store.AgentSession{}, store.ErrNotFound
 	}
-	row.Phase, row.Status, row.FailureReason = PhaseCanceled, "canceled", "hibernation retention window elapsed"
+	row.Phase, row.Status, row.FailureReason, row.FailureReasonCode = PhaseCanceled, "canceled", "hibernation retention window elapsed", ""
 	at := row.UpdatedAt.Add(time.Second)
 	row.CanceledAt = &at
 	row.SnapshotRef, row.SnapshotBytes, row.SnapshotSHA, row.RetainUntil = "", 0, "", nil
@@ -498,6 +498,7 @@ func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, deliver
 	f.recordTurn(id, row.Turns+1, prompt, delivery)
 	row.Turns++
 	row.SandboxID, row.Phase, row.Status = "", phase, status
+	row.FailureReason, row.FailureReasonCode = "", ""
 	f.rows[id] = row
 	if phase == PhaseRedispatching {
 		f.addDispatch(row)
@@ -618,7 +619,7 @@ func (f *fakeStore) SetAgentSessionFailure(_ context.Context, id, sandboxID, rea
 	if sandboxID != "" {
 		row.SandboxID = sandboxID
 	}
-	row.Phase, row.Status, row.FailureReason = PhaseFailed, "failed", reason
+	row.Phase, row.Status, row.FailureReason, row.FailureReasonCode = PhaseFailed, "failed", reason, ""
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
 	return row, nil
@@ -662,6 +663,7 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 		row.SandboxID = sandboxID
 	}
 	row.Phase, row.Status, row.DeliveryMode = phase, status, deliveryMode
+	row.FailureReason, row.FailureReasonCode = "", ""
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
 	if turns := f.turns[id]; turns != nil {
@@ -683,7 +685,7 @@ func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, 
 	default:
 		return store.AgentSession{}, store.TerminalTurnFact{}, store.ErrNotFound
 	}
-	row.Phase, row.Status, row.FailureReason = phase, phase, failureReason
+	row.Phase, row.Status, row.FailureReason, row.FailureReasonCode = phase, phase, failureReason, ""
 	if headSHA != "" {
 		row.HeadSHA = headSHA
 	}
@@ -1799,7 +1801,7 @@ func TestBackgroundDispatchFailureSurfacesFailedPhase(t *testing.T) {
 	// w5/m80 t005 (closes w5/048): the reason lands in failure_reason (the field the
 	// dashboard callout reads) with a terminal 'failed' status, matching the
 	// Completer's driver-failure path — not stuffed into status where it was invisible.
-	if failed.Phase != PhaseFailed || failed.Status != "failed" || failed.FailureReason != "sandbox create failed" {
+	if failed.Phase != PhaseFailed || failed.Status != "failed" || failed.FailureReason != "sandbox create failed" || failed.FailureReasonCode != "" {
 		t.Fatalf("dispatch failure should surface a failed phase + failureReason: %+v", failed)
 	}
 	if lc.created != 0 {
@@ -1808,6 +1810,23 @@ func TestBackgroundDispatchFailureSurfacesFailedPhase(t *testing.T) {
 	turn := st.turns[created.ID][1]
 	if turn.CompletedAt == nil || turn.TranscriptComplete || turn.TranscriptTruncated || turn.TruncationReason != "sandbox provisioning failed" {
 		t.Fatalf("failed dispatch turn completeness = %+v", turn)
+	}
+}
+
+// TestACapacityRefusalRecordsItsCode (w5/m132): a dispatch the sandbox
+// refuses for capacity records the capacity sentence and, beside it, the code
+// the dashboard's upgrade callout decides by.
+func TestACapacityRefusalRecordsItsCode(t *testing.T) {
+	svc, st, _, lc := fixture()
+	lc.createErr = fmt.Errorf("create: %w", core.NewConflictError(sandbox.CodeSandboxCapacityLimit, "the workspace is at its sandbox limit", nil))
+
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed := st.rows[created.ID]
+	if failed.Phase != PhaseFailed || failed.FailureReason != sandbox.CapacityFailureReason || failed.FailureReasonCode != sandbox.CodeSandboxCapacityLimit {
+		t.Fatalf("a capacity refusal stored %q / %q in phase %q", failed.FailureReason, failed.FailureReasonCode, failed.Phase)
 	}
 }
 
@@ -1914,6 +1933,24 @@ func TestAttachTicketNotReadyDuringProvisioning(t *testing.T) {
 	}
 }
 
+// newMCPClient connects a client to svc's MCP server over an in-memory
+// transport, closed at test cleanup.
+func newMCPClient(t *testing.T, ctx context.Context, svc *Service) *mcp.ClientSession {
+	t.Helper()
+	server := mcp.NewServer(&mcp.Implementation{Name: "agent-session-test", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(ctx, serverT, nil); err != nil {
+		t.Fatal(err)
+	}
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	return client
+}
+
 func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	want := createInput()
 	check := func(t *testing.T, got View) {
@@ -1961,18 +1998,8 @@ func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 
 	// MCP.
 	mcpSvc, _, _, _ := fixture()
-	server := mcp.NewServer(&mcp.Implementation{Name: "agent-session-test", Version: "0"}, nil)
-	mcpSvc.RegisterMCP(server)
-	serverT, clientT := mcp.NewInMemoryTransports()
 	ctx := caller("alice")
-	if _, err := server.Connect(ctx, serverT, nil); err != nil {
-		t.Fatal(err)
-	}
-	client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.Close()
+	client := newMCPClient(t, ctx, mcpSvc)
 	mcpResult, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "spawn_agent_session", Arguments: map[string]any{
 		"ownerId": "tea-a", "repo": "bex-co/example", "branch": "bex-agent/session-test",
 		"agentConfig":     map[string]any{"agent": "codex", "model": "gpt-5", "modelEndpoint": "https://api.openai.com/v1", "task": "fix the tests"},
@@ -2033,18 +2060,8 @@ func TestViewFieldsAndCodedErrorsMatchEverySurface(t *testing.T) {
 	}
 
 	mcpSvc, _, _, _ := fixture()
-	server := mcp.NewServer(&mcp.Implementation{Name: "agent-session-errors", Version: "0"}, nil)
-	mcpSvc.RegisterMCP(server)
-	serverT, clientT := mcp.NewInMemoryTransports()
 	ctx := caller("alice")
-	if _, err := server.Connect(ctx, serverT, nil); err != nil {
-		t.Fatal(err)
-	}
-	client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.Close()
+	client := newMCPClient(t, ctx, mcpSvc)
 	mcpResult, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "spawn_agent_session", Arguments: map[string]any{"ownerId": "tea-a"}})
 	if err != nil || !mcpResult.IsError || !strings.Contains(mcpResult.Content[0].(*mcp.TextContent).Text, "AGENT_SESSION_INPUT_INVALID") {
 		t.Fatalf("MCP coded error = %+v err=%v", mcpResult, err)
@@ -2164,7 +2181,7 @@ func (f *fakeStore) ListAgentDispatchesDue(_ context.Context, now time.Time) ([]
 	}
 	return out, nil
 }
-func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispatch, now time.Time, reason string) (store.TerminalTurnFact, error) {
+func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispatch, now time.Time, failure store.AgentSessionFailure) (store.TerminalTurnFact, error) {
 	key := dispatchKey(d.SessionID, d.Turn)
 	intent, ok := f.dispatches[key]
 	if !ok {
@@ -2181,7 +2198,7 @@ func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispa
 	if row.Turns == d.Turn && row.SandboxID == "" && (row.Phase == PhaseCreating || row.Phase == PhaseRedispatching) {
 		row.Phase = PhaseFailed
 		row.Status = PhaseFailed
-		row.FailureReason = reason
+		row.FailureReason, row.FailureReasonCode = failure.Reason, failure.Code
 		row.UpdatedAt = now
 		f.rows[row.ID] = row
 		fact = store.TerminalTurnFact{Turn: d.Turn, TerminalAt: now}
@@ -2189,7 +2206,7 @@ func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispa
 			fact.AcceptedAt = turn.CreatedAt
 			fact.StartedAt = turn.StartedAt
 			if turn.CompletedAt == nil {
-				_ = f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, reason)
+				_ = f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, failure.Reason)
 				fact.TerminalAt = now
 			} else {
 				fact.TerminalAt = *turn.CompletedAt
@@ -2198,7 +2215,7 @@ func (f *fakeStore) AbandonAgentDispatch(ctx context.Context, d store.AgentDispa
 		return fact, nil
 	}
 	if turn, ok := f.turns[d.SessionID][d.Turn]; ok && turn.CompletedAt == nil {
-		_ = f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, reason)
+		_ = f.CompleteAgentSessionTurn(ctx, d.SessionID, d.Turn, false, false, failure.Reason)
 	}
 	return store.TerminalTurnFact{}, nil
 }

@@ -55,6 +55,7 @@ export type AgentSession = {
   evidence: Maybe<AgentSessionEvidence>;
   expiresAt: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
+  failureReasonCode: Maybe<Scalars['String']['output']>;
   headSha: Maybe<Scalars['String']['output']>;
   hibernatedAt: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];

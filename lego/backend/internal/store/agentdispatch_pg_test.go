@@ -29,7 +29,11 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
-func TestPGAgentDispatchRecovery(t *testing.T) {
+// agentSessionPGStore opens the migrated real-Postgres store with a fresh Pro
+// workspace for agent-session tests. The workspace and its dispatch rows, which
+// have no tenant foreign key, are removed when the test ends.
+func agentSessionPGStore(t *testing.T, name string) (*PGStore, *pgxpool.Pool, Tenant) {
+	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
 		testenv.Skip(t, "BEX_TEST_DB_URI not set")
@@ -44,7 +48,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 	}
 	t.Cleanup(pool.Close)
 	s := NewPGStore(pool)
-	tenant, err := s.CreateTenant(ctx, "dispatch-recovery-"+time.Now().Format("150405.000000000"), PlanPro)
+	tenant, err := s.CreateTenant(ctx, name+"-"+time.Now().Format("150405.000000000"), PlanPro)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +56,12 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		_, _ = pool.Exec(ctx, `DELETE FROM agent_session_dispatches WHERE workspace_id=$1`, tenant.ID)
 		_, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id=$1`, tenant.ID)
 	})
+	return s, pool, tenant
+}
+
+func TestPGAgentDispatchRecovery(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "dispatch-recovery")
+	ctx := context.Background()
 	create := func() AgentSession {
 		t.Helper()
 		row, err := s.CreateAgentSession(ctx, AgentSession{WorkspaceID: tenant.ID, InitialPrompt: "do the task"})
@@ -78,7 +88,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if intent.SessionID == "" {
 			t.Fatal("accepted turn has no durable dispatch intent")
 		}
-		if _, err := restarted.AbandonAgentDispatch(ctx, intent, future, "provisioning interrupted; retry"); err != nil {
+		if _, err := restarted.AbandonAgentDispatch(ctx, intent, future, AgentSessionFailure{Reason: "provisioning interrupted; retry"}); err != nil {
 			t.Fatal(err)
 		}
 		// Crash before cleanup/schedule leaves the tombstone immediately recoverable.
@@ -105,7 +115,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.AbandonAgentDispatch(ctx, intent, future, "stale sweep"); err != nil {
+		if _, err := s.AbandonAgentDispatch(ctx, intent, future, AgentSessionFailure{Reason: "stale sweep"}); err != nil {
 			t.Fatal(err)
 		}
 		got, _ = s.GetAgentSession(ctx, row.ID)
@@ -135,7 +145,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 	})
 	t.Run("predecessor persisted before steer clears binding", func(t *testing.T) {
 		row := create()
-		row, err = s.RecordAgentSessionDispatch(ctx, row.ID, "previous-"+row.ID, "running", "running", "", row.Turns)
+		row, err := s.RecordAgentSessionDispatch(ctx, row.ID, "previous-"+row.ID, "running", "running", "", row.Turns)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -183,7 +193,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if _, err := s.SetAgentSessionLifecycle(ctx, row.ID, "legacy-"+row.ID, "running", "running", false); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.AbandonAgentDispatch(ctx, intent, future, "interrupted"); !errors.Is(err, ErrNotFound) {
+		if _, err := s.AbandonAgentDispatch(ctx, intent, future, AgentSessionFailure{Reason: "interrupted"}); !errors.Is(err, ErrNotFound) {
 			t.Fatalf("old binding must skip orphan deletion: %v", err)
 		}
 		got, err := s.GetAgentSession(ctx, row.ID)
@@ -197,7 +207,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if _, err := s.SetAgentSessionLifecycle(ctx, row.ID, "", "canceled", "canceled", false); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.AbandonAgentDispatch(ctx, d, future, "interrupted"); err != nil {
+		if _, err := s.AbandonAgentDispatch(ctx, d, future, AgentSessionFailure{Reason: "interrupted"}); err != nil {
 			t.Fatal(err)
 		}
 		got, _ := s.GetAgentSession(ctx, row.ID)
@@ -238,7 +248,10 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 				defer wg.Done()
 				_, bindErr = s.RecordAgentSessionDispatch(ctx, row.ID, "candidate-"+row.ID, "running", "running", "", row.Turns)
 			}()
-			go func() { defer wg.Done(); _, abandonErr = s.AbandonAgentDispatch(ctx, d, time.Now(), "interrupted") }()
+			go func() {
+				defer wg.Done()
+				_, abandonErr = s.AbandonAgentDispatch(ctx, d, time.Now(), AgentSessionFailure{Reason: "interrupted"})
+			}()
 			wg.Wait()
 			got, _ := s.GetAgentSession(ctx, row.ID)
 			if bindErr == nil {

@@ -253,9 +253,10 @@ func sandboxNotFound(id string) error {
 // upgrade CTA) match on this rather than the message.
 const CodeSandboxCapacityLimit = "SANDBOX_CAPACITY_LIMIT"
 
-// CapacityFailureReason is the stable failure reason an async caller records on
-// a session when a create is refused for capacity, so a client can recognize a
-// plan-limit failure and offer an upgrade action rather than a dead-end retry.
+// CapacityFailureReason is the sentence an async caller records on a session
+// when a create is refused for capacity. It records CodeSandboxCapacityLimit
+// beside it, and a client offering an upgrade action decides by that code,
+// never by this wording (w5/m132).
 const CapacityFailureReason = "sandbox capacity reached"
 
 // sandboxCapacityError is the typed refusal for the server's pod-ready-timeout
@@ -272,7 +273,8 @@ func sandboxCapacityError() error {
 }
 
 // IsCapacityLimit reports whether err is (or wraps) the sandbox capacity refusal
-// — the signal an async create failure uses to record CapacityFailureReason.
+// — the signal an async create failure uses to record CapacityFailureReason and
+// CodeSandboxCapacityLimit.
 func IsCapacityLimit(err error) bool {
 	var coded *core.CodedError
 	return errors.As(err, &coded) && coded.Code == CodeSandboxCapacityLimit

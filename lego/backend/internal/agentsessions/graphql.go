@@ -100,11 +100,12 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return *v.Evidence
 		})},
-		"turns":         gqlutil.IntField(func(v View) any { return v.Turns }),
-		"deliveryMode":  gqlutil.StrField(func(v View) any { return v.DeliveryMode }),
-		"failureReason": gqlutil.StrField(func(v View) any { return v.FailureReason }),
-		"createdAt":     gqlutil.ReqStrField(func(v View) any { return gqlTime(v.CreatedAt) }),
-		"updatedAt":     gqlutil.ReqStrField(func(v View) any { return gqlTime(v.UpdatedAt) }),
+		"turns":             gqlutil.IntField(func(v View) any { return v.Turns }),
+		"deliveryMode":      gqlutil.StrField(func(v View) any { return v.DeliveryMode }),
+		"failureReason":     gqlutil.StrField(func(v View) any { return v.FailureReason }),
+		"failureReasonCode": gqlutil.OptionalStrField(func(v View) any { return v.FailureReasonCode }),
+		"createdAt":         gqlutil.ReqStrField(func(v View) any { return gqlTime(v.CreatedAt) }),
+		"updatedAt":         gqlutil.ReqStrField(func(v View) any { return gqlTime(v.UpdatedAt) }),
 		"canceledAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
 			if v.CanceledAt == nil {
 				return nil
