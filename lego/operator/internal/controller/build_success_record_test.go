@@ -26,7 +26,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -246,33 +245,17 @@ func TestAStoredBuildPrunesEarlierReleasesKpackArtifacts(t *testing.T) {
 	app := activeApp("tea-pruned-build")
 	app.UID = "uid-web" // the fake client assigns none; build artifacts are keyed on it
 	r, cl, nn := lifecycleFixture(t, app)
-	kpackImage := func(generation int64) *unstructured.Unstructured {
-		return build.KpackImage(build.Options{
-			Name: nn.Name, AppUID: "uid-web", Namespace: r.buildNamespace(nn.Namespace), Revision: appv1alpha1.BuildRevision(generation),
-			Repo: "https://example.invalid/repo.git",
-		})
-	}
-	built := func(image *unstructured.Unstructured) {
-		t.Helper()
-		image.Object["status"] = map[string]any{
-			"conditions":  []any{map[string]any{"type": "Ready", "status": "True"}},
-			"latestImage": "zot.bex-registry.svc:5000/web@sha256:" + image.GetLabels()["app.bex.co/build-revision"],
-		}
-	}
 	serveReleaseOne(t, r, cl, nn)
-	earlier := kpackImage(1)
-	built(earlier)
+	earlier := releaseKpackImage(r, nn, 1)
+	markKpackImageBuilt(earlier)
 	if err := cl.Create(ctx, earlier); err != nil {
 		t.Fatal(err)
 	}
 	releaseTwoFromSource(t, cl, nn)
 	updateApp(t, cl, nn, func(a *appv1alpha1.App) { a.Spec.Builder = build.BuilderBuildpack })
 	reconcileOnce(t, r, nn)
-	own := kpackImage(2)
-	if err := cl.Get(ctx, client.ObjectKeyFromObject(own), own); err != nil {
-		t.Fatalf("setup: release 2's kpack Image was never dispatched: %v", err)
-	}
-	built(own)
+	own := dispatchedKpackImage(t, r, cl, nn, 2)
+	markKpackImageBuilt(own)
 	if err := cl.Update(ctx, own); err != nil {
 		t.Fatal(err)
 	}
