@@ -36,7 +36,8 @@
 # Config:
 #   BEX_CI_DRIFT_LOOKBACK_HOURS  how far back a recovered gap is still reported
 #                                (default 48: two daily checks see it)
-#   BEX_CI_RUN_LIMIT             scheduled runs to fetch per workflow (default 20)
+#   BEX_CI_RUN_LIMIT             runs to fetch per workflow, every event; the
+#                                scheduled ones are kept (default 100)
 #   BEX_CI_DRIFT_RUNS_JSON       read runs from this file, a JSON object keyed by
 #                                workflow file, instead of the GitHub API
 #   BEX_CI_DRIFT_WINDOWS         read windows from this file instead of the table
@@ -74,7 +75,7 @@ ci-schedule-drift.yml -
 "
 
 LOOKBACK="${BEX_CI_DRIFT_LOOKBACK_HOURS:-48}"
-LIMIT="${BEX_CI_RUN_LIMIT:-20}"
+LIMIT="${BEX_CI_RUN_LIMIT:-100}"
 here="$(cd "$(dirname "$0")" && pwd)"
 WORKFLOWS_DIR="${BEX_CI_DRIFT_WORKFLOWS_DIR:-$here/../.github/workflows}"
 
@@ -138,11 +139,19 @@ else
   command -v gh >/dev/null || unusable "missing required command: gh"
 fi
 
-runs_for() { # runs_for <workflow file> — its recent scheduled runs, newest first
+runs_for() { # runs_for <workflow file> — its newest runs, newest first
   if [ -n "${BEX_CI_DRIFT_RUNS_JSON:-}" ]; then
     echo "$all_runs" | jq --arg f "$1" '.[$f] // []'
   else
-    gh run list --workflow "$1" --event schedule --limit "$LIMIT" \
+    # Never `--event schedule`: GitHub answers an event filter by searching
+    # runs, and its search lags, so newer runs can be missing from it
+    # (cli/cli#7341). List the workflow's newest runs, one API page of 100, and
+    # keep the scheduled ones in the filter below. Measured 2026-10-07 over each
+    # scheduled workflow's newest 100: infra's are the most mixed (81
+    # scheduled, 18 pushes), the weekly workflows hold 12 runs or fewer in all,
+    # and the check needs about 10 scheduled verdicts at most
+    # (ssh-edge-liveness's 12h window plus the 48h lookback).
+    gh run list --workflow "$1" --limit "$LIMIT" \
       --json conclusion,status,event,createdAt,url 2>/dev/null \
       || unusable "could not list runs of $1"
   fi
@@ -186,7 +195,7 @@ while read -r file window; do
       end
   ')"
   [ -n "$findings" ] || continue
-  inspected="$(echo "$runs" | jq 'length')"
+  inspected="$(echo "$runs" | jq '[.[] | select(.event == "schedule")] | length')"
   while IFS=$'\t' read -r kind gap from to url; do
     case "$kind" in
       never)
