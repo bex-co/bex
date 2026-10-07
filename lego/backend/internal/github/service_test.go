@@ -994,6 +994,11 @@ func TestResolveCommit(t *testing.T) {
 	if _, ok, err := svc.resolveCommit(ctx, "default", "not-a-url", "main"); ok || err != nil {
 		t.Errorf("unparseable repo = ok=%v err=%v, want (false, nil)", ok, err)
 	}
+	// Another host's repository whose owner matches the connected account
+	// (w5/138): a GitHub SHA would be pinned as its build input.
+	if _, ok, err := svc.resolveCommit(ctx, "default", "https://gitlab.com/octo/app", "main"); ok || err != nil {
+		t.Errorf("gitlab repo = ok=%v err=%v, want (false, nil)", ok, err)
+	}
 	if _, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/octo/app", ""); ok || err != nil {
 		t.Errorf("empty ref = ok=%v err=%v, want (false, nil)", ok, err)
 	}

@@ -1096,3 +1096,38 @@ func listDBs(t *testing.T, cl client.Client) []appv1alpha1.Database {
 	}
 	return dbs.Items
 }
+
+// TestABlueprintRedeployBuildsTheCommitItRecords (w5/138): a Blueprint
+// redeploy records its branch tip on the deploy row, but it built whatever
+// commit an earlier deploy had pinned, such as the one create now pins. It
+// pins the tip it records, or builds the branch when the tip is unresolved.
+func TestABlueprintRedeployBuildsTheCommitItRecords(t *testing.T) {
+	const pinned, tip = "1111111111111111111111111111111111111111", "2222222222222222222222222222222222222222"
+	changed := `services:
+  - name: web
+    type: web
+    runtime: go
+    repo: https://github.com/bex-co/hello.git
+    branch: main
+    buildCommand: go build -o app .
+    startCommand: ./app --serve
+`
+	for name, resolved := range map[string]commitsAt{"resolved": tip, "unresolved": ""} {
+		t.Run(name, func(t *testing.T) {
+			rec := &recordingStore{}
+			existing := managedRepoApp("web")
+			existing.Spec.BuildCommit = pinned
+			svc, cl := newService(rec, existing)
+			svc.Commits = resolved
+			if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: changed}); err != nil {
+				t.Fatalf("DeployStack: %v", err)
+			}
+			if len(rec.deployCalls) != 1 || rec.deployCalls[0].Commit != string(resolved) {
+				t.Fatalf("blueprint deploy rows = %+v, want one recording %q", rec.deployCalls, resolved)
+			}
+			if got := getApp(t, cl, "web").Spec.BuildCommit; got != string(resolved) {
+				t.Errorf("spec.buildCommit = %q, want %q: the redeploy builds what its row records, not the earlier pin %s", got, resolved, pinned)
+			}
+		})
+	}
+}

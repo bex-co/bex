@@ -460,12 +460,15 @@ type AppSpec struct {
 	// +kubebuilder:validation:MaxLength=255
 	Branch string `json:"branch,omitempty"`
 
-	// BuildCommit pins a single build to a specific Git ref (SHA, tag, or any
-	// ref accepted by the source-clone phase) instead of Branch HEAD. Set by
-	// the CreateDeploy API's commitId body field; the subsequent deploy always
-	// resets it to empty so the next trigger reverts to Branch HEAD. Only
-	// meaningful for repo-backed services; ignored for image-backed ones.
-	// A cron_job rejects commitId at the API layer before this field is set.
+	// BuildCommit pins a release's build to a specific Git ref (SHA, tag, or
+	// any ref accepted by the source-clone phase) instead of Branch HEAD.
+	// bex-api pins the commit each deploy records: the branch tip a create, a
+	// webhook push, a deploy trigger or a Blueprint redeploy resolves, or the
+	// CreateDeploy API's commitId. An unresolved tip leaves it empty, and a
+	// saved repo or branch change clears it, so the next build follows Branch
+	// HEAD; a configuration-only rollout keeps it. Only meaningful for
+	// repo-backed services; ignored for image-backed ones. A cron_job rejects
+	// commitId at the API layer before this field is set.
 	// The pattern is Branch's own (codex-security 2026-08 F5): this value
 	// reaches the clone phase's `git fetch` argv, so a leading dash must be
 	// schema-refused as an admission backstop, not only at the API boundary.

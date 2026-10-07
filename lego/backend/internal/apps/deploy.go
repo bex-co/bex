@@ -2956,7 +2956,12 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		}
 	}
 	if deploySpecChanged {
-		if err := s.recordBlueprintRedeploy(ctx, existing); err != nil {
+		// The redeploy builds the branch tip its deploy row records, as a
+		// deploy trigger does, never a commit an earlier deploy pinned; an
+		// unresolved tip builds the branch (w5/138).
+		commit := s.resolveDeployCommit(ctx, s.AppWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
+		existing.Spec.BuildCommit = commit.Hash
+		if err := s.recordBlueprintRedeploy(ctx, existing, commit); err != nil {
 			return AppView{}, err
 		}
 		secretName, err := s.ensureCloneSecret(ctx, existing)
@@ -2985,14 +2990,14 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	return s.view(existing), nil
 }
 
-// recordBlueprintRedeploy records the blueprint redeploy row for a changed
-// existing service; a nil Store or an unmanaged App records nothing.
-func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1alpha1.App) error {
+// recordBlueprintRedeploy records the blueprint redeploy row, building commit,
+// for a changed existing service; a nil Store or an unmanaged App records
+// nothing.
+func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1alpha1.App, commit store.CommitInfo) error {
 	if s.Store == nil {
 		return nil
 	}
 	if id := managedAppID(existing); id != "" {
-		commit := s.resolveDeployCommit(ctx, s.AppWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
 		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit, core.SubjectFrom(ctx)); err != nil {
 			return fmt.Errorf("recording redeploy: %w", err)
 		}
