@@ -2342,15 +2342,16 @@ func manifestPlanAndMaintenance(a bexService) (string, *MaintenanceModeView, err
 }
 
 // manifestStartAndAutoDeploy resolves one services[] entry's effective start
-// command (dockerCommand stands in for startCommand on a docker or image
-// runtime, as REST, GraphQL and MCP accept it, w5/080) and
-// its auto-deploy setting (autoDeployTrigger wins over the deprecated
-// autoDeploy bool).
+// command and its auto-deploy setting (autoDeployTrigger wins over the
+// deprecated autoDeploy bool). dockerCommand stands in for startCommand where
+// the build runs a container command (w5/080). Elsewhere a create ignores it
+// as inert, and a Blueprint refuses it as it does its other inert fields: on a
+// buildpack build too, which declares runtime docker (w5/102).
 func manifestStartAndAutoDeploy(a bexService) (string, *bool, error) {
 	startCommand := a.StartCommand
 	if a.DockerCommand != "" {
-		if !strings.EqualFold(a.Runtime, "docker") && !strings.EqualFold(a.Runtime, "image") {
-			return "", nil, fmt.Errorf("%w: service %q dockerCommand requires runtime: docker or image", core.ErrBadRequest, a.Name)
+		if !blueprintReadsDockerCommand(a.Runtime, extensionBuilder(a.XBex)) {
+			return "", nil, fmt.Errorf("%w: service %q dockerCommand requires a Dockerfile build or a prebuilt image; a native or buildpack build takes startCommand", core.ErrBadRequest, a.Name)
 		}
 		if startCommand != "" {
 			return "", nil, fmt.Errorf("%w: service %q cannot set both dockerCommand and startCommand", core.ErrBadRequest, a.Name)

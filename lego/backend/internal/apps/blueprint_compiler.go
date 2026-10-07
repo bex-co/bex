@@ -301,8 +301,8 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 		},
 		{
 			field:   "dockerCommand",
-			invalid: runtime != "docker" && runtime != "image",
-			message: "dockerCommand requires runtime: docker or image",
+			invalid: !blueprintReadsDockerCommand(runtime, builder),
+			message: "dockerCommand requires a Dockerfile build or a prebuilt image: runtime docker, without x-bex.builder buildpack, or runtime image; a native or buildpack build takes startCommand",
 		},
 		// The prebuilt-image policy already refuses a dockerfilePath beside an
 		// image, so it is judged here only for a repo build (w5/090).
