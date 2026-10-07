@@ -19,6 +19,7 @@ package secrets
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -44,6 +45,10 @@ const (
 // names no object or revision and wraps no public error, so each caller
 // chooses its own answer.
 var errProjectionConflict = errors.New("the projection lost to a concurrent write")
+
+// errServiceReplaced refuses a write whose App was deleted, or deleted and
+// recreated under its name, since the request read it (w5/118).
+var errServiceReplaced = fmt.Errorf("%w: the service changed since this request read it; refresh before saving", core.ErrConflict)
 
 // projectionKind is one derived Secret a service's store map projects into:
 // its name and the annotation that records the store revision it holds.
@@ -84,9 +89,10 @@ func (r sourceRevision) after(o sourceRevision) bool {
 	return o.provisional && !r.provisional
 }
 
-// sourceProjection is what projectSource found: whether the Secret existed,
-// whether a newer revision already owned it, so this projection was left to
-// that write, and whether the Secret as the call left it holds any key.
+// sourceProjection is what projectSource found: whether a's own Secret existed
+// (replacing a predecessor's counts as creating), whether a newer revision
+// already owned it, so this projection was left to that write, and whether the
+// Secret as the call left it holds any key.
 type sourceProjection struct {
 	ExistedBefore bool
 	Superseded    bool
@@ -108,6 +114,11 @@ type sourceProjection struct {
 // resourceVersion, so a concurrent change is judged again rather than
 // overwritten. A store without versions (test doubles) has no order to keep,
 // and its writes are unconditional.
+//
+// The one exception to the order is a Secret another App controls: a deleted
+// namesake's, which garbage collection has not reached. Its revision belongs
+// to a store the purge removed, so a's write replaces it whatever it records,
+// provided a is still the App at that name (w5/118).
 func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind projectionKind, data map[string]string, revision sourceRevision) (sourceProjection, error) {
 	name := kind.secretName(a.Name)
 	if _, versioned := s.Store.(core.VersionedSecretKV); !versioned {
@@ -135,9 +146,19 @@ func (s *Service) projectSource(ctx context.Context, a *appv1alpha1.App, kind pr
 		if err != nil {
 			return out, err
 		}
-		out.ExistedBefore = true
+		// A Secret another App controls is a predecessor's that garbage
+		// collection has not reached yet. A service recreated under the same
+		// name restarts its store at version 1, so the old revision must not
+		// outrank it: the Secret is replaced, and owned by a (w5/118).
+		predecessor := controlledByAnother(sec, a)
+		if predecessor {
+			if err := s.confirmLiveApp(ctx, a); err != nil {
+				return out, err
+			}
+		}
+		out.ExistedBefore = !predecessor
 		project := data
-		if current, known := projectedRevision(sec, kind); known {
+		if current, known := projectedRevision(sec, kind); known && !predecessor {
 			if current.after(revision) {
 				out.Superseded, out.HoldsData = true, len(sec.Data) > 0
 				if revision.provisional {
@@ -183,12 +204,34 @@ func keptByBoth(projected map[string][]byte, data map[string]string) map[string]
 	return kept
 }
 
-// stampProjection sets sec to data at revision, owned by a.
+// stampProjection sets sec to data at revision, owned by a. A predecessor's
+// controller reference names the same App, so SetControllerReference, which
+// matches owners by group, kind and name, not UID, replaces it with a's.
 func (s *Service) stampProjection(a *appv1alpha1.App, sec *corev1.Secret, kind projectionKind, data map[string]string, revision sourceRevision) error {
 	setProjectedRevision(sec, kind, revision)
 	sec.Type = corev1.SecretTypeOpaque
 	sec.Data = envBytes(data)
 	return controllerutil.SetControllerReference(a, sec, s.Client.Scheme())
+}
+
+// controlledByAnother reports whether a controller other than a, in practice
+// a deleted namesake App, controls sec. A Secret no one controls yet, one
+// create-time preparation wrote ahead of its App, is not another's.
+func controlledByAnother(sec *corev1.Secret, a *appv1alpha1.App) bool {
+	owner := metav1.GetControllerOfNoCopy(sec)
+	return owner != nil && owner.UID != a.UID
+}
+
+// confirmLiveApp refuses a write whose App is no longer the one at its name. A
+// request that spanned a delete and a recreate under the same name would
+// otherwise take the new service's Secret over as its predecessor's.
+func (s *Service) confirmLiveApp(ctx context.Context, a *appv1alpha1.App) error {
+	live := &appv1alpha1.App{}
+	err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), live)
+	if apierrors.IsNotFound(err) || err == nil && live.UID != a.UID {
+		return errServiceReplaced
+	}
+	return err
 }
 
 // setProjectedRevision records revision on sec for kind; projectedRevision

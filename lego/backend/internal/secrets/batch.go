@@ -378,7 +378,8 @@ func envRestorationFailed() error {
 }
 
 // casEnvProjection records whether the revision-owned projection replaced an
-// existing Secret or created a new one. Compensation uses that distinction only
+// existing Secret of the App's own or created a new one; replacing a
+// predecessor's counts as creating. Compensation uses that distinction only
 // after proving that OwnerVersion still owns the current object.
 type casEnvProjection struct {
 	OwnerVersion  uint64
@@ -536,7 +537,9 @@ func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, ca
 		// it cannot overwrite a projection a newer write landed since. An empty
 		// one keeps its Secret, emptied, as the record a late projection loses
 		// to (w5/106).
-		if _, err := s.projectSource(ctx, app, m.kind, m.write.prior, committedAt(restored)); err != nil {
+		// A restore for an App since replaced is not ours to project: the new
+		// service's own writes project its map.
+		if _, err := s.projectSource(ctx, app, m.kind, m.write.prior, committedAt(restored)); err != nil && !errors.Is(err, errServiceReplaced) {
 			compensation = append(compensation, fmt.Errorf("restore %s projection: %w", m.label, err))
 		}
 	}
