@@ -2675,6 +2675,10 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 	if s.CreateSecrets == nil {
 		return core.ErrSecretsUnavailable
 	}
+	// The prepared Secrets' whole ownerless life, prepare to commit, stays
+	// within the bound past which another create may take them over (w5/135).
+	ctx, cancel := context.WithTimeout(ctx, core.CreateSecretsTimeout)
+	defer cancel()
 	if err := s.CreateSecrets.PrepareCreateSecrets(ctx, publicName, a, seed.files, seed.env); err != nil {
 		if core.IsPublicError(err) {
 			return err // its message is the caller's answer

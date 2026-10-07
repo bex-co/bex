@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -222,13 +223,19 @@ func controlledByAnother(sec *corev1.Secret, a *appv1alpha1.App) bool {
 	return owner != nil && owner.UID != a.UID
 }
 
-// ownedByDeletedNamesake reports whether sec's controller is the App that held
-// a's name and no longer exists: a deleted service's Secret that garbage
-// collection has not reached. A live App at the name, or any other controller,
-// still holds it.
-func (s *Service) ownedByDeletedNamesake(ctx context.Context, a *appv1alpha1.App, sec *corev1.Secret) (bool, error) {
-	owner := metav1.GetControllerOfNoCopy(sec)
-	if owner == nil || owner.APIVersion != appv1alpha1.SchemeGroupVersion.String() || owner.Kind != "App" || owner.Name != a.Name {
+// vacated reports whether a's create may take sec, the Secret at one of its
+// projection names, over, because no App holds that name any more. Either sec
+// is a deleted service's Secret that garbage collection has not reached, its
+// controller the App that held the name, or it is a preparation its create
+// abandoned: ownerless long past any create's window, as a bex-api crash
+// between prepare and commit leaves one (w5/135). A live App at the name, any
+// other controller, or a preparation that may still be running holds it.
+func (s *Service) vacated(ctx context.Context, a *appv1alpha1.App, kind projectionKind, sec *corev1.Secret) (bool, error) {
+	if owner := metav1.GetControllerOfNoCopy(sec); owner == nil {
+		if len(sec.OwnerReferences) != 0 || !abandonedPreparation(sec, kind, s.Now()) {
+			return false, nil
+		}
+	} else if owner.APIVersion != appv1alpha1.SchemeGroupVersion.String() || owner.Kind != "App" || owner.Name != a.Name {
 		return false, nil
 	}
 	err := s.Client.Get(ctx, client.ObjectKeyFromObject(a), &appv1alpha1.App{})
@@ -236,6 +243,35 @@ func (s *Service) ownedByDeletedNamesake(ctx context.Context, a *appv1alpha1.App
 		return true, nil
 	}
 	return false, err
+}
+
+// preparedAtAnnotation dates a create's claim on a projection Secret
+// (prepareProjection). A taken-over Secret keeps its first creationTimestamp,
+// so the claim records its own time; adoption removes it.
+const preparedAtAnnotation = "app.bex.co/prepared-at"
+
+// preparationWindow is far past how long any create holds its prepared Secret
+// ownerless: core.CreateSecretsTimeout, plus its 30s compensation.
+const preparationWindow = 6 * core.CreateSecretsTimeout
+
+func setPreparedAt(sec *corev1.Secret, at time.Time) {
+	metav1.SetMetaDataAnnotation(&sec.ObjectMeta, preparedAtAnnotation, at.UTC().Format(time.RFC3339))
+}
+
+// abandonedPreparation reports whether ownerless sec, at kind's name, is a
+// preparation claimed longer ago than any create runs. One from before claims
+// were dated is dated by its creation, but only if it carries kind's
+// projection revision: other ownerless Secrets (an env group's) are never a
+// create's. One of unknown age is never abandoned.
+func abandonedPreparation(sec *corev1.Secret, kind projectionKind, now time.Time) bool {
+	claimed, err := time.Parse(time.RFC3339, sec.Annotations[preparedAtAnnotation])
+	if err != nil {
+		if _, projected := projectedRevision(sec, kind); !projected {
+			return false
+		}
+		claimed = sec.CreationTimestamp.Time
+	}
+	return !claimed.IsZero() && now.Sub(claimed) > preparationWindow
 }
 
 // confirmLiveApp refuses a write whose App is no longer the one at its name. A

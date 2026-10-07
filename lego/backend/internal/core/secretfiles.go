@@ -16,7 +16,16 @@ limitations under the License.
 
 package core
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+// CreateSecretsTimeout bounds a service create's secrets, from the projection
+// Secrets it prepares ownerless to their adoption by the new App (apps'
+// writeNewApp). A prepared Secret still ownerless far past it belongs to a
+// create that never finished, and another create may take it over (w5/135).
+const CreateSecretsTimeout = 2 * time.Minute
 
 // SecretFile is the neutral secret-file projection the apps GraphQL surface
 // renders nested under a Service (Render dashboard shape, mirroring env vars:
