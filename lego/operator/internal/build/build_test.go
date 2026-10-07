@@ -915,7 +915,7 @@ func TestKpackCredentialObjectsRejectMismatchedIdentity(t *testing.T) {
 		mutate func(map[string]string)
 	}{
 		{name: "uid", mutate: func(labels map[string]string) { labels["app.bex.co/app-uid"] = "uid-other" }},
-		{name: "revision", mutate: func(labels map[string]string) { labels[kpackRevisionLabel] = "gen-other" }},
+		{name: "revision", mutate: func(labels map[string]string) { labels[appv1alpha1.LabelBuildRevision] = "gen-other" }},
 		{name: "purpose", mutate: func(labels map[string]string) { labels[kpackPurposeLabel] = kpackGitSecretPurpose }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

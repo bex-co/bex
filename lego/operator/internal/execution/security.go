@@ -26,7 +26,7 @@ import (
 
 const (
 	LabelApp    = "app.bex.co/app"
-	LabelAppUID = "app.bex.co/app-uid"
+	LabelAppUID = appv1alpha1.LabelAppUID
 	// LabelContainerPolicy is operator-authored admission evidence, never a
 	// tenant-selected capability list. Only image-v1 workloads carry it.
 	LabelContainerPolicy = "app.bex.co/container-policy"

@@ -17,8 +17,13 @@ limitations under the License.
 package build
 
 import (
+	"maps"
 	"strings"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/labels"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // TestJobNameCrossModuleContract pins the exact Job names this operator
@@ -44,5 +49,29 @@ func TestJobNameCrossModuleContract(t *testing.T) {
 				t.Fatalf("name %q is %d chars, exceeds the 63-char DNS label limit", got, len(got))
 			}
 		})
+	}
+}
+
+// TestKpackImageReleaseLabelsCrossModuleContract pins the other half: a kpack
+// Image's name hashes the App's UID, so bex-api cancels a buildpack release by
+// selecting its Image with appv1alpha1.ReleaseBuildLabels. The Image this
+// operator creates for a release matches that selector, and a later release's
+// does not. The keys are persisted on in-flight Images, so changing their
+// literals is a migration too (w5/136).
+func TestKpackImageReleaseLabelsCrossModuleContract(t *testing.T) {
+	want := map[string]string{"app.bex.co/build": "web", "app.bex.co/app-uid": "uid-1", "app.bex.co/build-revision": "gen-3"}
+	if got := appv1alpha1.ReleaseBuildLabels("web", "uid-1", "gen-3"); !maps.Equal(got, want) {
+		t.Fatalf("ReleaseBuildLabels = %v, want %v", got, want)
+	}
+	release := opts()
+	release.Revision = appv1alpha1.BuildRevision(3)
+	selector := labels.SelectorFromSet(appv1alpha1.ReleaseBuildLabels(release.Name, release.AppUID, release.Revision))
+	if image := KpackImage(release); !selector.Matches(labels.Set(image.GetLabels())) {
+		t.Fatalf("release 3's Image %s has labels %v, which its cancel selector %v misses", image.GetName(), image.GetLabels(), selector)
+	}
+	later := release
+	later.Revision = appv1alpha1.BuildRevision(4)
+	if selector.Matches(labels.Set(KpackImage(later).GetLabels())) {
+		t.Fatal("release 3's cancel selector matches release 4's Image")
 	}
 }

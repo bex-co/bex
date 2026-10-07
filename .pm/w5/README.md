@@ -101,7 +101,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [x] **133** — [Email-only identity reads still make Kratos load every credential](done/133.md) (~30m) ← found by w5/127's efficiency review — **DONE 2026-10-07**: owner metadata on every REST list and the invite's member check read emails through a new `LookupEmails` batch read, which asks Kratos for no credentials. Member lists, which report MFA, keep the webauthn include. Follow-ups: w5/145, w5/146.
 - [x] **134** — [A refused service create overwrites, then deletes, its namesake's secrets store map](done/134.md) (~45m) ← found while closing w5/128 — **DONE 2026-10-07**: create-time prepare claims the name with its projection Secret before writing the store, so a refused create never touches the holder's map. An abort deletes the map before releasing the name. Follow-up: w5/147.
 - [x] **135** — [An ownerless Secret a crashed service create left behind blocks that name for good](done/135.md) (~30m) ← found by w5/128's quality review — **DONE 2026-10-07**: a create takes over a prepared Secret its create abandoned: ownerless, claimed longer ago than `core.CreateSecretsTimeout` allows any create to run (now enforced by `writeNewApp`), and at a name no App holds. Claims are dated, and env-group Secrets and other owners are never taken. Follow-up: w5/148.
-- [ ] **136** — [Cancelling a buildpack release never stops its kpack build](136.md) (~45m) ← found by w5/129's quality review
+- [x] **136** — [Cancelling a buildpack release never stops its kpack build](done/136.md) (~45m) ← found by w5/129's quality review — **DONE 2026-10-07**: bex-api's cancel finds the canceled release's kpack Image by the labels the operator stamps (`ReleaseBuildLabels`, now in `lego/types` with the label keys) instead of a name only the operator derives, so a canceled buildpack build stops instead of running to the end in a build-cap slot. A failed Job delete no longer spares it. Follow-up: w5/149.
 - [ ] **137** — [Every buildpack release builds with an empty cache](137.md) (~45m) ← found by w5/129's efficiency review
 - [ ] **138** — [A new service's first build follows its branch, not the commit its deploy records](138.md) (~30m) ← found by w5/129's efficiency review
 - [ ] **139** — [A sandbox file transfer revoked mid-stream answers 503, not the exec stream's 403](139.md) (~30m) ← found by w5/131's quality review
@@ -115,6 +115,7 @@ Cross-workstream: m111 complements blocked w4/m173 (it owns only the lookback ta
 - [ ] **146** — [The projects list reads each project's environments separately](146.md) (~30m) ← found by w5/133's efficiency review
 - [ ] **147** — [A deleted namesake's in-flight secrets write can take over a create's prepared Secret](147.md) (~45m) ← found by w5/134's quality review
 - [ ] **148** — [A crashed create's other projection leg outlives the service that takes its name](148.md) (~45m) ← found by w5/135's quality review
+- [ ] **149** — [A build the cancel's one delete misses runs to the end: the operator's settle never stops it](149.md) (~45m) ← found by w5/136's reviews
 
 ## Approved queue — 2026-10-01
 

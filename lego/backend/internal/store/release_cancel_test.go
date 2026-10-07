@@ -21,10 +21,13 @@ import (
 	"errors"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -111,13 +114,94 @@ func TestSuspendCloseSurvivesAFailedBuildDelete(t *testing.T) {
 	}
 }
 
-func cancelTestClient(t *testing.T, app *appv1alpha1.App, funcs interceptor.Funcs) client.Client {
+func cancelTestClient(t *testing.T, app *appv1alpha1.App, funcs interceptor.Funcs, builds ...client.Object) client.Client {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	if err := appv1alpha1.AddToScheme(scheme); err != nil {
 		t.Fatal(err)
 	}
-	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithInterceptorFuncs(funcs).Build()
+	if err := batchv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(append(builds, app)...).WithInterceptorFuncs(funcs).Build()
+}
+
+// w5/136: a buildpack release's kpack Image is named by a hash of the App's UID
+// and revision, so a cancel that addressed it by the build Job's name never
+// stopped it. The cancel selects it by the labels the operator stamps instead,
+// using the UID it re-reads rather than the caller's copy: the canceled
+// release's build goes, whichever shape it took, while a recreated namesake
+// App's build of the same revision and the App's later release stay. bex-api
+// may list kpack Images only in the build namespace. Nothing retries a cancel
+// once its stamp lands, so a failed Job delete must not spare the Image, and a
+// cluster without kpack has no Image to stop.
+func TestCancelReleaseStopsItsBuild(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"},
+		Spec: appv1alpha1.AppSpec{Repo: "https://example.invalid/acme/web.git"}}
+	image := func(name string, uid types.UID, generation int64) *unstructured.Unstructured {
+		u := &unstructured.Unstructured{}
+		u.SetGroupVersionKind(kpackImageGVK)
+		u.SetNamespace("bex-build")
+		u.SetName(name)
+		u.SetLabels(appv1alpha1.ReleaseBuildLabels("web", string(uid), appv1alpha1.BuildRevision(generation)))
+		return u
+	}
+	gone := func(cl client.Client, obj client.Object) bool {
+		t.Helper()
+		err := cl.Get(ctx, client.ObjectKeyFromObject(obj), obj.DeepCopyObject().(client.Object))
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Fatal(err)
+		}
+		return err != nil
+	}
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.BuildJobName("web", appv1alpha1.BuildRevision(7)), Namespace: "bex-build"}}
+	canceled := image("bld-web-gen-7-0123456789ab", app.UID, 7)
+	kept := []client.Object{image("bld-web-gen-7-ba9876543210", "uid-namesake", 7), image("bld-web-gen-8-00112233aabb", app.UID, 8)}
+	cl := cancelTestClient(t, app.DeepCopy(), interceptor.Funcs{
+		List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+			if ns := (&client.ListOptions{}).ApplyOptions(opts).Namespace; ns != "bex-build" {
+				t.Errorf("kpack Images listed in %q, want only the build namespace", ns)
+			}
+			return c.List(ctx, list, opts...)
+		},
+	}, append(kept, job, canceled)...)
+	caller := app.DeepCopy()
+	caller.UID = ""
+	if err := CancelRelease(ctx, cl, caller, 7, "bex-build"); err != nil {
+		t.Fatal(err)
+	}
+	for _, obj := range []client.Object{job, canceled} {
+		if !gone(cl, obj) {
+			t.Errorf("canceled release's %s survived the cancel", obj.GetName())
+		}
+	}
+	for _, obj := range kept {
+		if gone(cl, obj) {
+			t.Errorf("%s was not the canceled release's, yet the cancel deleted it", obj.GetName())
+		}
+	}
+
+	jobDeleteFails := cancelTestClient(t, app.DeepCopy(), interceptor.Funcs{
+		Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			if _, ok := obj.(*batchv1.Job); ok {
+				return errors.New("apiserver unavailable")
+			}
+			return c.Delete(ctx, obj, opts...)
+		},
+	}, canceled.DeepCopy())
+	if err := deleteReleaseBuild(ctx, jobDeleteFails, app, 7, "bex-build"); err == nil || !gone(jobDeleteFails, canceled) {
+		t.Errorf("cancel whose Job delete fails = %v, Image stopped = %t; want the failure reported and the Image stopped anyway", err, gone(jobDeleteFails, canceled))
+	}
+
+	withoutKpack := cancelTestClient(t, app.DeepCopy(), interceptor.Funcs{
+		List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+			return &meta.NoKindMatchError{GroupKind: kpackImageGVK.GroupKind()}
+		},
+	})
+	if err := deleteReleaseBuild(ctx, withoutKpack, app, 7, "bex-build"); err != nil {
+		t.Fatalf("cancel where kpack is not installed = %v, want nothing to report", err)
+	}
 }
 
 // A stamp read a pass ago must not overwrite a newer release's cancel that
@@ -148,7 +232,7 @@ func TestCancelReleaseSucceedsOnceStamped(t *testing.T) {
 	ctx := context.Background()
 	for name, deleteErr := range map[string]error{
 		"apiserver error": errors.New("apiserver unavailable"),
-		"kind not served": &meta.NoKindMatchError{GroupKind: schema.GroupKind{Group: "kpack.io", Kind: "Image"}},
+		"kind not served": &meta.NoKindMatchError{GroupKind: kpackImageGVK.GroupKind()},
 	} {
 		t.Run(name, func(t *testing.T) {
 			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a"},
@@ -166,7 +250,7 @@ func TestCancelReleaseSucceedsOnceStamped(t *testing.T) {
 	}
 	if err := deleteBuildArtifact(ctx, cancelTestClient(t, &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "x", Namespace: "y"}}, interceptor.Funcs{
 		Delete: func(context.Context, client.WithWatch, client.Object, ...client.DeleteOption) error {
-			return &meta.NoKindMatchError{GroupKind: schema.GroupKind{Group: "kpack.io", Kind: "Image"}}
+			return &meta.NoKindMatchError{GroupKind: kpackImageGVK.GroupKind()}
 		},
 	}), &appv1alpha1.App{}); err != nil {
 		t.Fatalf("deleting a kind the cluster does not serve = %v, want it read as already gone", err)

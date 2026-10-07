@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // TestPruneKpackRevisions (w5/129): once gen-4's artifact is stored, every
@@ -80,7 +81,7 @@ func TestPruneKpackRevisions(t *testing.T) {
 	}
 	for _, obj := range spent {
 		if present(obj) {
-			t.Errorf("%T %s (revision %s) outlived gen-4's stored build", obj, obj.GetName(), obj.GetLabels()[kpackRevisionLabel])
+			t.Errorf("%T %s (revision %s) outlived gen-4's stored build", obj, obj.GetName(), obj.GetLabels()[appv1alpha1.LabelBuildRevision])
 		}
 	}
 	for name, set := range map[string][]client.Object{"gen-4's": kept, "the namesake App's": namesake} {

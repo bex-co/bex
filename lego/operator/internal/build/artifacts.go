@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // ArtifactInventory is the complete cross-namespace execution inventory owned
@@ -148,7 +149,7 @@ func PruneKpackRevisions(ctx context.Context, cl client.Client, namespace string
 	}
 	var errs []error
 	prune := func(kind string, obj client.Object) {
-		revision, ok := obj.GetLabels()[kpackRevisionLabel]
+		revision, ok := obj.GetLabels()[appv1alpha1.LabelBuildRevision]
 		if !ok || revision == keep || !appArtifactOwned(identity, obj) {
 			return
 		}

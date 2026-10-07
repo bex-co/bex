@@ -1178,19 +1178,11 @@ fi
 	captureFailureTail(&podSpec)
 	podSpec.Volumes = volumes
 
-	appNamespace := ""
-	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
-		appNamespace = o.AppNamespace
-	}
-	labels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
-	labels["app.bex.co/build"] = o.Name
-	podLabels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
-	podLabels["app.bex.co/build"] = o.Name
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      JobName(o.Name, o.Revision),
 			Namespace: o.Namespace,
-			Labels:    labels,
+			Labels:    buildLabels(o),
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoff,
@@ -1199,7 +1191,7 @@ fi
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
+					Labels:      buildLabels(o),
 					Annotations: annotations,
 				},
 				Spec: podSpec,
@@ -1578,7 +1570,7 @@ func ObservingAppBuild(ctx context.Context, cl client.Client, namespace, name, a
 // so a name-only selector would also match a same-named App's builds in ANOTHER
 // workspace.
 func AppBuildSelector(name, appUID string) client.MatchingLabels {
-	sel := client.MatchingLabels{"app.bex.co/build": name}
+	sel := client.MatchingLabels{appv1alpha1.LabelBuild: name}
 	if appUID != "" {
 		sel[execution.LabelAppUID] = appUID
 	}
