@@ -1428,6 +1428,21 @@ func NotFoundIfDeleting(obj client.Object) error {
 	return ErrNotFound
 }
 
+// RereadApp refreshes a from the API server. An App at a's name with another
+// UID, a's namesake after a delete and recreate, answers ErrServiceReplaced and
+// leaves a as it was: a write aimed at a never lands on it (w5/157).
+func RereadApp(ctx context.Context, cl client.Client, a *appv1alpha1.App) error {
+	live := &appv1alpha1.App{}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(a), live); err != nil {
+		return err
+	}
+	if live.UID != a.UID {
+		return ErrServiceReplaced
+	}
+	*a = *live
+	return nil
+}
+
 // canonicalAppTarget binds managed audit writes to the fetched service even if
 // its name is reused before the audit insert completes. Hand-applied CRs have
 // no control-plane id and retain the namespace-unique name fallback.

@@ -30,6 +30,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -424,5 +425,49 @@ func TestDeployHookManagementSurfaceParity(t *testing.T) {
 	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/services/web/deploy-hook", nil))
 	if err := json.Unmarshal(w.Body.Bytes(), &rest); w.Code != http.StatusOK || err != nil || rest.URL != rotated.URL {
 		t.Fatalf("REST after MCP rotation = code %d hook %+v err=%v, MCP=%+v", w.Code, rest, err, rotated)
+	}
+}
+
+// TestARotationLeavesARecreatedNamesakesDeployHookAlone (w5/157): a rotation
+// whose service was deleted and recreated under its name before its patch
+// landed lost the patch's lock, re-read the namesake by name and rotated its
+// deploy hook, breaking the namesake's CI URL and handing its new token to the
+// deleted service's caller. It refuses as the service having changed.
+func TestARotationLeavesARecreatedNamesakesDeployHookAlone(t *testing.T) {
+	svc, cl := newService(newFakeStore(), sampleApp("web", "srv-1"))
+	ctx := context.Background()
+	kept, err := newDeployHookToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	recreated := false
+	svc.Base.Client = interceptor.NewClient(cl.(client.WithWatch), interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			if _, ok := obj.(*appv1alpha1.App); ok && !recreated {
+				recreated = true
+				if err := c.Delete(ctx, sampleApp("web", "srv-1")); err != nil {
+					return err
+				}
+				namesake := sampleApp("web", "srv-2")
+				namesake.UID = "uid-namesake"
+				namesake.Annotations = map[string]string{DeployHookTokenAnnotation: kept}
+				namesake.Labels[DeployHookTokenDigestLabel] = deployHookTokenDigest(kept)
+				if err := c.Create(ctx, namesake); err != nil {
+					return err
+				}
+			}
+			return c.Patch(ctx, obj, patch, opts...)
+		},
+	})
+
+	if _, err := svc.RegenerateDeployHook(ctx, "web"); !errors.Is(err, core.ErrServiceReplaced) {
+		t.Fatalf("the deleted service's rotation = %v, want the conflict that the service changed", err)
+	}
+	var namesake appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &namesake); err != nil {
+		t.Fatal(err)
+	}
+	if namesake.UID != "uid-namesake" || namesake.Annotations[DeployHookTokenAnnotation] != kept {
+		t.Fatalf("the namesake %s holds token %q, want its own kept", namesake.UID, namesake.Annotations[DeployHookTokenAnnotation])
 	}
 }
