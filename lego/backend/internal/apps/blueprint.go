@@ -674,6 +674,8 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		}
 		return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, refused)}, nil
 	}
+	// The validation writes nothing, so its checks share one datastore snapshot.
+	snap := s.newDatastoreSnapshot(ctx)
 	if err == nil {
 		err = s.resolveBlueprintRegistryCredentials(ctx, &st)
 	}
@@ -695,7 +697,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		// validateBlueprint is a can_view verb — running it here would either
 		// refuse a viewer's validate or weaken that gate. Recorded in ADR018's
 		// Blueprint row so a manifest author knows which checks are which.
-		if entries := s.validateWorkspaceReferences(ctx, source, ir, st); len(entries) > 0 {
+		if entries := s.validateWorkspaceReferences(ctx, source, ir, st, snap); len(entries) > 0 {
 			return BlueprintValidation{Errors: entries}, nil
 		}
 	}
@@ -703,13 +705,13 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		// Ownership conflicts surface in the preview/validation result (the
 		// dashboard's create review + pre-sync dialog) so nobody discovers
 		// them at apply time; the apply-path preflight still enforces.
-		if entries := s.previewOwnershipConflicts(ctx, repo, branch, st); len(entries) > 0 {
+		if entries := s.previewOwnershipConflicts(ctx, repo, branch, st, snap); len(entries) > 0 {
 			return BlueprintValidation{Errors: entries}, nil
 		}
 	}
 	if err == nil {
 		plan := blueprintValidationPlanFromIR(ir, st)
-		if actionPlan, available, planErr := s.blueprintActionPlan(ctx, ir, st, blueprintID); planErr != nil {
+		if actionPlan, available, planErr := s.blueprintActionPlan(ctx, ir, st, blueprintID, snap); planErr != nil {
 			if !errors.Is(planErr, core.ErrBadRequest) {
 				return BlueprintValidation{}, planErr
 			}
@@ -1038,7 +1040,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if err := s.requireStackBilling(ctx, parsed); err != nil {
 		return BlueprintView{}, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, ""); err != nil {
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", s.newDatastoreSnapshot(ctx)); err != nil {
 		return BlueprintView{}, err
 	}
 
@@ -1086,7 +1088,10 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	prepareReq.BlueprintID = b.ID
 	prepareReq.BlueprintGeneration = b.ExecutionGeneration
 	prepareReq.BlueprintRunID = run.ID
-	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed)
+	// The apply reads the datastores again: admission serializes this
+	// Blueprint's applies, and one admitted before it may have created a
+	// datastore since the plan read them.
+	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed, s.newDatastoreSnapshot(ctx))
 
 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "create")
 	if cerr != nil {
@@ -1215,7 +1220,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 // so a manifest that cannot be applied never becomes the stored one. Only the
 // manifest (the sync-owned field) is written: current name/path/autoSync
 // settings survive the sync (w8/m37 t005).
-func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string) (store.Blueprint, *parsedStack, error) {
+func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, snap *datastoreSnapshot) (store.Blueprint, *parsedStack, error) {
 	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: manifest})
 	if err != nil {
 		return store.Blueprint{}, nil, err
@@ -1223,7 +1228,7 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, ru
 	if err := s.requireStackBilling(ctx, parsed); err != nil {
 		return store.Blueprint{}, nil, err
 	}
-	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, ""); err != nil {
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed, "", snap); err != nil {
 		return store.Blueprint{}, nil, err
 	}
 	staged, err := s.Blueprints.StageBlueprintManifest(ctx, b.ID, b.TenantID, run.ExecutionGeneration, run.ID, manifest)
@@ -1354,6 +1359,9 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 		return SyncBlueprintResult{}, err
 	}
+	// The admitted sync's reads until it writes a datastore share one snapshot;
+	// staging writes only the store.
+	snap := s.newDatastoreSnapshot(ctx)
 
 	// settleStage terminates an admitted run whose manifest could not be staged
 	// (preflight refusal, or a lost fence on the legacy path) without touching
@@ -1377,7 +1385,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 		b = staged
 	} else {
-		staged, parsed, err := s.prepareSyncManifest(ctx, b, run, manifest)
+		staged, parsed, err := s.prepareSyncManifest(ctx, b, run, manifest, snap)
 		if err != nil {
 			return settleStage(err)
 		}
@@ -1399,21 +1407,23 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		applyErr = err
 		if applyErr == nil {
 			prepared = &parsed
-			_, _, applyErr = s.blueprintActionPlan(ctx, ir, parsed, "")
+			_, _, applyErr = s.blueprintActionPlan(ctx, ir, parsed, "", snap)
 		}
 	}
 	baseline := []BlueprintResource{}
 	var stack StackResult
 	if applyErr == nil {
 		var detached []blueprintDetachment
-		if detached, err = s.blueprintDetachments(ctx, b.TenantID, b.ID, *prepared, nil); err != nil {
+		if detached, err = s.blueprintDetachments(ctx, b.TenantID, b.ID, *prepared, func() (*blueprintActionResolver, error) {
+			return newBlueprintActionResolver(ctx, s, parsedStack{}, snap)
+		}); err != nil {
 			return settleStage(err)
 		}
 		baseline = make([]BlueprintResource, 0, len(detached))
 		for _, resource := range detached {
 			baseline = append(baseline, resource.BlueprintResource)
 		}
-		stack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared)
+		stack, applyErr = s.deployParsedStack(ctx, deployReq, *prepared, snap)
 	}
 
 	b, cerr := s.completeAdmittedSync(ctx, b, run, applyErr, "sync")
