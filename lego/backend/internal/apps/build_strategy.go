@@ -94,6 +94,14 @@ func readsDockerCommand(build string) bool {
 	return build == buildDockerfile || build == buildImage
 }
 
+// blueprintReadsDockerCommand is readsDockerCommand for a Blueprint service,
+// from the runtime and x-bex.builder it declares: runtime image, or runtime
+// docker that is not the schema's spelling of a buildpack build (w5/102).
+func blueprintReadsDockerCommand(runtime, builder string) bool {
+	runtime = strings.ToLower(strings.TrimSpace(runtime))
+	return runtime == "image" || (runtime == "docker" && !strings.EqualFold(builder, buildBuildpack))
+}
+
 // resolve folds the details the build reads onto the create's commands and
 // build context: a non-blank dockerCommand is the start command, and also a
 // cron's run command when none is given; the context applies to a Dockerfile
