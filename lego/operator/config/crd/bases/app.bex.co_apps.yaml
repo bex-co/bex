@@ -984,6 +984,18 @@ spec:
                 - toReplicas
                 - transitionId
                 type: object
+              buildCacheGeneration:
+                description: |-
+                  BuildCacheGeneration is the release generation of the App's latest
+                  clear-cache deploy (annotation app.bex.co/clear-cache-release-generation),
+                  recorded before that release's build starts, or zero. kpack reads and
+                  writes a single cache tag and cannot skip restoring it, so the App's
+                  buildpack cache tag is named after this generation: a clear starts a fresh
+                  cache that later releases build on. The annotation goes once that release
+                  builds or the next deploy supersedes it, so the operator keeps the
+                  generation here (w5/m134).
+                format: int64
+                type: integer
               buildRun:
                 description: |-
                   BuildRun is the execution window of the most recent terminal source

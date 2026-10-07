@@ -111,7 +111,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 		"successBuildHistoryLimit": int64(1),
 		"imageTaggingStrategy":     "None",
 		"cache": map[string]any{
-			"registry": map[string]any{"tag": o.KpackImageRef() + "-cache"},
+			"registry": map[string]any{"tag": o.KpackCacheRef()},
 		},
 		"build": build,
 	}
@@ -182,7 +182,7 @@ func ensureBuildpack(ctx context.Context, o Options) (Observation, error) {
 // canonical name in App status preserves kubelet hosts.toml, pull-secret, and
 // admission-verifier behavior shared with Dockerfile builds.
 func canonicalKpackImage(o Options, image string) string {
-	if o.KpackRegistry == "" || o.KpackRegistry == o.Registry {
+	if o.kpackRegistry() == o.Registry {
 		return image
 	}
 	prefix := o.KpackRegistry + "/"
@@ -388,10 +388,7 @@ func ensureKpackRegistrySecret(ctx context.Context, o Options) (string, error) {
 	if config.Auths == nil {
 		config.Auths = map[string]json.RawMessage{}
 	}
-	registry := o.KpackRegistry
-	if registry == "" {
-		registry = o.Registry
-	}
+	registry := o.kpackRegistry()
 	if _, exists := config.Auths[registry]; !exists && registry != o.Registry {
 		if auth, ok := config.Auths[o.Registry]; ok {
 			config.Auths[registry] = auth

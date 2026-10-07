@@ -282,6 +282,11 @@ const (
 	// reason about.
 	cacheTag = "cache"
 
+	// kpackCacheTag is the tag kpack's buildpack layer cache occupies in the
+	// App's image repository, until a clear-cache rebuild moves it
+	// (KpackCacheRef).
+	kpackCacheTag = "kpack-cache"
+
 	// cacheLayoutTag is the OCI-layout reference name BuildKit's local cache
 	// importer selects on, and it is the one non-obvious part of this path.
 	// BuildKit's local cache EXPORTER writes index.json with
@@ -422,6 +427,9 @@ type Options struct {
 	// is on, the Job still exports and saves a fresh cache, but it does not
 	// restore or import prior layers. Empty/false keeps the normal warm path.
 	SkipCacheImport bool
+	// KpackCacheGeneration is the App's Status.BuildCacheGeneration, the release
+	// of its latest clear-cache deploy, which names its kpack cache tag.
+	KpackCacheGeneration int64
 }
 
 // Phase is the observed lifecycle of a dispatched build (ADR060 §D1: the
@@ -556,15 +564,26 @@ func (o Options) CacheRef() string {
 // equals ImageRef; the separate registry alias exists for the in-cluster HTTP
 // Zot endpoint described on Options.KpackRegistry.
 func (o Options) KpackImageRef() string {
-	host := o.KpackRegistry
-	if host == "" {
-		host = o.Registry
+	return fmt.Sprintf("%s/%s:%s", o.kpackRegistry(), o.RepoPath(), cmp.Or(o.Revision, defaultRevision))
+}
+
+// KpackCacheRef is where every kpack Image of the App caches buildpack layers:
+// one tag in the App's image repository, so a release restores the layers the
+// previous release cached. Not CachePath: an App named <name>-cache owns that
+// repository name. kpack reads and writes the one tag and cannot skip restoring
+// it, so a clear-cache deploy moves the App to a tag named for its release
+// generation (KpackCacheGeneration); the tag it leaves is never pushed again
+// and ages out of retention with old release tags.
+func (o Options) KpackCacheRef() string {
+	tag := kpackCacheTag
+	if o.KpackCacheGeneration > 0 {
+		tag += "-" + appv1alpha1.BuildRevision(o.KpackCacheGeneration)
 	}
-	rev := o.Revision
-	if rev == "" {
-		rev = defaultRevision
-	}
-	return fmt.Sprintf("%s/%s:%s", host, o.RepoPath(), rev)
+	return fmt.Sprintf("%s/%s:%s", o.kpackRegistry(), o.RepoPath(), tag)
+}
+
+func (o Options) kpackRegistry() string {
+	return cmp.Or(o.KpackRegistry, o.Registry)
 }
 
 // EnsureBuild dispatches the selected in-cluster builder if it is not already

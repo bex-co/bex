@@ -1475,6 +1475,17 @@ type AppStatus struct {
 	// +optional
 	ArtifactImage string `json:"artifactImage,omitempty"`
 
+	// BuildCacheGeneration is the release generation of the App's latest
+	// clear-cache deploy (annotation app.bex.co/clear-cache-release-generation),
+	// recorded before that release's build starts, or zero. kpack reads and
+	// writes a single cache tag and cannot skip restoring it, so the App's
+	// buildpack cache tag is named after this generation: a clear starts a fresh
+	// cache that later releases build on. The annotation goes once that release
+	// builds or the next deploy supersedes it, so the operator keeps the
+	// generation here (w5/m134).
+	// +optional
+	BuildCacheGeneration int64 `json:"buildCacheGeneration,omitempty"`
+
 	// StaticPrefix is the object-store key prefix the currently published static
 	// revision lives under, including the trailing slash (e.g. "web/rev-7/" or
 	// "tea-<xid>/web/rev-7/"). Empty means the legacy "<app.Name>/<revision>/"

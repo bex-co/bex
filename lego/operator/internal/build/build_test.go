@@ -105,6 +105,61 @@ func TestKpackNamesBindUIDRevisionAndPurpose(t *testing.T) {
 	}
 }
 
+// TestKpackReleasesShareTheirAppsCache (w5/m134): each release builds its own
+// kpack Image, and each used to cache under a tag of its own: no release
+// restored another's layers, and each release spent two of the image
+// repository's five retained tags. An App's releases share one cache tag in
+// its image repository, on the host kpack pushes to, and no other App uses it,
+// including one named like the App's cache repository. kpack restores whatever
+// that tag holds, so a clear-cache deploy moves the App to a new tag, which the
+// releases after it keep.
+func TestKpackReleasesShareTheirAppsCache(t *testing.T) {
+	cacheTag := func(o Options) string {
+		t.Helper()
+		tag, _, err := unstructured.NestedString(KpackImage(o).Object, "spec", "cache", "registry", "tag")
+		if err != nil || tag == "" {
+			t.Fatalf("release %s configures no registry cache: %v", o.Revision, err)
+		}
+		return tag
+	}
+	release := func(revision string, change func(*Options)) Options {
+		o := opts()
+		o.Workspace, o.Revision = "tea-a", revision
+		if change != nil {
+			change(&o)
+		}
+		return o
+	}
+	shared := cacheTag(release("gen-3", nil))
+	if want := "zot.bex-registry.svc:5000/tea-a/hello:kpack-cache"; shared != want {
+		t.Fatalf("release 3 caches in %q, want one tag in the App's image repository: %q", shared, want)
+	}
+	if got := cacheTag(release("gen-4", nil)); got != shared {
+		t.Errorf("release 4 caches in %q and release 3 in %q, so release 4 cannot restore release 3's layers", got, shared)
+	}
+	for name, other := range map[string]Options{
+		"another App":                     release("gen-3", func(o *Options) { o.Name = "api" }),
+		"an App named hello-cache":        release("gen-3", func(o *Options) { o.Name = "hello-cache" }),
+		"a namesake in another workspace": release("gen-3", func(o *Options) { o.Workspace = "tea-b" }),
+	} {
+		if got := cacheTag(other); got == shared {
+			t.Errorf("%s shares the cache tag %q", name, got)
+		}
+	}
+	aliased := release("gen-3", func(o *Options) { o.KpackRegistry = "zot-http.bex-registry.svc:5000" })
+	if got := cacheTag(aliased); !strings.HasPrefix(got, aliased.KpackRegistry+"/") {
+		t.Errorf("cache %q is not on %s, the host kpack pushes to", got, aliased.KpackRegistry)
+	}
+
+	cleared := cacheTag(release("gen-5", func(o *Options) { o.KpackCacheGeneration = 5 }))
+	if cleared == shared {
+		t.Fatalf("a clear-cache release caches in %q, the tag it was asked to clear", cleared)
+	}
+	if got := cacheTag(release("gen-6", func(o *Options) { o.KpackCacheGeneration = 5 })); got != cleared {
+		t.Errorf("release 6 caches in %q and the clear before it in %q", got, cleared)
+	}
+}
+
 func TestCredentialBearingPlatformImagesAreDigestPinned(t *testing.T) {
 	for name, image := range map[string]string{
 		"buildkit": defaultBuildkitImage,
