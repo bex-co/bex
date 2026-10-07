@@ -310,7 +310,7 @@ func TestBlueprintResourceConflictNamesTheManifestKind(t *testing.T) {
 		if err := svc.Client.Create(ctx, cache); err != nil {
 			t.Fatal(err)
 		}
-		expect(t, svc.stampBlueprintOwnership(ctx, "blp-b", 0, "", parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}}), keyValue)
+		expect(t, svc.stampBlueprintOwnership(ctx, "blp-b", 0, "", parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}}, svc.newWorkspaceSnapshot(ctx)), keyValue)
 	})
 }
 
@@ -462,7 +462,7 @@ func TestADatastoresOnlyStampListsNoApps(t *testing.T) {
 	svc, _ := ownershipService(t)
 	lists := &workspaceListCounter{Client: svc.Client}
 	svc.Client = lists
-	if err := svc.stampBlueprintOwnership(ownershipCtx(), "blp-a", 0, "", parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}}); err != nil {
+	if err := svc.stampBlueprintOwnership(ownershipCtx(), "blp-a", 0, "", parsedStack{keyValues: []parsedKeyValue{{name: "cache"}}}, svc.newWorkspaceSnapshot(ownershipCtx())); err != nil {
 		t.Fatal(err)
 	}
 	if apps := lists.apps.Load(); apps != 0 {
@@ -483,5 +483,64 @@ func TestEveryClaimKindHasItsOwnManifestKind(t *testing.T) {
 			t.Errorf("claim kinds %q and %q both map to %q", other, kind, manifest)
 		}
 		seen[manifest] = kind
+	}
+}
+
+// TestABlueprintCreateReadsTheWorkspaceOnceAfterItsWrites (w5/141): after a
+// create's apply, the ownership stamp and then the resources view listed each
+// declared kind back to back. The view reads what the stamp listed, so each
+// kind is read by the plan, by the apply before its writes and by the stamp
+// after them, and the view still reports every resource the apply wrote.
+func TestABlueprintCreateReadsTheWorkspaceOnceAfterItsWrites(t *testing.T) {
+	const manifest = ownershipManifest + `  - name: api
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+  - type: keyvalue
+    name: cache
+    plan: free
+    ipAllowList: []
+databases:
+  - name: orders
+    plan: free
+`
+	svc, _ := ownershipService(t)
+	svc.GitFetcher = fakeBlueprintFetcher{contents: manifest, sha: "abc1234"}
+	lists := &workspaceListCounter{Client: svc.Client}
+	svc.Client = lists
+	view, err := svc.CreateBlueprint(ownershipCtx(), "tea-a", CreateBlueprintRequest{Repo: "https://github.com/acme/a", Branch: "main"})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if apps, databases, keyValues := lists.apps.Load(), lists.databases.Load(), lists.keyValues.Load(); apps != 3 || databases != 3 || keyValues != 3 {
+		t.Errorf("the create listed Apps %d, Databases %d and Key Values %d times, want 3 each: the plan, the apply and its stamp", apps, databases, keyValues)
+	}
+	if len(view.Resources) != 4 {
+		t.Fatalf("the create reported %d resources, want the two services, the Postgres and the Key Value", len(view.Resources))
+	}
+}
+
+// TestTheOwnershipStampLabelsTheCopyTheApplyResolved (w5/141): the stamp
+// labeled every App answering to a declared name, including a stale twin left
+// in the shared namespace mid-cutover. It labels the copy the apply resolved
+// and wrote, and the twin keeps the label it had.
+func TestTheOwnershipStampLabelsTheCopyTheApplyResolved(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", Labels: map[string]string{core.LabelTenant: "tea-a"}}},
+		&appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "workloads", Labels: map[string]string{core.LabelTenant: "tea-a", core.LabelBlueprint: "blp-old"}}},
+	), Namespace: "workloads", Workspace: fakeWorkspace{"id-a": "tea-a"}}}
+	ctx := ownershipCtx()
+	st := parsedStack{services: []parsedService{{req: CreateRequest{Name: "web"}}}}
+	if err := svc.stampBlueprintOwnership(ctx, "blp-a", 0, "", st, &workspaceSnapshot{s: svc, tenantID: "tea-a"}); err != nil {
+		t.Fatalf("stamp: %v", err)
+	}
+	for namespace, want := range map[string]string{"tea-a": "blp-a", "workloads": "blp-old"} {
+		var app appv1alpha1.App
+		if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: "web"}, &app); err != nil {
+			t.Fatal(err)
+		}
+		if got := app.Labels[core.LabelBlueprint]; got != want {
+			t.Errorf("web in %s is labeled %q, want %q", namespace, got, want)
+		}
 	}
 }
