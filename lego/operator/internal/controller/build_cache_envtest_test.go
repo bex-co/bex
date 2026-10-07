@@ -121,7 +121,7 @@ var _ = Describe("build cache dispatch", func() {
 			}
 		}
 		Expect(restore).NotTo(BeNil())
-		Expect(restore.Args).To(ContainElement(ContainSubstring("tea-w1/cache-on-app-cache:cache")))
+		Expect(restore.Args).To(ContainElement(ContainSubstring("tea-w1/cache-on-app_cache:cache")))
 	})
 
 	It("skips restore and purges on a clear-cache release when the gate is on", func() {

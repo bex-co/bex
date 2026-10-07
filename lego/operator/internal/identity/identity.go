@@ -85,9 +85,15 @@ func (id Identity) Repo() string {
 func (id Identity) LegacyRepo() string { return id.Name }
 
 // CacheRepo is the w7/m86 build-cache repository: the last path component of
-// Repo() plus "-cache". Not minted by m75; the helper exists so m86 cannot
-// invent a second scheme.
-func (id Identity) CacheRepo() string { return id.Repo() + "-cache" }
+// Repo() plus "_cache". No Kubernetes name contains "_", so it is never another
+// App's image repository, as PriorCacheRepo is for an App named <name>-cache
+// (w5/m135).
+func (id Identity) CacheRepo() string { return id.Repo() + "_cache" }
+
+// PriorCacheRepo is CacheRepo's name before w5/m135, Repo() plus "-cache": the
+// image repository of an App named <name>-cache when one exists. It exists only
+// so this App can give back its own claim on that name, and nothing more.
+func (id Identity) PriorCacheRepo() string { return id.Repo() + "-cache" }
 
 // ZotUsername is the htpasswd user for this App's repository ACL.
 func (id Identity) ZotUsername() string {
@@ -98,10 +104,15 @@ func (id Identity) ZotUsername() string {
 }
 
 // LegacyCacheRepo is the build cache of the pre-m75 repository. It exists only
-// for teardown: an App that built while unlabeled owns a "<name>-cache" grant,
+// for teardown: an App that built while unlabeled owns a "<name>_cache" grant,
 // and without this the entry outlives the App in a document shared by the whole
 // estate. Nothing mints it — CacheRepo is the only cache a live App uses.
-func (id Identity) LegacyCacheRepo() string { return id.LegacyRepo() + "-cache" }
+func (id Identity) LegacyCacheRepo() string { return id.LegacyRepo() + "_cache" }
+
+// LegacyPriorCacheRepo is LegacyCacheRepo's name before w5/m135, which an
+// unlabeled App named <name>-cache, possibly another tenant's, owns as its
+// image repository.
+func (id Identity) LegacyPriorCacheRepo() string { return id.LegacyRepo() + "-cache" }
 
 // LegacyZotUsername is the pre-m75 htpasswd user.
 func (id Identity) LegacyZotUsername() string { return "app-" + id.Name }

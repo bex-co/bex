@@ -24,9 +24,9 @@ Workspace id `W` is the `app.bex.co/workspace` label (`tea-` + 20-char xid, DNS-
 | Zot htpasswd user | `app-A` | `app-W-A` |
 | Pull Secret | `reg-pull-A` | `reg-pull-W-A` |
 | Static object prefix | `A/<revision>/` | `W/A/<revision>/` |
-| Future build-cache repo (w7/m86) | `A-cache` | `W/A-cache` |
+| Build-cache repo (w7/m86, renamed w5/m135) | `A_cache` | `W/A_cache` |
 
-`CacheRepo` appends `-cache` to the **last path component** (`identity.Repo()+"-cache"`), so a workspace-scoped cache is `tea-…/hello-cache` and not a third path segment. w7/m86 consumes this helper; this ADR does not mint cache repositories.
+`CacheRepo` appends `_cache` to the **last path component** (`identity.Repo()+"_cache"`), so a workspace-scoped cache is `tea-…/hello_cache` and not a third path segment. It was `-cache` until w5/m135, which made it the image repository of any App named `<name>-cache`. No DNS-1123 label contains `_`. w7/m86 consumes this helper; this ADR does not mint cache repositories.
 
 ### Length and charset
 

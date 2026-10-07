@@ -165,7 +165,12 @@ func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS 
 	// It is also load-bearing for the feature to work at all: in per-App mode the
 	// build pushes as this user, and Zot's longest-match ACL means the "**"
 	// builder rule does not cover a repository the tenant user owns.
-	wroteACL, err := c.ensureZotConfigEntry(ctx, zotUser, zotReadWriteActions, id.Repo(), id.CacheRepo())
+	//
+	// The same hold gives back the cache's prior name, the image repository of
+	// any App named <name>-cache: the two Apps' exclusive grants overwrote each
+	// other on every reconcile (w5/m135).
+	wroteACL, err := c.ensureZotConfigEntryReleasing(ctx, zotUser, zotReadWriteActions,
+		[]string{id.Repo(), id.CacheRepo()}, []string{id.PriorCacheRepo()})
 	if err != nil {
 		return fmt.Errorf("zot config: %w", err)
 	}
@@ -210,7 +215,10 @@ func (c *Creds) RevokeCredsFor(ctx context.Context, id identity.Identity) error 
 	if err != nil {
 		return fmt.Errorf("htpasswd revoke: %w", err)
 	}
-	removedACL, err := c.removeZotConfigEntry(ctx, id.Repo(), id.CacheRepo())
+	// Another App may own the cache's prior name as its image repository, so
+	// only this App's claim on it goes.
+	removedACL, err := c.removeZotConfigEntryReleasing(ctx, id.ZotUsername(),
+		[]string{id.Repo(), id.CacheRepo()}, []string{id.PriorCacheRepo()})
 	if err != nil {
 		return fmt.Errorf("zot config revoke: %w", err)
 	}
@@ -228,7 +236,8 @@ func (c *Creds) RevokeCredsFor(ctx context.Context, id identity.Identity) error 
 		if err != nil {
 			return fmt.Errorf("legacy htpasswd revoke: %w", err)
 		}
-		la, err = c.removeZotConfigEntry(ctx, id.LegacyRepo(), id.LegacyCacheRepo())
+		la, err = c.removeZotConfigEntryReleasing(ctx, id.LegacyZotUsername(),
+			[]string{id.LegacyRepo(), id.LegacyCacheRepo()}, []string{id.LegacyPriorCacheRepo()})
 		if err != nil {
 			return fmt.Errorf("legacy zot config revoke: %w", err)
 		}
@@ -464,6 +473,14 @@ func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) (bool,
 // round-trip per App per reconcile — plus a window in which one exists and the
 // other does not.
 func (c *Creds) ensureZotConfigEntry(ctx context.Context, zotUser string, actions []string, repos ...string) (bool, error) {
+	return c.ensureZotConfigEntryReleasing(ctx, zotUser, actions, repos, nil)
+}
+
+// ensureZotConfigEntryReleasing is ensureZotConfigEntry granting grant that
+// also takes zotUser off each of release in the same document hold, leaving
+// any other user's grant there: a repository name this user once claimed that
+// another App may own.
+func (c *Creds) ensureZotConfigEntryReleasing(ctx context.Context, zotUser string, actions []string, grant, release []string) (bool, error) {
 	return c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, c.baseZotConfig,
 		func(current []byte) ([]byte, bool, error) {
 			data, err := decodeZotConfig(current)
@@ -479,12 +496,17 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, zotUser string, action
 				setZotPlatformBuilderPolicy(data)
 				changed = true
 			}
-			for _, repo := range repos {
+			for _, repo := range grant {
 				// The platform builder repository is never tenant-owned: an App
 				// whose public name collides with it must not replace the shared
 				// read-only rule with tenant write permission.
 				if repo != platformBuilderRepository && !zotRepoGrants(data, repo, zotUser, actions) {
 					setZotRepoPolicy(data, repo, zotUser, actions)
+					changed = true
+				}
+			}
+			for _, repo := range release {
+				if dropZotRepoUser(data, repo, zotUser) {
 					changed = true
 				}
 			}
@@ -499,6 +521,13 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, zotUser string, action
 // removeZotConfigEntry drops each repo's ACL entry, reporting whether any was
 // there.
 func (c *Creds) removeZotConfigEntry(ctx context.Context, repos ...string) (bool, error) {
+	return c.removeZotConfigEntryReleasing(ctx, "", repos, nil)
+}
+
+// removeZotConfigEntryReleasing is removeZotConfigEntry dropping remove's
+// entries that also takes zotUser off each of release in the same document
+// hold, leaving any other user's grant there.
+func (c *Creds) removeZotConfigEntryReleasing(ctx context.Context, zotUser string, remove, release []string) (bool, error) {
 	removed, err := c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, nil,
 		func(current []byte) ([]byte, bool, error) {
 			data, err := decodeZotConfig(current)
@@ -506,13 +535,18 @@ func (c *Creds) removeZotConfigEntry(ctx context.Context, repos ...string) (bool
 				return nil, false, err
 			}
 			changed := false
-			for _, repo := range repos {
+			for _, repo := range remove {
 				// A colliding App's deletion must not strip the platform rule.
 				if repo == platformBuilderRepository || !zotHasRepo(data, repo) {
 					continue
 				}
 				delete(zotRepos(data), repo)
 				changed = true
+			}
+			for _, repo := range release {
+				if dropZotRepoUser(data, repo, zotUser) {
+					changed = true
+				}
 			}
 			if !changed {
 				return nil, false, nil
@@ -553,10 +587,9 @@ func (c *Creds) revokeZotRepoUser(ctx context.Context, repo, zotUser string) (bo
 			if err != nil {
 				return nil, false, err
 			}
-			if repo == platformBuilderRepository || !zotRepoHasUser(data, repo, zotUser) {
+			if !dropZotRepoUser(data, repo, zotUser) {
 				return nil, false, nil
 			}
-			removeZotRepoUser(data, repo, zotUser)
 			next, err := json.Marshal(data)
 			return next, err == nil, err
 		})
