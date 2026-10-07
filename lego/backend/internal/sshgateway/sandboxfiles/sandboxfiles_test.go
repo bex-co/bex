@@ -34,6 +34,7 @@ import (
 	"testing/iotest"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -388,8 +389,93 @@ func TestUploadRevocationStopsBodyAndDoesNotPublish(t *testing.T) {
 	default:
 		t.Fatal("executor survived revoked transfer")
 	}
-	if w.Code == 204 || published.Load() {
+	if published.Load() {
 		t.Fatal("revoked transfer published")
+	}
+	if w.Code != http.StatusForbidden || !strings.Contains(w.Body.String(), errRevoked.message) {
+		t.Fatalf("revoked upload answered %d %q, want 403 %q as the exec stream answers a revocation", w.Code, w.Body, errRevoked.message)
+	}
+}
+
+// TestDownloadRevocationAnswersForbidden (w5/139): a download revoked before
+// its first byte answered the 503 of an outage. It answers 403 and counts the
+// session revoked, as a revoked upload and the exec stream do, and one revoked
+// after its first byte is aborted and still counted. A transfer that runs out
+// its time, or whose client leaves, while a watchdog check is in flight is
+// neither: that check fails only because its own context ended.
+func TestDownloadRevocationAnswersForbidden(t *testing.T) {
+	refuseLater := func(calls *atomic.Int32) revalidatorFunc {
+		return func(context.Context, files.Claims) error {
+			if calls.Add(1) > 1 {
+				return errors.New("revoked")
+			}
+			return nil
+		}
+	}
+	inFlight := func(calls *atomic.Int32) revalidatorFunc {
+		return func(ctx context.Context, _ files.Claims) error {
+			if calls.Add(1) == 1 {
+				return nil
+			}
+			<-ctx.Done()
+			return ctx.Err()
+		}
+	}
+	untilDone := func(ctx context.Context, _ []string, _ io.Reader, _ io.Writer) (int, error) {
+		<-ctx.Done()
+		time.Sleep(20 * time.Millisecond) // the exec stream's teardown
+		return 0, ctx.Err()
+	}
+	streaming := func(ctx context.Context, _ []string, _ io.Reader, out io.Writer) (int, error) {
+		_, _ = out.Write([]byte("file\nsome bytes"))
+		<-ctx.Done()
+		return 0, ctx.Err()
+	}
+	for name, tc := range map[string]struct {
+		exec        executorFunc
+		revalidator func(*atomic.Int32) revalidatorFunc
+		timeout     time.Duration
+		leave       bool // the client goes away
+		want        int  // 0: the response was aborted; -1: anything but 403
+		revoked     float64
+	}{
+		"revoked before its first byte": {exec: untilDone, revalidator: refuseLater, timeout: 10 * time.Second, want: http.StatusForbidden, revoked: 1},
+		"revoked while streaming":       {exec: streaming, revalidator: refuseLater, timeout: 10 * time.Second, revoked: 1},
+		"timed out mid-check":           {exec: untilDone, revalidator: inFlight, timeout: 50 * time.Millisecond, want: http.StatusGatewayTimeout},
+		"left by its client mid-check":  {exec: untilDone, revalidator: inFlight, timeout: 10 * time.Second, leave: true, want: -1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var calls atomic.Int32
+			reg := prometheus.NewRegistry()
+			s := serverFor(tc.exec)
+			s.Metrics = sshgateway.NewMetrics(reg)
+			s.TransferTimeout = tc.timeout
+			s.RevalidateInterval = 5 * time.Millisecond
+			s.Revalidator = tc.revalidator(&calls)
+			r := requestFor(t, http.MethodGet, nil)
+			if tc.leave {
+				ctx, cancel := context.WithCancel(r.Context())
+				time.AfterFunc(30*time.Millisecond, cancel)
+				r = r.WithContext(ctx)
+			}
+			w := httptest.NewRecorder()
+			aborted := func() (aborted bool) {
+				defer func() { aborted = recover() == http.ErrAbortHandler }()
+				s.Handler().ServeHTTP(w, r)
+				return false
+			}()
+			switch {
+			case tc.want == 0 && !aborted:
+				t.Errorf("download answered %d, want it aborted", w.Code)
+			case tc.want < 0 && w.Code == http.StatusForbidden:
+				t.Error("download answered 403, but nothing revoked it")
+			case tc.want > 0 && w.Code != tc.want:
+				t.Errorf("download answered %d %q, want %d", w.Code, w.Body, tc.want)
+			}
+			if got := gatewaytest.MetricValue(t, reg, "bex_ssh_gateway_sessions_total", map[string]string{"result": "revoked"}); got != tc.revoked {
+				t.Errorf("sessions counted revoked = %v, want %v", got, tc.revoked)
+			}
+		})
 	}
 }
 

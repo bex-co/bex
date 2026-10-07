@@ -178,7 +178,7 @@ Render's error body has no `code`, so these are extensions a Render client ignor
   - workspace creation's payment setup, verification and contract calls.
 - An exec stream that breaks mid-command answers `sandbox runtime not configured: sandbox exec stream failed` (503).
 - A malformed Postgres server CA answers that the CA is malformed (503), without the parse error.
-- The ssh-gateway's sandbox file transfer, a separate process, follows the same rule with its own helper. An executor's failure, or any other failure the endpoint did not word itself, answers `sandbox file operation failed` (503), and the gateway logs the cause with the sandbox's id (w5/131). A malformed upload archive still answers its own 400.
+- The ssh-gateway's sandbox file transfer, a separate process, follows the same rule with its own helper. An executor's failure, or any other failure the endpoint did not word itself, answers `sandbox file operation failed` (503), and the gateway logs the cause with the sandbox's id (w5/131). A malformed upload archive still answers its own 400. A transfer whose access is revoked mid-stream answers `access was revoked during this transfer` (403), as the exec stream answers its own revocation, and the gateway logs it with the sandbox's id and counts the session as revoked (w5/139). A download that has already started streaming can only be aborted.
 
 A failure with no refusal of its own is not classified at all: it answers an uncoded `internal error` (500), as the metrics router lookup does.
 

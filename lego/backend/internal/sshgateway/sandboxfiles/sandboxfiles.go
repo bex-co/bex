@@ -112,7 +112,8 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	defer s.Limits.Release(c.Subject)
 	s.Metrics.SessionStarted()
 	started := time.Now()
-	defer func() { s.Metrics.SessionEnded("closed", time.Since(started)) }()
+	result := "closed"
+	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
 	check := func(ctx context.Context) error {
 		if s.Revalidator == nil {
 			return nil
@@ -127,6 +128,17 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	defer cancelTimeout()
 	ctx, cancel := sshgateway.WithRevalidation(timed, s.RevalidateInterval, check)
 	defer cancel()
+	// The watchdog ends a transfer by canceling ctx under a live timed context;
+	// the client and the cap end timed itself. A transfer the watchdog ended was
+	// revoked: answer, log and count it as the exec stream does (w5/139).
+	revoked := func(err error) error {
+		if err == nil || ctx.Err() == nil || timed.Err() != nil {
+			return err
+		}
+		result = "revoked"
+		log.Printf("sandbox file transfer revoked mid-stream (sandbox=%s subject=%s)", c.SandboxID, c.Subject)
+		return errRevoked
+	}
 	deadline := time.Now().Add(s.TransferTimeout)
 	_ = http.NewResponseController(w).SetReadDeadline(deadline)
 	_ = http.NewResponseController(w).SetWriteDeadline(deadline)
@@ -139,15 +151,14 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	target := apps.SSHInstanceTarget{PodName: c.PodName(), Namespace: c.Namespace,
 		Container: sandboxexec.SandboxContainer, ServiceID: c.SandboxID, OwnerID: c.Workspace}
 	if c.Operation == files.OperationUpload {
-		err = s.upload(ctx, target, c.Path, r)
-		if err != nil {
+		if err := revoked(s.upload(ctx, target, c.Path, r)); err != nil {
 			writeError(w, target.ServiceID, err)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	s.download(ctx, target, c.Path, w)
+	s.download(ctx, target, c.Path, w, revoked)
 }
 
 var (
@@ -163,7 +174,10 @@ type statusError struct {
 
 func (e *statusError) Error() string { return e.message }
 
-var errOperationFailed = &statusError{http.StatusServiceUnavailable, "sandbox file operation failed"}
+var (
+	errOperationFailed = &statusError{http.StatusServiceUnavailable, "sandbox file operation failed"}
+	errRevoked         = &statusError{http.StatusForbidden, "access was revoked during this transfer"}
+)
 
 // hideCause answers errOperationFailed in place of an unclassified failure: a
 // Kubernetes exec error can name the API server, the pod and the node, and a
@@ -414,7 +428,9 @@ else
 fi
 `
 
-func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, source string, w http.ResponseWriter) {
+// download streams source to w. revoked classifies a failure the watchdog
+// caused; once the stream has started, a failure can only abort it.
+func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, source string, w http.ResponseWriter, revoked func(error) error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	reader, writer := io.Pipe()
@@ -442,7 +458,7 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 		if err == nil {
 			err = errors.New("invalid sandbox transfer response")
 		}
-		writeError(w, target.ServiceID, err)
+		writeError(w, target.ServiceID, revoked(err))
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -474,6 +490,7 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 		err = gz.Close()
 	}
 	if err != nil {
+		_ = revoked(err) // a revocation is still logged and counted; the response is already streaming
 		// Never close gzip after failure: its trailer is the pinned client's
 		// proof that even a zero-byte file completed. Abort HTTP too; returning
 		// normally would turn a partial raw stream into a success-shaped EOF.
