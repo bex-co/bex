@@ -610,7 +610,7 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 // brand-new environment id cannot yet be referenced by any
 // service/database/key-value/env group — so Create composes its view with
 // newView instead of paying for view's membership fetches (matching
-// projects.Service.Create's own toView(p, nil, nil, nil)).
+// projects.Service.Create's own membership-free toView(p)).
 func (s *Service) create(ctx context.Context, p store.Project, name string) (store.Environment, error) {
 	// codex-security round 12, finding 5: direct creates share the Blueprint
 	// grouping quota, counted against the project's OWN workspace. Transactional

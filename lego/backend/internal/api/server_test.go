@@ -969,7 +969,7 @@ func (sweepProjectStore) TouchProject(context.Context, string) error          { 
 func (sweepProjectStore) SetProjectServices(context.Context, string, string, []string) ([]core.ServicePlacementChange, error) {
 	return nil, nil
 }
-func (sweepProjectStore) ListProjectServices(context.Context, string) ([]string, error) {
+func (sweepProjectStore) ListServicesForProjects(context.Context, []string) (map[string][]string, error) {
 	return nil, nil
 }
 

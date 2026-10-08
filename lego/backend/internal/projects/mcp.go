@@ -68,13 +68,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "list_projects",
 		Description: "List projects in a workspace. Optional cursor/limit select stable id-ordered pages; omitting both returns the complete list for compatibility. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listProjectsArgs) (*mcp.CallToolResult, projectsResult, error) {
-		ps, err := s.List(ctx, core.NamedWorkspace(ctx))
+		requested := in.Cursor != "" || in.Limit != 0
+		limit := core.PageLimitOrDefault(in.Limit)
+		ps, err := s.List(ctx, core.NamedWorkspace(ctx), func(all []ProjectView) []ProjectView {
+			return core.StablePage(all, in.Cursor, limit, requested, func(project ProjectView) string { return project.ID })
+		})
 		if err != nil {
 			return nil, projectsResult{}, err
 		}
-		requested := in.Cursor != "" || in.Limit != 0
-		limit := core.PageLimitOrDefault(in.Limit)
-		ps = core.StablePage(ps, in.Cursor, limit, requested, func(project ProjectView) string { return project.ID })
 		result := projectsResult{Projects: ps}
 		if requested && len(ps) > 0 {
 			result.Cursor = ps[len(ps)-1].ID

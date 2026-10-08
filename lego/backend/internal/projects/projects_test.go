@@ -42,6 +42,8 @@ type fakeProjectStore struct {
 	// — w4/m32's SetProjectServices tests use withEnv to seed it, then assert
 	// the departure return value/clearing behavior against it.
 	envAttached map[string]bool
+	// serviceReads counts ListServicesForProjects calls (w5/155).
+	serviceReads int
 }
 
 func newFakeProjectStore(projects ...store.Project) *fakeProjectStore {
@@ -174,8 +176,15 @@ func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ st
 	return changes, nil
 }
 
-func (f *fakeProjectStore) ListProjectServices(_ context.Context, projectID string) ([]string, error) {
-	return append([]string(nil), f.services[projectID]...), nil
+func (f *fakeProjectStore) ListServicesForProjects(_ context.Context, projectIDs []string) (map[string][]string, error) {
+	f.serviceReads++
+	out := map[string][]string{}
+	for _, id := range projectIDs {
+		if sids := f.services[id]; len(sids) > 0 {
+			out[id] = append([]string(nil), sids...)
+		}
+	}
+	return out, nil
 }
 
 type allowChecker struct{}
