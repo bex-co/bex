@@ -8,7 +8,11 @@ import {
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
-import { WORKSPACE_SCOPE } from "@/features/env-groups/lib/scope";
+import type { ProjectView } from "@/features/projects/hooks/use-projects";
+import {
+  WORKSPACE_SCOPE,
+  environmentScopeName,
+} from "@/features/env-groups/lib/scope";
 
 /**
  * The Environment scope picker shared by every env-group surface that chooses
@@ -20,12 +24,15 @@ export function ScopeSelect({
   id,
   value,
   environments,
+  projects,
   loading = false,
   onValueChange,
 }: {
   id: string;
   value: string;
   environments: EnvironmentView[];
+  /** Names each option's project; same-named environments are common. */
+  projects: ProjectView[];
   loading?: boolean;
   onValueChange: (value: string) => void;
 }) {
@@ -43,7 +50,7 @@ export function ScopeSelect({
           </SelectItem>
           {environments.map((environment) => (
             <SelectItem key={environment.id} value={environment.id}>
-              {environment.name}
+              {environmentScopeName(environment, projects)}
             </SelectItem>
           ))}
         </SelectContent>

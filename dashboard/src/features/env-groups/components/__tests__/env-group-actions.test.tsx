@@ -38,6 +38,7 @@ function renderActions(group: EnvGroupView) {
     <EnvGroupActions
       group={group}
       environments={[{ id: "env-1", name: "prod" } as never]}
+      projects={[]}
       renameGroup={vi.fn()}
       moveGroup={vi.fn()}
       cloneGroup={vi.fn()}
