@@ -158,7 +158,7 @@ func TestFirstDeployRolloutDeadlineSettlesFailedImagePull(t *testing.T) {
 		t.Fatalf("phase = %q, want %q — unpullable first image must settle Failed (18m observer class)", stored.Status.Phase, appv1alpha1.PhaseFailed)
 	}
 	ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
-	if ready == nil || ready.Reason != "ImagePullBackOff" || !strings.Contains(ready.Message, "image pull is failing") {
+	if ready == nil || ready.Reason != "ImagePullBackOff" || !strings.Contains(ready.Message, "image pull failed") {
 		t.Fatalf("Ready = %+v, want ImagePullBackOff diagnosis unchanged", ready)
 	}
 }
@@ -255,7 +255,7 @@ func TestRolloutDeadlineOverPriorReleaseKeepsTheDiagnosis(t *testing.T) {
 			state: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
 				Reason: "ImagePullBackOff", Message: `Back-off pulling image "docker.io/x/y:does-not-exist-999"`,
 			}},
-			wantReason: "ImagePullBackOff", wantMsg: "image pull is failing: Back-off pulling image",
+			wantReason: "ImagePullBackOff", wantMsg: "image pull failed: Back-off pulling image",
 		},
 		"nothing diagnosed": {
 			state:      corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
@@ -393,6 +393,8 @@ func TestPermanentPullFailureSettlesBeforeRolloutDeadline(t *testing.T) {
 // this generation must survive to the terminal, not the generic line.
 func TestRolloutDeadlineKeepsProbeDiagnosisAcrossLateRestart(t *testing.T) {
 	const probeMsg = "the container is running but its startup health check has not succeeded, so the rollout is waiting: a TCP connect to port 3000."
+	// w4/202: the failed deploy states the outcome, not the in-flight wait.
+	const terminalMsg = "the container is running but its startup health check never succeeded within the rollout window, so the deploy failed: a TCP connect to port 3000."
 	restartedPod := func() *corev1.Pod {
 		notStarted := false
 		return &corev1.Pod{
@@ -445,7 +447,7 @@ func TestRolloutDeadlineKeepsProbeDiagnosisAcrossLateRestart(t *testing.T) {
 			Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, Conditions: diagnosed(1)},
 		})
 		ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
-		if stored.Status.Phase != appv1alpha1.PhaseFailed || ready == nil || ready.Reason != reasonHealthCheckFailing || ready.Message != probeMsg {
+		if stored.Status.Phase != appv1alpha1.PhaseFailed || ready == nil || ready.Reason != reasonHealthCheckFailing || ready.Message != terminalMsg {
 			t.Fatalf("phase = %q, Ready = %+v; want Failed with the probe diagnosis", stored.Status.Phase, ready)
 		}
 	})
@@ -457,7 +459,7 @@ func TestRolloutDeadlineKeepsProbeDiagnosisAcrossLateRestart(t *testing.T) {
 				ObservedGeneration: 2, Conditions: diagnosed(3)},
 		})
 		rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout)
-		if rollout == nil || rollout.Reason != reasonHealthCheckFailing || rollout.Message != probeMsg {
+		if rollout == nil || rollout.Reason != reasonHealthCheckFailing || rollout.Message != terminalMsg {
 			t.Fatalf("Rollout = %+v; want the probe diagnosis carried to the failed deploy", rollout)
 		}
 	})
