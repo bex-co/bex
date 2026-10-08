@@ -153,3 +153,31 @@ func TestImagePreDeployListReadCarriesTheCommand(t *testing.T) {
 		t.Fatalf("listed envSpecificDetails missing the command: %s", rec.Body.String())
 	}
 }
+
+// w4/209: an image web/private/worker service's Docker Command (stored as
+// spec.startCommand; REST create spells it envSpecificDetails.dockerCommand,
+// w4/188) never read back on REST, so `services get` hid it. It now reads back
+// as dockerCommand beside the pre-deploy command, and alone without one.
+func TestImageDockerCommandReadsBack(t *testing.T) {
+	for _, svcType := range imagePreDeployKinds {
+		for _, preDeploy := range []string{"", "bin/migrate"} {
+			app := imagePreDeployApp(svcType, preDeploy)
+			app.Spec.StartCommand = "/whoami --port 8080"
+			var read struct {
+				ServiceDetails struct {
+					EnvSpecificDetails map[string]any `json:"envSpecificDetails"`
+				} `json:"serviceDetails"`
+			}
+			if err := json.Unmarshal(getServiceBody(t, app), &read); err != nil {
+				t.Fatal(err)
+			}
+			want := map[string]any{"dockerCommand": "/whoami --port 8080"}
+			if preDeploy != "" {
+				want["preDeployCommand"] = preDeploy
+			}
+			if got := read.ServiceDetails.EnvSpecificDetails; !reflect.DeepEqual(got, want) {
+				t.Errorf("%s (preDeploy %q): envSpecificDetails = %v, want %v", svcType, preDeploy, got, want)
+			}
+		}
+	}
+}
