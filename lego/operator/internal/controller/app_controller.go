@@ -162,6 +162,10 @@ const createContainerConfigError = "CreateContainerConfigError"
 // restarting; stuckPodMessage reuses it as the Ready reason bex-api admits.
 const crashLoopBackOff = "CrashLoopBackOff"
 
+// imagePullBackOff is the Ready reason for an image the kubelet cannot pull;
+// ErrImagePull is reported under it too.
+const imagePullBackOff = "ImagePullBackOff"
+
 // defaultAppsNamespace mirrors BEX_APPS_NAMESPACE's default: the shared
 // bootstrap apps namespace an unset field must never refuse.
 const defaultAppsNamespace = "default"
@@ -3248,7 +3252,7 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 			msg = "rollout did not become healthy within the progress deadline"
 		}
 	}
-	return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
+	return r.settleFailedRolloutMessage(ctx, app, dep, reason, terminalStallMessage(reason, msg))
 }
 
 // lastStallDiagnosis keeps the previous reconcile's stall diagnosis until the
@@ -3265,7 +3269,7 @@ func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
 		return "", ""
 	}
 	switch c.Reason {
-	case reasonHealthCheckFailing, crashLoopBackOff, "ImagePullBackOff", reasonInvalidImageName, createContainerConfigError:
+	case reasonHealthCheckFailing, crashLoopBackOff, imagePullBackOff, reasonInvalidImageName, createContainerConfigError:
 		return c.Reason, c.Message
 	}
 	return "", ""
@@ -3336,7 +3340,7 @@ func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *ap
 				if cs.State.Waiting.Reason == reasonInvalidImageName {
 					return reasonInvalidImageName, fmt.Sprintf("image reference is invalid: %s: %s", cs.Image, cs.State.Waiting.Message)
 				}
-				return "ImagePullBackOff", fmt.Sprintf("image pull is failing: %s: %s", cs.Image, cs.State.Waiting.Message)
+				return imagePullBackOff, fmt.Sprintf("image pull is failing: %s: %s", cs.Image, cs.State.Waiting.Message)
 			}
 		}
 	}
@@ -4909,8 +4913,8 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 						" If the crash is a port bind: the process must listen on $PORT (%d), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).", port)
 				}
 				return crashLoopBackOff, msg
-			case "ImagePullBackOff", "ErrImagePull":
-				return "ImagePullBackOff", "image pull is failing: " + w.Message
+			case imagePullBackOff, "ErrImagePull":
+				return imagePullBackOff, "image pull is failing: " + w.Message
 			case reasonInvalidImageName:
 				if cs.Name != appContainerName || p.DeletionTimestamp != nil || dep.Spec.Template.Labels[labelRevision] == "" ||
 					p.Labels[labelRevision] != dep.Spec.Template.Labels[labelRevision] {
@@ -5037,9 +5041,8 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 			if !probeHadTimeToFail(probe, cs.State.Running.StartedAt.Time) {
 				continue
 			}
-			msg := fmt.Sprintf(
-				"the container is running but its %s health check has not succeeded, so the rollout is waiting: %s.",
-				kind, probeTargetDescription(probe))
+			msg := fmt.Sprintf("the container is running but its %s health check %s: %s.",
+				kind, probeStallWaiting, probeTargetDescription(probe))
 			if cs.RestartCount > 0 {
 				msg += fmt.Sprintf(
 					" The liveness check has already restarted the container %d time(s), so the check is failing rather than merely slow.",
@@ -5051,6 +5054,26 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 		}
 	}
 	return "", ""
+}
+
+// probeStallWaiting is the in-flight half of a probe stall message;
+// terminalStallMessage swaps it for probeStallFailed once the deploy has given up.
+const (
+	probeStallWaiting = "has not succeeded, so the rollout is waiting"
+	probeStallFailed  = "never succeeded within the rollout window, so the deploy failed"
+)
+
+// terminalStallMessage restates an in-flight stall diagnosis as the outcome
+// for the failed deploy's record, which is read long after the rollout gave up
+// (w4/202). The reason stays as-is: it is a wire contract.
+func terminalStallMessage(reason, msg string) string {
+	switch reason {
+	case reasonHealthCheckFailing:
+		return strings.Replace(msg, probeStallWaiting, probeStallFailed, 1)
+	case imagePullBackOff:
+		return strings.Replace(msg, "image pull is failing", "image pull failed", 1)
+	}
+	return msg
 }
 
 // reasonHealthCheckFailing is probeStallMessage's Ready-condition reason. It
