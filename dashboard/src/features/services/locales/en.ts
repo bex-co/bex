@@ -2739,8 +2739,9 @@ const enServices: Record<string, TranslationEntry> = {
       "Trigger Run confirmation dialog body when a run is already active",
   },
   "services.cronRunDetailToggle": {
-    message: "Toggle run detail",
-    description: "Accessible label for the expand/collapse run-detail control",
+    message: "Run details, started {when}",
+    description:
+      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, or the run id (w4/213)",
   },
   "services.cronRunDetailError": {
     message: "Couldn't load this run's detail.",

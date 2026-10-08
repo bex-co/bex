@@ -2682,8 +2682,9 @@ const zhServices: Record<string, TranslationEntry> = {
       "Trigger Run confirmation dialog body when a run is already active",
   },
   "services.cronRunDetailToggle": {
-    message: "展开运行详情",
-    description: "Accessible label for the expand/collapse run-detail control",
+    message: "运行详情，开始于 {when}",
+    description:
+      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, or the run id (w4/213)",
   },
   "services.cronRunDetailError": {
     message: "无法加载该运行的详情。",
