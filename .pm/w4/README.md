@@ -210,6 +210,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **213** — [Cron history buttons hide which run they open](213.md) (25m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 2; generic aria-label replaces each Started cell's visible time.
+
 - [ ] **212** — [Environment-group breadcrumbs show an internal ID and omit their project](212.md) (45m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 1; grouped and ungrouped fresh-page desktop/mobile repro with correct API names.
 
 - [ ] **211** — [An awake, unhealthy Free service answers public requests with "service hibernated"](211.md) ← live `qa-find-bugs` loop, 2026-10-07 sweep 14; two readiness-outage reproductions plus genuine cold-wake control.
