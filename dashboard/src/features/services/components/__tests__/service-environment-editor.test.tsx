@@ -302,6 +302,35 @@ describe("ServiceEnvironmentEditor", () => {
     expect(trigger).not.toHaveBeenCalled();
   });
 
+  // w4/216: a deploying save that changed nothing returns rolledOut: false
+  // and starts no release, but the toast said a deployment had started.
+  it.each([
+    [
+      false,
+      "Environment saved without a deploy. Use a standard deploy to apply any pending changes.",
+    ],
+    [true, "Environment saved and deployment started"],
+  ])(
+    "Save and deploy with rolledOut %s reports what happened",
+    async (rolledOut, message) => {
+      save.mockResolvedValue({
+        envVarKeys: [],
+        secretFileNames: [],
+        rolledOut,
+      });
+      const user = userEvent.setup();
+      renderEditor();
+      await user.click(await screen.findByRole("button", { name: "Edit" }));
+      await user.type(
+        screen.getAllByRole("textbox", { name: /Value for / })[0],
+        "same",
+      );
+      await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+      await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith(message));
+      expect(trigger).not.toHaveBeenCalled();
+    },
+  );
+
   it("explains deferred application after Save only without starting a deploy", async () => {
     const user = userEvent.setup();
     renderEditor();

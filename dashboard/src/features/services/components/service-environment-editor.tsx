@@ -143,17 +143,21 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
       revealFile={revealFile}
       saving={saving || deploying}
       save={async (patch, choice) => {
-        const { refreshFailed } = await save(
+        const { refreshFailed, rolledOut } = await save(
           serviceId,
           patch,
           choice === "deploy" ? "deploy" : "save_only",
         );
         if (choice !== "rebuild") {
+          // A deploying save that changed nothing rolls nothing out; saying a
+          // deployment started would be false (w4/216).
           return {
-            affectedServiceIds: choice === "deploy" ? [serviceId] : [],
+            affectedServiceIds:
+              choice === "deploy" && rolledOut ? [serviceId] : [],
             refreshFailed,
           };
         }
+        // Rebuild always triggers once: its preliminary save is save_only.
         return {
           affectedServiceIds: [serviceId],
           rolloutFailed: (await trigger(serviceId)) == null,
