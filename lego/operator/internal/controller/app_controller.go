@@ -158,6 +158,10 @@ const labelApp = "app.bex.co/app"
 // that cannot be resolved). Named once: it is matched and re-emitted.
 const createContainerConfigError = "CreateContainerConfigError"
 
+// crashLoopBackOff is the kubelet's Waiting reason for a container it keeps
+// restarting; stuckPodMessage reuses it as the Ready reason bex-api admits.
+const crashLoopBackOff = "CrashLoopBackOff"
+
 // defaultAppsNamespace mirrors BEX_APPS_NAMESPACE's default: the shared
 // bootstrap apps namespace an unset field must never refuse.
 const defaultAppsNamespace = "default"
@@ -3261,7 +3265,7 @@ func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
 		return "", ""
 	}
 	switch c.Reason {
-	case reasonHealthCheckFailing, "CrashLoopBackOff", "ImagePullBackOff", reasonInvalidImageName, createContainerConfigError:
+	case reasonHealthCheckFailing, crashLoopBackOff, "ImagePullBackOff", reasonInvalidImageName, createContainerConfigError:
 		return c.Reason, c.Message
 	}
 	return "", ""
@@ -4890,9 +4894,12 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 				continue
 			}
 			switch w.Reason {
-			case "CrashLoopBackOff":
+			case crashLoopBackOff:
 				exit := ""
 				if t := cs.LastTerminationState.Terminated; t != nil {
+					if t.Reason == runtimeStartError {
+						return crashLoopBackOff, startErrorMessage(t.Message)
+					}
 					exit = fmt.Sprintf(" (last exit code %d)", t.ExitCode)
 				}
 				msg := fmt.Sprintf(
@@ -4901,7 +4908,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 					msg += fmt.Sprintf(
 						" If the crash is a port bind: the process must listen on $PORT (%d), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).", port)
 				}
-				return "CrashLoopBackOff", msg
+				return crashLoopBackOff, msg
 			case "ImagePullBackOff", "ErrImagePull":
 				return "ImagePullBackOff", "image pull is failing: " + w.Message
 			case reasonInvalidImageName:
@@ -4935,6 +4942,49 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 	// keeps failing (w4/m112). Diagnose it last, so a pod that is both
 	// crash-looping and unready still reports the crash — the stronger signal.
 	return probeStallMessage(pods.Items)
+}
+
+// runtimeStartError is the terminated-state reason the kubelet records when the
+// container runtime could not launch the container's program at all — the
+// process never ran, so it produced no output and has no meaningful exit code
+// (runc reports 128 with a 1970 start time).
+const runtimeStartError = "StartError"
+
+// startExecFailure matches runc's exec failure inside a StartError message:
+// `exec: "/bin/sh": stat /bin/sh: no such file or directory`.
+var startExecFailure = regexp.MustCompile(`exec: "([A-Za-z0-9._/+-]{1,256})": (.*)$`)
+
+// startErrorMessage explains a crash loop whose last termination was a
+// StartError, naming the program only when runc's message identifies it in a
+// recognizable shape. The raw OCI message (container ids, shim internals) is
+// never passed through. Live on 2026-10-07 a Docker Command on a shell-less
+// image (traefik/whoami) was reported as an application crash pointing at
+// logs that never existed (w4/m177).
+func startErrorMessage(runtimeMsg string) string {
+	const prefix = "container could not start: "
+	const neverRan = " The program never ran, so there is no application output in the logs."
+	const checkCommand = " Check the Docker Command and the image's entrypoint."
+	m := startExecFailure.FindStringSubmatch(runtimeMsg)
+	if m == nil {
+		return prefix + "the container runtime could not launch the startup program." + neverRan + checkCommand
+	}
+	program, cause := m[1], m[2]
+	var what string
+	switch {
+	case strings.Contains(cause, "no such file or directory"), strings.Contains(cause, "executable file not found"):
+		what = fmt.Sprintf("the startup program %q does not exist in this image.", program)
+	case strings.Contains(cause, "permission denied"):
+		what = fmt.Sprintf("the startup program %q is not executable in this image.", program)
+	default:
+		what = fmt.Sprintf("the container runtime could not execute the startup program %q.", program)
+	}
+	if program == shellBinary {
+		// A Docker Command is run as `/bin/sh -c <command>` (deployment_projection.go).
+		return prefix + what + neverRan + " A Docker Command runs through " + shellBinary +
+			" -c, so clear the Docker Command to use the image's default program, or use an image that includes " +
+			shellBinary + "."
+	}
+	return prefix + what + neverRan + checkCommand
 }
 
 // probeStallMessage names the health-check probe a Running-but-unready pod is
