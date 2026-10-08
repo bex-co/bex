@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m181** — [Keep pre-deploy jobs out of serving endpoints](m181/README.md) (6 tasks, ~2h 30m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 7; a ready migration pod joins both serving Services and causes intermittent HTTP 502 during failed/canceled rollouts.
+
 - [ ] **m180** — [Save and deploy reuses the serving artifact](m180/README.md) (6 tasks, ~3h 15m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 1; regression of w5/m44: two deploying environment batches ran real source builds.
 
 - [ ] **m179** — [Revoke deleted Postgres logins even when objects reference the role](m179/README.md) (6 tasks, ~2h 50m) ← live `qa-find-bugs` loop, 2026-10-07 sweep 15; deleted granted roles still authenticate and read data after their Secret and UI entry are gone.
