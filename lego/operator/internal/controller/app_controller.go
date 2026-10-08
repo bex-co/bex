@@ -146,8 +146,14 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 		(e.ObjectOld == nil || e.ObjectOld.GetAnnotations()[annotRotateRegistryCreds] != registryCredentialRotateTrue)
 	scaledSelection := e.ObjectNew != nil && e.ObjectOld != nil &&
 		e.ObjectNew.GetAnnotations()[appv1alpha1.AnnotationReleaseConfigScaled] != e.ObjectOld.GetAnnotations()[appv1alpha1.AnnotationReleaseConfigScaled]
+	// An Environment's isolation toggle and a membership move change only this
+	// label, which bumps no generation: the event was filtered and a saved
+	// boundary waited for an unrelated reconcile, up to a Free service's 15
+	// minute idle timer (w4/m185).
+	isolationChanged := e.ObjectNew != nil && e.ObjectOld != nil &&
+		e.ObjectNew.GetLabels()[labelNetworkIsolation] != e.ObjectOld.GetLabels()[labelNetworkIsolation]
 	return p.generationDeletionOrFinalizerPredicate.Update(e) ||
-		rotationRequested || scaledSelection
+		rotationRequested || scaledSelection || isolationChanged
 }
 
 // labelApp marks the workloads bex creates for an App.
@@ -2483,12 +2489,6 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		logf.FromContext(ctx).Error(err, "reclaiming release config snapshots", "app", app.Name)
 	}
 
-	// Clean up any per-App NetworkPolicy a pre-ADR043 reconcile left behind
-	// (docs/ADR022-tenant-isolation.md, superseded) — see reconcileNetworkPolicy.
-	if err := r.reconcileNetworkPolicy(ctx, app); err != nil {
-		return r.fail(ctx, app, "NetworkPolicyFailed", err)
-	}
-
 	// A worker skips the Service, the Ingress, and the URL entirely; any left over
 	// from a type change are cleaned up so nothing dangles.
 	if worker {
@@ -2558,6 +2558,11 @@ func (r *AppReconciler) convergeSharedChildren(ctx context.Context, app *appv1al
 		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 			return &stepFailure{reason: "NetworkPolicyFailed", err: err}
 		}
+	}
+	// The isolation boundary is operational, not part of a release: converge
+	// it on every pass, held and prior-release passes included (w4/m185).
+	if err := r.reconcileNetworkPolicy(ctx, app); err != nil {
+		return &stepFailure{reason: "NetworkPolicyFailed", err: err}
 	}
 	return nil
 }
@@ -4067,6 +4072,12 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	}
 	labels := map[string]string{labelApp: app.Name, labelAppID: appIDOrName(app)}
+	// The protected policies admit peers by this label, as for Deployment pods
+	// (appPodLabels); without it an isolated cron could not reach its own
+	// environment's services (w4/m185 audit).
+	if env := app.Labels[labelNetworkIsolation]; env != "" {
+		labels[labelNetworkIsolation] = env
+	}
 	if r.TenantSignKeySecret != "" {
 		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
@@ -5910,8 +5921,12 @@ func (r *AppReconciler) convergeServingRuntime(ctx context.Context, app *appv1al
 func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alpha1.App, plan replicaPlan) ([]string, bool, error) {
 	dep := plan.prior.dep
 	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
-	if scaled {
-		base := dep.DeepCopy()
+	base := dep.DeepCopy()
+	// The served template keeps its release, but its pods carry the App's
+	// current isolation label, which is what the protected policies select
+	// peers by; a boundary change must not wait for the held release (w4/m185).
+	relabeled := syncIsolationLabel(&dep.Spec.Template, app)
+	if scaled || relabeled {
 		dep.Spec.Replicas = &plan.replicas
 		if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
 			return nil, false, err
@@ -5978,6 +5993,24 @@ func (r *AppReconciler) ingressRoutes(ctx context.Context, app *appv1alpha1.App,
 		}
 	}
 	return true, nil
+}
+
+// syncIsolationLabel sets the App's network-isolation label on tpl, or removes
+// it, and reports whether tpl changed.
+func syncIsolationLabel(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
+	want := app.Labels[labelNetworkIsolation]
+	if tpl.Labels[labelNetworkIsolation] == want {
+		return false
+	}
+	if want == "" {
+		delete(tpl.Labels, labelNetworkIsolation)
+		return true
+	}
+	if tpl.Labels == nil {
+		tpl.Labels = map[string]string{}
+	}
+	tpl.Labels[labelNetworkIsolation] = want
+	return true
 }
 
 // reconcileNetworkPolicy converges the protected-environment exception. The

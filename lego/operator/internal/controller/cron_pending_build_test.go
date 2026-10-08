@@ -144,3 +144,36 @@ func TestCronControlsOverPendingBuildKeepPriorTemplate(t *testing.T) {
 		})
 	}
 }
+
+// w4/m185 audit: cron pods carry the App's network-isolation label like
+// Deployment pods, or an isolated cron could not reach its own environment's
+// services (their protected policies admit peers by this label).
+func TestIsolatedCronPodsCarryTheIsolationLabel(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+	scheme := wakeScheme()
+	app := activeApp("tea-cron-isolated")
+	app.UID = "cron-isolated-uid"
+	app.Spec.Type = appv1alpha1.TypeCronJob
+	app.Spec.Tier = ""
+	app.Spec.Expose = false
+	app.Spec.Schedule = "* * * * *"
+	app.Spec.Command = "echo isolated"
+	app.Labels[labelNetworkIsolation] = "evm-a"
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}, &batchv1.Job{}).Build()
+	r := wakeReconciler(cl, scheme)
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+	reconcileTwice(t, r, nn)
+	var cron batchv1.CronJob
+	g.Expect(cl.Get(ctx, nn, &cron)).To(Succeed())
+	g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels).To(HaveKeyWithValue(labelNetworkIsolation, "evm-a"))
+
+	var live appv1alpha1.App
+	g.Expect(cl.Get(ctx, nn, &live)).To(Succeed())
+	delete(live.Labels, labelNetworkIsolation)
+	g.Expect(cl.Update(ctx, &live)).To(Succeed())
+	reconcileTwice(t, r, nn)
+	g.Expect(cl.Get(ctx, nn, &cron)).To(Succeed())
+	g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
+}
