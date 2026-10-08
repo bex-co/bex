@@ -875,6 +875,23 @@ func mapBytes(m map[string]string) int {
 	return total
 }
 
+// retiringStore is the optional store capability that empties a path without
+// restarting its versions; the OpenBao store implements it (Retire).
+type retiringStore interface {
+	Retire(ctx context.Context, path string) error
+}
+
+// retireMap removes the map at path for a service whose name another service
+// may take next. A versioned store retires it, so versions keep counting and
+// a write that read the old map can never compare-and-set over the next
+// service's (w5/156). Any other store deletes it.
+func (s *Service) retireMap(ctx context.Context, path string) error {
+	if r, ok := s.Store.(retiringStore); ok {
+		return r.Retire(ctx, path)
+	}
+	return s.Store.Delete(ctx, path)
+}
+
 // updateMapCAS performs a conflict-safe read-modify-write of one OpenBao KV path:
 // it reads the current map with its version, applies mutate, and writes back with
 // check-and-set. On a CAS conflict it re-reads and retries up to casMaxRetries

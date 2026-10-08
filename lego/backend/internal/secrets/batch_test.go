@@ -127,6 +127,24 @@ func (f *versionedFakeSecretStore) PutCAS(ctx context.Context, path string, data
 	return version, nil
 }
 
+// Delete is KV v2's metadata delete: the path's versions go with it, so the
+// next write there counts from 1 again.
+func (f *versionedFakeSecretStore) Delete(ctx context.Context, path string) error {
+	delete(f.versions, path)
+	return f.fakeSecretStore.Delete(ctx, path)
+}
+
+// Retire is the OpenBao store's: an empty map at the next version, so versions
+// keep counting. An absent path stays absent.
+func (f *versionedFakeSecretStore) Retire(_ context.Context, path string) error {
+	if f.versions[path] == 0 {
+		return nil
+	}
+	f.m[path] = map[string]string{}
+	f.versions[path]++
+	return nil
+}
+
 func (c *patchCountingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	if c.fail != nil {
 		if hook := c.beforeFail; hook != nil {

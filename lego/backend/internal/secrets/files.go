@@ -410,7 +410,7 @@ func (s *Service) adoptPreparedSecret(ctx context.Context, a *appv1alpha1.App, n
 // finding no Secret and leaving the map to the next service (w5/148). Each
 // operation is idempotent, so callers can use it after any failed phase.
 func (s *Service) abortProjection(ctx context.Context, a *appv1alpha1.App, name, path string) error {
-	if err := s.Store.Delete(ctx, path); err != nil {
+	if err := s.retireMap(ctx, path); err != nil {
 		return err
 	}
 	return s.deleteSecret(ctx, a.Namespace, name)

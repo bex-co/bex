@@ -31,15 +31,16 @@ func tenantApp(name, tenantID string) *appv1alpha1.App {
 }
 
 func TestWorkspacePurger_DeletesOnlyTheGivenTenantsSecrets(t *testing.T) {
-	store := newFakeSecretStore()
+	store := newTenantFakeSecretStore()
 	svc := newService(store, tenantApp("web", "tea-a"), tenantApp("other", "tea-b"))
-	if err := store.Put(context.Background(), envPath("web"), map[string]string{"FOO": "bar"}); err != nil {
+	ctxA, ctxB := withTenant(context.Background(), "tea-a"), withTenant(context.Background(), "tea-b")
+	if err := store.Put(ctxA, envPath("web"), map[string]string{"FOO": "bar"}); err != nil {
 		t.Fatalf("seed web env: %v", err)
 	}
-	if err := store.Put(context.Background(), filesPath("web"), map[string]string{"cert.pem": "..."}); err != nil {
+	if err := store.Put(ctxA, filesPath("web"), map[string]string{"cert.pem": "..."}); err != nil {
 		t.Fatalf("seed web files: %v", err)
 	}
-	if err := store.Put(context.Background(), envPath("other"), map[string]string{"BAZ": "qux"}); err != nil {
+	if err := store.Put(ctxB, envPath("other"), map[string]string{"BAZ": "qux"}); err != nil {
 		t.Fatalf("seed other env: %v", err)
 	}
 	purger := &WorkspacePurger{Service: svc}
@@ -48,14 +49,14 @@ func TestWorkspacePurger_DeletesOnlyTheGivenTenantsSecrets(t *testing.T) {
 		t.Fatalf("PurgeWorkspace: %v", err)
 	}
 
-	if env, err := store.Get(context.Background(), envPath("web")); err != nil || len(env) != 0 {
+	if env, err := store.Get(ctxA, envPath("web")); err != nil || len(env) != 0 {
 		t.Fatalf("web env after purge = %+v, err=%v; want empty", env, err)
 	}
-	if files, err := store.Get(context.Background(), filesPath("web")); err != nil || len(files) != 0 {
+	if files, err := store.Get(ctxA, filesPath("web")); err != nil || len(files) != 0 {
 		t.Fatalf("web files after purge = %+v, err=%v; want empty", files, err)
 	}
 	// tea-b's "other" secrets are untouched.
-	if env, err := store.Get(context.Background(), envPath("other")); err != nil || len(env) != 1 {
+	if env, err := store.Get(ctxB, envPath("other")); err != nil || len(env) != 1 {
 		t.Fatalf("other env after purge = %+v, err=%v; want untouched", env, err)
 	}
 }
