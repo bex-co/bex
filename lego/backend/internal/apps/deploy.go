@@ -711,6 +711,13 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err != nil {
 		return StackResult{}, err
 	}
+	existingServices, err := snap.services(ctx)
+	if err != nil {
+		return StackResult{}, err
+	}
+	if unknown := unknownServiceReferences(st, existingServices); len(unknown) > 0 {
+		return StackResult{}, fmt.Errorf("%w: %s", core.ErrBadRequest, unknown[0])
+	}
 	// Pre-flight the env-groups + env-vars seams BEFORE any write (all-or-nothing):
 	// a manifest that uses envVarGroups/fromGroup or sync:false/generateValue but
 	// whose backing store isn't wired is rejected here, as is an unknown fromGroup
@@ -953,8 +960,8 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 		}
 		for _, ref := range d.refs {
 			slug := serviceSlugs[ref.target]
-			if slug == "" { // unreachable: every stack service was created above
-				return fmt.Errorf("%w: service %q: fromService references service %q whose address is not yet known", core.ErrBadRequest, d.req.Name, ref.target)
+			if slug == "" { // unreachable: deployParsedStack refused unknown targets before any write
+				return fmt.Errorf("blueprint apply: service %q: fromService target %q has no address after the create pass", d.req.Name, ref.target)
 			}
 			d.req.Env = append(d.req.Env, ref.env(slug))
 		}
