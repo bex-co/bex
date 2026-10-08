@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m183** — [Make SSH remedies truthful and usable](m183/README.md) (7 tasks, ~3h) ← live `qa-find-bugs` loop, 2026-10-08 cycle 11; suspended Free copy implies Resume grants SSH, and Connect remedy navigation retains its modal overlay.
+
 - [ ] **m182** — [Keep configured port changes available](m182/README.md) (6 tasks, ~3h 45m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 10; numeric routing sends ready old pods to the candidate port, producing over 12 seconds of 404/502 during each edit.
 
 - [ ] **m181** — [Keep pre-deploy jobs out of serving endpoints](blocked/m181/README.md) — **BLOCKED (release pipeline deploys the operator; QA replays the finding.md DoD on an owned Free BusyBox web fixture: during a 90 s failing pre-deploy step both the CR-named and slug Services' EndpointSlices exclude the Job pod and public GETs stay 200 on the previous image, the deploy closes `pre_deploy_failed` exit 23; repeat with a canceled successful step; deploy/log surface controls; then cleans up)**. t001–t005 done 2026-10-08: the shared serving-Service selector adds `bex.co/app-id`, which only runtime pods carry (prod check: no serving pod lacks it); selector regression fails on the old app-only selector; operator `make test` + `make lint` green.
