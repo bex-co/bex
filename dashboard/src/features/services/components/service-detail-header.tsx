@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -349,16 +349,26 @@ function RegistryCredentialFact({ id }: { id: string }) {
 function ServiceConnectButton({ service }: { service: ServiceView }) {
   const { t } = useTranslations();
   const command = service.sshAddress ? `ssh ${service.sshAddress}` : "";
+  // A link inside the menu (a remedy, the add-key CTA, the browser terminal)
+  // navigates without unmounting this header, so the modal menu, and its
+  // body pointer lock, stayed open over the destination (w4/m183).
+  const [open, setOpen] = useState(false);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm">
           {t("services.connect")}
           <ChevronDown className="size-3.5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-3">
+      <DropdownMenuContent
+        align="end"
+        className="w-80 p-3"
+        onClickCapture={(e) => {
+          if ((e.target as Element).closest("a[href]")) setOpen(false);
+        }}
+      >
         {service.internalAddress ? (
           // Render's Connect → Internal tab: the private-network
           // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58).

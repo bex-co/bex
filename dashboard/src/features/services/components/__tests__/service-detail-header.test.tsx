@@ -2,6 +2,7 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  Outlet,
   RouterProvider,
   createRouter,
   createRootRoute,
@@ -330,6 +331,74 @@ describe("ServiceDetailHeader", () => {
       screen.getByRole("link", { name: "Resume service" }),
     ).toHaveAttribute("href", "/services/app/settings#suspend");
   });
+
+  // w4/m183: a suspended Free service has both blockers, and resuming one
+  // does not grant SSH, so the copy must not say it does.
+  it("names both blockers on a suspended Free service without promising SSH after Resume", async () => {
+    const user = userEvent.setup();
+    renderHeader(svc({ sshAddress: null, suspended: true, plan: "free" }));
+
+    await user.click(await screen.findByRole("button", { name: "Connect" }));
+
+    expect(
+      screen.getByText(
+        "This service is suspended, and SSH needs a paid instance type. Resuming restores traffic; Free services still don't include shell access.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Resume it to connect over SSH/)).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Resume service" }),
+    ).toHaveAttribute("href", "/services/app/settings#suspend");
+  });
+
+  // w4/m183: the service layout keeps this header mounted across its tabs, so
+  // a remedy link used to leave the modal menu (and its body pointer lock)
+  // open over the page it recommended.
+  it.each([
+    [{ plan: "free" }, "Change instance type", "plan page"],
+    [{ plan: "starter", suspended: true }, "Resume service", "settings page"],
+  ])(
+    "closes Connect when its %o remedy navigates",
+    async (overrides, linkName, destination) => {
+      const user = userEvent.setup();
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <ServiceDetailHeader
+              service={svc({ sshAddress: null, ...overrides })}
+              pending={null}
+            />
+            <Outlet />
+          </>
+        ),
+      });
+      const page = (path: string, text: string) =>
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path,
+          component: () => <p>{text}</p>,
+        });
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          page("/", "overview page"),
+          page("/services/$serviceId/plan", "plan page"),
+          page("/services/$serviceId/settings", "settings page"),
+        ]),
+        history: createMemoryHistory({ initialEntries: ["/"] }),
+        context: { client: {} as never, session: null },
+      });
+      render(<RouterProvider router={router} />);
+
+      await user.click(await screen.findByRole("button", { name: "Connect" }));
+      await user.click(screen.getByRole("link", { name: linkName }));
+
+      expect(await screen.findByText(destination)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByText("SSH isn't available")).toBeNull(),
+      );
+      expect(document.body.style.pointerEvents).not.toBe("none");
+    },
+  );
 
   it("keeps the general explanation, visibly, when the user holds no remedy", async () => {
     const user = userEvent.setup();

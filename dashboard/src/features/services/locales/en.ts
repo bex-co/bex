@@ -75,6 +75,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "This service is suspended. Resume it to connect over SSH.",
     description: "Why SSH is unavailable on a suspended service (w4/143)",
   },
+  "services.sshUnavailableSuspendedFree": {
+    message:
+      "This service is suspended, and SSH needs a paid instance type. Resuming restores traffic; Free services still don't include shell access.",
+    description:
+      "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
+  },
   "services.sshUnavailableFree": {
     message:
       "SSH needs a paid instance type. Free services don't include shell access.",
@@ -3965,11 +3971,13 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsReason.non_zero_exit": {
     message: "The run exited with status {exitCode}.",
-    description: "Cron run failure reason: the container exited non-zero (w4/m114)",
+    description:
+      "Cron run failure reason: the container exited non-zero (w4/m114)",
   },
   "services.eventsReason.oom_killed": {
     message: "The run ran out of memory and was stopped.",
-    description: "Cron run failure reason: the container was OOM-killed (w4/m114)",
+    description:
+      "Cron run failure reason: the container was OOM-killed (w4/m114)",
   },
   "services.eventsReason.evicted": {
     message: "The run was evicted from its node before it finished.",
@@ -3977,7 +3985,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsReason.timed_out": {
     message: "The run hit the 12-hour limit and was stopped.",
-    description: "Cron run failure reason: the run exceeded its deadline (w4/m114)",
+    description:
+      "Cron run failure reason: the run exceeded its deadline (w4/m114)",
   },
   "services.eventsTypeCronRunStarted": {
     message: "Cron run started",
