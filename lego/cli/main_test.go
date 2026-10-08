@@ -1180,3 +1180,66 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		t.Errorf("known services exited %d: %s", code, stderr)
 	}
 }
+
+// TestPostgresHelpNeedsNoConnectionInfo: psql/pgcli help with a database
+// selector prints help with no request even while the database's CA is
+// unavailable, and a real session is still refused (w8/065).
+func TestPostgresHelpNeedsNoConnectionInfo(t *testing.T) {
+	const dbID = "dpg-12345678901234567890"
+	var mu sync.Mutex
+	requests := 0
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requests++
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"error":"external endpoint is not provisioned"}`))
+	}))
+	t.Cleanup(api.Close)
+	run := func(args ...string) (int, string) {
+		t.Helper()
+		home := t.TempDir()
+		command := exec.Command(buildBex(), args...)
+		command.Env = append(withoutRenderEnv(updateTestEnv(t.TempDir())),
+			"HOME="+home, "BEX_HOST="+api.URL+"/v1/", "BEX_ACCESS_TOKEN=test-access-token",
+			"BEX_WORKSPACE=tea-12345678901234567890", "PGSSLROOTCERT=", "BEX_NO_UPDATE_NOTIFIER=1", "BEX_CLI_DISABLE_ANALYTICS=1")
+		var stdout, stderr bytes.Buffer
+		command.Stdout, command.Stderr = &stdout, &stderr
+		err := command.Run()
+		code := 0
+		if exit, ok := err.(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		} else if err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		if _, statErr := os.Stat(filepath.Join(home, ".bex", "postgres")); code == 0 && statErr == nil {
+			t.Errorf("%v left trust material under the home directory", args)
+		}
+		return code, stdout.String() + stderr.String()
+	}
+	served := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		n := requests
+		requests = 0
+		return n
+	}
+
+	for _, args := range [][]string{
+		{"psql", dbID, "--help"}, {"psql", "--help", dbID}, {"psql", dbID, "-h"}, {"pgcli", dbID, "--help"}, {"psql", "--help"},
+	} {
+		if code, out := run(args...); code != 0 || !strings.Contains(out, "bex "+args[0]+" [postgresID|postgresName]") {
+			t.Errorf("bex %v = %d, want help:\n%s", args, code, out)
+		}
+		if n := served(); n != 0 {
+			t.Errorf("bex %v made %d requests; help needs none", args, n)
+		}
+	}
+	if code, out := run("psql", dbID, "-c", "SELECT 1", "-o", "text"); code != 1 || !strings.Contains(out, "TLS server CA is not available yet") {
+		t.Errorf("real session = %d %q, want the unavailable-CA refusal", code, out)
+	}
+	if n := served(); n != 1 {
+		t.Errorf("real session made %d connection-info requests, want 1", n)
+	}
+}

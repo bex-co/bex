@@ -134,6 +134,10 @@ func provisionPostgresTrust(args []string) (func(), error) {
 	if err != nil || target == nil || !pgtrust.IsProvisionedTool(target.Name()) {
 		return func() {}, nil
 	}
+	arity := pgtrust.ArityOf(cmd.RootCmd.PersistentFlags(), target.InheritedFlags(), target.Flags())
+	if pgtrust.HelpRequested(rest, arity) {
+		return func() {}, nil // cobra prints help before any session (w8/065)
+	}
 	// Budgeted: this read sits in front of an interactive session, so a stalled
 	// control plane must not hang the terminal — it falls back to today's
 	// behavior, where the delegated command reports the failure itself.
@@ -142,7 +146,7 @@ func provisionPostgresTrust(args []string) (func(), error) {
 	return pgtrust.Provision(ctx, pgtrust.Options{
 		Tool:   target.Name(),
 		Args:   rest,
-		Arity:  pgtrust.ArityOf(cmd.RootCmd.PersistentFlags(), target.InheritedFlags(), target.Flags()),
+		Arity:  arity,
 		Fetch:  pgtrust.NewFetcher(),
 		Lookup: os.LookupEnv,
 		Setenv: os.Setenv,
