@@ -1,6 +1,6 @@
 # w8 · m45 — A service name given to the CLI resolves in the caller's default workspace, not the selected one, so name-based verbs can act on another workspace's service
 
-**Worker:** worker8 **Goal:** a service addressed by **name** resolves only within the workspace the caller selected. When no workspace is selected and the name is ambiguous across the caller's workspaces, it is refused with the candidate ids instead of silently picking one. `bex deploys create <name>` can never act on a service in a workspace other than the one `bex workspace current` shows. **Status:** blocked
+**Worker:** worker8 **Goal:** a service addressed by **name** resolves only within the workspace the caller selected. When no workspace is selected and the name is ambiguous across the caller's workspaces, it is refused with the candidate ids instead of silently picking one. `bex deploys create <name>` can never act on a service in a workspace other than the one `bex workspace current` shows. **Status:** done (2026-10-08, live closeout on bex v0.3.2) 
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE**                                                                                                | 20m | t004             |
 | t006 | Simplify — **DONE**                                                                                                     | 15m | t005             |
 | t007 | Test coverage — **DONE**                                                                                                | 30m | t006             |
-| t008 | Closeout                                                                                                     | 15m | t007             |
+| t008 | Closeout — **DONE**                                                                                                     | 15m | t007             |
 
 ## Definition of done
 
@@ -104,3 +104,16 @@ The CLI's `restart` command is ID-only: upstream v2.27.0 `cmd/restart.go:18` and
 ## CLI released (2026-10-08)
 
 The user approved the release. `bex-cli/v0.3.0` (source `999eab321`) ships the `X-Bex-Workspace` launcher change, and `v0.3.1`/`v0.3.2` follow with w8/064/065 fixes. The release workflow, the cosign signature, Homebrew (checksums match), both installer paths and the update notice were all verified. **Remaining gate:** the live two-workspace t008 check. QA device login demands a password reauth that the agent must not perform, so a user-run check (or a reauth-free QA path) is needed.
+
+## Live closeout (2026-10-08, w8 /loopx, released `bex v0.3.2`)
+
+Human device login as the QA identity, which belongs to `bex`, `tian-personal` and `bex-canary`. The isolated CLI config had **no workspace selected**. The real service `tianpan-v4-web` (`srv-da40m1qii7bs73drbqlg`, tian-personal) received reads only. A same-named fixture `srv-db3vq48gu8gc73cl12ug` was created in bex-canary and deleted by ID afterwards.
+
+| DoD check | Result |
+| --- | --- |
+| `BEX_WORKSPACE=bex-canary bex deploys list tianpan-v4-web` | ✅ identical to `deploys list <fixture-id>` |
+| `BEX_WORKSPACE=bex-canary bex services instances tianpan-v4-web` | ✅ `srv-db3vq48gu8gc73cl12ug-…` only |
+| `BEX_WORKSPACE=bex-canary bex deploys create tianpan-v4-web --confirm` | ✅ `dep-db3vqle2bdqc73aphs00` on the fixture (1 → 2 deploys); real service unchanged (20 → 20) |
+| `BEX_WORKSPACE=tian-personal bex deploys list tianpan-v4-web` | ✅ identical to `deploys list srv-da40m1qii7bs73drbqlg` (read) |
+| No selection: `deploys list` / `deploys create tianpan-v4-web` | ✅ `409` `SERVICE_NAME_AMBIGUOUS` naming both IDs; no deploy on either service |
+| By-ID cross-workspace read (`BEX_WORKSPACE=bex-canary bex deploys list srv-da40…`) | ✅ 20 deploys, unchanged behavior |
