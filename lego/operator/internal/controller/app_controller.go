@@ -3011,7 +3011,7 @@ func (r *AppReconciler) deleteStaleChildren(ctx context.Context, objs ...client.
 }
 
 // applyClusterIPService creates/updates one ClusterIP Service named name over
-// the App's pods (the stable labelApp selector) on the App's port. Shared by
+// the App's runtime pods (privateServiceProjection's selector) on the App's port. Shared by
 // the primary CR-named Service and the slug alias so the two cannot drift.
 // The port carries the server's own defaults so the mutate matches the stored
 // object and steady-state reconciles stay read-only (no perpetual no-op PUT).
