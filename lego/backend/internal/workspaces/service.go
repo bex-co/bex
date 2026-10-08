@@ -364,9 +364,15 @@ func (s *Service) validateWorkspaceCreation(ctx context.Context, id core.Identit
 		return "", "", err
 	}
 	if normalizedPlan == store.PlanHobby && s.Identities != nil {
-		// An unread account email skips the match, as an unknown one does.
-		emails, _ := s.Identities.LookupEmails(ctx, []string{id.Subject})
-		if address := emails[id.Subject]; address != "" {
+		emails, err := s.Identities.LookupEmails(ctx, []string{id.Subject})
+		address := emails[id.Subject]
+		if address == "" && err != nil {
+			// An unread account email cannot be matched; refuse rather than
+			// accept any address (w5/160). An account with no email trait
+			// still skips the match.
+			return "", "", err
+		}
+		if address != "" {
 			accountEmail, normalizeErr := normalizeBillingEmail(address)
 			if normalizeErr != nil || email != accountEmail {
 				return "", "", fmt.Errorf("%w: Hobby billing email must match the account email", core.ErrBadRequest)
