@@ -324,3 +324,51 @@ func TestAHobbyBillingEmailMustBeTheAccountEmail(t *testing.T) {
 		t.Fatalf("the account's own address = %v, want accepted", err)
 	}
 }
+
+// unreadableIdentities is fakeIdentities whose email read fails.
+type unreadableIdentities struct{ fakeIdentities }
+
+func (unreadableIdentities) LookupEmails(context.Context, []string) (map[string]string, error) {
+	return map[string]string{}, core.ErrIdentityLookupFailed
+}
+
+// TestAHobbyBillingEmailIsNotAcceptedUnchecked (w5/160): the Hobby match was
+// skipped whenever the account email could not be read, so an identity
+// provider outage let any billing email through. The create now refuses with
+// the lookup failure, and reserves nothing.
+func TestAHobbyBillingEmailIsNotAcceptedUnchecked(t *testing.T) {
+	baseStore := newFakeStore()
+	svc := allowSvc(baseStore, &fakeGranter{}, &fakeRevoker{}, nil)
+	creations := newCreationStoreFake(baseStore)
+	svc.CreationStore = creations
+	svc.CreationBilling = &creationBillingFake{}
+	svc.Payment = rejectingPaymentGate{}
+	svc.PaymentAllPlans = true
+	svc.Identities = unreadableIdentities{}
+
+	if _, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "hobby", "billing@example.com", "", true); !errors.Is(err, core.ErrIdentityLookupFailed) {
+		t.Fatalf("a Hobby create while the account email is unreadable = %v, want the lookup failure", err)
+	}
+	if len(creations.attempts) != 0 || len(baseStore.tenants) != 0 {
+		t.Fatalf("the refused create reserved attempts %v and tenants %v, want none", creations.attempts, baseStore.tenants)
+	}
+
+	// Finalizing re-checks: an outage there refuses too, and leaves the
+	// attempt to resume once the email reads again.
+	svc.Identities = fakeIdentities{"user-a": {Email: "billing@example.com"}}
+	attempt, err := svc.PrepareWorkspaceCreation(ctxAs("user-a"), "acme", "hobby", "billing@example.com", "", true)
+	if err != nil {
+		t.Fatalf("prepare with a readable account email: %v", err)
+	}
+	svc.Identities = unreadableIdentities{}
+	if _, err := svc.FinalizeWorkspaceCreation(ctxAs("user-a"), attempt.ID); !errors.Is(err, core.ErrIdentityLookupFailed) {
+		t.Fatalf("finalize while the account email is unreadable = %v, want the lookup failure", err)
+	}
+	if len(baseStore.tenants) != 0 {
+		t.Fatalf("the refused finalize created tenants %v", baseStore.tenants)
+	}
+	svc.Identities = fakeIdentities{"user-a": {Email: "billing@example.com"}}
+	if _, err := svc.FinalizeWorkspaceCreation(ctxAs("user-a"), attempt.ID); err != nil {
+		t.Fatalf("finalize once the email reads again = %v, want the attempt resumed", err)
+	}
+}
