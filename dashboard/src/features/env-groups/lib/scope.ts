@@ -1,11 +1,44 @@
 import type { EnvGroupView } from "@/features/env-groups/types";
 
+/** The fields environmentScopeName reads. */
+type NamedEnvironment = { name: string; projectId: string };
+type NamedProject = { id: string; name: string };
+
+/**
+ * "Project / Environment" for an Environment scope. Environment names are
+ * unique within a project only, so a workspace with two "Production"s showed
+ * two identical choices and an ambiguous saved scope (w4/215). Falls back to
+ * the bare name when the project is not in the authorized index.
+ */
+export function environmentScopeName(
+  environment: NamedEnvironment,
+  projects: ReadonlyArray<NamedProject>,
+): string {
+  const project = projects.find((item) => item.id === environment.projectId);
+  return project ? `${project.name} / ${environment.name}` : environment.name;
+}
+
 /**
  * The Select value standing in for "no Environment". A `Select` cannot hold an
  * empty-string item value, so the workspace scope needs a sentinel; the
  * helpers below translate it back to `null` on the wire.
  */
 export const WORKSPACE_SCOPE = "__workspace__";
+
+/** environmentScopeName for a saved scope id, or undefined when the index
+ *  does not hold it. */
+export function environmentNameIn(
+  index: {
+    byId: ReadonlyMap<string, NamedEnvironment>;
+    projects: ReadonlyArray<NamedProject>;
+  },
+  environmentId: string,
+): string | undefined {
+  const environment = index.byId.get(environmentId);
+  return environment
+    ? environmentScopeName(environment, index.projects)
+    : undefined;
+}
 
 /** `null` (workspace) -> the sentinel the Select needs. */
 export function scopeValue(environmentId: string | null): string {

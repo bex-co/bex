@@ -232,6 +232,7 @@ export function EnvGroupsPanel({
         servicesError={serviceError}
         initialServiceIds={[serviceId]}
         environments={scope.environments}
+        projects={scope.projects}
         serviceEnvironmentById={scope.serviceEnvironmentById}
         initialEnvironmentId={serviceEnvironmentId}
         scopeLoading={scope.loading}

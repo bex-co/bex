@@ -35,6 +35,7 @@ import { useServices } from "@/features/services/hooks/use-services";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { LocalDateTime } from "@/common/components/local-time";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { environmentNameIn } from "@/features/env-groups/lib/scope";
 
 export const Route = createFileRoute("/env-groups")({
   staticData: { chrome: true },
@@ -105,7 +106,7 @@ export function EnvGroupsPage() {
   const environmentLabel = (environmentId: string | null) => {
     if (!environmentId) return t("envGroups.workspaceScope");
     return (
-      scope.byId.get(environmentId)?.name ??
+      environmentNameIn(scope, environmentId) ??
       t("envGroups.unknownEnvironment", { id: environmentId })
     );
   };
@@ -126,6 +127,7 @@ export function EnvGroupsPage() {
           servicesLoading={servicesLoading}
           servicesError={servicesError}
           environments={scope.environments}
+          projects={scope.projects}
           serviceEnvironmentById={scope.serviceEnvironmentById}
           scopeLoading={scope.loading}
           scopeReady={scope.ready}
