@@ -3015,7 +3015,8 @@ func (r *AppReconciler) deleteStaleChildren(ctx context.Context, objs ...client.
 }
 
 // applyClusterIPService creates/updates one ClusterIP Service named name over
-// the App's runtime pods (privateServiceProjection's selector) on the App's port. Shared by
+// the App's runtime pods (privateServiceProjection's selector) on the App's
+// port, targeting the pods' named listener (servingTargetPort). Shared by
 // the primary CR-named Service and the slug alias so the two cannot drift.
 // The port carries the server's own defaults so the mutate matches the stored
 // object and steady-state reconciles stay read-only (no perpetual no-op PUT).
@@ -3024,6 +3025,13 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 	if err != nil {
 		return err
 	}
+	if !app.Spec.UsesImagePorts() {
+		target, err := r.servingTargetPort(ctx, app.Namespace, selector)
+		if err != nil {
+			return err
+		}
+		ports[0].Name, ports[0].TargetPort = servingPortName, target
+	}
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
 		svc.Spec.Selector = selector
@@ -3031,6 +3039,32 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 		return controllerutil.SetControllerReference(app, svc, r.Scheme)
 	})
 	return err
+}
+
+// servingTargetPort targets each pod's own named listener, so a port edit moves
+// traffic with readiness instead of retargeting ready old pods to a port they
+// do not listen on (w4/m182). A live pod projected before the name existed
+// would drop out of a named Service, so its numeric port is kept until it is
+// gone.
+func (r *AppReconciler) servingTargetPort(ctx context.Context, namespace string, selector map[string]string) (intstr.IntOrString, error) {
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(namespace), client.MatchingLabels(selector)); err != nil {
+		return intstr.IntOrString{}, err
+	}
+	for _, p := range pods.Items {
+		if p.DeletionTimestamp != nil {
+			continue
+		}
+		for _, c := range p.Spec.Containers {
+			if c.Name != appContainerName || len(c.Ports) == 0 {
+				continue
+			}
+			if !slices.ContainsFunc(c.Ports, func(cp corev1.ContainerPort) bool { return cp.Name == servingPortName }) {
+				return intstr.FromInt32(c.Ports[0].ContainerPort), nil
+			}
+		}
+	}
+	return intstr.FromString(servingPortName), nil
 }
 
 // reconcileSlugService converges the slug-named ClusterIP Service that gives an

@@ -1,16 +1,16 @@
 # w4 · m182 — Keep configured port changes available
 
-**Worker:** worker4 **Goal:** a supported service-port edit keeps requests reaching an existing ready listener until the requested listener is ready, then exposes the new port without an unresolved backend or wrong-port endpoint. **Status:** todo
+**Worker:** worker4 **Goal:** a supported service-port edit keeps requests reaching an existing ready listener until the requested listener is ready, then exposes the new port without an unresolved backend or wrong-port endpoint. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Keep configured-port serving routes valid through rollout and adoption | 90m | — |
-| t002 | Audit configured-port callers types aliases and passing controls | 45m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage and production-shaped route replay | 45m | t003, t004 |
+| t001 | Keep configured-port serving routes valid through rollout and adoption — **DONE** | 90m | — |
+| t002 | Audit configured-port callers types aliases and passing controls — **DONE** | 45m | t001 |
+| t003 | Render parity — **DONE** | 20m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage and production-shaped route replay — **DONE** | 45m | t003, t004 |
 | t006 | Closeout | 10m | t005 |
 
 ## Definition of done
@@ -30,3 +30,20 @@ Recreate the owned disk-free Free prebuilt web fixture in [finding.md](finding.m
 - **Why now:** two fresh live edits each caused more than 12 seconds of sampled 404/502 failures. Cluster evidence shows a ready old 3000 pod being dialed on 3001; unchanged-port Restart sampled cleanly. This is an actual availability gap in an existing supported control.
 - **Scope / dedupe:** filing only, **major**, ~3h45m / six tasks. Separate from w4/m181 job admission, w4/m180 source reuse and w1/done/m154 SIGTERM drain; not a claim that those fixes regressed. Shared helper/caller compatibility has its own t002, including every original m121 DoD clause and both m154 DoD clauses.
 - **Standing closing tasks:** Render parity, simplify, coverage and closeout included because runtime availability and the dashboard/REST/GraphQL/MCP port contract are tenant-facing.
+
+## Progress (2026-10-08)
+
+t001–t005 done. A configured-port App's container port is named `bex-http` (`appContainer`). `applyClusterIPService`, shared by the CR-named Service, the slug alias and image-network promotion, names the Service port `bex-http` and targets that name. kube-proxy and the ingress therefore resolve each pod's own listener: ready old pods keep serving on the old port until new pods are ready on the requested one. The Service port number stays the configured port, so `<slug>:<port>`, the Ingress backend `Number`, `release_plan.go`'s prior-port read and the activator/maintenance/static numeric bindings are unchanged. Image-port private services (named `tcp-N`, revision-constrained) are untouched.
+
+Adoption: `servingTargetPort` keeps a numeric target, set to that pod's own port, while any live selected pod's app container lacks the named port. So existing unnamed pods never drop out; the switch to the name rides the existing Pod watch once they are gone. Two caveats:
+
+- **Fleet rollout:** the operator upgrade changes the pod template, so it rolls every running configured-port App once (parked Apps are untouched). During that rollout the Service stays numeric and old and new pods share a port, so it is safe.
+- **Restored templates:** a cancel/failed-rollout restore of a template recorded **before** this change brings back unnamed pods. While they run, the Service is numeric on their port, which is the old behavior; that is temporary and limited to pre-upgrade records.
+
+Evidence: `TestConfiguredPortServiceTargetsEachPodsOwnListener` covers the named container port, a named target with no pods and with mixed old/new named pods, a pre-upgrade unnamed pod keeping its numeric port, and terminating pods being ignored. Local replay on 2026-10-08 used real kube-proxy and EndpointSlices: a busybox Deployment edited from 3000 to 3001 with an 8 s start delay, sampled 120 times through the Service. The numeric target failed **41** samples; the named target failed **0**, cutting over from `port=3000` to `port=3001`. Operator `make test` and `make lint` pass. ADR004 records the rule.
+
+Not verified until the live replay:
+
+- The Traefik public path and both EndpointSlices in production.
+- Restart at an unchanged port, and m154's Live+60 s probe.
+- m121's edit/read/refusal controls (no code touched them).

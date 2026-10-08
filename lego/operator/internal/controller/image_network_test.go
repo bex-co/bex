@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
@@ -35,6 +36,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -347,5 +350,55 @@ func TestServingSelectorExcludesJobPods(t *testing.T) {
 				t.Errorf("%s: selector %v admits a Job pod %v", app.Name, raw, job)
 			}
 		}
+	}
+}
+
+// TestConfiguredPortServiceTargetsEachPodsOwnListener is w4/m182: see
+// servingTargetPort. Covers the named target and the pre-upgrade adoption.
+func TestConfiguredPortServiceTargetsEachPodsOwnListener(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	app := projectionApp(func(a *appv1alpha1.App) { a.Labels = map[string]string{labelAppID: "srv-hello"} })
+	if c := appContainer(app, deploymentParams{port: 3001}); len(c.Ports) != 1 || c.Ports[0].Name != servingPortName || c.Ports[0].ContainerPort != 3001 {
+		t.Fatalf("container ports = %+v, want one %q port 3001", c.Ports, servingPortName)
+	}
+	pod := func(name string, ports ...corev1.ContainerPort) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace, Labels: appPodLabels(app, false)},
+			Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Ports: ports}}},
+		}
+	}
+	named := func(port int32) corev1.ContainerPort {
+		return corev1.ContainerPort{Name: servingPortName, ContainerPort: port}
+	}
+	terminating := pod("old-0", corev1.ContainerPort{ContainerPort: 3000})
+	terminating.DeletionTimestamp, terminating.Finalizers = &metav1.Time{Time: time.Now()}, []string{"test"}
+	cases := []struct {
+		name string
+		pods []client.Object
+		want intstr.IntOrString
+	}{
+		{"no pods (parked)", nil, intstr.FromString(servingPortName)},
+		{"old and new named pods mid port edit", []client.Object{pod("old-0", named(3000)), pod("new-0", named(3001))}, intstr.FromString(servingPortName)},
+		{"pre-upgrade unnamed pod keeps its own port", []client.Object{pod("old-0", corev1.ContainerPort{ContainerPort: 3000}), pod("new-0", named(3001))}, intstr.FromInt32(3000)},
+		{"a terminating unnamed pod does not hold adoption", []client.Object{terminating, pod("new-0", named(3001))}, intstr.FromString(servingPortName)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tc.pods...).Build()
+			r := &AppReconciler{Client: cl, Scheme: scheme}
+			if err := r.applyClusterIPService(t.Context(), app, app.Name, 3001); err != nil {
+				t.Fatal(err)
+			}
+			var svc corev1.Service
+			if err := cl.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &svc); err != nil {
+				t.Fatal(err)
+			}
+			p := svc.Spec.Ports
+			if len(p) != 1 || p[0].Name != servingPortName || p[0].Port != 3001 || p[0].TargetPort != tc.want {
+				t.Fatalf("service ports = %+v, want %q port 3001 → %v", p, servingPortName, tc.want)
+			}
+		})
 	}
 }
