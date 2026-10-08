@@ -31,15 +31,40 @@ type ownerLister func(ctx context.Context, name string) ([]*client.Owner, error)
 // RENDER_WORKSPACE stays the untouched escape hatch) and the value is not
 // already an id, so an id costs no request. Without a usable login or API
 // the name is passed through unchanged and upstream reports that failure as
-// it always has. Call it after Apply and InstallControlPlaneHeaders.
-func ResolveWorkspaceName() error {
-	if !workspaceFromBex {
+// it always has. Call it after Apply and InstallControlPlaneHeaders, once the
+// invoked command is known (w8/064): use says whether that command consumes
+// the active workspace, so a stale name never blocks help, inventory, identity,
+// explicit selection, completion or logout — the very commands that recover
+// from it.
+func ResolveWorkspaceName(use WorkspaceUse) error {
+	if !workspaceFromBex || use == WorkspaceUnused {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), workspaceResolveTimeout)
 	defer cancel()
-	return resolveWorkspaceName(ctx, os.LookupEnv, os.Setenv, listOwnersByName)
+	err := resolveWorkspaceName(ctx, os.LookupEnv, os.Setenv, listOwnersByName)
+	if use == WorkspaceIfResolvable {
+		return nil
+	}
+	return err
 }
+
+// WorkspaceUse classifies how the invoked command uses the active workspace.
+type WorkspaceUse int
+
+const (
+	// WorkspaceRequired: the command reads the active workspace, so an unknown
+	// or ambiguous name is refused before it can act on the wrong tenant.
+	WorkspaceRequired WorkspaceUse = iota
+	// WorkspaceIfResolvable: the command addresses a typed resource id, which
+	// upstream reads directly; a resolvable name is still mapped (an id
+	// selector's not-found fallback searches the active workspace), but an
+	// unresolvable one does not block the read.
+	WorkspaceIfResolvable
+	// WorkspaceUnused: the command never reads the active workspace — help,
+	// inventory, identity, an explicit selection, completion, auth.
+	WorkspaceUnused
+)
 
 // workspaceFromBex records that Apply copied BEX_WORKSPACE into an unset
 // RENDER_WORKSPACE.
