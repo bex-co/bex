@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import type { CronRunView } from "@/features/services/types";
+import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 
 const cancel = vi.fn();
 const loadMore = vi.fn();
@@ -32,6 +33,28 @@ vi.mock("@/features/services/hooks/use-cron-runs", () => ({
   }),
 }));
 
+// The service's action projection (w4/203). Default: both verbs allowed.
+let preconditions: Record<string, string> = {};
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
+}));
+vi.mock("@/features/capabilities/hooks/use-resource-actions", () => ({
+  useServerActions: (serviceId: string) => ({
+    status: "ready",
+    refresh: vi.fn(),
+    snapshot: toResourceSnapshot(
+      "tea-1",
+      serviceId,
+      ["cron_run_now", "cron_cancel_run"].map((action) => ({
+        action,
+        outcome: "allowed",
+        reason: null,
+        precondition: preconditions[action] ?? "",
+      })),
+    ),
+  }),
+}));
+
 // The per-run detail (cronJobRun) read, exercised when a history row expands.
 let detailRun: CronRunView | null = null;
 let detailLoading = false;
@@ -45,6 +68,7 @@ vi.mock("@/features/services/hooks/use-cron-run", () => ({
 }));
 
 beforeEach(() => {
+  preconditions = {};
   runs = [];
   hasMore = false;
   hasActiveRun = false;
@@ -178,6 +202,33 @@ describe("CronRunsSection", () => {
       "This runs the job's command immediately, outside its schedule.",
     );
     expect(dialog.textContent ?? "").not.toContain("cancels it");
+  });
+
+  it("disables Trigger Run on a suspended cron, with the reason (w4/203)", async () => {
+    preconditions = { cron_run_now: "suspended" };
+    render(<CronRunsSection serviceId="nightly" />);
+    const button = screen.getByRole("button", { name: "Trigger Run" });
+    expect(button).toBeDisabled();
+    await userEvent.hover(button.parentElement ?? button);
+    expect(
+      (await screen.findAllByText(/Resume it first/)).length,
+    ).toBeGreaterThan(0);
+    expect(trigger).not.toHaveBeenCalled();
+  });
+
+  it("disables a run's Cancel when the server reports no active run", () => {
+    preconditions = { cron_cancel_run: "no_active_run" };
+    runs = [
+      {
+        id: "crr-1",
+        startedAt: "2026-07-09T10:00:00Z",
+        finishedAt: null,
+        status: "pending",
+      },
+    ];
+    render(<CronRunsSection serviceId="nightly" />);
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Trigger Run" })).toBeEnabled();
   });
 
   it("shows the backend's trigger rejection inline, not a toast", () => {

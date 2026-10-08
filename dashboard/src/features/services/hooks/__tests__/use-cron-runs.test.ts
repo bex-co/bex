@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
@@ -76,7 +77,7 @@ describe("useCronRuns trigger (w5/m60)", () => {
 
   it("surfaces the backend's active-run rejection inline (not a toast) and returns false", async () => {
     mockQuery([]);
-    const rejection = new Error("a run is already active");
+    const rejection = uncodedGraphQLError("a run is already active");
     const runCronJob = vi.fn().mockRejectedValue(rejection);
     mockUseMutation.mockReturnValue([runCronJob]);
 
@@ -87,11 +88,23 @@ describe("useCronRuns trigger (w5/m60)", () => {
     });
 
     expect(ok).toBe(false);
-    expect(result.current.triggerError).toBe("a run is already active");
+    expect(result.current.triggerError).toBe("A run is already active");
     expect(refetch).not.toHaveBeenCalled();
 
     act(() => result.current.clearTriggerError());
     expect(result.current.triggerError).toBeNull();
+  });
+
+  it("renders a suspended refusal as localized copy, not the server's text (w4/203)", async () => {
+    mockQuery([]);
+    mockUseMutation.mockReturnValue([
+      vi.fn().mockRejectedValue(codedGraphQLError("CRON_SUSPENDED")),
+    ]);
+    const { result } = renderHook(() => useCronRuns("nightly"));
+    await act(async () => {
+      await result.current.trigger();
+    });
+    expect(result.current.triggerError).toBe("capabilities.blockedSuspended");
   });
 
   it("flags hasActiveRun while a run is pending/running", () => {
