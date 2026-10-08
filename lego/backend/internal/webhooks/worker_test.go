@@ -396,14 +396,14 @@ func (f *fakeMailer) count() int {
 
 type fakeEmails map[string]string
 
-func (f fakeEmails) LookupEmails(_ context.Context, subjects []string) map[string]string {
+func (f fakeEmails) LookupEmails(_ context.Context, subjects []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, subject := range subjects {
 		if e, ok := f[subject]; ok {
 			out[subject] = e
 		}
 	}
-	return out
+	return out, nil
 }
 
 func endpoint(id, tenant, url, secret string, types ...string) store.WebhookEndpoint {

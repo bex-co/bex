@@ -832,10 +832,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 		return e.OwnerID, nil
 	}
 	notificationsSvc := &notifications.Service{
-		Base:             base,
-		Store:            d.NotificationsStore,
-		Mailer:           d.Mailer,
-		Identities:       identityEmailLookup{d.Identities},
+		Base:   base,
+		Store:  d.NotificationsStore,
+		Mailer: d.Mailer,
+		// Unwrapped, so no identity provider (BEX_KRATOS_ADMIN_URL unset)
+		// leaves a nil lookup: the notifier logs each notice it cannot
+		// address instead of retrying it forever (w5/m136).
+		Identities:       d.Identities,
 		DashboardBaseURL: d.DashboardURL,
 		PushAvailable:    &d.PushAvailable,
 		WebPushAvailable: &d.WebPushAvailable,
@@ -1027,9 +1030,9 @@ func (a identityEmailLookup) LookupIdentities(ctx context.Context, subjects []st
 	return out
 }
 
-func (a identityEmailLookup) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+func (a identityEmailLookup) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
 	if a.Identities == nil {
-		return nil
+		return nil, nil
 	}
 	return a.Identities.LookupEmails(ctx, subjects)
 }

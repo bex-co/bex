@@ -237,8 +237,9 @@ type IdentityLookup interface {
 	// that did not resolve is absent.
 	LookupIdentities(ctx context.Context, subjects []string) map[string]IdentityAttrs
 	// LookupEmails is LookupIdentities for a caller that reads only the email:
-	// it asks the IdP for no credentials (w5/133).
-	LookupEmails(ctx context.Context, subjects []string) map[string]string
+	// it asks the IdP for no credentials (w5/133). Its error says some
+	// subjects could not be read; the map holds every email that resolved.
+	LookupEmails(ctx context.Context, subjects []string) (map[string]string, error)
 }
 
 // RoleGranter writes a member's OpenFGA role tuple on a workspace (the authz
@@ -598,7 +599,10 @@ func (s *Service) memberWithEmail(ctx context.Context, workspaceID, email string
 	for _, m := range ms {
 		subjects = append(subjects, m.Subject)
 	}
-	for _, found := range s.Identities.LookupEmails(ctx, subjects) {
+	// A member whose email could not be read does not match, as one with no
+	// email does.
+	emails, _ := s.Identities.LookupEmails(ctx, subjects)
+	for _, found := range emails {
 		if strings.EqualFold(strings.TrimSpace(found), email) {
 			return true, nil
 		}
@@ -809,7 +813,8 @@ func (s *Service) PreviewInvite(ctx context.Context, token string) (InvitePrevie
 		view.Role = wireRole(member.Role)
 	}
 	if s.Identities != nil && inv.InvitedBy != "" {
-		view.InviterEmail = s.Identities.LookupEmails(ctx, []string{inv.InvitedBy})[inv.InvitedBy]
+		emails, _ := s.Identities.LookupEmails(ctx, []string{inv.InvitedBy})
+		view.InviterEmail = emails[inv.InvitedBy]
 	}
 	return view, nil
 }

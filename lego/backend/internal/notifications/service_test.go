@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/textproto"
 	"slices"
 	"strings"
 	"sync"
@@ -311,14 +313,14 @@ func (f *fakeMailer) Send(_ context.Context, to, subject, text, html string) err
 // fakeIdentities is a map-backed EmailLookup.
 type fakeIdentities map[string]string
 
-func (f fakeIdentities) LookupEmails(_ context.Context, subjects []string) map[string]string {
+func (f fakeIdentities) LookupEmails(_ context.Context, subjects []string) (map[string]string, error) {
 	out := map[string]string{}
 	for _, subject := range subjects {
 		if email, ok := f[subject]; ok {
 			out[subject] = email
 		}
 	}
-	return out
+	return out, nil
 }
 
 func newTestService(st NotificationsStore, ws core.WorkspaceResolver, mailer Mailer, identities EmailLookup) *Service {
@@ -428,7 +430,7 @@ type countingEmails struct {
 	batches [][]string
 }
 
-func (c *countingEmails) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+func (c *countingEmails) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
 	c.batches = append(c.batches, slices.Clone(subjects))
 	return c.fakeIdentities.LookupEmails(ctx, subjects)
 }
@@ -800,14 +802,26 @@ func TestNotifyDeployFailedIncludesCommitAndLink(t *testing.T) {
 }
 
 // billingOwners is a notifications store that lists a workspace's billing
-// owners.
+// owners and records the ones a notice reached.
 type billingOwners struct {
 	*fakeStore
 	owners []string
+	mailed *[]string
+}
+
+func newBillingOwners(owners ...string) billingOwners {
+	return billingOwners{fakeStore: newFakeStore(), owners: owners, mailed: &[]string{}}
 }
 
 func (b billingOwners) ListBillingOwnerSubjects(context.Context, string) ([]string, error) {
-	return b.owners, nil
+	return slices.Clone(b.owners), nil
+}
+
+func (b billingOwners) RecordBillingNotificationMailed(_ context.Context, _ string, _ int64, subject string) error {
+	if !slices.Contains(*b.mailed, subject) {
+		*b.mailed = append(*b.mailed, subject)
+	}
+	return nil
 }
 
 // TestABillingNoticeReadsItsOwnersAtOnce (w5/145, w5/153): a billing notice
@@ -818,7 +832,7 @@ func (b billingOwners) ListBillingOwnerSubjects(context.Context, string) ([]stri
 func TestABillingNoticeReadsItsOwnersAtOnce(t *testing.T) {
 	mailer := &fakeMailer{}
 	emails := &countingEmails{fakeIdentities: fakeIdentities{"alice": "alice@example.com"}}
-	svc := newTestService(billingOwners{fakeStore: newFakeStore(), owners: []string{"alice", "carol"}}, nil, mailer, emails)
+	svc := newTestService(newBillingOwners("alice", "carol"), nil, mailer, emails)
 
 	if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err != nil {
 		t.Errorf("notifyBilling = %v, want the notice complete without carol, who has no address", err)
@@ -841,23 +855,102 @@ func (f *failingFor) Send(ctx context.Context, to, subject, text, html string) e
 	return f.fakeMailer.Send(ctx, to, subject, text, html)
 }
 
-// TestABillingNoticeStillRetriesWhatARetryCanFix (w5/153): a notice no owner
-// could be mailed for, as an identity outage leaves it, and one with an
-// owner's send failed, while another owner was mailed, both fail, so the
-// worker retries them rather than drop them.
+// TestABillingNoticeStillRetriesWhatARetryCanFix (w5/153, w5/m136): a notice
+// whose owners' addresses could not be read, and one with an owner's send
+// deferred while another owner was mailed, both fail, so the worker retries
+// them rather than drop them.
 func TestABillingNoticeStillRetriesWhatARetryCanFix(t *testing.T) {
 	for name, tc := range map[string]struct {
-		emails fakeIdentities
+		emails EmailLookup
 		mailer Mailer
 	}{
-		"no owner resolved": {fakeIdentities{}, &fakeMailer{}},
+		"the lookup failed": {failedLookup{}, &fakeMailer{}},
 		"a send failed":     {fakeIdentities{"alice": "alice@example.com", "carol": "carol@example.com"}, &failingFor{addr: "carol@example.com"}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			svc := newTestService(billingOwners{fakeStore: newFakeStore(), owners: []string{"alice", "carol"}}, nil, tc.mailer, tc.emails)
+			svc := newTestService(newBillingOwners("alice", "carol"), nil, tc.mailer, tc.emails)
 			if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err == nil {
 				t.Fatal("notifyBilling succeeded, want a failure the worker retries")
 			}
 		})
 	}
+}
+
+// failedLookup resolves alice and could not read anyone else.
+type failedLookup struct{}
+
+func (failedLookup) LookupEmails(_ context.Context, subjects []string) (map[string]string, error) {
+	out := map[string]string{}
+	if slices.Contains(subjects, "alice") {
+		out["alice"] = "alice@example.com"
+	}
+	return out, core.ErrIdentityLookupFailed
+}
+
+// TestABillingNoticeRetryMailsOnlyTheOwnersItMissed (w5/m136): a notice whose
+// send to one owner failed used to fail whole, and the retry mailed every
+// owner again. The owners it reached are recorded, so across two worker
+// ticks alice is mailed once and only carol is retried.
+func TestABillingNoticeRetryMailsOnlyTheOwnersItMissed(t *testing.T) {
+	for name, tc := range map[string]struct {
+		emails EmailLookup
+		mailer *failingFor
+	}{
+		"a deferred send": {fakeIdentities{"alice": "alice@example.com", "carol": "carol@example.com"}, &failingFor{addr: "carol@example.com"}},
+		"a failed lookup": {failedLookup{}, &failingFor{}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			owners := newBillingOwners("alice", "carol")
+			svc := newTestService(owners, nil, tc.mailer, tc.emails)
+			notice := store.BillingNotification{WorkspaceID: "tea-a", TransitionVersion: 3}
+			if err := svc.notifyBilling(context.Background(), notice); err == nil {
+				t.Fatal("first tick succeeded, want carol retried")
+			}
+			notice.MailedTo = slices.Clone(*owners.mailed)
+			_ = svc.notifyBilling(context.Background(), notice)
+			var toAlice int
+			for _, sent := range tc.mailer.sent {
+				if sent.to == "alice@example.com" {
+					toAlice++
+				}
+			}
+			if toAlice != 1 || !slices.Equal(*owners.mailed, []string{"alice"}) {
+				t.Fatalf("alice mailed %d times, reached %v, want once and recorded", toAlice, *owners.mailed)
+			}
+		})
+	}
+}
+
+// TestABillingNoticeStopsOnAPermanentRejection (w5/m136): an address the mail
+// server refuses for good (550) used to fail the notice on every retry. It is
+// skipped like an owner without an address, and a notice that reached
+// everyone else completes. A deferral (451) or a relay refusal (535) still
+// retries.
+func TestABillingNoticeStopsOnAPermanentRejection(t *testing.T) {
+	mailer := &rejecting{code: 550, addr: "carol@example.com"}
+	svc := newTestService(newBillingOwners("alice", "carol"), nil, mailer, fakeIdentities{"alice": "alice@example.com", "carol": "carol@example.com"})
+	if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err != nil {
+		t.Fatalf("notifyBilling = %v, want the notice complete without the rejected carol", err)
+	}
+	for _, code := range []int{451, 535} {
+		mailer.code = code
+		if err := svc.notifyBilling(context.Background(), store.BillingNotification{WorkspaceID: "tea-a"}); err == nil {
+			t.Fatalf("a %d reply completed the notice, want it retried", code)
+		}
+	}
+}
+
+// rejecting is fakeMailer, except that the server answers sends to addr with
+// an SMTP reply of code, wrapped as mailer.SMTP wraps it.
+type rejecting struct {
+	fakeMailer
+	code int
+	addr string
+}
+
+func (r *rejecting) Send(ctx context.Context, to, subject, text, html string) error {
+	if to == r.addr {
+		return fmt.Errorf("mailer: send to %s: %w", to, &textproto.Error{Code: r.code, Msg: "mailbox unavailable"})
+	}
+	return r.fakeMailer.Send(ctx, to, subject, text, html)
 }

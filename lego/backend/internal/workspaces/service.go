@@ -249,8 +249,9 @@ type IdentityReader interface {
 	LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs
 	// LookupEmails is LookupMany for a caller that reads only the email: it
 	// asks the IdP for no credentials, which a batch read otherwise loads
-	// (w5/133).
-	LookupEmails(ctx context.Context, subjects []string) map[string]string
+	// (w5/133). Its error, core.ErrIdentityLookupFailed, says some subjects
+	// could not be read; the map still holds every email that resolved.
+	LookupEmails(ctx context.Context, subjects []string) (map[string]string, error)
 }
 
 // IdentityAttrs are the IdP attributes a Render owner/member object needs that the
@@ -363,7 +364,9 @@ func (s *Service) validateWorkspaceCreation(ctx context.Context, id core.Identit
 		return "", "", err
 	}
 	if normalizedPlan == store.PlanHobby && s.Identities != nil {
-		if address := s.Identities.LookupEmails(ctx, []string{id.Subject})[id.Subject]; address != "" {
+		// An unread account email skips the match, as an unknown one does.
+		emails, _ := s.Identities.LookupEmails(ctx, []string{id.Subject})
+		if address := emails[id.Subject]; address != "" {
 			accountEmail, normalizeErr := normalizeBillingEmail(address)
 			if normalizeErr != nil || email != accountEmail {
 				return "", "", fmt.Errorf("%w: Hobby billing email must match the account email", core.ErrBadRequest)
@@ -814,7 +817,8 @@ func (s *Service) ownerEmails(ctx context.Context, tenantIDs []string) map[strin
 	if err != nil || len(contacts) == 0 {
 		return nil
 	}
-	found := s.Identities.LookupEmails(ctx, slices.Collect(maps.Values(contacts)))
+	// An unread contact is omitted, as an unknown one is.
+	found, _ := s.Identities.LookupEmails(ctx, slices.Collect(maps.Values(contacts)))
 	emails := make(map[string]string, len(contacts))
 	for tenantID, subject := range contacts {
 		if email, ok := found[subject]; ok {

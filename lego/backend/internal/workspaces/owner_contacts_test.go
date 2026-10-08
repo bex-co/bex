@@ -30,7 +30,7 @@ type countingLookups struct {
 	batches int
 }
 
-func (c *countingLookups) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+func (c *countingLookups) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
 	c.batches++
 	return c.fakeIdentities.LookupEmails(ctx, subjects)
 }
