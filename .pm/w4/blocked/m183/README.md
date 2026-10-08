@@ -1,17 +1,17 @@
 # w4 · m183 — Make SSH remedies truthful and usable
 
-**Worker:** worker4 **Goal:** a tenant can understand the remaining shell-access blockers and follow a Connect remedy without leaving the destination behind an open modal menu. **Status:** todo
+**Worker:** worker4 **Goal:** a tenant can understand the remaining shell-access blockers and follow a Connect remedy without leaving the destination behind an open modal menu. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Explain both suspension and the Free-plan shell restriction | 30m | — |
-| t002 | Dismiss Connect when its remedy link navigates | 40m | — |
-| t003 | Verify shared callers and the original SSH-remedy guarantees | 30m | w4/m183/t001, w4/m183/t002 |
-| t004 | Render parity | 20m | w4/m183/t003 |
-| t005 | Simplify | 15m | w4/m183/t004 |
-| t006 | Test coverage | 35m | w4/m183/t004 |
+| t001 | Explain both suspension and the Free-plan shell restriction — **DONE** | 30m | — |
+| t002 | Dismiss Connect when its remedy link navigates — **DONE** | 40m | — |
+| t003 | Verify shared callers and the original SSH-remedy guarantees — **DONE** | 30m | w4/m183/t001, w4/m183/t002 |
+| t004 | Render parity — **DONE** | 20m | w4/m183/t003 |
+| t005 | Simplify — **DONE** | 15m | w4/m183/t004 |
+| t006 | Test coverage — **DONE** | 35m | w4/m183/t004 |
 | t007 | Closeout | 10m | w4/m183/t005, w4/m183/t006 |
 
 ## Definition of done
@@ -33,3 +33,20 @@ Paid service execution, no-key paid CTA navigation, Chinese UI, static/cron excl
 - **Precedent:** w4/done/143 and commit `2fbcbf2ac` restored visible reasons and remedy links. These are uncovered intersections/navigation behavior in that implementation, not a recurrence of the original hover-only explanation bug. t003 audits every guarantee in that note without claiming unprobed paid states passed.
 - **Render parity included:** dashboard-only fixes, preserving current REST/GraphQL/MCP plan and authorization gates. [Render SSH documentation](https://render.com/docs/ssh) excludes Free web services from native SSH and dashboard shell. Its documentation does not establish the exact Connect remedy text or dismissal behavior, and no authenticated Render UI comparison was performed.
 - **Sizing:** 100m across two fixes and shared-caller verification, plus 80m closing work: seven tasks, approximately 3h. This is a coherent pair of defects in the same remedy journey, with distinct causes and evidence.
+
+## Progress (2026-10-08)
+
+t001–t006 done.
+
+- **t001:** `sshRemedy` checks suspended **and** Free first. It returns the new `services.sshUnavailableSuspendedFree` (en and zh), which names both blockers and says resuming restores traffic only, with the Resume remedy. A suspended paid service keeps "Resume it to connect over SSH", and a running Free service keeps Change instance type. The Shell page and the header Connect menu both render `sshRemedy`, so they move together.
+- **t002:** the header's Connect `DropdownMenu` is now controlled and closes on any click on an `a[href]` inside its content. That covers the remedy link, the no-key add-key CTA and the browser-terminal link, which all navigate while `ServiceDetailLayout` keeps the header mounted. Ordinary open menus keep their modal behavior, and nothing is remounted.
+- **t003–t004:** parity holds. Render excludes Free services from SSH and the dashboard shell, and REST/GraphQL/MCP gates are unchanged.
+
+Tests in `service-detail-header.test.tsx`:
+
+- A combined-blocker case: both reasons shown, no "Resume it to connect" text, Resume links to `settings#suspend`.
+- A real-router layout case that keeps the header mounted and clicks each remedy. The destination renders, the menu closes and the body pointer lock is released. Both cases **fail without the close handler**.
+
+Dashboard `yarn lint` and the full `yarn test` (4401) pass.
+
+Not verified until the live replay: desktop and 390 px replays, the paid no-key CTA navigation, and zh rendering.

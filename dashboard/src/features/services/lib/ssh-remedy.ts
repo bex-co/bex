@@ -31,6 +31,14 @@ export function sshRemedy(
   if (!SSH_TYPES.has(service.type)) {
     return { reason: "services.sshUnavailableHint", action: null };
   }
+  // A suspended Free service has both blockers. Resuming restores traffic
+  // only, so the copy must not promise SSH after a resume (w4/m183).
+  if (service.suspended && service.plan === "free") {
+    return {
+      reason: "services.sshUnavailableSuspendedFree",
+      action: { label: "services.sshRemedyResume", path: "settings" },
+    };
+  }
   if (service.suspended) {
     return {
       reason: "services.sshUnavailableSuspended",
