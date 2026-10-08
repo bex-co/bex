@@ -120,10 +120,13 @@ type renderService struct {
 	// UndeployedChanges is a bex extension for saved configuration that differs
 	// from the serving release. Render has no equivalent field. Omitted when
 	// false, so matching saved/running configuration keeps its existing shape.
-	UndeployedChanges bool     `json:"undeployedChanges,omitempty"`
-	Replicas          int32    `json:"replicas"`
-	Revision          string   `json:"revision,omitempty"`
-	URLs              []string `json:"urls,omitempty"`
+	UndeployedChanges bool `json:"undeployedChanges,omitempty"`
+	// UndeployedChangesApplying (bex extension, w4/m184): a rolling deploy
+	// already carries those changes. Omitted when false.
+	UndeployedChangesApplying bool     `json:"undeployedChangesApplying,omitempty"`
+	Replicas                  int32    `json:"replicas"`
+	Revision                  string   `json:"revision,omitempty"`
+	URLs                      []string `json:"urls,omitempty"`
 	// Schedule/Command/Runs describe a cron_job (Render nests schedule/command
 	// under cronJobDetails and exposes runs at /cron-jobs/{id}/runs); empty
 	// otherwise.
@@ -342,48 +345,49 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		registryCredentialID = *a.RegistryCredentialID
 	}
 	return renderService{
-		ID:                   publicID,
-		Name:                 renderServiceName(a),
-		ImmutableName:        a.Name,
-		Slug:                 a.Slug,
-		DisplayName:          a.DisplayName,
-		Type:                 svcType,
-		Suspended:            core.SuspendedEnum(a.Suspended),
-		DashboardURL:         dashboardURL,
-		CreatedAt:            a.CreatedAt,
-		UpdatedAt:            a.UpdatedAt,
-		ServiceDetails:       renderServiceDetails(a, svcType, region),
-		ImagePath:            a.SourceImage,
-		RegistryCredentialID: registryCredentialID,
-		Suspenders:           suspenders(a.Suspended),
-		OwnerID:              a.OwnerID,
-		ProjectID:            a.ProjectID,
-		EnvironmentID:        a.EnvironmentID,
-		BlueprintID:          a.BlueprintID,
-		Phase:                a.Phase,
-		UndeployedChanges:    a.UndeployedChanges,
-		PublicRoutingNotice:  a.PublicRoutingNotice,
-		Replicas:             a.Replicas,
-		Revision:             a.Revision,
-		URLs:                 a.URLs,
-		Schedule:             a.Schedule,
-		Command:              a.Command,
-		Runs:                 a.Runs,
-		LastSuccessfulRunAt:  a.LastSuccessfulRunAt,
-		NextRunAt:            a.NextRunAt,
-		IdleTTLSeconds:       a.IdleTTLSeconds,
-		RootDir:              a.RootDir,
-		BuildFilter:          a.BuildFilter,
-		Repo:                 a.Repo,
-		Branch:               a.Branch,
-		Autoscaling:          toRenderAutoscaling(a.Autoscaling),
-		AutoDeploy:           yesNoEnum(a.AutoDeploy),
-		LinkedEnvGroupIDs:    a.LinkedEnvGroupIDs,
-		AutoDeployTrigger:    triggerEnum(a.AutoDeploy),
-		PushDeliveryMethod:   a.PushDeliveryMethod,
-		NotifyOnFail:         a.NotifyOnFail,
-		NotificationsToSend:  a.NotificationsToSend,
-		HealthCheckPath:      a.HealthCheckPath,
+		ID:                        publicID,
+		Name:                      renderServiceName(a),
+		ImmutableName:             a.Name,
+		Slug:                      a.Slug,
+		DisplayName:               a.DisplayName,
+		Type:                      svcType,
+		Suspended:                 core.SuspendedEnum(a.Suspended),
+		DashboardURL:              dashboardURL,
+		CreatedAt:                 a.CreatedAt,
+		UpdatedAt:                 a.UpdatedAt,
+		ServiceDetails:            renderServiceDetails(a, svcType, region),
+		ImagePath:                 a.SourceImage,
+		RegistryCredentialID:      registryCredentialID,
+		Suspenders:                suspenders(a.Suspended),
+		OwnerID:                   a.OwnerID,
+		ProjectID:                 a.ProjectID,
+		EnvironmentID:             a.EnvironmentID,
+		BlueprintID:               a.BlueprintID,
+		Phase:                     a.Phase,
+		UndeployedChanges:         a.UndeployedChanges,
+		UndeployedChangesApplying: a.UndeployedChangesApplying,
+		PublicRoutingNotice:       a.PublicRoutingNotice,
+		Replicas:                  a.Replicas,
+		Revision:                  a.Revision,
+		URLs:                      a.URLs,
+		Schedule:                  a.Schedule,
+		Command:                   a.Command,
+		Runs:                      a.Runs,
+		LastSuccessfulRunAt:       a.LastSuccessfulRunAt,
+		NextRunAt:                 a.NextRunAt,
+		IdleTTLSeconds:            a.IdleTTLSeconds,
+		RootDir:                   a.RootDir,
+		BuildFilter:               a.BuildFilter,
+		Repo:                      a.Repo,
+		Branch:                    a.Branch,
+		Autoscaling:               toRenderAutoscaling(a.Autoscaling),
+		AutoDeploy:                yesNoEnum(a.AutoDeploy),
+		LinkedEnvGroupIDs:         a.LinkedEnvGroupIDs,
+		AutoDeployTrigger:         triggerEnum(a.AutoDeploy),
+		PushDeliveryMethod:        a.PushDeliveryMethod,
+		NotifyOnFail:              a.NotifyOnFail,
+		NotificationsToSend:       a.NotificationsToSend,
+		HealthCheckPath:           a.HealthCheckPath,
 	}
 }
 

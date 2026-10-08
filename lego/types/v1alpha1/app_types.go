@@ -1555,6 +1555,13 @@ type AppStatus struct {
 	// +optional
 	UndeployedChanges bool `json:"undeployedChanges,omitempty"`
 
+	// UndeployedChangesApplying is set with UndeployedChanges while a release
+	// newer than the serving one is rolling with the saved configuration, so
+	// those changes go live when it finishes and no further deploy is needed
+	// (w4/m184). A Restart, rollback, cancel or failed release never sets it.
+	// +optional
+	UndeployedChangesApplying bool `json:"undeployedChangesApplying,omitempty"`
+
 	// PendingReleaseGeneration is the newest requested release generation coalesced
 	// while a build is in flight (0 = none). It is observability + SLI bookkeeping:
 	// the pending spec itself remains the source of truth and is picked up once the

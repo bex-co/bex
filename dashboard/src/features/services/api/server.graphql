@@ -32,6 +32,8 @@ query Server($id: String!) {
     # including ordinary Save only, cancellation, rollback or restart. The
     # operator owns this distinction; a standard deploy applies saved settings.
     undeployedChanges
+    # A rolling deploy already carries those saved changes (w4/m184).
+    undeployedChangesApplying
     # internalAddress is the private-network "<slug>:<port>" sibling services
     # connect to (web/private only, empty otherwise) — Render's Connect →
     # Internal string; a private service's header shows it as its Service

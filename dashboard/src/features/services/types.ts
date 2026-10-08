@@ -50,6 +50,8 @@ export interface ServiceView {
    * so a list row reads undefined.
    */
   undeployedChanges?: boolean;
+  /** A rolling deploy already carries those saved changes (w4/m184). */
+  undeployedChangesApplying?: boolean;
   /**
    * Private-network address sibling services connect to — "<slug>:<port>",
    * scheme-less (Render's Connect → Internal string; ADR041 D4, w9/m58).
