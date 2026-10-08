@@ -573,9 +573,15 @@ func matchHeaderPattern(pattern, reqPath string) bool {
 }
 
 // applyHeaders adds every custom header whose path pattern matches reqPath. Set
-// (not Add) so a repeated header name resolves to the last matching rule.
+// (not Add) so a repeated header name resolves to the last matching rule. A
+// reserved framing/hop-by-hop name is skipped: the API refuses it, but a rule
+// saved before that check or a hand-applied CR must not abort every response
+// (w4/204).
 func applyHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPath string) {
 	for _, rule := range headers {
+		if appv1alpha1.ReservedStaticHeader(rule.Name) {
+			continue
+		}
 		if matchHeaderPattern(rule.Path, reqPath) {
 			h.Set(rule.Name, rule.Value)
 		}

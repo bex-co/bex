@@ -2557,7 +2557,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Title for the static-site custom-headers editor",
   },
   "services.headersHint": {
-    message: "为路径匹配的响应添加的自定义响应头。",
+    message:
+      "为路径匹配的响应添加的自定义响应头。Content-Length 等报文分帧与连接相关的头由服务器设置，无法覆盖。仅对实际以压缩形式存储的文件设置 Content-Encoding。",
     description: "Help text for the headers editor",
   },
   "services.headerAdd": {
