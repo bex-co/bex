@@ -18,7 +18,10 @@ package secrets
 
 import (
 	"context"
+	"errors"
 	"testing"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
@@ -154,4 +157,104 @@ func TestEnvWritesCarryPriorCommit(t *testing.T) {
 			t.Fatalf("batch commit = %q, want %q", rec.rows[0].Commit, prior.Hash)
 		}
 	})
+}
+
+// liveDeploys adds the live-release read a deploying environment save uses to
+// reuse the serving artifact (w4/m180).
+type liveDeploys struct {
+	*recordingDeploys
+	live []store.Deploy
+}
+
+func (l *liveDeploys) ListDeploys(_ context.Context, _ string, _ store.DeployFilter) ([]store.Deploy, error) {
+	return l.live, nil
+}
+
+func sourceBuiltService(serviceType string, live ...store.Deploy) (*Service, *liveDeploys) {
+	a := managedApp("web")
+	a.Spec.Image = ""
+	a.Spec.Repo = "https://github.com/bex-co/bex"
+	a.Spec.Type = serviceType
+	a.Generation = 3
+	rec := &liveDeploys{recordingDeploys: &recordingDeploys{prior: store.CommitInfo{Hash: "newer-failed-build"}}, live: live}
+	svc := newService(newFakeSecretStore(), a)
+	svc.Rollout = &rollout.Tracker{Store: rec}
+	return svc, rec
+}
+
+// w4/m180: "Save and deploy" ran a full source build on a source-built
+// service. It must open one release that reruns the serving artifact with the
+// newly saved environment, recorded with that artifact's image and commit.
+func TestDeployingEnvironmentSaveReusesTheServingArtifact(t *testing.T) {
+	ctx := context.Background()
+	served := store.Deploy{ID: "dep-live", Status: store.DeployLive,
+		ResolvedImage: "zot.bex-registry.svc:5000/t/web:gen-2@sha256:4d8c", Commit: "0f312a9", CommitMessage: "served build"}
+	svc, rec := sourceBuiltService(appv1alpha1.TypeWebService, served)
+
+	res, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "new", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	if err != nil || !res.RolledOut {
+		t.Fatalf("PatchEnvironment(deploy) = %+v, %v", res, err)
+	}
+	var a appv1alpha1.App
+	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &a); err != nil {
+		t.Fatal(err)
+	}
+	want := appv1alpha1.ReleaseConfigReference{Generation: 4, Image: served.ResolvedImage}
+	if a.Spec.ReleaseConfig == nil || *a.Spec.ReleaseConfig != want {
+		t.Fatalf("releaseConfig = %+v, want image-only selection %+v (sourceGeneration 0 applies the new values)", a.Spec.ReleaseConfig, want)
+	}
+	if a.Annotations[appv1alpha1.AnnotationReleaseGeneration] != "4" {
+		t.Fatalf("release generation annotation = %q, want 4", a.Annotations[appv1alpha1.AnnotationReleaseGeneration])
+	}
+	if len(rec.rows) != 1 {
+		t.Fatalf("rows = %d, want exactly one release", len(rec.rows))
+	}
+	if row := rec.rows[0]; row.Image != served.ResolvedImage || row.Commit != served.Commit || row.Generation != 4 {
+		t.Fatalf("row = image %q commit %q gen %d; want the served artifact %q at %q, gen 4", row.Image, row.Commit, row.Generation, served.ResolvedImage, served.Commit)
+	}
+	if v, err := svc.GetEnvVar(ctx, "web", "MESSAGE"); err != nil || v.Value != "new" {
+		t.Fatalf("saved MESSAGE = %+v, %v", v, err)
+	}
+}
+
+// With no live build there is nothing to redeploy: the save is refused before
+// anything is written instead of silently rebuilding. Save only still works.
+func TestDeployingEnvironmentSaveWithoutALiveBuildIsRefused(t *testing.T) {
+	ctx := context.Background()
+	svc, rec := sourceBuiltService(appv1alpha1.TypeWebService)
+
+	_, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "new", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	})
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE" {
+		t.Fatalf("err = %v, want 409 ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE", err)
+	}
+	if vars, _ := svc.ListEnvVars(ctx, "web"); len(vars) != 0 || len(rec.rows) != 0 {
+		t.Fatalf("refused save wrote vars %v / rows %d", vars, len(rec.rows))
+	}
+	if _, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "staged", ValueSet: true}}, SaveMode: SaveModeOnly,
+	}); err != nil {
+		t.Fatalf("save only without a live build: %v", err)
+	}
+}
+
+// A static site's environment exists only at build time, so deploying it is a
+// rebuild; it neither selects an artifact nor needs a live one.
+func TestDeployingStaticSiteEnvironmentStillRebuilds(t *testing.T) {
+	ctx := context.Background()
+	svc, rec := sourceBuiltService(appv1alpha1.TypeStaticSite)
+	if _, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: "MESSAGE", Value: "new", ValueSet: true}}, SaveMode: SaveModeDeploy,
+	}); err != nil {
+		t.Fatalf("PatchEnvironment(deploy, static): %v", err)
+	}
+	var a appv1alpha1.App
+	_ = svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web"}, &a)
+	if a.Spec.ReleaseConfig != nil || len(rec.rows) != 1 || rec.rows[0].Image != "" {
+		t.Fatalf("static deploy selected %+v, rows %+v; want a plain rebuild", a.Spec.ReleaseConfig, rec.rows)
+	}
 }

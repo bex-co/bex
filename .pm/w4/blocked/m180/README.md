@@ -1,16 +1,16 @@
 # w4 · m180 — Save and deploy reuses the serving artifact
 
-**Worker:** worker4 **Goal:** an environment save requesting `deploy` applies the new configuration once using the serving artifact, without a source build. **Status:** todo
+**Worker:** worker4 **Goal:** an environment save requesting `deploy` applies the new configuration once using the serving artifact, without a source build. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Select the serving artifact for a deploying environment batch | 60m | — |
-| t002 | Audit shared rollout callers, source kinds and missing-artifact policy | 45m | t001 |
-| t003 | Render parity | 25m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 40m | t003, t004 |
+| t001 | Select the serving artifact for a deploying environment batch — **DONE** | 60m | — |
+| t002 | Audit shared rollout callers, source kinds and missing-artifact policy — **DONE** | 45m | t001 |
+| t003 | Render parity — **DONE** | 25m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 40m | t003, t004 |
 | t006 | Closeout | 10m | t005 |
 
 ## Definition of done
@@ -31,3 +31,23 @@ Repeat these **observed production journeys** on a fresh owned Free Docker web s
 - **Why now:** two fresh-page `deploy` requests ran real `go build` jobs (~32 s compilation each), while Restart already demonstrated current-artifact reuse. Every environment save currently pays for a build it did not request.
 - **Scope:** filing only. Product fixes are pending. t002 owns the blast radius and unprobed families; no broad rewrite of artifact fingerprints or accepted env-group auto-deploy policy.
 - **Standing closing tasks:** parity, simplify, coverage and closeout are included because this touches UI plus the REST/GraphQL/MCP environment-save semantics.
+
+## Progress (2026-10-08)
+
+t001–t005 done. `PatchEnvironment` with `saveMode: deploy` on a source-built, non-static App writes an image-only `spec.releaseConfig` inside the locked `rollApp` patch: `{generation: metadata.generation+1, image: <live deploy's resolvedImage>, sourceGeneration: 0}`, alongside the `restartedAt` bump. The operator's `reusableArtifactImage` returns the selected image before `buildFromSource` (`app_controller.go:796`), and `sourceGeneration: 0` snapshots the **newly saved** values. `TestImageOverrideUsesSavedConfigurationAndExpiresOnNextRelease` already pins that in the operator, so no operator change was needed. `rollout.Tracker.open` records the selected image (so `buildLifecycleFacts` emits no build history) and the live artifact's commit, not the newest attempted commit. `Tracker.ServedRelease` reads the live row through an optional `ListDeploys` capability; Restart's own read is left as is.
+
+Policy: a source-built service with no live build is refused with 409 `ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE` before any write; save only still works. The dashboard toasts the server message, and its option copy already reads "roll the current image once". Prebuilt-image services already run `spec.image` without a build. Static sites keep rebuilding on deploy, because their environment is build-time only. CR-only mode (no deploy store) keeps the old behavior. REST `PATCH …/environment`, GraphQL `patchServiceEnvironment` and MCP `patch_service_environment` share `PatchEnvironment`, so they move together. ADR013 records the contract.
+
+Tests: `TestDeployingEnvironmentSaveReusesTheServingArtifact` checks the selection shape and generation, the release annotation, one row with the served image and commit, and the saved value. `TestDeployingEnvironmentSaveWithoutALiveBuildIsRefused` checks the 409, that nothing was written, and that save only still works. `TestDeployingStaticSiteEnvironmentStillRebuilds` covers static sites. The backend secrets, rollout, envgroups, apps and deploys suites and `make lint` pass.
+
+Not verified until the live replay:
+
+- Native/buildpack/private/worker/cron variants: they share the path, but only Docker web was observed.
+- `undeployedChanges` after a selected-artifact release.
+- Linked-group value removal reaching the process.
+- File content.
+
+Not covered:
+
+- A second rolling write inside one `rollout.Batch` raises the generation again and expires the selection, so that release would build. Low risk: the environment batch is one patch.
+- The w5/m44 clause table's unprobed UI items (dotenv import, uploads, generated preview, export, mobile/keyboard/zh) are not touched by this backend fix and are left to the closeout replay.

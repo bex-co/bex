@@ -33,6 +33,7 @@ package rollout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -54,6 +55,38 @@ type DeployStore interface {
 	// LatestDeployCommit returns the newest non-empty commit for the app, or
 	// zero CommitInfo.
 	LatestDeployCommit(ctx context.Context, appID string) (store.CommitInfo, error)
+}
+
+// liveDeployStore is the optional capability ServedRelease reads;
+// *store.PGStore provides it.
+type liveDeployStore interface {
+	ListDeploys(ctx context.Context, appID string, filter store.DeployFilter) ([]store.Deploy, error)
+}
+
+// ErrNoDeployHistory reports that this Tracker cannot read deploy history
+// (CR-only mode, a hand-applied App), so the live release is unknown.
+var ErrNoDeployHistory = errors.New("rollout: no deploy history")
+
+// ServedRelease returns the App's live deploy when it carries the resolved
+// image the operator served — the immutable artifact a no-build release reuses.
+// nil means the App has no live build.
+func (t *Tracker) ServedRelease(ctx context.Context, a *appv1alpha1.App) (*store.Deploy, error) {
+	appID := ""
+	if a != nil {
+		appID = store.ManagedAppID(a.Labels)
+	}
+	var lister liveDeployStore
+	if t != nil {
+		lister, _ = t.Store.(liveDeployStore)
+	}
+	if lister == nil || appID == "" {
+		return nil, ErrNoDeployHistory
+	}
+	rows, err := lister.ListDeploys(ctx, appID, store.DeployFilter{Statuses: []string{store.DeployLive}, Limit: 1})
+	if err != nil || len(rows) == 0 || rows[0].ResolvedImage == "" {
+		return nil, err
+	}
+	return &rows[0], nil
 }
 
 // Tracker opens deploy-history rows for spec patches that roll a release. A nil
@@ -228,7 +261,16 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 	} else if prior.Hash != "" {
 		commit = prior
 	}
-	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, a.Spec.Image, generation, commit, core.SubjectFrom(ctx)); err != nil {
+	// A release selecting an existing artifact (w4/m180) records that image, so
+	// history shows no build, and the commit the artifact was built from.
+	image := a.Spec.Image
+	if ref := a.Spec.ReleaseConfig; ref != nil && ref.Generation == generation && ref.Image != "" {
+		image = ref.Image
+		if live, err := t.ServedRelease(ctx, a); err == nil && live != nil && live.ResolvedImage == ref.Image && live.Commit != "" {
+			commit = store.CommitInfo{Hash: live.Commit, Message: live.CommitMessage, AuthorAt: live.CommitAuthorAt}
+		}
+	}
+	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx)); err != nil {
 		log.Printf("rollout: record %s deploy for %s: %v", trigger, a.Name, err)
 	}
 }
