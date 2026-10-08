@@ -4615,6 +4615,27 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "此服务尚未关联环境组。",
     description: "Service group empty linked state",
   },
+  "services.envGroupsAvailableTitle": {
+    message: "可关联",
+    description:
+      "Available-groups heading while the service's environment is still resolving (no count yet)",
+  },
+  "services.envGroupsScopeLoading": {
+    message: "正在确认哪些环境组与此服务处于同一环境…",
+    description:
+      "Available groups wait for the service's environment scope (w4/217)",
+  },
+  "services.envGroupsScopeError": {
+    message: "无法加载此服务的环境，因此暂不提供可关联的环境组。",
+    description:
+      "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
+  },
+  "services.envGroupsNoneInScope": {
+    message:
+      "没有与此服务处于同一环境的未关联环境组。可以在此新建，或将环境组移动到该环境。",
+    description:
+      "Unlinked groups exist, but none in this service's environment scope (w4/217)",
+  },
   "services.envGroupsNoneAvailable": {
     message: "工作区中的所有环境组都已关联。",
     description: "Service group empty available state",

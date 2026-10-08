@@ -31,6 +31,7 @@ import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-grou
 import { useEnvVarKeys } from "@/features/services/hooks/use-env-vars";
 import { useSecretFileNames } from "@/features/services/hooks/use-secret-files";
 import { useServer } from "@/features/services/hooks/use-server";
+import { serviceMatchesGroupScope } from "@/features/env-groups/lib/scope";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 
 /**
@@ -134,9 +135,27 @@ export function EnvGroupsPanel({
     }
     return byGroup;
   }, [linked, linkOrder]);
-  const available = useMemo(
+  // bex-api links a group only to services in its own Environment scope, so
+  // only those are offered (w4/217: a group from another environment showed
+  // an enabled Link that always failed). Until the scope index resolves the
+  // service's environment nothing is offered: an unresolved service must not
+  // read as workspace-scoped.
+  const unlinked = useMemo(
     () => groups.filter((group) => !group.serviceLinks.includes(serviceId)),
     [groups, serviceId],
+  );
+  const available = useMemo(
+    () =>
+      scope.ready
+        ? unlinked.filter((group) =>
+            serviceMatchesGroupScope(
+              scope.serviceEnvironmentById,
+              serviceId,
+              group,
+            ),
+          )
+        : [],
+    [unlinked, scope.ready, scope.serviceEnvironmentById, serviceId],
   );
 
   return (
@@ -191,15 +210,41 @@ export function EnvGroupsPanel({
             </section>
             <section className="space-y-2">
               <h3 className="text-sm font-medium">
-                {t("services.envGroupsAvailableCount", {
-                  count: available.length,
-                })}
+                {scope.ready
+                  ? t("services.envGroupsAvailableCount", {
+                      count: available.length,
+                    })
+                  : t("services.envGroupsAvailableTitle")}
               </h3>
-              {available.length === 0 ? (
+              {!scope.ready ? (
+                <div
+                  className="space-y-2 rounded-md border border-dashed p-4 text-sm"
+                  role={scope.error ? "alert" : "status"}
+                >
+                  <p
+                    className={
+                      scope.error ? "text-destructive" : "text-muted-foreground"
+                    }
+                  >
+                    {t(
+                      scope.error
+                        ? "services.envGroupsScopeError"
+                        : "services.envGroupsScopeLoading",
+                    )}
+                  </p>
+                  {scope.error ? (
+                    <Button variant="outline" size="sm" onClick={scope.retry}>
+                      {t("common.tryAgain")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : available.length === 0 ? (
                 <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
                   {groups.length === 0
                     ? t("services.envGroupsNoneAvailableCreate")
-                    : t("services.envGroupsNoneAvailable")}
+                    : unlinked.length > 0
+                      ? t("services.envGroupsNoneInScope")
+                      : t("services.envGroupsNoneAvailable")}
                 </p>
               ) : (
                 <ul className="divide-y rounded-md border px-4">

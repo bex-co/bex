@@ -4734,6 +4734,28 @@ const enServices: Record<string, TranslationEntry> = {
     message: "No environment groups are linked to this service.",
     description: "Service group empty linked state",
   },
+  "services.envGroupsAvailableTitle": {
+    message: "Available to link",
+    description:
+      "Available-groups heading while the service's environment is still resolving (no count yet)",
+  },
+  "services.envGroupsScopeLoading": {
+    message: "Checking which groups share this service's environment…",
+    description:
+      "Available groups wait for the service's environment scope (w4/217)",
+  },
+  "services.envGroupsScopeError": {
+    message:
+      "Couldn't load this service's environment, so no groups are offered to link.",
+    description:
+      "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
+  },
+  "services.envGroupsNoneInScope": {
+    message:
+      "No unlinked groups share this service's environment. Create one here, or move a group into this environment.",
+    description:
+      "Unlinked groups exist, but none in this service's environment scope (w4/217)",
+  },
   "services.envGroupsNoneAvailable": {
     message: "Every workspace environment group is already linked.",
     description: "Service group empty available state",
