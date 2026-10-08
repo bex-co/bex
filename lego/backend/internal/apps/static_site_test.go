@@ -178,6 +178,18 @@ func TestStaticSetterValidationHardening(t *testing.T) {
 	if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: "X-A", Value: "a\r\nX-Injected: 1"}}); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("CRLF header value => ErrBadRequest, got %v", err)
 	}
+	// w4/204: framing and hop-by-hop names are the server's; Content-Length: 1
+	// took a whole site down. Content-Type/Encoding stay legitimate overrides.
+	for _, name := range []string{"Content-Length", "transfer-encoding", "Connection", "Keep-Alive", "Upgrade", "TE", "Trailer", "Proxy-Connection"} {
+		if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: name, Value: "1"}}); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), name) {
+			t.Errorf("reserved header %q => %v, want a 400 naming it", name, err)
+		}
+	}
+	for _, name := range []string{"Content-Type", "Content-Encoding", "Cache-Control"} {
+		if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: name, Value: "x"}}); err != nil {
+			t.Errorf("override header %q must pass, got %v", name, err)
+		}
+	}
 	if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: "Content-Security-Policy", Value: "default-src 'self'"}}); err != nil {
 		t.Errorf("valid security header must pass, got %v", err)
 	}
