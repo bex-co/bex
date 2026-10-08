@@ -208,6 +208,21 @@ func stepSeconds(res time.Duration) int64 {
 	return int64(res / time.Second)
 }
 
+// minRateLookback floors the rate() lookback of the CPU and latency-histogram
+// reads. rate needs two samples inside its window, and cAdvisor and Traefik
+// are scraped every 15s (deploy/gitops/base/prometheus.yaml), so the
+// 30-minute preset's 15s step as the lookback returned an empty or sparse
+// series for a mature, busy service (w4/214). Four scrape intervals ride out a
+// skipped scrape. Raise this if the scrape interval grows.
+const minRateLookback = 60
+
+// rateLookbackSeconds is a rate() window: the query step, floored at
+// minRateLookback. Only rates use it; per-bucket counts and byte windows keep
+// the step, since widening those would count a request in several buckets.
+func rateLookbackSeconds(res time.Duration) int64 {
+	return max(stepSeconds(res), minRateLookback)
+}
+
 // --- Resource metrics history: cAdvisor scraped by Prometheus ---
 
 // NewPrometheusResourceSource returns the production ResourceMetricsRangeSource
@@ -300,7 +315,7 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 		// Same cAdvisor restart double-count guard as memory: dedupe a container's
 		// overlapping instances before summing across containers (w4/050).
 		return fmt.Sprintf(`sum by (pod) (max by (pod, container) (rate(container_cpu_usage_seconds_total{%s}[%ds])))`,
-			matchers, stepSeconds(req.Resolution))
+			matchers, rateLookbackSeconds(req.Resolution))
 	}
 }
 
@@ -431,7 +446,7 @@ func promQueryFor(req RequestMetricsRequest) string {
 		}
 		return fmt.Sprintf(`histogram_quantile(%s, %s)`,
 			strconv.FormatFloat(req.Quantile, 'g', -1, 64),
-			sumRate(counters.duration, matchers, window, by))
+			sumRate(counters.duration, matchers, fmt.Sprintf("%ds", rateLookbackSeconds(req.Resolution)), by))
 	default: // http_requests — per-bucket request count (unit: count), not req/s
 		return sumIncrease(counters.requests, matchers, window, groupLabel(req.GroupBy))
 	}
