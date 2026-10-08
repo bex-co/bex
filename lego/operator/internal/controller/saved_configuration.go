@@ -56,6 +56,7 @@ func (savedConfigurationPredicate) Update(e event.UpdateEvent) bool {
 		return false
 	}
 	if old.Generation != next.Generation || old.Status.ActiveRevision != next.Status.ActiveRevision ||
+		old.Status.Phase != next.Status.Phase ||
 		old.Status.ConfigSnapshotGeneration != next.Status.ConfigSnapshotGeneration ||
 		old.Status.UnscopedSnapshotGeneration != next.Status.UnscopedSnapshotGeneration {
 		return true
@@ -82,11 +83,16 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 		return ctrl.Result{}, nil
 	}
 	different, compareErr := r.servingConfigurationDiffers(ctx, app)
-	if app.Status.UndeployedChanges != different {
+	applying := false
+	if different && compareErr == nil {
+		applying, compareErr = r.inFlightCarriesSavedConfiguration(ctx, app)
+	}
+	if app.Status.UndeployedChanges != different || app.Status.UndeployedChangesApplying != applying {
 		// A concurrent save or serving-revision change invalidates the comparison.
-		// Patch only this field and retry the complete read on a conflict.
+		// Patch only these fields and retry the complete read on a conflict.
 		if err := r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
 			status.UndeployedChanges = different
+			status.UndeployedChangesApplying = applying
 		}); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -99,6 +105,34 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 		result.RequeueAfter = time.Minute
 	}
 	return result, compareErr
+}
+
+// inFlightCarriesSavedConfiguration reports whether a release newer than the
+// serving one is still rolling with the saved configuration (w4/m184). A
+// Restart or rollback selects a recorded configuration, and a canceled release
+// carries nothing; neither applies the saved changes. A normal release that has
+// not dispatched yet has no record, but it snapshots the saved values when it
+// does, so it carries them.
+func (r *AppReconciler) inFlightCarriesSavedConfiguration(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	pending := requestedReleaseGeneration(app)
+	if app.Status.Phase != appv1alpha1.PhaseDeploying || canceledReleaseIsLatest(app) ||
+		pending <= successfulReleaseGeneration(app) {
+		return false, nil
+	}
+	if ref := app.ActiveReleaseConfig(); ref != nil && (ref.SourceGeneration > 0 || ref.PreserveGroupValues) {
+		return false, nil
+	}
+	rec, err := r.readRuntimeConfigRecord(ctx, app, pending)
+	if apierrors.IsNotFound(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	runtime := rec.projectRuntimeApp(app, &appv1alpha1.ReleaseConfigReference{Generation: pending})
+	runtime.Status.ConfigSnapshotGeneration = pending
+	differs, err := r.savedConfigurationDiffers(ctx, app, runtime)
+	return !differs && err == nil, err
 }
 
 func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *appv1alpha1.App) (bool, error) {

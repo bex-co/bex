@@ -164,6 +164,20 @@ describe("ServiceDetailHeader", () => {
     ).toBeInTheDocument();
   });
 
+  // w4/m184: while the rolling deploy already carries the saved settings,
+  // telling the user to deploy again invites a redundant second deploy.
+  it("says the saved changes are on their way while the carrying deploy runs", async () => {
+    renderHeader(
+      svc({ undeployedChanges: true, undeployedChangesApplying: true }),
+    );
+    expect(
+      await screen.findByText(
+        "Saved changes go live when the current deploy finishes.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Use a standard deploy/)).toBeNull();
+  });
+
   it("says nothing about undeployed changes on an ordinary service", async () => {
     renderHeader(svc({ undeployedChanges: false }));
     await screen.findByRole("heading", { name: "app" });

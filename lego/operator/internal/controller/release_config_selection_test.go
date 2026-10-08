@@ -470,3 +470,61 @@ func TestASelectedConfigsAutoscalerWritesThePassApp(t *testing.T) {
 		t.Fatalf("the pass's status write: %v", err)
 	}
 }
+
+// w4/m184: "saved changes aren't live — deploy to apply them" showed for the
+// whole of the very deploy applying them. UndeployedChangesApplying says so
+// only for a rolling release that runs the saved configuration.
+func TestInFlightReleaseCarriesSavedConfiguration(t *testing.T) {
+	ctx := context.Background()
+	check := func(t *testing.T, r *AppReconciler, app *appv1alpha1.App, want bool) {
+		t.Helper()
+		got, err := r.inFlightCarriesSavedConfiguration(ctx, app)
+		if err != nil || got != want {
+			t.Fatalf("carries saved = %v, %v; want %v", got, err, want)
+		}
+	}
+	ordinary := func(t *testing.T) (*AppReconciler, *appv1alpha1.App) {
+		r, app := selectedReleaseFixture(t)
+		app.Spec.ReleaseConfig = nil // a standard deploy of the saved settings
+		app.Status.Phase = appv1alpha1.PhaseDeploying
+		return r, app
+	}
+	t.Run("a deploy not dispatched yet snapshots the saved values", func(t *testing.T) {
+		r, app := ordinary(t)
+		check(t, r, app, true)
+	})
+	t.Run("nothing is rolling once the phase settles", func(t *testing.T) {
+		r, app := ordinary(t)
+		app.Status.Phase = appv1alpha1.PhaseRunning
+		check(t, r, app, false)
+	})
+	t.Run("a canceled release carries nothing", func(t *testing.T) {
+		r, app := ordinary(t)
+		app.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "3"
+		check(t, r, app, false)
+	})
+	t.Run("a rollback or Restart selects a recorded configuration", func(t *testing.T) {
+		r, app := selectedReleaseFixture(t)
+		app.Status.Phase = appv1alpha1.PhaseDeploying
+		check(t, r, app, false)
+		app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, Image: "image:A", PreserveGroupValues: true}
+		check(t, r, app, false)
+	})
+	t.Run("a dispatched release is compared with the saved configuration", func(t *testing.T) {
+		r, app := ordinary(t)
+		// Release 1's record holds configuration A, while B is saved.
+		app.Annotations[appv1alpha1.AnnotationReleaseGeneration] = "1"
+		app.Status.ReleaseGeneration, app.Status.ActiveRevision = 0, ""
+		check(t, r, app, false)
+		rec, err := r.readRuntimeConfigRecord(ctx, app, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		app.Spec.Image, app.Spec.StartCommand = "image:A", rec.spec.StartCommand
+		app.Spec.HealthCheckPath, app.Spec.Replicas, app.Spec.Env = *rec.spec.HealthCheckPath, *rec.spec.Replicas, rec.spec.Env
+		setSelectedTestSecret(t, r, "api-env", "A")
+		setSelectedTestSecret(t, r, "api-files", "file-A")
+		setSelectedTestSecret(t, r, "evg-shared-env", "group-A")
+		check(t, r, app, true)
+	})
+}

@@ -420,9 +420,12 @@ type AppView struct {
 	// serving release, including Save only, canceled deploys and historical
 	// release selection. Read from the operator-owned status, never re-derived
 	// here or inferred from a save notification alone.
-	UndeployedChanges bool     `json:"undeployedChanges"`
-	URL               string   `json:"url"`
-	URLs              []string `json:"urls"`
+	UndeployedChanges bool `json:"undeployedChanges"`
+	// UndeployedChangesApplying: a rolling release already carries those saved
+	// changes, so they go live when it finishes (w4/m184). Operator-owned.
+	UndeployedChangesApplying bool     `json:"undeployedChangesApplying"`
+	URL                       string   `json:"url"`
+	URLs                      []string `json:"urls"`
 	// PublicRoutingNotice explains why a service that asked to be publicly
 	// reachable has no public address (bex extra, w7/m79). Empty when the
 	// service is routed, or is not the kind that carries a public URL.
@@ -1063,15 +1066,16 @@ func view(a *appv1alpha1.App) AppView {
 		urls = nil
 	}
 	return AppView{
-		ID:                  appID,
-		Name:                name,
-		Slug:                a.Spec.PlatformSubdomain(a.Name),
-		DisplayName:         a.Spec.DisplayName,
-		Type:                svcType,
-		Phase:               phase,
-		UndeployedChanges:   a.Status.UndeployedChanges,
-		URL:                 url,
-		PublicRoutingNotice: publicRoutingNotice(a),
+		ID:                        appID,
+		Name:                      name,
+		Slug:                      a.Spec.PlatformSubdomain(a.Name),
+		DisplayName:               a.Spec.DisplayName,
+		Type:                      svcType,
+		Phase:                     phase,
+		UndeployedChanges:         a.Status.UndeployedChanges,
+		UndeployedChangesApplying: a.Status.UndeployedChanges && a.Status.UndeployedChangesApplying,
+		URL:                       url,
+		PublicRoutingNotice:       publicRoutingNotice(a),
 		// The contract-level derivation (types/v1alpha1) the operator's slug
 		// Service answers — surfaced string and resolvable hostname cannot
 		// drift (ADR041 D2/D4).

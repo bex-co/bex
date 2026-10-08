@@ -5337,6 +5337,7 @@ func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alph
 			return
 		}
 		app.Status.UndeployedChanges = fresh.Status.UndeployedChanges
+		app.Status.UndeployedChangesApplying = fresh.Status.UndeployedChangesApplying
 		fresh.Status = app.Status
 		*app = *fresh
 	}
@@ -5382,6 +5383,7 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 			local := *typed // keep the local status…
 			*typed = *fresh.(*appv1alpha1.App)
 			local.Status.UndeployedChanges = typed.Status.UndeployedChanges
+			local.Status.UndeployedChangesApplying = typed.Status.UndeployedChangesApplying
 			typed.Status = local.Status // …over the fresh resourceVersion
 		case *appv1alpha1.Database:
 			local := *typed

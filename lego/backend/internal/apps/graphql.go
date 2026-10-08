@@ -331,6 +331,8 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// A canceled deploy left saved changes undeployed; they ship with the next
 		// deploy (w1/m152 t003). false is the ordinary state.
 		"undeployedChanges": gqlutil.BoolField(func(a AppView) any { return a.UndeployedChanges }),
+		// Those saved changes are already rolling out (w4/m184).
+		"undeployedChangesApplying": gqlutil.BoolField(func(a AppView) any { return a.UndeployedChangesApplying }),
 		// Why an exposed service has no public address (w7/m79). Empty when it
 		// is routed or is not the kind that carries a public URL.
 		"publicRoutingNotice": gqlutil.StrField(func(a AppView) any { return a.PublicRoutingNotice }),

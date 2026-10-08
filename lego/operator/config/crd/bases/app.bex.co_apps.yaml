@@ -1350,6 +1350,13 @@ spec:
                   Saved settings remain available for the next standard deploy; merely
                   selecting an identical configuration for Restart does not set the flag.
                 type: boolean
+              undeployedChangesApplying:
+                description: |-
+                  UndeployedChangesApplying is set with UndeployedChanges while a release
+                  newer than the serving one is rolling with the saved configuration, so
+                  those changes go live when it finishes and no further deploy is needed
+                  (w4/m184). A Restart, rollback, cancel or failed release never sets it.
+                type: boolean
               unscopedSnapshotGeneration:
                 description: |-
                   UnscopedSnapshotGeneration marks the one generation whose linked-group

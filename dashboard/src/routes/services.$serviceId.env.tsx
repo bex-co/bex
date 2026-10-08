@@ -7,6 +7,7 @@ import { ServiceEnvironmentEditor } from "@/features/services/components/service
 import { EnvGroupsPanel } from "@/features/services/components/env-groups-panel";
 import { ServiceEnvironmentSkeleton } from "@/common/components/route-skeletons";
 import { useServer } from "@/features/services/hooks/use-server";
+import { undeployedChangesHintKey } from "@/features/services/lib/status";
 
 export const Route = createFileRoute("/services/$serviceId/env")({
   component: RouteComponent,
@@ -51,7 +52,7 @@ export function ServiceEnvPage({ serviceId }: { serviceId: string }) {
         // These are saved values. The operator reports when they differ from
         // the running configuration, including Save only, cancellation or rollback.
         <p className="text-muted-foreground text-sm" role="status">
-          {t("services.undeployedChangesHint")}
+          {t(undeployedChangesHintKey(service))}
         </p>
       ) : null}
       <ServiceEnvironmentEditor serviceId={serviceId} />

@@ -277,6 +277,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Notice when saved settings differ from the running release, including Save only, cancellation, rollback or restart",
   },
+  "services.undeployedChangesApplyingHint": {
+    message: "Saved changes go live when the current deploy finishes.",
+    description:
+      "Notice while an in-flight deploy already carries the saved settings, so no further deploy is needed (w4/m184)",
+  },
   "services.statusSleepingHint": {
     message: "Sleeping to save resources — wakes on the next request.",
     description:

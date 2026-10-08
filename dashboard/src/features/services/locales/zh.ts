@@ -271,6 +271,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Notice when saved settings differ from the running release, including Save only, cancellation, rollback or restart",
   },
+  "services.undeployedChangesApplyingHint": {
+    message: "已保存的更改将在当前部署完成后生效。",
+    description:
+      "Notice while an in-flight deploy already carries the saved settings, so no further deploy is needed (w4/m184)",
+  },
   "services.statusSleepingHint": {
     message: "为节省资源已休眠 —— 下次请求时自动唤醒。",
     description:
