@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](blocked/m51/README.md) (9 tasks) — **BLOCKED (live-verified 2026-10-05 on pin `c7afefad5` for `PYTHON_VERSION`, `NODE_VERSION`, `engines.node`, unsupported-version refusal and default; t009 closeout waits only on a `.python-version` / `.nvmrc` replay, which needs a fixture repo carrying those files)**
+- [ ] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](blocked/m51/README.md) (9 tasks) — **BLOCKED (2026-10-08: everything live-verified except the two version-file builds; fixtures now in `examples/runtime-version/` — needs a user-run authenticated production build of each (QA device login demands a password reauth), then t009 closeout)**
 - [x] **m50** — [Enforce Postgres tier capacity across write paths](done/m50/README.md) (9 tasks) ← promoted from `035` on 2026-10-02.
 
 - [x] **m49** — [Reject invalid image deploy inputs with actionable errors](done/m49/README.md) (7 tasks) ← promoted from `033` on 2026-10-02. Completed 2026-10-02; full suites/lint and 57 live checks passed.

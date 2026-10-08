@@ -53,3 +53,7 @@ Production pin `c7afefad5` (contains `dfb81512d`), `bex v0.2.1`, workspace `bex-
 | Freshness `validate`             | not re-run here (CI) |
 
 Remaining before t009: one live build from a repo carrying `.python-version` (e.g. `3.12`) and one carrying `.nvmrc`, ideally on a QA-owned fork or fixture repo.
+
+## Fixtures added (2026-10-08, w8 /loopx)
+
+The "needs a repo carrying the file" half of the gate is cleared. `bex-co/bex` is public and now has [`examples/runtime-version/`](../../../../examples/runtime-version/README.md): `python/` with `.python-version` = `3.12` (default 3.13), and `node/` with `.nvmrc` = `22` (default 24). Each has no env var and no `engines`, so only the file can select the line. The README gives the exact `bex services create` commands and the expected narration. **Remaining gate (user):** an authenticated production run of both builds, then t009. The QA device login demands a password reauth the agent must not perform (see m45).
