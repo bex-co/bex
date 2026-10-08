@@ -902,8 +902,9 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Toast when creating a user fails",
   },
   "databases.accessUserDeleted": {
-    message: "Deleted user {name}.",
-    description: "Toast after deleting a database user",
+    message: "Revocation requested for {name}.",
+    description:
+      "Toast after deleting a database user: the login is retired asynchronously on the next reconcile, so this confirms accepted intent, not a completed revocation",
   },
   "databases.accessUserDeleteError": {
     message: "Couldn't delete {name}. Please try again.",

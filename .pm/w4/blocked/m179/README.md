@@ -1,16 +1,16 @@
 # w4 · m179 — Revoke deleted Postgres logins even when objects reference the role
 
-**Worker:** worker4 **Goal:** deleting an additional Postgres credential prevents new authentication while preserving tenant objects, even when a grant or ownership dependency would block DROP ROLE. **Status:** todo
+**Worker:** worker4 **Goal:** deleting an additional Postgres credential prevents new authentication while preserving tenant objects, even when a grant or ownership dependency would block DROP ROLE. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Retire deleted Postgres logins without dropping tenant objects | 45m | — |
-| t002 | Audit all retirement aliases and preserve passing role controls | 35m | w4/m179/t001 |
-| t003 | Render parity | 20m | w4/m179/t001, w4/m179/t002 |
-| t004 | Simplify | 10m | w4/m179/t003 |
-| t005 | Test coverage for granted logins and real SQL retirement | 45m | w4/m179/t003, w4/m179/t004 |
+| t001 | Retire deleted Postgres logins without dropping tenant objects — **DONE** | 45m | — |
+| t002 | Audit all retirement aliases and preserve passing role controls — **DONE** | 35m | w4/m179/t001 |
+| t003 | Render parity — **DONE** | 20m | w4/m179/t001, w4/m179/t002 |
+| t004 | Simplify — **DONE** | 10m | w4/m179/t003 |
+| t005 | Test coverage for granted logins and real SQL retirement — **DONE** | 45m | w4/m179/t003, w4/m179/t004 |
 | t006 | Closeout | 15m | w4/m179/t005 |
 
 ## Definition of done
@@ -35,3 +35,11 @@ Already-connected sessions, private-only endpoints, pooler/replica access and ow
 - **Render parity:** included (t003), because all delete surfaces describe tenant-facing credential semantics. Render documents deactivation to preserve original-user objects; bex's additional-role/default-owner model is retained and its accepted asynchronous intent is documented explicitly.
 - **Scope:** globally retire tombstoned additional Postgres logins through the existing CNPG projection. No DROP OWNED/CASCADE, new control-plane DB dependency, Key Value/App credential redesign or default-user rotation feature.
 - **Dedupe:** no open/done item covers dependency-blocked deletion. ADR085's generation-specific issuance control passed; this is its unhandled dependency case, not the old Secret-adoption regression. w4/m170 reserved-role wedging remains separate.
+
+## Progress (2026-10-08)
+
+t001–t005 done. The operator projects a `spec.deletedUsers` tombstone as `ensure: present, login: false, disablePassword: true` (`managedRoles`, `database_controller.go`), so CNPG issues `ALTER ROLE … NOLOGIN PASSWORD NULL` instead of the `DROP ROLE` that PostgreSQL refuses while a grant references the role. Tombstones are durable retirement intent; same-name recreation still removes them. The dashboard toast reads "Revocation requested for {name}" (en/zh). GraphQL `deleteDatabaseUser` and MCP `delete_postgres_user` now describe accepted asynchronous retirement. The REST aliases keep their 204/200 status and body. ADR009 and ADR018 are updated.
+
+Real-CNPG evidence: `scripts/pg-role-retirement-check.sh` on the local CAPD cluster (CNPG **1.27.0**; production runs 1.30.0, whose role code path the finding traced). With `LEGACY=1`, the old `ensure: absent` shape reproduces `cannotReconcile … 1 object in database` while a fresh login still reads the granted table. The new shape passes four checks. A fresh login is refused at once. The role is NOLOGIN with a NULL password, and the grant and owner data survive. Same-name reissue accepts the new password and refuses the old one. A retired role that owns a table keeps the table. A tombstone for a role that never existed creates it as NOLOGIN. Operator `make test`, backend `internal/postgres`, dashboard databases tests (174), `make lint` (4 modules) and mobile codegen drift all pass.
+
+Not verified: pooler/replica and private-only endpoints, and already-established sessions. NOLOGIN blocks only new authentication. Production CNPG 1.30 is unverified until the live replay.

@@ -346,19 +346,15 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 		}
 	}
 
-	// A deleted user projects an ensure:absent tombstone so CNPG drops the live
-	// role from PostgreSQL (codex #8/#2) — even with no remaining present users,
-	// the managed block must still carry the drop.
-	dropped := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", deletedUsers: []string{"reporting"}})
-	drop, ok := managedRoleIndex(t, dropped)["reporting"]
+	// A deleted user is retired, not dropped (codex #8/#2, w4/m179) — even with
+	// no remaining present users the managed block carries it.
+	retiredSpec := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", deletedUsers: []string{"reporting"}})
+	retired, ok := managedRoleIndex(t, retiredSpec)["reporting"]
 	if !ok {
-		t.Fatalf("deleted user => absent role missing: %v", dropped["managed"])
+		t.Fatalf("deleted user => retired role missing: %v", retiredSpec["managed"])
 	}
-	if drop["ensure"] != "absent" {
-		t.Errorf("tombstone role = %v, want ensure:absent reporting", drop)
-	}
-	if _, has := drop["login"]; has {
-		t.Errorf("absent tombstone must not assert login: %v", drop)
+	if !isRetiredRole(retired) {
+		t.Errorf("tombstone role = %v, want ensure:present login:false disablePassword:true, no passwordSecret", retired)
 	}
 
 	// Active intent wins over a stale same-name tombstone from an older API.
@@ -373,6 +369,13 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 	if managedRoleIndex(t, overlap)["reporting"]["ensure"] != "present" {
 		t.Fatalf("active role did not override stale tombstone: %v", overlapRoles)
 	}
+}
+
+// isRetiredRole reports whether a managed role is the NOLOGIN, NULL-password
+// retirement managedRoles projects for a deletion tombstone.
+func isRetiredRole(r map[string]any) bool {
+	_, hasSecret := r["passwordSecret"]
+	return r["ensure"] == "present" && r["login"] == false && r["disablePassword"] == true && !hasSecret
 }
 
 // w4/m170: a reserved role (appv1alpha1.ReservedPostgresRole) is never
@@ -412,8 +415,8 @@ func TestManagedRolesNeverProjectReservedRoles(t *testing.T) {
 		}
 	}
 	for _, name := range deleted {
-		if strings.HasPrefix(name, "gone_") && roles[name]["ensure"] != "absent" {
-			t.Errorf("tombstoned role %q = %v, want ensure:absent", name, roles[name])
+		if strings.HasPrefix(name, "gone_") && !isRetiredRole(roles[name]) {
+			t.Errorf("tombstoned role %q = %v, want a retired role", name, roles[name])
 		}
 	}
 	extra := appv1alpha1.DatabaseUser{Name: "qa_extra", SecretName: "s4"}

@@ -198,8 +198,8 @@ type clusterParams struct {
 	recovery *appv1alpha1.DatabaseRecovery
 	// users are additional managed login roles (spec.managed.roles).
 	users []appv1alpha1.DatabaseUser
-	// deletedUsers are removed roles projected as ensure:absent so CNPG drops
-	// them from PostgreSQL (codex #8).
+	// deletedUsers are removed roles projected as retired NOLOGIN roles with a
+	// NULL password so their credentials stop authenticating (codex #8, w4/m179).
 	deletedUsers []string
 	// highAvailability, when true, provisions a replicated cluster (≥2 instances,
 	// primary + standby) with pod anti-affinity. Render's enableHighAvailability.
@@ -357,8 +357,12 @@ const insightsMonitorRole = "pg_monitor"
 // a Secret the recovery bootstrap path does not always produce.
 //
 // Additional users are login roles ensured present, each with its password read
-// from the referenced Secret (created by bex-api). DeletedUsers are projected as
-// ensure:absent so CNPG drops the live PostgreSQL role (codex #8).
+// from the referenced Secret (created by bex-api). DeletedUsers are retired, not
+// dropped: ensure:present with login:false and a NULL password (codex #8,
+// w4/m179). CNPG executes ensure:absent as a bare DROP ROLE, which PostgreSQL
+// refuses while any grant or owned object references the role, leaving the
+// login valid. ALTER ROLE ... NOLOGIN PASSWORD NULL never depends on the role's
+// objects, and keeping the role preserves the tenant's tables and grants.
 //
 // Note: CNPG revokes memberships not listed in inRoles, so the owner's role
 // memberships are bex-owned from here on (ADR009). Returns nil only when there
@@ -401,14 +405,16 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 		}
 		roles = append(roles, role)
 	}
-	// ensure:absent tombstones so CNPG drops the role from PostgreSQL (codex #8).
-	// An active role wins over stale same-name tombstones left by older API
-	// versions, avoiding contradictory managed-role entries during recreation.
+	// Tombstones retire the login. An active role wins over stale same-name
+	// tombstones left by older API versions, avoiding contradictory managed-role
+	// entries during recreation.
 	for _, name := range deletedUsers {
 		if _, active := present[name]; active {
 			continue
 		}
-		roles = append(roles, map[string]any{"name": name, "ensure": "absent"})
+		roles = append(roles, map[string]any{
+			"name": name, "ensure": "present", "login": false, "disablePassword": true,
+		})
 	}
 	return roles
 }
