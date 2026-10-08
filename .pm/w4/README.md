@@ -230,7 +230,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **212** — [Environment-group breadcrumbs show an internal ID and omit their project](212.md) (45m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 1; grouped and ungrouped fresh-page desktop/mobile repro with correct API names.
 
-- [ ] **211** — [An awake, unhealthy Free service answers public requests with "service hibernated"](211.md) ← live `qa-find-bugs` loop, 2026-10-07 sweep 14; two readiness-outage reproductions plus genuine cold-wake control.
+- [x] **211** — [An awake, unhealthy Free service answers public requests with "service hibernated"](done/211.md) ← live `qa-find-bugs` loop, 2026-10-07 sweep 14; two readiness-outage reproductions plus genuine cold-wake control. — **DONE 2026-10-08**: the activator's held response says `service not ready` for both cold wakes and awake readiness holds.
 
 - [x] **210** — [Flaky deploy gate: `TestStatusWriterKeepsHijackerAndReaderFrom` reads metrics before the middleware records them](done/210.md) ← infinite /qa-find-bugs loop68 2026-10-06 UTC; failed deploy run 37422791965 (w5/m118). — **DONE 2026-10-08, already fixed by `7e1ae3642`**: the test waits for the middleware; re-verified with `-race -count=50`.
 

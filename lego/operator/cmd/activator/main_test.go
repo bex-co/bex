@@ -106,19 +106,19 @@ func TestWakeHandlerNegotiatesContentAndAlwaysWakes(t *testing.T) {
 			name:     "API gets retryable JSON",
 			accept:   "application/json",
 			wantType: "application/json",
-			wantBody: `{"error":"service hibernated","retryAfter":5}`,
+			wantBody: `{"error":"service not ready","retryAfter":5}`,
 		},
 		{
 			name:     "wildcard stays on API default",
 			accept:   "*/*",
 			wantType: "application/json",
-			wantBody: `{"error":"service hibernated","retryAfter":5}`,
+			wantBody: `{"error":"service not ready","retryAfter":5}`,
 		},
 		{
 			name:     "explicit HTML refusal stays on API default",
 			accept:   "text/html;q=0,*/*;q=0.8",
 			wantType: "application/json",
-			wantBody: `{"error":"service hibernated","retryAfter":5}`,
+			wantBody: `{"error":"service not ready","retryAfter":5}`,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -919,7 +919,7 @@ func TestHealthPathsWakeASleepingApp(t *testing.T) {
 				if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != "5" {
 					t.Fatalf("response = %d, Retry-After %q; want 503 with 5", rr.Code, rr.Header().Get("Retry-After"))
 				}
-				if got := rr.Body.String(); got != `{"error":"service hibernated","retryAfter":5}` {
+				if got := rr.Body.String(); got != `{"error":"service not ready","retryAfter":5}` {
 					t.Fatalf("body = %q", got)
 				}
 				var gotDep appsv1.Deployment
@@ -970,5 +970,46 @@ func TestHealthPathsOnMaintenanceAndUnknownHosts(t *testing.T) {
 	}
 	if n := cl.patches.Load(); n != 0 {
 		t.Fatalf("maintenance health requests issued %d patches, want 0", n)
+	}
+}
+
+// TestAwakeUnreadyServiceIsNotReportedAsHibernated is w4/211: the readiness
+// hold routes an awake Free service whose health check fails to the activator,
+// which answered JSON clients "service hibernated" about a running instance.
+// The shared response is the neutral not-ready one, and an awake App keeps its
+// replicas.
+func TestAwakeUnreadyServiceIsNotReportedAsHibernated(t *testing.T) {
+	one := int32(1)
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
+		Status:     appv1alpha1.AppStatus{URL: "https://sleeping.onbex.co", Phase: appv1alpha1.PhaseDeploying},
+	}
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "sleeping", Namespace: "bex-system"},
+		Spec:       appsv1.DeploymentSpec{Replicas: &one},
+	}
+	cache, cl := primedHostCache(t, app, dep)
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		req := httptest.NewRequest(method, "https://sleeping.onbex.co/", nil)
+		req.Header.Set("Accept", "application/json")
+		rr := httptest.NewRecorder()
+		newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+		if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != "5" {
+			t.Fatalf("%s = %d, Retry-After %q", method, rr.Code, rr.Header().Get("Retry-After"))
+		}
+		want := `{"error":"service not ready","retryAfter":5}`
+		if method == http.MethodHead {
+			want = ""
+		}
+		if got := rr.Body.String(); got != want || strings.Contains(got, "hibernated") {
+			t.Fatalf("%s body = %q, want %q", method, got, want)
+		}
+	}
+	var gotDep appsv1.Deployment
+	if err := cl.Get(context.Background(), clientKey("sleeping"), &gotDep); err != nil {
+		t.Fatal(err)
+	}
+	if gotDep.Spec.Replicas == nil || *gotDep.Spec.Replicas != 1 {
+		t.Fatalf("awake replicas = %v, want 1", gotDep.Spec.Replicas)
 	}
 }
