@@ -525,12 +525,24 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 		// The same client reads a web/private/worker pre-deploy command only
 		// from envSpecificDetails.preDeployCommand (pkg/service/clone.go:156-159,
 		// 335-346), never the sibling serviceDetails field, so an image clone
-		// silently dropped its migration step (w2/042). Only that command: no
-		// invented build/start fields, and absent when empty.
-		if a.Runtime == "image" && a.PreDeployCommand != "" {
+		// silently dropped its migration step (w2/042). The Docker Command an
+		// image service's create accepts (dockerCommand, w4/188) reads back the
+		// same way, or `services get` hid it and `create --from` cloned the
+		// image's default entrypoint (w4/209). No invented build fields; each
+		// key is absent when empty, so the entrypoint stays the default.
+		if a.Runtime == "image" {
 			switch svcType {
 			case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
-				return map[string]any{"preDeployCommand": a.PreDeployCommand}, true
+				details := map[string]any{}
+				if a.StartCommand != "" {
+					details["dockerCommand"] = a.StartCommand
+				}
+				if a.PreDeployCommand != "" {
+					details["preDeployCommand"] = a.PreDeployCommand
+				}
+				if len(details) > 0 {
+					return details, true
+				}
 			}
 		}
 		return nil, false

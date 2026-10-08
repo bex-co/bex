@@ -232,25 +232,23 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **211** — [An awake, unhealthy Free service answers public requests with "service hibernated"](211.md) ← live `qa-find-bugs` loop, 2026-10-07 sweep 14; two readiness-outage reproductions plus genuine cold-wake control.
 
-- [ ] **210** — [Flaky deploy gate: `TestStatusWriterKeepsHijackerAndReaderFrom` reads metrics before the middleware records them](210.md) ← infinite /qa-find-bugs loop68 2026-10-06 UTC; failed deploy run 37422791965 (w5/m118).
+- [x] **210** — [Flaky deploy gate: `TestStatusWriterKeepsHijackerAndReaderFrom` reads metrics before the middleware records them](done/210.md) ← infinite /qa-find-bugs loop68 2026-10-06 UTC; failed deploy run 37422791965 (w5/m118). — **DONE 2026-10-08, already fixed by `7e1ae3642`**: the test waits for the middleware; re-verified with `-race -count=50`.
 
-- [ ] **209** — [An image service's Docker Command is invisible on REST reads, and Blueprints spell it `startCommand` (refusing Render's `dockerCommand`)](209.md) ← infinite /qa-find-bugs loop67 2026-10-06 UTC.
+- [x] **209** — [An image service's Docker Command is invisible on REST reads, and Blueprints spell it `startCommand` (refusing Render's `dockerCommand`)](done/209.md) ← infinite /qa-find-bugs loop67 2026-10-06 UTC. — **DONE 2026-10-08**: REST reads carry an image service's `envSpecificDetails.dockerCommand`; the Blueprint half was already fixed by `11ef67d24` (w5/102). The pinned-CLI clone gap is split out as [w4/218](blocked/218.md).
 
 - [x] **208** — [BLOCKER: the dashboard dependency-audit gate now fails every deploy (new seroval/undici/busboy/… advisories)](done/208.md) ← infinite /qa-find-bugs loop62 2026-10-06 UTC; blocks w4/m174–m176 reaching production. **DONE 2026-10-05**: `seroval` resolutions cleared the critical (`e2e4d0d7e`); its deploy passed the gate and pinned images (`543217baa`).
 
-- [ ] **207** — [A ~50 s outage right after a service's first deploy produced no `server_failed`/`server_available` at all](207.md) ← infinite /qa-find-bugs loop61 2026-10-06 UTC (cause unverified; 1 of 3 runs).
+- [x] **207** — [A ~50 s outage right after a service's first deploy produced no `server_failed`/`server_available` at all](done/207.md) ← infinite /qa-find-bugs loop61 2026-10-06 UTC (cause unverified; 1 of 3 runs). — **DONE 2026-10-08** (`cc281d02e`): a debounced first unhealthy sighting schedules a 10 s confirm pass, so ~50 s outages record both edges.
 
-- [ ] **206** — [Blueprint apply creates a service, then 400s on an unknown `fromService` target, leaving it half-configured](206.md) ← infinite /qa-find-bugs loop53 2026-10-05 UTC.
+- [x] **206** — [Blueprint apply creates a service, then 400s on an unknown `fromService` target, leaving it half-configured](done/206.md) ← infinite /qa-find-bugs loop53 2026-10-05 UTC. — **DONE 2026-10-08** (`984182661`): Blueprint apply refuses an unknown `fromService` host target before any write, sharing validate's check.
 
-- [ ] **205** — [The Disk tab (and Shell/Slug labels) render in English under the Chinese locale](205.md) ← infinite /qa-find-bugs loop50 2026-10-05 UTC.
+- [x] **205** — [The Disk tab (and Shell/Slug labels) render in English under the Chinese locale](done/205.md) ← infinite /qa-find-bugs loop50 2026-10-05 UTC. — **DONE 2026-10-08** (`532cecc57`): the Disk feature is translated into zh, with a parity guard against English in zh.
 
-- [ ] **204** — [A static-site header rule `Content-Length` is accepted and takes the site down](204.md) ← infinite /qa-find-bugs loop48 2026-10-05 UTC.
+- [x] **204** — [A static-site header rule `Content-Length` is accepted and takes the site down](done/204.md) ← infinite /qa-find-bugs loop48 2026-10-05 UTC. — **DONE 2026-10-08** (`8ee7edf8f`): server-owned framing/hop-by-hop header rules are refused with a 400 and skipped at the static server.
 
-- [ ] **203** — [Trigger Run stays enabled on a suspended cron job and fails with a raw English error](203.md) ← infinite /qa-find-bugs loop41 2026-10-05 UTC.
+- [x] **203** — [Trigger Run stays enabled on a suspended cron job and fails with a raw English error](done/203.md) ← infinite /qa-find-bugs loop41 2026-10-05 UTC. — **DONE 2026-10-08** (`2be2bd99c`): Trigger Run and run Cancel read the `cron_run_now`/`cron_cancel_run` decisions; `CRON_SUSPENDED` renders localized copy.
 
-- [ ] **202** — [Failed health-check deploy's final failureReason still says "the rollout is waiting"](202.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC.
-
-- [ ] **201** — [Undeployed-changes notice tells users to deploy while that deploy is already running](201.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC.
+- [x] **202** — [Failed health-check deploy's final failureReason still says "the rollout is waiting"](done/202.md) ← infinite /qa-find-bugs loop40 2026-10-05 UTC. — **DONE 2026-10-08** (`679380265`): a failed deploy's terminal reason now states the outcome (health check "never succeeded within the rollout window, so the deploy failed"; "image pull failed").
 
 - [x] **200** — [The operator flips an App's Ready condition ~40 s after its pod failed readiness, so `server_failed` still lands late](done/200.md) ← infinite /qa-find-bugs loop37 2026-10-05 UTC (w4/196 live check) — **DONE 2026-10-05, fixed by [w5/m113](../w5/done/m113/README.md)**: the cause was the backend's debounced phase write, not the operator. A dev-5 replay stamps `server_failed` at the pod's readiness drop (0 s, was ~40 s).
 
@@ -287,6 +285,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **183** — [Unlinking a deleted service's env-group link always 404s, stranding the link](done/183.md) ← infinite /qa-find-bugs loop3 2026-10-04 UTC, muse.env; tolerate NotFound in `UnlinkService` like `detach` does. — done 2026-10-04.
 
 - [x] **182** — [Unknown `?type=` renders a hybrid create wizard](done/182.md) ← infinite /qa-find-bugs loop2 2026-10-04 UTC, muse.env; default form init through `isServiceType`, export the guard. — done 2026-10-04.
+
+- [ ] **218** — [`services create --from` drops an image service's Docker Command (pinned Render CLI)](blocked/218.md) — **BLOCKED (upstream `render-oss/cli` must clone `dockerCommand` for image/docker runtimes, then a pin bump; bex does not fork the CLI per DO_NOT_DO)**. Split from w4/209 on 2026-10-08; the bex read side shipped with w4/209.
 
 - [ ] **181** — [Key Value metrics sidecar is CPU-starved: production `valkey-instances` scrapes time out](blocked/181.md) — **BLOCKED (ship + release pipeline deploys operator (rolls every Valkey StatefulSet); QA observes 24 h: `up{job="valkey-instances"}` = 1 for every production store, scrape duration well under 10 s, exporter throttling far below 98%, continuous series on `/keyvalue/red-d9p49kdrtmes73c34ovg`)**. Exporter budget 10m → 50m (Guaranteed QoS kept), collectors trimmed to INFO, drift-guard tests done 2026-10-03.
 
