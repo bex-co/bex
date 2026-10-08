@@ -1,12 +1,14 @@
 import { getRouteApi } from "@tanstack/react-router";
 import { Settings } from "@ory/elements-react/theme";
 import { SessionProvider } from "@ory/elements-react/client";
+import type { OryFlowComponentOverrides } from "@ory/elements-react";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
 import {
   KRATOS_PUBLIC_URL,
   useOryConfig,
   oryHideSettingsPageHeader,
 } from "@/common/lib/ory/config";
+import { OryToast } from "@/common/lib/ory/ory-toast";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -21,6 +23,11 @@ import { RegistryCredentialsPanel } from "@/features/registry-credentials/compon
 import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
 
 const settingsRoute = getRouteApi("/settings");
+
+const settingsComponents: OryFlowComponentOverrides = {
+  ...oryHideSettingsPageHeader,
+  Message: { Toast: OryToast },
+};
 
 /**
  * Account settings — Kratos's settings flow (profile + password). This is
@@ -65,7 +72,7 @@ export default function SettingsPage() {
                       className="account-settings-flow"
                       flow={flow}
                       config={oryConfig}
-                      components={oryHideSettingsPageHeader}
+                      components={settingsComponents}
                     />
                   </SessionProvider>
                 ) : (
