@@ -21,15 +21,19 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -203,7 +207,7 @@ func TestImageNetworkLeavesLegacyServicesUnchanged(t *testing.T) {
 	app := projectionApp()
 	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{PrimaryPort: 8123, Ports: []int32{8123, 9000}}
 	selector, ports, err := privateServiceProjection(app, 3000)
-	if err != nil || len(selector) != 1 || len(ports) != 1 || ports[0].Port != 3000 || ports[0].Name != "" {
+	if _, revisioned := selector[labelRevision]; err != nil || revisioned || len(ports) != 1 || ports[0].Port != 3000 || ports[0].Name != "" {
 		t.Fatalf("legacy routing changed: %v %v %v", selector, ports, err)
 	}
 	app.Spec.Type = appv1alpha1.TypePrivateService
@@ -306,5 +310,42 @@ func TestImageNetworkCancelRestoresServingRelease(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestServingSelectorExcludesJobPods is w4/m181: both stable Services used the
+// bare labelApp selector, which pre-deploy Job pods also carry. Live, a ready
+// migration pod (no listener) joined the endpoints and a share of public
+// requests answered 502 while it ran. The selector must admit the runtime pod
+// template, old and new revisions alike, and no Job pod of the same App.
+func TestServingSelectorExcludesJobPods(t *testing.T) {
+	for _, app := range []*appv1alpha1.App{
+		projectionApp(func(a *appv1alpha1.App) { a.Labels = map[string]string{labelAppID: "srv-hello"} }),
+		projectionApp(), // hand-applied: no public id, the name stands in
+	} {
+		raw, _, err := privateServiceProjection(app, 3000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		selector := labels.SelectorFromSet(raw)
+		serving := appPodLabels(app, false)
+		if !selector.Matches(labels.Set(serving)) {
+			t.Errorf("%s: selector %v drops the runtime pod %v", app.Name, raw, serving)
+		}
+		previous := maps.Clone(serving)
+		previous[labelRevision] = "rev-1"
+		if !selector.Matches(labels.Set(previous)) {
+			t.Errorf("%s: selector %v drops the previous revision's pod during a rolling deploy", app.Name, raw)
+		}
+		jobs := []map[string]string{
+			diskBackupLabels(app),
+			execution.PodLabels(app.Name, "uid", predeploy.ComponentValue, "tea-1", app.Namespace, false),
+			execution.PodLabels(app.Name, "uid", "build", "tea-1", app.Namespace, false),
+		}
+		for _, job := range jobs {
+			if selector.Matches(labels.Set(job)) {
+				t.Errorf("%s: selector %v admits a Job pod %v", app.Name, raw, job)
+			}
+		}
 	}
 }

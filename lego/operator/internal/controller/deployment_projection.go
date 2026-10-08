@@ -171,13 +171,9 @@ type deploymentParams struct {
 // selector is immutable, so adding a label here that also entered the selector
 // would break every existing Deployment the moment the label appeared.
 func appPodLabels(app *appv1alpha1.App, verifyImage bool) map[string]string {
-	appID := app.Labels[labelAppID]
-	if appID == "" {
-		appID = app.Name
-	}
 	labels := map[string]string{
 		labelApp:      app.Name,
-		labelAppID:    appID,
+		labelAppID:    appIDOrName(app),
 		labelRevision: releaseRevision(app),
 	}
 	// Propagated so NetworkPolicy selectors can express "allow same-workspace".
