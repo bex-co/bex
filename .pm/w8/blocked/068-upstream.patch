@@ -1,0 +1,296 @@
+diff --git a/cmd/logs.go b/cmd/logs.go
+index c464f16..0c0fb10 100644
+--- a/cmd/logs.go
++++ b/cmd/logs.go
+@@ -12,6 +12,7 @@ import (
+ 	lclient "github.com/render-oss/cli/pkg/client/logs"
+ 	"github.com/render-oss/cli/pkg/command"
+ 	"github.com/render-oss/cli/pkg/logs"
++	"github.com/render-oss/cli/pkg/tui"
+ 	"github.com/render-oss/cli/pkg/tui/flows"
+ 	"github.com/render-oss/cli/pkg/tui/views"
+ )
+@@ -106,14 +107,33 @@ In interactive mode you can update the filters and view logs in real time, or se
+ 	return logCmd
+ }
+ 
+-func writeLog(format command.Output, out io.Writer, log *lclient.Log) error {
++// logWriter writes log entries in a non-interactive output format. A single
++// logWriter must be used for every entry of one command invocation so that YAML
++// output forms a valid multi-document stream (entries separated by "---")
++// instead of concatenated mappings with duplicate keys.
++type logWriter struct {
++	format      command.Output
++	out         io.Writer
++	yamlEncoder *yaml.Encoder
++}
++
++func newLogWriter(format command.Output, out io.Writer) *logWriter {
++	return &logWriter{format: format, out: out}
++}
++
++func (w *logWriter) write(log *lclient.Log) error {
+ 	var str []byte
+ 	var err error
+-	if format == command.JSON {
++	if w.format == command.JSON {
+ 		str, err = json.MarshalIndent(log, "", "  ")
+-	} else if format == command.YAML {
+-		str, err = yaml.Marshal(log)
+-	} else if format == command.TEXT {
++	} else if w.format == command.YAML {
++		// The encoder is created lazily so that zero entries produce an empty
++		// stream. Each Encode call flushes its document, preserving streaming.
++		if w.yamlEncoder == nil {
++			w.yamlEncoder = yaml.NewEncoder(w.out)
++		}
++		return w.yamlEncoder.Encode(log)
++	} else if w.format == command.TEXT {
+ 		str = []byte(fmt.Sprintf("%s  %s\n", log.Timestamp.Format(time.DateTime), log.Message))
+ 	}
+ 
+@@ -121,19 +141,32 @@ func writeLog(format command.Output, out io.Writer, log *lclient.Log) error {
+ 		return err
+ 	}
+ 
+-	_, err = out.Write(str)
++	_, err = w.out.Write(str)
+ 	return err
+ }
+ 
++func (w *logWriter) close() error {
++	if w.yamlEncoder == nil {
++		return nil
++	}
++	return w.yamlEncoder.Close()
++}
++
+ func nonInteractiveLogs(logLoader *views.LogLoader, format *command.Output, cmd *cobra.Command, input views.LogInput) error {
+ 	result, err := logLoader.LoadLogData(cmd.Context(), input)
+ 	if err != nil {
+ 		return err
+ 	}
+ 
++	return writeLogResult(*format, cmd.OutOrStdout(), result)
++}
++
++func writeLogResult(format command.Output, out io.Writer, result *tui.LogResult) error {
++	w := newLogWriter(format, out)
++
+ 	if result.Logs != nil {
+ 		for _, log := range result.Logs.Logs {
+-			if err := writeLog(*format, cmd.OutOrStdout(), &log); err != nil {
++			if err := w.write(&log); err != nil {
+ 				return err
+ 			}
+ 		}
+@@ -145,11 +178,11 @@ func nonInteractiveLogs(logLoader *views.LogLoader, format *command.Output, cmd
+ 			if !ok {
+ 				break
+ 			}
+-			if err := writeLog(*format, cmd.OutOrStdout(), log); err != nil {
++			if err := w.write(log); err != nil {
+ 				return err
+ 			}
+ 		}
+ 	}
+ 
+-	return nil
++	return w.close()
+ }
+diff --git a/cmd/logs_test.go b/cmd/logs_test.go
+new file mode 100644
+index 0000000..9c1621b
+--- /dev/null
++++ b/cmd/logs_test.go
+@@ -0,0 +1,190 @@
++package cmd
++
++import (
++	"bytes"
++	"encoding/json"
++	"errors"
++	"io"
++	"strings"
++	"sync"
++	"testing"
++	"time"
++
++	"github.com/stretchr/testify/require"
++	"gopkg.in/yaml.v3"
++
++	"github.com/render-oss/cli/pkg/client"
++	lclient "github.com/render-oss/cli/pkg/client/logs"
++	"github.com/render-oss/cli/pkg/command"
++	"github.com/render-oss/cli/pkg/tui"
++)
++
++func testLog(id, message string, second int) lclient.Log {
++	return lclient.Log{
++		Id: id,
++		Labels: []lclient.LogLabel{
++			{Name: lclient.LogLabelNameType, Value: "app"},
++			{Name: lclient.LogLabelNameResource, Value: "srv-12345678901234567890"},
++		},
++		Message:   message,
++		Timestamp: time.Date(2026, 10, 8, 5, 0, second, 0, time.UTC),
++	}
++}
++
++func historyResult(logs ...lclient.Log) *tui.LogResult {
++	return &tui.LogResult{Logs: &client.Logs200Response{Logs: logs}}
++}
++
++// decodeYAMLStream strictly decodes every document in out until EOF.
++func decodeYAMLStream(t *testing.T, out string) []lclient.Log {
++	t.Helper()
++	dec := yaml.NewDecoder(strings.NewReader(out))
++	dec.KnownFields(true)
++
++	var decoded []lclient.Log
++	for {
++		var log lclient.Log
++		err := dec.Decode(&log)
++		if errors.Is(err, io.EOF) {
++			return decoded
++		}
++		require.NoError(t, err, "output:\n%s", out)
++		decoded = append(decoded, log)
++	}
++}
++
++func requireLogsEqual(t *testing.T, expected, actual []lclient.Log) {
++	t.Helper()
++	require.Len(t, actual, len(expected))
++	for i := range expected {
++		require.Equal(t, expected[i].Id, actual[i].Id)
++		require.Equal(t, expected[i].Labels, actual[i].Labels)
++		require.Equal(t, expected[i].Message, actual[i].Message)
++		require.True(t, expected[i].Timestamp.Equal(actual[i].Timestamp), "timestamp %d", i)
++	}
++}
++
++func TestWriteLogResultYAML(t *testing.T) {
++	multiline := "first line\n---\nid: injected\n...\nlast line"
++
++	tests := []struct {
++		name string
++		logs []lclient.Log
++	}{
++		{name: "zero entries", logs: nil},
++		{name: "one entry", logs: []lclient.Log{testLog("log-1", "marker-1", 1)}},
++		{name: "two entries", logs: []lclient.Log{testLog("log-1", "marker-1", 1), testLog("log-2", "marker-2", 2)}},
++		{name: "multiline message containing document markers", logs: []lclient.Log{testLog("log-1", multiline, 1), testLog("log-2", multiline+"\n", 2)}},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			var out bytes.Buffer
++			require.NoError(t, writeLogResult(command.YAML, &out, historyResult(tt.logs...)))
++
++			requireLogsEqual(t, tt.logs, decodeYAMLStream(t, out.String()))
++		})
++	}
++}
++
++func TestWriteLogResultYAMLEmptyStream(t *testing.T) {
++	var out bytes.Buffer
++	require.NoError(t, writeLogResult(command.YAML, &out, historyResult()))
++	require.Empty(t, out.String())
++}
++
++func TestWriteLogResultYAMLSingleEntryUnchanged(t *testing.T) {
++	log := testLog("log-1", "marker-1", 1)
++	expected, err := yaml.Marshal(&log)
++	require.NoError(t, err)
++
++	var out bytes.Buffer
++	require.NoError(t, writeLogResult(command.YAML, &out, historyResult(log)))
++	require.Equal(t, string(expected), out.String())
++}
++
++func TestWriteLogResultYAMLTail(t *testing.T) {
++	history := testLog("log-1", "history", 1)
++	frames := []lclient.Log{testLog("log-2", "tail-1", 2), testLog("log-3", "tail-2\n---\nmore", 3)}
++
++	ch := make(chan *lclient.Log)
++	out := &lockedBuffer{}
++	done := make(chan error, 1)
++	go func() {
++		done <- writeLogResult(command.YAML, out, &tui.LogResult{
++			Logs:       &client.Logs200Response{Logs: []lclient.Log{history}},
++			LogChannel: ch,
++		})
++	}()
++
++	ch <- &frames[0]
++	// The writer has received the second frame only after it finished writing
++	// the first, so the first two documents must already be decodable.
++	ch <- &frames[1]
++	partial := out.String()
++	dec := yaml.NewDecoder(strings.NewReader(partial))
++	dec.KnownFields(true)
++	for _, expected := range []lclient.Log{history, frames[0]} {
++		var log lclient.Log
++		require.NoError(t, dec.Decode(&log), "output:\n%s", partial)
++		requireLogsEqual(t, []lclient.Log{expected}, []lclient.Log{log})
++	}
++
++	close(ch)
++	require.NoError(t, <-done)
++	requireLogsEqual(t, []lclient.Log{history, frames[0], frames[1]}, decodeYAMLStream(t, out.String()))
++}
++
++func TestWriteLogResultJSONAndTextUnchanged(t *testing.T) {
++	logs := []lclient.Log{testLog("log-1", "marker-1", 1), testLog("log-2", "line\n---\nline", 2)}
++
++	var expectedJSON, expectedText bytes.Buffer
++	for _, log := range logs {
++		b, err := json.MarshalIndent(&log, "", "  ")
++		require.NoError(t, err)
++		expectedJSON.Write(b)
++		expectedText.WriteString(log.Timestamp.Format(time.DateTime) + "  " + log.Message + "\n")
++	}
++
++	var jsonOut bytes.Buffer
++	require.NoError(t, writeLogResult(command.JSON, &jsonOut, historyResult(logs...)))
++	require.Equal(t, expectedJSON.String(), jsonOut.String())
++
++	var textOut bytes.Buffer
++	require.NoError(t, writeLogResult(command.TEXT, &textOut, historyResult(logs...)))
++	require.Equal(t, expectedText.String(), textOut.String())
++
++	for _, format := range []command.Output{command.JSON, command.TEXT} {
++		var out bytes.Buffer
++		require.NoError(t, writeLogResult(format, &out, historyResult()))
++		require.Empty(t, out.String(), format)
++	}
++}
++
++func TestWriteLogResultYAMLPropagatesWriteError(t *testing.T) {
++	err := writeLogResult(command.YAML, failingWriter{}, historyResult(testLog("log-1", "marker-1", 1)))
++	require.ErrorContains(t, err, "write failed")
++}
++
++type lockedBuffer struct {
++	mu  sync.Mutex
++	buf bytes.Buffer
++}
++
++func (b *lockedBuffer) Write(p []byte) (int, error) {
++	b.mu.Lock()
++	defer b.mu.Unlock()
++	return b.buf.Write(p)
++}
++
++func (b *lockedBuffer) String() string {
++	b.mu.Lock()
++	defer b.mu.Unlock()
++	return b.buf.String()
++}
++
++type failingWriter struct{}
++
++func (failingWriter) Write([]byte) (int, error) {
++	return 0, errors.New("write failed")
++}

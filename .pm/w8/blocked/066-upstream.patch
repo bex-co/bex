@@ -1,0 +1,281 @@
+diff --git a/pkg/tui/views/psql.go b/pkg/tui/views/psql.go
+index 0acd74d..8dd1c55 100644
+--- a/pkg/tui/views/psql.go
++++ b/pkg/tui/views/psql.go
+@@ -67,12 +67,12 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResu
+ 		}
+ 	}
+ 
+-	connectionInfo, err := pgc.GetPostgresConnectionInfo(ctx, pg.Id)
++	connectionString, err := getExternalConnectionString(ctx, pgc, pg)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+-	args := []string{connectionInfo.ExternalConnectionString, "-c", input.Command}
++	args := []string{connectionString, "-c", input.Command}
+ 	for _, arg := range input.Args {
+ 		args = append(args, arg)
+ 	}
+@@ -205,12 +205,12 @@ func loadDataPSQL(ctx context.Context, in *PSQLInput) (*exec.Cmd, error) {
+ 		}
+ 	}
+ 
+-	connectionInfo, err := pgc.GetPostgresConnectionInfo(ctx, pg.Id)
++	connectionString, err := getExternalConnectionString(ctx, pgc, pg)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 
+-	args := []string{connectionInfo.ExternalConnectionString}
++	args := []string{connectionString}
+ 	for _, arg := range in.Args {
+ 		args = append(args, arg)
+ 	}
+@@ -218,6 +218,23 @@ func loadDataPSQL(ctx context.Context, in *PSQLInput) (*exec.Cmd, error) {
+ 	return exec.Command(string(in.Tool), args...), nil
+ }
+ 
++// getExternalConnectionString returns the external connection string for pg, or an error
++// if the database has no usable external endpoint. An empty connection string must never
++// be passed to psql or pgcli: libpq would fall back to environment variables and local
++// defaults and connect to a different database than the one the user selected.
++func getExternalConnectionString(ctx context.Context, pgc *postgres.Repo, pg *client.PostgresDetail) (string, error) {
++	connectionInfo, err := pgc.GetPostgresConnectionInfo(ctx, pg.Id)
++	if err != nil {
++		return "", err
++	}
++
++	if connectionInfo == nil || strings.TrimSpace(connectionInfo.ExternalConnectionString) == "" {
++		return "", fmt.Errorf("no external connection string available for %s; enable external access for this database or connect from within its private network", pg.Name)
++	}
++
++	return connectionInfo.ExternalConnectionString, nil
++}
++
+ func hasAccessToPostgres(pg *client.PostgresDetail, userIP net.IP) (bool, error) {
+ 	for _, allowedIPs := range pg.IpAllowList {
+ 		_, cidr, err := net.ParseCIDR(allowedIPs.CidrBlock)
+@@ -232,7 +249,8 @@ func hasAccessToPostgres(pg *client.PostgresDetail, userIP net.IP) (bool, error)
+ 	return false, nil
+ }
+ 
+-func getUserIP() (net.IP, bool) {
++// getUserIP is a variable so tests can stub public IP discovery.
++var getUserIP = func() (net.IP, bool) {
+ 	userIPRes, err := http.Get("https://api.ipify.org")
+ 	if err != nil {
+ 		return nil, false
+diff --git a/pkg/tui/views/psql_test.go b/pkg/tui/views/psql_test.go
+index 8d9ff6c..75ae8c4 100644
+--- a/pkg/tui/views/psql_test.go
++++ b/pkg/tui/views/psql_test.go
+@@ -1,7 +1,15 @@
+ package views
+ 
+ import (
++	"context"
+ 	"encoding/json"
++	"fmt"
++	"net"
++	"net/http"
++	"net/http/httptest"
++	"os"
++	"path/filepath"
++	"strings"
+ 	"testing"
+ 
+ 	"github.com/stretchr/testify/require"
+@@ -48,3 +56,192 @@ func TestPSQLResult_YAMLMarshal(t *testing.T) {
+ 	require.Contains(t, string(b), "output:")
+ 	require.Contains(t, string(b), "hello world")
+ }
++
++const (
++	psqlHelperEnv       = "RENDER_CLI_TEST_PSQL_HELPER"
++	psqlHelperMarkerEnv = "RENDER_CLI_TEST_PSQL_HELPER_MARKER"
++
++	testPostgresID       = "dpg-12345678901234567890"
++	testPostgresName     = "private-db"
++	testPostgresPassword = "test-password"
++	testExternalURL      = "postgresql://user:" + testPostgresPassword + "@dpg-12345678901234567890.example.com/db"
++)
++
++// TestMain lets the test binary stand in for psql/pgcli. When psqlHelperEnv is set, the
++// process records that it was launched and echoes its arguments instead of running tests.
++func TestMain(m *testing.M) {
++	if os.Getenv(psqlHelperEnv) == "1" {
++		if marker := os.Getenv(psqlHelperMarkerEnv); marker != "" {
++			_ = os.WriteFile(marker, []byte("launched"), 0o600)
++		}
++		_ = json.NewEncoder(os.Stdout).Encode(os.Args[1:])
++		os.Exit(0)
++	}
++	os.Exit(m.Run())
++}
++
++// setupPSQLTest serves the Postgres detail and connection-info endpoints, stubs public IP
++// discovery, and returns a tool path that records whether it was launched.
++func setupPSQLTest(t *testing.T, connectionInfo string, userIP net.IP, userIPOK bool, allowList string) (tool PSQLTool, launched func() bool) {
++	t.Helper()
++
++	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		w.Header().Set("Content-Type", "application/json")
++		switch {
++		case strings.HasSuffix(r.URL.Path, "/postgres/"+testPostgresID+"/connection-info"):
++			_, _ = w.Write([]byte(connectionInfo))
++		case strings.HasSuffix(r.URL.Path, "/postgres/"+testPostgresID):
++			_, _ = fmt.Fprintf(w, `{"id":%q,"name":%q,"ipAllowList":%s}`, testPostgresID, testPostgresName, allowList)
++		default:
++			w.WriteHeader(http.StatusNotFound)
++		}
++	}))
++	t.Cleanup(s.Close)
++
++	t.Setenv("RENDER_API_KEY", "test-key")
++	t.Setenv("RENDER_HOST", s.URL)
++
++	origGetUserIP := getUserIP
++	getUserIP = func() (net.IP, bool) { return userIP, userIPOK }
++	t.Cleanup(func() { getUserIP = origGetUserIP })
++
++	marker := filepath.Join(t.TempDir(), "launched")
++	t.Setenv(psqlHelperEnv, "1")
++	t.Setenv(psqlHelperMarkerEnv, marker)
++
++	exe, err := os.Executable()
++	require.NoError(t, err)
++
++	return PSQLTool(exe), func() bool {
++		_, err := os.Stat(marker)
++		return err == nil
++	}
++}
++
++func connectionInfoJSON(external string) string {
++	b, _ := json.Marshal(map[string]string{
++		"password":                 testPostgresPassword,
++		"internalConnectionString": "postgresql://user:" + testPostgresPassword + "@dpg-12345678901234567890-a/db",
++		"externalConnectionString": external,
++		"psqlCommand":              "PGPASSWORD=" + testPostgresPassword + " psql -h dpg-12345678901234567890-a",
++	})
++	return string(b)
++}
++
++var unusableExternalTargets = []struct {
++	name           string
++	connectionInfo string
++}{
++	{name: "empty", connectionInfo: connectionInfoJSON("")},
++	{name: "whitespace", connectionInfo: connectionInfoJSON(" \t\n ")},
++	{name: "missing key", connectionInfo: `{"password":"` + testPostgresPassword + `","internalConnectionString":"postgresql://internal/db","psqlCommand":"psql"}`},
++}
++
++var ipDiscoveryOutcomes = []struct {
++	name   string
++	userIP net.IP
++	ok     bool
++}{
++	{name: "ip discovery failed", userIP: nil, ok: false},
++	{name: "ip allowed", userIP: net.ParseIP("192.0.2.77"), ok: true},
++}
++
++const allowAllIPs = `[{"cidrBlock":"0.0.0.0/0","description":"everywhere"}]`
++
++func requireUnusableTargetError(t *testing.T, err error) {
++	t.Helper()
++	require.Error(t, err)
++	require.Contains(t, err.Error(), "no external connection string available for "+testPostgresName)
++	require.NotContains(t, err.Error(), testPostgresPassword)
++}
++
++func TestExecutePSQLNonInteractive_RejectsUnusableExternalTarget(t *testing.T) {
++	for _, target := range unusableExternalTargets {
++		for _, ip := range ipDiscoveryOutcomes {
++			t.Run(target.name+"/"+ip.name, func(t *testing.T) {
++				tool, launched := setupPSQLTest(t, target.connectionInfo, ip.userIP, ip.ok, allowAllIPs)
++
++				result, err := ExecutePSQLNonInteractive(context.Background(), &PSQLInput{
++					PostgresIDOrName: testPostgresID,
++					Tool:             tool,
++					Command:          "SELECT 1",
++				})
++
++				requireUnusableTargetError(t, err)
++				require.Nil(t, result)
++				require.False(t, launched(), "child must not be launched without a usable target")
++			})
++		}
++	}
++}
++
++func TestExecutePSQLNonInteractive_PassesExternalTarget(t *testing.T) {
++	for _, ip := range ipDiscoveryOutcomes {
++		t.Run(ip.name, func(t *testing.T) {
++			tool, launched := setupPSQLTest(t, connectionInfoJSON(testExternalURL), ip.userIP, ip.ok, allowAllIPs)
++
++			result, err := ExecutePSQLNonInteractive(context.Background(), &PSQLInput{
++				PostgresIDOrName: testPostgresID,
++				Tool:             tool,
++				Command:          "SELECT 1",
++				Args:             []string{"--csv"},
++			})
++			require.NoError(t, err)
++			require.True(t, launched())
++
++			var args []string
++			require.NoError(t, json.Unmarshal([]byte(result.Output), &args))
++			require.Equal(t, []string{testExternalURL, "-c", "SELECT 1", "--csv"}, args)
++		})
++	}
++}
++
++func TestExecutePSQLNonInteractive_IPNotAllowed(t *testing.T) {
++	tool, launched := setupPSQLTest(t, connectionInfoJSON(testExternalURL), net.ParseIP("192.0.2.77"), true, `[]`)
++
++	_, err := ExecutePSQLNonInteractive(context.Background(), &PSQLInput{
++		PostgresIDOrName: testPostgresID,
++		Tool:             tool,
++		Command:          "SELECT 1",
++	})
++	require.EqualError(t, err, "IP address (192.0.2.77) not in allow list for "+testPostgresName)
++	require.False(t, launched())
++}
++
++func TestLoadDataPSQL_RejectsUnusableExternalTarget(t *testing.T) {
++	for _, tool := range []PSQLTool{PSQL, PGCLI} {
++		for _, target := range unusableExternalTargets {
++			for _, ip := range ipDiscoveryOutcomes {
++				t.Run(string(tool)+"/"+target.name+"/"+ip.name, func(t *testing.T) {
++					setupPSQLTest(t, target.connectionInfo, ip.userIP, ip.ok, allowAllIPs)
++
++					cmd, err := loadDataPSQL(context.Background(), &PSQLInput{
++						PostgresIDOrName: testPostgresID,
++						Tool:             tool,
++					})
++
++					requireUnusableTargetError(t, err)
++					require.Nil(t, cmd)
++				})
++			}
++		}
++	}
++}
++
++func TestLoadDataPSQL_PassesExternalTarget(t *testing.T) {
++	for _, tool := range []PSQLTool{PSQL, PGCLI} {
++		for _, ip := range ipDiscoveryOutcomes {
++			t.Run(string(tool)+"/"+ip.name, func(t *testing.T) {
++				setupPSQLTest(t, connectionInfoJSON(testExternalURL), ip.userIP, ip.ok, allowAllIPs)
++
++				cmd, err := loadDataPSQL(context.Background(), &PSQLInput{
++					PostgresIDOrName: testPostgresID,
++					Tool:             tool,
++					Args:             []string{"--single-transaction"},
++				})
++				require.NoError(t, err)
++				require.Equal(t, []string{string(tool), testExternalURL, "--single-transaction"}, cmd.Args)
++			})
++		}
++	}
++}
