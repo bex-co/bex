@@ -23,6 +23,7 @@ import (
 	"log"
 	"maps"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -254,6 +255,8 @@ type Reconciler struct {
 	datastorePlacementCursor int
 
 	kick chan struct{}
+	// confirmPending coalesces confirmUnhealthySoon's scheduled pass.
+	confirmPending atomic.Bool
 }
 
 // namespaceFor returns the namespace an App row projects into: its
@@ -269,7 +272,34 @@ func (r *Reconciler) guardServiceObservation(ctx context.Context, obs ObservedSe
 	if r.unhealthyOnce == nil {
 		r.unhealthyOnce = make(map[string]bool)
 	}
-	return debounceUnhealthy(r.rejectStaleUnhealthy(ctx, obs), r.unhealthyOnce)
+	fresh := r.rejectStaleUnhealthy(ctx, obs)
+	guarded := debounceUnhealthy(fresh, r.unhealthyOnce)
+	if fresh.AvailabilityObserved && !guarded.AvailabilityObserved {
+		r.confirmUnhealthySoon()
+	}
+	return guarded
+}
+
+// unhealthyConfirmAfter is how soon a debounced first unhealthy sighting is
+// re-checked. Waiting for the next resync (30s) let an outage of up to two
+// resyncs fall between passes: a ~50s outage right after a first deploy was
+// seen by one pass, debounced, then seen healthy, and emitted no
+// server_failed/server_available at all (w4/207, 1 of 3 live runs). The
+// phantom the debounce filters is a stale status read that clears within
+// seconds, so a short confirm keeps it filtered while any outage longer than
+// this is recorded.
+var unhealthyConfirmAfter = 10 * time.Second
+
+// confirmUnhealthySoon schedules one coalesced reconcile pass after
+// unhealthyConfirmAfter.
+func (r *Reconciler) confirmUnhealthySoon() {
+	if !r.confirmPending.CompareAndSwap(false, true) {
+		return
+	}
+	time.AfterFunc(unhealthyConfirmAfter, func() {
+		r.confirmPending.Store(false)
+		r.Kick()
+	})
 }
 
 // suppressAvailability marks an observation as availability-unseen: the

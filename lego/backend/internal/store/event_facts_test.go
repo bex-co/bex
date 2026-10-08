@@ -173,3 +173,41 @@ func TestAutoHibernateFactsStayApartFromSuspend(t *testing.T) {
 		onlyFact(record(st, "srv-both", 3*time.Minute, "Running", false), EventFactServiceResumed)
 	})
 }
+
+// TestDebouncedUnhealthySightingIsConfirmedPromptly is w4/207: a ~50s outage
+// right after a first deploy was seen by one 30s pass, debounced, then seen
+// healthy, and left no server_failed/server_available at all. A debounced
+// first sighting now schedules one coalesced confirm pass promptly, so any
+// outage longer than the confirm delay meets the second pass it needs.
+func TestDebouncedUnhealthySightingIsConfirmedPromptly(t *testing.T) {
+	defer func(d time.Duration) { unhealthyConfirmAfter = d }(unhealthyConfirmAfter)
+	unhealthyConfirmAfter = 20 * time.Millisecond
+	r := &Reconciler{kick: make(chan struct{}, 1)}
+	ctx := context.Background()
+	unhealthy := ObservedServiceState{AppID: "srv-web", ServicePhase: "Running", Availability: "unhealthy", AvailabilityObserved: true, ReasonCode: EventReasonReadinessFailed}
+	healthy := ObservedServiceState{AppID: "srv-other", ServicePhase: "Running", Availability: "healthy", AvailabilityObserved: true}
+
+	if got := r.guardServiceObservation(ctx, healthy); !got.AvailabilityObserved {
+		t.Fatalf("healthy pass suppressed: %+v", got)
+	}
+	if r.confirmPending.Load() {
+		t.Fatal("a healthy pass scheduled a confirmation")
+	}
+	if got := r.guardServiceObservation(ctx, unhealthy); got.AvailabilityObserved {
+		t.Fatalf("first unhealthy sighting recorded: %+v", got)
+	}
+	r.guardServiceObservation(ctx, ObservedServiceState{AppID: "srv-db", Availability: "unhealthy", AvailabilityObserved: true})
+	select {
+	case <-r.kick:
+	case <-time.After(time.Second):
+		t.Fatal("debounced sighting scheduled no confirm pass")
+	}
+	select {
+	case <-r.kick:
+		t.Fatal("two sightings in one window scheduled two passes")
+	case <-time.After(100 * time.Millisecond):
+	}
+	if got := r.guardServiceObservation(ctx, unhealthy); !got.AvailabilityObserved || got.Availability != "unhealthy" {
+		t.Fatalf("the confirming pass must record the outage: %+v", got)
+	}
+}
