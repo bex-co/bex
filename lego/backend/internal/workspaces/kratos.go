@@ -111,14 +111,17 @@ const kratosBatchSize = 100
 // Lookup. This list endpoint lists credentials only when one is included, so
 // the webauthn include also keeps TOTP enrollments visible.
 func (k *KratosIdentities) LookupMany(ctx context.Context, subjects []string) map[string]IdentityAttrs {
-	return k.lookupMany(ctx, subjects, "webauthn")
+	found, _ := k.lookupMany(ctx, subjects, "webauthn")
+	return found
 }
 
 // LookupEmails resolves many identities' emails; an identity with no email
 // trait maps to "". With no credential included, Kratos' list endpoint loads
-// none (w5/133).
-func (k *KratosIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
-	return emailsOf(k.lookupMany(ctx, subjects))
+// none (w5/133). A failed batch answers core.ErrIdentityLookupFailed beside
+// the emails that did resolve (w5/m136).
+func (k *KratosIdentities) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
+	found, err := k.lookupMany(ctx, subjects)
+	return emailsOf(found), err
 }
 
 // emailsOf keeps only each identity's email.
@@ -135,8 +138,9 @@ func emailsOf(identities map[string]IdentityAttrs) map[string]string {
 // subject Kratos does not know is absent, and so is one that is not a UUID,
 // such as a named platform client (bex-bootstrap), which is never sent: Kratos
 // refuses a whole batch over one malformed id. A failed batch leaves its
-// subjects absent too, so the caller omits their fields, as with Lookup.
-func (k *KratosIdentities) lookupMany(ctx context.Context, subjects []string, credentials ...string) map[string]IdentityAttrs {
+// subjects absent too, and answers core.ErrIdentityLookupFailed, so a caller
+// can tell them from subjects Kratos does not know.
+func (k *KratosIdentities) lookupMany(ctx context.Context, subjects []string, credentials ...string) (map[string]IdentityAttrs, error) {
 	asked := map[string][]string{} // Kratos' canonical id → the subjects spelling it
 	var ids []string
 	for _, subject := range subjects {
@@ -151,6 +155,7 @@ func (k *KratosIdentities) lookupMany(ctx context.Context, subjects []string, cr
 		asked[canonical] = append(asked[canonical], subject)
 	}
 	out := make(map[string]IdentityAttrs, len(subjects))
+	var err error
 	for batch := range slices.Chunk(ids, kratosBatchSize) {
 		query := url.Values{
 			"ids":       batch,
@@ -161,6 +166,7 @@ func (k *KratosIdentities) lookupMany(ctx context.Context, subjects []string, cr
 		}
 		var found []kratosIdentity
 		if !k.get(ctx, "/admin/identities?"+query.Encode(), &found) {
+			err = core.ErrIdentityLookupFailed
 			continue
 		}
 		for _, id := range found {
@@ -169,7 +175,7 @@ func (k *KratosIdentities) lookupMany(ctx context.Context, subjects []string, cr
 			}
 		}
 	}
-	return out
+	return out, err
 }
 
 // get decodes the admin API's answer to path, query included, into v; false on

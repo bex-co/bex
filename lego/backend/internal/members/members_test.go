@@ -141,12 +141,12 @@ func (f *fakeStore) OwnerIDsForSubjects(_ context.Context, subjects []string) (m
 // MFA state), miss on absence.
 type fakeIdentities map[string]IdentityAttrs
 
-func (f fakeIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+func (f fakeIdentities) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
 	out := map[string]string{}
 	for subject, attrs := range f.LookupIdentities(ctx, subjects) {
 		out[subject] = attrs.Email
 	}
-	return out
+	return out, nil
 }
 
 func (f fakeIdentities) LookupIdentities(_ context.Context, subjects []string) map[string]IdentityAttrs {
@@ -1514,7 +1514,7 @@ func (c *countingIdentities) LookupIdentities(ctx context.Context, subjects []st
 	return c.fakeIdentities.LookupIdentities(ctx, subjects)
 }
 
-func (c *countingIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+func (c *countingIdentities) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
 	c.emails++
 	return c.fakeIdentities.LookupEmails(ctx, subjects)
 }

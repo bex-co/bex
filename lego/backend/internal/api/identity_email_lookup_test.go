@@ -18,11 +18,13 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/workspaces"
 )
 
@@ -51,15 +53,33 @@ func TestAnEmailLookupLoadsNoCredentials(t *testing.T) {
 	lookup := identityEmailLookup{Identities: workspaces.NewKratosIdentities(kratos.URL)}
 	ctx := context.Background()
 
-	got := lookup.LookupEmails(ctx, []string{alice, bob, "bex-bootstrap"})
-	if got[alice] != "alice@example.com" || got[bob] != "bob@example.com" || len(got) != 2 {
+	got, err := lookup.LookupEmails(ctx, []string{alice, bob, "bex-bootstrap"})
+	if err != nil || got[alice] != "alice@example.com" || got[bob] != "bob@example.com" || len(got) != 2 {
 		t.Fatalf("LookupEmails = %v, want alice's and bob's addresses only", got)
 	}
 	if len(requests) != 1 || !strings.HasPrefix(requests[0], "/admin/identities?") || strings.Contains(requests[0], "include_credential") {
 		t.Fatalf("Kratos saw %v, want one list read with no credential included", requests)
 	}
+	// A failure is a miss that says so (w5/m136): an unknown subject is
+	// answered without an error, a failed read with one.
 	fail = true
-	if got := lookup.LookupEmails(ctx, []string{alice}); len(got) != 0 {
-		t.Errorf("a Kratos failure resolved %v, want a miss", got)
+	if got, err := lookup.LookupEmails(ctx, []string{alice}); len(got) != 0 || !errors.Is(err, core.ErrIdentityLookupFailed) {
+		t.Errorf("a Kratos failure resolved %v (err %v), want a miss with ErrIdentityLookupFailed", got, err)
+	}
+}
+
+// TestNotificationsHaveNoEmailLookupWithoutAnIdentityProvider (w5/m136): the
+// notifier's lookup was always the adapter, even with BEX_KRATOS_ADMIN_URL
+// unset, so it never took its "identity lookup unavailable" path, and every
+// billing notice failed to find an address and retried forever. Without an
+// identity provider the notifier now has no lookup.
+func TestNotificationsHaveNoEmailLookupWithoutAnIdentityProvider(t *testing.T) {
+	base := &core.Base{Client: fakeClient(), Namespace: "default"}
+	if srv := NewServer(base, Deps{}); srv.Notifications.Identities != nil {
+		t.Fatalf("notifications lookup without an identity provider = %#v, want none", srv.Notifications.Identities)
+	}
+	wired := NewServer(base, Deps{Identities: workspaces.NewKratosIdentities("http://kratos.invalid")})
+	if wired.Notifications.Identities == nil {
+		t.Fatal("notifications lookup with an identity provider is missing")
 	}
 }

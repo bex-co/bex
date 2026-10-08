@@ -19,6 +19,7 @@ package billing
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -149,6 +150,9 @@ func (w *Worker) drainNotifications(ctx context.Context, now time.Time, lease ti
 	}
 	for _, n := range notifications {
 		if err := w.Notifier.NotifyBilling(ctx, n); err != nil {
+			if n.AttemptCount >= store.MaxBillingNotificationAttempts {
+				log.Printf("billing: notice %d for %s abandoned after %d attempts: %v", n.TransitionVersion, n.WorkspaceID, n.AttemptCount, err)
+			}
 			if ferr := w.Store.FailBillingNotification(ctx, n.WorkspaceID, n.TransitionVersion, err.Error(), now.Add(workerBackoff(n.AttemptCount))); ferr != nil {
 				return ferr
 			}

@@ -111,7 +111,17 @@ type BillingNotification struct {
 	GraceDeadline     *time.Time
 	Livemode          bool
 	AttemptCount      int
+	// MailedTo lists the owner subjects this notice already reached, so a
+	// retry mails only the rest (w5/m136).
+	MailedTo []string
 }
+
+// MaxBillingNotificationAttempts caps how often a billing notice is claimed.
+// With the worker's backoff (doubling to 128 minutes) the last attempt falls
+// about 36 hours after the first. A notice whose last attempt fails stays
+// undelivered with its last_error, due at infinity, so the claim scan never
+// reaches it again (w5/m136).
+const MaxBillingNotificationAttempts = 24
 
 const billingLifecycleColumns = `workspace_id, status, reason, grace_deadline,
 	source_event_id, source_event_at, source_event_outcome, invoice_id, subscription_id,
@@ -743,11 +753,12 @@ func (s *PGStore) ClaimBillingNotifications(ctx context.Context, now time.Time, 
 		SELECT workspace_id,transition_version FROM billing_notifications
 		WHERE delivered_at IS NULL AND next_attempt_at <= $1
 		  AND (claimed_until IS NULL OR claimed_until < $1)
+		  AND attempt_count < $4
 		ORDER BY next_attempt_at,workspace_id LIMIT $2 FOR UPDATE SKIP LOCKED
 	) UPDATE billing_notifications n SET claimed_until=$3, attempt_count=n.attempt_count+1
 	  FROM due WHERE n.workspace_id=due.workspace_id AND n.transition_version=due.transition_version
-	  RETURNING n.workspace_id,n.transition_version,n.status,n.reason,n.grace_deadline,n.livemode,n.attempt_count`,
-		now, limit, now.Add(lease))
+	  RETURNING n.workspace_id,n.transition_version,n.status,n.reason,n.grace_deadline,n.livemode,n.attempt_count,n.mailed_to`,
+		now, limit, now.Add(lease), MaxBillingNotificationAttempts)
 	if err != nil {
 		return nil, err
 	}
@@ -755,7 +766,7 @@ func (s *PGStore) ClaimBillingNotifications(ctx context.Context, now time.Time, 
 	var out []BillingNotification
 	for rows.Next() {
 		var n BillingNotification
-		if err := rows.Scan(&n.WorkspaceID, &n.TransitionVersion, &n.Status, &n.Reason, &n.GraceDeadline, &n.Livemode, &n.AttemptCount); err != nil {
+		if err := rows.Scan(&n.WorkspaceID, &n.TransitionVersion, &n.Status, &n.Reason, &n.GraceDeadline, &n.Livemode, &n.AttemptCount, &n.MailedTo); err != nil {
 			return nil, err
 		}
 		out = append(out, n)
@@ -784,6 +795,14 @@ func (s *PGStore) ListBillingOwnerSubjects(ctx context.Context, workspaceID stri
 	return out, rows.Err()
 }
 
+// RecordBillingNotificationMailed adds subject to the owners the notice
+// reached. Recording a subject twice keeps one entry.
+func (s *PGStore) RecordBillingNotificationMailed(ctx context.Context, workspaceID string, version int64, subject string) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE billing_notifications SET mailed_to=array_append(mailed_to,$3)
+		WHERE workspace_id=$1 AND transition_version=$2 AND NOT ($3 = ANY(mailed_to))`, workspaceID, version, subject)
+	return err
+}
+
 func (s *PGStore) CompleteBillingNotification(ctx context.Context, workspaceID string, version int64, at time.Time) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE billing_notifications SET delivered_at=$3,claimed_until=NULL,last_error=''
 		WHERE workspace_id=$1 AND transition_version=$2`, workspaceID, version, at)
@@ -794,8 +813,9 @@ func (s *PGStore) FailBillingNotification(ctx context.Context, workspaceID strin
 	if len(message) > 300 {
 		message = message[:300]
 	}
-	_, err := s.Pool.Exec(ctx, `UPDATE billing_notifications SET claimed_until=NULL,last_error=$3,next_attempt_at=$4
-		WHERE workspace_id=$1 AND transition_version=$2`, workspaceID, version, message, next)
+	_, err := s.Pool.Exec(ctx, `UPDATE billing_notifications SET claimed_until=NULL,last_error=$3,
+		next_attempt_at=CASE WHEN attempt_count >= $5 THEN 'infinity'::timestamptz ELSE $4 END
+		WHERE workspace_id=$1 AND transition_version=$2`, workspaceID, version, message, next, MaxBillingNotificationAttempts)
 	return err
 }
 

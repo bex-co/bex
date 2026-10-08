@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -953,5 +954,52 @@ func TestPGStoreClaimUnboundBillingCustomers(t *testing.T) {
 	}
 	if id, found, err := s.BillingCustomerID(ctx, otherMode, true); err != nil || !found || id != "cus_live" {
 		t.Fatalf("same-mode BillingCustomerID = %q/%t err=%v", id, found, err)
+	}
+}
+
+// TestPGStoreBillingNotificationRecordsReachedOwnersAndCapsAttempts (w5/m136):
+// a notice remembers the owners it reached across claims, recording one twice
+// keeps one entry, and a notice that used its attempts is never claimed again.
+func TestPGStoreBillingNotificationRecordsReachedOwnersAndCapsAttempts(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "notice-owners", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC)
+	if _, err := s.Pool.Exec(ctx, `INSERT INTO billing_notifications (workspace_id,transition_version,status,livemode,next_attempt_at)
+		VALUES ($1,1,$2,false,$3)`, tenant.ID, BillingGrace, now); err != nil {
+		t.Fatal(err)
+	}
+	claimed, err := s.ClaimBillingNotifications(ctx, now, time.Minute, 10)
+	if err != nil || len(claimed) != 1 || len(claimed[0].MailedTo) != 0 {
+		t.Fatalf("first claim = %+v (err %v), want the notice with nobody reached", claimed, err)
+	}
+	for _, subject := range []string{"owner-a", "owner-a", "owner-b"} {
+		if err := s.RecordBillingNotificationMailed(ctx, tenant.ID, 1, subject); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.FailBillingNotification(ctx, tenant.ID, 1, "owner-c failed", now); err != nil {
+		t.Fatal(err)
+	}
+	claimed, err = s.ClaimBillingNotifications(ctx, now, time.Minute, 10)
+	if err != nil || len(claimed) != 1 || !slices.Equal(claimed[0].MailedTo, []string{"owner-a", "owner-b"}) {
+		t.Fatalf("retry claim = %+v (err %v), want owner-a and owner-b recorded once each", claimed, err)
+	}
+
+	if _, err := s.Pool.Exec(ctx, `UPDATE billing_notifications SET attempt_count=$2, claimed_until=NULL WHERE workspace_id=$1`, tenant.ID, MaxBillingNotificationAttempts); err != nil {
+		t.Fatal(err)
+	}
+	if claimed, err := s.ClaimBillingNotifications(ctx, now, time.Minute, 10); err != nil || len(claimed) != 0 {
+		t.Fatalf("claim at the attempt cap = %+v (err %v), want nothing", claimed, err)
+	}
+	// The last attempt's failure parks the notice past every claim scan.
+	if err := s.FailBillingNotification(ctx, tenant.ID, 1, "still failing", now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	var parked bool
+	if err := s.Pool.QueryRow(ctx, `SELECT next_attempt_at = 'infinity' FROM billing_notifications WHERE workspace_id=$1`, tenant.ID).Scan(&parked); err != nil || !parked {
+		t.Fatalf("an exhausted notice's next attempt is at infinity = %v (err %v), want it parked", parked, err)
 	}
 }

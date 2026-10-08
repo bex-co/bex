@@ -286,8 +286,8 @@ func TestOwnerListsAskKratosForNoCredentials(t *testing.T) {
 func TestKratosIdentitiesLookupEmailsAsksForNoCredentials(t *testing.T) {
 	subjects := uuidsN(3)
 	k, batches := fakeKratosList(t, nil, subjects[2])
-	got := k.LookupEmails(context.Background(), subjects)
-	if len(batches()) != 1 || len(got) != 2 || got[subjects[0]] != subjects[0]+"@example.com" || got[subjects[1]] != subjects[1]+"@example.com" {
+	got, err := k.LookupEmails(context.Background(), subjects)
+	if err != nil || len(batches()) != 1 || len(got) != 2 || got[subjects[0]] != subjects[0]+"@example.com" || got[subjects[1]] != subjects[1]+"@example.com" {
 		t.Fatalf("LookupEmails = %v, want the two known subjects' emails from one read", got)
 	}
 }

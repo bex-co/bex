@@ -83,6 +83,10 @@ var (
 	// adapters surface it as 503 (the owners read API exists, the backing store
 	// doesn't).
 	ErrWorkspacesUnavailable = Unavailable("workspaces store not configured")
+	// ErrIdentityLookupFailed reports that the identity provider could not be
+	// read for some subjects, so their absence says nothing about whether
+	// they have an address (w5/m136).
+	ErrIdentityLookupFailed = Unavailable("identity provider lookup failed")
 	// ErrDeploysUnavailable is returned by the deploy-history verbs when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — deploy history has no CR-only equivalent to fall back to.
