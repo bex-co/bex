@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m180** — [Save and deploy reuses the serving artifact](m180/README.md) (6 tasks, ~3h 15m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 1; regression of w5/m44: two deploying environment batches ran real source builds.
+
 - [ ] **m179** — [Revoke deleted Postgres logins even when objects reference the role](m179/README.md) (6 tasks, ~2h 50m) ← live `qa-find-bugs` loop, 2026-10-07 sweep 15; deleted granted roles still authenticate and read data after their Secret and UI entry are gone.
 
 - [ ] **m178** — [Refresh source project membership after a move](m178/README.md) (6 tasks, ~2h 5m) ← live `qa-find-bugs` loop, 2026-10-07 sweep 8; cross-project moves succeed while the source table retains the moved row until reload.
@@ -207,6 +209,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
+
+- [ ] **212** — [Environment-group breadcrumbs show an internal ID and omit their project](212.md) (45m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 1; grouped and ungrouped fresh-page desktop/mobile repro with correct API names.
 
 - [ ] **211** — [An awake, unhealthy Free service answers public requests with "service hibernated"](211.md) ← live `qa-find-bugs` loop, 2026-10-07 sweep 14; two readiness-outage reproductions plus genuine cold-wake control.
 
