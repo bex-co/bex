@@ -228,7 +228,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **213** — [Cron history buttons hide which run they open](213.md) (25m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 2; generic aria-label replaces each Started cell's visible time.
 
-- [ ] **212** — [Environment-group breadcrumbs show an internal ID and omit their project](212.md) (45m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 1; grouped and ungrouped fresh-page desktop/mobile repro with correct API names.
+- [x] **212** — [Environment-group breadcrumbs show an internal ID and omit their project](done/212.md) (45m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 1; grouped and ungrouped fresh-page desktop/mobile repro with correct API names. — **DONE 2026-10-08**: environment-group breadcrumbs read Project › Environment › name (or Environment Groups › name), never the raw id.
 
 - [x] **211** — [An awake, unhealthy Free service answers public requests with "service hibernated"](done/211.md) ← live `qa-find-bugs` loop, 2026-10-07 sweep 14; two readiness-outage reproductions plus genuine cold-wake control. — **DONE 2026-10-08**: the activator's held response says `service not ready` for both cold wakes and awake readiness holds.
 
