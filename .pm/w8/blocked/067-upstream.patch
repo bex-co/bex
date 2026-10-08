@@ -1,0 +1,477 @@
+diff --git a/pkg/client/client.go b/pkg/client/client.go
+index 87000c1..46dc2f7 100644
+--- a/pkg/client/client.go
++++ b/pkg/client/client.go
+@@ -62,14 +62,16 @@ func maybeRefreshAPIToken(apiCfg config.APIConfig) config.APIConfig {
+ 
+ 		updatedConfig, err := refreshAPIKey(ctx, apiCfg)
+ 		if err != nil {
+-			if errors.Is(err, context.DeadlineExceeded) {
+-				// Keep using the current access token. It may remain valid for up to
+-				// 24 hours, and preserving the refresh token lets the next command retry.
++			if !oauth.IsInvalidGrant(err) {
++				// Timeouts, network errors, rate limiting, server errors, and malformed
++				// responses do not prove the refresh token is unusable. Keep using the
++				// current access token, which may remain valid for up to 24 hours, and
++				// preserve the refresh token so the next command can retry.
+ 				return apiCfg
+ 			}
+ 
+-			// failed to refresh the token, clear the refresh token so we fall back
+-			// to the standard login flow
++			// The server definitively refused the refresh token, so clear it and
++			// fall back to the standard login flow.
+ 			apiCfg.RefreshToken = ""
+ 			_ = config.SetAPIConfig(apiCfg)
+ 			return apiCfg
+diff --git a/pkg/client/clientrefresh_test.go b/pkg/client/clientrefresh_test.go
+index 7bc7ee0..2d3af1f 100644
+--- a/pkg/client/clientrefresh_test.go
++++ b/pkg/client/clientrefresh_test.go
+@@ -2,7 +2,10 @@ package client_test
+ 
+ import (
+ 	"context"
++	"errors"
++	"net"
+ 	"net/http"
++	"net/http/httptest"
+ 	"testing"
+ 	"time"
+ 
+@@ -74,3 +77,167 @@ func TestNewDefaultClient_OAuthRefreshTimeoutKeepsCurrentCredentials(t *testing.
+ 	require.NoError(t, err)
+ 	require.Equal(t, startConfig, gotConfig, "config should be unmodified")
+ }
++
++// setupStoredOAuthConfig isolates the CLI config and stores OAuth credentials
++// whose access token expires within the 24 hour refresh window.
++func setupStoredOAuthConfig(t *testing.T, host string) config.APIConfig {
++	t.Helper()
++	t.Setenv("RENDER_CLI_CONFIG_PATH", "")
++	t.Setenv("RENDER_CLI_CONFIG_DIR", t.TempDir())
++	t.Setenv("RENDER_API_KEY", "")
++
++	startConfig := config.APIConfig{
++		Key:          "current-access-token",
++		ExpiresAt:    time.Now().Add(time.Hour).Unix(),
++		Host:         host,
++		RefreshToken: "stored-refresh-token",
++	}
++	require.NoError(t, config.SetAPIConfig(startConfig))
++	return startConfig
++}
++
++func TestNewDefaultClient_OAuthRefreshFailureHandling(t *testing.T) {
++	tests := []struct {
++		name             string
++		status           int
++		header           map[string]string
++		body             string
++		wantRefreshToken bool
++	}{
++		{
++			name:             "server unavailable preserves refresh token",
++			status:           http.StatusServiceUnavailable,
++			body:             `{"error":"temporarily_unavailable"}`,
++			wantRefreshToken: true,
++		},
++		{
++			name:             "rate limited preserves refresh token",
++			status:           http.StatusTooManyRequests,
++			header:           map[string]string{"Retry-After": "60"},
++			body:             `{"error":"slow_down"}`,
++			wantRefreshToken: true,
++		},
++		{
++			name:             "internal server error without body preserves refresh token",
++			status:           http.StatusInternalServerError,
++			wantRefreshToken: true,
++		},
++		{
++			name:             "malformed success response preserves refresh token",
++			status:           http.StatusOK,
++			body:             `not json`,
++			wantRefreshToken: true,
++		},
++		{
++			name:             "bad request without invalid_grant preserves refresh token",
++			status:           http.StatusBadRequest,
++			body:             `{"error":"invalid_request"}`,
++			wantRefreshToken: true,
++		},
++		{
++			name:             "invalid grant clears refresh token",
++			status:           http.StatusBadRequest,
++			body:             `{"error":"invalid_grant"}`,
++			wantRefreshToken: false,
++		},
++		{
++			name:             "unauthorized invalid grant clears refresh token",
++			status:           http.StatusUnauthorized,
++			body:             `{"error":"invalid_grant"}`,
++			wantRefreshToken: false,
++		},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			refreshRequests := 0
++			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++				refreshRequests++
++				require.Equal(t, http.MethodPost, r.Method)
++				require.Equal(t, "/token/refresh/", r.URL.Path)
++				for k, v := range tt.header {
++					w.Header().Set(k, v)
++				}
++				w.Header().Set("Content-Type", "application/json")
++				w.WriteHeader(tt.status)
++				_, err := w.Write([]byte(tt.body))
++				require.NoError(t, err)
++			}))
++			t.Cleanup(s.Close)
++
++			startConfig := setupStoredOAuthConfig(t, s.URL)
++
++			gotClient, err := client.NewDefaultClient()
++			require.NoError(t, err)
++			require.NotNil(t, gotClient)
++			require.Equal(t, 1, refreshRequests, "expected exactly one OAuth refresh request")
++
++			gotConfig, err := config.OAuthConfig()
++			require.NoError(t, err)
++			wantConfig := startConfig
++			if !tt.wantRefreshToken {
++				wantConfig.RefreshToken = ""
++			}
++			require.Equal(t, wantConfig, gotConfig)
++		})
++	}
++}
++
++func TestNewDefaultClient_OAuthRefreshTransportErrorKeepsCurrentCredentials(t *testing.T) {
++	startConfig := setupStoredOAuthConfig(t, "https://oauth.example.invalid")
++
++	refreshRequests := 0
++	originalHTTPClient := http.DefaultClient
++	t.Cleanup(func() {
++		http.DefaultClient = originalHTTPClient
++	})
++	http.DefaultClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
++		refreshRequests++
++		return nil, &net.OpError{Op: "dial", Net: "tcp", Err: errors.New("connection refused")}
++	})}
++
++	gotClient, err := client.NewDefaultClient()
++	require.NoError(t, err)
++	require.NotNil(t, gotClient)
++	require.Equal(t, 1, refreshRequests, "expected exactly one OAuth refresh request")
++
++	gotConfig, err := config.OAuthConfig()
++	require.NoError(t, err)
++	require.Equal(t, startConfig, gotConfig, "config should be unmodified")
++}
++
++func TestNewDefaultClient_OAuthRefreshRecoversAfterTransientFailure(t *testing.T) {
++	healthy := false
++	refreshRequests := 0
++	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		refreshRequests++
++		require.Equal(t, "/token/refresh/", r.URL.Path)
++		w.Header().Set("Content-Type", "application/json")
++		if !healthy {
++			w.WriteHeader(http.StatusServiceUnavailable)
++			_, _ = w.Write([]byte(`{"error":"temporarily_unavailable"}`))
++			return
++		}
++		_, _ = w.Write([]byte(`{"access_token":"rotated-access-token","token_type":"Bearer","expires_in":172800,"refresh_token":"rotated-refresh-token"}`))
++	}))
++	t.Cleanup(s.Close)
++
++	startConfig := setupStoredOAuthConfig(t, s.URL)
++
++	_, err := client.NewDefaultClient()
++	require.NoError(t, err)
++	gotConfig, err := config.OAuthConfig()
++	require.NoError(t, err)
++	require.Equal(t, startConfig, gotConfig, "transient failure should not modify config")
++
++	healthy = true
++	_, err = client.NewDefaultClient()
++	require.NoError(t, err)
++	require.Equal(t, 2, refreshRequests, "expected the next client to retry the refresh")
++
++	gotConfig, err = config.OAuthConfig()
++	require.NoError(t, err)
++	require.Equal(t, "rotated-access-token", gotConfig.Key)
++	require.Equal(t, "rotated-refresh-token", gotConfig.RefreshToken)
++	require.Greater(t, gotConfig.ExpiresAt, startConfig.ExpiresAt)
++}
+diff --git a/pkg/client/oauth/oauth.go b/pkg/client/oauth/oauth.go
+index 362263d..8ad8a57 100644
+--- a/pkg/client/oauth/oauth.go
++++ b/pkg/client/oauth/oauth.go
+@@ -8,7 +8,9 @@ import (
+ 	"fmt"
+ 	"io"
+ 	"net/http"
++	"strconv"
+ 	"strings"
++	"time"
+ 
+ 	"github.com/render-oss/cli/pkg/cfg"
+ )
+@@ -16,8 +18,49 @@ import (
+ const cliOauthClientID = "429024F5E608930E2A65EF92591A25CC"
+ const authorizationPendingAPIMsg = "authorization_pending"
+ 
++// invalidGrantAPIMsg is the RFC 6749 section 5.2 error code for a refresh token
++// that is invalid, expired, revoked, or was issued to another client.
++const invalidGrantAPIMsg = "invalid_grant"
++
+ var ErrAuthorizationPending = errors.New("authorization pending")
+ 
++// ResponseError is returned when an OAuth endpoint responds with a non-200
++// status. It keeps the HTTP status and OAuth error code so callers can tell a
++// definitive grant refusal apart from a temporary failure.
++type ResponseError struct {
++	// StatusCode is the HTTP status code of the response.
++	StatusCode int
++	// Code is the OAuth "error" field of the response body, if present.
++	Code string
++	// Body is the raw response body when it does not contain an OAuth error code.
++	Body string
++	// RetryAfter is the delay from a delta-seconds Retry-After header, if present.
++	RetryAfter time.Duration
++}
++
++func (e *ResponseError) Error() string {
++	if e.Code != "" {
++		return e.Code
++	}
++	if e.Body != "" {
++		return e.Body
++	}
++	return fmt.Sprintf("create device grant failed with status %d", e.StatusCode)
++}
++
++// IsInvalidGrant reports whether err is a definitive refusal of the grant
++// (for example, a revoked or expired refresh token). Other failures, such as
++// network errors, rate limiting, server errors, and malformed responses, are
++// not proof that the grant is unusable and may succeed on a later attempt.
++func IsInvalidGrant(err error) bool {
++	var respErr *ResponseError
++	if !errors.As(err, &respErr) {
++		return false
++	}
++	return respErr.Code == invalidGrantAPIMsg &&
++		(respErr.StatusCode == http.StatusBadRequest || respErr.StatusCode == http.StatusUnauthorized)
++}
++
+ type DeviceGrant struct {
+ 	DeviceCode              string `json:"device_code"`
+ 	UserCode                string `json:"user_code"`
+@@ -157,6 +200,7 @@ func (c *Client) postFor(ctx context.Context, path string, body any, v any) erro
+ 	if err != nil {
+ 		return err
+ 	}
++	defer resp.Body.Close()
+ 
+ 	if resp.StatusCode != http.StatusOK {
+ 		respBody, err := io.ReadAll(resp.Body)
+@@ -164,18 +208,32 @@ func (c *Client) postFor(ctx context.Context, path string, body any, v any) erro
+ 			return err
+ 		}
+ 
++		respErr := &ResponseError{
++			StatusCode: resp.StatusCode,
++			RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After")),
++		}
+ 		if string(respBody) != "" {
+ 			var errResp ErrorResponse
+ 			err = json.Unmarshal(respBody, &errResp)
+ 			if err == nil && errResp.Error != "" {
+-				return errors.New(errResp.Error)
++				respErr.Code = errResp.Error
++			} else {
++				respErr.Body = string(respBody)
+ 			}
+-
+-			return errors.New(string(respBody))
+ 		}
+ 
+-		return fmt.Errorf("create device grant failed with status %d", resp.StatusCode)
++		return respErr
+ 	}
+ 
+ 	return json.NewDecoder(resp.Body).Decode(v)
+ }
++
++// parseRetryAfter returns the delay from a delta-seconds Retry-After header.
++// HTTP-date values and malformed headers yield zero.
++func parseRetryAfter(v string) time.Duration {
++	seconds, err := strconv.Atoi(strings.TrimSpace(v))
++	if err != nil || seconds < 0 {
++		return 0
++	}
++	return time.Duration(seconds) * time.Second
++}
+diff --git a/pkg/client/oauth/oauth_test.go b/pkg/client/oauth/oauth_test.go
+index 252ee7b..eb44115 100644
+--- a/pkg/client/oauth/oauth_test.go
++++ b/pkg/client/oauth/oauth_test.go
+@@ -6,6 +6,7 @@ import (
+ 	"net/http"
+ 	"net/http/httptest"
+ 	"testing"
++	"time"
+ 
+ 	"github.com/stretchr/testify/assert"
+ 	"github.com/stretchr/testify/require"
+@@ -79,6 +80,106 @@ func TestClient_GetDeviceToken(t *testing.T) {
+ 	})
+ }
+ 
++func TestClient_RefreshToken(t *testing.T) {
++	t.Run("it returns the rotated token", func(t *testing.T) {
++		var gotBody oauth.RefreshTokenRequestBody
++		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++			require.Equal(t, "POST", r.Method)
++			require.Equal(t, "/token/refresh/", r.URL.Path)
++			require.NoError(t, json.NewDecoder(r.Body).Decode(&gotBody))
++
++			_, err := w.Write([]byte(`{"access_token": "new access token", "refresh_token": "new refresh token", "expires_in": 60}`))
++			require.NoError(t, err)
++		}))
++		defer s.Close()
++
++		token, err := oauth.NewClient(s.URL).RefreshToken(context.Background(), "some refresh token")
++		require.NoError(t, err)
++
++		assert.Equal(t, "new access token", token.AccessToken)
++		assert.Equal(t, "new refresh token", token.RefreshToken)
++		assert.Equal(t, "refresh_token", gotBody.GrantType)
++		assert.Equal(t, "some refresh token", gotBody.RefreshToken)
++	})
++
++	tests := []struct {
++		name             string
++		status           int
++		header           map[string]string
++		body             string
++		wantErr          oauth.ResponseError
++		wantInvalidGrant bool
++	}{
++		{
++			name:    "server unavailable",
++			status:  http.StatusServiceUnavailable,
++			body:    `{"error":"temporarily_unavailable"}`,
++			wantErr: oauth.ResponseError{StatusCode: http.StatusServiceUnavailable, Code: "temporarily_unavailable"},
++		},
++		{
++			name:    "rate limited",
++			status:  http.StatusTooManyRequests,
++			header:  map[string]string{"Retry-After": "60"},
++			body:    `{"error":"slow_down"}`,
++			wantErr: oauth.ResponseError{StatusCode: http.StatusTooManyRequests, Code: "slow_down", RetryAfter: 60 * time.Second},
++		},
++		{
++			name:    "non-JSON server error",
++			status:  http.StatusBadGateway,
++			body:    "bad gateway",
++			wantErr: oauth.ResponseError{StatusCode: http.StatusBadGateway, Body: "bad gateway"},
++		},
++		{
++			name:    "server error without body",
++			status:  http.StatusInternalServerError,
++			wantErr: oauth.ResponseError{StatusCode: http.StatusInternalServerError},
++		},
++		{
++			name:             "invalid grant",
++			status:           http.StatusBadRequest,
++			body:             `{"error":"invalid_grant"}`,
++			wantErr:          oauth.ResponseError{StatusCode: http.StatusBadRequest, Code: "invalid_grant"},
++			wantInvalidGrant: true,
++		},
++		{
++			name:    "invalid grant code on server error",
++			status:  http.StatusInternalServerError,
++			body:    `{"error":"invalid_grant"}`,
++			wantErr: oauth.ResponseError{StatusCode: http.StatusInternalServerError, Code: "invalid_grant"},
++		},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++				for k, v := range tt.header {
++					w.Header().Set(k, v)
++				}
++				w.WriteHeader(tt.status)
++				_, err := w.Write([]byte(tt.body))
++				require.NoError(t, err)
++			}))
++			defer s.Close()
++
++			_, err := oauth.NewClient(s.URL).RefreshToken(context.Background(), "some refresh token")
++
++			var respErr *oauth.ResponseError
++			require.ErrorAs(t, err, &respErr)
++			assert.Equal(t, tt.wantErr, *respErr)
++			assert.Equal(t, tt.wantInvalidGrant, oauth.IsInvalidGrant(err))
++		})
++	}
++
++	t.Run("a transport error is not an invalid grant", func(t *testing.T) {
++		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
++		s.Close()
++
++		_, err := oauth.NewClient(s.URL).RefreshToken(context.Background(), "some refresh token")
++		require.Error(t, err)
++		assert.False(t, oauth.IsInvalidGrant(err))
++	})
++}
++
+ const deviceGrantResp = `{
+ 	"device_code": "some device code",
+ 	"user_code": "some user code",
+diff --git a/pkg/tui/views/login_test.go b/pkg/tui/views/login_test.go
+index 6335e00..36397ed 100644
+--- a/pkg/tui/views/login_test.go
++++ b/pkg/tui/views/login_test.go
+@@ -5,6 +5,7 @@ import (
+ 	"context"
+ 	"errors"
+ 	"net/http"
++	"net/http/httptest"
+ 	"path/filepath"
+ 	"testing"
+ 
+@@ -130,3 +131,27 @@ func TestLoginViewShowsFallbackHintWhenBrowserOpenFails(t *testing.T) {
+ 	assert.Contains(t, l.View(), "Could not open your browser automatically")
+ 	assert.Contains(t, l.View(), "https://dashboard.example.com/login")
+ }
++
++func TestPollForTokenContinuesWhileAuthorizationPending(t *testing.T) {
++	requests := 0
++	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		require.Equal(t, "/device-token", r.URL.Path)
++		requests++
++		if requests == 1 {
++			w.WriteHeader(http.StatusBadRequest)
++			_, _ = w.Write([]byte(`{"error":"authorization_pending"}`))
++			return
++		}
++		_, _ = w.Write([]byte(`{"access_token":"some device token"}`))
++	}))
++	defer s.Close()
++
++	token, err := pollForToken(context.Background(), oauth.NewClient(s.URL), &oauth.DeviceGrant{
++		DeviceCode: "some device code",
++		ExpiresIn:  10,
++		Interval:   1,
++	})
++	require.NoError(t, err)
++	assert.Equal(t, "some device token", token.AccessToken)
++	assert.Equal(t, 2, requests)
++}

@@ -100,3 +100,7 @@ The CLI's `restart` command is ID-only: upstream v2.27.0 `cmd/restart.go:18` and
 2. Run the live t008 check yourself, or provide a reauth-free QA path. With the released (or `main`-built) CLI logged in as an identity in two workspaces, a same-named fixture in each, and `BEX_WORKSPACE=A`:
    - `bex deploys list N`, `bex services instances N` and `bex deploys create N` must act on A's fixture;
    - with no selection, the name must return `409 SERVICE_NAME_AMBIGUOUS`.
+
+## CLI released (2026-10-08)
+
+The user approved the release. `bex-cli/v0.3.0` (source `999eab321`) ships the `X-Bex-Workspace` launcher change, and `v0.3.1`/`v0.3.2` follow with w8/064/065 fixes. The release workflow, the cosign signature, Homebrew (checksums match), both installer paths and the update notice were all verified. **Remaining gate:** the live two-workspace t008 check. QA device login demands a password reauth that the agent must not perform, so a user-run check (or a reauth-free QA path) is needed.
