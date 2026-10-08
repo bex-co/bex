@@ -103,6 +103,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     region: null,
     url: null,
     publicRoutingNotice: null,
+    undeployedChangesApplying: null,
     undeployedChanges: null,
     internalAddress: null,
     createdAt: null,

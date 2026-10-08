@@ -47,6 +47,10 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     internalAddress: "internalAddress" in s ? s.internalAddress || null : null,
     undeployedChanges:
       "undeployedChanges" in s ? s.undeployedChanges === true : undefined,
+    undeployedChangesApplying:
+      "undeployedChangesApplying" in s
+        ? s.undeployedChangesApplying === true
+        : undefined,
     createdAt: s.createdAt ?? null,
     updatedAt: "updatedAt" in s ? (s.updatedAt ?? null) : null,
     region: "region" in s ? s.region || null : null,
@@ -313,4 +317,15 @@ export function computeStats(services: ServiceView[]): ServiceStats {
     running: services.filter((s) => deriveStatus(s).key === "running").length,
     suspended: services.filter((s) => s.suspended).length,
   };
+}
+
+/** Which undeployed-changes notice to show: while a rolling deploy already
+ *  carries the saved settings, telling the user to deploy again invites a
+ *  redundant second deploy (w4/m184). */
+export function undeployedChangesHintKey(
+  s: Pick<ServiceView, "undeployedChangesApplying">,
+): "services.undeployedChangesApplyingHint" | "services.undeployedChangesHint" {
+  return s.undeployedChangesApplying
+    ? "services.undeployedChangesApplyingHint"
+    : "services.undeployedChangesHint";
 }

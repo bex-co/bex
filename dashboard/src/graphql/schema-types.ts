@@ -1112,6 +1112,7 @@ export type Mutation = {
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
+  /** Request revocation of an additional login role. true means the request was accepted; the role is retired (NOLOGIN, NULL password) on the next reconcile, keeping its grants and owned objects. */
   deleteDatabaseUser: Maybe<Scalars['Boolean']['output']>;
   deleteDisk: Maybe<Scalars['Boolean']['output']>;
   deleteEnvGroup: Maybe<Scalars['Boolean']['output']>;
@@ -3643,6 +3644,7 @@ export type Service = {
   suspenders: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   type: Maybe<Scalars['String']['output']>;
   undeployedChanges: Maybe<Scalars['Boolean']['output']>;
+  undeployedChangesApplying: Maybe<Scalars['Boolean']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
   url: Maybe<Scalars['String']['output']>;
 };

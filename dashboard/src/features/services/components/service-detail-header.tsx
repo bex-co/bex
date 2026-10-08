@@ -48,7 +48,11 @@ import {
 } from "@/features/services/lib/service-type";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { sshRemedy } from "@/features/services/lib/ssh-remedy";
-import { isSleeping, isDeleting } from "@/features/services/lib/status";
+import {
+  isSleeping,
+  isDeleting,
+  undeployedChangesHintKey,
+} from "@/features/services/lib/status";
 import type { ServiceView, LifecycleAction } from "@/features/services/types";
 import { useRegistryCredentials } from "@/features/registry-credentials/hooks/use-registry-credentials";
 import {
@@ -303,7 +307,7 @@ export function ServiceDetailHeader({
         // from the runtime. Restart preserves it. Read the operator's distinction
         // instead of inferring it from the most recent deploy's status.
         <p className="text-muted-foreground text-sm" role="status">
-          {t("services.undeployedChangesHint")}
+          {t(undeployedChangesHintKey(service))}
         </p>
       ) : null}
 
