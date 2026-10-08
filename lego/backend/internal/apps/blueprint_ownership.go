@@ -629,37 +629,40 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 			}
 		}
 	}
-	// fromService `property: host` may name a service outside the file (an
-	// existing workspace service). Validate used to skip it, so a target that
-	// existed nowhere validated clean (w8/026). It resolves as the apply does,
-	// with the file-scoped check's located wording.
-	declared := make(map[string]bool, len(st.services))
-	for _, svc := range st.services {
-		declared[svc.req.Name] = true
-	}
-	// The apply resolves a fromService target as it resolves a declared
-	// service: by manifest name in this workspace (w5/m133). A read failure
-	// leaves the check to the apply, as above.
+	// A read failure leaves the check to the apply, as above.
 	services, err := snap.services(ctx)
 	if err != nil {
 		return out
 	}
-	for _, svc := range st.services {
-		for _, ref := range svc.hostRefs {
-			if declared[ref.target] {
-				continue
-			}
-			if services[ref.target] == nil {
-				msg := fmt.Sprintf("service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", svc.req.Name, ref.target)
-				if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
-					out = append(out, blueprintLocatedError(source, msg, pointer))
-				} else {
-					out = append(out, blueprintValidationError(ir, msg))
-				}
-			}
+	for _, msg := range unknownServiceReferences(st, services) {
+		if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
+			out = append(out, blueprintLocatedError(source, msg, pointer))
+		} else {
+			out = append(out, blueprintValidationError(ir, msg))
 		}
 	}
 	return out
+}
+
+// unknownServiceReferences lists each fromService `property: host` target
+// that is neither declared in the manifest nor an existing service in the
+// workspace (resolved by manifest name, as the apply resolves them, w5/m133).
+// Validate reports them (w8/026); the apply refuses them before any write, so
+// it never creates the referring service first (w4/206).
+func unknownServiceReferences(st parsedStack, existing map[string]*appv1alpha1.App) []string {
+	declared := make(map[string]bool, len(st.services))
+	for _, svc := range st.services {
+		declared[svc.req.Name] = true
+	}
+	var unknown []string
+	for _, svc := range st.services {
+		for _, ref := range svc.hostRefs {
+			if !declared[ref.target] && existing[ref.target] == nil {
+				unknown = append(unknown, fmt.Sprintf("service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", svc.req.Name, ref.target))
+			}
+		}
+	}
+	return unknown
 }
 
 // blueprintReferenceMessage is a resolver refusal without its transport
