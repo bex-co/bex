@@ -883,8 +883,9 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Toast when creating a user fails",
   },
   "databases.accessUserDeleted": {
-    message: "已删除用户 {name}。",
-    description: "Toast after deleting a database user",
+    message: "已请求撤销 {name} 的访问权限。",
+    description:
+      "Toast after deleting a database user: the login is retired asynchronously on the next reconcile, so this confirms accepted intent, not a completed revocation",
   },
   "databases.accessUserDeleteError": {
     message: "无法删除 {name}，请重试。",

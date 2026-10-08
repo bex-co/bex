@@ -195,9 +195,10 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 }
 
 // DeleteUser removes a managed login role from the Database's spec.users and
-// records it in spec.deletedUsers so the operator projects an ensure:absent
-// tombstone, dropping the role from PostgreSQL (codex #8). It also deletes the
-// password Secret. Without the tombstone the operator would simply stop listing
+// records it in spec.deletedUsers so the operator retires the PostgreSQL role
+// (NOLOGIN, NULL password) rather than dropping it (codex #8, w4/m179). It also
+// deletes the password Secret. Success is accepted revocation intent: the operator applies it on the
+// next reconcile. Without the tombstone the operator would simply stop listing
 // the role, leaving it valid in Postgres after the API reports deletion.
 func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
@@ -228,7 +229,6 @@ func (s *Service) DeleteUser(ctx context.Context, name, role string) error {
 		}
 	}
 	d.Spec.Users = append(d.Spec.Users[:idx], d.Spec.Users[idx+1:]...)
-	// Record the tombstone so the operator drops the live PostgreSQL role (codex #8).
 	d.Spec.DeletedUsers = append(d.Spec.DeletedUsers, role)
 	resourcemeta.Touch(d, s.Now())
 	// Do not erase a concurrent user/tombstone update with this full-list patch.

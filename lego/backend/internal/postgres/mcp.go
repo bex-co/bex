@@ -413,7 +413,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_postgres_user",
-		Description: "Delete an additional managed login role from a managed Postgres database.",
+		Description: "Delete an additional managed login role from a managed Postgres database. Accepted asynchronously: the role is retired (NOLOGIN, NULL password) on the next reconcile, so its credential stops authenticating while its grants and owned objects are kept.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in userArgs) (*mcp.CallToolResult, deleteResult, error) {
 		err := s.DeleteUser(ctx, in.PostgresID, in.Name)
 		return nil, deleteResult{Deleted: err == nil}, err
