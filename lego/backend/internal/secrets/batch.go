@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -92,10 +93,39 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy {
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy)
 	}
+	// Refuse a deploy with nothing to redeploy before anything is written; the
+	// locked patch checks again against the App it actually writes.
+	if patch.SaveMode == SaveModeDeploy {
+		if _, err := s.servedArtifact(ctx, a); err != nil {
+			return EnvironmentPatchResult{}, err
+		}
+	}
 	if patch.ExpectedEnvRevision != nil {
 		return s.patchEnvironmentCAS(ctx, service, a, patch)
 	}
 	return s.patchEnvironmentSparse(ctx, service, a, patch)
+}
+
+// servedArtifact is the image an environment "Save and deploy" reruns: deploy
+// means the current build with the new values, never a source build (w4/m180,
+// ADR013). Empty means nothing to select — a prebuilt image, a static site
+// (environment is build-time only, so deploy rebuilds), or unknown history.
+func (s *Service) servedArtifact(ctx context.Context, a *appv1alpha1.App) (string, error) {
+	if a.Spec.Image != "" || a.Spec.Type == appv1alpha1.TypeStaticSite {
+		return "", nil
+	}
+	live, err := s.Rollout.ServedRelease(ctx, a)
+	if errors.Is(err, rollout.ErrNoDeployHistory) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if live == nil {
+		return "", core.NewConflictError("ENVIRONMENT_DEPLOY_NEEDS_LIVE_RELEASE",
+			fmt.Sprintf("service %q has no live build to deploy the new environment with; save only, or save, rebuild, and deploy", storeServiceName(a, a.Name)), nil)
+	}
+	return live.ResolvedImage, nil
 }
 
 // envPatchTxn carries what compensation needs to restore the state a failed
@@ -301,6 +331,15 @@ func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.A
 		if saveMode == SaveModeDeploy {
 			activatePendingProjectionReferences(a)
 			s.bumpRestart(a)
+			image, err := s.servedArtifact(ctx, a)
+			if err != nil {
+				return err
+			}
+			if image != "" {
+				// Bound to the release this patch opens (metadata.generation+1,
+				// the generation rollout.Stamp records); a later deploy expires it.
+				a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: a.Generation + 1, Image: image}
+			}
 			return nil
 		}
 		stagePendingProjectionReferences(a, read, env, txn.env.changed, txn.files.changed)
