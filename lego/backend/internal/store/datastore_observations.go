@@ -90,7 +90,12 @@ func (r *Reconciler) guardDatastoreObservation(ctx context.Context, obs Observed
 	if r.datastoreUnhealthyOnce == nil {
 		r.datastoreUnhealthyOnce = make(map[string]bool)
 	}
-	return debounceDatastoreUnhealthy(r.rejectStaleDatastoreUnhealthy(ctx, obs), r.datastoreUnhealthyOnce)
+	fresh := r.rejectStaleDatastoreUnhealthy(ctx, obs)
+	guarded := debounceDatastoreUnhealthy(fresh, r.datastoreUnhealthyOnce)
+	if fresh.AvailabilityObserved && !guarded.AvailabilityObserved {
+		r.confirmUnhealthySoon()
+	}
+	return guarded
 }
 
 // suppressDatastoreAvailability marks an observation as availability-unseen:
