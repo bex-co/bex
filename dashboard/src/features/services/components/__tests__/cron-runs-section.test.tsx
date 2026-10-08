@@ -255,10 +255,56 @@ describe("CronRunsSection", () => {
     const user = userEvent.setup();
     render(<CronRunsSection serviceId="nightly" />);
 
-    await user.click(screen.getByRole("button", { name: "Toggle run detail" }));
+    await user.click(
+      screen.getByRole("button", { name: /Run details, started/ }),
+    );
     // The detail exposes the run id + Finished label, which the row never shows.
     expect(screen.getByText("crr-success")).toBeInTheDocument();
     expect(screen.getByText("Finished")).toBeInTheDocument();
+  });
+
+  // w4/213: every row's toggle was named "Toggle run detail", so keyboard and
+  // screen-reader users could not pick a run by name.
+  it("names each run's detail toggle by its own start, with the id for ties and missing times", () => {
+    const at = (iso: string) => new Date(iso).toLocaleString();
+    runs = [
+      {
+        id: "crr-a",
+        startedAt: "2026-07-09T10:00:00Z",
+        finishedAt: null,
+        status: "succeeded",
+      },
+      {
+        id: "crr-b",
+        startedAt: "2026-07-09T11:00:00Z",
+        finishedAt: null,
+        status: "succeeded",
+      },
+      {
+        id: "crr-tie",
+        startedAt: "2026-07-09T11:00:00Z",
+        finishedAt: null,
+        status: "succeeded",
+      },
+      {
+        id: "crr-pending",
+        startedAt: null,
+        finishedAt: null,
+        status: "pending",
+      },
+    ];
+    render(<CronRunsSection serviceId="nightly" />);
+    const names = screen
+      .getAllByRole("button", { name: /Run details, started/ })
+      .map((button) => button.textContent ?? "");
+    expect(names).toHaveLength(4);
+    expect(new Set(names).size).toBe(4);
+    expect(names[0]).toContain(
+      `Run details, started ${at("2026-07-09T10:00:00Z")}`,
+    );
+    expect(names[1]).toContain(`${at("2026-07-09T11:00:00Z")} (crr-b)`);
+    expect(names[2]).toContain(`${at("2026-07-09T11:00:00Z")} (crr-tie)`);
+    expect(names[3]).toContain("Run details, started crr-pending");
   });
 
   it("renders an explicit error when a run's detail read fails", async () => {
@@ -274,7 +320,9 @@ describe("CronRunsSection", () => {
     const user = userEvent.setup();
     render(<CronRunsSection serviceId="nightly" />);
 
-    await user.click(screen.getByRole("button", { name: "Toggle run detail" }));
+    await user.click(
+      screen.getByRole("button", { name: /Run details, started/ }),
+    );
     expect(
       screen.getByText("Couldn't load this run's detail."),
     ).toBeInTheDocument();

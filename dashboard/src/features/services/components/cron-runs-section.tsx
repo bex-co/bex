@@ -211,7 +211,6 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                               type="button"
                               className="flex items-center gap-1 hover:text-foreground"
                               aria-expanded={expanded}
-                              aria-label={t("services.cronRunDetailToggle")}
                               onClick={() =>
                                 setExpandedRunId(expanded ? null : run.id)
                               }
@@ -222,6 +221,14 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                                 <ChevronRight className="h-3.5 w-3.5" />
                               )}
                               <RelativeAge value={run.startedAt} />
+                              {/* The name follows the visible age, so each row
+                                  names its own run (w4/213: every button was
+                                  "Toggle run detail"). */}
+                              <span className="sr-only">
+                                {t("services.cronRunDetailToggle", {
+                                  when: runToggleWhen(run, runs),
+                                })}
+                              </span>
                             </button>
                           </TableCell>
                           <TableCell className="tabular-nums text-muted-foreground">
@@ -308,6 +315,17 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
       />
     </>
   );
+}
+
+/** What a run's detail toggle names it by: its absolute start time, with the
+ *  run id when the time is missing or another listed run shares it. */
+function runToggleWhen(run: CronRunView, runs: CronRunView[]): string {
+  const when = absoluteTime(run.startedAt);
+  if (when === "—") return run.id;
+  const shared = runs.some(
+    (other) => other.id !== run.id && absoluteTime(other.startedAt) === when,
+  );
+  return shared ? `${when} (${run.id})` : when;
 }
 
 /** Absolute local timestamp, or an em dash when the run hasn't reached it yet. */
