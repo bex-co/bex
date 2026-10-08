@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -88,25 +89,70 @@ func ArityOf(sets ...*pflag.FlagSet) FlagArity {
 // means the user is picking the database interactively (upstream clears the
 // selector when ArgsLenAtDash is 0) and there is nothing to resolve here.
 func DatabaseArg(args []string, arity FlagArity) string {
+	selector := ""
+	scan(args, arity, func(arg string) bool {
+		if !strings.HasPrefix(arg, "-") || arg == "-" {
+			selector = arg
+			return true
+		}
+		return false
+	})
+	return selector
+}
+
+// HelpRequested reports whether cobra would answer args with the subcommand's
+// help instead of running it: `--help`, `--help=<value>` with a truthy
+// strconv.ParseBool value, or `-h` (alone or in a shorthand cluster) when the
+// command defines no `-h` of its own. A flag's value spelled `--help` is not
+// help, nor is `--help=false`, nor anything after `--` (the child tool's own
+// argv). Help needs no database, so preparing trust for it would only add a
+// request that can fail (w8/065).
+func HelpRequested(args []string, arity FlagArity) bool {
+	_, shortHelpTaken := arity["-h"]
+	help := false
+	scan(args, arity, func(arg string) bool {
+		switch {
+		case arg == "--help":
+			help = true
+		case strings.HasPrefix(arg, "--help="):
+			on, err := strconv.ParseBool(strings.TrimPrefix(arg, "--help="))
+			help = err == nil && on
+		case !shortHelpTaken && isShorthand(arg):
+			// pflag reads -xyz as -x -y -z until a letter that takes a value,
+			// whose value is the rest of the token.
+			for _, letter := range arg[1:] {
+				if letter == 'h' {
+					help = true
+					break
+				}
+				if arity["-"+string(letter)] {
+					break
+				}
+			}
+		}
+		return help
+	})
+	return help
+}
+
+// scan walks a subcommand's argv the way pflag does: it stops at `--`, hands
+// visit every token that is not a flag's separate value, and stops early when
+// visit returns true. `--flag=value` carries its value inline; a flag the
+// command does not define is assumed valueless.
+func scan(args []string, arity FlagArity, visit func(arg string) bool) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "--" {
-			return ""
+		if arg == "--" || visit(arg) {
+			return
 		}
-		if !strings.HasPrefix(arg, "-") || arg == "-" {
-			return arg
-		}
-		// `--flag=value` carries its value inline; a flag the command does not
-		// define is assumed valueless, which at worst costs a lookup that fails
-		// and leaves the invocation exactly as upstream would have run it.
-		if strings.Contains(arg, "=") {
-			continue
-		}
-		if arity[arg] {
+		if strings.HasPrefix(arg, "-") && !strings.Contains(arg, "=") && arity[arg] {
 			i++
 		}
 	}
-	return ""
+}
+
+func isShorthand(arg string) bool {
+	return len(arg) > 1 && arg[0] == '-' && arg[1] != '-' && !strings.Contains(arg, "=")
 }
 
 // Options carries everything Provision needs. Every process-level dependency is

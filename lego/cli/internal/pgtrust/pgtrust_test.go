@@ -255,3 +255,39 @@ func TestDatabaseArg(t *testing.T) {
 		})
 	}
 }
+
+// w8/065: help is decided the way cobra/pflag decide it, so a flag value or
+// child argument spelled --help never skips trust for a real session.
+func TestHelpRequested(t *testing.T) {
+	arity := FlagArity{"--command": true, "-c": true, "--output": true, "-o": true}
+	for _, tc := range []struct {
+		args []string
+		want bool
+	}{
+		{[]string{"dpg-x", "--help"}, true},
+		{[]string{"--help", "dpg-x"}, true},
+		{[]string{"dpg-x", "-h"}, true},
+		{[]string{"dpg-x", "--help=true"}, true},
+		{[]string{"dpg-x", "--help=false", "-c", "SELECT 1"}, false},
+		{[]string{"-c", "--help", "dpg-x"}, false},
+		{[]string{"dpg-x", "-c", "SELECT 1", "--", "--help"}, false},
+		{[]string{"dpg-x", "-c", "SELECT 1"}, false},
+		{[]string{"dpg-x", "--help=1"}, true},
+		{[]string{"dpg-x", "--help=0"}, false},
+		{[]string{"dpg-x", "--help=bogus"}, false},
+		{[]string{"dpg-x", "--command=--help"}, false},
+		{[]string{"dpg-x", "-c=--help"}, false},
+		{[]string{"dpg-x", "--", "-h"}, false},
+		{[]string{"dpg-x", "-ch"}, false}, // -c takes the rest ("h") as its value
+		{[]string{"dpg-x", "-qh"}, true},  // -q is valueless here, so -h follows
+		{[]string{"dpg-x", "-c"}, false},
+	} {
+		if got := HelpRequested(tc.args, arity); got != tc.want {
+			t.Errorf("HelpRequested(%q) = %v, want %v", tc.args, got, tc.want)
+		}
+	}
+	// A command that defines its own -h (e.g. a host flag) keeps it.
+	if HelpRequested([]string{"-h", "db.example"}, FlagArity{"-h": true}) {
+		t.Error("-h is the command's own flag here, not help")
+	}
+}
