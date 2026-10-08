@@ -53,7 +53,9 @@ type ProjectStore interface {
 	// EnvironmentTo nil is exactly a row whose environment_id the replacement
 	// NULLed.
 	SetProjectServices(ctx context.Context, projectID, tenantID string, serviceNames []string) ([]core.ServicePlacementChange, error)
-	ListProjectServices(ctx context.Context, projectID string) ([]string, error)
+	// ListServicesForProjects returns the service ids of every project asked
+	// about, keyed by project id, in one query for the whole page (w5/155).
+	ListServicesForProjects(ctx context.Context, projectIDs []string) (map[string][]string, error)
 }
 
 // DatabaseIndex is the narrow contract projects needs from managed Postgres to
@@ -289,11 +291,21 @@ func (s *Service) authorizedProject(ctx context.Context, relation, id string) (s
 	return p, nil
 }
 
-// views composes the API view of ps — projects that all belong to workspaceID —
-// resolving each one's service, database, and key-value membership. Callers
-// have already authorized; this is read enrichment only.
-func (s *Service) views(ctx context.Context, workspaceID string, ps []store.Project) ([]ProjectView, error) {
-	if len(ps) == 0 {
+// bareViews is ps as API views with empty membership — what every list surface
+// filters and pages before it pays for any membership read (w5/155).
+func bareViews(ps []store.Project) []ProjectView {
+	out := make([]ProjectView, len(ps))
+	for i, p := range ps {
+		out[i] = toView(p)
+	}
+	return out
+}
+
+// withMembership fills in the service, database, and key-value ids of vs —
+// views of projects that all belong to workspaceID — with one services read for
+// all of vs and one listing per resource kind.
+func (s *Service) withMembership(ctx context.Context, workspaceID string, vs []ProjectView) ([]ProjectView, error) {
+	if len(vs) == 0 {
 		return []ProjectView{}, nil
 	}
 	dids, err := idsByProject(ctx, s.databases(), workspaceID)
@@ -304,42 +316,71 @@ func (s *Service) views(ctx context.Context, workspaceID string, ps []store.Proj
 	if err != nil {
 		return nil, err
 	}
-	out := make([]ProjectView, 0, len(ps))
-	for _, p := range ps {
-		sids, err := s.Store.ListProjectServices(ctx, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, toView(p, sids, dids[p.ID], kids[p.ID]))
+	projectIDs := make([]string, len(vs))
+	for i, v := range vs {
+		projectIDs[i] = v.ID
+	}
+	sids, err := s.Store.ListServicesForProjects(ctx, projectIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ProjectView, len(vs))
+	for i, v := range vs {
+		v.ServiceIDs, v.DatabaseIDs, v.KeyValueIDs = orEmpty(sids[v.ID]), orEmpty(dids[v.ID]), orEmpty(kids[v.ID])
+		out[i] = v
 	}
 	return out, nil
 }
 
-// view is views for the single project p — the shared tail of every verb that
+// orEmpty keeps an absent membership list rendering [] rather than null.
+func orEmpty(ids []string) []string {
+	if ids == nil {
+		return []string{}
+	}
+	return ids
+}
+
+// view is the API view of the single project p, membership included — the shared tail of every verb that
 // returns one project, so a mutating verb always reports the same freshly read
 // membership a plain Get would.
 func (s *Service) view(ctx context.Context, p store.Project) (ProjectView, error) {
-	vs, err := s.views(ctx, p.TenantID, []store.Project{p})
+	vs, err := s.withMembership(ctx, p.TenantID, bareViews([]store.Project{p}))
 	if err != nil {
 		return ProjectView{}, err
 	}
 	return vs[0], nil
 }
 
-// List returns all projects in a workspace, each with its current resource lists.
-func (s *Service) List(ctx context.Context, workspaceID string) ([]ProjectView, error) {
+// listBare authorizes the caller to view workspaceID and returns the resolved
+// workspace id with its projects as bare views (no membership).
+func (s *Service) listBare(ctx context.Context, workspaceID string) (string, []ProjectView, error) {
 	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanView, workspaceID)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	if s.Store == nil {
-		return nil, ErrProjectsUnavailable
+		return "", nil, ErrProjectsUnavailable
 	}
 	ps, err := s.Store.ListProjects(ctx, workspaceID)
 	if err != nil {
+		return "", nil, err
+	}
+	return workspaceID, bareViews(ps), nil
+}
+
+// List returns the projects in a workspace that page keeps, each with its
+// current resource lists. page selects from bare views (a nil page keeps them
+// all), so membership is read for the returned page only, never for every
+// project in the workspace (w5/155).
+func (s *Service) List(ctx context.Context, workspaceID string, page func([]ProjectView) []ProjectView) ([]ProjectView, error) {
+	workspaceID, vs, err := s.listBare(ctx, workspaceID)
+	if err != nil {
 		return nil, err
 	}
-	return s.views(ctx, workspaceID, ps)
+	if page != nil {
+		vs = page(vs)
+	}
+	return s.withMembership(ctx, workspaceID, vs)
 }
 
 // Get returns a single project by id.
@@ -443,13 +484,13 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 		if err != nil {
 			return ProjectView{}, conflictOrMapError(err, name)
 		}
-		return toView(p, nil, nil, nil), nil
+		return toView(p), nil
 	}
 	p, err := s.Store.CreateProject(ctx, workspaceID, name)
 	if err != nil {
 		return ProjectView{}, conflictOrMapError(err, name)
 	}
-	return toView(p, nil, nil, nil), nil
+	return toView(p), nil
 }
 
 // conflictOrMapError names the attempted project name on a duplicate-name
@@ -627,25 +668,17 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	return s.view(ctx, p)
 }
 
-func toView(p store.Project, serviceIDs, databaseIDs, keyValueIDs []string) ProjectView {
-	if serviceIDs == nil {
-		serviceIDs = []string{}
-	}
-	if databaseIDs == nil {
-		databaseIDs = []string{}
-	}
-	if keyValueIDs == nil {
-		keyValueIDs = []string{}
-	}
+// toView is p's API view with empty membership; withMembership fills it in.
+func toView(p store.Project) ProjectView {
 	return ProjectView{
 		ID:          p.ID,
 		Name:        p.Name,
 		OwnerID:     p.TenantID,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   projectUpdatedAt(p),
-		ServiceIDs:  serviceIDs,
-		DatabaseIDs: databaseIDs,
-		KeyValueIDs: keyValueIDs,
+		ServiceIDs:  []string{},
+		DatabaseIDs: []string{},
+		KeyValueIDs: []string{},
 	}
 }
 

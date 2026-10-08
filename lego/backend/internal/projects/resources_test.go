@@ -297,7 +297,7 @@ func TestListEnrichesEveryProjectFromOneListingPerKind(t *testing.T) {
 	svc := projectServiceWith(st, allowChecker{})
 	svc.Databases, svc.KeyValues = dbs, kvs
 
-	vs, err := svc.List(ctxAs("user-a"), "tea-a")
+	vs, err := svc.List(ctxAs("user-a"), "tea-a", nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -339,7 +339,7 @@ func TestListWithNoProjectsSkipsResourceListings(t *testing.T) {
 	svc := projectServiceWith(newFakeProjectStore(), allowChecker{})
 	svc.Databases, svc.KeyValues = dbs, kvs
 
-	vs, err := svc.List(ctxAs("user-a"), "tea-a")
+	vs, err := svc.List(ctxAs("user-a"), "tea-a", nil)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -377,7 +377,7 @@ func TestGetResolvesEmptyMembershipWhenIndexesUnwired(t *testing.T) {
 func TestResourceListingErrorSurfacesFromEveryReader(t *testing.T) {
 	boom := errors.New("listing the CRs failed")
 	verbs := map[string]func(*Service) error{
-		"List":         func(s *Service) error { _, err := s.List(ctxAs("user-a"), "tea-a"); return err },
+		"List":         func(s *Service) error { _, err := s.List(ctxAs("user-a"), "tea-a", nil); return err },
 		"Get":          func(s *Service) error { _, err := s.Get(ctxAs("user-a"), "prj-1"); return err },
 		"Rename":       func(s *Service) error { _, err := s.Rename(ctxAs("user-a"), "prj-1", "next"); return err },
 		"SetServices":  func(s *Service) error { _, err := s.SetServices(ctxAs("user-a"), "prj-1", nil); return err },

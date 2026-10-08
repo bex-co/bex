@@ -235,21 +235,26 @@ func (s *PGStore) TouchProject(ctx context.Context, id string) error {
 	return nil
 }
 
-// ListProjectServices returns the public ids of all services in the project.
-func (s *PGStore) ListProjectServices(ctx context.Context, projectID string) ([]string, error) {
+// ListServicesForProjects returns the public ids of the services in each of
+// projectIDs, keyed by project id and ordered by name, in one query for the
+// whole page (w5/155). A project with no services has no key.
+func (s *PGStore) ListServicesForProjects(ctx context.Context, projectIDs []string) (map[string][]string, error) {
+	out := map[string][]string{}
+	if len(projectIDs) == 0 {
+		return out, nil
+	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id FROM apps WHERE project_id = $1 ORDER BY name`, projectID)
+		`SELECT project_id, id FROM apps WHERE project_id = ANY($1) ORDER BY name`, projectIDs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []string
 	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
+		var projectID, serviceID string
+		if err := rows.Scan(&projectID, &serviceID); err != nil {
 			return nil, err
 		}
-		out = append(out, name)
+		out[projectID] = append(out[projectID], serviceID)
 	}
 	return out, rows.Err()
 }

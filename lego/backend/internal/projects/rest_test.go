@@ -28,6 +28,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -410,4 +413,92 @@ func TestAProjectPageReadsItsEnvironmentsOnce(t *testing.T) {
 	if page, _ = list("&name=none"); len(page) != 0 || len(st.reads) != 2 {
 		t.Errorf("an empty page of %d read %v, want no read", len(page), st.reads[2:])
 	}
+}
+
+// TestAProjectPageReadsMembershipForThatPageOnly (w5/155): every list surface
+// read every project's services, one query per project, before it paged.
+// REST, whose Render shape carries no membership, now reads none; GraphQL and
+// MCP read the services of their page alone, in one query.
+func TestAProjectPageReadsMembershipForThatPageOnly(t *testing.T) {
+	newSvc := func() (*Service, *fakeProjectStore, *fakeResourceIndex) {
+		var ps []store.Project
+		for _, id := range []string{"prj-1", "prj-2", "prj-3", "prj-4", "prj-5"} {
+			ps = append(ps, store.Project{ID: id, TenantID: "tea-a", Name: id})
+		}
+		st := newFakeProjectStore(ps...)
+		for _, id := range []string{"prj-1", "prj-2", "prj-3", "prj-4", "prj-5"} {
+			st.services[id] = []string{"srv-" + id}
+		}
+		idx := newFakeResourceIndex("tea-a")
+		svc := &Service{Base: &core.Base{Authz: allowChecker{}, Workspace: defaultProjectWorkspace{}}, Store: st, Databases: idx, KeyValues: idx}
+		return svc, st, idx
+	}
+	wantPage := []string{"prj-1", "prj-2"}
+	ctx := ctxAs("user-a")
+
+	t.Run("REST", func(t *testing.T) {
+		svc, st, idx := newSvc()
+		mux := http.NewServeMux()
+		svc.RegisterREST(mux)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/projects?ownerId=tea-a&limit=2", nil).WithContext(ctx))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("list = %d: %s", rec.Code, rec.Body.String())
+		}
+		var page []renderProjectWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+			t.Fatal(err)
+		}
+		if len(page) != 2 || st.serviceReads != 0 || idx.lists != 0 {
+			t.Errorf("a page of %d read services %d times and listed resources %d times, want 2 and no reads", len(page), st.serviceReads, idx.lists)
+		}
+	})
+
+	check := func(t *testing.T, st *fakeProjectStore, got []ProjectView) {
+		t.Helper()
+		var gotIDs []string
+		for _, v := range got {
+			gotIDs = append(gotIDs, v.ID)
+			if !slices.Equal(v.ServiceIDs, []string{"srv-" + v.ID}) {
+				t.Errorf("%s serviceIds = %v, want [srv-%s]", v.ID, v.ServiceIDs, v.ID)
+			}
+		}
+		if !slices.Equal(gotIDs, wantPage) || st.serviceReads != 1 {
+			t.Errorf("page %v read services %d times, want %v in one read", gotIDs, st.serviceReads, wantPage)
+		}
+	}
+
+	t.Run("GraphQL", func(t *testing.T) {
+		svc, st, _ := newSvc()
+		schema, err := graphql.NewSchema(graphql.SchemaConfig{
+			Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{ projects(ownerId: "tea-a", limit: 2) { id serviceIds } }`})
+		if len(result.Errors) != 0 {
+			t.Fatalf("errors = %v", result.Errors)
+		}
+		raw, _ := json.Marshal(result.Data)
+		var data struct{ Projects []ProjectView }
+		if err := json.Unmarshal(raw, &data); err != nil {
+			t.Fatal(err)
+		}
+		check(t, st, data.Projects)
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		svc, st, _ := newSvc()
+		res, err := newMCPClient(t, ctx, svc).CallTool(ctx, &mcp.CallToolParams{Name: "list_projects", Arguments: map[string]any{"limit": 2}})
+		if err != nil || res.IsError {
+			t.Fatalf("list_projects: %+v %v", res, err)
+		}
+		raw, _ := json.Marshal(res.StructuredContent)
+		var out projectsResult
+		if err := json.Unmarshal(raw, &out); err != nil {
+			t.Fatal(err)
+		}
+		check(t, st, out.Projects)
+	})
 }

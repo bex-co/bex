@@ -126,7 +126,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// rather than a bare "bad request" (w4/038).
 			return nil, fmt.Errorf("%w: invalid query parameter %q", core.ErrBadRequest, "ownerId")
 		}
-		ps, err := s.List(r.Context(), ownerID)
+		// Render's project shape carries no membership, so the page is filtered
+		// and rendered from bare rows without reading any (w5/155).
+		_, ps, err := s.listBare(r.Context(), ownerID)
 		if err != nil {
 			return nil, err
 		}
