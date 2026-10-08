@@ -1,17 +1,17 @@
 # w4 · m185 — Apply environment isolation when its label changes
 
-**Worker:** worker4 **Goal:** saved environment boundaries promptly control new private connections without waiting for an idle timer or manual deploy **Status:** todo
+**Worker:** worker4 **Goal:** saved environment boundaries promptly control new private connections without waiting for an idle timer or manual deploy **Status:** todo (t001–t006 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Admit App isolation-label transitions without broadening metadata events | 40m | — |
-| t002 | Converge operational network state on serving and held releases | 60m | t001 |
-| t003 | Audit the shared callers and original ACL enforcement guarantees | 70m | t002 |
-| t004 | Render parity | 30m | t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test coverage | 45m | t004 |
+| t001 | Admit App isolation-label transitions without broadening metadata events — **DONE** | 40m | — |
+| t002 | Converge operational network state on serving and held releases — **DONE** | 60m | t001 |
+| t003 | Audit the shared callers and original ACL enforcement guarantees — **DONE** | 70m | t002 |
+| t004 | Render parity — **DONE** | 30m | t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test coverage — **DONE** | 45m | t004 |
 | t007 | Closeout | 15m | t005, t006 |
 
 ## Definition of done
@@ -30,3 +30,13 @@
 - **Why now:** production reported isolation on while new cross-environment connections succeeded for minutes; off could retain denial. Persisting the desired flag is not enforcement, and tests that directly invoke Reconcile concealed the dropped event.
 - **Scope / sizing:** seven tasks, 4h40m; App-specific watch and operational network convergence plus shared-caller/old-DoD verification. Filing only; this hunt implemented no product fix. No paid fixtures, foreign workspace changes, generic metadata admission or API/auth changes.
 - **Render parity:** included because this repairs a tenant-facing control across the dashboard and shared REST/GraphQL/MCP semantics, with Render's new-connection versus already-open-connection distinction retained.
+
+## Progress (2026-10-08)
+
+t001–t006 done:
+
+- **t001:** `generationOrDeletionPredicate.Update` also admits a change to the App's `app.bex.co/network-isolation` label (add, remove, A→B). Status-only, unrelated label/annotation and Save-only notification updates stay filtered; `saved_configuration_test.go:568` still passes.
+- **t002:** `reconcileNetworkPolicy` moved into `convergeSharedChildren`, so the owned protected policy converges on every pass, held and prior-release passes included; the duplicate ordinary-path call was removed. `convergeServingRoute` syncs the served template's isolation label (`syncIsolationLabel`) in the same patch as its replica count, so a held release's pods pick it up without applying pending config. Pods are relabeled by a readiness-gated rollout, not patched in place: the operator's RBAC has no pod `patch`, and granting it would also allow image rewrites. No App generation, user deploy or release identity is minted.
+- **t003 audit:** cron pods lacked the isolation label entirely, so an isolated cron could not reach its own environment's services. `reconcileCronJob` now adds it. `restoreServedTemplate` returns early on the revision label, so the label sync cannot flap against a restored record. The five `applyAppEnvironmentLabels` callers all write only this label and now reach the operator. Database/KeyValue IP layers are separate and unchanged.
+- **t004:** ADR032 records the rule.
+- **t005/t006 tests:** a manager-driven envtest settles an App to Running, then edits only the label. The policy and template converge within 10 s and are removed on clear, with the App generation unchanged. It **fails with label admission disabled** (times out). `TestIsolatedCronPodsCarryTheIsolationLabel` covers the cron label. Operator `make test` and `make lint` pass.
