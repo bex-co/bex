@@ -64,6 +64,19 @@ func TestStuckPodMessage(t *testing.T) {
 			Terminated: &corev1.ContainerStateTerminated{ExitCode: 1},
 		},
 	})
+	startError := func(msg string) *corev1.Pod {
+		return pod("web-1", corev1.ContainerStatus{
+			State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+			LastTerminationState: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{ExitCode: 128, Reason: "StartError", Message: msg},
+			},
+		})
+	}
+	// Captured verbatim from production on 2026-10-07 (w4/m177): Docker Command
+	// `/whoami -port 3000` on traefik/whoami:v1.11.0, which ships no shell.
+	missingShell := startError(`failed to create containerd task: failed to create shim task: OCI runtime create failed: ` +
+		`runc create failed: unable to start container process: error during container init: ` +
+		`exec: "/bin/sh": stat /bin/sh: no such file or directory`)
 	pulling := pod("web-1", corev1.ContainerStatus{
 		State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
 			Reason: "ImagePullBackOff", Message: `Back-off pulling image "zot/web:gen-1"`,
@@ -91,6 +104,32 @@ func TestStuckPodMessage(t *testing.T) {
 			wantReason: "CrashLoopBackOff",
 			wantIn:     []string{"last exit code 1", "service logs"},
 			wantNotIn:  []string{"$PORT"},
+		},
+		{
+			name: "start error: missing shell", pod: missingShell, port: 3000,
+			wantReason: "CrashLoopBackOff",
+			wantIn:     []string{"could not start", `"/bin/sh" does not exist`, "clear the Docker Command", "never ran"},
+			wantNotIn:  []string{"exited shortly after start", "crash output", "$PORT", "exit code", "containerd", "runc"},
+		},
+		{
+			name: "start error: program not on PATH", port: 3000,
+			pod:        startError(`... error during container init: exec: "server": executable file not found in $PATH: unknown`),
+			wantReason: "CrashLoopBackOff",
+			wantIn:     []string{`"server" does not exist`, "entrypoint"},
+			wantNotIn:  []string{"crash output", "clear the Docker Command"},
+		},
+		{
+			name: "start error: not executable", port: 3000,
+			pod:        startError(`... error during container init: exec: "/app/run": permission denied: unknown`),
+			wantReason: "CrashLoopBackOff",
+			wantIn:     []string{`"/app/run" is not executable`},
+		},
+		{
+			name: "start error: unrecognized runtime message", port: 3000,
+			pod:        startError(`OCI runtime create failed: container_linux.go:380: secret-ish internal detail`),
+			wantReason: "CrashLoopBackOff",
+			wantIn:     []string{"could not start", "could not launch the startup program"},
+			wantNotIn:  []string{"secret-ish", "container_linux", "crash output"},
 		},
 		{
 			name: "image pull backoff", pod: pulling, port: 3000,

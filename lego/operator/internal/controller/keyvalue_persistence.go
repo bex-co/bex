@@ -231,7 +231,7 @@ func (r *KeyValueReconciler) keyValuePersistenceProgress(ctx context.Context, kv
 			continue
 		}
 		if (status.State.Terminated != nil && status.State.Terminated.ExitCode != 0) ||
-			(status.State.Waiting != nil && status.State.Waiting.Reason == "CrashLoopBackOff") {
+			(status.State.Waiting != nil && status.State.Waiting.Reason == crashLoopBackOff) {
 			return appv1alpha1.ReasonPersistenceTransitionFailed, "persistence conversion failed; the source format is retained and initialization will retry"
 		}
 		if status.State.Terminated == nil {
