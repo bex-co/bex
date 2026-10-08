@@ -128,7 +128,7 @@ func (s *conformProjectStore) SetProjectServices(_ context.Context, id, _ string
 	return nil, nil
 }
 
-func (s *conformProjectStore) ListProjectServices(context.Context, string) ([]string, error) {
+func (s *conformProjectStore) ListServicesForProjects(context.Context, []string) (map[string][]string, error) {
 	return nil, nil
 }
 

@@ -47,13 +47,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": gqlutil.ReqArg(graphql.String),
 			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				out, err := s.List(p.Context, p.Args["ownerId"].(string))
-				if err != nil {
-					return nil, err
-				}
-				return gqlutil.Page(p, out, func(project ProjectView) string {
-					return project.ID
-				}), nil
+				return s.List(p.Context, p.Args["ownerId"].(string), func(ps []ProjectView) []ProjectView {
+					return gqlutil.Page(p, ps, func(project ProjectView) string { return project.ID })
+				})
 			},
 		},
 		"project": &graphql.Field{

@@ -75,7 +75,7 @@ func TestOmittedWorkspaceNeverFallsBackAfterResolutionFailure(t *testing.T) {
 			auditSvc := &audit.Service{Base: base}
 			ctx := core.WithWorkspace(core.WithIdentity(context.Background(), core.Identity{Subject: "member", Method: "session"}), "tea-foreign")
 			calls := map[string]func() error{
-				"projects list":     func() error { _, err := projectSvc.List(ctx, ""); return err },
+				"projects list":     func() error { _, err := projectSvc.List(ctx, "", nil); return err },
 				"projects create":   func() error { _, err := projectSvc.CreateWithEnvironments(ctx, "", "name", nil); return err },
 				"environments list": func() error { _, err := environmentSvc.ListWorkspace(ctx, ""); return err },
 				"audit list":        func() error { _, err := auditSvc.List(ctx, "", audit.Filter{}); return err },
@@ -117,7 +117,7 @@ func TestOmittedWorkspaceNeverFallsBackAfterResolutionFailure(t *testing.T) {
 			}
 			// Explicit resource scope continues through its own authorization, independent
 			// of a caller's selected-workspace override.
-			if _, err := projectSvc.List(ctx, "tea-explicit"); !errors.Is(err, projects.ErrProjectsUnavailable) {
+			if _, err := projectSvc.List(ctx, "tea-explicit", nil); !errors.Is(err, projects.ErrProjectsUnavailable) {
 				t.Fatalf("explicit workspace changed behavior: %v", err)
 			}
 			if checker.calls != 1 {

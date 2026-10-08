@@ -113,6 +113,7 @@ func TestPGStore(t *testing.T) {
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
 	assertProjectsEnvironmentsRead(ctx, t, s)
 	assertWorkspaceEnvironmentReadsUseTheirIndex(ctx, t, pool)
+	assertProjectServicesReadUsesItsIndex(ctx, t, pool)
 	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
 }
@@ -768,6 +769,27 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 // 0145's down migration drops again.
 func assertWorkspaceEnvironmentReadsUseTheirIndex(ctx context.Context, t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
+	assertPlansUseIndex(ctx, t, pool, "environments_tenant_id_idx", "0145_environments_tenant_id_index",
+		`EXPLAIN SELECT `+environmentColumns+` FROM environments WHERE tenant_id = $1 ORDER BY created_at, id`,
+		`EXPLAIN SELECT count(*) FROM environments WHERE tenant_id = $1`,
+	)
+}
+
+// assertProjectServicesReadUsesItsIndex (w5/155): a page of projects reads its
+// services by apps.project_id, which 0146 indexes and its down migration
+// drops again.
+func assertProjectServicesReadUsesItsIndex(ctx context.Context, t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	assertPlansUseIndex(ctx, t, pool, "apps_project_id_idx", "0146_apps_project_id_index",
+		`EXPLAIN SELECT project_id, id FROM apps WHERE project_id = ANY(ARRAY[$1]) ORDER BY name`,
+	)
+}
+
+// assertPlansUseIndex asserts that, with sequential scans off, each query
+// (bound to one text argument) plans through index, and that migration's down
+// file drops it. Everything runs in a rolled-back transaction.
+func assertPlansUseIndex(ctx context.Context, t *testing.T, pool *pgxpool.Pool, index, migration string, queries ...string) {
+	t.Helper()
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -776,11 +798,8 @@ func assertWorkspaceEnvironmentReadsUseTheirIndex(ctx context.Context, t *testin
 	if _, err := tx.Exec(ctx, `SET LOCAL enable_seqscan = off`); err != nil {
 		t.Fatal(err)
 	}
-	for _, query := range []string{
-		`EXPLAIN SELECT ` + environmentColumns + ` FROM environments WHERE tenant_id = $1 ORDER BY created_at, id`,
-		`EXPLAIN SELECT count(*) FROM environments WHERE tenant_id = $1`,
-	} {
-		rows, err := tx.Query(ctx, query, "tea-plan")
+	for _, query := range queries {
+		rows, err := tx.Query(ctx, query, "plan")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -788,12 +807,11 @@ func assertWorkspaceEnvironmentReadsUseTheirIndex(ctx context.Context, t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		if plan := strings.Join(lines, "\n"); !strings.Contains(plan, "environments_tenant_id_idx") {
-			t.Fatalf("%s plans as\n%s\nwant the tenant_id index", query, plan)
+		if plan := strings.Join(lines, "\n"); !strings.Contains(plan, index) {
+			t.Fatalf("%s plans as\n%s\nwant %s", query, plan, index)
 		}
 	}
-	// The down migration drops it again; the rollback restores it.
-	down, err := migrationsFS.ReadFile("migrations/0145_environments_tenant_id_index.down.sql")
+	down, err := migrationsFS.ReadFile("migrations/" + migration + ".down.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -801,8 +819,8 @@ func assertWorkspaceEnvironmentReadsUseTheirIndex(ctx context.Context, t *testin
 		t.Fatal(err)
 	}
 	var dropped bool
-	if err := tx.QueryRow(ctx, `SELECT to_regclass('environments_tenant_id_idx') IS NULL`).Scan(&dropped); err != nil || !dropped {
-		t.Fatalf("after 0145's down migration the index is dropped = %v (%v), want it dropped", dropped, err)
+	if err := tx.QueryRow(ctx, `SELECT to_regclass($1) IS NULL`, index).Scan(&dropped); err != nil || !dropped {
+		t.Fatalf("after %s's down migration %s is dropped = %v (%v), want it dropped", migration, index, dropped, err)
 	}
 }
 
@@ -913,8 +931,8 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	if ids, err := s.ListEnvironmentServices(ctx, env.ID, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.ID {
 		t.Fatalf("ListEnvironmentServices(staging) = %+v (err %v), want public id [%s]", ids, err, app.ID)
 	}
-	if ids, err := s.ListProjectServices(ctx, proj.ID); err != nil || len(ids) != 1 || ids[0] != app.ID {
-		t.Fatalf("ListProjectServices = %+v (err %v), want public id [%s]", ids, err, app.ID)
+	if byProject, err := s.ListServicesForProjects(ctx, []string{proj.ID, "prj-unasked"}); err != nil || len(byProject) != 1 || !slices.Equal(byProject[proj.ID], []string{app.ID}) {
+		t.Fatalf("ListServicesForProjects = %+v (err %v), want only %s's public id [%s]", byProject, err, proj.ID, app.ID)
 	}
 
 	// Legacy name input remains accepted during the stable-id transition. The
