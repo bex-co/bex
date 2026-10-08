@@ -35,6 +35,9 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
+import { useEnvGroup } from "@/features/env-groups/hooks/use-env-groups";
+import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
+import { Skeleton } from "@/common/components/ui/skeleton";
 
 type DashboardParams = {
   agentSessionId?: string;
@@ -65,6 +68,9 @@ export function DashboardBreadcrumbs() {
   }
   if (params.keyValueId) {
     return <KeyValueBreadcrumbs id={params.keyValueId} />;
+  }
+  if (params.groupId) {
+    return <EnvGroupBreadcrumbs id={params.groupId} />;
   }
   return <PageBreadcrumb pathname={pathname} params={params} />;
 }
@@ -262,6 +268,66 @@ function DatastoreBreadcrumbs({
   );
 }
 
+/**
+ * Project › Environment › name for an environment-scoped group, with the same
+ * switchers a service gets; Environment Groups › name for a workspace group
+ * (w4/212: the leaf was the raw evg- id, hidden on mobile, with no project).
+ * The project comes only from the authorized environment index: while that is
+ * unresolved no project is painted, and the leaf waits on the group's own
+ * name rather than showing its id.
+ */
+function EnvGroupBreadcrumbs({ id }: { id: string }) {
+  const { t } = useTranslations();
+  const { group } = useEnvGroup(id, { poll: false });
+  const index = useEnvGroupScopeIndex();
+  const environment = group?.environmentId
+    ? index.byId.get(group.environmentId)
+    : undefined;
+  const project = environment
+    ? index.projects.find((item) => item.id === environment.projectId)
+    : undefined;
+
+  return (
+    <nav
+      aria-label={t("common.topbarBreadcrumbs")}
+      className="flex min-w-0 items-center gap-0.5"
+    >
+      {project && environment ? (
+        <>
+          <div className="hidden sm:contents">
+            <ProjectMenu currentId={project.id} projects={index.projects} />
+            <BreadcrumbSeparator />
+          </div>
+          <EnvironmentMenu
+            projectId={project.id}
+            currentId={environment.id}
+            environments={index.environments.filter(
+              (item) => item.projectId === project.id,
+            )}
+          />
+          <BreadcrumbSeparator />
+        </>
+      ) : (
+        <>
+          <BreadcrumbLink
+            to="/env-groups"
+            icon={Boxes}
+            label={t("common.navEnvGroups")}
+          />
+          <BreadcrumbSeparator />
+        </>
+      )}
+      <span className="flex min-w-0 items-center gap-1.5 px-2 text-sm font-medium">
+        {group ? (
+          <span className="max-w-48 truncate">{group.name}</span>
+        ) : (
+          <Skeleton className="h-4 w-24" />
+        )}
+      </span>
+    </nav>
+  );
+}
+
 function ProjectBreadcrumbs({ projectId }: { projectId: string }) {
   const { t } = useTranslations();
   const { projects } = useProjects({ poll: false });
@@ -388,7 +454,7 @@ function BreadcrumbLink({
   icon: Icon,
   label,
 }: {
-  to: "/";
+  to: "/" | "/env-groups";
   icon: LucideIcon;
   label: string;
 }) {
@@ -496,7 +562,6 @@ const DETAIL_ID_PARAMS = [
   "agentSessionId",
   "databaseId",
   "keyValueId",
-  "groupId",
   "blueprintId",
   "webhookId",
 ] as const satisfies ReadonlyArray<keyof DashboardParams>;
