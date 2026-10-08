@@ -77,6 +77,7 @@ Do the actual engineering, task by task, in the order the item implies:
 - Follow all `AGENTS.md` rules (id minting, boilerplate headers, `.env.example` sync, prettier on markdown, skill layout, etc.).
 - Milestones ship features **end to end** — include the frontend tasks alongside the backend ones; do not stop at the API.
 - Run the relevant test suites and make them pass before considering a task done — `make test` (from `lego/operator/`), `cd lego/backend && go test ./...`, dashboard `yarn test`, whichever the change touches. Never mark a task complete on unverified code.
+- When a DoD needs a signed-in check on production (`dashboard.bex.co` / `api.bex.co`), sign in as the QA user with `bash scripts/qa-login.sh` — it reads `QA_EMAIL`/`QA_PASSWORD` from `.env` or `muse.env` itself, so never read those files or type the password; follow the login and logout steps in `.claude/skills/qa-find-bugs/SKILL.md`. Only exit 2 (credentials missing in both files) is a blocked gate.
 - You may delegate independent sub-tasks to subagents (Agent tool) to parallelize, but you own correctness.
 - Keep `.pm` status in sync as you finish tasks (task frontmatter, milestone README `**Status:**` + the `— DONE` row, workstream checkbox). These are `/pm`-governed writes — follow `.claude/skills/pm/SKILL.md` exactly.
 

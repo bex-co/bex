@@ -6,7 +6,7 @@
 #   bash scripts/qa-login.sh --serve         serve the state once over loopback
 #   bash scripts/qa-login.sh --logout [PATH] revoke the Kratos session in PATH
 #
-# Reads QA_EMAIL/QA_PASSWORD from .env (or the environment), completes the
+# Reads QA_EMAIL/QA_PASSWORD from the environment, .env, or muse.env, completes the
 # Kratos password login against $KRATOS_PUB, and writes OUT: a Playwright
 # storage-state file (cookies only, mode 600) that /qa-find-bugs restores with
 # the browser_set_storage_state MCP tool. Credentials go to curl on stdin, never
@@ -68,18 +68,18 @@ done
 OUT="${OUT:-$DEFAULT_OUT}"
 
 load_qa_env() {
-  if [ -z "${QA_EMAIL:-}" ] || [ -z "${QA_PASSWORD:-}" ]; then
-    [ -f .env ] || {
-      echo "error: .env not found and QA_EMAIL/QA_PASSWORD are unset" >&2
-      exit 2
-    }
+  # Precedence: environment, then .env, then muse.env (both gitignored by *.env).
+  local f
+  for f in .env muse.env; do
+    [ -n "${QA_EMAIL:-}" ] && [ -n "${QA_PASSWORD:-}" ] && break
+    [ -f "$f" ] || continue
     set -a
-    # shellcheck disable=SC1091
-    . ./.env
+    # shellcheck disable=SC1090
+    . "./$f"
     set +a
-  fi
+  done
   [ -n "${QA_EMAIL:-}" ] && [ -n "${QA_PASSWORD:-}" ] || {
-    echo "error: QA_EMAIL/QA_PASSWORD are empty — fill them in .env (names live in .env.example)" >&2
+    echo "error: QA_EMAIL/QA_PASSWORD are unset or empty — fill them in .env or muse.env (names live in .env.example)" >&2
     exit 2
   }
   export QA_EMAIL QA_PASSWORD

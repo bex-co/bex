@@ -1,7 +1,7 @@
 ---
 name: qa-find-bugs
 description: >-
-  Drive the live product at https://dashboard.bex.co as a signed-in QA user (QA_EMAIL / QA_PASSWORD from .env), hunt real bugs across the hosting features, research each fix down to file:line, file the non-duplicate findings to the w6 board through /pm, and /ship the scheduled milestone. Use when the user asks to QA the dashboard, try the product and find bugs, or run a live hosting bug hunt.
+  Drive the live product at https://dashboard.bex.co as a signed-in QA user (QA_EMAIL / QA_PASSWORD from .env or muse.env), hunt real bugs across the hosting features, research each fix down to file:line, file the non-duplicate findings to the w6 board through /pm, and /ship the scheduled milestone. Use when the user asks to QA the dashboard, try the product and find bugs, or run a live hosting bug hunt.
 ---
 
 # Task: live QA hunt of bex hosting → researched fixes → `/pm` filing → `/ship`
@@ -19,11 +19,11 @@ Parse `$ARGUMENTS`:
 1. `git rev-parse --abbrev-ref HEAD` must be `main`; if not, STOP and ask (Phase 7 ships).
 2. `git status --porcelain` — record what was already dirty. Phase 7 must **not** sweep it in.
 3. Confirm the Playwright MCP browser tools are available. Screenshots go to `.playwright-mcp/` (configured `--output-dir`) — always pass **bare filenames**, named `qa-<surface>-<n>.png`.
-4. **Never read `.env` yourself.** `Read(.env)` is denied by project policy, and the QA password must never reach the transcript, a scratch file, a screenshot, a `.pm` note, or a commit.
+4. **Never read `.env` or `muse.env` yourself.** `Read(.env)` is denied by project policy, and the QA password must never reach the transcript, a scratch file, a screenshot, a `.pm` note, or a commit.
 
 ## Phase 1 — Sign in without ever seeing the password
 
-`scripts/qa-login.sh` does the whole login. It reads `QA_EMAIL`/`QA_PASSWORD` from `.env` inside its own process, completes the Kratos password flow, and hands back only cookies — the password never reaches your context, a file, or a tool call. **Never** read `.env` yourself (`Read(.env)` is denied by project policy), and never type a password into `browser_type`.
+`scripts/qa-login.sh` does the whole login. It reads `QA_EMAIL`/`QA_PASSWORD` from the environment, then `.env`, then `muse.env` (first non-empty pair wins) inside its own process, completes the Kratos password flow, and hands back only cookies — the password never reaches your context, a file, or a tool call. **Never** read `.env` or `muse.env` yourself (`Read(.env)` is denied by project policy), and never type a password into `browser_type`.
 
 1. Get a session, preferring the one-shot loopback form:
 
@@ -50,7 +50,7 @@ Parse `$ARGUMENTS`:
 
 3. Alternative when the MCP server was started with `--caps=storage` (adds `browser_storage_state` / `browser_set_storage_state`): run `bash scripts/qa-login.sh` with no flag to write a 0600 state file under `.playwright-mcp/`, then `browser_set_storage_state` with its absolute path. Check whether those tools exist before planning around them; they are opt-in and a `.mcp.json` change only takes effect in a new session.
 
-4. Verify the session: the URL is no longer `/auth/login` and the workspace switcher renders. Script exit 2 (`QA_EMAIL/QA_PASSWORD` missing or empty) is the one case to hand back to the user — tell them to fill `.env`; never ask them for the password in chat.
+4. Verify the session: the URL is no longer `/auth/login` and the workspace switcher renders. Script exit 2 (`QA_EMAIL/QA_PASSWORD` missing or empty) is the one case to hand back to the user — tell them to fill `.env` or `muse.env`; never ask them for the password in chat.
 
 5. Note which workspace and plan you landed in, and its pre-existing resources. Everything you create in Phase 2 lives in **this** workspace only.
 
