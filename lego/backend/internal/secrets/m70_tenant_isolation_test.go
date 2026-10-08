@@ -62,8 +62,8 @@ func (f *tenantFakeSecretStore) Delete(ctx context.Context, path string) error {
 	return nil
 }
 
-func (f *tenantFakeSecretStore) List(context.Context, string) ([]string, error) {
-	return nil, nil
+func (f *tenantFakeSecretStore) List(ctx context.Context, path string) ([]string, error) {
+	return (&fakeSecretStore{m: f.m}).List(ctx, f.key(ctx, path))
 }
 
 // TestOpenBaoStore_TenantScopedPaths proves the w7/m70 fix for codex-security #1

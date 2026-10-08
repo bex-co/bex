@@ -38,6 +38,7 @@
 #   BEX_BUILD_NAMESPACE — build Job namespace (default: APPS_NS)
 #   BEX_REGISTRY      — in-cluster registry host:port (e.g. zot.bex-registry.svc:5000)
 #   BEX_OPENBAO_URL   — OpenBao base URL (e.g. http://bao.bex-system.svc:8200)
+#   BAO_TENANT        — workspace id the OpenBao paths are keyed under (default: APPS_NS)
 #   BAO_TOKEN         — OpenBao root/admin token
 #   BEX_STATIC_S3_BUCKET / BEX_STATIC_S3_ENDPOINT — for S3 audit
 #   BEX_KV_BACKUP_DESTINATION / BEX_KV_BACKUP_ENDPOINT — for KeyValue S3 audit
@@ -58,6 +59,7 @@ APPS_NS="${APPS_NS:-default}"
 BUILD_NS="${BEX_BUILD_NAMESPACE:-$APPS_NS}"
 REGISTRY="${BEX_REGISTRY:-}"
 BAO_URL="${BEX_OPENBAO_URL:-}"
+BAO_TENANT="${BAO_TENANT:-$APPS_NS}"
 STATIC_BUCKET="${BEX_STATIC_S3_BUCKET:-}"
 STATIC_ENDPOINT="${BEX_STATIC_S3_ENDPOINT:-}"
 KV_BACKUP_DESTINATION="${BEX_KV_BACKUP_DESTINATION:-}"
@@ -128,15 +130,17 @@ print(count)
 ' "$certificate" 2>/dev/null
 }
 
-# bao_secret_exists: exit 0 if OpenBao path has data, 1 if 404.
+# bao_secret_exists: exit 0 if the workspace's OpenBao path holds any value.
+# Paths live under the tenants/ mount, prefixed by the workspace id (ADR013 §4).
+# A deleted service's paths are retired, not removed (w5/156): they answer 200
+# with an empty map, which counts as gone.
 bao_secret_exists() {
   local path="$1"
-  local status
-  status=$(curl -sf -o /dev/null -w '%{http_code}' \
-    --connect-timeout 2 --max-time 5 \
+  local body
+  body=$(curl -sf --connect-timeout 2 --max-time 5 \
     -H "X-Vault-Token: ${BAO_TOKEN:-}" \
-    "$BAO_URL/v1/secret/data/$path" 2>/dev/null || echo "000")
-  [ "$status" = "200" ]
+    "$BAO_URL/v1/tenants/data/$BAO_TENANT/$path" 2>/dev/null) || return 1
+  printf '%s' "$body" | python3 -c 'import json,sys; sys.exit(0 if ((json.load(sys.stdin).get("data") or {}).get("data") or {}) else 1)'
 }
 
 # registry_tag_count: number of tags for a repo in Zot via the OCI Distribution API.

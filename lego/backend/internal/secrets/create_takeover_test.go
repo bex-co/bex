@@ -220,7 +220,7 @@ func TestAFailedPrepareReleasesTheName(t *testing.T) {
 			if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
 				t.Errorf("the failed prepare kept its claim on the name: %v", err)
 			}
-			if _, ok := maps[filesPath("web")]; ok {
+			if len(maps[filesPath("web")]) != 0 {
 				t.Error("the failed prepare left its map in the store")
 			}
 		})
@@ -345,14 +345,14 @@ func TestACreateReleasesTheLegsItDoesNotSeed(t *testing.T) {
 			if err := seeder.PrepareCreateSecrets(ctx, "web", app, seed, nil); err != nil {
 				t.Fatalf("prepare = %v, want the crashed create's legs taken over or released", err)
 			}
-			if _, kept := store.m[envPath("web")]; kept {
+			if len(store.m[envPath("web")]) != 0 {
 				t.Fatalf("the crashed create's env map survived: %v", store.m[envPath("web")])
 			}
 			if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-env"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
 				t.Fatalf("the crashed create's env Secret: %v, want it gone", err)
 			}
 			if seed == nil {
-				if _, kept := store.m[filesPath("web")]; kept {
+				if len(store.m[filesPath("web")]) != 0 {
 					t.Fatalf("the crashed create's files map survived: %v", store.m[filesPath("web")])
 				}
 				if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "web-files"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
@@ -425,18 +425,18 @@ func TestAServiceReplacesAnAbandonedPreparationAtItsName(t *testing.T) {
 	}
 }
 
-// failNextDelete is a versioned store whose next delete fails.
+// failNextDelete is a versioned store whose next removal, a retire, fails.
 type failNextDelete struct {
 	*versionedFakeSecretStore
 	fail bool
 }
 
-func (f *failNextDelete) Delete(ctx context.Context, path string) error {
+func (f *failNextDelete) Retire(ctx context.Context, path string) error {
 	if f.fail {
 		f.fail = false
 		return errors.New("store unavailable")
 	}
-	return f.versionedFakeSecretStore.Delete(ctx, path)
+	return f.versionedFakeSecretStore.Retire(ctx, path)
 }
 
 // TestAReleaseThatCannotRemoveTheMapKeepsTheName (w5/148): a release whose
@@ -460,7 +460,7 @@ func TestAReleaseThatCannotRemoveTheMapKeepsTheName(t *testing.T) {
 		t.Fatalf("a create after the stranded claim was abandoned = %v, want it released", err)
 	}
 	for _, leg := range []struct{ secret, path string }{{"web-files", filesPath("web")}, {"web-env", envPath("web")}} {
-		if _, kept := store.m[leg.path]; kept {
+		if len(store.m[leg.path]) != 0 {
 			t.Errorf("the map at %s survived: %v", leg.path, store.m[leg.path])
 		}
 		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: leg.secret}, &corev1.Secret{}); !apierrors.IsNotFound(err) {

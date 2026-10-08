@@ -416,6 +416,11 @@ func (s *Service) projectCASEnv(ctx context.Context, service string, a *appv1alp
 }
 
 func safeCASProjectionError(err error) error {
+	// Keep the sentinel, so compensation can tell a replaced service from a
+	// revision conflict (w5/156).
+	if errors.Is(err, core.ErrServiceReplaced) {
+		return core.ErrServiceReplaced
+	}
 	if apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err) || errors.Is(err, core.ErrConflict) || errors.Is(err, errProjectionConflict) {
 		return envRevisionConflict()
 	}
@@ -510,11 +515,15 @@ func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
 // namesake's, and the answer is the replacement (w5/157).
 func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, cause error) error {
 	app := txn.originalApp
+	replaced := errors.Is(cause, core.ErrServiceReplaced)
+	if txn.cas && replaced {
+		return s.takeBackReplacedCASWrite(ctx, txn.service, txn.env.prior, txn.env.version)
+	}
 	if txn.cas {
 		return s.compensateCASEnvironment(ctx, txn.service, app, txn.env.prior, txn.env.version, txn.casProjection)
 	}
 	var compensation []error
-	superseded, replaced := false, errors.Is(cause, core.ErrServiceReplaced)
+	superseded := false
 	for _, m := range []struct {
 		write mapWrite
 		path  string
@@ -580,6 +589,22 @@ func (s *Service) compensateCASEnvironment(ctx context.Context, service string, 
 		return envRestorationFailed()
 	}
 	return envUpdateRestored()
+}
+
+// takeBackReplacedCASWrite compensates a revision-checked save whose service
+// was replaced: it takes back the source change while that change is the
+// latest, as compensateEnvironment does, and rolls back no projection, since
+// the Secret at the name is the namesake's. It answers the revision conflict
+// (w5/156).
+func (s *Service) takeBackReplacedCASWrite(ctx context.Context, service string, oldEnv map[string]string, casWriteVersion uint64) error {
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return envRestorationFailed()
+	}
+	if _, err := versioned.PutCAS(ctx, envPath(service), oldEnv, casWriteVersion); err != nil && !errors.Is(err, core.ErrConflict) {
+		return envRestorationFailed()
+	}
+	return envRevisionConflict()
 }
 
 func (s *Service) rollbackCASEnvProjection(ctx context.Context, originalApp *appv1alpha1.App, oldEnv map[string]string, restoredVersion uint64, projection casEnvProjection) error {
