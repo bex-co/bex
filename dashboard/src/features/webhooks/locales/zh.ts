@@ -746,7 +746,7 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description: "Detail page header kicker above the endpoint name",
   },
   "webhooks.idLabel": {
-    message: "Webhook ID:",
+    message: "Webhook ID：",
     description: "Detail header id row label",
   },
   "webhooks.copyId": {

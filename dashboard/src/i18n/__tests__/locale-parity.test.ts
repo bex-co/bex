@@ -157,3 +157,41 @@ describe("locale key parity", () => {
     },
   );
 });
+
+// zh messages that are deliberately the same as en: product, runtime and
+// command names, codes, and units with no Chinese form. A multi-word English
+// sentence copied into zh is a missing translation (w4/205: the whole Disk
+// feature shipped English into zh and passed key parity).
+const ZH_SAME_AS_EN = new Set<string>([
+  // Product names.
+  "blueprints.previewKindKeyValue",
+  "usage.resourceCapsKeyValues",
+  "webhooks.group.keyValue",
+  "usage.billingMode",
+  // Example commands in input placeholders.
+  "services.buildCommandPlaceholder",
+  "services.createFieldCommandPlaceholder",
+]);
+
+// Two English words in a row, after placeholders and code spans are removed.
+const englishPhrase = (message: string) =>
+  /[A-Za-z]{2,},? +[A-Za-z]{2,}/.test(
+    message.replace(/\{[^}]*\}/g, "").replace(/`[^`]*`/g, ""),
+  );
+
+describe("zh is translated", () => {
+  it.each(NAMESPACES)(
+    "$name: no zh message is an untranslated English phrase",
+    ({ en, zh }) => {
+      const copied = Object.entries(zh ?? {})
+        .filter(
+          ([key, entry]) =>
+            entry.message === en?.[key]?.message &&
+            englishPhrase(entry.message) &&
+            !ZH_SAME_AS_EN.has(key),
+        )
+        .map(([key, entry]) => `${key}: ${entry.message}`);
+      expect(copied).toEqual([]);
+    },
+  );
+});
