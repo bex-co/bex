@@ -1266,3 +1266,32 @@ projects:
 		t.Fatalf("DeployStack = %v, want the protected environment's confirmation for web", err)
 	}
 }
+
+// TestDeployStackUnknownFromServiceHostCreatesNothing (w4/206): the apply
+// created the referring service, then refused the manifest in its second pass
+// because the target existed nowhere, leaving a running service behind a 400.
+// It now refuses before any write, with validate's message.
+func TestDeployStackUnknownFromServiceHostCreatesNothing(t *testing.T) {
+	manifest := `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx}
+    envVars:
+      - key: X
+        fromService: {name: nope, type: web, property: host}
+`
+	svc, cl := newService(nil)
+	_, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest})
+	if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), `unknown service "nope"`) {
+		t.Fatalf("err = %v, want a 400 naming the unknown service", err)
+	}
+	var apps appv1alpha1.AppList
+	if err := cl.List(context.Background(), &apps); err != nil {
+		t.Fatal(err)
+	}
+	if len(apps.Items) != 0 {
+		t.Fatalf("refused apply created %d service(s): %s", len(apps.Items), apps.Items[0].Name)
+	}
+}
