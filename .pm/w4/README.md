@@ -212,6 +212,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **216** — [No-op environment saves falsely say a deployment started](216.md) (50m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 9; the service adapter discards rolledOut:false and announces a release despite unchanged deploy history.
+
 - [ ] **215** — [Environment-group scopes hide the parent project of same-named environments](215.md) (55m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 8; Create/Move/Clone and saved scope labels omit already-loaded project context.
 
 - [ ] **214** — [Last 30 minutes hides collected CPU and response-time metrics](214.md) (50m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 6; same-window 15s/30s/60s probes trace the chart step reused as a rate lookback.
