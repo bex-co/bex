@@ -1657,3 +1657,27 @@ func TestUnfilteredRequestCountsComeFromTheAccessLog(t *testing.T) {
 		}
 	})
 }
+
+// TestRateLookbackIsFlooredAboveTheScrapeInterval is w4/214: the 30-minute
+// preset's 15s step became the rate() lookback, equal to the 15s scrape
+// interval, so CPU and response-time charts were empty or sparse for a busy,
+// mature service. Rates floor their lookback at 60s; per-bucket counts keep
+// the step, or one request would be counted in several buckets.
+func TestRateLookbackIsFlooredAboveTheScrapeInterval(t *testing.T) {
+	for _, tc := range []struct {
+		res  time.Duration
+		want string
+	}{{15 * time.Second, "[60s]"}, {60 * time.Second, "[60s]"}, {300 * time.Second, "[300s]"}} {
+		cpu := promResourceQueryFor(ResourceMetricsRangeRequest{Namespace: "default", App: "web", Metric: "cpu", Resolution: tc.res})
+		lat := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPLatency, Resolution: tc.res, Quantile: 0.9})
+		for name, q := range map[string]string{"cpu": cpu, "latency": lat} {
+			if !strings.Contains(q, tc.want) {
+				t.Errorf("%s at %s: query %q, want rate lookback %s", name, tc.res, q, tc.want)
+			}
+		}
+	}
+	count := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: 15 * time.Second})
+	if !strings.Contains(count, "[15s]") || strings.Contains(count, "[60s]") {
+		t.Errorf("request counts must keep the 15s bucket window: %q", count)
+	}
+}
