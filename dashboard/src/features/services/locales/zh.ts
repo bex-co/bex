@@ -132,7 +132,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Unavailable SSH connection card explanation",
   },
   "services.shellWebTitle": {
-    message: "Web Shell",
+    message: "网页 Shell",
     description: "In-browser terminal card title",
   },
   "services.shellWebDescription": {
@@ -3325,100 +3325,95 @@ const zhServices: Record<string, TranslationEntry> = {
       "Service-detail nav item (dedicated deploy-history tab, w9/002)",
   },
   "services.navDisk": {
-    message: "Disk",
+    message: "磁盘",
     description:
       "Service-detail nav item (persistent disk page); Render's label is singular",
   },
   "services.diskTitle": {
-    message: "Disk",
+    message: "磁盘",
     description: "Disk tab card title",
   },
   "services.diskDescription": {
     message:
-      "Attach an SSD to persist your service's filesystem data across deploys. Disks are charged at $0.175/GB per month.",
+      "挂载一块 SSD，让服务的文件系统数据在多次部署之间得以保留。磁盘按每月 $0.175/GB 计费。",
     description:
       "Disk tab card description; bex's rate is 30% below Render's $0.25",
   },
   "services.diskEmptyTitle": {
-    message: "No disk attached",
+    message: "尚未挂载磁盘",
     description: "Disk tab empty state title",
   },
   "services.diskEmptyBody": {
-    message:
-      "Only files under the disk's mount path are preserved across deploys and restarts.",
+    message: "只有磁盘挂载路径下的文件会在部署和重启之间保留。",
     description: "Disk tab empty state body",
   },
   "services.diskPaidOnly": {
-    message:
-      "Disks require a paid instance type. Upgrade this service's plan to attach one.",
+    message: "磁盘需要付费实例类型。升级此服务的套餐即可挂载。",
     description: "Shown instead of the add button on a free service",
   },
   "services.diskAddAction": {
-    message: "Add Disk",
+    message: "添加磁盘",
     description: "Button that opens and submits the add-disk form",
   },
   "services.diskLoadErrorTitle": {
-    message: "Could not load this service's disk",
+    message: "无法加载此服务的磁盘",
     description: "Disk tab error state title",
   },
   "services.diskWarningsTitle": {
-    message: "Note the following:",
+    message: "请注意以下几点：",
     description: "Heading above the five add-disk warnings (Render's wording)",
   },
   "services.diskWarningZeroDowntime": {
-    message: "Attaching a disk disables zero-downtime deploys for the service.",
+    message: "挂载磁盘后，此服务将不再支持零停机部署。",
     description: "Add-disk warning 1",
   },
   "services.diskWarningSingleInstance": {
-    message:
-      "Services with an attached disk can't scale to multiple instances.",
+    message: "挂载了磁盘的服务无法扩展到多个实例。",
     description: "Add-disk warning 2",
   },
   "services.diskWarningOnePerService": {
-    message: "You can attach a maximum of one disk per service.",
+    message: "每个服务最多只能挂载一块磁盘。",
     description: "Add-disk warning 3",
   },
   "services.diskWarningMountPathOnly": {
-    message: "Only files under your disk's mount path are persisted.",
+    message: "只有磁盘挂载路径下的文件会被持久保存。",
     description: "Add-disk warning 4",
   },
   "services.diskWarningNoSharing": {
-    message: "Other services can't access this service's disk.",
+    message: "其他服务无法访问此服务的磁盘。",
     description: "Add-disk warning 5",
   },
   "services.diskMountPathLabel": {
-    message: "Mount path",
+    message: "挂载路径",
     description: "Add-disk form field label",
   },
   "services.diskMountPathHint": {
     message:
-      "The absolute mount path for the disk. Only files under this path are persisted across deploys. Cannot be the root directory (/).",
+      "磁盘的绝对挂载路径。只有此路径下的文件会在部署之间持久保存。不能是根目录 (/)。",
     description: "Add-disk mount path helper text",
   },
   "services.diskMountPathRequired": {
-    message: "Enter a mount path.",
+    message: "请输入挂载路径。",
     description: "Client-side validation: empty mount path",
   },
   "services.diskMountPathAbsolute": {
-    message: "The mount path must be absolute (start with /).",
+    message: "挂载路径必须是绝对路径（以 / 开头）。",
     description: "Client-side validation: relative mount path",
   },
   "services.diskMountPathNotRoot": {
-    message: "The mount path cannot be the root directory or end with a slash.",
+    message: "挂载路径不能是根目录，也不能以斜杠结尾。",
     description: "Client-side validation: root or trailing slash",
   },
   "services.diskMountPathReserved": {
-    message:
-      "That path is reserved by the platform. Mount a subdirectory of it instead.",
+    message: "该路径由平台保留。请改为挂载到它的某个子目录。",
     description: "Client-side validation: reserved mount path",
   },
   "services.diskSizeLabel": {
-    message: "Size",
+    message: "容量",
     description: "Add-disk size field label",
   },
   "services.diskSizeHint": {
-    message:
-      "You can increase the size later, but you can't decrease it. We recommend starting with the lowest value that serves your use case.",
+    message: "容量之后可以增加，但无法减少。建议从满足需求的最小值开始。",
     description: "Add-disk size helper text (Render's wording)",
   },
   "services.diskSizeChip": {
@@ -3426,54 +3421,53 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Size quick-select chip and size display",
   },
   "services.diskAddSuccess": {
-    message: "Disk attached. The service is redeploying.",
+    message: "磁盘已挂载，服务正在重新部署。",
     description: "Toast after a disk is attached",
   },
   "services.diskGrowLabel": {
-    message: "Increase size (GB)",
+    message: "增加容量 (GB)",
     description: "Grow control label on an attached disk",
   },
   "services.diskGrowAction": {
-    message: "Increase size",
+    message: "增加容量",
     description: "Grow button",
   },
   "services.diskGrowHint": {
     message:
-      "Increasing the size takes effect without downtime; on some volumes the filesystem finishes growing on the next restart. A disk can never be made smaller.",
+      "增加容量无需停机即可生效；在部分卷上，文件系统会在下次重启时完成扩展。磁盘永远无法缩小。",
     description: "Grow helper text, including bex's honest CSI caveat",
   },
   "services.diskResizeSuccess": {
-    message: "Disk size increased.",
+    message: "磁盘容量已增加。",
     description: "Toast after a successful grow",
   },
   "services.diskDeleteAction": {
-    message: "Delete disk",
+    message: "删除磁盘",
     description: "Destructive action on an attached disk",
   },
   "services.diskDeleteTitle": {
-    message: "Delete this disk?",
+    message: "删除此磁盘？",
     description: "Delete confirmation title",
   },
   "services.diskDeleteWarning": {
     message:
-      "All data on the disk will be lost and the service will immediately lose access to it. Its snapshots are deleted too. This cannot be undone.",
+      "磁盘上的所有数据都将丢失，服务也将立即失去对它的访问。它的快照也会被删除。此操作无法撤销。",
     description: "Delete confirmation body",
   },
   "services.diskDeleteConfirm": {
-    message: "Delete disk",
+    message: "删除磁盘",
     description: "Delete confirmation action",
   },
   "services.diskDeleteSuccess": {
-    message: "Disk deleted.",
+    message: "磁盘已删除。",
     description: "Toast after a disk is deleted",
   },
   "services.diskSnapshotsTitle": {
-    message: "Snapshots",
+    message: "快照",
     description: "Snapshots card title",
   },
   "services.diskSnapshotsDescription": {
-    message:
-      "A snapshot of this disk is taken daily and kept for at least seven days.",
+    message: "此磁盘每天会生成一次快照，并至少保留七天。",
     description: "Snapshots card description",
   },
   "services.diskSnapshotsNotConfiguredTitle": {
@@ -3488,38 +3482,38 @@ const zhServices: Record<string, TranslationEntry> = {
       "Explains that snapshots are unconfigured rather than broken, and that an operator enables them.",
   },
   "services.diskSnapshotsEmptyTitle": {
-    message: "No snapshots yet",
+    message: "暂无快照",
     description: "Snapshots empty state title",
   },
   "services.diskSnapshotsEmptyBody": {
-    message: "The first snapshot is taken on the next nightly run.",
+    message: "第一个快照将在下一次夜间任务中生成。",
     description: "Snapshots empty state body",
   },
   "services.diskSnapshotsUnavailableTitle": {
-    message: "Snapshots are unavailable",
+    message: "快照不可用",
     description: "Snapshots error state title",
   },
   "services.diskRestoreDatabaseWarning": {
     message:
-      "Don't restore a disk to recover a database running on it — restoring files underneath a running database can leave it corrupted. Use that database's own backup and restore instead.",
+      "不要通过恢复磁盘来恢复运行在其上的数据库 — 在运行中的数据库下方恢复文件可能导致其损坏。请改用该数据库自身的备份与恢复功能。",
     description:
       "Render's database-recovery warning, carried verbatim in meaning",
   },
   "services.diskRestoreAction": {
-    message: "Restore",
+    message: "恢复",
     description: "Restore button on a snapshot row",
   },
   "services.diskRestoreTitle": {
-    message: "Restore this snapshot?",
+    message: "恢复此快照？",
     description: "Restore confirmation title",
   },
   "services.diskRestoreWarning": {
     message:
-      "The service stops, the disk is replaced with this snapshot, and the service restarts. Everything written after the snapshot is lost. This cannot be undone.",
+      "服务将停止，磁盘会被替换为此快照，然后服务重新启动。快照之后写入的所有内容都将丢失。此操作无法撤销。",
     description: "Restore confirmation body",
   },
   "services.diskRestoreConfirm": {
-    message: "Restore disk",
+    message: "恢复磁盘",
     description: "Restore confirmation action",
   },
   "services.diskUnsupportedType": {
@@ -3575,7 +3569,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Subtitle of the disk usage chart, stating that billing uses provisioned size.",
   },
   "services.diskRestoreStarted": {
-    message: "Restoring the disk. The service stops until it finishes.",
+    message: "正在恢复磁盘，恢复完成前服务将保持停止。",
     description: "Toast after a restore is requested",
   },
   "services.navShell": {
