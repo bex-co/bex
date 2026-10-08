@@ -1,6 +1,6 @@
 # w4 · m185 — Apply environment isolation when its label changes
 
-**Worker:** worker4 **Goal:** saved environment boundaries promptly control new private connections without waiting for an idle timer or manual deploy **Status:** todo (t001–t006 done)
+**Worker:** worker4 **Goal:** saved environment boundaries promptly control new private connections without waiting for an idle timer or manual deploy **Status:** blocked
 
 ## Tasks (in order)
 
@@ -40,3 +40,5 @@ t001–t006 done:
 - **t003 audit:** cron pods lacked the isolation label entirely, so an isolated cron could not reach its own environment's services. `reconcileCronJob` now adds it. `restoreServedTemplate` returns early on the revision label, so the label sync cannot flap against a restored record. The five `applyAppEnvironmentLabels` callers all write only this label and now reach the operator. Database/KeyValue IP layers are separate and unchanged.
 - **t004:** ADR032 records the rule.
 - **t005/t006 tests:** a manager-driven envtest settles an App to Running, then edits only the label. The policy and template converge within 10 s and are removed on clear, with the App generation unchanged. It **fails with label admission disabled** (times out). `TestIsolatedCronPodsCarryTheIsolationLabel` covers the cron label. Operator `make test` and `make lint` pass.
+
+Deployed 2026-10-08: deploy run for `0a754a260` succeeded, and production `bex-controller-manager` runs the pinned `bex-operator@sha256:0482219b…`. The t007 live replay could not start: `bash scripts/qa-login.sh` exited 2 (`QA_EMAIL`/`QA_PASSWORD` unset in both `.env` and `muse.env`).
