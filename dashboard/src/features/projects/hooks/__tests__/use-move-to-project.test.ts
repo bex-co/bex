@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseMutation = vi.fn();
 const mockRefetchQueries = vi.fn();
+const mockQuery = vi.fn();
 vi.mock("@apollo/client/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
   useApolloClient: () => ({
     refetchQueries: (...args: unknown[]) => mockRefetchQueries(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
   }),
 }));
 
@@ -35,6 +37,7 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
 }));
 
 import {
+  ProjectDocument,
   ProjectsDocument,
   SetProjectServicesDocument,
   SetProjectDatabasesDocument,
@@ -68,6 +71,7 @@ beforeEach(() => {
   setDatabases.mockReset().mockResolvedValue({ data: {} });
   setKeyValues.mockReset().mockResolvedValue({ data: {} });
   mockRefetchQueries.mockResolvedValue([]);
+  mockQuery.mockReset().mockResolvedValue({ data: {} });
   mockInvalidate.mockReset().mockResolvedValue(undefined);
   mockUseMutation.mockImplementation((doc: unknown) => {
     if (doc === SetProjectServicesDocument) return [setServices];
@@ -129,6 +133,38 @@ describe("useMoveToProject", () => {
       variables: { id: "prj-b", serviceIds: ["srv-3", "srv-1"] },
     });
     expect(toastSuccess).toHaveBeenCalledWith('"web" moved to "Beta".');
+    // w4/m178: the mutation returns only the target, so the source is re-read
+    // from the network before the router re-runs its cache-first loader.
+    expect(mockQuery).toHaveBeenCalledWith({
+      query: ProjectDocument,
+      variables: { id: "prj-a" },
+      fetchPolicy: "network-only",
+    });
+    expect(mockQuery.mock.invocationCallOrder[0]).toBeLessThan(
+      mockInvalidate.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("still invalidates the source page when its re-read fails", async () => {
+    mockQuery.mockRejectedValue(new Error("network down"));
+    mockUseProjects.mockReturnValue({
+      projects: [
+        project("prj-a", "Alpha", ["srv-1"]),
+        project("prj-b", "Beta"),
+      ],
+      refetch: vi.fn(),
+    });
+    const { result } = renderHook(() => useMoveToProject("service"));
+
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.moveTo("srv-1", "web", "prj-b");
+    });
+
+    expect(ok).toBe(true);
+    expect(setServices).toHaveBeenCalledTimes(1);
+    expect(mockInvalidate).toHaveBeenCalledTimes(1);
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("never detaches the resource from its source project when the move fails", async () => {
@@ -250,6 +286,9 @@ describe("useMoveToProject", () => {
     // Re-runs the project-detail route loader so its snapshot table drops the
     // removed service instead of leaving it stale until a manual reload.
     expect(mockInvalidate).toHaveBeenCalledTimes(1);
+    // The remove mutation returns the source Project itself, so the cache is
+    // already fresh: no extra read (w4/m178).
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it("reports removal success even when the refresh fails", async () => {

@@ -3,6 +3,7 @@ import { useApolloClient, useMutation } from "@apollo/client/react";
 import { useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
+  ProjectDocument,
   ProjectsDocument,
   SetProjectServicesDocument,
   SetProjectDatabasesDocument,
@@ -85,27 +86,36 @@ export function useMoveToProject(
     [projects, kind],
   );
 
-  // Post-move refresh. Selecting a menu item closes the dropdown, which
-  // unmounts the menu (and this hook) and aborts any query the unmounted
-  // instance still had in flight — so the refresh goes through the client and
-  // router singletons (both lifecycle-independent), not a component-scoped
-  // refetch, and is fire-and-forget: the mutations already succeeded and
-  // updated the cache, so a refresh failure must never be reported as a failed
-  // move. Two surfaces render these row actions, each fed differently:
-  //   - the overview page reads the live `Projects` watcher (useProjects), so
-  //     client.refetchQueries({ Projects }) updates it; but
-  //   - the project-detail page's membership table is derived from its route
-  //     loader's snapshot of the *singular* `Project` query (network-only),
-  //     which refetching `Projects` neither refreshes nor re-runs — so we also
-  //     router.invalidate() to re-run that loader (matching the same page's own
-  //     refetchAll on database/key-value deletion). Without it a removed
-  //     resource lingers in the detail table until a manual reload.
-  const refreshProjects = useCallback(() => {
-    client
-      .refetchQueries({ include: [ProjectsDocument] })
-      .catch(() => undefined);
-    router.invalidate().catch(() => undefined);
-  }, [client, router]);
+  // Post-move refresh. Selecting a menu item unmounts this hook, so the
+  // refresh goes through the client and router singletons and is
+  // fire-and-forget: the mutation already succeeded, so a refresh failure must
+  // never read as a failed move. The overview reads the live `Projects`
+  // watcher; the project page renders its route loader's `Project` snapshot,
+  // which router.invalidate() re-runs cache-first for a retained match. A
+  // cross-project move's mutation returns only the target, and no `Projects`
+  // watcher is guaranteed to be mounted (the sidebar is lazy and closes on
+  // mobile), so re-read the source network-only and invalidate only after it
+  // settles (w4/m178).
+  const refreshProjects = useCallback(
+    (sourceProjectId?: string) => {
+      const refetches: Promise<unknown>[] = [
+        client.refetchQueries({ include: [ProjectsDocument] }),
+      ];
+      if (sourceProjectId) {
+        refetches.push(
+          client.query({
+            query: ProjectDocument,
+            variables: { id: sourceProjectId },
+            fetchPolicy: "network-only",
+          }),
+        );
+      }
+      void Promise.allSettled(refetches).then(() =>
+        router.invalidate().catch(() => undefined),
+      );
+    },
+    [client, router],
+  );
 
   const moveTo = useCallback(
     async (
@@ -143,7 +153,7 @@ export function useMoveToProject(
       toast.success(
         t("projects.moveSuccess", { name: resourceName, project: to.name }),
       );
-      refreshProjects();
+      refreshProjects(from?.id);
       return true;
     },
     [projects, kind, runSet, refreshProjects, t],

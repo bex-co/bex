@@ -1,16 +1,16 @@
 # w4 · m178 — Refresh source project membership after a move
 
-**Worker:** worker4 **Goal:** a completed project move removes the resource from the source project's row and count without a reload, while preserving authoritative target placement and existing navigation caching. **Status:** todo
+**Worker:** worker4 **Goal:** a completed project move removes the resource from the source project's row and count without a reload, while preserving authoritative target placement and existing navigation caching. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Refresh the source Project before publishing the loader snapshot | 30m | — |
-| t002 | Audit the shared move family and preserve passing refresh controls | 20m | w4/m178/t001 |
-| t003 | Render parity | 15m | w4/m178/t002 |
-| t004 | Simplify | 10m | w4/m178/t003 |
-| t005 | Test coverage with real Router and Apollo cache | 40m | w4/m178/t003, w4/m178/t004 |
+| t001 | Refresh the source Project before publishing the loader snapshot — **DONE** | 30m | — |
+| t002 | Audit the shared move family and preserve passing refresh controls — **DONE** | 20m | w4/m178/t001 |
+| t003 | Render parity — **DONE** | 15m | w4/m178/t002 |
+| t004 | Simplify — **DONE** | 10m | w4/m178/t003 |
+| t005 | Test coverage with real Router and Apollo cache — **DONE** | 40m | w4/m178/t003, w4/m178/t004 |
 | t006 | Closeout | 10m | w4/m178/t005 |
 
 ## Definition of done
@@ -35,3 +35,11 @@ Sibling kinds, Overview, refresh-rejection and prefetch controls were not exerci
 - **Render parity:** included (t003), because displayed project membership changes. REST/GraphQL/MCP remain canonical; compare the UI to those reads and the documented Render move surface without inventing a different grouping model.
 - **Scope:** project refresh only. Keep the shared title policy's 16 call sites in 15 files and the single target membership write.
 - **Unverified:** sibling resource-kind live moves, Overview rendering, refresh rejection, other title-loader consumers, MCP and authenticated Render timing; see finding.md.
+
+## Progress (2026-10-08)
+
+t001–t005 done. After a cross-project move, `useMoveToProject` re-reads the source `Project` network-only (`client.query`, the existing typed `ProjectDocument`), alongside the existing `Projects` refetch. `router.invalidate()` runs only after both settle, so the retained project page's cache-first loader republishes the source's fresh membership. Still exactly one membership write (w6/036). A rejected re-read still invalidates and never turns the successful move into a failure toast. Remove-from-project needs no extra read: its mutation returns the source itself. The shared title-loader policy (cache-first on `stay`) is untouched.
+
+Family: the hook is shared by the three row-action mounts (service, database, key-value), and `ProjectDocument` carries all three ID lists, so every kind gets the same refresh. Only the service kind is exercised by the integration test. The Overview reads the live `Projects` watcher and is unchanged.
+
+Tests: the new `move-refreshes-source-project.test.tsx` uses a real `ApolloClient`/`InMemoryCache`, a real TanStack router with a cache-first-on-stay loader, and a scripted single-valued membership server. It **fails on the old hook** (the moved row stays) and passes on the fix. The unit tests add the network-only source read ordered before invalidate, re-read-rejection, and no-read-on-remove cases. Dashboard `yarn lint` (typecheck, eslint, knip) and the full `yarn test` (487 files, 4395 tests) pass. ADR018 Projects row updated.
