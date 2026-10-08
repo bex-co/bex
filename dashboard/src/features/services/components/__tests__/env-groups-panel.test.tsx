@@ -37,7 +37,9 @@ const scopeState = {
   byId: new Map<string, { id: string; name: string }>(),
   serviceEnvironmentById: new Map<string, string>(),
   loading: false,
+  ready: true,
   error: undefined as Error | undefined,
+  retry: vi.fn(),
 };
 
 vi.mock("@/features/env-groups/hooks/use-env-group-scope-index", () => ({
@@ -90,6 +92,10 @@ function groupsResult(
 }
 
 beforeEach(() => {
+  scopeState.ready = true;
+  scopeState.error = undefined;
+  scopeState.serviceEnvironmentById = new Map();
+  scopeState.retry.mockReset();
   mockUseEnvGroups.mockReset();
   mockCreateGroup.mockReset().mockResolvedValue(true);
   mockDeleteGroup.mockReset().mockResolvedValue(true);
@@ -458,5 +464,78 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
         '[title="Overridden by this service\'s own qa.txt secret file"]',
       ),
     ).toHaveLength(2);
+  });
+
+  // w4/217: an unlinked group from another environment showed an enabled Link
+  // that bex-api always refused with a scope mismatch.
+  describe("scope-compatible groups only (w4/217)", () => {
+    const group = (id: string, environmentId: string | null): EnvGroupView =>
+      ({
+        id,
+        name: id,
+        ownerId: "tea-1",
+        environmentId,
+        availability: null,
+        serviceLinks: [],
+        envVarKeys: [],
+        secretFileNames: [],
+      }) as unknown as EnvGroupView;
+
+    it("offers only groups in the service's own environment", async () => {
+      scopeState.serviceEnvironmentById = new Map([["web", "evm-source"]]);
+      mockUseEnvGroups.mockReturnValue({
+        groups: [
+          group("evg-source", "evm-source"),
+          group("evg-target", "evm-target"),
+          group("evg-workspace", null),
+        ],
+        loading: false,
+        error: undefined,
+      });
+      render(<EnvGroupsPanel serviceId="web" />);
+      expect(await screen.findByText("evg-source")).toBeInTheDocument();
+      expect(screen.queryByText("evg-target")).toBeNull();
+      expect(screen.queryByText("evg-workspace")).toBeNull();
+      expect(screen.getByText("Available to link (1)")).toBeInTheDocument();
+    });
+
+    it("says no group shares the environment, not that every group is linked", async () => {
+      scopeState.serviceEnvironmentById = new Map([["web", "evm-source"]]);
+      mockUseEnvGroups.mockReturnValue({
+        groups: [group("evg-target", "evm-target")],
+        loading: false,
+        error: undefined,
+      });
+      render(<EnvGroupsPanel serviceId="web" />);
+      expect(
+        await screen.findByText(
+          /No unlinked groups share this service's environment/,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Link/ })).toBeNull();
+    });
+
+    it("offers nothing until the scope resolves, and retries a failed lookup", async () => {
+      mockUseEnvGroups.mockReturnValue({
+        groups: [group("evg-workspace", null)],
+        loading: false,
+        error: undefined,
+      });
+      scopeState.ready = false;
+      const { unmount } = render(<EnvGroupsPanel serviceId="web" />);
+      expect(
+        await screen.findByText(/Checking which groups share/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("evg-workspace")).toBeNull();
+      unmount();
+
+      scopeState.error = new Error("index failed");
+      render(<EnvGroupsPanel serviceId="web" />);
+      await userEvent
+        .setup()
+        .click(await screen.findByRole("button", { name: "Try again" }));
+      expect(scopeState.retry).toHaveBeenCalled();
+      expect(screen.queryByText("evg-workspace")).toBeNull();
+    });
   });
 });
