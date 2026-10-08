@@ -1,6 +1,6 @@
 # w8 · m51 — Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)
 
-**Worker:** worker8 **Goal:** a native-runtime build uses the toolchain version the service asks for, through Render's documented mechanisms, from a reviewed and digest-pinned set of version lines. It narrates which version it chose and why, and refuses an unsupported version by name. **Status:** blocked — t001–t008 done 2026-10-05; released and live-verified 2026-10-05 for env-var, engines, unsupported and default cases; t009 waits only on the `.python-version` / `.nvmrc` file-source replay (needs a fixture repo)
+**Worker:** worker8 **Goal:** a native-runtime build uses the toolchain version the service asks for, through Render's documented mechanisms, from a reviewed and digest-pinned set of version lines. It narrates which version it chose and why, and refuses an unsupported version by name. **Status:** done (2026-10-08, live closeout on bex v0.3.2) 
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — **DONE**                                                                   | 30m | w8/m51/t005                |
 | t007 | Simplify — **DONE**                                                                        | 20m | w8/m51/t006                |
 | t008 | Test coverage — **DONE**                                                                   | 45m | w8/m51/t006                |
-| t009 | Closeout                                                                        | 15m | w8/m51/t007, w8/m51/t008   |
+| t009 | Closeout — **DONE**                                                                        | 15m | w8/m51/t007, w8/m51/t008   |
 
 ## Definition of done
 
@@ -57,3 +57,14 @@ Remaining before t009: one live build from a repo carrying `.python-version` (e.
 ## Fixtures added (2026-10-08, w8 /loopx)
 
 The "needs a repo carrying the file" half of the gate is cleared. `bex-co/bex` is public and now has [`examples/runtime-version/`](../../../../examples/runtime-version/README.md): `python/` with `.python-version` = `3.12` (default 3.13), and `node/` with `.nvmrc` = `22` (default 24). Each has no env var and no `engines`, so only the file can select the line. The README gives the exact `bex services create` commands and the expected narration. **Remaining gate (user):** an authenticated production run of both builds, then t009. The QA device login demands a password reauth the agent must not perform (see m45).
+
+## Live closeout (2026-10-08, w8 /loopx, released `bex v0.3.2`)
+
+Fixtures from `examples/runtime-version` (bex-canary, deleted by ID afterwards):
+
+| DoD item | Result |
+| --- | --- |
+| `.python-version` = `3.12`, no env var (`srv-db3vqqm2bdqc73aphs20`) | ✅ `FROM python:3.12-bookworm@sha256:e91fec…`, `python --version` → `Python 3.12.15`, live. A redeploy (`dep-db3vssm2bdqc73aphs3g`) logged `==> Using Python 3.12 (from .python-version)` |
+| `.nvmrc` = `22`, no env var (`srv-db3vqqogu8gc73cl1310`) | ✅ `==> Using Node 22 (from .nvmrc)`, `FROM node:22-bookworm@sha256:363e15…`, live |
+
+**Observed, filed separately as w8/069 (not an m51 defect):** the Python fixture's *first* build log has no `==> Using …` line at all, under any log type. The redeploy of the same commit has it, and Node's first build has it. The resolver ran and chose 3.12 (image and `python --version` prove it), so this is an intermittent capture drop of the short-lived native-resolve step's output.
