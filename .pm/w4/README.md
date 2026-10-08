@@ -218,6 +218,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **217** — [Service Environment offers groups from a different environment, then refuses every Link](217.md) (55m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 13; enabled incompatible candidates bypass the existing scope predicate that the group-detail picker already uses.
+
 - [ ] **216** — [No-op environment saves falsely say a deployment started](216.md) (50m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 9; the service adapter discards rolledOut:false and announces a release despite unchanged deploy history.
 
 - [ ] **215** — [Environment-group scopes hide the parent project of same-named environments](215.md) (55m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 8; Create/Move/Clone and saved scope labels omit already-loaded project context.
