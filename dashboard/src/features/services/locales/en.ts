@@ -2613,7 +2613,8 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Title for the static-site custom-headers editor",
   },
   "services.headersHint": {
-    message: "Custom response headers added to responses whose path matches.",
+    message:
+      "Custom response headers added to responses whose path matches. Body-framing and connection headers such as Content-Length are set by the server and can't be overridden. Set Content-Encoding only on files that are actually stored compressed.",
     description: "Help text for the headers editor",
   },
   "services.headerAdd": {

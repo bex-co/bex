@@ -5026,6 +5026,9 @@ func validateHeaders(headers []StaticHeaderView) error {
 		if !httpguts.ValidHeaderFieldName(h.Name) {
 			return fmt.Errorf("%w: headers[%d].name %q is not a valid HTTP header name", core.ErrBadRequest, i, h.Name)
 		}
+		if appv1alpha1.ReservedStaticHeader(h.Name) {
+			return fmt.Errorf("%w: headers[%d].name %q is set by the server and cannot be overridden (it frames the response body or the connection)", core.ErrBadRequest, i, h.Name)
+		}
 		if len(h.Value) > maxStaticHeaderValueLen {
 			return fmt.Errorf("%w: headers[%d].value must not exceed %d characters", core.ErrBadRequest, i, maxStaticHeaderValueLen)
 		}
