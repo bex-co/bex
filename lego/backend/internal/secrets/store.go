@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -172,6 +173,16 @@ func (s *openBaoStore) metadataURL(ctx context.Context, path string) string {
 	return fmt.Sprintf("%s/v1/%s/metadata/%s/%s", s.addr, s.mount, tenantFromCtx(ctx), path)
 }
 
+func (s *openBaoStore) destroyURL(ctx context.Context, path string) string {
+	return fmt.Sprintf("%s/v1/%s/destroy/%s/%s", s.addr, s.mount, tenantFromCtx(ctx), path)
+}
+
+// isNotFound reports a KV v2 404: the path was never written or is gone.
+func isNotFound(err error) bool {
+	var se *core.HTTPStatusError
+	return errors.As(err, &se) && se.Code == http.StatusNotFound
+}
+
 // Get returns the map stored at path, or an empty map when it was never written or
 // has been soft-deleted (a 404 is not an error — the caller treats "unset" as empty).
 func (s *openBaoStore) Get(ctx context.Context, path string) (map[string]string, error) {
@@ -181,8 +192,7 @@ func (s *openBaoStore) Get(ctx context.Context, path string) (map[string]string,
 		} `json:"data"`
 	}
 	err := s.kv(ctx, http.MethodGet, s.dataURL(ctx, path), nil, &out)
-	var se *core.HTTPStatusError
-	if errors.As(err, &se) && se.Code == http.StatusNotFound {
+	if isNotFound(err) {
 		return map[string]string{}, nil
 	}
 	if err != nil {
@@ -207,8 +217,7 @@ func (s *openBaoStore) GetVersioned(ctx context.Context, path string) (core.Secr
 		} `json:"data"`
 	}
 	err := s.kv(ctx, http.MethodGet, s.dataURL(ctx, path), nil, &out)
-	var se *core.HTTPStatusError
-	if errors.As(err, &se) && se.Code == http.StatusNotFound {
+	if isNotFound(err) {
 		return core.SecretKVSnapshot{Data: map[string]string{}}, nil
 	}
 	if err != nil {
@@ -267,11 +276,72 @@ func (s *openBaoStore) PutCAS(ctx context.Context, path string, data map[string]
 // Delete removes the path (and all its versions); an already-absent path is a no-op.
 func (s *openBaoStore) Delete(ctx context.Context, path string) error {
 	err := s.kv(ctx, http.MethodDelete, s.metadataURL(ctx, path), nil, nil)
-	var se *core.HTTPStatusError
-	if errors.As(err, &se) && se.Code == http.StatusNotFound {
+	if isNotFound(err) {
 		return nil
 	}
 	return err
+}
+
+// Retire empties path while keeping its version count: it commits an empty map
+// as a new version, then destroys every older version's data. A write that
+// read path before the retire therefore never compare-and-sets over, nor is
+// mistaken for, a map a namesake writes there after it, as it could once a
+// metadata Delete restarted versions at 1 (w5/156). An absent path is a no-op:
+// any write that lands there counts from version 1, past the 0 an earlier read
+// saw.
+func (s *openBaoStore) Retire(ctx context.Context, path string) error {
+	oldest, err := s.oldestVersion(ctx, path)
+	if err != nil || oldest == 0 {
+		return err
+	}
+	body, _ := json.Marshal(map[string]any{"data": map[string]string{}})
+	var out struct {
+		Data struct {
+			Version uint64 `json:"version"`
+		} `json:"data"`
+	}
+	if err := s.kv(ctx, http.MethodPost, s.dataURL(ctx, path), body, &out); err != nil {
+		return sanitizeVersionedStoreError("retire", err)
+	}
+	// Every version below the empty one goes, including any written between
+	// the read above and the write; destroy skips numbers KV no longer keeps.
+	older := make([]uint64, 0, out.Data.Version-oldest)
+	for v := oldest; v < out.Data.Version; v++ {
+		older = append(older, v)
+	}
+	if len(older) == 0 {
+		return nil
+	}
+	body, _ = json.Marshal(map[string]any{"versions": older})
+	return sanitizeVersionedStoreError("retire", s.kv(ctx, http.MethodPost, s.destroyURL(ctx, path), body, nil))
+}
+
+// oldestVersion is the oldest version KV v2 still keeps for path, or 0 for an
+// absent path.
+func (s *openBaoStore) oldestVersion(ctx context.Context, path string) (uint64, error) {
+	var out struct {
+		Data struct {
+			Versions map[string]json.RawMessage `json:"versions"`
+		} `json:"data"`
+	}
+	err := s.kv(ctx, http.MethodGet, s.metadataURL(ctx, path), nil, &out)
+	if isNotFound(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, sanitizeVersionedStoreError("read", err)
+	}
+	var oldest uint64
+	for key := range out.Data.Versions {
+		v, err := strconv.ParseUint(key, 10, 64)
+		if err != nil {
+			return 0, core.Err("openbao metadata listed a malformed version")
+		}
+		if oldest == 0 || v < oldest {
+			oldest = v
+		}
+	}
+	return oldest, nil
 }
 
 // List returns the immediate child keys under path (KV v2 metadata LIST). A child
@@ -284,8 +354,7 @@ func (s *openBaoStore) List(ctx context.Context, path string) ([]string, error) 
 		} `json:"data"`
 	}
 	err := s.kv(ctx, http.MethodGet, s.metadataURL(ctx, path)+"?list=true", nil, &out)
-	var se *core.HTTPStatusError
-	if errors.As(err, &se) && se.Code == http.StatusNotFound {
+	if isNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {

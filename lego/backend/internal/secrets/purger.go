@@ -42,9 +42,8 @@ type WorkspacePurger struct {
 	*Service
 }
 
-// PurgeWorkspace deletes the OpenBao env-var and secret-file paths for every
-// App the given tenant owned, found via core.LabelTenant — the same label
-// CreatePostgres/CreateKeyValue/the App-CR projector stamp. Best-effort and
+// PurgeWorkspace deletes the OpenBao env-var and secret-file paths of every
+// service the given tenant's store lists, live or long deleted. Best-effort and
 // idempotent: an absent Store is a no-op (secrets disabled, nothing to purge),
 // and deleting an already-absent path is a no-op (core.SecretKV.Delete's
 // contract), so a retried workspace delete completes the teardown cleanly.
@@ -55,13 +54,28 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 	if p.Store == nil {
 		return nil
 	}
-	var apps appv1alpha1.AppList
-	if err := p.ListByTenant(ctx, &apps, tenantID); err != nil {
+	return p.purgeServicePaths(withTenant(ctx, tenantID), tenantID)
+}
+
+// purgeServicePaths deletes every service path listed under the deleted
+// tenant: its live Apps' env and file maps, their legacy id-keyed ones, and
+// the ones PurgeApp retired for services deleted earlier, which keep their
+// metadata so a namesake's versions count on (w5/156). The tenant is gone, so
+// no namesake can come and nothing is left to count past. The legacy default
+// tenant is never swept: its paths have no trustworthy owner.
+func (p *WorkspacePurger) purgeServicePaths(ctx context.Context, tenantID string) error {
+	if tenantID == "" || tenantID == baoTenant {
+		return nil
+	}
+	services, err := p.Store.List(ctx, "services")
+	if err != nil {
 		return err
 	}
-	for i := range apps.Items {
-		if err := p.purgeAppSecrets(ctx, &apps.Items[i]); err != nil {
-			return err
+	for _, service := range services {
+		for _, path := range []string{envPath(service), filesPath(service)} {
+			if err := p.Store.Delete(ctx, path); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -82,7 +96,8 @@ func (p *WorkspacePurger) PurgeApp(ctx context.Context, a *appv1alpha1.App) erro
 	return p.purgeAppSecrets(ctx, a)
 }
 
-// purgeAppSecrets deletes one App's tenant-scoped env-var and secret-file maps.
+// purgeAppSecrets retires one App's tenant-scoped env-var and secret-file maps
+// (retireMap): a namesake may take the service's name next.
 // It must not delete a same-named legacy default-tenant path: that path has no
 // trustworthy workspace owner and is reserved for explicit operator migration.
 // The public name resolves through storeServiceName; the tenant through
@@ -100,7 +115,7 @@ func (p *WorkspacePurger) purgeAppSecrets(ctx context.Context, a *appv1alpha1.Ap
 		paths = append(paths, envPath(id), filesPath(id))
 	}
 	for _, path := range paths {
-		if err := p.Store.Delete(tenantCtx, path); err != nil {
+		if err := p.retireMap(tenantCtx, path); err != nil {
 			return err
 		}
 	}
