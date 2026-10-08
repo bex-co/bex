@@ -207,6 +207,12 @@ func wakeApp(ctx context.Context, c client.Client, app *appv1alpha1.App, host st
 	log.Info("waking app", "app", app.Name, "host", host)
 }
 
+// writeWakeResponse answers every request the activator holds while the App
+// has no ready instance. That is a sleeping App waking, and also an awake one
+// whose health check is failing (the w6/m94 readiness hold), so its JSON names
+// neither: it used to say "service hibernated" to a client investigating a
+// readiness outage on a running instance (w4/211). Phase cannot tell them
+// apart either — a cold wake reads Deploying before it is ready.
 func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Retry-After", "5")
 	w.Header().Set("Cache-Control", "no-store")
@@ -215,7 +221,7 @@ func writeWakeResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeBody(w, r, http.StatusServiceUnavailable, "application/json",
-		`{"error":"service hibernated","retryAfter":5}`)
+		`{"error":"service not ready","retryAfter":5}`)
 }
 
 // writeSuspendedResponse answers a suspended service's public host: 503 plus
