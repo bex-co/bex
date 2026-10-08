@@ -8,7 +8,10 @@ import {
   type CronJobRunsQuery,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 import { skipPollWhenHidden, useConvergingPoll } from "@/common/lib/polling";
 import type { CronRunView } from "@/features/services/types";
 
@@ -278,12 +281,12 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
       toast.success(t("services.cronTriggerSuccess"));
       return true;
     } catch (e) {
-      // Surface the backend's rejection (e.g. an already-active run under
-      // ForbidConcurrent) inline rather than swallowing it in a toast.
+      // Inline rather than a toast; a known refusal reads as its localized
+      // reason, never the server's English text naming an internal id (w4/203).
       setTriggerError(
-        e instanceof Error && e.message
-          ? e.message
-          : t("services.cronTriggerError"),
+        hasGraphQLErrorCode(e, "CRON_SUSPENDED")
+          ? t("capabilities.blockedSuspended")
+          : mutationErrorMessage(e, t("services.cronTriggerError")),
       );
       return false;
     } finally {

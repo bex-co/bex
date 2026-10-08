@@ -27,6 +27,15 @@ import type {
   CronRunView,
   ServiceBadgeVariant,
 } from "@/features/services/types";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useServerActions } from "@/features/capabilities/hooks/use-resource-actions";
+import {
+  gateAction,
+  gateReason,
+  resourceDecision,
+  type ResourceActionId,
+} from "@/features/capabilities/lib/resource-actions";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { en } from "@/i18n";
 
 const RUN_STATUS: Record<
@@ -93,6 +102,28 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
     clearTriggerError,
     trigger,
   } = useCronRuns(serviceId);
+  // The server's own decision gates both verbs (w4/203): a suspended cron
+  // answers cron_run_now with precondition "suspended", which the button
+  // used to ignore and then show the raw refusal.
+  const { currentWorkspaceId } = useWorkspace();
+  const serverActions = useServerActions(serviceId);
+  const actionBlocked = (action: ResourceActionId) =>
+    gateReason(
+      gateAction(
+        serverActions.status === "ready"
+          ? resourceDecision(
+              serverActions.snapshot,
+              currentWorkspaceId,
+              serviceId,
+              action,
+            )
+          : null,
+        serverActions.status === "ready" ? "ready" : serverActions.status,
+      ),
+      t,
+    );
+  const triggerBlocked = actionBlocked("cron_run_now");
+  const cancelBlocked = actionBlocked("cron_cancel_run");
   const [confirmRun, setConfirmRun] = useState<CronRunView | null>(null);
   const [confirmTrigger, setConfirmTrigger] = useState(false);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
@@ -122,18 +153,20 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                 in-product recovery for a wedged run (the QA probe had to drop
                 to raw GraphQL). The confirm dialog below names the
                 preemption instead. */}
-            <Button
-              size="sm"
-              disabled={triggering}
-              onClick={() => {
-                clearTriggerError();
-                setConfirmTrigger(true);
-              }}
-            >
-              {triggering
-                ? t("services.cronTriggering")
-                : t("services.cronTriggerRun")}
-            </Button>
+            <PermissionTooltip reason={triggerBlocked}>
+              <Button
+                size="sm"
+                disabled={triggering || !!triggerBlocked}
+                onClick={() => {
+                  clearTriggerError();
+                  setConfirmTrigger(true);
+                }}
+              >
+                {triggering
+                  ? t("services.cronTriggering")
+                  : t("services.cronTriggerRun")}
+              </Button>
+            </PermissionTooltip>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -200,14 +233,18 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                           <TableCell className="text-right">
                             {run.status.toLowerCase() === "pending" ||
                             run.status.toLowerCase() === "running" ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={cancelingId === run.id}
-                                onClick={() => setConfirmRun(run)}
-                              >
-                                {t("services.cronRunCancel")}
-                              </Button>
+                              <PermissionTooltip reason={cancelBlocked}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={
+                                    cancelingId === run.id || !!cancelBlocked
+                                  }
+                                  onClick={() => setConfirmRun(run)}
+                                >
+                                  {t("services.cronRunCancel")}
+                                </Button>
+                              </PermissionTooltip>
                             ) : null}
                           </TableCell>
                         </TableRow>
