@@ -125,12 +125,16 @@ export interface UseEnvGroupResult {
 }
 
 /** Reads one group by id, including keys/names and linked service ids. */
-export function useEnvGroup(id: string): UseEnvGroupResult {
+export function useEnvGroup(
+  id: string,
+  { poll = true }: { poll?: boolean } = {},
+): UseEnvGroupResult {
   const { data, loading, error, refetch } = useQuery(EnvGroupDocument, {
     variables: { id },
     fetchPolicy: "cache-first",
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    // The topbar reads with poll off: it follows the page's polled cache.
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
 
