@@ -85,3 +85,18 @@ Implementation and review are complete locally. Repository `AGENTS.md` requires 
 ## Pinned CLI acceptance correction — 2026-10-03
 
 The CLI's `restart` command is ID-only: upstream v2.27.0 `cmd/restart.go:18` and `pkg/resource/service.go:223–244` reject an ordinary service name with `unknown resource type` before a restart request. This was reproduced on an owned renamed service after rollout; see [m47's full CLI evidence](../m47/cli-production-rename-20261003.json). Earlier restart-by-name CLI examples in this record describe an unsupported invocation; they are not evidence of a server failure and do not justify changing the pinned client. The goal/DoD now use `deploys create <name>` for the supported CLI mutation. Direct REST restart-by-name remains a separate server resolver test. The one-workspace rename retest passed; it does **not** establish this milestone's two-workspace isolation acceptance or close this milestone.
+
+## Re-triage (2026-10-07, w8 /loopx)
+
+- **API: shipped and live.** The `X-Bex-Workspace` resolution landed in `faaaba0ce` (2026-10-02) and has deployed since; m42 records three consecutive green deploys through `cd65ad10a`.
+- **CLI: not released.** The launcher change is in `faaaba0ce`, but the newest tag, `bex-cli/v0.2.1`, predates it (`git merge-base --is-ancestor` fails), so installed CLIs don't yet send the header.
+- **Live two-workspace check: attempted with a launcher built from `main`, but blocked.**
+  - An isolated `bex login` device flow, approved in a browser carrying the QA Kratos session (`qa-login.sh --serve`), reached a Hydra login that demands **Reauthenticate** with the QA account's password.
+  - The QA identity is the operator's own account, and its password is never handed to an agent. The run was cleaned up: the login process was killed, the QA session revoked with `--logout`, and temp config removed.
+
+**Remaining gates (user):**
+
+1. Approve `/release cli`, so the header reaches installed CLIs. Publishing a version is outward-facing.
+2. Run the live t008 check yourself, or provide a reauth-free QA path. With the released (or `main`-built) CLI logged in as an identity in two workspaces, a same-named fixture in each, and `BEX_WORKSPACE=A`:
+   - `bex deploys list N`, `bex services instances N` and `bex deploys create N` must act on A's fixture;
+   - with no selection, the name must return `409 SERVICE_NAME_AMBIGUOUS`.

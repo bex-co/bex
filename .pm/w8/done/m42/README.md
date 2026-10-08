@@ -1,6 +1,6 @@
 # w8 · m42 — Unstick production deploys: fix the flaky gates that have held `deploy.yml` red since 2026-09-22
 
-**Worker:** worker8 **Goal:** `main` reaches production again on every push, and a stalled deploy is noticed in hours, not days. **Status:** blocked
+**Worker:** worker8 **Goal:** `main` reaches production again on every push, and a stalled deploy is noticed in hours, not days. **Status:** done (2026-10-07; three consecutive green deploys, see § Closeout)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Make ci-red-streak see deploy.yml — fetch runs per workflow, not a global window — **DONE** | 40m | —                      |
 | t005 | Simplify — **DONE**                                                                    | 20m | t001, t002, t003, t004 |
 | t006 | Test coverage — **DONE**                                                               | 30m | t005                   |
-| t007 | Closeout                                                                    | 15m | t006                   |
+| t007 | Closeout — **DONE**                                                                    | 15m | t006                   |
 
 ## Definition of done
 
@@ -72,3 +72,16 @@ Local workflow validation passes. **Remaining:** ship the workflow changes and o
 Full backend suite against isolated Postgres/OpenFGA/OpenBao, operator `make test`, full CLI suite, backend/CLI lint, targeted Go race tests, workflow guards and ci-red-streak fixtures passed. The final affected backend packages passed again after review changes. Overlay mutation checks confirmed the image, workspace and rename regressions fail with their fixes removed. Markdown was formatted; QA fixtures and the isolated credentials were cleaned up.
 
 Implementation and review are complete locally. Repository `AGENTS.md` requires an explicit `$ship` before commit/push. After ship, observe CI/production and complete this milestone's remaining live closeout; m45 also needs the updated CLI released. The earlier policy/sign-off/login blockers are resolved.
+
+## Closeout (2026-10-07, w8 /loopx)
+
+DoD met:
+
+- **Three consecutive successful deploys.** Runs `37691020003` (`8c2ec3b4d`), `37696539947` (`fc4bbbd38`) and `37700343568` (`cd65ad10a`) completed `success` with build and deploy running. The runs between them are supersession cancellations only.
+- **No t001–t003 flake in the window.** The one failure, `accefe1f1` (`37688560673`, 21:19Z), is a Go compile error in the image `build` job, not a test gate. The next run went green.
+- **Sandbox copy:** met 2026-09-26 (see § Status update).
+- **Named root causes:** t001–t003, each with its fix.
+- **Red-streak detector:** t004 plus its fixture.
+- **Gate dedup:** shipped in `faaaba0ce`. `dashboard-test`, `opensandbox-controller-test`, `backend-test` and `operator-test` now trigger only on `pull_request` and `workflow_call`.
+
+Residual, not a DoD item: shared runner-host contention (7 CI + 3 production runners on one 15-CPU VM) remains the accepted #RUNNER-HOSTS posture.
