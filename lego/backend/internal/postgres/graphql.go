@@ -641,6 +641,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createDatabaseUser": gqlutil.ArgMutation(databaseUserWithPasswordGQLType, "name", s.CreateUser),
 		"deleteDatabaseUser": &graphql.Field{
 			Type: graphql.Boolean,
+			Description: "Request revocation of an additional login role. true means the request was accepted; the role is retired " +
+				"(NOLOGIN, NULL password) on the next reconcile, keeping its grants and owned objects.",
 			Args: graphql.FieldConfigArgument{
 				"id":   gqlutil.ReqArg(graphql.String),
 				"name": gqlutil.ReqArg(graphql.String),
