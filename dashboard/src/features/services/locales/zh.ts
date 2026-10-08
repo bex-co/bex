@@ -74,6 +74,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "此服务已暂停。恢复后即可通过 SSH 连接。",
     description: "Why SSH is unavailable on a suspended service (w4/143)",
   },
+  "services.sshUnavailableSuspendedFree": {
+    message:
+      "此服务已暂停，且 SSH 需要付费实例类型。恢复服务只会恢复流量；免费服务仍不包含 Shell 访问。",
+    description:
+      "Why SSH is unavailable on a suspended Free service: both blockers, without implying a resume grants SSH (w4/m183)",
+  },
   "services.sshUnavailableFree": {
     message: "SSH 需要付费实例类型。免费服务不包含 Shell 访问。",
     description: "Why SSH is unavailable on a Free-plan service (w4/143)",
