@@ -93,8 +93,14 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 	return image, int(primary), nil
 }
 
+// privateServiceProjection is the selector and ports of both stable serving
+// Services. The selector takes the runtime pod template's labelApp and
+// labelAppID: Job pods (pre-deploy, build, disk backup) carry labelApp alone,
+// and must never receive service traffic (w4/m181). Unlike the Deployment's,
+// a Service selector is mutable.
 func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string, []corev1.ServicePort, error) {
-	selector := map[string]string{labelApp: app.Name}
+	pod := appPodLabels(app, false)
+	selector := map[string]string{labelApp: pod[labelApp], labelAppID: pod[labelAppID]}
 	ports := []corev1.ServicePort{{Port: int32(port), TargetPort: intstr.FromInt(port)}}
 	if app.Spec.UsesImagePorts() {
 		network := app.ActiveImageNetwork()
