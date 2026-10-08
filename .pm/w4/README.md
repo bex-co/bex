@@ -224,7 +224,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **215** — [Environment-group scopes hide the parent project of same-named environments](215.md) (55m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 8; Create/Move/Clone and saved scope labels omit already-loaded project context.
 
-- [ ] **214** — [Last 30 minutes hides collected CPU and response-time metrics](214.md) (50m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 6; same-window 15s/30s/60s probes trace the chart step reused as a rate lookback.
+- [x] **214** — [Last 30 minutes hides collected CPU and response-time metrics](done/214.md) (50m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 6; same-window 15s/30s/60s probes trace the chart step reused as a rate lookback. — **DONE 2026-10-08**: CPU and latency `rate()` lookbacks are floored at 60 s; counts keep the step.
 
 - [x] **213** — [Cron history buttons hide which run they open](done/213.md) (25m) ← live `qa-find-bugs` loop, 2026-10-07 cycle 2; generic aria-label replaces each Started cell's visible time. — **DONE 2026-10-08**: each run's detail toggle is named by its own start time (run id for ties or a missing time).
 
