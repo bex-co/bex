@@ -38,12 +38,12 @@ func (metadataIdentities) Lookup(_ context.Context, subject string) (workspaces.
 	return workspaces.IdentityAttrs{Email: subject + "@example.com"}, true
 }
 
-func (m metadataIdentities) LookupEmails(ctx context.Context, subjects []string) map[string]string {
+func (m metadataIdentities) LookupEmails(ctx context.Context, subjects []string) (map[string]string, error) {
 	out := map[string]string{}
 	for subject, attrs := range m.LookupMany(ctx, subjects) {
 		out[subject] = attrs.Email
 	}
-	return out
+	return out, nil
 }
 
 func (m metadataIdentities) LookupMany(ctx context.Context, subjects []string) map[string]workspaces.IdentityAttrs {

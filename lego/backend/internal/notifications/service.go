@@ -33,8 +33,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/textproto"
 	"net/url"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -85,12 +87,16 @@ type Mailer interface {
 type EmailLookup interface {
 	// LookupEmails resolves many subjects' emails in one batched read that
 	// asks the identity provider for no credentials (w5/133). A subject that
-	// did not resolve is absent.
-	LookupEmails(ctx context.Context, subjects []string) map[string]string
+	// did not resolve is absent. An error says some subjects could not be
+	// read, so their absence is not a missing address (w5/m136).
+	LookupEmails(ctx context.Context, subjects []string) (map[string]string, error)
 }
 
 type billingOwnerStore interface {
 	ListBillingOwnerSubjects(context.Context, string) ([]string, error)
+	// RecordBillingNotificationMailed adds subject to the owners the notice
+	// reached, so a retry does not mail them again (w5/m136).
+	RecordBillingNotificationMailed(ctx context.Context, workspaceID string, version int64, subject string) error
 }
 
 // Service is the notifications feature. Store nil (BEX_CP_DB_URI unset)
@@ -181,13 +187,26 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 	if err != nil {
 		return err
 	}
+	reached := map[string]bool{}
+	for _, owner := range n.MailedTo {
+		reached[owner] = true
+	}
+	pending := slices.DeleteFunc(subjects, func(owner string) bool { return reached[owner] })
+	if len(pending) == 0 {
+		return nil
+	}
 	subject, msg := billingEmail(n, s.DashboardBaseURL)
 	text, html := msg.Text(), msg.HTML()
-	emails := s.Identities.LookupEmails(ctx, subjects)
+	emails, lookupErr := s.Identities.LookupEmails(ctx, pending)
 	var errs []error
-	mailed := 0
-	for _, owner := range subjects {
+	unresolved := false
+	for _, owner := range pending {
 		addr := emails[owner]
+		if addr == "" && lookupErr != nil {
+			// Unread, not addressless: retry this owner (w5/m136).
+			unresolved = true
+			continue
+		}
 		if addr == "" {
 			// Failing for this owner would retry without end, mailing the
 			// other owners again each time (w5/153).
@@ -195,17 +214,32 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 			continue
 		}
 		if err := s.Mailer.Send(ctx, addr, subject, text, html); err != nil {
+			if permanentRejection(err) {
+				// The server refused the address for good: a retry would
+				// only be refused again (w5/m136).
+				log.Printf("notifications: billing %s for %s not emailed to owner %s (address rejected: %v)", n.Status, n.WorkspaceID, owner, err)
+				continue
+			}
 			errs = append(errs, err)
 			continue
 		}
-		mailed++
+		if err := owners.RecordBillingNotificationMailed(ctx, n.WorkspaceID, n.TransitionVersion, owner); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	if len(subjects) > 0 && mailed == 0 && len(errs) == 0 {
-		// No owner resolved at all, which an identity outage looks like too:
-		// retry rather than drop the notice.
-		return fmt.Errorf("no owner of %s has an email address", n.WorkspaceID)
+	if unresolved {
+		errs = append(errs, lookupErr)
 	}
 	return errors.Join(errs...)
+}
+
+// permanentRejection reports an SMTP reply refusing the recipient for good:
+// 550 (no such mailbox), 551 (not local) or 553 (mailbox name not allowed).
+// Other 5xx replies, such as a failed relay login (535), concern the relay
+// rather than the owner, and are retried like a 4xx deferral.
+func permanentRejection(err error) bool {
+	var reply *textproto.Error
+	return errors.As(err, &reply) && (reply.Code == 550 || reply.Code == 551 || reply.Code == 553)
 }
 
 func billingEmail(n store.BillingNotification, dashboardBaseURL string) (string, email.Message) {
@@ -824,7 +858,10 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 	// round trip, logged rather than propagated on failure (see NotifyDeploy),
 	// so they run concurrently, capped: a large workspace's fan-out costs
 	// about one round trip's latency instead of N in sequence.
-	addrs := s.Identities.LookupEmails(ctx, to)
+	addrs, err := s.Identities.LookupEmails(ctx, to)
+	if err != nil {
+		log.Printf("notifications: some deploy recipients' addresses could not be read: %v", err)
+	}
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, notifyConcurrency)
 	for _, subject := range to {
