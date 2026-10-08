@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/cli/internal/branding"
@@ -41,10 +43,6 @@ func main() {
 	// against. It covers the detached analytics sender too: that subprocess
 	// re-executes this binary, so it runs main and installs the same wrapper.
 	bridge.InstallControlPlaneHeaders(bexVersion)
-	if err := bridge.ResolveWorkspaceName(); err != nil {
-		fmt.Fprintf(os.Stderr, "bex: %v\n", err)
-		os.Exit(1)
-	}
 	// The Bex-native coding commands (`bex code`, `bex glm`, …) and the
 	// self-update command are additions to the imported command tree; the
 	// upstream commands remain untouched.
@@ -54,8 +52,17 @@ func main() {
 	// commands attach so ungrouped Bex commands keep their help section.
 	branding.Apply(cmd.RootCmd, bexVersion)
 	// Brands the children upstream Execute registers after Apply before any
-	// command, including __complete, runs (w2/043).
-	cobra.OnInitialize(func() { branding.Refresh(cmd.RootCmd) })
+	// command, including __complete, runs (w2/043). The BEX_WORKSPACE name
+	// resolves here too, once the complete tree can name the invoked command:
+	// cobra skips initializers for --help/--version, and workspaceUse spares
+	// the commands that never read the active workspace (w8/064).
+	cobra.OnInitialize(func() {
+		branding.Refresh(cmd.RootCmd)
+		if err := bridge.ResolveWorkspaceName(workspaceUse(cmd.RootCmd, os.Args[1:])); err != nil {
+			fmt.Fprintf(os.Stderr, "bex: %v\n", err)
+			os.Exit(1)
+		}
+	})
 
 	// Own the version path: upstream's handler compares against
 	// render-oss/cli releases (const cfg.RepoURL) and would direct bex users
@@ -216,4 +223,61 @@ func latestRelease() (update.Release, bool) {
 
 func stderrIsTTY() bool {
 	return term.IsTerminal(int(os.Stderr.Fd()))
+}
+
+// workspaceIndependent are the command paths (below the root) that never read
+// the active workspace: inventory, identity, an explicit selection, auth,
+// shell completion and Bex's own self-update.
+var workspaceIndependent = []string{
+	"workspaces", "workspace set", "whoami", "login", "logout", "help",
+	"completion", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd, "upgrade",
+}
+
+// typedResourceID matches Render's typed ids (srv-…, dpg-…, red-…); it mirrors
+// upstream pkg/validate/id.go's per-prefix ^<prefix>-[a-z0-9]{20}$.
+var typedResourceID = regexp.MustCompile(`^[a-z]{3}-[0-9a-z]{20}$`)
+
+// workspaceUse classifies the invoked command for ResolveWorkspaceName (w8/064).
+// A group command that only prints help, an explicit --workspace/-w selection
+// and the commands above need no active workspace; a command whose first
+// positional is a typed resource id reads that id directly. Everything else
+// consumes it.
+func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
+	target, rest, err := root.Find(args)
+	if err != nil || target == nil {
+		return bridge.WorkspaceRequired
+	}
+	if !target.Runnable() {
+		return bridge.WorkspaceUnused
+	}
+	path := strings.TrimPrefix(target.CommandPath(), root.Name()+" ")
+	for _, independent := range workspaceIndependent {
+		if path == independent || strings.HasPrefix(path, independent+" ") {
+			return bridge.WorkspaceUnused
+		}
+	}
+	if flag := target.Flags().Lookup("workspace"); flag != nil && selectsWorkspace(rest, flag.Shorthand) {
+		return bridge.WorkspaceUnused
+	}
+	arity := pgtrust.ArityOf(root.PersistentFlags(), target.InheritedFlags(), target.Flags())
+	if typedResourceID.MatchString(pgtrust.DatabaseArg(rest, arity)) {
+		return bridge.WorkspaceIfResolvable
+	}
+	return bridge.WorkspaceRequired
+}
+
+// selectsWorkspace reports whether args pass --workspace (or its shorthand,
+// attached or separate) before any `--` terminator.
+func selectsWorkspace(args []string, shorthand string) bool {
+	for _, arg := range args {
+		switch {
+		case arg == "--":
+			return false
+		case arg == "--workspace" || strings.HasPrefix(arg, "--workspace="):
+			return true
+		case shorthand != "" && strings.HasPrefix(arg, "-"+shorthand):
+			return true
+		}
+	}
+	return false
 }

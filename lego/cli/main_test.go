@@ -1073,3 +1073,110 @@ func TestBexLoginReportsBexReleaseNotRenderCLI(t *testing.T) {
 		t.Errorf("CI login checked for updates (requests=%d):\n%s", requests, output)
 	}
 }
+
+// TestStaleWorkspaceNameBlocksOnlyConsumers: a BEX_WORKSPACE name that no
+// longer resolves must not block the commands that recover from it — help,
+// version, inventory, identity, explicit selection, completion, an explicit
+// --workspace, a typed-id read — while a command that consumes the active
+// workspace still refuses (w8/064).
+func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
+	const teamID, dbID = "tea-12345678901234567890", "dpg-12345678901234567890"
+	var mu sync.Mutex
+	var nameLookups []string
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/v1/owners":
+			name := r.URL.Query().Get("name")
+			if name != "" {
+				mu.Lock()
+				nameLookups = append(nameLookups, name)
+				mu.Unlock()
+			}
+			switch name {
+			case "stale-ws":
+				_, _ = w.Write([]byte(`[]`))
+			case "dup-ws":
+				_, _ = w.Write([]byte(`[{"owner":{"id":"` + teamID + `","name":"dup-ws","type":"team"},"cursor":"a"},{"owner":{"id":"tea-09876543210987654321","name":"dup-ws","type":"team"},"cursor":"b"}]`))
+			default:
+				_, _ = w.Write([]byte(`[{"owner":{"id":"` + teamID + `","name":"known","type":"team"},"cursor":"a"}]`))
+			}
+		case "/v1/owners/" + teamID:
+			_, _ = w.Write([]byte(`{"id":"` + teamID + `","name":"known","type":"team"}`))
+		case "/v1/users":
+			_, _ = w.Write([]byte(`{"id":"usr-12345678901234567890","email":"qa@example.test","name":"qa"}`))
+		case "/v1/postgres/" + dbID:
+			_, _ = w.Write([]byte(`{"id":"` + dbID + `","name":"db","plan":"free","version":"18","status":"available","databaseName":"d","databaseUser":"u","ipAllowList":[],"readReplicas":[],"suspended":"not_suspended"}`))
+		case "/v1/blueprints/validate":
+			_, _ = w.Write([]byte(`{"valid":true}`))
+		default: // any other collection (services and its project/environment reads)
+			_, _ = w.Write([]byte(`[]`))
+		}
+	}))
+	t.Cleanup(api.Close)
+	blueprint := filepath.Join(t.TempDir(), "render.yaml")
+	if err := os.WriteFile(blueprint, []byte("services:\n  - type: web\n    name: x\n    runtime: image\n    image:\n      url: nginx\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run := func(workspace string, args ...string) (int, string) {
+		t.Helper()
+		command := exec.Command(buildBex(), args...)
+		command.Env = append(withoutRenderEnv(updateTestEnv(t.TempDir())),
+			"HOME="+t.TempDir(), "BEX_HOST="+api.URL+"/v1/", "BEX_ACCESS_TOKEN=test-access-token",
+			"BEX_WORKSPACE="+workspace, "BEX_NO_UPDATE_NOTIFIER=1", "BEX_CLI_DISABLE_ANALYTICS=1")
+		var stderr bytes.Buffer
+		command.Stderr = &stderr
+		err := command.Run()
+		code := 0
+		if exit, ok := err.(*exec.ExitError); ok {
+			code = exit.ExitCode()
+		} else if err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		return code, stderr.String()
+	}
+	lookups := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		n := len(nameLookups)
+		nameLookups = nil
+		return n
+	}
+
+	for _, workspace := range []string{"stale-ws", "dup-ws"} {
+		for _, args := range [][]string{
+			{"--help"}, {"services", "--help"}, {"--version"},
+			{"workspaces", "-o", "json"}, {"whoami", "-o", "json"},
+			{"workspace", "set", teamID, "-o", "json"},
+			{"completion", "bash"}, {"__complete", "postgres", ""},
+			{"blueprints", "validate", blueprint, "--workspace", teamID, "-o", "json"},
+			{"blueprints", "validate", blueprint, "-w" + teamID, "-o", "json"},
+			{"pg"}, {"workspace"},
+		} {
+			if code, stderr := run(workspace, args...); code != 0 {
+				t.Errorf("BEX_WORKSPACE=%s bex %v exited %d: %s", workspace, args, code, stderr)
+			}
+			if n := lookups(); n != 0 {
+				t.Errorf("BEX_WORKSPACE=%s bex %v looked the name up %d times; it never reads the active workspace", workspace, args, n)
+			}
+		}
+		// A typed-id read tries the name but is not blocked by it.
+		if code, stderr := run(workspace, "pg", "get", "-o", "json", dbID); code != 0 {
+			t.Errorf("BEX_WORKSPACE=%s bex pg get -o json %s exited %d: %s", workspace, dbID, code, stderr)
+		}
+		if n := lookups(); n != 1 {
+			t.Errorf("BEX_WORKSPACE=%s typed-id read made %d name lookups, want it to try once", workspace, n)
+		}
+	}
+
+	// Consumers still refuse an unresolvable name rather than guess.
+	if code, stderr := run("stale-ws", "services", "-o", "json"); code != 1 || !strings.Contains(stderr, `no workspace named "stale-ws"`) {
+		t.Errorf("stale services = %d %q, want the unknown-name refusal", code, stderr)
+	}
+	if code, stderr := run("dup-ws", "services", "-o", "json"); code != 1 || !strings.Contains(stderr, `several workspaces are named "dup-ws"`) {
+		t.Errorf("ambiguous services = %d %q, want the ambiguity refusal", code, stderr)
+	}
+	if code, stderr := run("known", "services", "-o", "json"); code != 0 {
+		t.Errorf("known services exited %d: %s", code, stderr)
+	}
+}
