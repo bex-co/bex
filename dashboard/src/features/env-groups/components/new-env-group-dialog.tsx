@@ -24,6 +24,7 @@ import {
   isValidSecretFileName,
 } from "@/features/env-groups/lib/validation";
 import type { ServiceView } from "@/features/services/types";
+import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { ScopeSelect } from "@/features/env-groups/components/scope-select";
 import {
@@ -68,6 +69,8 @@ export interface NewEnvGroupDialogProps {
    * must pass scopeReady=false; an empty resolved index means Workspace.
    */
   environments?: EnvironmentView[];
+  /** The index's projects, naming each scope option's project (w4/215). */
+  projects?: ProjectView[];
   serviceEnvironmentById?: ReadonlyMap<string, string>;
   /**
    * The scope the picker opens on: `null` is Workspace. The service-page path
@@ -200,6 +203,7 @@ function NewEnvGroupForm({
   services = [],
   initialServiceIds = [],
   environments = [],
+  projects = [],
   serviceEnvironmentById = EMPTY_SERVICE_ENVIRONMENTS,
   initialEnvironmentId = null,
   unavailable,
@@ -559,6 +563,7 @@ function NewEnvGroupForm({
           id="env-group-create-scope"
           value={scope}
           environments={environments}
+          projects={projects}
           loading={busy || unavailable}
           onValueChange={changeScope}
         />

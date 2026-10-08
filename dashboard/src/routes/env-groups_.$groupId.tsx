@@ -40,6 +40,7 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
+import { environmentNameIn } from "@/features/env-groups/lib/scope";
 
 // The trailing underscore in this file route deliberately escapes the
 // /env-groups list route's component hierarchy while preserving the public URL.
@@ -109,7 +110,7 @@ export function EnvGroupDetailPage() {
   const errorKind = classifySecretStoreError(error);
   const notFound = isEnvGroupNotFound(error);
   const environmentLabel = group?.environmentId
-    ? (scope.byId.get(group.environmentId)?.name ??
+    ? (environmentNameIn(scope, group.environmentId) ??
       t("envGroups.unknownEnvironment", { id: group.environmentId }))
     : t("envGroups.workspaceScope");
 
@@ -157,6 +158,7 @@ export function EnvGroupDetailPage() {
           <EnvGroupActions
             group={group}
             environments={scope.environments}
+            projects={scope.projects}
             renameGroup={renameGroup}
             moveGroup={mutations.moveGroup}
             cloneGroup={mutations.cloneGroup}

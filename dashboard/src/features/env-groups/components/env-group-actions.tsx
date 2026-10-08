@@ -37,16 +37,17 @@ import { SudoCommandField } from "@/common/components/sudo-command-field";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ScopeSelect } from "@/features/env-groups/components/scope-select";
 import { WORKSPACE_SCOPE } from "@/features/env-groups/lib/scope";
+import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import { useWorkspaceEnvironmentIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { isValidEnvGroupName } from "@/features/env-groups/lib/validation";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
-
 export function EnvGroupActions({
   group,
   environments,
+  projects,
   renameGroup,
   moveGroup,
   cloneGroup,
@@ -57,6 +58,7 @@ export function EnvGroupActions({
 }: {
   group: EnvGroupView;
   environments: EnvironmentView[];
+  projects: ProjectView[];
   renameGroup: (id: string, name: string) => Promise<boolean>;
   moveGroup: (id: string, environmentId: string | null) => Promise<boolean>;
   cloneGroup: (
@@ -90,6 +92,8 @@ export function EnvGroupActions({
     cloneOwnerId === currentWorkspaceId
       ? environments
       : remoteCloneScope.environments;
+  const cloneProjects =
+    cloneOwnerId === currentWorkspaceId ? projects : remoteCloneScope.projects;
   const deletePhrase = `sudo delete env group ${group.name}`;
 
   function open(next: NonNullable<typeof dialog>) {
@@ -211,6 +215,7 @@ export function EnvGroupActions({
             id="env-group-move-target"
             value={moveTarget}
             environments={environments}
+            projects={projects}
             onValueChange={setMoveTarget}
           />
           <DialogFooter>
@@ -267,6 +272,7 @@ export function EnvGroupActions({
             id="env-group-clone-environment"
             value={cloneEnvironmentId}
             environments={cloneEnvironments}
+            projects={cloneProjects}
             loading={remoteCloneScope.loading}
             onValueChange={setCloneEnvironmentId}
           />
