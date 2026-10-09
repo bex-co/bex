@@ -224,6 +224,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **227** — [Cron “Last run” labels the last successful run](227.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a27; fresh English/Chinese failure repro with correct last-success API data and passing run controls.
+
 - [ ] **226** — [Existing Image creation sends a hidden Git Root Directory](226.md) (55m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a26; fresh desktop/mobile refusal, one-field recovery, and Live image/Git controls.
 
 - [ ] **225** — [Clearing a service label falsely says its name resets to the immutable ID](225.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a25; fresh English and Chinese repro with correct API identity/name fields.
