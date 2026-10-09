@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -451,6 +452,33 @@ type bexEnvVar struct {
 	FromDatabase  *bexFromRef `json:"fromDatabase"`
 	FromService   *bexFromRef `json:"fromService"`
 	FromGroup     string      `json:"fromGroup"`
+}
+
+// UnmarshalJSON accepts a number for value, which the pinned schema allows
+// (envVarFromKeyValue.value is string|number). The compiler has already parsed
+// it to an int64/float64, so the process gets Go's JSON text for that number
+// (47, 47.5, 1e3 → 1000; magnitudes ≥ 1e21 keep exponent form). Taking the raw
+// text means integers never round-trip through float64. Strings, omission and
+// null keep the plain string decode.
+func (e *bexEnvVar) UnmarshalJSON(data []byte) error {
+	type plain bexEnvVar
+	var raw struct {
+		plain
+		Value json.RawMessage `json:"value"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*e = bexEnvVar(raw.plain)
+	value := bytes.TrimSpace(raw.Value)
+	switch {
+	case len(value) == 0 || bytes.Equal(value, []byte("null")):
+	case value[0] == '-' || (value[0] >= '0' && value[0] <= '9'):
+		e.Value = string(value)
+	default:
+		return json.Unmarshal(value, &e.Value)
+	}
+	return nil
 }
 
 // bexFromRef is the fromDatabase / fromService target. property is the
