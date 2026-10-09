@@ -57,8 +57,10 @@ describe("ServiceEnvPage group creation", () => {
     scopeState.serviceEnvironmentById = new Map();
     scopeState.retry.mockReset();
     refetch.mockClear();
+    // The Server read's authoritative relationship (w4/220): the panel takes
+    // the service's scope from here, the index only supplies the options.
     useServer.mockReturnValue({
-      service: { id: "srv-1", name: "qa-service" },
+      service: { id: "srv-1", name: "qa-service", environmentId: "env-qa" },
       loading: false,
       refetch,
     });
@@ -116,6 +118,11 @@ describe("ServiceEnvPage group creation", () => {
     const user = userEvent.setup();
     scopeState.ready = true;
     scopeState.loading = false;
+    useServer.mockReturnValue({
+      service: { id: "srv-1", name: "qa-service", environmentId: null },
+      loading: false,
+      refetch,
+    });
     render(<ServiceEnvPage serviceId="srv-1" />);
     await user.click(
       screen.getAllByRole("button", { name: "Create group" })[0],

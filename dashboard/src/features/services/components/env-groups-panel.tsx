@@ -73,14 +73,55 @@ export function EnvGroupsPanel({
     () => new Set(serviceFileNames.map((entry) => entry.name)),
     [serviceFileNames],
   );
-  // The service's own Environment decides which scope a new group must be
-  // minted in — a group and its linked services must share one scope, so a
-  // workspace-scoped create from an in-Environment service is refused by
-  // bex-api (w4/m111 t002). Same index the env-groups detail page filters on;
-  // no extra round trip, Apollo shares the query.
+  // The service's own Environment decides which groups it can link and which
+  // scope a new group must be minted in — bex-api refuses a cross-scope link
+  // (w4/m111 t002, w4/217). The scope index supplies the environment options,
+  // but it is a copied workspace snapshot that can predate this service
+  // (w4/220), so the resolved Server relationship is authoritative for the
+  // current service: undefined = unresolved (never Workspace), null = known
+  // Workspace, a string = that Environment.
   const scope = useEnvGroupScopeIndex();
-  const serviceEnvironmentId =
-    scope.serviceEnvironmentById.get(serviceId) ?? null;
+  const currentServiceId = service?.id || serviceId;
+  const serviceEnvironmentId = service?.environmentId;
+  const relationKnown = serviceEnvironmentId !== undefined;
+  const relationFailed =
+    !relationKnown && !serviceLoading && (Boolean(serviceError) || !!service);
+  const serviceEnvironmentById = useMemo(() => {
+    if (serviceEnvironmentId === undefined) return scope.serviceEnvironmentById;
+    const index = new Map(scope.serviceEnvironmentById);
+    if (serviceEnvironmentId === null) index.delete(currentServiceId);
+    else index.set(currentServiceId, serviceEnvironmentId);
+    return index;
+  }, [scope.serviceEnvironmentById, serviceEnvironmentId, currentServiceId]);
+  // A known Environment the authorized index lacks (created after the index
+  // was copied) gets one automatic refresh, then an explicit retry — never a
+  // Workspace fallback or a mismatched submit.
+  const environmentMissing =
+    scope.ready &&
+    typeof serviceEnvironmentId === "string" &&
+    !scope.environments.some(
+      (environment) => environment.id === serviceEnvironmentId,
+    );
+  const missingKey = `${scope.ownerId}:${serviceEnvironmentId}`;
+  const [refreshedFor, setRefreshedFor] = useState<string | null>(null);
+  // Render-phase update (both states belong to this component): the refresh
+  // starts in the same pass, so the failed state never paints before it.
+  if (environmentMissing && !scope.loading && refreshedFor !== missingKey) {
+    setRefreshedFor(missingKey);
+    scope.retry();
+  }
+  const environmentMissingFailed =
+    environmentMissing && !scope.loading && refreshedFor === missingKey;
+  const compatibilityReady =
+    scope.ready && relationKnown && !environmentMissing;
+  const compatibilityError =
+    (Boolean(scope.error) && !scope.ready) ||
+    relationFailed ||
+    environmentMissingFailed;
+  const retryCompatibility = () => {
+    scope.retry();
+    void refetchService().catch(() => undefined);
+  };
   const [internalCreateOpen, setInternalCreateOpen] = useState(false);
   const createOpen = createOpenProp ?? internalCreateOpen;
   const setCreateOpen = onCreateOpenChange ?? setInternalCreateOpen;
@@ -98,14 +139,14 @@ export function EnvGroupsPanel({
   const linkOrder = service?.linkedEnvGroupIds ?? null;
   const linked = useMemo(() => {
     const items = groups.filter((group) =>
-      group.serviceLinks.includes(serviceId),
+      group.serviceLinks.includes(currentServiceId),
     );
     if (!linkOrder) return items;
     const rank = new Map(linkOrder.map((id, index) => [id, index]));
     return [...items].sort(
       (a, b) => (rank.get(b.id) ?? -1) - (rank.get(a.id) ?? -1),
     );
-  }, [groups, serviceId, linkOrder]);
+  }, [groups, currentServiceId, linkOrder]);
 
   // Walking the list in precedence order, the first group to claim a name wins
   // it; every later (lower-precedence) group's copy is shadowed and records the
@@ -137,25 +178,26 @@ export function EnvGroupsPanel({
   }, [linked, linkOrder]);
   // bex-api links a group only to services in its own Environment scope, so
   // only those are offered (w4/217: a group from another environment showed
-  // an enabled Link that always failed). Until the scope index resolves the
-  // service's environment nothing is offered: an unresolved service must not
+  // an enabled Link that always failed). Until the service's relationship and
+  // the index both resolve nothing is offered: an unresolved service must not
   // read as workspace-scoped.
   const unlinked = useMemo(
-    () => groups.filter((group) => !group.serviceLinks.includes(serviceId)),
-    [groups, serviceId],
+    () =>
+      groups.filter((group) => !group.serviceLinks.includes(currentServiceId)),
+    [groups, currentServiceId],
   );
   const available = useMemo(
     () =>
-      scope.ready
+      compatibilityReady
         ? unlinked.filter((group) =>
             serviceMatchesGroupScope(
-              scope.serviceEnvironmentById,
-              serviceId,
+              serviceEnvironmentById,
+              currentServiceId,
               group,
             ),
           )
         : [],
-    [unlinked, scope.ready, scope.serviceEnvironmentById, serviceId],
+    [unlinked, compatibilityReady, serviceEnvironmentById, currentServiceId],
   );
 
   return (
@@ -195,7 +237,7 @@ export function EnvGroupsPanel({
                     <EnvGroupItem
                       key={group.id}
                       group={group}
-                      serviceId={serviceId}
+                      serviceId={currentServiceId}
                       serviceKeys={serviceKeys}
                       serviceFiles={serviceFiles}
                       shadowedKeys={shadowed.get(group.id)?.keys}
@@ -210,30 +252,38 @@ export function EnvGroupsPanel({
             </section>
             <section className="space-y-2">
               <h3 className="text-sm font-medium">
-                {scope.ready
+                {compatibilityReady
                   ? t("services.envGroupsAvailableCount", {
                       count: available.length,
                     })
                   : t("services.envGroupsAvailableTitle")}
               </h3>
-              {!scope.ready ? (
+              {!compatibilityReady ? (
                 <div
                   className="space-y-2 rounded-md border border-dashed p-4 text-sm"
-                  role={scope.error ? "alert" : "status"}
+                  role={compatibilityError ? "alert" : "status"}
                 >
                   <p
                     className={
-                      scope.error ? "text-destructive" : "text-muted-foreground"
+                      compatibilityError
+                        ? "text-destructive"
+                        : "text-muted-foreground"
                     }
                   >
                     {t(
-                      scope.error
-                        ? "services.envGroupsScopeError"
-                        : "services.envGroupsScopeLoading",
+                      !compatibilityError
+                        ? "services.envGroupsScopeLoading"
+                        : scope.error || relationFailed
+                          ? "services.envGroupsScopeError"
+                          : "services.envGroupsScopeEnvironmentMissing",
                     )}
                   </p>
-                  {scope.error ? (
-                    <Button variant="outline" size="sm" onClick={scope.retry}>
+                  {compatibilityError ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={retryCompatibility}
+                    >
                       {t("common.tryAgain")}
                     </Button>
                   ) : null}
@@ -252,7 +302,7 @@ export function EnvGroupsPanel({
                     <EnvGroupItem
                       key={group.id}
                       group={group}
-                      serviceId={serviceId}
+                      serviceId={currentServiceId}
                       serviceKeys={serviceKeys}
                       serviceFiles={serviceFiles}
                       onLink={linkGroup}
@@ -275,18 +325,23 @@ export function EnvGroupsPanel({
         services={service ? [service] : []}
         servicesLoading={serviceLoading}
         servicesError={serviceError}
-        initialServiceIds={[serviceId]}
+        initialServiceIds={[currentServiceId]}
         environments={scope.environments}
         projects={scope.projects}
-        serviceEnvironmentById={scope.serviceEnvironmentById}
-        initialEnvironmentId={serviceEnvironmentId}
+        // Both the compatibility map and the initial scope describe the
+        // resolved current service; a corrected default over the stale map
+        // would drop the pre-checked link (w4/220).
+        serviceEnvironmentById={serviceEnvironmentById}
+        initialEnvironmentId={serviceEnvironmentId ?? null}
         scopeLoading={scope.loading}
-        scopeReady={scope.ready}
-        scopeError={scope.error}
-        onRetry={() => {
-          scope.retry();
-          void refetchService().catch(() => undefined);
-        }}
+        scopeReady={compatibilityReady}
+        scopeError={
+          scope.error ??
+          (relationFailed || environmentMissingFailed
+            ? new Error("service environment is unresolved")
+            : undefined)
+        }
+        onRetry={retryCompatibility}
       />
     </Card>
   );

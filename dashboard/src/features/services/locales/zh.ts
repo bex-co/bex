@@ -4634,6 +4634,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
+  "services.envGroupsScopeEnvironmentMissing": {
+    message:
+      "已加载的环境列表中没有此服务所在的环境，因此暂不提供可关联的环境组。请重试以刷新。",
+    description:
+      "The service reports an Environment the authorized scope index lacks even after a refresh; never falls back to Workspace (w4/220)",
+  },
   "services.envGroupsNoneInScope": {
     message:
       "没有与此服务处于同一环境的未关联环境组。可以在此新建，或将环境组移动到该环境。",
