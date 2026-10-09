@@ -228,7 +228,14 @@ export function KeyValueDetailPage() {
                   />
                 </section>
                 <section id="connection" className="scroll-mt-6">
-                  <ConnectionInfoPanel id={keyValue.id} />
+                  {/* A revealed snapshot belongs to one publication state: when a
+                      confirmed access change flips `public`, remount so the old
+                      external URL is no longer copyable and a fresh Reveal is
+                      required (w4/222). Renames and status polls keep it. */}
+                  <ConnectionInfoPanel
+                    key={`${keyValue.id}:${keyValue.public}`}
+                    id={keyValue.id}
+                  />
                 </section>
                 <section id="networking" className="scroll-mt-6">
                   <KeyValueNetworkingPanel id={keyValue.id} />

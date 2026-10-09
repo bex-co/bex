@@ -21,9 +21,32 @@ const keyValueState: {
   error: Error | undefined;
   refetch: () => Promise<unknown>;
 } = { keyValue: null, loading: false, error: undefined, refetch: vi.fn() };
-vi.mock("@/features/keyvalue/hooks/use-key-value", () => ({
-  useKeyValue: () => keyValueState,
+// A tiny external store so a test can change the resource and re-render the
+// mounted page, as Apollo's watched query would after a mutation's write.
+const kvStore = vi.hoisted(() => ({
+  version: 0,
+  listeners: new Set<() => void>(),
+  connectionMounts: 0,
 }));
+function publishKeyValue() {
+  kvStore.version += 1;
+  kvStore.listeners.forEach((listener) => listener());
+}
+vi.mock("@/features/keyvalue/hooks/use-key-value", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useKeyValue: () => {
+      useSyncExternalStore(
+        (listener) => {
+          kvStore.listeners.add(listener);
+          return () => kvStore.listeners.delete(listener);
+        },
+        () => kvStore.version,
+      );
+      return keyValueState;
+    },
+  };
+});
 
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
   useDeleteKeyValue: () => ({ remove: vi.fn(), deleting: null }),
@@ -35,15 +58,23 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-lifecycle", () => ({
 }));
 
 const reveal = vi.fn();
-vi.mock("@/features/keyvalue/hooks/use-connection-info", () => ({
-  useConnectionInfo: () => ({
-    info: null,
-    loading: false,
-    error: undefined,
-    reveal,
-    hide: vi.fn(),
-  }),
-}));
+vi.mock("@/features/keyvalue/hooks/use-connection-info", async () => {
+  const { useEffect } = await import("react");
+  return {
+    useConnectionInfo: () => {
+      useEffect(() => {
+        kvStore.connectionMounts += 1;
+      }, []);
+      return {
+        info: null,
+        loading: false,
+        error: undefined,
+        reveal,
+        hide: vi.fn(),
+      };
+    },
+  };
+});
 
 vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
   useKeyValueNetworking: () => ({
@@ -281,6 +312,36 @@ describe("KeyValueDetailPage", () => {
       screen.getByRole("button", { name: "Reveal connection info" }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/redis:\/\//)).not.toBeInTheDocument();
+  });
+
+  // w4/222: a revealed Connections snapshot belongs to one publication state.
+  // When a confirmed access change flips `public`, the panel remounts so the
+  // old external URL can't be copied; a rename or status poll keeps it.
+  it("remounts Connections only when public access changes", async () => {
+    keyValueState.keyValue = kv({ status: "available", public: true });
+    renderPage();
+    await screen.findByRole("button", { name: "Reveal connection info" });
+    const initial = kvStore.connectionMounts;
+
+    act(() => {
+      keyValueState.keyValue = kv({
+        status: "available",
+        public: true,
+        name: "renamed-cache",
+      });
+      publishKeyValue();
+    });
+    expect(kvStore.connectionMounts).toBe(initial);
+
+    act(() => {
+      keyValueState.keyValue = kv({
+        status: "available",
+        public: false,
+        name: "renamed-cache",
+      });
+      publishKeyValue();
+    });
+    expect(kvStore.connectionMounts).toBe(initial + 1);
   });
 
   it("redirects a dead store id home (w9/m55)", async () => {
