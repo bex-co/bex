@@ -1,6 +1,6 @@
 # w8 · m53 — Accept numeric Blueprint environment values
 
-**Worker:** worker8 **Goal:** a schema-valid numeric env value validates and becomes the intended process string across Blueprint entry points **Status:** in progress (t001, t002, t004–t006 done; t003 live CLI check after deploy)
+**Worker:** worker8 **Goal:** a schema-valid numeric env value validates and becomes the intended process string across Blueprint entry points **Status:** done
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | Convert numeric env literals at the typed Blueprint boundary — **DONE** | 45m | — |
 | t002 | Verify the shared containers, seeds, references and apply callers — **DONE** | 30m | t001 |
-| t003 | Verify the real CLI journey and an owned local runtime | 20m | t002 |
+| t003 | Verify the real CLI journey and an owned local runtime — **DONE** | 20m | t002 |
 | t004 | Render parity across Blueprint surfaces — **DONE** | 15m | t003 |
 | t005 | Simplify — **DONE** | 10m | t004 |
 | t006 | Test coverage — **DONE** | 20m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
