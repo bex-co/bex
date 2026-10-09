@@ -1,6 +1,6 @@
 # w4 · m185 — Apply environment isolation when its label changes
 
-**Worker:** worker4 **Goal:** saved environment boundaries promptly control new private connections without waiting for an idle timer or manual deploy **Status:** blocked
+**Worker:** worker4 **Goal:** saved environment boundaries promptly control new private connections without waiting for an idle timer or manual deploy **Status:** done (2026-10-09, live closeout)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity — **DONE** | 30m | t003 |
 | t005 | Simplify — **DONE** | 20m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004 |
-| t007 | Closeout | 15m | t005, t006 |
+| t007 | Closeout — **DONE** | 15m | t005, t006 |
 
 ## Definition of done
 
@@ -42,3 +42,20 @@ t001–t006 done:
 - **t005/t006 tests:** a manager-driven envtest settles an App to Running, then edits only the label. The policy and template converge within 10 s and are removed on clear, with the App generation unchanged. It **fails with label admission disabled** (times out). `TestIsolatedCronPodsCarryTheIsolationLabel` covers the cron label. Operator `make test` and `make lint` pass.
 
 Deployed 2026-10-08: deploy run for `0a754a260` succeeded, and production `bex-controller-manager` runs the pinned `bex-operator@sha256:0482219b…`. The t007 live replay could not start: `bash scripts/qa-login.sh` exited 2 (`QA_EMAIL`/`QA_PASSWORD` unset in both `.env` and `muse.env`).
+
+## Live closeout (2026-10-09 ~03:24–03:28Z, w4 /loopx)
+
+Production `bex-operator` with `0a754a260` deployed. QA browser session via `qa-login.sh --serve`. All actions went through authenticated GraphQL (`setEnvironmentACL`, `setEnvironmentServices`). Fixtures: project `prj-db45skhgovas7388mfvg`, environments A `evm-db45skjfuh0c73ao9fo0` and B `evm-db45skhgovas7388mg0g`, Free BusyBox `1.37.0` web services A `srv-db45skjfuh0c73ao9fpg` (marker `qa-m185-server`) and B `srv-db45skpgovas7388mg20` (CGI `/cgi-bin/probe`, a fresh `wget -T 3` to A's ClusterIP host per request). The default `0.0.0.0/0` / `::/0` rules were kept throughout.
+
+| DoD | Result |
+| --- | --- |
+| Baseline (both in A, isolation off) | probe → `qa-m185-server`; both public roots 200 |
+| Enable A isolation + move B to B | probe **`BLOCKED` at +3 s**, with no deploy, restart, idle expiry or extra edit. A's owned NetworkPolicy present; public roots 200 |
+| Disable A isolation (IP rules unchanged) | probe → marker at **+9 s**; owned policy removed (0); serving templates shed the isolation label |
+| Both in isolated A | both templates labeled `env-…ao9fo0`, two owned policies; private probe → marker; public roots 200 |
+| Move B out of isolated A | probe **`BLOCKED` at +4 s**; public roots 200 |
+| No user deploy minted | each service still has exactly one deploy (`create:live`) after five boundary changes |
+| API agreement | GraphQL `environments`: A `networkIsolationEnabled:true` with `[A]`, B false with `[B]`; each `server.environmentId` correct |
+| Fresh settings reload after disable | environment settings dialog switch `aria-checked=false` at **1280×900** and **390×844** |
+
+Cleanup: both services, both environments and the project deleted (`deleteService:true` ×2, `deleteEnvironment`, `deleteProject`). Existing resources untouched. The w6/m19 protection and Postgres/Key Value IP-layer guarantees rely on the existing suites (t003), as the DoD specifies; they were not live-replayed.
