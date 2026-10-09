@@ -58,9 +58,8 @@ vi.mock("@apollo/client/react", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -185,7 +184,9 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     renderEvents("app");
 
     expect(await screen.findByText("In Progress")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Cancel deploy / })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Cancel deploy / }),
+    ).toBeInTheDocument();
     // The row's <time> hover carries the exact stamp via the shared formatter
     // ("July 14, 2026 at …") — computed through the helper so this holds in
     // any runner timezone.
@@ -265,7 +266,9 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const user = userEvent.setup();
     const { router } = renderEvents("app");
 
-    await user.click(await screen.findByRole("button", { name: /^Roll back to / }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
@@ -290,7 +293,9 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const user = userEvent.setup();
     const { router } = renderEvents("app");
 
-    await user.click(await screen.findByRole("button", { name: /^Roll back to / }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Roll back to / }),
+    );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
@@ -356,9 +361,7 @@ describe("ServiceEventsPage — service_moved placement details (w6/m134)", () =
     renderEvents("app");
 
     expect(await screen.findByText("Service moved")).toBeInTheDocument();
-    expect(
-      screen.getByText("Environment none → env-new"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Environment none → env-new")).toBeInTheDocument();
     expect(screen.queryByText(/^Project /)).not.toBeInTheDocument();
   });
 });
@@ -424,6 +427,60 @@ describe("ServiceEventsPage — the feed is fail-open (w6/m122)", () => {
     expect(
       screen.queryByText("No events match this filter"),
     ).not.toBeInTheDocument();
+  });
+
+  it("filters one build setting by its own name while the feed title stays generic (w4/223)", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          configEvent(
+            "max_shutdown_delay_changed",
+            "evt-1",
+            "2026-08-27T11:54:08Z",
+          ),
+          configEvent(
+            "root_directory_changed",
+            "evt-2",
+            "2026-08-27T11:54:07Z",
+          ),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+    expect(
+      await screen.findAllByText("Build and deploy settings changed"),
+    ).toHaveLength(2);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Filter events" }));
+    await user.click(screen.getByRole("checkbox", { name: "All events" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Max shutdown delay changed" }),
+    );
+    await user.keyboard("{Escape}");
+
+    // One row left, still under the feed's shared title.
+    expect(
+      screen.getAllByText("Build and deploy settings changed"),
+    ).toHaveLength(1);
+    expect(
+      screen.queryByText("No events match this filter"),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Filter events/ }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Max shutdown delay changed" }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: "Root directory changed" }),
+    );
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getAllByText("Build and deploy settings changed"),
+    ).toHaveLength(1);
   });
 
   it("counts the window's own feed, not the post-filter subset", async () => {

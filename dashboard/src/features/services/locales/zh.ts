@@ -3727,7 +3727,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Service activity type: image pull failed",
   },
   "services.eventsTypeSuspended": {
-    message: "服务已暂停",
+    message: "已暂停",
     description: "Service activity type: service suspended",
   },
   "services.eventsTypeResumed": {
@@ -3997,6 +3997,67 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsTypeStaticSiteChanged": {
     message: "静态站点设置已更改",
     description: "Service activity type: static-site configuration changed",
+  },
+  "services.eventsFilterType.autoDeployEnabled": {
+    message: "自动部署已启用",
+    description: "Events filter option for the auto deploy enabled event type",
+  },
+  "services.eventsFilterType.autoDeployDisabled": {
+    message: "自动部署已停用",
+    description: "Events filter option for the auto deploy disabled event type",
+  },
+  "services.eventsFilterType.autoDeployChanged": {
+    message: "自动部署已更新（旧版）",
+    description: "Events filter option for the auto deploy changed event type",
+  },
+  "services.eventsFilterType.publishPathChanged": {
+    message: "发布目录已更改",
+    description: "Events filter option for the publish path changed event type",
+  },
+  "services.eventsFilterType.routesChanged": {
+    message: "重定向和重写已更改",
+    description: "Events filter option for the routes changed event type",
+  },
+  "services.eventsFilterType.headersChanged": {
+    message: "响应头已更改",
+    description: "Events filter option for the headers changed event type",
+  },
+  "services.eventsFilterType.rootDirectoryChanged": {
+    message: "根目录已更改",
+    description:
+      "Events filter option for the root directory changed event type",
+  },
+  "services.eventsFilterType.dockerfilePathChanged": {
+    message: "Dockerfile 路径已更改",
+    description:
+      "Events filter option for the dockerfile path changed event type",
+  },
+  "services.eventsFilterType.buildFilterChanged": {
+    message: "构建过滤器已更改",
+    description: "Events filter option for the build filter changed event type",
+  },
+  "services.eventsFilterType.commandsChanged": {
+    message: "命令已更改",
+    description: "Events filter option for the commands changed event type",
+  },
+  "services.eventsFilterType.sourceChanged": {
+    message: "代码来源已更改",
+    description: "Events filter option for the source changed event type",
+  },
+  "services.eventsFilterType.preDeployCommandChanged": {
+    message: "预部署命令已更改",
+    description:
+      "Events filter option for the pre deploy command changed event type",
+  },
+  "services.eventsFilterType.maxShutdownDelayChanged": {
+    message: "最长关闭延迟已更改",
+    description:
+      "Events filter option for the max shutdown delay changed event type",
+  },
+  "services.eventsFilterType.deployHookRegenerated": {
+    message: "部署钩子已重新生成",
+    description:
+      "Events filter option for the deploy hook regenerated event type",
   },
   "services.eventsTypeBuildSettingsChanged": {
     message: "构建和部署设置已更改",
