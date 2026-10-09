@@ -257,7 +257,14 @@ function DatabaseDetailPage() {
                   />
                 </section>
                 <section id="connection" className="scroll-mt-6">
-                  <ConnectionInfoPanel id={database.id} />
+                  {/* A revealed snapshot belongs to one publication state: when a
+                      confirmed access change flips `public`, remount so the old
+                      external URL is no longer copyable and a fresh Reveal is
+                      required (w4/222). Renames and status polls keep it. */}
+                  <ConnectionInfoPanel
+                    key={`${database.id}:${database.public}`}
+                    id={database.id}
+                  />
                 </section>
                 <section id="sql-console" className="scroll-mt-6">
                   <DeferredMount hashId="sql-console" minHeight={280}>
