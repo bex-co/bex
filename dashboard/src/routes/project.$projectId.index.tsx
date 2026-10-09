@@ -119,11 +119,9 @@ export function ProjectPage() {
       setRenameOpen(false);
       return;
     }
-    const ok = await rename(projectId, trimmed);
-    if (ok) {
-      setRenameOpen(false);
-      refetchAll();
-    }
+    // The hook keeps `renaming` until the saved name is re-read and the
+    // route loader republished (w4/m186); rename touches no resource rows.
+    if (await rename(projectId, trimmed)) setRenameOpen(false);
   }
 
   const showNotFound = projectResult.state === "not-found";
