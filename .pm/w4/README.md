@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m188** — [Translate hosting times and cron previews](m188/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09 cycle28; relative times and both cron schedule previews stay English in Chinese mode.
+
 - [ ] **m187** — [Restore environment lifecycle on project moves and deletion](m187/README.md) (8 tasks) ← live qa-find-bugs 2026-10-09 cycle24; incoming project moves retain an incompatible environment, and linked groups block grouping deletion.
 
 - [x] **m186** — [Keep project names current after a fast rename](done/m186/README.md) (6 tasks) — **DONE 2026-10-09**: live race replay (pre-save list read overlapping the rename) publishes the saved name in heading/title/breadcrumb without reload; one write per save.
