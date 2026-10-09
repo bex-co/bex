@@ -1,17 +1,17 @@
 # w8 · m54 — Accept one-sided CLI build filters
 
-**Worker:** worker8 **Goal:** the unchanged pinned CLI accepts include-only and ignore-only repo-backed service configuration **Status:** todo
+**Worker:** worker8 **Goal:** the unchanged pinned CLI accepts include-only and ignore-only repo-backed service configuration **Status:** in progress (t001, t002, t004–t006 done; t003 live CLI check after deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Add operation-scoped compatibility for null filter lists | 45m | — |
-| t002 | Verify replacement, response arrays and shared callers | 20m | t001 |
+| t001 | Add operation-scoped compatibility for null filter lists — **DONE** | 45m | — |
+| t002 | Verify replacement, response arrays and shared callers — **DONE** | 20m | t001 |
 | t003 | Verify actual CLI create/update and runtime | 20m | t002 |
-| t004 | Render parity across filter surfaces | 15m | t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Test coverage | 20m | t004, t005 |
+| t004 | Render parity across filter surfaces — **DONE** | 15m | t003 |
+| t005 | Simplify — **DONE** | 10m | t004 |
+| t006 | Test coverage — **DONE** | 20m | t004, t005 |
 | t007 | Closeout | 10m | t006 |
 
 ## Definition of done

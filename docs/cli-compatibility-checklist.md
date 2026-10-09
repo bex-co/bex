@@ -199,7 +199,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--secret-file NAME:PATH` — exact configured OpenBao readback; content never logged
     - [x] `--registry-credential <cred>` — exact credential metadata plus authenticated private-image pull to `Running`
     - [x] `--ip-allow-list cidr=…,description=…` — ordered CIDR **and description** round-trip
-    - [x] `--build-filter-path <path>`
+    - [x] `--build-filter-path <path>` — one flag alone works (w8/m54). The pinned builder serializes the unused list as `null`, which the pinned OpenAPI `buildFilter` schema forbids (it requires two arrays). Bex allows `null` for either list on `create-service`/`update-service` only, and the response schema stays non-null. A one-sided update replaces the whole filter, and readback returns `[]` for the unused list. Render production's handling of this shape is unverified.
     - [x] `--build-filter-ignored-path <path>`
     - [x] `--maintenance-mode` — requires a paid plan (`400` on free)
     - [x] `--maintenance-mode-uri <uri>`
@@ -226,7 +226,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--root-directory` — on repo services (image services correctly `400`)
     - [x] `--registry-credential` — distinct credential A→B replacement plus authenticated rollout
     - [x] `--ip-allow-list cidr=…,description=…` — ordered CIDR **and description** replacement
-    - [x] `--build-filter-path <path>`
+    - [x] `--build-filter-path <path>` — one flag alone works (w8/m54). The pinned builder serializes the unused list as `null`, which the pinned OpenAPI `buildFilter` schema forbids (it requires two arrays). Bex allows `null` for either list on `create-service`/`update-service` only, and the response schema stays non-null. A one-sided update replaces the whole filter, and readback returns `[]` for the unused list. Render production's handling of this shape is unverified.
     - [x] `--build-filter-ignored-path <path>`
     - [x] `--maintenance-mode`
     - [x] `--maintenance-mode-uri <string>`
