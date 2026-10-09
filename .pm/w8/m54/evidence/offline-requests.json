@@ -1,0 +1,63 @@
+{
+  "kind": "actual same-pin CLI requests intercepted at isolated loopback; dummy API key; not production packet capture",
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/v1/services",
+      "body": {
+        "autoDeploy": "no",
+        "buildFilter": {
+          "ignoredPaths": null,
+          "paths": [
+            "examples/hello-go/**"
+          ]
+        },
+        "name": "qa-20261009-337383-filter",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-go",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app"
+          },
+          "maxShutdownDelaySeconds": 31,
+          "plan": "free",
+          "region": "frankfurt",
+          "runtime": "go"
+        },
+        "type": "web_service"
+      },
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/services",
+      "body": {
+        "autoDeploy": "no",
+        "buildFilter": {
+          "ignoredPaths": [
+            "*.md"
+          ],
+          "paths": null
+        },
+        "name": "qa-20261009-775e64-filter",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-go",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app"
+          },
+          "maxShutdownDelaySeconds": 31,
+          "plan": "free",
+          "region": "frankfurt",
+          "runtime": "go"
+        },
+        "type": "web_service"
+      },
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    }
+  ]
+}

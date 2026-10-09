@@ -1,0 +1,29 @@
+{
+  "kind": "production replay of actual same-pin loopback-captured payload; not original CLI packet capture",
+  "results": [
+    {
+      "method": "POST",
+      "path": "/v1/services",
+      "body": "{\"autoDeploy\":\"no\",\"buildFilter\":{\"ignoredPaths\":null,\"paths\":[\"examples/hello-go/**\"]},\"name\":\"qa-20261009-337383-filter\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"startCommand\":\"./app\"},\"maxShutdownDelaySeconds\":31,\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"go\"},\"type\":\"web_service\"}",
+      "status": "400",
+      "elapsed": 0.592,
+      "response": "{\"error\":\"invalid request body at /buildFilter/ignoredPaths\",\"id\":\"bad_request\",\"message\":\"invalid request body at /buildFilter/ignoredPaths\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ba1f9a95798ce-SJC"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/v1/services",
+      "body": "{\"autoDeploy\":\"no\",\"buildFilter\":{\"ignoredPaths\":[\"*.md\"],\"paths\":null},\"name\":\"qa-20261009-775e64-filter\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"startCommand\":\"./app\"},\"maxShutdownDelaySeconds\":31,\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"go\"},\"type\":\"web_service\"}",
+      "status": "400",
+      "elapsed": 0.568,
+      "response": "{\"error\":\"invalid request body at /buildFilter/paths\",\"id\":\"bad_request\",\"message\":\"invalid request body at /buildFilter/paths\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ba1ff38c2df0a-SJC"
+      }
+    }
+  ]
+}

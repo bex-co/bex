@@ -1,0 +1,6 @@
+=== RUN   TestQABuildFilterDomainAcceptsNil
+    qa_buildfilter_domain_probe_test.go:5: input={"paths":["src/**"],"ignoredPaths":null} output={"paths":["src/**"],"ignoredPaths":[]}
+    qa_buildfilter_domain_probe_test.go:5: input={"paths":null,"ignoredPaths":["docs/**"]} output={"paths":[],"ignoredPaths":["docs/**"]}
+--- PASS: TestQABuildFilterDomainAcceptsNil (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	0.660s
