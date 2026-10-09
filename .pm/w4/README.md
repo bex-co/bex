@@ -224,6 +224,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **226** — [Existing Image creation sends a hidden Git Root Directory](226.md) (55m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a26; fresh desktop/mobile refusal, one-field recovery, and Live image/Git controls.
+
 - [ ] **225** — [Clearing a service label falsely says its name resets to the immutable ID](225.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a25; fresh English and Chinese repro with correct API identity/name fields.
 
 - [x] **219** — [Long Docker-command confirmations hide Save and Cancel below the mobile viewport](done/219.md) — **DONE 2026-10-09** (`465c725fe`, live-verified at 390×667/390×844/1280×900) ← live `$qa-find-bugs w4` cycle a1, 2026-10-08.
