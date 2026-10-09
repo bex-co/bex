@@ -267,6 +267,12 @@ const enProjects: Record<string, TranslationEntry> = {
     message: 'Project renamed to "{name}".',
     description: "Toast shown after a project is renamed",
   },
+  "projects.renameRefreshFailed": {
+    message:
+      'Project renamed to "{name}", but this page couldn\'t refresh. Try again or reload to see the saved name.',
+    description:
+      "Warning after the rename saved but re-reading the project failed; the rename must not be retried or reported as failed (w4/m186)",
+  },
   "projects.renameError": {
     message: 'Failed to rename project to "{name}".',
     description: "Toast shown when renaming a project fails",
