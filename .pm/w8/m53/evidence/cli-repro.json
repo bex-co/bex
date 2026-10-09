@@ -1,0 +1,130 @@
+[
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-integer.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.346,
+    "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-float.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.682,
+    "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-scientific.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.716,
+    "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-integer-quoted.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.409,
+    "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+    "stderr": ""
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-integer.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.698,
+    "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+    "stderr": ""
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-float.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.539,
+    "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+    "stderr": ""
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-scientific.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 1,
+    "elapsed": 0.302,
+    "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+    "stderr": ""
+  },
+  {
+    "binary": "unmodified Render pin a764810a7682",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<PRIVATE_QA_DIR>/sweep22-envvalue-integer-quoted.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.511,
+    "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+    "stderr": ""
+  }
+]
