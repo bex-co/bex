@@ -1,6 +1,6 @@
 # w4 · m186 — Keep project names current after a fast rename
 
-**Worker:** worker4 **Goal:** a completed project rename publishes the saved name in the ready heading, breadcrumb/sidebar and document title even when a pre-save Projects read completes late. **Status:** in progress (t001–t005 done; t006 live closeout after deploy)
+**Worker:** worker4 **Goal:** a completed project rename publishes the saved name in the ready heading, breadcrumb/sidebar and document title even when a pre-save Projects read completes late. **Status:** done (2026-10-09, live closeout)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Render parity — **DONE** | 10m | w4/m186/t002 |
 | t004 | Simplify — **DONE** | 10m | w4/m186/t003 |
 | t005 | Test coverage with a delayed read and real Router/Apollo — **DONE** | 30m | w4/m186/t003, w4/m186/t004 |
-| t006 | Closeout | 20m | w4/m186/t005 |
+| t006 | Closeout — **DONE** | 20m | w4/m186/t005 |
 
 ## Definition of done
 
@@ -50,3 +50,12 @@ t001–t005 are done; see the m186 commit.
 - **t005 tests.** `rename-publishes-saved-name.test.tsx` covers 9 cases with a real Apollo cache and a real TanStack router (real routes/loaders/heads), a real sidebar watcher, and held Projects responses: the Overview and Settings races, busy while draining, a settled control, no watcher, a rejected list result, a refused rename, refresh-failure retry with one write, and a concurrent newer name. **Mutation-checked:** the original code fails 6/9 (heading stays r3), concurrent final read fails 4/9, and the aggregate promise fails 1/9. `yarn test` (4462) and `yarn lint` pass.
 
 Remaining: **t006**, the live production closeout after deploy.
+
+## Live closeout (2026-10-09, w4 /loopx, pin `5cd4d4346`)
+
+Fixtures: project `prj-db474k2oq5rs73822660` with environments `m186-prod`/`m186-stage` and a Free BusyBox web service `srv-db474kaoq5rs7382268g` (marker `qa-m186-marker`). A web service stood in for the DoD's static site; the membership and serving checks are the same.
+
+- **Race (two runs).** Fresh Overview load, with Edit retried until the dialog opened, then an immediate rename to r2 and then r3. In both runs a pre-save `Projects` read **overlapped** the mutation (it started 404 ms and 326 ms before RenameProject and finished after it). Heading, title (`<name> ・ bex Dashboard`) and breadcrumb all showed the saved name without a reload. Exactly **one** RenameProject per save.
+- **Settled control** (r4 after the page settled) passes, and a fresh reload agrees.
+- **API.** The project, both environment IDs and membership (`m186-prod` → the service, `m186-stage` → none) are unchanged, and the service still serves `qa-m186-marker` with HTTP 200.
+- **Cleanup.** The service, both environments and the project were deleted (REST by-ID 404), and the Kratos session was revoked.
