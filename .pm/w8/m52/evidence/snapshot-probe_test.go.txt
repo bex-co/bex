@@ -1,0 +1,49 @@
+package store
+
+import (
+ "context"
+ "testing"
+ apierrors "k8s.io/apimachinery/pkg/api/errors"
+ "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type qaAfterDesiredStore struct {
+ *memStore
+ after func()
+}
+func (s *qaAfterDesiredStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
+ snapshot, err := s.memStore.ListDesiredApps(ctx)
+ if err == nil && s.after != nil { after := s.after; s.after=nil; after() }
+ return snapshot, err
+}
+
+func TestQAProbeNewAppSurvivesDesiredSnapshot(t *testing.T) {
+ ctx:=context.Background()
+ r, base, cl := newTestReconciler(t)
+ hooked:= &qaAfterDesiredStore{memStore:base}
+ r.Store=hooked
+ tenant,err:=base.CreateTenant(ctx,"qa-snapshot","free"); if err!=nil {t.Fatal(err)}
+ var key client.ObjectKey
+ var appID string
+ hooked.after=func(){
+  row,err:=base.CreateApp(ctx,App{TenantID:tenant.ID,Name:"qa-new-app",Image:"docker.io/mendhak/http-https-echo:35",Port:3000,Replicas:1,Tier:"free"}); if err!=nil {t.Fatal(err)}
+  appID=row.ID
+  rows,err:=base.ListDesiredApps(ctx); if err!=nil||len(rows)!=1 {t.Fatalf("desired rows: %v, %v",rows,err)}
+  app:=r.projectApp(ctx,rows[0])
+  app.Spec.Runtime="image"
+  app.Spec.HealthCheckPath="/"
+  app.Spec.PreDeployCommand="printf qa-predeploy"
+  app.Spec.EnvFromSecret="qa-owned-env"
+  key=client.ObjectKeyFromObject(app)
+  if err:=cl.Create(ctx,app); err!=nil {t.Fatal(err)}
+ }
+ if err:=r.ReconcileOnce(ctx);err!=nil {t.Fatal(err)}
+ full:=r.projectApp(ctx,DesiredApp{})
+ err=cl.Get(ctx,key,full)
+ if apierrors.IsNotFound(err) {t.Errorf("fresh durable row %s still exists, but projector deleted its full App between desired-row and CR snapshots",appID)} else if err!=nil {t.Fatal(err)}
+ if err:=r.ReconcileOnce(ctx);err!=nil {t.Fatal(err)}
+ if err:=cl.Get(ctx,key,full);err!=nil {t.Fatal(err)}
+ if full.Spec.PreDeployCommand!="printf qa-predeploy" || full.Spec.HealthCheckPath!="/" || full.Spec.EnvFromSecret!="qa-owned-env" {
+  t.Errorf("recreated App lost accepted configuration: predeploy=%q health=%q envFromSecret=%q",full.Spec.PreDeployCommand,full.Spec.HealthCheckPath,full.Spec.EnvFromSecret)
+ }
+}

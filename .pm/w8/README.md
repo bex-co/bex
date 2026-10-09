@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m52** — [Keep a new service out of stale orphan cleanup](m52/README.md) (7 tasks; 3h40m) ← live CLI QA + deterministic source probe, 2026-10-08; exact live deletion actor unobserved.
+
 - [x] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](done/m51/README.md) (9 tasks) — **DONE 2026-10-08**: `.python-version`/`.nvmrc` live builds pass on `bex v0.3.2` (`examples/runtime-version`); intermittent narration drop filed as w8/069.
 - [x] **m50** — [Enforce Postgres tier capacity across write paths](done/m50/README.md) (9 tasks) ← promoted from `035` on 2026-10-02.
 
