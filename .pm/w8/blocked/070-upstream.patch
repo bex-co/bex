@@ -1,0 +1,13 @@
+diff --git a/cmd/pgcli.go b/cmd/pgcli.go
+index 429af4d..b1ae111 100644
+--- a/cmd/pgcli.go
++++ b/cmd/pgcli.go
+@@ -27,7 +27,7 @@ You can optionally pass a database ID or name as an argument. To pass arguments
+   render pgcli pg-abc123
+ 
+   # Pass through pgcli arguments
+-  render pgcli pg-abc123 -- --csv -q`,
++  render pgcli pg-abc123 -- --single-connection --less-chatty`,
+ }
+ 
+ func InteractivePGCLIView(ctx context.Context, input *views.PSQLInput) tea.Cmd {
