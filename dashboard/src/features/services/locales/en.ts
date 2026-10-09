@@ -4755,6 +4755,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Scope index failed; nothing is offered until a retry succeeds (w4/217)",
   },
+  "services.envGroupsScopeEnvironmentMissing": {
+    message:
+      "This service's environment isn't in the loaded environment list, so no groups are offered to link. Try again to refresh it.",
+    description:
+      "The service reports an Environment the authorized scope index lacks even after a refresh; never falls back to Workspace (w4/220)",
+  },
   "services.envGroupsNoneInScope": {
     message:
       "No unlinked groups share this service's environment. Create one here, or move a group into this environment.",

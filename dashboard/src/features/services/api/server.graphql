@@ -79,6 +79,11 @@ query Server($id: String!) {
     }
     # Auto-Deploy toggle (w2/m9) — whether a signed git push redeploys the App.
     autoDeploy
+    # environmentId is the service's authoritative Environment scope; null means
+    # workspace-scoped (no Environment). The Environment tab's env-groups panel
+    # decides link compatibility and Create's initial scope from it rather than
+    # from the copied workspace scope index, which can predate this service (w4/220).
+    environmentId
     # linkedEnvGroupIds is the linked environment groups in PRECEDENCE order
     # (w2/m94/t003): spec.envFromSecrets order, where the LAST entry wins a key
     # or secret-file collision. The workspace group list carries links as an

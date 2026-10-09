@@ -51,6 +51,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
       "undeployedChangesApplying" in s
         ? s.undeployedChangesApplying === true
         : undefined,
+    // Absent selection stays undefined (unresolved), never null (workspace).
+    environmentId: "environmentId" in s ? (s.environmentId ?? null) : undefined,
     createdAt: s.createdAt ?? null,
     updatedAt: "updatedAt" in s ? (s.updatedAt ?? null) : null,
     region: "region" in s ? s.region || null : null,

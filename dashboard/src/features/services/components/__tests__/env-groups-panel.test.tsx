@@ -18,13 +18,30 @@ const mockUseSecretFileNames = vi.fn();
 // Link order (precedence) as the service read reports it; undefined = an older
 // API that does not report it, which must claim no precedence at all.
 let mockLinkedEnvGroupIds: string[] | undefined;
+// The resolved Server relationship (w4/220): undefined = unresolved, null =
+// known Workspace, a string = that Environment. Defaults to known Workspace.
+let mockServiceEnvironmentId: string | null | undefined;
+// Server read state; `service: false` models a read with no service yet.
+const serverState = {
+  present: true,
+  loading: false,
+  error: undefined as Error | undefined,
+  refetch: vi.fn(),
+};
 
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: (id: string) => ({
-    service: { id, name: id, linkedEnvGroupIds: mockLinkedEnvGroupIds },
-    loading: false,
-    error: undefined,
-    refetch: vi.fn(),
+    service: serverState.present
+      ? {
+          id,
+          name: id,
+          linkedEnvGroupIds: mockLinkedEnvGroupIds,
+          environmentId: mockServiceEnvironmentId,
+        }
+      : null,
+    loading: serverState.loading,
+    error: serverState.error,
+    refetch: serverState.refetch,
   }),
 }));
 
@@ -95,7 +112,14 @@ beforeEach(() => {
   scopeState.ready = true;
   scopeState.error = undefined;
   scopeState.serviceEnvironmentById = new Map();
+  scopeState.environments = [];
+  scopeState.loading = false;
   scopeState.retry.mockReset();
+  mockServiceEnvironmentId = null;
+  serverState.present = true;
+  serverState.loading = false;
+  serverState.error = undefined;
+  serverState.refetch.mockReset().mockResolvedValue([]);
   mockUseEnvGroups.mockReset();
   mockCreateGroup.mockReset().mockResolvedValue(true);
   mockDeleteGroup.mockReset().mockResolvedValue(true);
@@ -243,6 +267,7 @@ describe("EnvGroupsPanel", () => {
   it("creates in the service's own Environment, keeping the pre-checked link", async () => {
     scopeState.environments = [{ id: "evm-qa", name: "qa-env" }];
     scopeState.serviceEnvironmentById = new Map([["web", "evm-qa"]]);
+    mockServiceEnvironmentId = "evm-qa";
     try {
       mockUseEnvGroups.mockReturnValue(groupsResult([]));
       mockCreateGroup.mockResolvedValue("evg-1");
@@ -483,6 +508,11 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
 
     it("offers only groups in the service's own environment", async () => {
       scopeState.serviceEnvironmentById = new Map([["web", "evm-source"]]);
+      scopeState.environments = [
+        { id: "evm-source", name: "source" },
+        { id: "evm-target", name: "target" },
+      ];
+      mockServiceEnvironmentId = "evm-source";
       mockUseEnvGroups.mockReturnValue({
         groups: [
           group("evg-source", "evm-source"),
@@ -501,6 +531,11 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
 
     it("says no group shares the environment, not that every group is linked", async () => {
       scopeState.serviceEnvironmentById = new Map([["web", "evm-source"]]);
+      scopeState.environments = [
+        { id: "evm-source", name: "source" },
+        { id: "evm-target", name: "target" },
+      ];
+      mockServiceEnvironmentId = "evm-source";
       mockUseEnvGroups.mockReturnValue({
         groups: [group("evg-target", "evm-target")],
         loading: false,
@@ -537,5 +572,187 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
       expect(scopeState.retry).toHaveBeenCalled();
       expect(screen.queryByText("evg-workspace")).toBeNull();
     });
+  });
+});
+
+// w4/220: the scope index is a copied workspace snapshot, so a service created
+// after it was primed has no entry there. The resolved Server relationship is
+// authoritative for the current service; a missing entry never reads as
+// Workspace.
+describe("EnvGroupsPanel authoritative service environment (w4/220)", () => {
+  const group = (id: string, environmentId: string | null): EnvGroupView =>
+    ({
+      id,
+      name: id,
+      ownerId: "tea-1",
+      environmentId,
+      availability: null,
+      serviceLinks: [],
+      envVarKeys: [],
+      secretFileNames: [],
+    }) as unknown as EnvGroupView;
+
+  function primeIndexWithoutCurrentService() {
+    scopeState.environments = [
+      { id: "evm-staging", name: "staging" },
+      { id: "evm-production", name: "production" },
+    ];
+    // Primed before the service existed: only an older sibling is indexed.
+    scopeState.serviceEnvironmentById = new Map([["srv-older", "evm-staging"]]);
+  }
+
+  function threeScopes() {
+    mockUseEnvGroups.mockReturnValue(
+      groupsResult([
+        group("evg-staging", "evm-staging"),
+        group("evg-clone", null),
+        group("evg-production", "evm-production"),
+      ]),
+    );
+  }
+
+  it("offers only the staging group and creates in staging when Server reports staging", async () => {
+    primeIndexWithoutCurrentService();
+    mockServiceEnvironmentId = "evm-staging";
+    threeScopes();
+    mockCreateGroup.mockResolvedValue("evg-new");
+    const user = userEvent.setup();
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    expect(screen.getByText("evg-staging")).toBeInTheDocument();
+    expect(screen.queryByText("evg-clone")).toBeNull();
+    expect(screen.queryByText("evg-production")).toBeNull();
+    expect(screen.getByText("Available to link (1)")).toBeInTheDocument();
+    const link = screen.getByRole("button", { name: /^Link$/ });
+    expect(link).toBeEnabled();
+    await user.click(link);
+    expect(mockLinkGroup).toHaveBeenCalledWith("evg-staging", "web");
+
+    await user.click(screen.getByRole("button", { name: /Create group/ }));
+    expect(screen.getByRole("combobox")).toHaveTextContent("staging");
+    expect(screen.getByRole("checkbox", { name: /web/ })).toBeChecked();
+    await user.type(screen.getByLabelText("Group name"), "fresh");
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+    expect(mockCreateGroup).toHaveBeenCalledWith({
+      name: "fresh",
+      envVars: [],
+      secretFiles: [],
+      serviceIds: ["web"],
+      environmentId: "evm-staging",
+    });
+    expect(scopeState.retry).not.toHaveBeenCalled();
+  });
+
+  it("keeps known Workspace behavior even over a stale index entry", async () => {
+    primeIndexWithoutCurrentService();
+    // The index still says staging; Server says the service is workspace-scoped.
+    scopeState.serviceEnvironmentById = new Map([["web", "evm-staging"]]);
+    mockServiceEnvironmentId = null;
+    threeScopes();
+    mockCreateGroup.mockResolvedValue("evg-new");
+    const user = userEvent.setup();
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    expect(screen.getByText("evg-clone")).toBeInTheDocument();
+    expect(screen.queryByText("evg-staging")).toBeNull();
+    expect(screen.getByText("Available to link (1)")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Create group/ }));
+    expect(screen.getByRole("combobox")).toHaveTextContent(
+      "Workspace (no Environment)",
+    );
+    expect(screen.getByRole("checkbox", { name: /web/ })).toBeChecked();
+    await user.type(screen.getByLabelText("Group name"), "ws");
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+    expect(mockCreateGroup).toHaveBeenCalledWith(
+      expect.objectContaining({ serviceIds: ["web"], environmentId: null }),
+    );
+  });
+
+  it("waits while the relationship is unresolved, keeping linked rows usable", async () => {
+    primeIndexWithoutCurrentService();
+    mockServiceEnvironmentId = undefined;
+    serverState.present = false;
+    serverState.loading = true;
+    mockUseEnvGroups.mockReturnValue(
+      groupsResult([
+        { ...group("evg-linked", "evm-staging"), serviceLinks: ["web"] },
+        group("evg-clone", null),
+      ]),
+    );
+    const user = userEvent.setup();
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    expect(
+      screen.getByText(/Checking which groups share/).closest("[role]"),
+    ).toHaveAttribute("role", "status");
+    expect(screen.queryByText("evg-clone")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Link$/ })).toBeNull();
+    // The linked row and its Unlink stay available during the gate.
+    await user.click(screen.getByRole("button", { name: /Unlink/ }));
+    expect(mockUnlinkGroup).toHaveBeenCalledWith("evg-linked", "web");
+
+    await user.click(screen.getByRole("button", { name: /Create group/ }));
+    expect(
+      screen.getByText("Loading environments and services…"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByText(/Workspace \(no Environment\)/)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    ).toBeDisabled();
+  });
+
+  it("offers a retry when the Server read fails, never a Workspace default", async () => {
+    primeIndexWithoutCurrentService();
+    mockServiceEnvironmentId = undefined;
+    serverState.present = false;
+    serverState.error = new Error("server failed");
+    threeScopes();
+    const user = userEvent.setup();
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load this service's environment",
+    );
+    expect(screen.queryByText("evg-clone")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(scopeState.retry).toHaveBeenCalledTimes(1);
+    expect(serverState.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes once, then offers retry, when the service's environment is missing from the index", async () => {
+    primeIndexWithoutCurrentService();
+    mockServiceEnvironmentId = "evm-new";
+    threeScopes();
+    const user = userEvent.setup();
+    render(<EnvGroupsPanel serviceId="web" />);
+
+    // One automatic refresh of the authorized index…
+    await waitFor(() => expect(scopeState.retry).toHaveBeenCalledTimes(1));
+    // …and while it still lacks the environment, nothing is offered.
+    expect(
+      await screen.findByText(/isn't in the loaded environment list/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("evg-clone")).toBeNull();
+    expect(screen.queryByText("evg-staging")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Link$/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(scopeState.retry).toHaveBeenCalledTimes(2);
+
+    await user.click(screen.getByRole("button", { name: /Create group/ }));
+    expect(
+      screen.getByText(
+        "Couldn't load the environment or services. Retry before creating the group.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    ).toBeDisabled();
   });
 });

@@ -53,6 +53,13 @@ export interface ServiceView {
   /** A rolling deploy already carries those saved changes (w4/m184). */
   undeployedChangesApplying?: boolean;
   /**
+   * The service's authoritative Environment scope (w4/220). Three readings,
+   * never collapsed: `undefined` = not selected / not yet resolved (list rows,
+   * older fixtures), `null` = known workspace-scoped (no Environment), a string
+   * = that Environment's id. Only the detail `server` query selects it.
+   */
+  environmentId?: string | null;
+  /**
    * Private-network address sibling services connect to — "<slug>:<port>",
    * scheme-less (Render's Connect → Internal string; ADR041 D4, w9/m58).
    * Web and private services only; null otherwise or when not selected
