@@ -124,6 +124,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     dockerfilePath: null,
     registryCredentialId: null,
     autoDeploy: null,
+    environmentId: null,
     linkedEnvGroupIds: null,
     pushDeliveryMethod: null,
     notifyOnFail: null,
@@ -254,6 +255,21 @@ describe("toServiceView", () => {
   // w6/m99: only the detail query computes push deliverability. A list row must
   // report null — "not computed on this projection" — rather than let the
   // Auto-Deploy hint read an absent field as a mechanism it can name.
+  // w4/220: three readings that must never collapse — not selected (list
+  // node) stays undefined/unresolved, explicit null is known Workspace, and a
+  // string is that Environment.
+  it("keeps the service's environment unresolved, Workspace, or known", () => {
+    const listView = toServiceView(node());
+    expect("environmentId" in listView).toBe(true);
+    expect(listView.environmentId).toBeUndefined();
+    expect(toServiceView(server({ environmentId: null })).environmentId).toBe(
+      null,
+    );
+    expect(
+      toServiceView(server({ environmentId: "evm-staging" })).environmentId,
+    ).toBe("evm-staging");
+  });
+
   it("carries push deliverability only from the detail query", () => {
     expect(
       toServiceView(server({ pushDeliveryMethod: "manual_webhook" }))
