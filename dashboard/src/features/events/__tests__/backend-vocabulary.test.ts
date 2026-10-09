@@ -4,6 +4,8 @@ import {
   SERVICE_EVENT_TYPES,
   serviceEventHasExplicitLabel,
 } from "@/features/events/service-event-catalog";
+import enServices from "@/features/services/locales/en";
+import zhServices from "@/features/services/locales/zh";
 
 // The cross-boundary drift guard (w6/m122 t003). Three guards already cover the
 // service event feed — scripts/events-verify.sh, TestEventSurfaceParity, and
@@ -148,5 +150,33 @@ describe("backend service-event vocabulary", () => {
       unlabelled,
       `These event types have no LABEL_KEYS entry, so they render as the generic "Service settings changed". Map each to an i18n key in service-event-catalog.ts (mapping one deliberately to services.eventsTypeServiceChanged is fine — it just has to be deliberate).`,
     ).toEqual([]);
+  });
+});
+
+// w4/221: the Events page renders every nonempty details.reasonCode through
+// t("services.eventsReason." + code), and a code with no catalog entry prints
+// the raw key (superseded did, after w4/089 added it). Enumerate the codes from
+// the Go source so the next new reason cannot ship untranslated.
+describe("event reason codes", () => {
+  const factsSource = readFileSync(
+    `${REPO_ROOT}/lego/backend/internal/store/event_facts.go`,
+    "utf8",
+  );
+  const codes = [
+    ...factsSource.matchAll(/^\s*EventReason[A-Za-z0-9_]*\s*=\s*"([a-z_]+)"/gm),
+  ].map(([, code]) => code);
+
+  it("finds the Go reason vocabulary", () => {
+    expect(codes.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it.each([
+    ["en", enServices],
+    ["zh", zhServices],
+  ])("translates every reason code in %s", (_, catalog) => {
+    const missing = codes.filter(
+      (code) => !catalog[`services.eventsReason.${code}`]?.message,
+    );
+    expect(missing).toEqual([]);
   });
 });

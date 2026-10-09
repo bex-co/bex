@@ -3860,6 +3860,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "已取消",
     description: "Lifecycle-step outcome badge: canceled",
   },
+  "services.eventsReason.superseded": {
+    message: "较新的部署取代了此部署。",
+    description: "部署/构建结束原因：被较新的部署取代",
+  },
   "services.eventsReason.image_pull_backoff": {
     message: "运行时无法拉取配置的镜像。",
     description: "有限的公开镜像拉取失败原因",

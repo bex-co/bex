@@ -3956,6 +3956,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Canceled",
     description: "Lifecycle-step outcome badge: canceled",
   },
+  "services.eventsReason.superseded": {
+    message: "A newer deploy replaced this deploy.",
+    description:
+      "Deploy/build ended reason: a newer deploy superseded this one",
+  },
   "services.eventsReason.image_pull_backoff": {
     message: "The runtime could not pull the configured image.",
     description: "Bounded public image-pull failure reason",
