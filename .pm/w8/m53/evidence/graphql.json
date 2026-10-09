@@ -1,0 +1,58 @@
+[
+  {
+    "kind": "API-only GraphQL diagnostic notCLIcoverage",
+    "quoted": false,
+    "method": "POST",
+    "path": "/graphql",
+    "body": {
+      "query": "query NumericBlueprint($owner: String!, $manifest: String!) { validateBlueprint(ownerId: $owner, bexYaml: $manifest) { valid errors errorDetails { path line column } } }",
+      "variables": {
+        "owner": "tea-daif693dqjvc73e7as3g",
+        "manifest": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 47\n"
+      }
+    },
+    "status": "200",
+    "elapsed": 0.571,
+    "response": {
+      "data": {
+        "validateBlueprint": {
+          "errorDetails": [
+            {
+              "column": null,
+              "line": null,
+              "path": null
+            }
+          ],
+          "errors": [
+            "decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string"
+          ],
+          "valid": false
+        }
+      }
+    }
+  },
+  {
+    "kind": "API-only GraphQL diagnostic notCLIcoverage",
+    "quoted": true,
+    "method": "POST",
+    "path": "/graphql",
+    "body": {
+      "query": "query NumericBlueprint($owner: String!, $manifest: String!) { validateBlueprint(ownerId: $owner, bexYaml: $manifest) { valid errors errorDetails { path line column } } }",
+      "variables": {
+        "owner": "tea-daif693dqjvc73e7as3g",
+        "manifest": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: \"47\"\n"
+      }
+    },
+    "status": "200",
+    "elapsed": 0.806,
+    "response": {
+      "data": {
+        "validateBlueprint": {
+          "errorDetails": [],
+          "errors": [],
+          "valid": true
+        }
+      }
+    }
+  }
+]

@@ -26,7 +26,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** user-requested infinite qa-find-bugs-cli loop filing to w8, 2026-10-08 local; [sanitized evidence, traced mechanism and failing probe](finding.md). The additional user-requested retry used unmodified same-pin Render successfully, retained alongside the Bex occurrence/control.
+- **Source:** user-requested infinite qa-find-bugs-cli loop filing to w8, 2026-10-08 local; [sanitized evidence, traced mechanism and failing probe](finding.md). A fresh unmodified same-pin Render control passed and is retained alongside the Bex occurrence/control.
 - **Goal linkage:** ADR008 hosting reliability and ADR003 source-of-truth projection. Successful creation must preserve the tenant’s runtime configuration.
 - **Expected outcome:** ordinary resync cannot erase a newly created service’s health/predeploy/env references and leave its URL unavailable while its durable row survives.
 - **Why now:** production showed the same service ID with a creation time changed 13 seconds after create and accepted settings absent. Current main deterministically reproduces the destructive interleaving; older image/clone/log repairs do not cover it.

@@ -1,0 +1,132 @@
+[
+  {
+    "case": "root-group",
+    "quoted": false,
+    "exit": 1,
+    "elapsed": 0.699,
+    "response": {
+      "errors": [
+        {
+          "error": "decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.envVarGroups.envVars.value of type string"
+        }
+      ],
+      "valid": false
+    },
+    "stderr": ""
+  },
+  {
+    "case": "root-group",
+    "quoted": true,
+    "exit": 0,
+    "elapsed": 2.22,
+    "response": {
+      "plan": {
+        "envGroups": [
+          "qa-e37b64-eg"
+        ],
+        "services": [
+          "qa-20261008-e37b64-bp"
+        ],
+        "totalActions": 2
+      },
+      "valid": true
+    },
+    "stderr": ""
+  },
+  {
+    "case": "ungrouped-service",
+    "quoted": false,
+    "exit": 1,
+    "elapsed": 0.636,
+    "response": {
+      "errors": [
+        {
+          "error": "decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.ungrouped.services.envVars.value of type string"
+        }
+      ],
+      "valid": false
+    },
+    "stderr": ""
+  },
+  {
+    "case": "ungrouped-service",
+    "quoted": true,
+    "exit": 0,
+    "elapsed": 0.987,
+    "response": {
+      "plan": {
+        "services": [
+          "qa-20261008-e37b64-bp"
+        ],
+        "totalActions": 1
+      },
+      "valid": true
+    },
+    "stderr": ""
+  },
+  {
+    "case": "project-service",
+    "quoted": false,
+    "exit": 1,
+    "elapsed": 0.307,
+    "response": {
+      "errors": [
+        {
+          "error": "decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.projects.environments.bexResources.services.envVars.value of type string"
+        }
+      ],
+      "valid": false
+    },
+    "stderr": ""
+  },
+  {
+    "case": "project-service",
+    "quoted": true,
+    "exit": 0,
+    "elapsed": 0.9,
+    "response": {
+      "plan": {
+        "services": [
+          "qa-20261008-e37b64-bp"
+        ],
+        "totalActions": 1
+      },
+      "valid": true
+    },
+    "stderr": ""
+  },
+  {
+    "case": "project-group",
+    "quoted": false,
+    "exit": 1,
+    "elapsed": 0.967,
+    "response": {
+      "errors": [
+        {
+          "error": "decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.projects.environments.bexResources.envVarGroups.envVars.value of type string"
+        }
+      ],
+      "valid": false
+    },
+    "stderr": ""
+  },
+  {
+    "case": "project-group",
+    "quoted": true,
+    "exit": 0,
+    "elapsed": 1.242,
+    "response": {
+      "plan": {
+        "envGroups": [
+          "qa-e37b64-eg"
+        ],
+        "services": [
+          "qa-20261008-e37b64-bp"
+        ],
+        "totalActions": 2
+      },
+      "valid": true
+    },
+    "stderr": ""
+  }
+]

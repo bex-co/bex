@@ -1,0 +1,30 @@
+{
+  "kind": "unmodified exact-source privatecopy with diagnostictest only, no product fix",
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.5 go test ./internal/apps -run ^TestQANumericEnvLiteralAccepted$ -count=1",
+  "exit": 1,
+  "elapsed": 14.558,
+  "stdout": "--- FAIL: TestQANumericEnvLiteralAccepted (0.01s)\n    --- FAIL: TestQANumericEnvLiteralAccepted/envvalue-integer (0.01s)\n        qa_numeric_env_probe_test.go:112: schema-valid numeric env value cannot reach typed stack: bad request: decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\n    --- FAIL: TestQANumericEnvLiteralAccepted/root-group-numeric (0.00s)\n        qa_numeric_env_probe_test.go:112: schema-valid numeric env value cannot reach typed stack: bad request: decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.envVarGroups.envVars.value of type string\n    --- FAIL: TestQANumericEnvLiteralAccepted/ungrouped-service-numeric (0.00s)\n        qa_numeric_env_probe_test.go:112: schema-valid numeric env value cannot reach typed stack: bad request: decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.ungrouped.services.envVars.value of type string\n    --- FAIL: TestQANumericEnvLiteralAccepted/project-service-numeric (0.00s)\n        qa_numeric_env_probe_test.go:112: schema-valid numeric env value cannot reach typed stack: bad request: decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.projects.environments.bexResources.services.envVars.value of type string\n    --- FAIL: TestQANumericEnvLiteralAccepted/project-group-numeric (0.00s)\n        qa_numeric_env_probe_test.go:112: schema-valid numeric env value cannot reach typed stack: bad request: decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.projects.environments.bexResources.envVarGroups.envVars.value of type string\nFAIL\nFAIL\tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.737s\nFAIL\n",
+  "stderr": "",
+  "matched_sources": [
+    {
+      "path": "internal/apps/deploy.go",
+      "exact_current_source_match": true
+    },
+    {
+      "path": "internal/apps/blueprint_compiler.go",
+      "exact_current_source_match": true
+    },
+    {
+      "path": "internal/apps/blueprint_ir.go",
+      "exact_current_source_match": true
+    },
+    {
+      "path": "internal/apps/schema/render.yaml.json",
+      "exact_current_source_match": true
+    },
+    {
+      "path": "internal/apps/schema/capabilities.json",
+      "exact_current_source_match": true
+    }
+  ]
+}

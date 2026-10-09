@@ -1,0 +1,22 @@
+{
+  "kind": "equivalent samefield multipart replay, not actualCLI interception",
+  "method": "POST",
+  "path": "/v1/blueprints/validate",
+  "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+  "ownerId": "tea-daif693dqjvc73e7as3g",
+  "filename": "sweep22-envvalue-integer.yaml",
+  "file_content": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 47\n",
+  "status": "200",
+  "response": {
+    "valid": false,
+    "errors": [
+      {
+        "error": "decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string"
+      }
+    ]
+  },
+  "headers": {
+    "content-type": "application/json",
+    "cf-ray": "a47b7f6fd827cf1b-SJC"
+  }
+}
