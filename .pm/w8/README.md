@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m54** — [Accept one-sided CLI build filters](m54/README.md) (7 tasks; 2h20m) ← live CLI QA + exact-source gate probe, 2026-10-09 UTC; upstream serializer/schema mismatch documented.
+
 - [ ] **m53** — [Accept numeric Blueprint environment values](m53/README.md) (7 tasks; 2h30m) ← live CLI QA + exact-source typed-decoder probe, 2026-10-09 UTC; no product fix yet.
 
 - [ ] **m52** — [Keep a new service out of stale orphan cleanup](m52/README.md) (7 tasks; 3h40m) ← live CLI QA + deterministic source probe, 2026-10-08; exact live deletion actor unobserved.
