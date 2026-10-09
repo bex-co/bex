@@ -1,6 +1,6 @@
 # w8 · m52 — Keep a new service out of stale orphan cleanup
 
-**Worker:** worker8 **Goal:** a successful configured create retains its original App and accepted settings through projector resyncs **Status:** todo
+**Worker:** worker8 **Goal:** a successful configured create retains its original App and accepted settings through projector resyncs **Status:** in progress (t001, t002, t004–t006 done; t003 live replay after deploy)
 
 **Size:** 3h40m across three implementation/acceptance tasks and four standing closing tasks. Severity major. One live occurrence; deterministic current-source reproduction; exact live deletion actor unobserved.
 
@@ -8,12 +8,12 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Fence orphan deletion with fresh durable existence and observed identity | 45m | — |
-| t002 | Verify the shared prune boundary and all create producers | 45m | w8/m52/t001 |
+| t001 | Fence orphan deletion with fresh durable existence and observed identity — **DONE** | 45m | — |
+| t002 | Verify the shared prune boundary and all create producers — **DONE** | 45m | w8/m52/t001 |
 | t003 | Replay configured creates through a real API and pinned CLIs | 50m | w8/m52/t002 |
-| t004 | Render parity | 20m | w8/m52/t003 |
-| t005 | Simplify | 15m | w8/m52/t004 |
-| t006 | Test coverage | 35m | w8/m52/t004 |
+| t004 | Render parity — **DONE** | 20m | w8/m52/t003 |
+| t005 | Simplify — **DONE** | 15m | w8/m52/t004 |
+| t006 | Test coverage — **DONE** | 35m | w8/m52/t004 |
 | t007 | Closeout | 10m | w8/m52/t005, w8/m52/t006 |
 
 ## Definition of done
