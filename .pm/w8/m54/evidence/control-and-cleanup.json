@@ -1,0 +1,315 @@
+{
+  "id": "srv-db49ak3jrdls73co04p0",
+  "name": "qa-20261009-689277-filter",
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline6/quota6term0",
+  "create_response": {
+    "autoDeploy": "yes",
+    "autoDeployTrigger": "commit",
+    "branch": "main",
+    "buildFilter": {
+      "ignoredPaths": [
+        "*.md"
+      ],
+      "paths": [
+        "examples/hello-go/**"
+      ]
+    },
+    "createdAt": "2026-10-09T07:18:40Z",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db49ak3jrdls73co04p0",
+    "id": "srv-db49ak3jrdls73co04p0",
+    "name": "qa-20261009-689277-filter",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/hello-go",
+    "serviceDetails": {
+      "env": "go",
+      "envSpecificDetails": {
+        "buildCommand": "go build -o app .",
+        "preDeployCommand": "",
+        "startCommand": "./app"
+      },
+      "internalAddress": "qa-20261009-689277-filter:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 31,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "go",
+      "url": "https://qa-20261009-689277-filter.onbex.co"
+    },
+    "slug": "qa-20261009-689277-filter",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "web_service",
+    "updatedAt": "2026-10-09T07:18:40.60384143Z"
+  },
+  "after_failed_filter_updates": {
+    "id": "srv-db49ak3jrdls73co04p0",
+    "name": "qa-20261009-689277-filter",
+    "immutableName": "qa-20261009-689277-filter",
+    "slug": "qa-20261009-689277-filter",
+    "displayName": "",
+    "type": "web_service",
+    "suspended": "not_suspended",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db49ak3jrdls73co04p0",
+    "createdAt": "2026-10-09T07:18:40Z",
+    "updatedAt": "2026-10-09T07:19:42Z",
+    "owner": {
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "email": "puncsky@gmail.com",
+      "type": "team"
+    },
+    "serviceDetails": {
+      "env": "go",
+      "envSpecificDetails": {
+        "buildCommand": "go build -o app .",
+        "preDeployCommand": "",
+        "startCommand": "./app"
+      },
+      "internalAddress": "qa-20261009-689277-filter:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 31,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "go",
+      "url": "https://qa-20261009-689277-filter.onbex.co"
+    },
+    "suspenders": [],
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "phase": "Building",
+    "replicas": 1,
+    "idleTTLSeconds": 0,
+    "rootDir": "examples/hello-go",
+    "buildFilter": {
+      "paths": [
+        "examples/hello-go/**"
+      ],
+      "ignoredPaths": [
+        "*.md"
+      ]
+    },
+    "repo": "https://github.com/bex-co/bex",
+    "branch": "main",
+    "autoDeploy": "yes",
+    "autoDeployTrigger": "commit",
+    "pushDeliveryMethod": "manual_webhook",
+    "notifyOnFail": "default",
+    "notificationsToSend": "default"
+  },
+  "filter_empty_control_readback": {
+    "id": "srv-db49ak3jrdls73co04p0",
+    "name": "qa-20261009-689277-filter",
+    "immutableName": "qa-20261009-689277-filter",
+    "slug": "qa-20261009-689277-filter",
+    "displayName": "",
+    "type": "web_service",
+    "suspended": "not_suspended",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db49ak3jrdls73co04p0",
+    "createdAt": "2026-10-09T07:18:40Z",
+    "updatedAt": "2026-10-09T07:25:04Z",
+    "owner": {
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "email": "puncsky@gmail.com",
+      "type": "team"
+    },
+    "serviceDetails": {
+      "env": "go",
+      "envSpecificDetails": {
+        "buildCommand": "go build -o app .",
+        "preDeployCommand": "",
+        "startCommand": "./app"
+      },
+      "internalAddress": "qa-20261009-689277-filter:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 1,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "go",
+      "url": "https://qa-20261009-689277-filter.onbex.co"
+    },
+    "suspenders": [],
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "phase": "Running",
+    "replicas": 1,
+    "revision": "rev-2",
+    "urls": [
+      "https://qa-20261009-689277-filter.onbex.co"
+    ],
+    "idleTTLSeconds": 0,
+    "rootDir": "examples/hello-go",
+    "buildFilter": {
+      "paths": [
+        "examples/hello-go/*.go"
+      ],
+      "ignoredPaths": []
+    },
+    "repo": "https://github.com/bex-co/bex",
+    "branch": "main",
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "pushDeliveryMethod": "manual_webhook",
+    "notifyOnFail": "default",
+    "notificationsToSend": "default"
+  },
+  "after_option_updates": {
+    "id": "srv-db49ak3jrdls73co04p0",
+    "name": "qa-20261009-689277-filter",
+    "immutableName": "qa-20261009-689277-filter",
+    "slug": "qa-20261009-689277-filter",
+    "displayName": "",
+    "type": "web_service",
+    "suspended": "not_suspended",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db49ak3jrdls73co04p0",
+    "createdAt": "2026-10-09T07:18:40Z",
+    "updatedAt": "2026-10-09T07:23:20.380187353Z",
+    "owner": {
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "email": "puncsky@gmail.com",
+      "type": "team"
+    },
+    "serviceDetails": {
+      "env": "go",
+      "envSpecificDetails": {
+        "buildCommand": "go build -o app .",
+        "preDeployCommand": "",
+        "startCommand": "./app"
+      },
+      "internalAddress": "qa-20261009-689277-filter:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 1,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "go",
+      "url": "https://qa-20261009-689277-filter.onbex.co"
+    },
+    "suspenders": [],
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "phase": "Deploying",
+    "replicas": 1,
+    "revision": "rev-1",
+    "urls": [
+      "https://qa-20261009-689277-filter.onbex.co"
+    ],
+    "idleTTLSeconds": 0,
+    "rootDir": "examples/hello-go",
+    "buildFilter": {
+      "paths": [
+        "examples/hello-go/**"
+      ],
+      "ignoredPaths": [
+        "*.md"
+      ]
+    },
+    "repo": "https://github.com/bex-co/bex",
+    "branch": "main",
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "pushDeliveryMethod": "manual_webhook",
+    "notifyOnFail": "default",
+    "notificationsToSend": "default"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "30db645bf321627b083845528afd6e8265284c28",
+        "message": "chore(deploy): pin platform images to 3b207d7e4868 [skip ci]"
+      },
+      "createdAt": "2026-10-09T07:23:20.483401Z",
+      "finishedAt": "2026-10-09T07:23:35.152214Z",
+      "id": "dep-db49cq3jrdls73co04tg",
+      "startedAt": "2026-10-09T07:23:24.454025Z",
+      "status": "live",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-09T07:23:35.152215Z"
+    },
+    {
+      "commit": {
+        "id": "30db645bf321627b083845528afd6e8265284c28",
+        "message": "chore(deploy): pin platform images to 3b207d7e4868 [skip ci]"
+      },
+      "createdAt": "2026-10-09T07:18:40.574458Z",
+      "finishedAt": "2026-10-09T07:21:25.066574Z",
+      "id": "dep-db49ak3jrdls73co04pg",
+      "startedAt": "2026-10-09T07:19:54.503019Z",
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-09T07:23:35.156152Z"
+    }
+  ],
+  "runtime_checks": [
+    {
+      "url": "https://qa-20261009-689277-filter.onbex.co",
+      "exit": 0,
+      "output": "404 page not found\n\n404"
+    },
+    {
+      "url": "https://qa-20261009-689277-filter.onbex.co",
+      "exit": 0,
+      "output": "qa-filter-689277-雪\n200"
+    }
+  ],
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db49ak3jrdls73co04p0",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.329,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47ba73a2aa3c685-SJC"
+    }
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete": {
+    "exit": 0,
+    "stdout": "404 page not found\n\n404",
+    "stderr": ""
+  },
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.558,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47ba74a8b7367bf-SJC"
+    }
+  }
+}

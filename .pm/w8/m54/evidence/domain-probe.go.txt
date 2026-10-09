@@ -1,0 +1,8 @@
+package apps
+import("encoding/json";"testing")
+func TestQABuildFilterDomainAcceptsNil(t *testing.T){
+ for _,input:=range []string{`{"paths":["src/**"],"ignoredPaths":null}`,`{"paths":null,"ignoredPaths":["docs/**"]}`}{
+  var v BuildFilterView;if err:=json.Unmarshal([]byte(input),&v);err!=nil{t.Fatal(err)};spec,err:=normalizeBuildFilter(&v);if err!=nil{t.Fatal(err)};out,err:=json.Marshal(buildFilterView(spec));if err!=nil{t.Fatal(err)};t.Logf("input=%s output=%s",input,out)
+  var x map[string]any;if err=json.Unmarshal(out,&x);err!=nil{t.Fatal(err)};for _,k:=range []string{"paths","ignoredPaths"}{if _,ok:=x[k].([]any);!ok{t.Errorf("%s not an array",k)}}
+ }
+}

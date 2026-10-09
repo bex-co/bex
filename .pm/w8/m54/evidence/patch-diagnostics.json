@@ -1,0 +1,41 @@
+{
+  "kind": "API-only diagnostics on ledger-owned free fixture; independently reconstructed PATCH buildFilter fragment and corrected-empty-array control, not CLI packet capture",
+  "results": [
+    {
+      "method": "PATCH",
+      "path": "/v1/services/srv-db49ak3jrdls73co04p0",
+      "body": "{\"buildFilter\":{\"paths\":[\"examples/hello-go/*.go\"],\"ignoredPaths\":null}}",
+      "status": "400",
+      "elapsed": 0.903,
+      "response": "{\"error\":\"invalid request body at /buildFilter/ignoredPaths\",\"id\":\"bad_request\",\"message\":\"invalid request body at /buildFilter/ignoredPaths\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ba6241ec8dc3c-SJC"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/services/srv-db49ak3jrdls73co04p0",
+      "body": "{\"buildFilter\":{\"paths\":null,\"ignoredPaths\":[\"docs/**\"]}}",
+      "status": "400",
+      "elapsed": 1.074,
+      "response": "{\"error\":\"invalid request body at /buildFilter/paths\",\"id\":\"bad_request\",\"message\":\"invalid request body at /buildFilter/paths\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ba627f93115ef-SJC"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/services/srv-db49ak3jrdls73co04p0",
+      "body": "{\"buildFilter\":{\"paths\":[\"examples/hello-go/*.go\"],\"ignoredPaths\":[]}}",
+      "status": "200",
+      "elapsed": 1.364,
+      "response": "{\"id\":\"srv-db49ak3jrdls73co04p0\",\"name\":\"qa-20261009-689277-filter\",\"immutableName\":\"qa-20261009-689277-filter\",\"slug\":\"qa-20261009-689277-filter\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db49ak3jrdls73co04p0\",\"createdAt\":\"2026-10-09T07:18:40Z\",\"updatedAt\":\"2026-10-09T07:25:03.881644316Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"./app\"},\"internalAddress\":\"qa-20261009-689277-filter:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":1,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"go\",\"url\":\"https://qa-20261009-689277-filter.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"urls\":[\"https://qa-20261009-689277-filter.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-go\",\"buildFilter\":{\"paths\":[\"examples/hello-go/*.go\"],\"ignoredPaths\":[]},\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ba631d965b625-SJC"
+      }
+    }
+  ]
+}

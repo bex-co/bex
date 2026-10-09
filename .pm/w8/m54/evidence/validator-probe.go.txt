@@ -1,0 +1,15 @@
+package api
+import("encoding/json";"net/http";"os";"testing")
+func TestQABuildFilterPinnedPayload(t *testing.T){
+ var capture struct{Requests []struct{Body map[string]any}}
+ data,err:=os.ReadFile(os.Getenv("QA_CAPTURE"));if err!=nil{t.Fatal(err)};if err=json.Unmarshal(data,&capture);err!=nil{t.Fatal(err)}
+ for _,method:=range []string{"POST","PATCH"}{for i,row:=range capture.Requests{for _,emptyControl:=range []bool{false,true}{
+  name:=method+[]string{"include","ignore"}[i];if emptyControl{name+="-empty-array-control"}
+  t.Run(name,func(t *testing.T){
+   filter:=row.Body["buildFilter"].(map[string]any);bf:=map[string]any{};for k,v:=range filter{bf[k]=v;if v==nil&&emptyControl{bf[k]=[]string{}}}
+   body:=map[string]any{};if method=="POST"{for k,v:=range row.Body{body[k]=v}};body["buildFilter"]=bf;b,_:=json.Marshal(body)
+   target:="/v1/services";if method=="PATCH"{target+="/srv-db49ak3jrdls73co04p0"};calls:=0;mux:=http.NewServeMux();pattern:=method+" /v1/services";if method=="PATCH"{pattern+="/{serviceId}"};mux.HandleFunc(pattern,func(w http.ResponseWriter,r *http.Request){calls++;w.WriteHeader(204)})
+   h,err:=newRenderRequestValidator(mux);if err!=nil{t.Fatal(err)};w:=requestOpenAPITest(t,h,method,target,"application/json",string(b));t.Logf("status=%d calls=%d body=%s",w.Code,calls,w.Body.String());if w.Code!=204||calls!=1{t.Errorf("documented single-sided CLI filter must reach handler; status=%d calls=%d",w.Code,calls)}
+  })
+ }}}
+}

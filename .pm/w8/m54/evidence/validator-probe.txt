@@ -1,0 +1,33 @@
+=== RUN   TestQABuildFilterPinnedPayload
+=== RUN   TestQABuildFilterPinnedPayload/POSTinclude
+    qa_buildfilter_probe_test.go:12: status=400 calls=0 body={"error":"invalid request body at /buildFilter/ignoredPaths","id":"bad_request","message":"invalid request body at /buildFilter/ignoredPaths"}
+    qa_buildfilter_probe_test.go:12: documented single-sided CLI filter must reach handler; status=400 calls=0
+=== RUN   TestQABuildFilterPinnedPayload/POSTinclude-empty-array-control
+    qa_buildfilter_probe_test.go:12: status=204 calls=1 body=
+=== RUN   TestQABuildFilterPinnedPayload/POSTignore
+    qa_buildfilter_probe_test.go:12: status=400 calls=0 body={"error":"invalid request body at /buildFilter/paths","id":"bad_request","message":"invalid request body at /buildFilter/paths"}
+    qa_buildfilter_probe_test.go:12: documented single-sided CLI filter must reach handler; status=400 calls=0
+=== RUN   TestQABuildFilterPinnedPayload/POSTignore-empty-array-control
+    qa_buildfilter_probe_test.go:12: status=204 calls=1 body=
+=== RUN   TestQABuildFilterPinnedPayload/PATCHinclude
+    qa_buildfilter_probe_test.go:12: status=400 calls=0 body={"error":"invalid request body at /buildFilter/ignoredPaths","id":"bad_request","message":"invalid request body at /buildFilter/ignoredPaths"}
+    qa_buildfilter_probe_test.go:12: documented single-sided CLI filter must reach handler; status=400 calls=0
+=== RUN   TestQABuildFilterPinnedPayload/PATCHinclude-empty-array-control
+    qa_buildfilter_probe_test.go:12: status=204 calls=1 body=
+=== RUN   TestQABuildFilterPinnedPayload/PATCHignore
+    qa_buildfilter_probe_test.go:12: status=400 calls=0 body={"error":"invalid request body at /buildFilter/paths","id":"bad_request","message":"invalid request body at /buildFilter/paths"}
+    qa_buildfilter_probe_test.go:12: documented single-sided CLI filter must reach handler; status=400 calls=0
+=== RUN   TestQABuildFilterPinnedPayload/PATCHignore-empty-array-control
+    qa_buildfilter_probe_test.go:12: status=204 calls=1 body=
+--- FAIL: TestQABuildFilterPinnedPayload (0.05s)
+    --- FAIL: TestQABuildFilterPinnedPayload/POSTinclude (0.05s)
+    --- PASS: TestQABuildFilterPinnedPayload/POSTinclude-empty-array-control (0.00s)
+    --- FAIL: TestQABuildFilterPinnedPayload/POSTignore (0.00s)
+    --- PASS: TestQABuildFilterPinnedPayload/POSTignore-empty-array-control (0.00s)
+    --- FAIL: TestQABuildFilterPinnedPayload/PATCHinclude (0.00s)
+    --- PASS: TestQABuildFilterPinnedPayload/PATCHinclude-empty-array-control (0.00s)
+    --- FAIL: TestQABuildFilterPinnedPayload/PATCHignore (0.00s)
+    --- PASS: TestQABuildFilterPinnedPayload/PATCHignore-empty-array-control (0.00s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/backend/internal/api	0.956s
+FAIL
