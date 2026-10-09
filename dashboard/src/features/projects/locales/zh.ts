@@ -257,6 +257,12 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "项目已重命名为「{name}」。",
     description: "Toast shown after a project is renamed",
   },
+  "projects.renameRefreshFailed": {
+    message:
+      "项目已重命名为「{name}」，但页面刷新失败。请重试或重新加载以查看已保存的名称。",
+    description:
+      "Warning after the rename saved but re-reading the project failed; the rename must not be retried or reported as failed (w4/m186)",
+  },
   "projects.renameError": {
     message: "重命名项目为「{name}」失败。",
     description: "Toast shown when renaming a project fails",

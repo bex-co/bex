@@ -3,7 +3,6 @@ import {
   createFileRoute,
   getRouteApi,
   useNavigate,
-  useRouter,
 } from "@tanstack/react-router";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import {
@@ -51,7 +50,6 @@ const projectRoute = getRouteApi("/project/$projectId");
 export function ProjectSettingsPage() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
-  const router = useRouter();
   const { t } = useTranslations();
   const projectResult = projectRoute.useLoaderData();
   const project =
@@ -77,11 +75,9 @@ export function ProjectSettingsPage() {
       setEditing(false);
       return;
     }
-    const ok = await rename(projectId, trimmed);
-    if (ok) {
-      setEditing(false);
-      void router.invalidate();
-    }
+    // The hook republishes the route loader after re-reading the saved name
+    // (w4/m186); invalidating here too would race that ordering.
+    if (await rename(projectId, trimmed)) setEditing(false);
   }
 
   async function handleDelete() {
