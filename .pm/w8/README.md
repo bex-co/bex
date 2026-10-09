@@ -15,11 +15,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m54** — [Accept one-sided CLI build filters](m54/README.md) (7 tasks; 2h20m) ← live CLI QA + exact-source gate probe, 2026-10-09 UTC; upstream serializer/schema mismatch documented.
+- [x] **m54** — [Accept one-sided CLI build filters](done/m54/README.md) (7 tasks; 2h20m) ← live CLI QA + exact-source gate probe, 2026-10-09 UTC; upstream serializer/schema mismatch documented. — **DONE 2026-10-09**
 
-- [ ] **m53** — [Accept numeric Blueprint environment values](m53/README.md) (7 tasks; 2h30m) ← live CLI QA + exact-source typed-decoder probe, 2026-10-09 UTC; no product fix yet.
+- [x] **m53** — [Accept numeric Blueprint environment values](done/m53/README.md) (7 tasks; 2h30m) ← live CLI QA + exact-source typed-decoder probe, 2026-10-09 UTC; no product fix yet. — **DONE 2026-10-09**
 
-- [ ] **m52** — [Keep a new service out of stale orphan cleanup](m52/README.md) (7 tasks; 3h40m) ← live CLI QA + deterministic source probe, 2026-10-08; exact live deletion actor unobserved.
+- [x] **m52** — [Keep a new service out of stale orphan cleanup](done/m52/README.md) (7 tasks; 3h40m) ← live CLI QA + deterministic source probe, 2026-10-08; exact live deletion actor unobserved. — **DONE 2026-10-09**
 
 - [x] **m51** — [Native builds honor the requested runtime version (Render's PYTHON_VERSION / NODE_VERSION / version-file contract)](done/m51/README.md) (9 tasks) — **DONE 2026-10-08**: `.python-version`/`.nvmrc` live builds pass on `bex v0.3.2` (`examples/runtime-version`); intermittent narration drop filed as w8/069.
 - [x] **m50** — [Enforce Postgres tier capacity across write paths](done/m50/README.md) (9 tasks) ← promoted from `035` on 2026-10-02.
