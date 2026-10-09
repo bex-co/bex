@@ -82,7 +82,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **071** — [Namespace prune shares m52's stale-snapshot shape](071.md) ← filed 2026-10-09 from w8/m52 t002.
+- [x] **071** — [Namespace prune shares m52's stale-snapshot shape](done/071.md) ← filed 2026-10-09 from w8/m52 t002 — **DONE 2026-10-09** (fresh `GetTenant` + UID-bound delete)
+- [ ] **070** — [Upstream `pgcli --help` advertises flags that real pgcli refuses](blocked/070.md) — **BLOCKED (2026-10-09: upstream patch prepared and parser-checked — [`070-upstream.patch`](blocked/070-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 - [ ] **069** — [A native build's "==> Using <runtime> <line>" narration is sometimes missing from the build log](blocked/069.md) — **BLOCKED (2026-10-08: not reproduced in 3 fresh first builds — narration present in both kubelet and Loki; needs the next occurrence captured with build-Job events before the service is deleted; lead: a replaced build pod takes its log files with it)**
 - [ ] **068** — [Upstream `logs -o yaml` merges multiple entries into an invalid mapping](blocked/068.md) — **BLOCKED (2026-10-08: upstream patch prepared and tested — [`068-upstream.patch`](blocked/068-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 - [ ] **067** — [Upstream token refresh deletes the saved refresh credential on a temporary 503 or 429](blocked/067.md) — **BLOCKED (2026-10-08: upstream patch prepared and tested — [`067-upstream.patch`](blocked/067-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**

@@ -29,29 +29,51 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// afterDesiredStore runs a hook once, right after ListDesiredApps took its
-// snapshot — the window between the desired-row read and the CR list.
-type afterDesiredStore struct {
+// snapshotRaceStore runs a hook once, right after a reconciler's first list
+// (desired apps or workspaces) took its snapshot — the window before the
+// cluster list — and can fail the fresh per-object reads.
+type snapshotRaceStore struct {
 	*memStore
 	after  func()
 	getErr error
 }
 
-func (s *afterDesiredStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
-	snapshot, err := s.memStore.ListDesiredApps(ctx)
-	if err == nil && s.after != nil {
+func (s *snapshotRaceStore) runAfter() {
+	if s.after != nil {
 		after := s.after
 		s.after = nil
 		after()
 	}
+}
+
+func (s *snapshotRaceStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
+	snapshot, err := s.memStore.ListDesiredApps(ctx)
+	if err == nil {
+		s.runAfter()
+	}
 	return snapshot, err
 }
 
-func (s *afterDesiredStore) GetApp(ctx context.Context, id string) (App, error) {
+func (s *snapshotRaceStore) ListTenants(ctx context.Context) ([]Tenant, error) {
+	snapshot, err := s.memStore.ListTenants(ctx)
+	if err == nil {
+		s.runAfter()
+	}
+	return snapshot, err
+}
+
+func (s *snapshotRaceStore) GetApp(ctx context.Context, id string) (App, error) {
 	if s.getErr != nil {
 		return App{}, s.getErr
 	}
 	return s.memStore.GetApp(ctx, id)
+}
+
+func (s *snapshotRaceStore) GetTenant(ctx context.Context, id string) (Tenant, error) {
+	if s.getErr != nil {
+		return Tenant{}, s.getErr
+	}
+	return s.memStore.GetTenant(ctx, id)
 }
 
 // publishBetweenSnapshots creates a row plus its complete App (the CR-only
@@ -59,7 +81,7 @@ func (s *afterDesiredStore) GetApp(ctx context.Context, id string) (App, error) 
 func publishBetweenSnapshots(t *testing.T, r *Reconciler, base *memStore, cl client.Client) *client.ObjectKey {
 	t.Helper()
 	ctx := context.Background()
-	hooked := &afterDesiredStore{memStore: base}
+	hooked := &snapshotRaceStore{memStore: base}
 	r.Store = hooked
 	tenant, err := base.CreateTenant(ctx, "acme", "free")
 	if err != nil {
@@ -120,7 +142,7 @@ func TestOrphanPruneKeepsAppWhenRowReadFails(t *testing.T) {
 	if err := base.DeleteApp(ctx, row.ID); err != nil {
 		t.Fatal(err)
 	}
-	r.Store = &afterDesiredStore{memStore: base, getErr: errors.New("connection reset")}
+	r.Store = &snapshotRaceStore{memStore: base, getErr: errors.New("connection reset")}
 
 	err := r.ReconcileOnce(ctx)
 	if err == nil || !strings.Contains(err.Error(), "confirm App") {

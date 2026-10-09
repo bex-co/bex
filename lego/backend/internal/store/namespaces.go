@@ -346,7 +346,21 @@ func (r *NamespaceReconciler) pruneOrphans(ctx context.Context, desired map[stri
 		if ns.DeletionTimestamp != nil {
 			continue
 		}
-		if err := r.Client.Delete(ctx, ns); err != nil && !apierrors.IsNotFound(err) {
+		// `desired` came from a workspace list read before this namespace list,
+		// and bex-api ensures a new workspace's namespace synchronously, so a
+		// workspace created in between looks orphaned here. Deleting it would
+		// take every App, Secret and datastore inside with it; only a fresh,
+		// definitive not-found proves the workspace is gone.
+		if _, err := r.Store.GetTenant(ctx, ns.Labels[LabelWorkspace]); !errors.Is(err, ErrNotFound) {
+			if err != nil {
+				errs = append(errs, fmt.Errorf("confirm namespace %s is orphaned: %w", ns.Name, err))
+			}
+			continue
+		}
+		// Conflict means the UID changed: the namespace was recreated since the
+		// list and is not this orphan.
+		uid := ns.UID
+		if err := r.Client.Delete(ctx, ns, client.Preconditions{UID: &uid}); err != nil && !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
 			errs = append(errs, fmt.Errorf("delete orphan namespace %s: %w", ns.Name, err))
 		}
 	}
