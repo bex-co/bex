@@ -12,7 +12,7 @@ import { ScrollArea } from "@/common/components/ui/scroll-area";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   SERVICE_EVENT_GROUPS,
-  serviceEventLabelKey,
+  serviceEventFilterLabelKey,
 } from "@/features/events/service-event-catalog";
 
 type TriState = boolean | "indeterminate";
@@ -29,7 +29,9 @@ function optionLabel(
   groupKey: string,
   type: string,
 ): string {
-  return groupKey === UNCATALOGUED_GROUP ? type : t(serviceEventLabelKey(type));
+  return groupKey === UNCATALOGUED_GROUP
+    ? type
+    : t(serviceEventFilterLabelKey(type));
 }
 
 function triState(selected: number, total: number): TriState {

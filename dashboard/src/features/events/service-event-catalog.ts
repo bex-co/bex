@@ -189,6 +189,33 @@ export function serviceEventLabelKey(type: string): string {
   return LABEL_KEYS[type] ?? "services.eventsTypeServiceChanged";
 }
 
+// The feed row shares one title across each of these clusters on purpose (the
+// row's detail line names the field), but a filter checkbox has no detail
+// line: eight "Build and deploy settings changed" options cannot be told apart
+// or selected by name (w4/223). The filter alone uses these specific labels.
+const FILTER_LABEL_KEYS: Record<string, string> = {
+  auto_deploy_enabled: "services.eventsFilterType.autoDeployEnabled",
+  auto_deploy_disabled: "services.eventsFilterType.autoDeployDisabled",
+  auto_deploy_changed: "services.eventsFilterType.autoDeployChanged",
+  publish_path_changed: "services.eventsFilterType.publishPathChanged",
+  routes_changed: "services.eventsFilterType.routesChanged",
+  headers_changed: "services.eventsFilterType.headersChanged",
+  root_directory_changed: "services.eventsFilterType.rootDirectoryChanged",
+  dockerfile_path_changed: "services.eventsFilterType.dockerfilePathChanged",
+  build_filter_changed: "services.eventsFilterType.buildFilterChanged",
+  commands_changed: "services.eventsFilterType.commandsChanged",
+  source_changed: "services.eventsFilterType.sourceChanged",
+  pre_deploy_command_changed:
+    "services.eventsFilterType.preDeployCommandChanged",
+  max_shutdown_delay_changed:
+    "services.eventsFilterType.maxShutdownDelayChanged",
+  deploy_hook_regenerated: "services.eventsFilterType.deployHookRegenerated",
+};
+
+export function serviceEventFilterLabelKey(type: string): string {
+  return FILTER_LABEL_KEYS[type] ?? serviceEventLabelKey(type);
+}
+
 // serviceEventHasExplicitLabel distinguishes "catalogued, and deliberately shown
 // under the generic label" (ip_allow_list_changed) from "not catalogued at all",
 // which serviceEventLabelKey's return value cannot: both yield

@@ -4098,6 +4098,67 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Static site settings changed",
     description: "Service activity type: static-site configuration changed",
   },
+  "services.eventsFilterType.autoDeployEnabled": {
+    message: "Auto-deploy enabled",
+    description: "Events filter option for the auto deploy enabled event type",
+  },
+  "services.eventsFilterType.autoDeployDisabled": {
+    message: "Auto-deploy disabled",
+    description: "Events filter option for the auto deploy disabled event type",
+  },
+  "services.eventsFilterType.autoDeployChanged": {
+    message: "Auto-deploy updated (legacy)",
+    description: "Events filter option for the auto deploy changed event type",
+  },
+  "services.eventsFilterType.publishPathChanged": {
+    message: "Publish directory changed",
+    description: "Events filter option for the publish path changed event type",
+  },
+  "services.eventsFilterType.routesChanged": {
+    message: "Redirects and rewrites changed",
+    description: "Events filter option for the routes changed event type",
+  },
+  "services.eventsFilterType.headersChanged": {
+    message: "Headers changed",
+    description: "Events filter option for the headers changed event type",
+  },
+  "services.eventsFilterType.rootDirectoryChanged": {
+    message: "Root directory changed",
+    description:
+      "Events filter option for the root directory changed event type",
+  },
+  "services.eventsFilterType.dockerfilePathChanged": {
+    message: "Dockerfile path changed",
+    description:
+      "Events filter option for the dockerfile path changed event type",
+  },
+  "services.eventsFilterType.buildFilterChanged": {
+    message: "Build filter changed",
+    description: "Events filter option for the build filter changed event type",
+  },
+  "services.eventsFilterType.commandsChanged": {
+    message: "Commands changed",
+    description: "Events filter option for the commands changed event type",
+  },
+  "services.eventsFilterType.sourceChanged": {
+    message: "Source changed",
+    description: "Events filter option for the source changed event type",
+  },
+  "services.eventsFilterType.preDeployCommandChanged": {
+    message: "Pre-deploy command changed",
+    description:
+      "Events filter option for the pre deploy command changed event type",
+  },
+  "services.eventsFilterType.maxShutdownDelayChanged": {
+    message: "Max shutdown delay changed",
+    description:
+      "Events filter option for the max shutdown delay changed event type",
+  },
+  "services.eventsFilterType.deployHookRegenerated": {
+    message: "Deploy hook regenerated",
+    description:
+      "Events filter option for the deploy hook regenerated event type",
+  },
   "services.eventsTypeBuildSettingsChanged": {
     message: "Build and deploy settings changed",
     description: "Service activity type: build or deploy configuration changed",
