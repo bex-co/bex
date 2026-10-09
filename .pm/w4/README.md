@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m186** — [Keep project names current after a fast rename](m186/README.md) (6 tasks) ← continuous qa-find-bugs cycle 6, 2026-10-08 LA; late pre-save Projects data can outlive a successful rename. Fix and verification are scheduled; all owned fixtures and the QA session were cleaned up.
+- [x] **m186** — [Keep project names current after a fast rename](done/m186/README.md) (6 tasks) — **DONE 2026-10-09**: live race replay (pre-save list read overlapping the rename) publishes the saved name in heading/title/breadcrumb without reload; one write per save.
 
 - [x] **m185** — [Apply environment isolation when its label changes](done/m185/README.md) — **DONE 2026-10-09**: live replay on prod — enable/move → BLOCKED in 3–4 s, disable → reachable in 9 s, same-env isolated access works, no deploys minted, settings switch correct at desktop + 390px.
 
@@ -221,6 +221,11 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
+
+- [x] **219** — [Long Docker-command confirmations hide Save and Cancel below the mobile viewport](done/219.md) — **DONE 2026-10-09** (`465c725fe`, live-verified at 390×667/390×844/1280×900) ← live `$qa-find-bugs w4` cycle a1, 2026-10-08.
+- [x] **220** — [Cached environment membership misclassifies newly created services as workspace-scoped](done/220.md) — **DONE 2026-10-09** (`5f65179d4`, live-verified) ← live `$qa-find-bugs w4` cycle 2.
+- [x] **221** — [Superseded deploy events print a missing translation key](done/221.md) — **DONE 2026-10-09** (`8b7cd1789`, live en+zh) ← live `$qa-find-bugs w4` cycle 3.
+- [x] **222** — [Revealed datastore connection panels retain external URLs after access is disabled](done/222.md) — **DONE 2026-10-09** (`11534ff7a`, live KV + Postgres) ← live `$qa-find-bugs w4` sweep 5.
 
 - [x] **217** — [Service Environment offers groups from a different environment, then refuses every Link](done/217.md) (55m) ← live `qa-find-bugs` loop, 2026-10-08 cycle 13; enabled incompatible candidates bypass the existing scope predicate that the group-detail picker already uses. — **DONE 2026-10-08**: the service panel offers only groups in the service's own environment, and nothing before the scope resolves.
 
