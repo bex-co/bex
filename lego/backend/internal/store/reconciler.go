@@ -667,8 +667,26 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		if seen[id] || !ownedBy(cur.Labels, r.identity()) {
 			continue
 		}
-		delete(r.unhealthyOnce, id)
-		if err := r.Client.Delete(ctx, cur); err != nil && !apierrors.IsNotFound(err) {
+		// `desired` was read BEFORE the CR list, so a service created between
+		// the two reads has a complete App but no row in this pass. Deleting on
+		// that stale absence let the next pass recreate it from the row alone,
+		// dropping its predeploy/health/env-secret settings. Only a
+		// fresh, definitive not-found makes the App an orphan; any other read
+		// error keeps it for a later pass.
+		if _, err := r.Store.GetApp(ctx, id); !errors.Is(err, ErrNotFound) {
+			if err != nil {
+				errs = append(errs, fmt.Errorf("confirm App %s is orphaned: %w", cur.Name, err))
+			}
+			continue
+		}
+		// Bound to the UID this pass observed: an App recreated under the same
+		// name since the list is not this orphan, and answers Conflict.
+		uid := cur.UID
+		err := r.Client.Delete(ctx, cur, client.Preconditions{UID: &uid})
+		switch {
+		case err == nil || apierrors.IsNotFound(err):
+			delete(r.unhealthyOnce, id)
+		case !apierrors.IsConflict(err):
 			errs = append(errs, fmt.Errorf("delete App %s: %w", cur.Name, err))
 		}
 	}
