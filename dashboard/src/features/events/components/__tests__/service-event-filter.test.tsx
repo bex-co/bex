@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import i18n from "@/i18n/init";
 import { ServiceEventFilter } from "@/features/events/components/service-event-filter";
+import { SERVICE_EVENT_GROUPS } from "@/features/events/service-event-catalog";
 
 function Harness({ extraTypes }: { extraTypes?: string[] }) {
   // Mirrors the route: the filter starts with nothing hidden, so "all types"
@@ -122,5 +124,89 @@ describe("ServiceEventFilter", () => {
     expect(
       screen.getByRole("button", { name: "Filter events" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("ServiceEventFilter — every option has its own name (w4/223)", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  async function optionNames() {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(
+      screen.getByRole("button", { name: /^Filter events|^筛选/ }),
+    );
+    const groupNames = new Set([
+      i18n.t("services.eventsFilterAll"),
+      ...SERVICE_EVENT_GROUPS.map((g) =>
+        i18n.t(`services.eventsFilterGroup.${g.key}`),
+      ),
+    ]);
+    return screen
+      .getAllByRole("checkbox")
+      .map((box) => box.getAttribute("aria-label") ?? "")
+      .filter((name) => name !== "" && !groupNames.has(name));
+  }
+
+  it.each(["en", "zh"])(
+    "gives each catalogued type a distinct accessible name (%s)",
+    async (lang) => {
+      await i18n.changeLanguage(lang);
+      const names = await optionNames();
+      const typeCount = SERVICE_EVENT_GROUPS.reduce(
+        (n, g) => n + g.types.length,
+        0,
+      );
+      expect(names).toHaveLength(typeCount);
+      expect(new Set(names).size).toBe(names.length);
+    },
+  );
+
+  it("selects the shutdown option alone by its specific name", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Filter events" }));
+    await user.click(screen.getByRole("checkbox", { name: "All events" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Max shutdown delay changed" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Filter events \(1\)/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Root directory changed" }),
+    ).not.toBeChecked();
+    expect(
+      screen.queryByRole("checkbox", {
+        name: "Build and deploy settings changed",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("finds an option by its specific label and by its wire type", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Filter events" }));
+    const search = screen.getByRole("textbox", { name: "Search events" });
+
+    await user.type(search, "shutdown");
+    expect(
+      screen.getByRole("checkbox", { name: "Max shutdown delay changed" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Root directory changed" }),
+    ).not.toBeInTheDocument();
+
+    await user.clear(search);
+    await user.type(search, "auto_deploy_disabled");
+    expect(
+      screen.getByRole("checkbox", { name: "Auto-deploy disabled" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Auto-deploy enabled" }),
+    ).not.toBeInTheDocument();
   });
 });
