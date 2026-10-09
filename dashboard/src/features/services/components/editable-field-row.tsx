@@ -151,7 +151,8 @@ export function EditableFieldRow({
 
   const normalized = trim ? draft.trim() : draft;
   const validationError = editing ? (validate?.(draft) ?? null) : null;
-  const description = validationError === null ? (describe?.(shown) ?? null) : null;
+  const description =
+    validationError === null ? (describe?.(shown) ?? null) : null;
   const isDirty = dirty ? dirty(normalized) : normalized !== value;
   const canSave = isDirty && validationError === null;
 
@@ -247,9 +248,7 @@ export function EditableFieldRow({
             disabled={disabled || !editing || busy}
             aria-label={label}
             aria-invalid={validationError !== null || undefined}
-            aria-describedby={
-              validationError !== null ? errorId : undefined
-            }
+            aria-describedby={validationError !== null ? errorId : undefined}
             placeholder={placeholder}
             autoComplete="off"
             className={cn("flex-1", mono && "font-mono text-sm")}
@@ -312,6 +311,10 @@ export function EditableFieldRow({
           confirmLabel={t("services.editRowSave")}
           // Saving an edit is the primary action, not a destructive one.
           destructive={false}
+          // The title quotes the full new value, and a valid command may run
+          // to thousands of characters: cap the dialog to the viewport and
+          // scroll inside it so Save/Cancel stay reachable on mobile (w4/219).
+          contentClassName="max-h-[85dvh] overflow-y-auto [overflow-wrap:anywhere]"
           onConfirm={() => void persist()}
         />
       )}

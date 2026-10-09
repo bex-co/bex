@@ -180,6 +180,42 @@ describe("EditableFieldRow", () => {
     expect(onSave).toHaveBeenCalledWith("web");
   });
 
+  // w4/219: the title quotes the whole new value, so a long (valid) command
+  // must scroll inside a viewport-capped dialog instead of pushing Save and
+  // Cancel off a mobile screen. jsdom can't measure layout; this pins the cap
+  // on the confirmation path, and the live 390x667 check covers geometry.
+  it("caps the confirmation to the viewport and scrolls it internally", async () => {
+    const user = userEvent.setup();
+    const longCommand = `exec httpd ${"-f -p 3000 ".repeat(80)}`.trim();
+    render(
+      <EditableFieldRow
+        label="Docker Command"
+        value="old"
+        editLabel="Edit Docker Command"
+        confirm={{
+          title: (v) => `Change Docker Command to ${v}?`,
+          body: "This redeploys.",
+        }}
+        onSave={ok()}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Edit Docker Command" }),
+    );
+    const input = screen.getByRole("textbox", { name: "Docker Command" });
+    await user.clear(input);
+    await user.click(input);
+    await user.paste(longCommand);
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveClass("max-h-[85dvh]", "overflow-y-auto");
+    // The full value is still shown, not truncated.
+    expect(
+      within(dialog).getByText(`Change Docker Command to ${longCommand}?`),
+    ).toBeInTheDocument();
+  });
+
   it("blocks save and shows the error while validation fails", async () => {
     const user = userEvent.setup();
     const onSave = ok();
