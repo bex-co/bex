@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m190** — [Send service hostnames in HTTP health probes](m190/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09 cycle32; pod-IP Host prevents a publicly healthy hostname-restricted web app from completing HTTP-health deployment.
+
 - [ ] **m189** — [Search the visible service log message](m189/README.md) (8 tasks) ← live qa-find-bugs 2026-10-09 cycle31; colored visible text is searchable in deploy logs but yields a false empty in service Logs.
 
 - [ ] **m188** — [Translate hosting times and cron previews](m188/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09 cycle28; relative times and both cron schedule previews stay English in Chinese mode.
