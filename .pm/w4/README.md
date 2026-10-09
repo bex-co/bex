@@ -224,6 +224,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **225** — [Clearing a service label falsely says its name resets to the immutable ID](225.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a25; fresh English and Chinese repro with correct API identity/name fields.
+
 - [x] **219** — [Long Docker-command confirmations hide Save and Cancel below the mobile viewport](done/219.md) — **DONE 2026-10-09** (`465c725fe`, live-verified at 390×667/390×844/1280×900) ← live `$qa-find-bugs w4` cycle a1, 2026-10-08.
 - [x] **220** — [Cached environment membership misclassifies newly created services as workspace-scoped](done/220.md) — **DONE 2026-10-09** (`5f65179d4`, live-verified) ← live `$qa-find-bugs w4` cycle 2.
 - [x] **221** — [Superseded deploy events print a missing translation key](done/221.md) — **DONE 2026-10-09** (`8b7cd1789`, live en+zh) ← live `$qa-find-bugs w4` cycle 3.
