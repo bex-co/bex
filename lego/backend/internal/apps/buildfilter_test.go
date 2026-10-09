@@ -282,3 +282,43 @@ func TestRESTPatchServiceBuildFilter(t *testing.T) {
 		t.Errorf("PATCH response buildFilter = %+v, want paths=[api/**]", out.BuildFilter)
 	}
 }
+
+// TestRESTOneSidedBuildFilterUpdateReplacesWholeFilter pins the Render CLI's
+// one-sided update shape (unused list null, w8/m54): it replaces the stored
+// filter — the old ignored globs do not survive — and reads back [] not null.
+func TestRESTOneSidedBuildFilterUpdateReplacesWholeFilter(t *testing.T) {
+	svc, cl := newService(nil)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	create := `{"name":"web","repo":"https://github.com/x/mono","buildFilter":{"paths":["src/**"],"ignoredPaths":["docs/**"]}}`
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(create)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
+	}
+
+	patch := `{"buildFilter":{"paths":["src/*.go"],"ignoredPaths":null}}`
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(patch)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("patch => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	paths, ignored := getBuildFilter(t, cl, "web")
+	if len(paths) != 1 || paths[0] != "src/*.go" || len(ignored) != 0 {
+		t.Fatalf("spec.buildFilter = %v / %v, want [src/*.go] / []", paths, ignored)
+	}
+	if !strings.Contains(rec.Body.String(), `"ignoredPaths":[]`) {
+		t.Errorf("one-sided update must read back ignoredPaths as []: %s", rec.Body)
+	}
+
+	// An update that omits buildFilter leaves it alone.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"autoDeploy":"no"}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unrelated patch => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	if paths, _ := getBuildFilter(t, cl, "web"); len(paths) != 1 || paths[0] != "src/*.go" {
+		t.Errorf("omitted buildFilter changed the stored filter: %v", paths)
+	}
+}

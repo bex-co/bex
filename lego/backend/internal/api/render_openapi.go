@@ -386,6 +386,7 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 	if operationID != "create-service" && operationID != "update-service" {
 		return
 	}
+	nullableBuildFilterLists(schema)
 	details := schema.Properties["serviceDetails"]
 	if details == nil || details.Value == nil || len(details.Value.OneOf) == 0 {
 		return
@@ -396,6 +397,31 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 	// validation uses anyOf while all branch constraints remain active.
 	details.Value.AnyOf = append(details.Value.AnyOf, details.Value.OneOf...)
 	details.Value.OneOf = nil
+}
+
+// nullableBuildFilterLists lets either buildFilter list be JSON null on the
+// two service writes. The pinned Render CLI builds each list from its own
+// repeatable flag and serializes an unused one as null (no omitempty), so an
+// include-only or ignore-only filter failed the pinned schema, which requires
+// two arrays (w8/m54). The domain already reads null as empty. The component
+// is cloned because the service response shares it and must stay non-null.
+func nullableBuildFilterLists(schema *openapi3.Schema) {
+	ref := schema.Properties["buildFilter"]
+	if ref == nil || ref.Value == nil {
+		return
+	}
+	filter := *ref.Value
+	filter.Properties = maps.Clone(ref.Value.Properties)
+	for _, name := range []string{"paths", "ignoredPaths"} {
+		list := filter.Properties[name]
+		if list == nil || list.Value == nil {
+			continue
+		}
+		nullable := *list.Value
+		nullable.Nullable = true
+		filter.Properties[name] = &openapi3.SchemaRef{Value: &nullable}
+	}
+	schema.Properties["buildFilter"] = &openapi3.SchemaRef{Value: &filter}
 }
 
 func extendSchemaEnum(schema *openapi3.SchemaRef, values []string) {
