@@ -10,6 +10,7 @@ import {
   LOG_TYPE_ALL,
   type LogFilters,
   type LogLine,
+  type LogTextMode,
 } from "../types";
 
 // bex-api's GraphQL logs query defaults to 20 lines and caps at 100 (Render's
@@ -63,18 +64,23 @@ function list(value: string): string[] | undefined {
  *
  * Older pages (scroll-to-top) are fetched with the envelope's cursors and kept
  * in local state — not in the URL (w4/m107); `useOlderLogPages` owns them.
+ *
+ * `textMode` opts a reader into display-text matching (w4/m189); it is part of
+ * the query variables, so older pages and the reader identity carry it too.
  */
 export function useLogHistory(
   resource: string,
   filters: LogFilters,
   window?: { startTime: string; endTime: string },
   readerSelection?: string,
+  textMode?: LogTextMode,
 ): UseLogHistoryResult {
   const variables = useMemo(
     () => ({
       resource,
       type: filters.type === LOG_TYPE_ALL ? undefined : filters.type,
       text: filters.text || undefined,
+      textMode: filters.text ? textMode : undefined,
       level: list(filters.level),
       instance: list(filters.instance),
       statusCode: list(filters.statusCode),
@@ -88,6 +94,7 @@ export function useLogHistory(
       resource,
       filters.type,
       filters.text,
+      textMode,
       filters.level,
       filters.instance,
       filters.statusCode,
@@ -108,6 +115,7 @@ export function useLogHistory(
     resource,
     filters.type,
     filters.text,
+    textMode,
     filters.level,
     filters.instance,
     filters.statusCode,

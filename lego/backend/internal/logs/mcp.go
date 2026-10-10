@@ -52,6 +52,7 @@ type logFilters struct {
 	Method     []string `json:"method,omitempty" jsonschema:"filter request logs by HTTP method; * wildcards supported"`
 	Path       []string `json:"path,omitempty" jsonschema:"filter request logs by their path; * wildcards supported"`
 	Text       []string `json:"text,omitempty" jsonschema:"case-insensitive literal substrings; match any nonempty value"`
+	TextMode   string   `json:"textMode,omitempty" jsonschema:"bex extension — what text matches: raw (default, the stored message bytes) | display (the text a terminal shows, ANSI styling and overwritten text excluded); returned messages stay raw either way"`
 	StartTime  string   `json:"startTime,omitempty" jsonschema:"RFC3339 lower time bound (inclusive)"`
 	EndTime    string   `json:"endTime,omitempty" jsonschema:"RFC3339 upper time bound (inclusive)"`
 	Direction  string   `json:"direction,omitempty" jsonschema:"which end of the time range to take lines from: backward (default, most recent) | forward (oldest)"`
@@ -104,6 +105,7 @@ func (f logFilters) query() (LogQuery, error) {
 	q := LogQuery{
 		Types:      types,
 		Search:     f.Text,
+		TextMode:   f.TextMode,
 		Level:      f.Level,
 		Instance:   f.Instance,
 		Host:       f.Host,

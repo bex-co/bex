@@ -39,6 +39,13 @@ export const LOG_TYPE_ALL = "all";
 // range). A page with fewer lines that still reports `hasMore` is a time-boxed
 // search that stopped early, not a capped one (w4/m140).
 export const LOG_PAGE_SIZE = 100;
+
+// bex-api's `textMode=display` (w4/m189, a Bex extension): match `text`
+// against the terminal-display message — what a log row shows after ANSI
+// styling and carriage-return overwrite — instead of the raw bytes. Opt-in per
+// reader; omitted keeps the raw contract the CLI and API clients rely on.
+export const LOG_TEXT_MODE_DISPLAY = "display";
+export type LogTextMode = typeof LOG_TEXT_MODE_DISPLAY;
 export const LOG_TYPE_APP = "app";
 export const LOG_TYPE_REQUEST = "request";
 // Build is not offered in the service Logs-tab dropdown; deploy detail uses it

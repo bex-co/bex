@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -57,12 +58,24 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 		q.Search = normalizeLogText(q.Search)
 		start, end := lokiRange(q, time.Now())
 		query := lokiQueryFor(namespace, q)
+		// A display search reads raw pages and matches in scanLokiWindow, so each
+		// request asks for a scan page of raw lines rather than the caller's page
+		// of matches.
+		pageQ := q
+		pageQ.Limit = lokiFetchLimit(q)
+		if q.displaySearch() && !q.End.IsZero() {
+			// Its coverage edges are Loki-exclusive ends, so the caller's inclusive
+			// End is applied once, here, rather than re-bumped whenever an edge
+			// lands on it (which could re-read the same full page forever).
+			end = end.Add(time.Nanosecond)
+			pageQ.End = time.Time{}
+		}
 		fetch := func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
 			u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
 				"query": {query},
 				"start": {strconv.FormatInt(from.UnixNano(), 10)},
-				"end":   {lokiEndParam(q, to)},
-				"limit": {strconv.FormatInt(lokiLimit(q), 10)},
+				"end":   {lokiEndParam(pageQ, to)},
+				"limit": {strconv.FormatInt(pageQ.Limit, 10)},
 				// Render's direction decides which end of the window `limit` keeps:
 				// backward (default) the newest lines, forward the oldest.
 				"direction": {lokiDirection(q)},
@@ -71,7 +84,7 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 			if err := lokiGet(ctx, hc, u, &lr); err != nil {
 				return nil, err
 			}
-			return parseLokiStreams(lr, q)
+			return parseLokiStreams(lr, pageQ)
 		}
 		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, fetch)
 	}
@@ -115,6 +128,23 @@ func lokiScansLines(q LogQuery) bool {
 	return len(q.Search) > 0 || len(q.Path) > 0 || len(q.Host) > 0
 }
 
+// lokiDisplayScanPage is how many raw lines one request of a display-mode
+// search reads (w4/m189). Loki cannot match the displayed text — an escape
+// inside the needle breaks a raw substring — so such a search reads raw pages
+// and matches in Go. A page larger than Render's 100-line cap keeps a week's
+// scan to fewer round trips; it stays under Loki's default
+// max_entries_limit_per_query (5000).
+const lokiDisplayScanPage = 1000
+
+// lokiFetchLimit is the line cap of one query_range request: the caller's page
+// of matches, or a raw scan page for a display search.
+func lokiFetchLimit(q LogQuery) int64 {
+	if q.displaySearch() {
+		return lokiDisplayScanPage
+	}
+	return lokiLimit(q)
+}
+
 // scanLokiWindow walks [start, end] until q's limit is filled, the window is
 // covered, or budget is spent. sliced reads it in growing slices from the
 // direction's end; otherwise it is one request under the same budget. fetch
@@ -136,6 +166,7 @@ func scanLokiWindow(
 
 	forward := lokiDirection(q) == DirectionForward
 	limit := lokiLimit(q)
+	display := q.displaySearch()
 	var out []LogEntry
 	seen := map[string]struct{}{}
 	covered := end // backward: [covered, end] is done; forward: [start, covered)
@@ -170,6 +201,13 @@ func scanLokiWindow(
 			}
 			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
 		}
+		next, saturated := from, false
+		if forward {
+			next = to
+		}
+		if display {
+			page, next, saturated = displayScanPage(q, page, forward, next)
+		}
 		// Adjacent slices share a boundary instant; a line exactly on it may come
 		// back from both, and must count once.
 		for _, e := range page {
@@ -180,11 +218,7 @@ func scanLokiWindow(
 			seen[key] = struct{}{}
 			out = append(out, e)
 		}
-		if forward {
-			covered = to
-		} else {
-			covered = from
-		}
+		covered = next
 		done := int64(len(out)) >= limit || (forward && !covered.Before(end)) || (!forward && !covered.After(start))
 		if done {
 			return q.capToLimit(sortedEntries(out)), nil
@@ -192,8 +226,52 @@ func scanLokiWindow(
 		if scanCtx.Err() != nil {
 			return nil, &ScanIncompleteError{Entries: q.capToLimit(sortedEntries(out)), ScannedTo: covered}
 		}
-		slice *= 2
+		if !saturated { // a full raw page already bounds the next read
+			slice *= 2
+		}
 	}
+}
+
+// displayScanPage turns one raw page of a display-mode search into its
+// matches and the coverage edge the page proves (w4/m189); next is the edge of
+// a fully read slice. Coverage advances by raw lines actually read, never by
+// matches: when Loki filled the raw page (saturated), the slice was only read
+// back to the page's far timestamp t. That instant's group may have been cut
+// by Loki's limit, so its lines are dropped and re-read whole by the next
+// request — a backward edge of t+1ns (Loki's end is exclusive), a forward edge
+// of t (its start is inclusive). A page that is one single instant cannot
+// progress that way; it is kept as read, and the edge moves just past t.
+func displayScanPage(q LogQuery, page []LogEntry, forward bool, next time.Time) (matches []LogEntry, edge time.Time, saturated bool) {
+	edge = next
+	if int64(len(page)) >= lokiDisplayScanPage {
+		saturated = true
+		far := page[0] // backward: the oldest line read
+		if forward {
+			far = page[len(page)-1] // forward: the newest line read
+		}
+		near := page[len(page)-1].Timestamp
+		if forward {
+			near = page[0].Timestamp
+		}
+		t, _ := time.Parse(time.RFC3339Nano, far.Timestamp) // parseLokiStreams formatted it
+		cut := far.Timestamp != near
+		if cut {
+			page = slices.DeleteFunc(page, func(e LogEntry) bool { return e.Timestamp == far.Timestamp })
+		}
+		// Backward re-reads t (edge t+1ns) unless the page is all t; forward
+		// re-reads t (edge t) unless the page is all t.
+		if cut == forward {
+			edge = t
+		} else {
+			edge = t.Add(time.Nanosecond)
+		}
+	}
+	for _, e := range page {
+		if q.matchesText(e.Message) {
+			matches = append(matches, e)
+		}
+	}
+	return matches, edge, saturated
 }
 
 // errLogSearchTimeout is the answer when even the first slice of a search cannot
@@ -421,8 +499,16 @@ func lokiQueryFor(namespace string, q LogQuery) string {
 		for i, term := range q.Search {
 			terms[i] = regexp.QuoteMeta(term)
 		}
+		pattern := "(?i)" + strings.Join(terms, "|")
+		if q.displaySearch() {
+			// A display search matches exactly after the read (scanLokiWindow);
+			// Loki only prefilters to a superset. A line with no ESC or CR displays
+			// as stored, so the raw match is exact for it; any line carrying either
+			// may hide or split a term and must reach the Go matcher.
+			pattern = "(?i)(?:" + strings.Join(terms, "|") + `)|\x1b|\r`
+		}
 		// Escape each literal before alternation; caller text never becomes regex.
-		query += fmt.Sprintf(" |~ %q", "(?i)"+strings.Join(terms, "|"))
+		query += fmt.Sprintf(" |~ %q", pattern)
 	}
 	if len(q.Path) == 0 && len(q.Host) == 0 {
 		return query

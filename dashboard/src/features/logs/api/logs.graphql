@@ -14,10 +14,15 @@
 # always sent). Without the durable store those filters (and type=request) answer
 # 503 (core.ErrLogStoreUnavailable), which the Logs tab renders as an explanatory
 # "request logs need the log store" state, not a generic error (docs/ADR010-observability.md).
+#
+# `textMode` (w4/m189, a Bex extension): `display` matches `text` against the
+# terminal-display message (ANSI styling and overwritten text excluded) rather
+# than the raw bytes; omitted keeps raw. Returned messages stay raw either way.
 query Logs(
   $resource: String!
   $type: String
   $text: String
+  $textMode: String
   $level: [String!]
   $instance: [String!]
   $statusCode: [String!]
@@ -31,6 +36,7 @@ query Logs(
     resource: $resource
     type: $type
     text: $text
+    textMode: $textMode
     level: $level
     instance: $instance
     statusCode: $statusCode

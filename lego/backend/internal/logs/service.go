@@ -254,8 +254,12 @@ type LogQuery struct {
 	// AuthorizeKeyValue. Adapters use Render's single `resource` field (stored
 	// in App on input); callers cannot set this selector directly.
 	KeyValue string
-	Types    []string  // empty == all types; values: app | request | build
-	Search   []string  // case-insensitive literal substrings, OR within Render's `text`
+	Types    []string // empty == all types; values: app | request | build
+	Search   []string // case-insensitive literal substrings, OR within Render's `text`
+	// TextMode picks what Search compares against: TextModeRaw ("" — the
+	// default) the stored message bytes, TextModeDisplay the terminal-display
+	// text a log row shows (displayText). A Bex extension; see display.go.
+	TextMode string
 	Since    time.Time // zero == no lower bound
 	End      time.Time // zero == no upper bound
 	Limit    int64     // max lines
@@ -288,6 +292,9 @@ func (q LogQuery) validate() error {
 	}
 	if _, err := core.ParseDirection(q.Direction); err != nil {
 		return err
+	}
+	if q.TextMode != "" && q.TextMode != TextModeRaw && q.TextMode != TextModeDisplay {
+		return fmt.Errorf("%w: unknown textMode %q (want %s|%s)", core.ErrBadRequest, q.TextMode, TextModeRaw, TextModeDisplay)
 	}
 	for _, t := range q.Types {
 		if t != LogTypeApp && t != LogTypeRequest && t != LogTypeBuild && t != LogTypePreDeploy {
@@ -454,17 +461,33 @@ func NormalizeTypes(types []string) ([]string, error) {
 	return slices.Compact(slices.Sorted(slices.Values(out))), nil
 }
 
+// displaySearch reports whether the query searches the displayed text rather
+// than the raw bytes — the case where a raw-byte prefilter would be wrong.
+func (q LogQuery) displaySearch() bool {
+	return len(q.Search) > 0 && q.TextMode == TextModeDisplay
+}
+
+// matchesText reports whether message contains any normalized Search term, in
+// the query's TextMode. No terms matches everything.
+func (q LogQuery) matchesText(message string) bool {
+	if len(q.Search) == 0 {
+		return true
+	}
+	if q.TextMode == TextModeDisplay {
+		message = displayText(message)
+	}
+	message = strings.ToLower(message)
+	return slices.ContainsFunc(q.Search, func(term string) bool { return strings.Contains(message, term) })
+}
+
 // keep reports whether an entry satisfies the search/time/level filters. Assumes
 // normalized() has run.
 func (q LogQuery) keep(e LogEntry) bool {
 	if q.levelFilter != nil && !q.levelFilter.MatchString(e.Labels[LabelLevel]) {
 		return false
 	}
-	if len(q.Search) > 0 {
-		message := strings.ToLower(e.Message)
-		if !slices.ContainsFunc(q.Search, func(term string) bool { return strings.Contains(message, term) }) {
-			return false
-		}
+	if !q.matchesText(e.Message) {
+		return false
 	}
 	if !q.Since.IsZero() || !q.End.IsZero() {
 		if t, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil {

@@ -503,6 +503,7 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 
 	q := LogQuery{
 		Search:     v["text"],
+		TextMode:   v.Get("textMode"), // Bex extension (w4/m189); vetted by LogQuery.validate
 		Level:      v["level"],
 		Instance:   v["instance"],
 		Host:       v["host"],
