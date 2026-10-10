@@ -236,6 +236,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **241** — [Short custom Metrics ranges report zero bandwidth despite retained samples](241.md) (55m) ← functional QA 2026-10-10 a70; identical five-minute window is zero at 3s and positive at 30/60s, owned fixture/session cleanup verified.
+
 - [ ] **240** — [Switching source tabs discards the Public Git Branch draft](240.md) (55m) ← functional QA 2026-10-10 a64; unchanged URL and settings survive, Branch clears on a fresh source-tab round trip, owned fixture/session cleanup verified.
 
 - [ ] **239** — [Generate Blueprint lets YAML widen the dialog and push actions off-screen](239.md) (55m) ← functional QA 2026-10-10 a56; fresh desktop/mobile reproduction, local bounded-column prototype, exact download and cleanup verified.
