@@ -31,14 +31,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/robfig/cron/v3"
 	"golang.org/x/net/http/httpguts"
-	"golang.org/x/sync/singleflight"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -238,11 +236,23 @@ type Service struct {
 	// pushDelivery memoizes the per-repo GitHub-grant answer behind
 	// AppView.PushDeliveryMethod (w6/m99) so projecting a whole workspace's
 	// services doesn't cost a GitHub round-trip per service. Unexported and
-	// built on first use (pushDeliveryMemo): it is a read-path cache, never
+	// built on first use (pushDeliveryCache): it is a read-path cache, never
 	// configuration, so no Service literal has to construct it.
-	pushDeliveryOnce   sync.Once
-	pushDelivery       *core.TTLCache[string]
-	pushDeliveryFlight singleflight.Group
+	pushDelivery *pushDeliveryState
+}
+
+// withClient is s with every Kubernetes read and write routed through cl —
+// how ApplyServicePatch runs its setters against a rollout.Stage. The copy
+// shares s's caches and dependencies; only the client differs.
+func (s *Service) withClient(cl client.Client) *Service {
+	s.pushDeliveryCache()
+	pushDeliveryInit.Lock()
+	routed := *s
+	pushDeliveryInit.Unlock()
+	base := *s.Base
+	base.Client = cl
+	routed.Base = &base
+	return &routed
 }
 
 // managedAppID distinguishes a projected control-plane App from a direct CR.
