@@ -1,17 +1,17 @@
 # w8 · m55 — Preserve literal commas in service name filters
 
-**Worker:** worker8 **Goal:** CLI updates and clones resolve an accepted display name containing a comma. **Status:** todo
+**Worker:** worker8 **Goal:** CLI updates and clones resolve an accepted display name containing a comma. **Status:** in progress — t001–t006 done 2026-10-09 (server fix + regressions); t007 live two-client replay awaits the deploy
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Define encoded name-array semantics and bound the callers | 30m | — |
-| t002 | Preserve raw array separators before decoding name elements | 45m | t001 |
-| t003 | Audit shared consumers and preserve other filter contracts | 35m | t002 |
-| t004 | Verify Render and cross-surface name contracts | 25m | t003 |
-| t005 | Simplify the changed code | 15m | t004 |
-| t006 | Add meaningful encoding and CLI-resolution regressions | 40m | t004 |
+| t001 | Define encoded name-array semantics and bound the callers — **DONE** | 30m | — |
+| t002 | Preserve raw array separators before decoding name elements — **DONE** | 45m | t001 |
+| t003 | Audit shared consumers and preserve other filter contracts — **DONE** | 35m | t002 |
+| t004 | Verify Render and cross-surface name contracts — **DONE** | 25m | t003 |
+| t005 | Simplify the changed code — **DONE** | 15m | t004 |
+| t006 | Add meaningful encoding and CLI-resolution regressions — **DONE** | 40m | t004 |
 | t007 | Replay both clients, clean up and close out | 35m | t005, t006 |
 
 ## Definition of done

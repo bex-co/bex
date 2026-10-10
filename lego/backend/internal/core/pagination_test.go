@@ -32,6 +32,29 @@ func TestQueryListAcceptsCommaAndRepeatedForms(t *testing.T) {
 	}
 }
 
+// The raw queries below are the exact bytes the pinned CLI's generated
+// NewListServicesRequest emits (w8/m55 evidence/probe.go.txt).
+func TestQueryNameListSplitsRawCommasBeforeDecoding(t *testing.T) {
+	for _, tc := range []struct {
+		raw  string
+		want []string
+	}{
+		{"name=qa-literal%2C%E9%9B%AA%25%2B%26%3D", []string{"qa-literal,雪%+&="}},
+		{"name=qa-first,qa-second", []string{"qa-first", "qa-second"}},
+		{"name=qa-first,qa-literal%2C%E9%9B%AA%25%2B%26%3D", []string{"qa-first", "qa-literal,雪%+&="}},
+		{"name=qa-literal%252C", []string{"qa-literal%2C"}},
+		{"name=+alpha+,bravo&name=bravo&name=&name=charlie&type=web_service", []string{"alpha", "bravo", "charlie"}},
+		{"na%6De=a%2Cb&other=x,y", []string{"a,b"}},
+		{"name=bad%zz,ok", []string{"bad%zz", "ok"}},
+		{"name=a;b&name=c", []string{"c"}},
+		{"type=web_service", nil},
+	} {
+		if got := QueryNameList(&url.URL{RawQuery: tc.raw}, "name"); !slices.Equal(got, tc.want) {
+			t.Errorf("QueryNameList(%q) = %q, want %q", tc.raw, got, tc.want)
+		}
+	}
+}
+
 func TestQueryTime(t *testing.T) {
 	want := time.Date(2026, 7, 15, 10, 11, 12, 0, time.UTC)
 	got, err := QueryTime(url.Values{"createdBefore": {want.Format(time.RFC3339)}}, "createdBefore")

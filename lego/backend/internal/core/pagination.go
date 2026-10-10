@@ -34,10 +34,47 @@ func QueryList(q url.Values, key string) []string {
 	var out []string
 	for _, raw := range q[key] {
 		for value := range strings.SplitSeq(raw, ",") {
-			value = strings.TrimSpace(value)
-			if value != "" && !slices.Contains(out, value) {
-				out = append(out, value)
+			out = appendListValue(out, value)
+		}
+	}
+	return out
+}
+
+// appendListValue is the list filters' shared normalization: trimmed, non-empty,
+// first occurrence wins.
+func appendListValue(out []string, value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" || slices.Contains(out, value) {
+		return out
+	}
+	return append(out, value)
+}
+
+// QueryNameList is QueryList for Render's form/explode-false `name` arrays,
+// whose elements are free-form display names that may themselves contain
+// commas. It splits each raw value on unescaped commas before decoding, so the
+// pinned CLI's `name=a,b` stays two names while `name=a%2Cb` stays the single
+// name "a,b" (and `%252C` the literal "%2C"); QueryList decodes first and would
+// cut that name in two (w8/m55). Repeated keys, trimming, and deduplication
+// match QueryList. An element that fails to decode is kept raw, so it matches
+// nothing rather than silently dropping out and widening the filter.
+func QueryNameList(u *url.URL, key string) []string {
+	var out []string
+	for pair := range strings.SplitSeq(u.RawQuery, "&") {
+		// url.ParseQuery rejects semicolon pairs; skip them the same way.
+		if strings.Contains(pair, ";") {
+			continue
+		}
+		rawKey, rawValue, _ := strings.Cut(pair, "=")
+		if k, err := url.QueryUnescape(rawKey); err != nil || k != key {
+			continue
+		}
+		for element := range strings.SplitSeq(rawValue, ",") {
+			value, err := url.QueryUnescape(element)
+			if err != nil {
+				value = element
 			}
+			out = appendListValue(out, value)
 		}
 	}
 	return out
