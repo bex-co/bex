@@ -23,7 +23,7 @@ export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
   const device = session.userAgent ?? t("activeSessions.unknownDevice");
   const location = session.location ?? session.ipAddress ?? "—";
   const lastActive = hydrated
-    ? formatRelativeAge(session.authenticatedAt, now)
+    ? formatRelativeAge(session.authenticatedAt, t, now)
     : session.authenticatedAt &&
         !Number.isNaN(Date.parse(session.authenticatedAt))
       ? session.authenticatedAt

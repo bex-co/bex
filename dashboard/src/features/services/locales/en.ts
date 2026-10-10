@@ -4837,6 +4837,79 @@ const enServices: Record<string, TranslationEntry> = {
       "No workspace environment groups yet. Create one with variables, files, and this service already selected.",
     description: "Service group create-first empty state",
   },
+  "services.cronEveryMinute": {
+    message: "Every minute",
+    description: "Cron schedule preview phrase (w4/m188): fires every minute",
+  },
+  "services.cronEveryNMinutes": {
+    message: "Every {n} minutes",
+    description:
+      "Cron schedule preview phrase (w4/m188): uniform minute step; n is the step",
+  },
+  "services.cronEveryHour": {
+    message: "Every hour",
+    description:
+      "Cron schedule preview phrase (w4/m188): fires at minute 0 of every hour",
+  },
+  "services.cronEveryNHours": {
+    message: "Every {n} hours",
+    description:
+      "Cron schedule preview phrase (w4/m188): uniform hour step; n is the step",
+  },
+  "services.cronHourlyAtMinute": {
+    message: "Every hour at minute {minute}",
+    description:
+      "Cron schedule preview phrase (w4/m188): fires once an hour at the given minute",
+  },
+  "services.cronDailyAt": {
+    message: "Every day at {time}",
+    description: "Cron schedule preview phrase (w4/m188): daily at HH:MM (UTC)",
+  },
+  "services.cronWeeklyAt": {
+    message: "Every {day} at {time}",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekly; day is a services.cronDay* weekday name, time is HH:MM (UTC)",
+  },
+  "services.cronMonthlyAt": {
+    message: "On day {day} of every month at {time}",
+    description:
+      "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
+  },
+  "services.cronDaySunday": {
+    message: "Sunday",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayMonday": {
+    message: "Monday",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayTuesday": {
+    message: "Tuesday",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayWednesday": {
+    message: "Wednesday",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayThursday": {
+    message: "Thursday",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayFriday": {
+    message: "Friday",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDaySaturday": {
+    message: "Saturday",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
 };
 
 export default enServices;

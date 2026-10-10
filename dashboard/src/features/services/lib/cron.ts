@@ -7,6 +7,8 @@
 // can neither pass a schedule the server refuses (w1/m145: "0 0 * * 7" previewed
 // as "Every Sunday", then failed on submit) nor refuse one it accepts.
 
+import type { Translate } from "@/common/hooks/use-translations";
+
 type FieldSpec = {
   min: number;
   max: number;
@@ -185,15 +187,16 @@ export function isValidCron(s: string): boolean {
   return cronScheduleProblem(s) === null;
 }
 
-const DAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+// Weekday names by cron day-of-week number (0 = Sunday), as translation keys.
+const DAY_NAME_KEYS = [
+  "services.cronDaySunday",
+  "services.cronDayMonday",
+  "services.cronDayTuesday",
+  "services.cronDayWednesday",
+  "services.cronDayThursday",
+  "services.cronDayFriday",
+  "services.cronDaySaturday",
+] as const;
 
 // A whole-field named token (MON, JAN) rewritten to its numeric form via the
 // same lookup tables parseIntOrName uses, and a bare "?" to "*" (robfig's
@@ -227,28 +230,30 @@ function stepShape(
 }
 
 // describeCron renders a valid 5-field expression as a short human-readable
-// phrase (Render shows one beside the schedule field), best-effort: it names the
-// common shapes and returns null for anything unusual or invalid so the caller
-// simply shows no preview. Schedules run in UTC.
-export function describeCron(s: string): string | null {
-  const t = s.trim();
-  if (!isValidCron(t)) return null;
-  const [minute, hour, dom, month, dow] = t
+// phrase (Render shows one beside the schedule field) in the caller's active
+// language, best-effort: it names the common shapes and returns null for
+// anything unusual or invalid so the caller simply shows no preview. Schedules
+// run in UTC.
+export function describeCron(s: string, t: Translate): string | null {
+  const expr = s.trim();
+  if (!isValidCron(expr)) return null;
+  const [minute, hour, dom, month, dow] = expr
     .split(/\s+/)
     .map((field, i) => canonicalField(field, FIELDS[i]));
   const allDates = dom === "*" && month === "*" && dow === "*";
 
-  if (minute === "*" && hour === "*" && allDates) return "Every minute";
+  if (minute === "*" && hour === "*" && allDates)
+    return t("services.cronEveryMinute");
 
   const stepMinute = /^\*\/(\d+)$/.exec(minute);
   if (stepMinute && hour === "*" && allDates) {
     switch (stepShape(Number(stepMinute[1]), FIELDS[0])) {
       case "uniform":
-        return `Every ${stepMinute[1]} minutes`;
+        return t("services.cronEveryNMinutes", { n: stepMinute[1] });
       // Wider than the minute field: only minute 0 ever fires, so it is hourly
       // — the same schedule as "0 * * * *", and described the same way.
       case "start-only":
-        return "Every hour";
+        return t("services.cronEveryHour");
       default:
         return null;
     }
@@ -258,28 +263,33 @@ export function describeCron(s: string): string | null {
   if (/^\d+$/.test(minute) && stepHour && allDates) {
     switch (stepShape(Number(stepHour[1]), FIELDS[1])) {
       case "uniform":
-        return `Every ${stepHour[1]} hours`;
+        return t("services.cronEveryNHours", { n: stepHour[1] });
       // Wider than the hour field: only hour 0 ever fires, so it is daily.
       case "start-only":
-        return `Every day at ${hhmm("0", minute)}`;
+        return t("services.cronDailyAt", { time: hhmm("0", minute) });
       default:
         return null;
     }
   }
 
   if (/^\d+$/.test(minute) && hour === "*" && allDates) {
-    return minute === "0" ? "Every hour" : `Every hour at minute ${minute}`;
+    return minute === "0"
+      ? t("services.cronEveryHour")
+      : t("services.cronHourlyAtMinute", { minute });
   }
 
   // Single minute + single hour: a daily/weekly/monthly time.
   if (/^\d+$/.test(minute) && /^\d+$/.test(hour)) {
-    const at = `at ${hhmm(hour, minute)}`;
-    if (allDates) return `Every day ${at}`;
+    const time = hhmm(hour, minute);
+    if (allDates) return t("services.cronDailyAt", { time });
     if (dom === "*" && month === "*" && /^\d+$/.test(dow)) {
-      return `Every ${DAY_NAMES[Number(dow)]} ${at}`;
+      return t("services.cronWeeklyAt", {
+        day: t(DAY_NAME_KEYS[Number(dow)]),
+        time,
+      });
     }
     if (dow === "*" && month === "*" && /^\d+$/.test(dom)) {
-      return `On day ${dom} of every month ${at}`;
+      return t("services.cronMonthlyAt", { day: dom, time });
     }
   }
 

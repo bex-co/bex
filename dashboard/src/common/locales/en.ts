@@ -365,6 +365,47 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "How to fix the Cloudflare-proxied allowlist warning: switch the record from proxied (orange cloud) to DNS only (w1/m171)",
   },
+  "common.relativeAgeNow": {
+    message: "now",
+    description: "Compact relative age under one minute (w4/m188)",
+  },
+  "common.relativeAgeMinutes": {
+    message: "{n}m",
+    description: "Compact relative age in whole minutes, e.g. 4m (w4/m188)",
+  },
+  "common.relativeAgeHours": {
+    message: "{n}h",
+    description: "Compact relative age in whole hours, e.g. 3h (w4/m188)",
+  },
+  "common.relativeAgeDays": {
+    message: "{n}d",
+    description: "Compact relative age in whole days, e.g. 5d (w4/m188)",
+  },
+  "common.relativeAgeMonths": {
+    message: "{n}mo",
+    description: "Compact relative age in 30-day months, e.g. 2mo (w4/m188)",
+  },
+  "common.relativeAgeYears": {
+    message: "{n}y",
+    description: "Compact relative age in 365-day years, e.g. 1y (w4/m188)",
+  },
+  "common.relativeUntilNow": {
+    message: "now",
+    description:
+      "Countdown to a future instant less than one minute away (w4/m188)",
+  },
+  "common.relativeUntilMinutes": {
+    message: "in {n}m",
+    description: "Compact countdown in whole minutes, e.g. in 5m (w4/m188)",
+  },
+  "common.relativeUntilHours": {
+    message: "in {n}h",
+    description: "Compact countdown in whole hours, e.g. in 3h (w4/m188)",
+  },
+  "common.relativeUntilDays": {
+    message: "in {n}d",
+    description: "Compact countdown in whole days, e.g. in 83d (w4/m188)",
+  },
 };
 
 export default enCommon;
