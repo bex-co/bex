@@ -1,0 +1,7 @@
+=== RUN   TestQA77PersistedCompoundConfigurations
+    qa77_compound_observation_test.go:67: {"case":"health-and-predeploy-clear","deployRowsAfterReturn":1,"fakeClientGenerationDoesNotAdvance":true,"finalHealth":"","finalPreDeploy":"","operatorOrKubernetesExecution":false,"writes":[{"health":"","predeploy":"printf qa77-prior","start":"./app","releaseStamp":"5","deployRowsAtWrite":0},{"health":"","predeploy":"","start":"./app","releaseStamp":"5","deployRowsAtWrite":0}]}
+    qa77_compound_observation_test.go:67: {"case":"single-predeploy-clear","deployRowsAfterReturn":1,"fakeClientGenerationDoesNotAdvance":true,"finalHealth":"/healthz","finalPreDeploy":"","operatorOrKubernetesExecution":false,"writes":[{"health":"/healthz","predeploy":"","start":"./app","releaseStamp":"5","deployRowsAtWrite":0}]}
+    qa77_compound_observation_test.go:67: {"case":"predeploy-clear-and-start-change","deployRowsAfterReturn":1,"fakeClientGenerationDoesNotAdvance":true,"finalHealth":"/healthz","finalPreDeploy":"","operatorOrKubernetesExecution":false,"writes":[{"health":"/healthz","predeploy":"","start":"./app","releaseStamp":"5","deployRowsAtWrite":0},{"health":"/healthz","predeploy":"","start":"./new-app","releaseStamp":"5","deployRowsAtWrite":0}]}
+--- PASS: TestQA77PersistedCompoundConfigurations (0.05s)
+PASS
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	0.786s

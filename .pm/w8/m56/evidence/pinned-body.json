@@ -1,0 +1,20 @@
+{
+  "body": {
+    "serviceDetails": {
+      "healthCheckPath": "",
+      "preDeployCommand": ""
+    }
+  },
+  "flagArgs": [
+    "--pre-deploy-command",
+    "",
+    "--health-check-path",
+    ""
+  ],
+  "inputSource": "typed equivalent of observed flags; command parser not executed",
+  "methodFromSource": "PATCH",
+  "nativeWireIntercepted": false,
+  "network": false,
+  "operation": "offline actual pinned normalizer, validators and update builder",
+  "pathFromSource": "/v1/services/srv-db4tfv393q6c73at05rg"
+}

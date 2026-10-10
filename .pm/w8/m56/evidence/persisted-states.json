@@ -1,0 +1,67 @@
+[
+  {
+    "case": "health-and-predeploy-clear",
+    "deployRowsAfterReturn": 1,
+    "fakeClientGenerationDoesNotAdvance": true,
+    "finalHealth": "",
+    "finalPreDeploy": "",
+    "operatorOrKubernetesExecution": false,
+    "writes": [
+      {
+        "health": "",
+        "predeploy": "printf qa77-prior",
+        "start": "./app",
+        "releaseStamp": "5",
+        "deployRowsAtWrite": 0
+      },
+      {
+        "health": "",
+        "predeploy": "",
+        "start": "./app",
+        "releaseStamp": "5",
+        "deployRowsAtWrite": 0
+      }
+    ]
+  },
+  {
+    "case": "single-predeploy-clear",
+    "deployRowsAfterReturn": 1,
+    "fakeClientGenerationDoesNotAdvance": true,
+    "finalHealth": "/healthz",
+    "finalPreDeploy": "",
+    "operatorOrKubernetesExecution": false,
+    "writes": [
+      {
+        "health": "/healthz",
+        "predeploy": "",
+        "start": "./app",
+        "releaseStamp": "5",
+        "deployRowsAtWrite": 0
+      }
+    ]
+  },
+  {
+    "case": "predeploy-clear-and-start-change",
+    "deployRowsAfterReturn": 1,
+    "fakeClientGenerationDoesNotAdvance": true,
+    "finalHealth": "/healthz",
+    "finalPreDeploy": "",
+    "operatorOrKubernetesExecution": false,
+    "writes": [
+      {
+        "health": "/healthz",
+        "predeploy": "",
+        "start": "./app",
+        "releaseStamp": "5",
+        "deployRowsAtWrite": 0
+      },
+      {
+        "health": "/healthz",
+        "predeploy": "",
+        "start": "./new-app",
+        "releaseStamp": "5",
+        "deployRowsAtWrite": 0
+      }
+    ]
+  }
+]

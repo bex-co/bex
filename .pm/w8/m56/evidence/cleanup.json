@@ -1,0 +1,187 @@
+[
+  {
+    "id": "srv-db4tbaj93q6c73at05h0",
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "deploy_children": [
+      {
+        "createdAt": "2026-10-10T06:13:47.464653Z",
+        "finishedAt": "2026-10-10T06:14:13.790055Z",
+        "id": "dep-db4tf6r4am4s73f098tg",
+        "startedAt": "2026-10-10T06:13:57.479501Z",
+        "status": "live",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-10T06:14:13.790056Z"
+      },
+      {
+        "createdAt": "2026-10-10T06:12:49.323386Z",
+        "finishedAt": "2026-10-10T06:13:13.608372Z",
+        "id": "dep-db4teob93q6c73at05o0",
+        "startedAt": "2026-10-10T06:12:57.522502Z",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-10T06:14:13.793534Z"
+      },
+      {
+        "createdAt": "2026-10-10T06:08:51.953718Z",
+        "finishedAt": "2026-10-10T06:09:13.825437Z",
+        "id": "dep-db4tcsr4am4s73f098og",
+        "startedAt": "2026-10-10T06:08:57.549599Z",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-10T06:13:13.610706Z"
+      },
+      {
+        "createdAt": "2026-10-10T06:05:30.857573Z",
+        "finishedAt": "2026-10-10T06:07:53.940399Z",
+        "id": "dep-db4tbaj93q6c73at05hg",
+        "startedAt": "2026-10-10T06:06:43.527698Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-10T06:09:13.827238Z"
+      }
+    ],
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db4tbaj93q6c73at05h0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.811,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:05:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\n    \"id\": \"srv-db4tbaj93q6c73at05h0\",\n    \"name\": \"qa-20261010-b1ab85-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"healthCheckPath\": \"/healthz\",\n      \"internalAddress\": \"qa-20261010-b1ab85-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-b1ab85-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-b1ab85-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:13:58Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.254,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a48386a8aeaa2847-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db4tfv393q6c73at05rg"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.374,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4838941092feb2a-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  },
+  {
+    "id": "srv-db4tfv393q6c73at05rg",
+    "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+    "deploy_children": [
+      {
+        "createdAt": "2026-10-10T06:19:43.697788Z",
+        "finishedAt": "2026-10-10T06:20:13.611909Z",
+        "id": "dep-db4thvr4am4s73f09950",
+        "startedAt": "2026-10-10T06:19:57.458725Z",
+        "status": "live",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-10T06:20:13.61191Z"
+      },
+      {
+        "createdAt": "2026-10-10T06:15:24.893603Z",
+        "finishedAt": "2026-10-10T06:17:57.466958Z",
+        "id": "dep-db4tfv393q6c73at05s0",
+        "startedAt": "2026-10-10T06:16:43.578118Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-10T06:20:13.614024Z"
+      }
+    ],
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db4tfv393q6c73at05rg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.47,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:15:25Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\n    \"id\": \"srv-db4tfv393q6c73at05rg\",\n    \"name\": \"qa-20261010-461904-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"internalAddress\": \"qa-20261010-461904-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-461904-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-461904-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:20:04Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/services/srv-db4tfv393q6c73at05rg",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.242,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4838780fffdc6c6-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "runtime_after_delete_checks": [
+      {
+        "exit": 0,
+        "stdout": "404 page not found\n\n404",
+        "stderr": ""
+      }
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.354,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4838a67f92ecf17-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    }
+  }
+]

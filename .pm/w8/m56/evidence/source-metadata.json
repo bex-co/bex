@@ -1,0 +1,95 @@
+{
+  "head": "81a22ae710a39f69a717f786dd88e42067f35ac9",
+  "source_archive_head": "81a22ae710a39f69a717f786dd88e42067f35ac9",
+  "source_hashes": {
+    "lego/backend/internal/apps/settings.go": "e6915f3d9888448939821ba6fff9a888c796ec6c97a8facd4caaa80eb4c5451d",
+    "lego/backend/internal/apps/service.go": "938c2f8b5dc8d9bd21118e6bb1e6718ecf1d72d5b9884411adc1b63d6ef2dcdb",
+    "lego/backend/internal/rollout/rollout.go": "2c8532156eb714355844b6f5dba1e55521f1eb3feea548ad44008dc16115e1c9",
+    "lego/types/v1alpha1/app_identity.go": "0d57affd09c219fb97b3ab2559249296d1e1546d78f343675f3555b92b73afac"
+  },
+  "private_probe": "lego/backend/internal/apps/qa77_compound_observation_test.go",
+  "probe_command": "BEX_QA77_DIR=<private-output-dir> GOWORK=off GOTOOLCHAIN=go1.27.0 go test ./internal/apps -run ^TestQA77PersistedCompoundConfigurations$ -count=1 -v",
+  "probe_observes_actual_backend_writes": "client decorator records real ApplyServicePatch writes; fake client does not increment metadata.generation; no operator/Kubernetes/network execution",
+  "probe_does_not_assert_fix": true,
+  "table_rows": [
+    [
+      "DisplayName"
+    ],
+    [
+      "Repo",
+      "Image",
+      "ImageOwnerID",
+      "Branch",
+      "RegistryCredentialID"
+    ],
+    [
+      "MaintenanceBeforeFreeDowngrade"
+    ],
+    [
+      "Plan"
+    ],
+    [
+      "IdleTTLSeconds"
+    ],
+    [
+      "MaxShutdownDelaySeconds"
+    ],
+    [
+      "RootDir"
+    ],
+    [
+      "BuildFilter"
+    ],
+    [
+      "AutoDeploy"
+    ],
+    [
+      "Schedule",
+      "Command"
+    ],
+    [
+      "HealthCheckPath"
+    ],
+    [
+      "PreDeployCommand"
+    ],
+    [
+      "PublishPath"
+    ],
+    [
+      "BuildCommand",
+      "StartCommand"
+    ],
+    [
+      "DockerfilePath"
+    ],
+    [
+      "Port"
+    ],
+    [
+      "NotifyOnFail"
+    ],
+    [
+      "NotificationsToSend"
+    ],
+    [
+      "RenderSubdomainPolicy"
+    ],
+    [
+      "IPAllowList"
+    ],
+    [
+      "MaintenanceMode"
+    ],
+    [
+      "Autoscaling"
+    ]
+  ],
+  "production_ApplyServicePatch_adapters": [
+    "REST PATCH /v1/services/{id}",
+    "MCP update_service"
+  ],
+  "Batch_production_calls": 1,
+  "format_only_after_probe": "gofmt applied after execution; body behavior unchanged",
+  "earlier_probe_setup_attempt": "relative boilerplate path failed before probe creation; no-tests Go result discarded"
+}

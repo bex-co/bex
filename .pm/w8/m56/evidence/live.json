@@ -1,0 +1,1445 @@
+{
+  "sweep": 77,
+  "source_head": "81a22ae710a39f69a717f786dd88e42067f35ac9",
+  "deployed_revision": "unobserved",
+  "api_origin": "https://api.bex.co/v1/",
+  "auth": "isolated QA human OAuth; credentials omitted",
+  "native_wire": "not intercepted",
+  "resources": [
+    {
+      "id": "srv-db4tbaj93q6c73at05h0",
+      "name": "qa-20261010-b1ab85-clearopts",
+      "nonce": "b1ab85",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "type": "web_service",
+      "time": "2026-10-10T06:05:29.429768+00:00",
+      "role": "CLI explicit-empty optional setting updates",
+      "create_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "create",
+          "--name",
+          "qa-20261010-b1ab85-clearopts",
+          "--type",
+          "web_service",
+          "--runtime",
+          "python",
+          "--repo",
+          "https://github.com/bex-co/bex",
+          "--root-directory",
+          "examples/hello-python",
+          "--build-command",
+          "pip install -r requirements.txt",
+          "--start-command",
+          "python main.py",
+          "--pre-deploy-command",
+          "printf 'qa77-predeploy-b1ab85\\n'",
+          "--health-check-path",
+          "/healthz",
+          "--env-var",
+          "MESSAGE=qa-request-b1ab85-prior",
+          "--plan",
+          "free",
+          "--region",
+          "frankfurt",
+          "--auto-deploy=false",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.822,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-10T06:05:31Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\n  \"id\": \"srv-db4tbaj93q6c73at05h0\",\n  \"name\": \"qa-20261010-b1ab85-clearopts\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-python\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"pip install -r requirements.txt\",\n      \"preDeployCommand\": \"printf 'qa77-predeploy-b1ab85\\\\n'\",\n      \"startCommand\": \"python main.py\"\n    },\n    \"healthCheckPath\": \"/healthz\",\n    \"internalAddress\": \"qa-20261010-b1ab85-clearopts:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"preDeployCommand\": \"printf 'qa77-predeploy-b1ab85\\\\n'\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261010-b1ab85-clearopts.onbex.co\"\n  },\n  \"slug\": \"qa-20261010-b1ab85-clearopts\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-10T06:05:31Z\"\n}",
+        "stderr": ""
+      },
+      "create_response": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "branch": "main",
+        "createdAt": "2026-10-10T06:05:31Z",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0",
+        "id": "srv-db4tbaj93q6c73at05h0",
+        "name": "qa-20261010-b1ab85-clearopts",
+        "notifyOnFail": "default",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-python",
+        "serviceDetails": {
+          "env": "python",
+          "envSpecificDetails": {
+            "buildCommand": "pip install -r requirements.txt",
+            "preDeployCommand": "printf 'qa77-predeploy-b1ab85\\n'",
+            "startCommand": "python main.py"
+          },
+          "healthCheckPath": "/healthz",
+          "internalAddress": "qa-20261010-b1ab85-clearopts:3000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "plan": "free",
+          "port": 3000,
+          "preDeployCommand": "printf 'qa77-predeploy-b1ab85\\n'",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "python",
+          "url": "https://qa-20261010-b1ab85-clearopts.onbex.co"
+        },
+        "slug": "qa-20261010-b1ab85-clearopts",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "web_service",
+        "updatedAt": "2026-10-10T06:05:31Z"
+      },
+      "prior_predeploy_marker": "qa77-predeploy-b1ab85",
+      "prior_marker": "qa-request-b1ab85-prior",
+      "optional_updates": [
+        {
+          "at": "2026-10-10T06:08:51.012630+00:00",
+          "stage": "clear-bex",
+          "client": "bex",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "srv-db4tbaj93q6c73at05h0",
+            "--pre-deploy-command",
+            "",
+            "--health-check-path",
+            "",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "expected_predeploy": "",
+          "expected_health": "",
+          "state": "native result received; state reconciliation pending",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "services",
+              "update",
+              "srv-db4tbaj93q6c73at05h0",
+              "--pre-deploy-command",
+              "",
+              "--health-check-path",
+              "",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.347,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:05:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\n    \"id\": \"srv-db4tbaj93q6c73at05h0\",\n    \"name\": \"qa-20261010-b1ab85-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"internalAddress\": \"qa-20261010-b1ab85-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-b1ab85-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-b1ab85-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:08:52Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "service_readback_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.632,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:08:52Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"python main.py\"},\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Deploying\",\"undeployedChanges\":true,\"undeployedChangesApplying\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48373f9088efa49-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "readback_pass": true,
+          "observed_health": null,
+          "observed_predeploy": "",
+          "before_deploy_ids": [
+            "dep-db4tbaj93q6c73at05hg"
+          ],
+          "before_deploy_evidence": "native deploy list saved at initial runtime observation before update"
+        },
+        {
+          "at": "2026-10-10T06:12:47.979186+00:00",
+          "stage": "restore-render",
+          "client": "render",
+          "command": [
+            "render",
+            "services",
+            "update",
+            "srv-db4tbaj93q6c73at05h0",
+            "--pre-deploy-command",
+            "printf 'qa77-restored-b1ab85\\n'",
+            "--health-check-path",
+            "/healthz",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "expected_predeploy": "printf 'qa77-restored-b1ab85\\n'",
+          "expected_health": "/healthz",
+          "before_deploy_ids": [
+            "dep-db4tcsr4am4s73f098og",
+            "dep-db4tbaj93q6c73at05hg"
+          ],
+          "state": "native result received; state reconciliation pending",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "services",
+              "update",
+              "srv-db4tbaj93q6c73at05h0",
+              "--pre-deploy-command",
+              "printf 'qa77-restored-b1ab85\\n'",
+              "--health-check-path",
+              "/healthz",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.924,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:05:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\n    \"id\": \"srv-db4tbaj93q6c73at05h0\",\n    \"name\": \"qa-20261010-b1ab85-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"printf 'qa77-restored-b1ab85\\\\n'\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"healthCheckPath\": \"/healthz\",\n      \"internalAddress\": \"qa-20261010-b1ab85-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"preDeployCommand\": \"printf 'qa77-restored-b1ab85\\\\n'\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-b1ab85-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-b1ab85-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:12:49.300869218Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "service_readback_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.349,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:12:49.300869218Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-restored-b1ab85\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-restored-b1ab85\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Deploying\",\"undeployedChanges\":true,\"undeployedChangesApplying\":true,\"replicas\":1,\"revision\":\"rev-3\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48379c63f33ccb8-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "readback_pass": true,
+          "observed_health": "/healthz",
+          "observed_predeploy": "printf 'qa77-restored-b1ab85\\n'"
+        },
+        {
+          "at": "2026-10-10T06:13:46.304006+00:00",
+          "stage": "clear-render",
+          "client": "render",
+          "command": [
+            "render",
+            "services",
+            "update",
+            "srv-db4tbaj93q6c73at05h0",
+            "--pre-deploy-command",
+            "",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "expected_predeploy": "",
+          "expected_health": "/healthz",
+          "before_deploy_ids": [
+            "dep-db4teob93q6c73at05o0",
+            "dep-db4tcsr4am4s73f098og",
+            "dep-db4tbaj93q6c73at05hg"
+          ],
+          "state": "native result received; state reconciliation pending",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "services",
+              "update",
+              "srv-db4tbaj93q6c73at05h0",
+              "--pre-deploy-command",
+              "",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.662,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:05:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\n    \"id\": \"srv-db4tbaj93q6c73at05h0\",\n    \"name\": \"qa-20261010-b1ab85-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"healthCheckPath\": \"/healthz\",\n      \"internalAddress\": \"qa-20261010-b1ab85-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-b1ab85-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-b1ab85-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:13:47.399236108Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "service_readback_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.351,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:13:47.399236108Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Deploying\",\"replicas\":1,\"revision\":\"rev-5\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837b30bbe68f42-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "readback_pass": true,
+          "observed_health": "/healthz",
+          "observed_predeploy": ""
+        }
+      ],
+      "optional_logs": [
+        {
+          "at": "2026-10-10T06:08:41.957004+00:00",
+          "stage": "initial pre-deploy marker",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "logs",
+              "--resources",
+              "srv-db4tbaj93q6c73at05h0",
+              "--type",
+              "build",
+              "--text",
+              "qa77-predeploy-b1ab85",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 2.906,
+            "stdout": "{\n  \"id\": \"srv-db4tbaj93q6c73at05h0-dhq5j31shkit41pjc3vu-2026-10-10T06:07:36.655149856Z-8f0db290\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4tbaj93q6c73at05h0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4tbaj93q6c73at05h0-dhq5j31shkit41pjc3vu\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"qa77-predeploy-b1ab85\",\n  \"timestamp\": \"2026-10-10T06:07:36.655149856Z\"\n}",
+            "stderr": ""
+          },
+          "marker_present": true
+        },
+        {
+          "at": "2026-10-10T06:09:42.076751+00:00",
+          "stage": "clear-bex",
+          "marker": "qa77-predeploy-b1ab85",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "logs",
+              "--resources",
+              "srv-db4tbaj93q6c73at05h0",
+              "--type",
+              "build",
+              "--text",
+              "qa77-predeploy-b1ab85",
+              "--start",
+              "2026-10-10T06:08:51.012630+00:00",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.301,
+            "stdout": "{\n  \"id\": \"srv-db4tbaj93q6c73at05h0-5krfdlkephmr50m8cnj3-2026-10-10T06:08:56.369887447Z-8f0db290\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4tbaj93q6c73at05h0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4tbaj93q6c73at05h0-5krfdlkephmr50m8cnj3\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"qa77-predeploy-b1ab85\",\n  \"timestamp\": \"2026-10-10T06:08:56.369887447Z\"\n}",
+            "stderr": ""
+          },
+          "marker_present": true
+        },
+        {
+          "at": "2026-10-10T06:13:35.913491+00:00",
+          "stage": "restore-render",
+          "marker": "qa77-restored-b1ab85",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "logs",
+              "--resources",
+              "srv-db4tbaj93q6c73at05h0",
+              "--type",
+              "build",
+              "--text",
+              "qa77-restored-b1ab85",
+              "--start",
+              "2026-10-10T06:12:47.979186+00:00",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.43,
+            "stdout": "{\n  \"id\": \"srv-db4tbaj93q6c73at05h0-6auomf750rlv1r3p2vcd-2026-10-10T06:12:50.760745692Z-a6066940\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4tbaj93q6c73at05h0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4tbaj93q6c73at05h0-6auomf750rlv1r3p2vcd\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"qa77-restored-b1ab85\",\n  \"timestamp\": \"2026-10-10T06:12:50.760745692Z\"\n}",
+            "stderr": ""
+          },
+          "marker_present": true
+        },
+        {
+          "at": "2026-10-10T06:14:32.451775+00:00",
+          "stage": "clear-render",
+          "marker": "qa77-restored-b1ab85",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "logs",
+              "--resources",
+              "srv-db4tbaj93q6c73at05h0",
+              "--type",
+              "build",
+              "--text",
+              "qa77-restored-b1ab85",
+              "--start",
+              "2026-10-10T06:13:46.304006+00:00",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.568,
+            "stdout": "",
+            "stderr": ""
+          },
+          "marker_present": false
+        }
+      ],
+      "health_runtime": [
+        {
+          "at": "2026-10-10T06:06:08.184792+00:00",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "prior_matches": false,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:07:20.664078+00:00",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "prior_matches": false,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:08:31.655576+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "qa-request-b1ab85-prior\n",
+          "prior_matches": true,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:09:36.391333+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "qa-request-b1ab85-prior\n",
+          "prior_matches": true,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:11:27.963343+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "qa-request-b1ab85-prior\n",
+          "prior_matches": true,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:13:25.971169+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "qa-request-b1ab85-prior\n",
+          "prior_matches": true,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:14:19.395967+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "qa-request-b1ab85-prior\n",
+          "prior_matches": true,
+          "next_matches": false
+        }
+      ],
+      "health_observations": [
+        {
+          "at": "2026-10-10T06:06:06.829259+00:00",
+          "deploys": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4tbaj93q6c73at05h0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.424,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:05:43.560656Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0/deploys/dep-db4tbaj93q6c73at05hg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.262,
+            "response": "{\"id\":\"dep-db4tbaj93q6c73at05hg\",\"serviceId\":\"srv-db4tbaj93q6c73at05h0\",\"status\":\"queued\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"createdAt\":\"2026-10-10T06:05:30.857573Z\",\"updatedAt\":\"2026-10-10T06:05:43.560656Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4836fee1f05eb20-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.323,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:05:43Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-predeploy-b1ab85\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-predeploy-b1ab85\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4836ff03d1c1692-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:07:19.237893+00:00",
+          "deploys": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4tbaj93q6c73at05h0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.825,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"startedAt\": \"2026-10-10T06:06:43.527698Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:06:43.527699Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0/deploys/dep-db4tbaj93q6c73at05hg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.292,
+            "response": "{\"id\":\"dep-db4tbaj93q6c73at05hg\",\"serviceId\":\"srv-db4tbaj93q6c73at05h0\",\"status\":\"build_in_progress\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"createdAt\":\"2026-10-10T06:05:30.857573Z\",\"updatedAt\":\"2026-10-10T06:06:43.527699Z\",\"startedAt\":\"2026-10-10T06:06:43.527698Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48371b2ca66bffc-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.373,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:06:32Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-predeploy-b1ab85\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-predeploy-b1ab85\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48371b51c1642ae-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:08:30.304999+00:00",
+          "deploys": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4tbaj93q6c73at05h0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.411,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"finishedAt\": \"2026-10-10T06:07:53.940399Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"startedAt\": \"2026-10-10T06:06:43.527698Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:07:53.9404Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0/deploys/dep-db4tbaj93q6c73at05hg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.267,
+            "response": "{\"id\":\"dep-db4tbaj93q6c73at05hg\",\"serviceId\":\"srv-db4tbaj93q6c73at05h0\",\"status\":\"live\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"createdAt\":\"2026-10-10T06:05:30.857573Z\",\"updatedAt\":\"2026-10-10T06:07:53.9404Z\",\"startedAt\":\"2026-10-10T06:06:43.527698Z\",\"finishedAt\":\"2026-10-10T06:07:53.940399Z\",\"preDeployStatus\":\"succeeded\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a483736eeaa6053e-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.319,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:07:50Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-predeploy-b1ab85\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-predeploy-b1ab85\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48373710a72d4f9-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:09:35.100696+00:00",
+          "deploys": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4tbaj93q6c73at05h0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.399,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:08:51.953718Z\",\n    \"finishedAt\": \"2026-10-10T06:09:13.825437Z\",\n    \"id\": \"dep-db4tcsr4am4s73f098og\",\n    \"startedAt\": \"2026-10-10T06:08:57.549599Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:09:13.825438Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"finishedAt\": \"2026-10-10T06:07:53.940399Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"startedAt\": \"2026-10-10T06:06:43.527698Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:09:13.827238Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0/deploys/dep-db4tcsr4am4s73f098og",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.267,
+            "response": "{\"id\":\"dep-db4tcsr4am4s73f098og\",\"serviceId\":\"srv-db4tbaj93q6c73at05h0\",\"status\":\"live\",\"trigger\":\"service_updated\",\"bexTrigger\":\"config_change\",\"createdAt\":\"2026-10-10T06:08:51.953718Z\",\"updatedAt\":\"2026-10-10T06:09:13.825438Z\",\"startedAt\":\"2026-10-10T06:08:57.549599Z\",\"finishedAt\":\"2026-10-10T06:09:13.825437Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837503ee28ebeb-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.266,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:09:02Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"python main.py\"},\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-3\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837505ffafeb25-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:11:26.627109+00:00",
+          "deploys": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4tbaj93q6c73at05h0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.456,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:08:51.953718Z\",\n    \"finishedAt\": \"2026-10-10T06:09:13.825437Z\",\n    \"id\": \"dep-db4tcsr4am4s73f098og\",\n    \"startedAt\": \"2026-10-10T06:08:57.549599Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:09:13.825438Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"finishedAt\": \"2026-10-10T06:07:53.940399Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"startedAt\": \"2026-10-10T06:06:43.527698Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:09:13.827238Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0/deploys/dep-db4tcsr4am4s73f098og",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.301,
+            "response": "{\"id\":\"dep-db4tcsr4am4s73f098og\",\"serviceId\":\"srv-db4tbaj93q6c73at05h0\",\"status\":\"live\",\"trigger\":\"service_updated\",\"bexTrigger\":\"config_change\",\"createdAt\":\"2026-10-10T06:08:51.953718Z\",\"updatedAt\":\"2026-10-10T06:09:13.825438Z\",\"startedAt\":\"2026-10-10T06:08:57.549599Z\",\"finishedAt\":\"2026-10-10T06:09:13.825437Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48377bcec3b7b82-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.282,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:09:02Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"python main.py\"},\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-3\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48377bf5e14cf0a-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:13:24.161553+00:00",
+          "deploys": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4tbaj93q6c73at05h0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.481,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:12:49.323386Z\",\n    \"finishedAt\": \"2026-10-10T06:13:13.608372Z\",\n    \"id\": \"dep-db4teob93q6c73at05o0\",\n    \"startedAt\": \"2026-10-10T06:12:57.522502Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:13:13.608373Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:08:51.953718Z\",\n    \"finishedAt\": \"2026-10-10T06:09:13.825437Z\",\n    \"id\": \"dep-db4tcsr4am4s73f098og\",\n    \"startedAt\": \"2026-10-10T06:08:57.549599Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:13:13.610706Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"finishedAt\": \"2026-10-10T06:07:53.940399Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"startedAt\": \"2026-10-10T06:06:43.527698Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:09:13.827238Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0/deploys/dep-db4teob93q6c73at05o0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.683,
+            "response": "{\"id\":\"dep-db4teob93q6c73at05o0\",\"serviceId\":\"srv-db4tbaj93q6c73at05h0\",\"status\":\"live\",\"trigger\":\"service_updated\",\"bexTrigger\":\"config_change\",\"createdAt\":\"2026-10-10T06:12:49.323386Z\",\"updatedAt\":\"2026-10-10T06:13:13.608373Z\",\"startedAt\":\"2026-10-10T06:12:57.522502Z\",\"finishedAt\":\"2026-10-10T06:13:13.608372Z\",\"preDeployStatus\":\"succeeded\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837a9beff8f96b-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.314,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:13:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-restored-b1ab85\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-restored-b1ab85\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-5\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837aa09926eb30-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:14:17.741917+00:00",
+          "deploys": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4tbaj93q6c73at05h0",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.436,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:13:47.464653Z\",\n    \"finishedAt\": \"2026-10-10T06:14:13.790055Z\",\n    \"id\": \"dep-db4tf6r4am4s73f098tg\",\n    \"startedAt\": \"2026-10-10T06:13:57.479501Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:14:13.790056Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:12:49.323386Z\",\n    \"finishedAt\": \"2026-10-10T06:13:13.608372Z\",\n    \"id\": \"dep-db4teob93q6c73at05o0\",\n    \"startedAt\": \"2026-10-10T06:12:57.522502Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:14:13.793534Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:08:51.953718Z\",\n    \"finishedAt\": \"2026-10-10T06:09:13.825437Z\",\n    \"id\": \"dep-db4tcsr4am4s73f098og\",\n    \"startedAt\": \"2026-10-10T06:08:57.549599Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:13:13.610706Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"finishedAt\": \"2026-10-10T06:07:53.940399Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"startedAt\": \"2026-10-10T06:06:43.527698Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:09:13.827238Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0/deploys/dep-db4tf6r4am4s73f098tg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.281,
+            "response": "{\"id\":\"dep-db4tf6r4am4s73f098tg\",\"serviceId\":\"srv-db4tbaj93q6c73at05h0\",\"status\":\"live\",\"trigger\":\"service_updated\",\"bexTrigger\":\"config_change\",\"createdAt\":\"2026-10-10T06:13:47.464653Z\",\"updatedAt\":\"2026-10-10T06:14:13.790056Z\",\"startedAt\":\"2026-10-10T06:13:57.479501Z\",\"finishedAt\":\"2026-10-10T06:14:13.790055Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837bea6875fad2-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.615,
+            "response": "{\"id\":\"srv-db4tbaj93q6c73at05h0\",\"name\":\"qa-20261010-b1ab85-clearopts\",\"immutableName\":\"qa-20261010-b1ab85-clearopts\",\"slug\":\"qa-20261010-b1ab85-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\"createdAt\":\"2026-10-10T06:05:31Z\",\"updatedAt\":\"2026-10-10T06:13:58Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-b1ab85-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-b1ab85-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-6\",\"urls\":[\"https://qa-20261010-b1ab85-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837bec9e078b9e-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "deploy_children": [
+        {
+          "createdAt": "2026-10-10T06:13:47.464653Z",
+          "finishedAt": "2026-10-10T06:14:13.790055Z",
+          "id": "dep-db4tf6r4am4s73f098tg",
+          "startedAt": "2026-10-10T06:13:57.479501Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-10T06:14:13.790056Z"
+        },
+        {
+          "createdAt": "2026-10-10T06:12:49.323386Z",
+          "finishedAt": "2026-10-10T06:13:13.608372Z",
+          "id": "dep-db4teob93q6c73at05o0",
+          "startedAt": "2026-10-10T06:12:57.522502Z",
+          "status": "deactivated",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-10T06:14:13.793534Z"
+        },
+        {
+          "createdAt": "2026-10-10T06:08:51.953718Z",
+          "finishedAt": "2026-10-10T06:09:13.825437Z",
+          "id": "dep-db4tcsr4am4s73f098og",
+          "startedAt": "2026-10-10T06:08:57.549599Z",
+          "status": "deactivated",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-10T06:13:13.610706Z"
+        },
+        {
+          "createdAt": "2026-10-10T06:05:30.857573Z",
+          "finishedAt": "2026-10-10T06:07:53.940399Z",
+          "id": "dep-db4tbaj93q6c73at05hg",
+          "startedAt": "2026-10-10T06:06:43.527698Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-10T06:09:13.827238Z"
+        }
+      ],
+      "children_enumeration_evidence": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4tbaj93q6c73at05h0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.424,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:13:47.464653Z\",\n    \"finishedAt\": \"2026-10-10T06:14:13.790055Z\",\n    \"id\": \"dep-db4tf6r4am4s73f098tg\",\n    \"startedAt\": \"2026-10-10T06:13:57.479501Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:14:13.790056Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:12:49.323386Z\",\n    \"finishedAt\": \"2026-10-10T06:13:13.608372Z\",\n    \"id\": \"dep-db4teob93q6c73at05o0\",\n    \"startedAt\": \"2026-10-10T06:12:57.522502Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:14:13.793534Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:08:51.953718Z\",\n    \"finishedAt\": \"2026-10-10T06:09:13.825437Z\",\n    \"id\": \"dep-db4tcsr4am4s73f098og\",\n    \"startedAt\": \"2026-10-10T06:08:57.549599Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:13:13.610706Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:05:30.857573Z\",\n    \"finishedAt\": \"2026-10-10T06:07:53.940399Z\",\n    \"id\": \"dep-db4tbaj93q6c73at05hg\",\n    \"startedAt\": \"2026-10-10T06:06:43.527698Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:09:13.827238Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "delete_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db4tbaj93q6c73at05h0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.811,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:05:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tbaj93q6c73at05h0\",\n    \"id\": \"srv-db4tbaj93q6c73at05h0\",\n    \"name\": \"qa-20261010-b1ab85-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"healthCheckPath\": \"/healthz\",\n      \"internalAddress\": \"qa-20261010-b1ab85-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-b1ab85-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-b1ab85-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:13:58Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4tbaj93q6c73at05h0",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.254,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a48386a8aeaa2847-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "workspace_after_delete_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0",
+        "srv-db4tfv393q6c73at05rg"
+      ],
+      "runtime_after_delete_checks": [
+        {
+          "exit": 0,
+          "stdout": "404 page not found\n\n404",
+          "stderr": ""
+        }
+      ],
+      "quota_after_delete": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.374,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4838941092feb2a-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0"
+    },
+    {
+      "id": "srv-db4tfv393q6c73at05rg",
+      "name": "qa-20261010-461904-clearopts",
+      "nonce": "461904",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "type": "web_service",
+      "time": "2026-10-10T06:15:23.589376+00:00",
+      "role": "fresh equivalent Render compound-clear runtime comparison",
+      "client": "unmodified Render pin",
+      "create_result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "create",
+          "--name",
+          "qa-20261010-461904-clearopts",
+          "--type",
+          "web_service",
+          "--runtime",
+          "python",
+          "--repo",
+          "https://github.com/bex-co/bex",
+          "--root-directory",
+          "examples/hello-python",
+          "--build-command",
+          "pip install -r requirements.txt",
+          "--start-command",
+          "python main.py",
+          "--pre-deploy-command",
+          "printf 'qa77-predeploy-461904\\n'",
+          "--health-check-path",
+          "/healthz",
+          "--env-var",
+          "MESSAGE=qa-request-461904-prior",
+          "--plan",
+          "free",
+          "--region",
+          "frankfurt",
+          "--auto-deploy=false",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.639,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-10T06:15:25Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\n  \"id\": \"srv-db4tfv393q6c73at05rg\",\n  \"name\": \"qa-20261010-461904-clearopts\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-python\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"pip install -r requirements.txt\",\n      \"preDeployCommand\": \"printf 'qa77-predeploy-461904\\\\n'\",\n      \"startCommand\": \"python main.py\"\n    },\n    \"healthCheckPath\": \"/healthz\",\n    \"internalAddress\": \"qa-20261010-461904-clearopts:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"preDeployCommand\": \"printf 'qa77-predeploy-461904\\\\n'\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261010-461904-clearopts.onbex.co\"\n  },\n  \"slug\": \"qa-20261010-461904-clearopts\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-10T06:15:25Z\"\n}",
+        "stderr": ""
+      },
+      "create_response": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "branch": "main",
+        "createdAt": "2026-10-10T06:15:25Z",
+        "dashboardUrl": "https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg",
+        "id": "srv-db4tfv393q6c73at05rg",
+        "name": "qa-20261010-461904-clearopts",
+        "notifyOnFail": "default",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-python",
+        "serviceDetails": {
+          "env": "python",
+          "envSpecificDetails": {
+            "buildCommand": "pip install -r requirements.txt",
+            "preDeployCommand": "printf 'qa77-predeploy-461904\\n'",
+            "startCommand": "python main.py"
+          },
+          "healthCheckPath": "/healthz",
+          "internalAddress": "qa-20261010-461904-clearopts:3000",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 30,
+          "numInstances": 1,
+          "plan": "free",
+          "port": 3000,
+          "preDeployCommand": "printf 'qa77-predeploy-461904\\n'",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "runtime": "python",
+          "url": "https://qa-20261010-461904-clearopts.onbex.co"
+        },
+        "slug": "qa-20261010-461904-clearopts",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "web_service",
+        "updatedAt": "2026-10-10T06:15:25Z"
+      },
+      "prior_predeploy_marker": "qa77-predeploy-461904",
+      "prior_marker": "qa-request-461904-prior",
+      "optional_updates": [
+        {
+          "at": "2026-10-10T06:19:42.225233+00:00",
+          "stage": "clear-render-compound",
+          "client": "render",
+          "command": [
+            "render",
+            "services",
+            "update",
+            "srv-db4tfv393q6c73at05rg",
+            "--pre-deploy-command",
+            "",
+            "--health-check-path",
+            "",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "expected_predeploy": "",
+          "expected_health": "",
+          "before_deploy_ids": [
+            "dep-db4tfv393q6c73at05s0"
+          ],
+          "state": "native result received; state reconciliation pending",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "services",
+              "update",
+              "srv-db4tfv393q6c73at05rg",
+              "--pre-deploy-command",
+              "",
+              "--health-check-path",
+              "",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 2.081,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:15:25Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\n    \"id\": \"srv-db4tfv393q6c73at05rg\",\n    \"name\": \"qa-20261010-461904-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"internalAddress\": \"qa-20261010-461904-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-461904-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-461904-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:19:43.671276972Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "service_readback_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.462,
+            "response": "{\"id\":\"srv-db4tfv393q6c73at05rg\",\"name\":\"qa-20261010-461904-clearopts\",\"immutableName\":\"qa-20261010-461904-clearopts\",\"slug\":\"qa-20261010-461904-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\"createdAt\":\"2026-10-10T06:15:25Z\",\"updatedAt\":\"2026-10-10T06:19:44Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"python main.py\"},\"internalAddress\":\"qa-20261010-461904-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-461904-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Deploying\",\"undeployedChanges\":true,\"undeployedChangesApplying\":true,\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261010-461904-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48383e4ea0df9c5-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "readback_pass": true,
+          "observed_health": null,
+          "observed_predeploy": ""
+        }
+      ],
+      "optional_logs": [
+        {
+          "at": "2026-10-10T06:19:02.478550+00:00",
+          "stage": "initial pre-deploy marker",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "logs",
+              "--resources",
+              "srv-db4tfv393q6c73at05rg",
+              "--type",
+              "build",
+              "--text",
+              "qa77-predeploy-461904",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 2.826,
+            "stdout": "{\n  \"id\": \"srv-db4tfv393q6c73at05rg-ndd9b03349ij6cp1qp8j-2026-10-10T06:17:40.448555304Z-4553ed4d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4tfv393q6c73at05rg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4tfv393q6c73at05rg-ndd9b03349ij6cp1qp8j\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"qa77-predeploy-461904\",\n  \"timestamp\": \"2026-10-10T06:17:40.448555304Z\"\n}",
+            "stderr": ""
+          },
+          "marker_present": true
+        },
+        {
+          "at": "2026-10-10T06:20:27.948244+00:00",
+          "stage": "clear-render-compound",
+          "marker": "qa77-predeploy-461904",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "logs",
+              "--resources",
+              "srv-db4tfv393q6c73at05rg",
+              "--type",
+              "build",
+              "--text",
+              "qa77-predeploy-461904",
+              "--start",
+              "2026-10-10T06:19:42.225233+00:00",
+              "--limit",
+              "100",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.642,
+            "stdout": "{\n  \"id\": \"srv-db4tfv393q6c73at05rg-1vv3tfnp0gqgppasovv3-2026-10-10T06:19:45.011923416Z-4553ed4d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4tfv393q6c73at05rg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4tfv393q6c73at05rg-1vv3tfnp0gqgppasovv3\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"qa77-predeploy-461904\",\n  \"timestamp\": \"2026-10-10T06:19:45.011923416Z\"\n}",
+            "stderr": ""
+          },
+          "marker_present": true
+        }
+      ],
+      "health_runtime": [
+        {
+          "at": "2026-10-10T06:15:55.238374+00:00",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "prior_matches": false,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:17:05.431856+00:00",
+          "status": "404",
+          "exit": 0,
+          "body": "404 page not found\n",
+          "prior_matches": false,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:18:31.915993+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "qa-request-461904-prior\n",
+          "prior_matches": true,
+          "next_matches": false
+        },
+        {
+          "at": "2026-10-10T06:20:17.509474+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "qa-request-461904-prior\n",
+          "prior_matches": true,
+          "next_matches": false
+        }
+      ],
+      "health_observations": [
+        {
+          "at": "2026-10-10T06:15:53.516866+00:00",
+          "deploys": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db4tfv393q6c73at05rg",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.362,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:15:24.893603Z\",\n    \"id\": \"dep-db4tfv393q6c73at05s0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:15:27.746703Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg/deploys/dep-db4tfv393q6c73at05s0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.398,
+            "response": "{\"id\":\"dep-db4tfv393q6c73at05s0\",\"serviceId\":\"srv-db4tfv393q6c73at05rg\",\"status\":\"queued\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"createdAt\":\"2026-10-10T06:15:24.893603Z\",\"updatedAt\":\"2026-10-10T06:15:27.746703Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837e41bc1ecf2b-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.417,
+            "response": "{\"id\":\"srv-db4tfv393q6c73at05rg\",\"name\":\"qa-20261010-461904-clearopts\",\"immutableName\":\"qa-20261010-461904-clearopts\",\"slug\":\"qa-20261010-461904-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\"createdAt\":\"2026-10-10T06:15:25Z\",\"updatedAt\":\"2026-10-10T06:15:27Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-predeploy-461904\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-461904-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-predeploy-461904\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-461904-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837e44dc1467b2-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:17:03.258347+00:00",
+          "deploys": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db4tfv393q6c73at05rg",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.353,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:15:24.893603Z\",\n    \"id\": \"dep-db4tfv393q6c73at05s0\",\n    \"startedAt\": \"2026-10-10T06:16:43.578118Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:16:43.57812Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg/deploys/dep-db4tfv393q6c73at05s0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.349,
+            "response": "{\"id\":\"dep-db4tfv393q6c73at05s0\",\"serviceId\":\"srv-db4tfv393q6c73at05rg\",\"status\":\"build_in_progress\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"createdAt\":\"2026-10-10T06:15:24.893603Z\",\"updatedAt\":\"2026-10-10T06:16:43.57812Z\",\"startedAt\":\"2026-10-10T06:16:43.578118Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837ff81fa371e7-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.357,
+            "response": "{\"id\":\"srv-db4tfv393q6c73at05rg\",\"name\":\"qa-20261010-461904-clearopts\",\"immutableName\":\"qa-20261010-461904-clearopts\",\"slug\":\"qa-20261010-461904-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\"createdAt\":\"2026-10-10T06:15:25Z\",\"updatedAt\":\"2026-10-10T06:16:41Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-predeploy-461904\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-461904-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-predeploy-461904\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-461904-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4837ffb0b7a8fc5-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:18:30.605802+00:00",
+          "deploys": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db4tfv393q6c73at05rg",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.449,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:15:24.893603Z\",\n    \"finishedAt\": \"2026-10-10T06:17:57.466958Z\",\n    \"id\": \"dep-db4tfv393q6c73at05s0\",\n    \"startedAt\": \"2026-10-10T06:16:43.578118Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:17:57.466959Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg/deploys/dep-db4tfv393q6c73at05s0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.266,
+            "response": "{\"id\":\"dep-db4tfv393q6c73at05s0\",\"serviceId\":\"srv-db4tfv393q6c73at05rg\",\"status\":\"live\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"createdAt\":\"2026-10-10T06:15:24.893603Z\",\"updatedAt\":\"2026-10-10T06:17:57.466959Z\",\"startedAt\":\"2026-10-10T06:16:43.578118Z\",\"finishedAt\":\"2026-10-10T06:17:57.466958Z\",\"preDeployStatus\":\"succeeded\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4838216dfe8cf16-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.297,
+            "response": "{\"id\":\"srv-db4tfv393q6c73at05rg\",\"name\":\"qa-20261010-461904-clearopts\",\"immutableName\":\"qa-20261010-461904-clearopts\",\"slug\":\"qa-20261010-461904-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\"createdAt\":\"2026-10-10T06:15:25Z\",\"updatedAt\":\"2026-10-10T06:17:54Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"printf 'qa77-predeploy-461904\\\\n'\",\"startCommand\":\"python main.py\"},\"healthCheckPath\":\"/healthz\",\"internalAddress\":\"qa-20261010-461904-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf 'qa77-predeploy-461904\\\\n'\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-461904-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261010-461904-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/healthz\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4838218fd603911-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-10T06:20:16.088300+00:00",
+          "deploys": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db4tfv393q6c73at05rg",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.425,
+            "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:19:43.697788Z\",\n    \"finishedAt\": \"2026-10-10T06:20:13.611909Z\",\n    \"id\": \"dep-db4thvr4am4s73f09950\",\n    \"startedAt\": \"2026-10-10T06:19:57.458725Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:20:13.61191Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:15:24.893603Z\",\n    \"finishedAt\": \"2026-10-10T06:17:57.466958Z\",\n    \"id\": \"dep-db4tfv393q6c73at05s0\",\n    \"startedAt\": \"2026-10-10T06:16:43.578118Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:20:13.614024Z\"\n  }\n]",
+            "stderr": ""
+          },
+          "deploy_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg/deploys/dep-db4thvr4am4s73f09950",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.356,
+            "response": "{\"id\":\"dep-db4thvr4am4s73f09950\",\"serviceId\":\"srv-db4tfv393q6c73at05rg\",\"status\":\"live\",\"trigger\":\"service_updated\",\"bexTrigger\":\"config_change\",\"createdAt\":\"2026-10-10T06:19:43.697788Z\",\"updatedAt\":\"2026-10-10T06:20:13.61191Z\",\"startedAt\":\"2026-10-10T06:19:57.458725Z\",\"finishedAt\":\"2026-10-10T06:20:13.611909Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48384aa5c95208c-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "service_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4tfv393q6c73at05rg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.302,
+            "response": "{\"id\":\"srv-db4tfv393q6c73at05rg\",\"name\":\"qa-20261010-461904-clearopts\",\"immutableName\":\"qa-20261010-461904-clearopts\",\"slug\":\"qa-20261010-461904-clearopts\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\"createdAt\":\"2026-10-10T06:15:25Z\",\"updatedAt\":\"2026-10-10T06:20:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"python\",\"envSpecificDetails\":{\"buildCommand\":\"pip install -r requirements.txt\",\"preDeployCommand\":\"\",\"startCommand\":\"python main.py\"},\"internalAddress\":\"qa-20261010-461904-clearopts:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"python\",\"url\":\"https://qa-20261010-461904-clearopts.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-3\",\"urls\":[\"https://qa-20261010-461904-clearopts.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/hello-python\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a48384ad1b22fca9-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "deploy_children": [
+        {
+          "createdAt": "2026-10-10T06:19:43.697788Z",
+          "finishedAt": "2026-10-10T06:20:13.611909Z",
+          "id": "dep-db4thvr4am4s73f09950",
+          "startedAt": "2026-10-10T06:19:57.458725Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-10T06:20:13.61191Z"
+        },
+        {
+          "createdAt": "2026-10-10T06:15:24.893603Z",
+          "finishedAt": "2026-10-10T06:17:57.466958Z",
+          "id": "dep-db4tfv393q6c73at05s0",
+          "startedAt": "2026-10-10T06:16:43.578118Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-10T06:20:13.614024Z"
+        }
+      ],
+      "children_enumeration_evidence": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4tfv393q6c73at05rg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.368,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-10T06:19:43.697788Z\",\n    \"finishedAt\": \"2026-10-10T06:20:13.611909Z\",\n    \"id\": \"dep-db4thvr4am4s73f09950\",\n    \"startedAt\": \"2026-10-10T06:19:57.458725Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-10T06:20:13.61191Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-10T06:15:24.893603Z\",\n    \"finishedAt\": \"2026-10-10T06:17:57.466958Z\",\n    \"id\": \"dep-db4tfv393q6c73at05s0\",\n    \"startedAt\": \"2026-10-10T06:16:43.578118Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-10T06:20:13.614024Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "delete_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db4tfv393q6c73at05rg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.47,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-10T06:15:25Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4tfv393q6c73at05rg\",\n    \"id\": \"srv-db4tfv393q6c73at05rg\",\n    \"name\": \"qa-20261010-461904-clearopts\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python main.py\"\n      },\n      \"internalAddress\": \"qa-20261010-461904-clearopts:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261010-461904-clearopts.onbex.co\"\n    },\n    \"slug\": \"qa-20261010-461904-clearopts\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-10T06:20:04Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4tfv393q6c73at05rg",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.242,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4838780fffdc6c6-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "workspace_after_delete_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0"
+      ],
+      "runtime_after_delete_checks": [
+        {
+          "exit": 0,
+          "stdout": "404 page not found\n\n404",
+          "stderr": ""
+        }
+      ],
+      "quota_after_delete": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.354,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4838a67f92ecf17-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0"
+    }
+  ]
+}

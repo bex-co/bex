@@ -1,0 +1,39 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "github.com/render-oss/cli/pkg/client"
+ servicepkg "github.com/render-oss/cli/pkg/service"
+ servicetypes "github.com/render-oss/cli/pkg/types/service"
+)
+
+func main() {
+ raw,err:=os.ReadFile("source-service.json");must(err)
+ var before client.Service;must(json.Unmarshal(raw,&before))
+ empty:=""
+ args:=[]string{"--pre-deploy-command","","--health-check-path",""}
+ input:=servicetypes.ServiceUpdateInput{ServiceIDOrName:before.Id,PreDeployCommand:&empty,HealthCheckPath:&empty}
+ normalized,err:=servicetypes.NormalizeAndValidateUpdateInput(input);must(err)
+ must(normalized.ValidateForServiceType(servicetypes.ServiceType(before.Type)))
+ body,err:=servicepkg.BuildUpdateRequest(before,normalized);must(err)
+ out:=map[string]any{"operation":"offline actual pinned normalizer, validators and update builder","network":false,"nativeWireIntercepted":false,"inputSource":"typed equivalent of observed flags; command parser not executed","flagArgs":args,"methodFromSource":"PATCH","pathFromSource":"/v1/services/"+before.Id,"body":body}
+ result,err:=json.MarshalIndent(out,"","  ");must(err);fmt.Println(string(result))
+}
+func must(err error) { if err!=nil { panic(err) } }
