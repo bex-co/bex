@@ -44,12 +44,18 @@ import (
 // /etc/secrets/<name>. Values (contents) are gated + leak-disciplined exactly like
 // env-var values.
 
-// SecretFileView is the Render-shaped secret-file wire object. content is omitted
-// from list responses (names only) and present on a single-file GET, mirroring
-// env-vars' keys-first "Show secret" discipline.
+// SecretFileView is Render's secret-file wire object, returned by the single-file
+// GET/PUT and the replace-all PUT. content is always present — Render's schema
+// requires it, and an empty file's "" is its real content (w8/073). Lists use
+// SecretFileName instead, mirroring env-vars' keys-first "Show secret" discipline.
 type SecretFileView struct {
 	Name    string `json:"name"`
-	Content string `json:"content,omitempty"`
+	Content string `json:"content"`
+}
+
+// SecretFileName is a secret-file list item: the name only, never the contents.
+type SecretFileName struct {
+	Name string `json:"name"`
 }
 
 // filesPath is a service's secret-files map key in the store.
@@ -60,7 +66,7 @@ func filesSecretName(service string) string { return service + "-files" }
 
 // ListSecretFiles returns a service's secret-file names, sorted (Render's GET
 // .../secret-files). Names only — contents are fetched per file. Sensitive read.
-func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]SecretFileView, error) {
+func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]SecretFileName, error) {
 	_, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
 		return nil, err
@@ -69,9 +75,9 @@ func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]Secret
 	if err != nil {
 		return nil, err
 	}
-	names := make([]SecretFileView, 0, len(files))
+	names := make([]SecretFileName, 0, len(files))
 	for name := range files {
-		names = append(names, SecretFileView{Name: name}) // names only
+		names = append(names, SecretFileName{Name: name})
 	}
 	sort.Slice(names, func(i, j int) bool { return names[i].Name < names[j].Name })
 	return names, nil
@@ -82,12 +88,12 @@ func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]Secret
 // after is the prior page's item cursor (the file name), stable across
 // interleaved writes because ListSecretFiles returns a name-sorted slice.
 // Paging policy: see applyPageLimits.
-func (s *Service) ListSecretFilesPage(ctx context.Context, service, after string, limit int) ([]SecretFileView, error) {
+func (s *Service) ListSecretFilesPage(ctx context.Context, service, after string, limit int) ([]SecretFileName, error) {
 	files, err := s.ListSecretFiles(ctx, service)
 	if err != nil {
 		return nil, err
 	}
-	return applyPageLimits(files, after, limit, func(f SecretFileView) string { return f.Name })
+	return applyPageLimits(files, after, limit, func(f SecretFileName) string { return f.Name })
 }
 
 // GetSecretFile returns one file's name + content (Render's GET
