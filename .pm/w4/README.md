@@ -234,6 +234,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **233** — [File contents dialog grows and moves its controls when loading finishes](233.md) (45m) ← live qa-find-bugs 2026-10-10 pass a47; the shared spinner reserves 192px before a 256px editor, moving the controls on desktop and mobile.
+
 - [ ] **232** — [Deploy history silently loses an older row after a new deployment arrives](232.md) (55m) ← live qa-find-bugs 2026-10-10 pass a44; a refreshed head leaves a gap before a retained tail, hides Load more, and reload restores the missing deployment.
 
 - [ ] **231** — [Created environment stays absent after the create refresh finishes](231.md) (55m) ← live qa-find-bugs 2026-10-10 pass a42; a naturally overlapping pre-save list read is accepted as the post-create refresh, while settled-page creation passes.
