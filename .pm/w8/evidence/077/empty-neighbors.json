@@ -1,0 +1,252 @@
+{
+  "label": "Offline pinned actual pflag/Render parser/validator/builder; no network, fixture or product patch",
+  "results": [
+    {
+      "actual_consumer": {
+        "accepted": true,
+        "request": {
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "args": null,
+      "case": "default",
+      "direct_slice_consumer": {
+        "accepted": true,
+        "request": {
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "parsed_env": [],
+      "parsed_secret_file_args": [],
+      "stored_env": [],
+      "stored_secret_file_args": []
+    },
+    {
+      "actual_consumer": {
+        "accepted": true,
+        "request": {
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "args": [
+        "--env-var="
+      ],
+      "case": "literal-empty-env",
+      "direct_slice_consumer": {
+        "accepted": false,
+        "error": "invalid --env-var \"\": expected KEY=VALUE"
+      },
+      "parsed_env": [],
+      "parsed_secret_file_args": [],
+      "stored_env": [
+        ""
+      ],
+      "stored_secret_file_args": []
+    },
+    {
+      "actual_consumer": {
+        "accepted": true,
+        "request": {
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "args": [
+        "--secret-file="
+      ],
+      "case": "literal-empty-secret-file",
+      "direct_slice_consumer": {
+        "accepted": false,
+        "error": "invalid --secret-file \"\": expected NAME:LOCAL_PATH"
+      },
+      "parsed_env": [],
+      "parsed_secret_file_args": [],
+      "stored_env": [],
+      "stored_secret_file_args": [
+        ""
+      ]
+    },
+    {
+      "actual_consumer": {
+        "accepted": true,
+        "request": {
+          "envVars": [
+            {
+              "key": "QA_EMPTY",
+              "value": ""
+            }
+          ],
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "args": [
+        "--env-var=QA_EMPTY="
+      ],
+      "case": "valid-empty-value",
+      "direct_slice_consumer": {
+        "accepted": true,
+        "request": {
+          "envVars": [
+            {
+              "key": "QA_EMPTY",
+              "value": ""
+            }
+          ],
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "parsed_env": [
+        "QA_EMPTY="
+      ],
+      "parsed_secret_file_args": [],
+      "stored_env": [
+        "QA_EMPTY="
+      ],
+      "stored_secret_file_args": []
+    },
+    {
+      "actual_consumer": {
+        "accepted": true,
+        "request": {
+          "envVars": [
+            {
+              "key": "FIRST",
+              "value": "one\ntwo"
+            },
+            {
+              "key": "OTHER",
+              "value": "comma,=quote\""
+            }
+          ],
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "args": [
+        "--env-var=FIRST=one\r\ntwo",
+        "--env-var=OTHER=comma,=quote\""
+      ],
+      "case": "repeated-values",
+      "direct_slice_consumer": {
+        "accepted": true,
+        "request": {
+          "envVars": [
+            {
+              "key": "FIRST",
+              "value": "one\r\ntwo"
+            },
+            {
+              "key": "OTHER",
+              "value": "comma,=quote\""
+            }
+          ],
+          "name": "qa-offline-empty",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        }
+      },
+      "parsed_env": [
+        "FIRST=one\ntwo",
+        "OTHER=comma,=quote\""
+      ],
+      "parsed_secret_file_args": [],
+      "stored_env": [
+        "FIRST=one\r\ntwo",
+        "OTHER=comma,=quote\""
+      ],
+      "stored_secret_file_args": []
+    }
+  ]
+}

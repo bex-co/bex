@@ -1,0 +1,15 @@
+{
+  "kind": "production exact replay of actual same-pin loopback clone request, not original production packet capture",
+  "result": {
+    "method": "POST",
+    "path": "/v1/services",
+    "body": "{\"autoDeploy\":\"no\",\"branch\":\"main\",\"buildFilter\":{\"ignoredPaths\":[\"**/*.md\"],\"paths\":null},\"envVars\":[{\"key\":\"MESSAGE\",\"value\":\"qa-mirror-913a90\"}],\"name\":\"qa-20261009-913a90-mir-fail\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"startCommand\":\"./app\"},\"healthCheckPath\":\"/\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":23,\"numInstances\":1,\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"go\"},\"type\":\"web_service\"}",
+    "status": "400",
+    "elapsed": 0.96,
+    "response": "{\"error\":\"invalid request body at /buildFilter/paths\",\"id\":\"bad_request\",\"message\":\"invalid request body at /buildFilter/paths\"}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47bffa0bb72b341-SJC"
+    }
+  }
+}

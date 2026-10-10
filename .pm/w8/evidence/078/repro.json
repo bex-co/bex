@@ -1,0 +1,1099 @@
+{
+  "sweep": 64,
+  "date": "2026-10-09T16:17:32.353126+00:00",
+  "source_head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+  "bex_release": "v0.3.2",
+  "render_release": "v2.27.0",
+  "render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "render_module": "v1.1.3-0.20260909214233-a764810a7682",
+  "api_origin": "https://api.bex.co/v1/",
+  "workspace": {
+    "name": "bex-canary",
+    "id": "tea-daif693dqjvc73e7as3g"
+  },
+  "auth": "isolated human device OAuth; credentials omitted",
+  "deployed_revision": "unobserved",
+  "native_wire": "not intercepted; full stdout/stderr retained; exact request owner is from separate offline actual-code capture",
+  "live_validation": [
+    {
+      "case": "name-omitted",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 0,
+      "elapsed": 1.447,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    {
+      "case": "name-long-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 1,
+      "elapsed": 1.036,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 403: {\"code\":\"FORBIDDEN\",\"error\":\"forbidden\",\"id\":\"forbidden\",\"message\":\"forbidden\",\"params\":null}\n\n"
+    },
+    {
+      "case": "name-long-empty-separate",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 1,
+      "elapsed": 1.048,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 403: {\"code\":\"FORBIDDEN\",\"error\":\"forbidden\",\"id\":\"forbidden\",\"message\":\"forbidden\",\"params\":null}\n\n"
+    },
+    {
+      "case": "name-short-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "-w",
+        "",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 1,
+      "elapsed": 1.247,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 403: {\"code\":\"FORBIDDEN\",\"error\":\"forbidden\",\"id\":\"forbidden\",\"message\":\"forbidden\",\"params\":null}\n\n"
+    },
+    {
+      "case": "name-explicit-id",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "tea-daif693dqjvc73e7as3g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 0,
+      "elapsed": 0.873,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    {
+      "case": "id-long-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "tea-daif693dqjvc73e7as3g",
+      "exit": 0,
+      "elapsed": 1.553,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    {
+      "case": "name-last-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "tea-daif693dqjvc73e7as3g",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 1,
+      "elapsed": 0.745,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 403: {\"code\":\"FORBIDDEN\",\"error\":\"forbidden\",\"id\":\"forbidden\",\"message\":\"forbidden\",\"params\":null}\n\n"
+    },
+    {
+      "client": "unmodified checkout build",
+      "head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+      "case": "head-omitted",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 0,
+      "elapsed": 2.5,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    {
+      "client": "unmodified checkout build",
+      "head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+      "case": "head-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 1,
+      "elapsed": 0.724,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 403: {\"code\":\"FORBIDDEN\",\"error\":\"forbidden\",\"id\":\"forbidden\",\"message\":\"forbidden\",\"params\":null}\n\n"
+    },
+    {
+      "client": "unmodified checkout build",
+      "head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+      "case": "head-short-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "-w",
+        "",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 1,
+      "elapsed": 0.894,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 403: {\"code\":\"FORBIDDEN\",\"error\":\"forbidden\",\"id\":\"forbidden\",\"message\":\"forbidden\",\"params\":null}\n\n"
+    },
+    {
+      "client": "unmodified checkout build",
+      "head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+      "case": "head-explicit-id",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "tea-daif693dqjvc73e7as3g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "bex-canary",
+      "exit": 0,
+      "elapsed": 0.712,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    {
+      "client": "actual unmodified pinned Render",
+      "case": "render-omitted",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "tea-daif693dqjvc73e7as3g",
+      "exit": 0,
+      "elapsed": 1.094,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    {
+      "client": "actual unmodified pinned Render",
+      "case": "render-empty",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "workspace_override": "tea-daif693dqjvc73e7as3g",
+      "exit": 0,
+      "elapsed": 0.963,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    }
+  ],
+  "offline_blueprint": [
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "omitted",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.757,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "GET",
+          "response": "[{\"owner\":{\"id\":\"tea-12345678901234567890\",\"name\":\"known-qa\",\"type\":\"team\"},\"cursor\":\"tea-12345678901234567890\"}]",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/owners?name=known-qa&limit=100"
+        },
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "long-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.041,
+      "stdout": "",
+      "product_stderr": "Error: validation request failed with status 403: {\"message\":\"fixture expects resolved workspace ID\"}",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "known-qa",
+          "response": "{\"message\":\"fixture expects resolved workspace ID\"}",
+          "status": 403,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "separate-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.043,
+      "stdout": "",
+      "product_stderr": "Error: validation request failed with status 403: {\"message\":\"fixture expects resolved workspace ID\"}",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "known-qa",
+          "response": "{\"message\":\"fixture expects resolved workspace ID\"}",
+          "status": 403,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "short-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "-w",
+        "",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.042,
+      "stdout": "",
+      "product_stderr": "Error: validation request failed with status 403: {\"message\":\"fixture expects resolved workspace ID\"}",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "known-qa",
+          "response": "{\"message\":\"fixture expects resolved workspace ID\"}",
+          "status": 403,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "explicit-id",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "tea-12345678901234567890",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.041,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "id-then-empty",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "tea-12345678901234567890",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.044,
+      "stdout": "",
+      "product_stderr": "Error: validation request failed with status 403: {\"message\":\"fixture expects resolved workspace ID\"}",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "known-qa",
+          "response": "{\"message\":\"fixture expects resolved workspace ID\"}",
+          "status": 403,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "empty-then-id",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--workspace",
+        "tea-12345678901234567890",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.044,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "cluster-short-id",
+      "command": [
+        "bex",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "-cwtea-12345678901234567890",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.032,
+      "stdout": "",
+      "product_stderr": "Error: unknown shorthand flag: 'c' in -cwtea-12345678901234567890",
+      "wire": [],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "omitted",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.776,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "long-empty",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.039,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "separate-empty",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.038,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "short-empty",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "-w",
+        "",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.04,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "explicit-id",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "tea-12345678901234567890",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.039,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "id-then-empty",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace",
+        "tea-12345678901234567890",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.037,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "empty-then-id",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "--workspace=",
+        "--workspace",
+        "tea-12345678901234567890",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.037,
+      "stdout": "{\n  \"valid\": true\n}",
+      "product_stderr": "",
+      "wire": [
+        {
+          "fileBytes": 278,
+          "fileContent": "ungrouped:\n  services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n    - key: ANSWER\n      value: 47\n",
+          "fileName": "sweep22-ungrouped-service-numeric.yaml",
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "response": "{\"valid\":true}",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/blueprints/validate"
+        }
+      ],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "cluster-short-id",
+      "command": [
+        "render",
+        "blueprints",
+        "validate",
+        "<private QA directory>/sweep22-ungrouped-service-numeric.yaml",
+        "-cwtea-12345678901234567890",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.028,
+      "stdout": "",
+      "product_stderr": "Error: unknown shorthand flag: 'c' in -cwtea-12345678901234567890",
+      "wire": [],
+      "scope": "Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire"
+    }
+  ],
+  "offline_datastore_create": [
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "pg-omitted",
+      "command": [
+        "bex",
+        "pg",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.815,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "GET",
+          "response": "[{\"owner\":{\"id\":\"tea-12345678901234567890\",\"name\":\"known-qa\",\"type\":\"team\"},\"cursor\":\"tea-12345678901234567890\"}]",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/owners?name=known-qa&limit=100"
+        },
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "requestBody": "{\"name\":\"qa-20261009-offline\",\"ownerId\":\"tea-12345678901234567890\",\"plan\":\"free\",\"region\":\"frankfurt\",\"version\":\"18\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/postgres"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "pg-empty",
+      "command": [
+        "bex",
+        "pg",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.042,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "known-qa",
+          "requestBody": "{\"name\":\"qa-20261009-offline\",\"ownerId\":\"known-qa\",\"plan\":\"free\",\"region\":\"frankfurt\",\"version\":\"18\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/postgres"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "kv-omitted",
+      "command": [
+        "bex",
+        "kv",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.041,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "GET",
+          "response": "[{\"owner\":{\"id\":\"tea-12345678901234567890\",\"name\":\"known-qa\",\"type\":\"team\"},\"cursor\":\"tea-12345678901234567890\"}]",
+          "status": 200,
+          "url": "https://fixture.invalid/v1/owners?name=known-qa&limit=100"
+        },
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "requestBody": "{\"maxmemoryPolicy\":\"allkeys_lru\",\"name\":\"qa-20261009-offline\",\"ownerId\":\"tea-12345678901234567890\",\"plan\":\"free\",\"region\":\"frankfurt\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/key-value"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    },
+    {
+      "client": "bex",
+      "current_workspace": "known-qa",
+      "case": "kv-empty",
+      "command": [
+        "bex",
+        "kv",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.04,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "known-qa",
+          "requestBody": "{\"maxmemoryPolicy\":\"allkeys_lru\",\"name\":\"qa-20261009-offline\",\"ownerId\":\"known-qa\",\"plan\":\"free\",\"region\":\"frankfurt\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/key-value"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "pg-omitted",
+      "command": [
+        "render",
+        "pg",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.773,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "requestBody": "{\"name\":\"qa-20261009-offline\",\"ownerId\":\"tea-12345678901234567890\",\"plan\":\"free\",\"region\":\"frankfurt\",\"version\":\"18\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/postgres"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "pg-empty",
+      "command": [
+        "render",
+        "pg",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.04,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "requestBody": "{\"name\":\"qa-20261009-offline\",\"ownerId\":\"tea-12345678901234567890\",\"plan\":\"free\",\"region\":\"frankfurt\",\"version\":\"18\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/postgres"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "kv-omitted",
+      "command": [
+        "render",
+        "kv",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.04,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "requestBody": "{\"maxmemoryPolicy\":\"allkeys_lru\",\"name\":\"qa-20261009-offline\",\"ownerId\":\"tea-12345678901234567890\",\"plan\":\"free\",\"region\":\"frankfurt\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/key-value"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    },
+    {
+      "client": "render",
+      "current_workspace": "tea-12345678901234567890",
+      "case": "kv-empty",
+      "command": [
+        "render",
+        "kv",
+        "create",
+        "--name",
+        "qa-20261009-offline",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--workspace=",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.037,
+      "stdout": "",
+      "product_stderr": "Error: received response code 400: fixture deliberately refuses create; no resource exists",
+      "wire": [
+        {
+          "kind": "offline fixture; dummy credential; no network",
+          "method": "POST",
+          "ownerId": "tea-12345678901234567890",
+          "requestBody": "{\"maxmemoryPolicy\":\"allkeys_lru\",\"name\":\"qa-20261009-offline\",\"ownerId\":\"tea-12345678901234567890\",\"plan\":\"free\",\"region\":\"frankfurt\"}",
+          "response": "{\"message\":\"fixture deliberately refuses create; no resource exists\"}",
+          "status": 400,
+          "url": "https://fixture.invalid/v1/key-value"
+        }
+      ],
+      "scope": "Actual launcher/pinned command package; offline-only transport deliberately returns 400 for create; no network/resource"
+    }
+  ],
+  "limits": [
+    "Blueprint validation only on production, no apply/runtime.",
+    "Postgres/Key Value creates ran only through injected offline transport, deliberately returning 400.",
+    "cluster-short-id uses undefined -c and is an invalid-flag control, not a workspace defect.",
+    "Render uses a configured ID; BEX_WORKSPACE name resolution is launcher-owned."
+  ],
+  "cleanup": "No resource created in sweep64; copied Render config removed without logout; all proven prior fixtures deleted. Failed sweep60 create intent retains read-only watch."
+}

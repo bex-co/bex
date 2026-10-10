@@ -1,0 +1,1378 @@
+{
+  "date_utc": "2026-10-09T13:49:47.556825+00:00",
+  "sweep": 51,
+  "api_origin": "https://api.bex.co/v1/",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "bex_release": "v0.3.2",
+  "render_version": "v2.27.0",
+  "render_pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+  "deployed_revision": "unobserved",
+  "auth": "isolated human device OAuth, credentials excluded",
+  "output": "non-TTY JSON",
+  "resources": [
+    {
+      "sweep": 51,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "name": "qa-20261009-933205-xstatic",
+      "nonce": "933205",
+      "type": "static_site",
+      "role": "comma display name selector static source and direct create control",
+      "kind": "static",
+      "time": "2026-10-09T13:39:22.969350+00:00",
+      "dependency_ids": [],
+      "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261009-933205-xstatic",
+        "--type",
+        "static_site",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--auto-deploy=false",
+        "--root-directory",
+        "examples/static-site",
+        "--publish-directory",
+        ".",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "capacity_proof": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.589,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dca828c4d7803-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "expected_message": "qa-static-933205",
+      "cost_proof": "explicit free web; static cannot take plan flag and defaults to free per normalizeTierOrPlan / tiers.Compute.Default()",
+      "create_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "create",
+          "--name",
+          "qa-20261009-933205-xstatic",
+          "--type",
+          "static_site",
+          "--repo",
+          "https://github.com/bex-co/bex",
+          "--auto-deploy=false",
+          "--root-directory",
+          "examples/static-site",
+          "--publish-directory",
+          ".",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.448,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-09T13:39:24Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\n  \"id\": \"srv-db4et2r4am4s73f096fg\",\n  \"name\": \"qa-20261009-933205-xstatic\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \".\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261009-933205-xstatic.onbex.co\"\n  },\n  \"slug\": \"qa-20261009-933205-xstatic\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-09T13:39:24.002160658Z\"\n}",
+        "stderr": ""
+      },
+      "id": "srv-db4et2r4am4s73f096fg",
+      "create_response": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "branch": "main",
+        "createdAt": "2026-10-09T13:39:24Z",
+        "dashboardUrl": "https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg",
+        "id": "srv-db4et2r4am4s73f096fg",
+        "name": "qa-20261009-933205-xstatic",
+        "notifyOnFail": "default",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/static-site",
+        "serviceDetails": {
+          "buildCommand": "",
+          "numInstances": 1,
+          "plan": "free",
+          "publishPath": ".",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "url": "https://qa-20261009-933205-xstatic.onbex.co"
+        },
+        "slug": "qa-20261009-933205-xstatic",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "static_site",
+        "updatedAt": "2026-10-09T13:39:24.002160658Z"
+      },
+      "rename_actions": {
+        "comma": {
+          "at": "2026-10-09T13:40:07.641516+00:00",
+          "case": "comma",
+          "new_name": "qa-20261009-933205-csv,雪%+&=",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "srv-db4et2r4am4s73f096fg",
+            "--name",
+            "qa-20261009-933205-csv,雪%+&=",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "state": "exact owned-ID rename intent persisted",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "services",
+              "update",
+              "srv-db4et2r4am4s73f096fg",
+              "--name",
+              "qa-20261009-933205-csv,雪%+&=",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.705,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T13:39:24Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\n    \"id\": \"srv-db4et2r4am4s73f096fg\",\n    \"name\": \"qa-20261009-933205-csv,雪%+\\u0026=\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261009-933205-xstatic.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-933205-xstatic\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-09T13:40:08.663477023Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "api_only_readback": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.847,
+            "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:40:08.663477023Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dcba8f83cfb44-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        "control": {
+          "at": "2026-10-09T13:44:14.413507+00:00",
+          "case": "control",
+          "new_name": "qa-20261009-933205-csv雪%+&=",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "srv-db4et2r4am4s73f096fg",
+            "--name",
+            "qa-20261009-933205-csv雪%+&=",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "state": "exact owned-ID rename intent persisted",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "services",
+              "update",
+              "srv-db4et2r4am4s73f096fg",
+              "--name",
+              "qa-20261009-933205-csv雪%+&=",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.257,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T13:39:24Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\n    \"id\": \"srv-db4et2r4am4s73f096fg\",\n    \"name\": \"qa-20261009-933205-csv雪%+\\u0026=\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261009-933205-xstatic.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-933205-xstatic\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-09T13:44:15.204672227Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "api_only_readback": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.261,
+            "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:44:15.204672227Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dd1ab2ddded36-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      },
+      "active_name": "qa-20261009-933205-csv雪%+&=",
+      "active_case": "control",
+      "selector_results": [
+        {
+          "at": "2026-10-09T13:40:24.010579+00:00",
+          "case": "comma",
+          "client": "bex",
+          "selector_kind": "name",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "qa-20261009-933205-csv,雪%+&=",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.718,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\n      \"message\": \"docs(pm): file HTTP health probe Host defect (w4/m190)\"\n    },\n    \"createdAt\": \"2026-10-09T13:39:23.964358Z\",\n    \"finishedAt\": \"2026-10-09T13:39:43.553702Z\",\n    \"id\": \"dep-db4et2r4am4s73f096g0\",\n    \"startedAt\": \"2026-10-09T13:39:27.709577Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T13:39:43.553703Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-09T13:40:24.608652+00:00",
+          "case": "comma",
+          "client": "render",
+          "selector_kind": "name",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "qa-20261009-933205-csv,雪%+&=",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.488,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\n      \"message\": \"docs(pm): file HTTP health probe Host defect (w4/m190)\"\n    },\n    \"createdAt\": \"2026-10-09T13:39:23.964358Z\",\n    \"finishedAt\": \"2026-10-09T13:39:43.553702Z\",\n    \"id\": \"dep-db4et2r4am4s73f096g0\",\n    \"startedAt\": \"2026-10-09T13:39:27.709577Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T13:39:43.553703Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-09T13:40:25.074017+00:00",
+          "case": "comma",
+          "client": "bex",
+          "selector_kind": "id",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "deploys",
+              "list",
+              "srv-db4et2r4am4s73f096fg",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.353,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\n      \"message\": \"docs(pm): file HTTP health probe Host defect (w4/m190)\"\n    },\n    \"createdAt\": \"2026-10-09T13:39:23.964358Z\",\n    \"finishedAt\": \"2026-10-09T13:39:43.553702Z\",\n    \"id\": \"dep-db4et2r4am4s73f096g0\",\n    \"startedAt\": \"2026-10-09T13:39:27.709577Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T13:39:43.553703Z\"\n  }\n]",
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-09T13:40:25.929098+00:00",
+          "case": "comma",
+          "client": "render",
+          "selector_kind": "id",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "deploys",
+              "list",
+              "srv-db4et2r4am4s73f096fg",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 0.743,
+            "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\n      \"message\": \"docs(pm): file HTTP health probe Host defect (w4/m190)\"\n    },\n    \"createdAt\": \"2026-10-09T13:39:23.964358Z\",\n    \"finishedAt\": \"2026-10-09T13:39:43.553702Z\",\n    \"id\": \"dep-db4et2r4am4s73f096g0\",\n    \"startedAt\": \"2026-10-09T13:39:27.709577Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T13:39:43.553703Z\"\n  }\n]",
+            "stderr": ""
+          }
+        }
+      ],
+      "deploy_children": [
+        {
+          "commit": {
+            "id": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+            "message": "docs(pm): file HTTP health probe Host defect (w4/m190)"
+          },
+          "createdAt": "2026-10-09T13:39:23.964358Z",
+          "finishedAt": "2026-10-09T13:39:43.553702Z",
+          "id": "dep-db4et2r4am4s73f096g0",
+          "startedAt": "2026-10-09T13:39:27.709577Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-09T13:39:43.553703Z"
+        }
+      ],
+      "children_enumeration_evidence": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4et2r4am4s73f096fg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.297,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\n      \"message\": \"docs(pm): file HTTP health probe Host defect (w4/m190)\"\n    },\n    \"createdAt\": \"2026-10-09T13:39:23.964358Z\",\n    \"finishedAt\": \"2026-10-09T13:39:43.553702Z\",\n    \"id\": \"dep-db4et2r4am4s73f096g0\",\n    \"startedAt\": \"2026-10-09T13:39:27.709577Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T13:39:43.553703Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "source_api": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.504,
+        "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:40:08.663477023Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dcd0d89474833-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "service_observations": [
+        {
+          "at": "2026-10-09T13:41:07.073094+00:00",
+          "api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.504,
+            "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:40:08.663477023Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dcd0d89474833-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "deploy_observations": [
+        {
+          "at": "2026-10-09T13:41:07.428488+00:00",
+          "api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg/deploys/dep-db4et2r4am4s73f096g0",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.273,
+            "response": "{\"id\":\"dep-db4et2r4am4s73f096g0\",\"serviceId\":\"srv-db4et2r4am4s73f096fg\",\"status\":\"live\",\"trigger\":\"other\",\"bexTrigger\":\"create\",\"commit\":{\"id\":\"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\"message\":\"docs(pm): file HTTP health probe Host defect (w4/m190)\"},\"createdAt\":\"2026-10-09T13:39:23.964358Z\",\"updatedAt\":\"2026-10-09T13:39:43.553703Z\",\"startedAt\":\"2026-10-09T13:39:27.709577Z\",\"finishedAt\":\"2026-10-09T13:39:43.553702Z\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dcd100e84b586-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "runtime_checks": [
+        {
+          "at": "2026-10-09T13:41:08.292823+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n",
+          "matches": true
+        }
+      ],
+      "named_update_results": [
+        {
+          "at": "2026-10-09T13:41:36.272761+00:00",
+          "client": "bex",
+          "case": "comma",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "qa-20261009-933205-csv,雪%+&=",
+            "--auto-deploy=false",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "state": "owned uniquely proved display-name no-op update intent persisted",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "services",
+              "update",
+              "qa-20261009-933205-csv,雪%+&=",
+              "--auto-deploy=false",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 0.329,
+            "stdout": "",
+            "stderr": "Error: failed to resolve service \"qa-20261009-933205-csv,雪%+&=\": No service named 'qa-20261009-933205-csv,雪%+&=' in workspace tea-daif693dqjvc73e7as3g. To search another workspace, run `render workspace set <name|ID>`, or pass the service ID instead.\n"
+          },
+          "after_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.421,
+            "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:40:08.663477023Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dcdc949cb67c1-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-09T13:41:37.227527+00:00",
+          "client": "render",
+          "case": "comma",
+          "command": [
+            "render",
+            "services",
+            "update",
+            "qa-20261009-933205-csv,雪%+&=",
+            "--auto-deploy=false",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "state": "owned uniquely proved display-name no-op update intent persisted",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "services",
+              "update",
+              "qa-20261009-933205-csv,雪%+&=",
+              "--auto-deploy=false",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 1,
+            "elapsed": 0.467,
+            "stdout": "",
+            "stderr": "Error: failed to resolve service \"qa-20261009-933205-csv,雪%+&=\": No service named 'qa-20261009-933205-csv,雪%+&=' in workspace tea-daif693dqjvc73e7as3g. To search another workspace, run `render workspace set <name|ID>`, or pass the service ID instead.\n"
+          },
+          "after_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.299,
+            "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv,雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:40:08.663477023Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dcdcfdaaacfe1-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-09T13:44:54.154866+00:00",
+          "client": "bex",
+          "case": "control",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "qa-20261009-933205-csv雪%+&=",
+            "--auto-deploy=false",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "state": "owned uniquely proved display-name no-op update intent persisted",
+          "result": {
+            "binary": "released v0.3.2",
+            "command": [
+              "bex",
+              "services",
+              "update",
+              "qa-20261009-933205-csv雪%+&=",
+              "--auto-deploy=false",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.464,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T13:39:24Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\n    \"id\": \"srv-db4et2r4am4s73f096fg\",\n    \"name\": \"qa-20261009-933205-csv雪%+\\u0026=\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261009-933205-xstatic.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-933205-xstatic\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-09T13:44:55.096906827Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "after_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.441,
+            "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:44:55.096906827Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dd2a5cea11754-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        },
+        {
+          "at": "2026-10-09T13:44:56.238369+00:00",
+          "client": "render",
+          "case": "control",
+          "command": [
+            "render",
+            "services",
+            "update",
+            "qa-20261009-933205-csv雪%+&=",
+            "--auto-deploy=false",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "state": "owned uniquely proved display-name no-op update intent persisted",
+          "result": {
+            "binary": "unmodified Render pin a764810a7682",
+            "command": [
+              "render",
+              "services",
+              "update",
+              "qa-20261009-933205-csv雪%+&=",
+              "--auto-deploy=false",
+              "--confirm",
+              "-o",
+              "json"
+            ],
+            "exit": 0,
+            "elapsed": 1.43,
+            "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T13:39:24Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\n    \"id\": \"srv-db4et2r4am4s73f096fg\",\n    \"name\": \"qa-20261009-933205-csv雪%+\\u0026=\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261009-933205-xstatic.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-933205-xstatic\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-09T13:44:57.149961247Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+            "stderr": ""
+          },
+          "after_api_only": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.344,
+            "response": "{\"id\":\"srv-db4et2r4am4s73f096fg\",\"name\":\"qa-20261009-933205-csv雪%+\\u0026=\",\"immutableName\":\"qa-20261009-933205-xstatic\",\"slug\":\"qa-20261009-933205-xstatic\",\"displayName\":\"qa-20261009-933205-csv雪%+\\u0026=\",\"type\":\"static_site\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\"createdAt\":\"2026-10-09T13:39:24Z\",\"updatedAt\":\"2026-10-09T13:44:57.149961247Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261009-933205-xstatic.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261009-933205-xstatic.onbex.co\"],\"idleTTLSeconds\":0,\"rootDir\":\"examples/static-site\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dd2b20e372710-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ],
+      "encoded_comma_list_api_only": {
+        "at": "2026-10-09T13:42:47.947552+00:00",
+        "result": {
+          "method": "GET",
+          "path": "/v1/services?name=qa-20261009-933205-csv%2C%E9%9B%AA%25%2B%26%3D",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.504,
+          "response": "[]\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47dcf83ab9ff97b-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        }
+      },
+      "unfiltered_name_control": {
+        "at": "2026-10-09T13:42:49.172581+00:00",
+        "own_service": {
+          "autoDeploy": "no",
+          "autoDeployTrigger": "off",
+          "branch": "main",
+          "createdAt": "2026-10-09T13:39:24Z",
+          "dashboardUrl": "https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg",
+          "id": "srv-db4et2r4am4s73f096fg",
+          "name": "qa-20261009-933205-csv,雪%+&=",
+          "notifyOnFail": "default",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "repo": "https://github.com/bex-co/bex",
+          "rootDir": "examples/static-site",
+          "serviceDetails": {
+            "buildCommand": "",
+            "numInstances": 1,
+            "plan": "free",
+            "publishPath": ".",
+            "region": "fsn1",
+            "renderSubdomainPolicy": "enabled",
+            "url": "https://qa-20261009-933205-xstatic.onbex.co"
+          },
+          "slug": "qa-20261009-933205-xstatic",
+          "suspended": "not_suspended",
+          "suspenders": [],
+          "type": "static_site",
+          "updatedAt": "2026-10-09T13:40:08.663477023Z"
+        },
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.167
+      },
+      "selector_proof": {
+        "comma_update_clients": [
+          "bex",
+          "render"
+        ],
+        "control_update_clients": [
+          "bex",
+          "render"
+        ],
+        "direct_deploy_name_clients": [
+          "bex",
+          "render"
+        ],
+        "encoded_name_filter_response": [],
+        "ID_clone_live": true,
+        "control_name_clone_live": true,
+        "only_comma_removed_in_name_control": true
+      },
+      "delete_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db4et2r4am4s73f096fg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.337,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T13:39:24Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4et2r4am4s73f096fg\",\n    \"id\": \"srv-db4et2r4am4s73f096fg\",\n    \"name\": \"qa-20261009-933205-csv雪%+\\u0026=\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261009-933205-xstatic.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-933205-xstatic\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-09T13:44:57.149961247Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4et2r4am4s73f096fg",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.271,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd52c0c01dcfe-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "workspace_after_delete_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0"
+      ],
+      "runtime_after_delete_checks": [
+        {
+          "exit": 0,
+          "stdout": "404 page not found\n\n404",
+          "stderr": ""
+        }
+      ],
+      "quota_after_delete": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.595,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd78c0f4ceb24-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "cleanup_readonly_followups": [
+        {
+          "at": "2026-10-09T13:48:16.900640+00:00",
+          "quota": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.595,
+            "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dd78c0f4ceb24-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ]
+    },
+    {
+      "sweep": 51,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "type": "static_site",
+      "name": "qa-20261009-1d07c7-csvclone",
+      "nonce": "1d07c7",
+      "role": "comma name selector clone diagnostic/control",
+      "client": "bex",
+      "selector_kind": "name",
+      "source_case": "comma",
+      "source_id": "srv-db4et2r4am4s73f096fg",
+      "time": "2026-10-09T13:41:38.596663+00:00",
+      "dependency_ids": [
+        "srv-db4et2r4am4s73f096fg"
+      ],
+      "state": "rejected named source lookup; exact fresh name absent after successful clone controls",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--from",
+        "qa-20261009-933205-csv,雪%+&=",
+        "--name",
+        "qa-20261009-1d07c7-csvclone",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "capacity_proof": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.344,
+        "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dcdd2acfef97b-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "create_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "create",
+          "--from",
+          "qa-20261009-933205-csv,雪%+&=",
+          "--name",
+          "qa-20261009-1d07c7-csvclone",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.369,
+        "stdout": "",
+        "stderr": "Error: failed to clone configuration from source service \"qa-20261009-933205-csv,雪%+&=\": failed to resolve source service qa-20261009-933205-csv,雪%+&=: No service named 'qa-20261009-933205-csv,雪%+&=' in workspace tea-daif693dqjvc73e7as3g. To search another workspace, run `render workspace set <name|ID>`, or pass the service ID instead.\n"
+      },
+      "absence_evidence": {
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.547,
+        "workspace_ids": [
+          "srv-dap3v694dm7c7390q930",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-db4et2r4am4s73f096fg",
+          "srv-db4evn393q6c73at0340",
+          "srv-db4ev334am4s73f096hg",
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-db09vbgehcmc739j12i0",
+          "srv-db09u90ehcmc739j12cg"
+        ]
+      }
+    },
+    {
+      "sweep": 51,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "type": "static_site",
+      "name": "qa-20261009-d1ef91-csvclone",
+      "nonce": "d1ef91",
+      "role": "comma name selector clone diagnostic/control",
+      "client": "render",
+      "selector_kind": "name",
+      "source_case": "comma",
+      "source_id": "srv-db4et2r4am4s73f096fg",
+      "time": "2026-10-09T13:41:39.417847+00:00",
+      "dependency_ids": [
+        "srv-db4et2r4am4s73f096fg"
+      ],
+      "state": "rejected named source lookup; exact fresh name absent after successful clone controls",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--from",
+        "qa-20261009-933205-csv,雪%+&=",
+        "--name",
+        "qa-20261009-d1ef91-csvclone",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "capacity_proof": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.271,
+        "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dcdd7fbe84833-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "create_result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "create",
+          "--from",
+          "qa-20261009-933205-csv,雪%+&=",
+          "--name",
+          "qa-20261009-d1ef91-csvclone",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.571,
+        "stdout": "",
+        "stderr": "Error: failed to clone configuration from source service \"qa-20261009-933205-csv,雪%+&=\": failed to resolve source service qa-20261009-933205-csv,雪%+&=: No service named 'qa-20261009-933205-csv,雪%+&=' in workspace tea-daif693dqjvc73e7as3g. To search another workspace, run `render workspace set <name|ID>`, or pass the service ID instead.\n"
+      },
+      "absence_evidence": {
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.547,
+        "workspace_ids": [
+          "srv-dap3v694dm7c7390q930",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-db4et2r4am4s73f096fg",
+          "srv-db4evn393q6c73at0340",
+          "srv-db4ev334am4s73f096hg",
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-db09vbgehcmc739j12i0",
+          "srv-db09u90ehcmc739j12cg"
+        ]
+      }
+    },
+    {
+      "sweep": 51,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "type": "static_site",
+      "name": "qa-20261009-b382f5-csvclone",
+      "nonce": "b382f5",
+      "role": "comma name selector clone diagnostic/control",
+      "client": "bex",
+      "selector_kind": "id",
+      "source_case": "comma",
+      "source_id": "srv-db4et2r4am4s73f096fg",
+      "time": "2026-10-09T13:43:38.165752+00:00",
+      "dependency_ids": [
+        "srv-db4et2r4am4s73f096fg"
+      ],
+      "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--from",
+        "srv-db4et2r4am4s73f096fg",
+        "--name",
+        "qa-20261009-b382f5-csvclone",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "capacity_proof": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.355,
+        "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd0bdbbed67ca-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "create_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "create",
+          "--from",
+          "srv-db4et2r4am4s73f096fg",
+          "--name",
+          "qa-20261009-b382f5-csvclone",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.215,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-09T13:43:40Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4ev334am4s73f096hg\",\n  \"id\": \"srv-db4ev334am4s73f096hg\",\n  \"name\": \"qa-20261009-b382f5-csvclone\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \".\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261009-b382f5-csvclone.onbex.co\"\n  },\n  \"slug\": \"qa-20261009-b382f5-csvclone\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-09T13:43:40.255540561Z\"\n}",
+        "stderr": ""
+      },
+      "id": "srv-db4ev334am4s73f096hg",
+      "create_response": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "branch": "main",
+        "createdAt": "2026-10-09T13:43:40Z",
+        "dashboardUrl": "https://dashboard.bex.co/static/srv-db4ev334am4s73f096hg",
+        "id": "srv-db4ev334am4s73f096hg",
+        "name": "qa-20261009-b382f5-csvclone",
+        "notifyOnFail": "default",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/static-site",
+        "serviceDetails": {
+          "buildCommand": "",
+          "numInstances": 1,
+          "plan": "free",
+          "publishPath": ".",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "url": "https://qa-20261009-b382f5-csvclone.onbex.co"
+        },
+        "slug": "qa-20261009-b382f5-csvclone",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "static_site",
+        "updatedAt": "2026-10-09T13:43:40.255540561Z"
+      },
+      "children_enumeration_evidence": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4ev334am4s73f096hg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.427,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\n      \"message\": \"docs(pm): file HTTP health probe Host defect (w4/m190)\"\n    },\n    \"createdAt\": \"2026-10-09T13:43:40.207719Z\",\n    \"finishedAt\": \"2026-10-09T13:43:57.514689Z\",\n    \"id\": \"dep-db4ev334am4s73f096i0\",\n    \"startedAt\": \"2026-10-09T13:43:43.596429Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T13:43:57.514689Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "deploy_children": [
+        {
+          "commit": {
+            "id": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+            "message": "docs(pm): file HTTP health probe Host defect (w4/m190)"
+          },
+          "createdAt": "2026-10-09T13:43:40.207719Z",
+          "finishedAt": "2026-10-09T13:43:57.514689Z",
+          "id": "dep-db4ev334am4s73f096i0",
+          "startedAt": "2026-10-09T13:43:43.596429Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-09T13:43:57.514689Z"
+        }
+      ],
+      "runtime_checks": [
+        {
+          "at": "2026-10-09T13:45:35.589077+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n",
+          "matches": true
+        }
+      ],
+      "delete_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db4ev334am4s73f096hg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.843,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T13:43:40Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4ev334am4s73f096hg\",\n    \"id\": \"srv-db4ev334am4s73f096hg\",\n    \"name\": \"qa-20261009-b382f5-csvclone\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261009-b382f5-csvclone.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-b382f5-csvclone\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-09T13:43:53Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4ev334am4s73f096hg",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.375,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd4ec2d8cb7dd-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "workspace_after_delete_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0",
+        "srv-db4et2r4am4s73f096fg",
+        "srv-db4evn393q6c73at0340"
+      ],
+      "runtime_after_delete_checks": [
+        {
+          "exit": 0,
+          "stdout": "404 page not found\n\n404",
+          "stderr": ""
+        }
+      ],
+      "quota_after_delete": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.387,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd784b89acf2f-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "cleanup_readonly_followups": [
+        {
+          "at": "2026-10-09T13:48:15.713476+00:00",
+          "quota": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.387,
+            "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dd784b89acf2f-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ]
+    },
+    {
+      "sweep": 51,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "type": "static_site",
+      "name": "qa-20261009-b08deb-csvclone",
+      "nonce": "b08deb",
+      "role": "comma name selector clone diagnostic/control",
+      "client": "render",
+      "selector_kind": "name",
+      "source_case": "control",
+      "source_id": "srv-db4et2r4am4s73f096fg",
+      "time": "2026-10-09T13:44:58.637458+00:00",
+      "dependency_ids": [
+        "srv-db4et2r4am4s73f096fg"
+      ],
+      "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--from",
+        "qa-20261009-933205-csv雪%+&=",
+        "--name",
+        "qa-20261009-b08deb-csvclone",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "capacity_proof": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.391,
+        "response": "{\"services\":{\"used\":8,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd2b51d2c8ac8-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "create_result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "create",
+          "--from",
+          "qa-20261009-933205-csv雪%+&=",
+          "--name",
+          "qa-20261009-b08deb-csvclone",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.524,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-09T13:45:00Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4evn393q6c73at0340\",\n  \"id\": \"srv-db4evn393q6c73at0340\",\n  \"name\": \"qa-20261009-b08deb-csvclone\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \".\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261009-b08deb-csvclone.onbex.co\"\n  },\n  \"slug\": \"qa-20261009-b08deb-csvclone\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-09T13:45:00.060155387Z\"\n}",
+        "stderr": ""
+      },
+      "id": "srv-db4evn393q6c73at0340",
+      "create_response": {
+        "autoDeploy": "no",
+        "autoDeployTrigger": "off",
+        "branch": "main",
+        "createdAt": "2026-10-09T13:45:00Z",
+        "dashboardUrl": "https://dashboard.bex.co/static/srv-db4evn393q6c73at0340",
+        "id": "srv-db4evn393q6c73at0340",
+        "name": "qa-20261009-b08deb-csvclone",
+        "notifyOnFail": "default",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/static-site",
+        "serviceDetails": {
+          "buildCommand": "",
+          "numInstances": 1,
+          "plan": "free",
+          "publishPath": ".",
+          "region": "fsn1",
+          "renderSubdomainPolicy": "enabled",
+          "url": "https://qa-20261009-b08deb-csvclone.onbex.co"
+        },
+        "slug": "qa-20261009-b08deb-csvclone",
+        "suspended": "not_suspended",
+        "suspenders": [],
+        "type": "static_site",
+        "updatedAt": "2026-10-09T13:45:00.060155387Z"
+      },
+      "children_enumeration_evidence": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4evn393q6c73at0340",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.02,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"c5e413f38324fdff0a36f4c3edc0063e889ce639\",\n      \"message\": \"docs(pm): file HTTP health probe Host defect (w4/m190)\"\n    },\n    \"createdAt\": \"2026-10-09T13:45:00.038552Z\",\n    \"finishedAt\": \"2026-10-09T13:45:27.662286Z\",\n    \"id\": \"dep-db4evn393q6c73at034g\",\n    \"startedAt\": \"2026-10-09T13:45:13.630856Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T13:45:27.662287Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "deploy_children": [
+        {
+          "commit": {
+            "id": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+            "message": "docs(pm): file HTTP health probe Host defect (w4/m190)"
+          },
+          "createdAt": "2026-10-09T13:45:00.038552Z",
+          "finishedAt": "2026-10-09T13:45:27.662286Z",
+          "id": "dep-db4evn393q6c73at034g",
+          "startedAt": "2026-10-09T13:45:13.630856Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-09T13:45:27.662287Z"
+        }
+      ],
+      "runtime_checks": [
+        {
+          "at": "2026-10-09T13:45:36.724540+00:00",
+          "status": "200",
+          "exit": 0,
+          "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n",
+          "matches": true
+        }
+      ],
+      "delete_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db4evn393q6c73at0340",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.586,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T13:45:00Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db4evn393q6c73at0340\",\n    \"id\": \"srv-db4evn393q6c73at0340\",\n    \"name\": \"qa-20261009-b08deb-csvclone\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261009-b08deb-csvclone.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-b08deb-csvclone\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-09T13:45:22Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4evn393q6c73at0340",
+        "body": null,
+        "status": "404",
+        "elapsed": 0.411,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd51539ea6809-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "workspace_after_delete_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0",
+        "srv-db4et2r4am4s73f096fg"
+      ],
+      "runtime_after_delete_checks": [
+        {
+          "exit": 0,
+          "stdout": "404 page not found\n\n404",
+          "stderr": ""
+        }
+      ],
+      "quota_after_delete": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.333,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47dd78768c50c60-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "cleanup_readonly_followups": [
+        {
+          "at": "2026-10-09T13:48:16.176475+00:00",
+          "quota": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.333,
+            "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47dd78768c50c60-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          }
+        }
+      ]
+    }
+  ],
+  "actual_pin_request_builder": [
+    {
+      "decoded_query": [
+        "qa-literal,雪%+&="
+      ],
+      "names": [
+        "qa-literal,雪%+&="
+      ],
+      "raw_query": "name=qa-literal%2C%E9%9B%AA%25%2B%26%3D"
+    },
+    {
+      "decoded_query": [
+        "qa-first,qa-second"
+      ],
+      "names": [
+        "qa-first",
+        "qa-second"
+      ],
+      "raw_query": "name=qa-first,qa-second"
+    },
+    {
+      "decoded_query": [
+        "qa-first,qa-literal,雪%+&="
+      ],
+      "names": [
+        "qa-first",
+        "qa-literal,雪%+&="
+      ],
+      "raw_query": "name=qa-first,qa-literal%2C%E9%9B%AA%25%2B%26%3D"
+    },
+    {
+      "decoded_query": [
+        "qa-literal%2C"
+      ],
+      "names": [
+        "qa-literal%2C"
+      ],
+      "raw_query": "name=qa-literal%252C"
+    }
+  ],
+  "probe_kind": "offline actual pinned NewListServicesRequest, no network",
+  "request_observation": "native wire not intercepted; same request encoded API-only reproduction and offline generated builder captured",
+  "coverage_limits": [
+    "live Render API not exercised",
+    "sibling name-filter resources inspected in source only",
+    "no named delete attempted on the fixture",
+    "GraphQL/MCP/UI input not exercised",
+    "no cluster UID artifact inspection"
+  ]
+}

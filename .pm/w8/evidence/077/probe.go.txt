@@ -1,0 +1,38 @@
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "github.com/spf13/cobra"
+ "github.com/spf13/pflag"
+ "github.com/render-oss/cli/pkg/command"
+ "github.com/render-oss/cli/pkg/service"
+ "github.com/render-oss/cli/pkg/types"
+ st "github.com/render-oss/cli/pkg/types/service"
+)
+
+func ptr[T any](v T)*T{return &v}
+func main() {
+ cases := map[string]string{"crlf":"first\r\nsecond\nthird\tfourth", "lf":"first\nsecond", "lone-cr":"first\rsecond", "empty":"", "unicode-punctuation":"雪,a=b==\"quoted\"\\literalX"}
+ results := []map[string]any{}
+ for name,value := range cases {
+  raw := "QA_PROBE="+value
+  cmd := &cobra.Command{Use:"probe"};cmd.Flags().StringArray("env-var",nil,"")
+  if err:=cmd.ParseFlags([]string{"--env-var",raw});err!=nil{panic(err)}
+  stored:=cmd.Flags().Lookup("env-var").Value.(pflag.SliceValue).GetSlice()
+  getter,err:=cmd.Flags().GetStringArray("env-var");if err!=nil{panic(err)}
+  var parsed struct{ EnvVars []string `cli:"env-var"` }
+  if err=command.ParseCommand(cmd,nil,&parsed);err!=nil{panic(err)}
+  build:=func(env []string) any {
+   input:=st.ServiceCreateInput{Name:"qa-offline-env",Type:ptr(st.ServiceType("web_service")),Runtime:ptr(st.ServiceRuntime("python")),Repo:ptr("https://github.com/bex-co/bex"),BuildCommand:ptr("pip install -r requirements.txt"),StartCommand:ptr("python main.py"),Plan:ptr("free"),Region:ptr(types.Region("frankfurt")),EnvVars:env}
+   input,err=st.NormalizeAndValidateCreateInput(input,false);if err!=nil{panic(err)}
+   body,e:=service.BuildCreateRequest(input,"tea-offline-only");if e!=nil{panic(e)}
+   return body
+  }
+  r:=map[string]any{"case":name,"raw":raw,"pflag_stored":stored,"pflag_getter":getter,"render_parse_command":parsed.EnvVars,"stored_exact":stored[0]==raw,"getter_exact":getter[0]==raw,"parsed_exact":parsed.EnvVars[0]==raw,"actual_request":build(parsed.EnvVars),"direct_slice_request":build(stored)}
+  results=append(results,r);fmt.Printf("%s stored_exact=%v getter_exact=%v parsed_exact=%v\n",name,r["stored_exact"],r["getter_exact"],r["parsed_exact"])
+ }
+ out:=map[string]any{"label":"Offline actual pinned pflag/Render command parser/validator/request builder; no network or mocked parser", "results":results}
+ raw,e:=json.MarshalIndent(out,"","  ");if e!=nil{panic(e)};if e=os.WriteFile("probe-result.json",append(raw,'\n'),0600);e!=nil{panic(e)}
+}

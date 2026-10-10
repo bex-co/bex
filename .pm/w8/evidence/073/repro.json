@@ -1,0 +1,666 @@
+{
+  "versions": {
+    "date_utc": "2026-10-09",
+    "evidence_scope": "Actual published Bex create/deploy/runtime plus clearly labeled API-only diagnostics and offline actual pinned decoder; no secret-file read or PUT command exists in this CLI.",
+    "bex_release": "v0.3.2",
+    "render_release": "v2.27.0",
+    "render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+    "render_module": "v1.1.3-0.20260909214233-a764810a7682",
+    "source_head": "4e8fbac848c57a24f4d6d6a93ee512bb3b40f9fe",
+    "deployed_revision": "unobserved",
+    "APIorigin": "https://api.bex.co",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "authentication": "isolated normal human QA OAuth grant",
+    "request_headers": {
+      "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+      "Authorization": "[REDACTED]"
+    }
+  },
+  "created_cli": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261009-bb245a-empty",
+      "--type",
+      "web_service",
+      "--runtime",
+      "image",
+      "--image",
+      "docker.io/mendhak/http-https-echo:35",
+      "--env-var",
+      "HTTP_PORT=3000",
+      "--pre-deploy-command",
+      "sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt",
+      "--secret-file",
+      "qa-empty.txt:<PRIVATE_DIR>/sweep36-empty-bb245a.txt",
+      "--secret-file",
+      "qa-text.txt:<PRIVATE_DIR>/sweep36-source:bb245a-雪.txt",
+      "--health-check-path",
+      "/",
+      "--region",
+      "frankfurt",
+      "--plan",
+      "free",
+      "--auto-deploy=false",
+      "--max-shutdown-delay",
+      "11",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.951,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"createdAt\": \"2026-10-09T10:20:38Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4bvtgec12s73fjue4g\",\n  \"id\": \"srv-db4bvtgec12s73fjue4g\",\n  \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n  \"name\": \"qa-20261009-bb245a-empty\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"env\": \"image\",\n    \"envSpecificDetails\": {\n      \"preDeployCommand\": \"sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261009-bb245a-empty:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 11,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"preDeployCommand\": \"sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"image\",\n    \"url\": \"https://qa-20261009-bb245a-empty.onbex.co\"\n  },\n  \"slug\": \"qa-20261009-bb245a-empty\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-09T10:20:38.414427549Z\"\n}",
+    "stderr": ""
+  },
+  "fixture_id": "srv-db4bvtgec12s73fjue4g",
+  "expected_files": [
+    {
+      "name": "qa-empty.txt",
+      "source": "<PRIVATE_DIR>/sweep36-empty-bb245a.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "qa-text.txt",
+      "source": "<PRIVATE_DIR>/sweep36-source:bb245a-雪.txt",
+      "size": 10,
+      "sha256": "6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f"
+    }
+  ],
+  "pinned_secretFile_schema": {
+    "type": "object",
+    "required": [
+      "name",
+      "content"
+    ],
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "content": {
+        "type": "string"
+      }
+    }
+  },
+  "API_diagnosis": [
+    {
+      "label": "empty GET fresh process",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:33.707295+00:00",
+      "method": "GET",
+      "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+      "body": null,
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+        "body": null,
+        "status": "200",
+        "elapsed": 1.914,
+        "response": "{\"name\":\"qa-empty.txt\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa378ca97e56-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "label": "nonempty control GET",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:35.705527+00:00",
+      "method": "GET",
+      "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-text.txt",
+      "body": null,
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-text.txt",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.876,
+        "response": "{\"name\":\"qa-text.txt\",\"content\":\"qa-bb245a\\n\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa445eeefad2-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "label": "missing-file control GET",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:36.644356+00:00",
+      "method": "GET",
+      "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-missing.txt",
+      "body": null,
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-missing.txt",
+        "body": null,
+        "status": "404",
+        "elapsed": 1.712,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"secret file not found\",\"id\":\"not_found\",\"message\":\"secret file not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa4f6f076d29-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "label": "collection names-only control",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:38.427610+00:00",
+      "method": "GET",
+      "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files",
+      "body": null,
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.913,
+        "response": "[{\"secretFile\":{\"name\":\"qa-empty.txt\"},\"cursor\":\"qa-empty.txt\"},{\"secretFile\":{\"name\":\"qa-text.txt\"},\"cursor\":\"qa-text.txt\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa57b91934bd-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "label": "single-file empty PUT",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:39.401607+00:00",
+      "method": "PUT",
+      "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+      "body": {
+        "content": ""
+      },
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "PUT",
+        "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+        "body": "{\"content\": \"\"}",
+        "status": "200",
+        "elapsed": 2.999,
+        "response": "{\"name\":\"qa-empty.txt\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa64fa9e545f-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "label": "empty GET after PUT fresh process",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:42.461678+00:00",
+      "method": "GET",
+      "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+      "body": null,
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.555,
+        "response": "{\"name\":\"qa-empty.txt\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa6f69b8eb22-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "label": "collection PUT with empty and nonempty files",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:43.082338+00:00",
+      "method": "PUT",
+      "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files",
+      "body": [
+        {
+          "name": "qa-empty.txt",
+          "content": ""
+        },
+        {
+          "name": "qa-text.txt",
+          "content": "qa-bb245a\n"
+        }
+      ],
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "PUT",
+        "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files",
+        "body": "[{\"name\": \"qa-empty.txt\", \"content\": \"\"}, {\"name\": \"qa-text.txt\", \"content\": \"qa-bb245a\\n\"}]",
+        "status": "200",
+        "elapsed": 0.924,
+        "response": "[{\"secretFile\":{\"name\":\"qa-empty.txt\"},\"cursor\":\"qa-empty.txt\"},{\"secretFile\":{\"name\":\"qa-text.txt\",\"content\":\"qa-bb245a\\n\"},\"cursor\":\"qa-text.txt\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa73ca391698-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    },
+    {
+      "label": "GraphQL empty-content control",
+      "evidence_kind": "API-only diagnosis, actual CLI User-Agent and QA grant",
+      "intent_at": "2026-10-09T10:22:44.075365+00:00",
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query { service(id: \"srv-db4bvtgec12s73fjue4g\") { id secretFile(name: \"qa-empty.txt\") { name content } secretFileNames { name } } }"
+      },
+      "owned_parent_id": "srv-db4bvtgec12s73fjue4g",
+      "result": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": "{\"query\": \"query { service(id: \\\"srv-db4bvtgec12s73fjue4g\\\") { id secretFile(name: \\\"qa-empty.txt\\\") { name content } secretFileNames { name } } }\"}",
+        "status": "200",
+        "elapsed": 0.803,
+        "response": "{\"data\":{\"service\":{\"id\":\"srv-db4bvtgec12s73fjue4g\",\"secretFile\":{\"content\":\"\",\"name\":\"qa-empty.txt\"},\"secretFileNames\":[{\"name\":\"qa-empty.txt\"},{\"name\":\"qa-text.txt\"}]}}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47caa79c85bfaec-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      }
+    }
+  ],
+  "runtime_observations": [
+    {
+      "stage": "mounted-runtime",
+      "at": "2026-10-09T10:21:14.189072+00:00",
+      "deploys": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4bvtgec12s73fjue4g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.003,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T10:20:38.315874Z\",\n    \"finishedAt\": \"2026-10-09T10:21:01.022949Z\",\n    \"id\": \"dep-db4bvtgec12s73fjue50\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:20:43.832244Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T10:21:01.02295Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "build_logs": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db4bvtgec12s73fjue4g",
+          "--type",
+          "build",
+          "--direction",
+          "backward",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 6.832,
+        "stdout": "{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:20:38.315874Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:20:38.315874Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8-2026-10-09T10:20:40.3754928Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:20:40.3754928Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8-2026-10-09T10:20:40.375547822Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:20:40.375547822Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:20:43.832244Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:20:43.832244Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:21:01.022949Z-78da67b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Your service is live 🎉\",\n  \"timestamp\": \"2026-10-09T10:21:01.022949Z\"\n}",
+        "stderr": ""
+      },
+      "mounted_checksum_checks": {
+        "qa-empty.txt": true,
+        "qa-text.txt": true
+      },
+      "file_readbacks": [
+        {
+          "name": "qa-empty.txt",
+          "result": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.763,
+            "response": "{\"name\":\"qa-empty.txt\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47ca87a6edce0ce-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "bytes_exact": false
+        },
+        {
+          "name": "qa-text.txt",
+          "result": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-text.txt",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.62,
+            "response": "{\"name\":\"qa-text.txt\",\"content\":\"qa-bb245a\\n\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47ca87d8a36eb2c-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "bytes_exact": true
+        }
+      ],
+      "runtime": {
+        "exit": 0,
+        "status": "200",
+        "request_marker_echoed": true
+      }
+    },
+    {
+      "stage": "after-write-runtime",
+      "at": "2026-10-09T10:23:49.753047+00:00",
+      "deploys": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4bvtgec12s73fjue4g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.773,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T10:22:46.121768Z\",\n    \"finishedAt\": \"2026-10-09T10:23:14.190942Z\",\n    \"id\": \"dep-db4c0tlb00tc739pb57g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:23:01.134998Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-09T10:23:14.190943Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:44.028338Z\",\n    \"finishedAt\": \"2026-10-09T10:22:46.127502Z\",\n    \"id\": \"dep-db4c0t5b00tc739pb56g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"status\": \"canceled\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:22:46.127521Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:41.63198Z\",\n    \"finishedAt\": \"2026-10-09T10:23:01.096457Z\",\n    \"id\": \"dep-db4c0s8ec12s73fjue6g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:22:43.845475Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:23:01.096458Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:20:38.315874Z\",\n    \"finishedAt\": \"2026-10-09T10:21:01.022949Z\",\n    \"id\": \"dep-db4bvtgec12s73fjue50\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:20:43.832244Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T10:23:14.19808Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "build_logs": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db4bvtgec12s73fjue4g",
+          "--type",
+          "build",
+          "--direction",
+          "backward",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.684,
+        "stdout": "{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:20:38.315874Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:20:38.315874Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8-2026-10-09T10:20:40.3754928Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:20:40.3754928Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8-2026-10-09T10:20:40.375547822Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:20:40.375547822Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:20:43.832244Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:20:43.832244Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:21:01.022949Z-78da67b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Your service is live 🎉\",\n  \"timestamp\": \"2026-10-09T10:21:01.022949Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha-2026-10-09T10:22:41.63198Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:22:41.63198Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40-2026-10-09T10:22:43.290129789Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:22:43.290129789Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40-2026-10-09T10:22:43.290170515Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:22:43.290170515Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha-2026-10-09T10:22:43.845475Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:22:43.845475Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6-2026-10-09T10:22:44.028338Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:22:44.028338Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp-2026-10-09T10:22:46.121768Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:22:46.121768Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6-2026-10-09T10:22:46.127502Z-daff0c9d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy canceled\",\n  \"timestamp\": \"2026-10-09T10:22:46.127502Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh-2026-10-09T10:22:47.495186526Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.495186526Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh-2026-10-09T10:22:47.495295353Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.495295353Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg-2026-10-09T10:22:47.829969145Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.829969145Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg-2026-10-09T10:22:47.829997518Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.829997518Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha-2026-10-09T10:23:01.096457Z-daff0c9d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy canceled\",\n  \"timestamp\": \"2026-10-09T10:23:01.096457Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp-2026-10-09T10:23:01.134998Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:23:01.134998Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp-2026-10-09T10:23:14.190942Z-78da67b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Your service is live 🎉\",\n  \"timestamp\": \"2026-10-09T10:23:14.190942Z\"\n}",
+        "stderr": ""
+      },
+      "mounted_checksum_checks": {
+        "qa-empty.txt": true,
+        "qa-text.txt": true
+      },
+      "file_readbacks": [
+        {
+          "name": "qa-empty.txt",
+          "result": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+            "body": null,
+            "status": "200",
+            "elapsed": 1.05,
+            "response": "{\"name\":\"qa-empty.txt\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47cac2a09c3faa6-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "bytes_exact": false
+        },
+        {
+          "name": "qa-text.txt",
+          "result": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-text.txt",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.538,
+            "response": "{\"name\":\"qa-text.txt\",\"content\":\"qa-bb245a\\n\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47cac310f4f46f8-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "bytes_exact": true
+        }
+      ],
+      "runtime": {
+        "exit": 0,
+        "status": "200",
+        "request_marker_echoed": true
+      }
+    },
+    {
+      "stage": "final-status-control-runtime",
+      "at": "2026-10-09T10:27:43.345768+00:00",
+      "deploys": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4bvtgec12s73fjue4g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.716,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T10:25:45.514877Z\",\n    \"finishedAt\": \"2026-10-09T10:26:25.215739Z\",\n    \"id\": \"dep-db4c2a92lq1s73csm0mg\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:25:55.368901Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:26:25.215739Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:46.121768Z\",\n    \"finishedAt\": \"2026-10-09T10:23:14.190942Z\",\n    \"id\": \"dep-db4c0tlb00tc739pb57g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:23:01.134998Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-09T10:26:25.224023Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:44.028338Z\",\n    \"finishedAt\": \"2026-10-09T10:22:46.127502Z\",\n    \"id\": \"dep-db4c0t5b00tc739pb56g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"status\": \"canceled\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:22:46.127521Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:41.63198Z\",\n    \"finishedAt\": \"2026-10-09T10:23:01.096457Z\",\n    \"id\": \"dep-db4c0s8ec12s73fjue6g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:22:43.845475Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:23:01.096458Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:20:38.315874Z\",\n    \"finishedAt\": \"2026-10-09T10:21:01.022949Z\",\n    \"id\": \"dep-db4bvtgec12s73fjue50\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:20:43.832244Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T10:23:14.19808Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "build_logs": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db4bvtgec12s73fjue4g",
+          "--type",
+          "build",
+          "--direction",
+          "backward",
+          "--limit",
+          "100",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.415,
+        "stdout": "{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:20:38.315874Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:20:38.315874Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8-2026-10-09T10:20:40.3754928Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:20:40.3754928Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8-2026-10-09T10:20:40.375547822Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1b8t4adh1p13lqm917v8\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:20:40.375547822Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:20:43.832244Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:20:43.832244Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv-2026-10-09T10:21:01.022949Z-78da67b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-oaro7qb4uaokuthbgkcv\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Your service is live 🎉\",\n  \"timestamp\": \"2026-10-09T10:21:01.022949Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha-2026-10-09T10:22:41.63198Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:22:41.63198Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40-2026-10-09T10:22:43.290129789Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:22:43.290129789Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40-2026-10-09T10:22:43.290170515Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-1l7islgperqj5088vo40\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:22:43.290170515Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha-2026-10-09T10:22:43.845475Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:22:43.845475Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6-2026-10-09T10:22:44.028338Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:22:44.028338Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp-2026-10-09T10:22:46.121768Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:22:46.121768Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6-2026-10-09T10:22:46.127502Z-daff0c9d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-lc1m9n62p6v033gh9qi6\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy canceled\",\n  \"timestamp\": \"2026-10-09T10:22:46.127502Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh-2026-10-09T10:22:47.495186526Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.495186526Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh-2026-10-09T10:22:47.495295353Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ddf6nfm3gm0rjt5chidh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.495295353Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg-2026-10-09T10:22:47.829969145Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.829969145Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg-2026-10-09T10:22:47.829997518Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-fe43i41qapvtd9a029fg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:22:47.829997518Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha-2026-10-09T10:23:01.096457Z-daff0c9d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-ljmq11l5mvhi8a752dha\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy canceled\",\n  \"timestamp\": \"2026-10-09T10:23:01.096457Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp-2026-10-09T10:23:01.134998Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:23:01.134998Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp-2026-10-09T10:23:14.190942Z-78da67b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-71e112pevnfervjf58pp\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Your service is live 🎉\",\n  \"timestamp\": \"2026-10-09T10:23:14.190942Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-91klks7slgf14chu3esb-2026-10-09T10:25:45.514877Z-0506962f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-91klks7slgf14chu3esb\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploy queued\",\n  \"timestamp\": \"2026-10-09T10:25:45.514877Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-s1hj9v0afp0tgm1k3edi-2026-10-09T10:25:49.087211272Z-81c6c3ca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-s1hj9v0afp0tgm1k3edi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /etc/secrets/qa-empty.txt\",\n  \"timestamp\": \"2026-10-09T10:25:49.087211272Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-s1hj9v0afp0tgm1k3edi-2026-10-09T10:25:49.087315306Z-2b291ff1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-s1hj9v0afp0tgm1k3edi\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"6d54e52976682192eaa59a14f120a3ba6f042805c8aa490805e0a98fb6622e6f  /etc/secrets/qa-text.txt\",\n  \"timestamp\": \"2026-10-09T10:25:49.087315306Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-91klks7slgf14chu3esb-2026-10-09T10:25:55.368901Z-f970eb07\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-91klks7slgf14chu3esb\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Deploying image docker.io/mendhak/http-https-echo:35\",\n  \"timestamp\": \"2026-10-09T10:25:55.368901Z\"\n}{\n  \"id\": \"srv-db4bvtgec12s73fjue4g-91klks7slgf14chu3esb-2026-10-09T10:26:25.215739Z-78da67b1\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4bvtgec12s73fjue4g-91klks7slgf14chu3esb\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Your service is live 🎉\",\n  \"timestamp\": \"2026-10-09T10:26:25.215739Z\"\n}",
+        "stderr": ""
+      },
+      "mounted_checksum_checks": {
+        "qa-empty.txt": true,
+        "qa-text.txt": true
+      },
+      "file_readbacks": [
+        {
+          "name": "qa-empty.txt",
+          "result": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-empty.txt",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.588,
+            "response": "{\"name\":\"qa-empty.txt\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47cb1e0ba480a83-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "bytes_exact": false
+        },
+        {
+          "name": "qa-text.txt",
+          "result": {
+            "method": "GET",
+            "path": "/v1/services/srv-db4bvtgec12s73fjue4g/secret-files/qa-text.txt",
+            "body": null,
+            "status": "200",
+            "elapsed": 0.281,
+            "response": "{\"name\":\"qa-text.txt\",\"content\":\"qa-bb245a\\n\"}\n",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a47cb1e4ec3c8462-SJC"
+            },
+            "curl_exit": 0,
+            "stderr": ""
+          },
+          "bytes_exact": true
+        }
+      ],
+      "runtime": {
+        "exit": 0,
+        "status": "200",
+        "request_marker_echoed": true
+      }
+    }
+  ],
+  "native_final_deploy": {
+    "intent_at": "2026-10-09T10:22:44.941728+00:00",
+    "command": [
+      "bex",
+      "deploys",
+      "create",
+      "srv-db4bvtgec12s73fjue4g",
+      "--wait",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "native deploy result captured; runtime reconciliation pending",
+    "result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db4bvtgec12s73fjue4g",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 33.926,
+      "stdout": "{\n  \"createdAt\": \"2026-10-09T10:22:46.121768Z\",\n  \"finishedAt\": \"2026-10-09T10:23:14.190942Z\",\n  \"id\": \"dep-db4c0tlb00tc739pb57g\",\n  \"image\": {\n    \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n  },\n  \"startedAt\": \"2026-10-09T10:23:01.134998Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-09T10:23:14.190943Z\"\n}",
+      "stderr": "Waiting for deploy dep-db4c0tlb00tc739pb57g to complete...\n\n"
+    },
+    "returned_deploy": {
+      "createdAt": "2026-10-09T10:22:46.121768Z",
+      "finishedAt": "2026-10-09T10:23:14.190942Z",
+      "id": "dep-db4c0tlb00tc739pb57g",
+      "image": {
+        "ref": "docker.io/mendhak/http-https-echo:35"
+      },
+      "startedAt": "2026-10-09T10:23:01.134998Z",
+      "status": "live",
+      "trigger": "api",
+      "updatedAt": "2026-10-09T10:23:14.190943Z"
+    },
+    "returned_deploy_id": "dep-db4c0tlb00tc739pb57g"
+  },
+  "independent_earlier_fixture": {
+    "id": "srv-db4beclb00tc739pb4f0",
+    "create": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261009-397ed7-files",
+        "--type",
+        "web_service",
+        "--runtime",
+        "image",
+        "--image",
+        "docker.io/mendhak/http-https-echo:35",
+        "--env-var",
+        "HTTP_PORT=3000",
+        "--pre-deploy-command",
+        "sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt",
+        "--secret-file",
+        "qa-empty.txt:<PRIVATE_DIR>/sweep33-empty-397ed7.txt",
+        "--secret-file",
+        "qa-text.txt:<PRIVATE_DIR>/sweep33-source:397ed7-雪.txt",
+        "--health-check-path",
+        "/",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--auto-deploy=false",
+        "--max-shutdown-delay",
+        "11",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.287,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"createdAt\": \"2026-10-09T09:43:14Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4beclb00tc739pb4f0\",\n  \"id\": \"srv-db4beclb00tc739pb4f0\",\n  \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n  \"name\": \"qa-20261009-397ed7-files\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"env\": \"image\",\n    \"envSpecificDetails\": {\n      \"preDeployCommand\": \"sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261009-397ed7-files:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 11,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"preDeployCommand\": \"sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"image\",\n    \"url\": \"https://qa-20261009-397ed7-files.onbex.co\"\n  },\n  \"slug\": \"qa-20261009-397ed7-files\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-09T09:43:14.394046215Z\"\n}",
+      "stderr": ""
+    },
+    "empty_get": {
+      "name": "qa-empty.txt",
+      "result": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4beclb00tc739pb4f0/secret-files/qa-empty.txt",
+        "body": null,
+        "status": "200",
+        "elapsed": 6.075,
+        "response": "{\"name\":\"qa-empty.txt\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c74024f3beb26-SJC"
+        }
+      },
+      "bytes_exact": false
+    },
+    "mounted_checksum_checks": {
+      "qa-empty.txt": true,
+      "qa-text.txt": true
+    },
+    "cleanup_state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0"
+  }
+}

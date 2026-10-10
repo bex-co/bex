@@ -1,0 +1,1034 @@
+{
+  "date": "2026-10-09 UTC",
+  "surface": "functional CLI env-var byte preservation",
+  "bex": "released v0.3.2",
+  "render_pin": "v2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+  "production_revision": "unobserved",
+  "identity": "isolated human device OAuth; no credentials in evidence",
+  "native_wire_intercepted": false,
+  "proof": {
+    "both_native_created_live": true,
+    "only_interior_CRLF_normalized": true,
+    "actual_pinned_flag_store_exact_getter_loss": true,
+    "direct_slice_builder_keeps_CRLF": true,
+    "api_only_control_readback_runtime_exact": true,
+    "production_StringArray_declarations": 17,
+    "native_wire_intercepted": false,
+    "deployed_revision": "unobserved"
+  },
+  "fixtures": [
+    {
+      "client": "bex",
+      "id": "srv-db4ft0393q6c73at03o0",
+      "name": "qa-20261009-f9a116-envbytes",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "time": "2026-10-09T14:47:27.708743+00:00",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261009-f9a116-envbytes",
+        "--type",
+        "web_service",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--root-directory",
+        "examples/hello-python",
+        "--build-command",
+        "pip install -r requirements.txt",
+        "--start-command",
+        "python -u -c 'import main,os,json; main.app.view_functions['\"'\"'root'\"'\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\"'\"'QA56_EMPTY'\"'\"', '\"'\"'QA56_LINES'\"'\"', '\"'\"'QA56_PUNCT'\"'\"', '\"'\"'QA56_SPACES'\"'\"', '\"'\"'QA56_TRIM'\"'\"', '\"'\"'QA56_MARKER'\"'\"', '\"'\"'QA56_ABSENT'\"'\"']},ensure_ascii=False),mimetype='\"'\"'application/json'\"'\"'); main.app.run(host='\"'\"'0.0.0.0'\"'\"',port=int(os.environ['\"'\"'PORT'\"'\"']))'",
+        "--health-check-path",
+        "/healthz",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json",
+        "--env-var",
+        "QA56_EMPTY=",
+        "--env-var",
+        "QA56_LINES=first\r\nsecond\nthird\tfourth",
+        "--env-var",
+        "QA56_PUNCT=雪,a=b==\"quoted\"\\literalX",
+        "--env-var",
+        "QA56_SPACES=a  b\t c",
+        "--env-var",
+        "QA56_TRIM=  padded  ",
+        "--env-var",
+        "QA56_MARKER=qa56-f9a116"
+      ],
+      "input_env_values": {
+        "QA56_EMPTY": "",
+        "QA56_LINES": "first\r\nsecond\nthird\tfourth",
+        "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+        "QA56_SPACES": "a  b\t c",
+        "QA56_TRIM": "  padded  ",
+        "QA56_MARKER": "qa56-f9a116"
+      },
+      "expected_runtime": {
+        "QA56_EMPTY": "",
+        "QA56_LINES": "first\r\nsecond\nthird\tfourth",
+        "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+        "QA56_SPACES": "a  b\t c",
+        "QA56_TRIM": "padded",
+        "QA56_MARKER": "qa56-f9a116",
+        "QA56_ABSENT": null
+      },
+      "create_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "create",
+          "--name",
+          "qa-20261009-f9a116-envbytes",
+          "--type",
+          "web_service",
+          "--runtime",
+          "python",
+          "--repo",
+          "https://github.com/bex-co/bex",
+          "--root-directory",
+          "examples/hello-python",
+          "--build-command",
+          "pip install -r requirements.txt",
+          "--start-command",
+          "python -u -c 'import main,os,json; main.app.view_functions['\"'\"'root'\"'\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\"'\"'QA56_EMPTY'\"'\"', '\"'\"'QA56_LINES'\"'\"', '\"'\"'QA56_PUNCT'\"'\"', '\"'\"'QA56_SPACES'\"'\"', '\"'\"'QA56_TRIM'\"'\"', '\"'\"'QA56_MARKER'\"'\"', '\"'\"'QA56_ABSENT'\"'\"']},ensure_ascii=False),mimetype='\"'\"'application/json'\"'\"'); main.app.run(host='\"'\"'0.0.0.0'\"'\"',port=int(os.environ['\"'\"'PORT'\"'\"']))'",
+          "--health-check-path",
+          "/healthz",
+          "--plan",
+          "free",
+          "--region",
+          "frankfurt",
+          "--auto-deploy=false",
+          "--confirm",
+          "-o",
+          "json",
+          "--env-var",
+          "QA56_EMPTY=",
+          "--env-var",
+          "QA56_LINES=first\r\nsecond\nthird\tfourth",
+          "--env-var",
+          "QA56_PUNCT=雪,a=b==\"quoted\"\\literalX",
+          "--env-var",
+          "QA56_SPACES=a  b\t c",
+          "--env-var",
+          "QA56_TRIM=  padded  ",
+          "--env-var",
+          "QA56_MARKER=qa56-f9a116"
+        ],
+        "exit": 0,
+        "elapsed": 1.752,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-09T14:47:29Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4ft0393q6c73at03o0\",\n  \"id\": \"srv-db4ft0393q6c73at03o0\",\n  \"name\": \"qa-20261009-f9a116-envbytes\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-python\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"pip install -r requirements.txt\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"python -u -c 'import main,os,json; main.app.view_functions['\\\"'\\\"'root'\\\"'\\\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\\\"'\\\"'QA56_EMPTY'\\\"'\\\"', '\\\"'\\\"'QA56_LINES'\\\"'\\\"', '\\\"'\\\"'QA56_PUNCT'\\\"'\\\"', '\\\"'\\\"'QA56_SPACES'\\\"'\\\"', '\\\"'\\\"'QA56_TRIM'\\\"'\\\"', '\\\"'\\\"'QA56_MARKER'\\\"'\\\"', '\\\"'\\\"'QA56_ABSENT'\\\"'\\\"']},ensure_ascii=False),mimetype='\\\"'\\\"'application/json'\\\"'\\\"'); main.app.run(host='\\\"'\\\"'0.0.0.0'\\\"'\\\"',port=int(os.environ['\\\"'\\\"'PORT'\\\"'\\\"']))'\"\n    },\n    \"healthCheckPath\": \"/healthz\",\n    \"internalAddress\": \"qa-20261009-f9a116-envbytes:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261009-f9a116-envbytes.onbex.co\"\n  },\n  \"slug\": \"qa-20261009-f9a116-envbytes\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-09T14:47:29Z\"\n}",
+        "stderr": ""
+      },
+      "deploy_children": [
+        {
+          "commit": {
+            "id": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+            "message": "docs(pm): file HTTP health probe Host defect (w4/m190)"
+          },
+          "createdAt": "2026-10-09T14:53:44.724889Z",
+          "finishedAt": "2026-10-09T14:54:57.425482Z",
+          "id": "dep-db4fvu34am4s73f096tg",
+          "startedAt": "2026-10-09T14:53:57.558506Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-09T14:54:57.425483Z"
+        },
+        {
+          "commit": {
+            "id": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+            "message": "docs(pm): file HTTP health probe Host defect (w4/m190)"
+          },
+          "createdAt": "2026-10-09T14:47:28.812291Z",
+          "finishedAt": "2026-10-09T14:49:43.547639Z",
+          "id": "dep-db4ft0393q6c73at03og",
+          "startedAt": "2026-10-09T14:48:27.625906Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-09T14:54:57.435252Z"
+        }
+      ],
+      "runtime_checks": [
+        {
+          "at": "2026-10-09T14:49:05.342950+00:00",
+          "status": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "decoded": null,
+          "matches": false
+        },
+        {
+          "at": "2026-10-09T14:51:50.275654+00:00",
+          "status": "200",
+          "curl_exit": 0,
+          "body": "{\"QA56_EMPTY\": \"\", \"QA56_LINES\": \"first\\nsecond\\nthird\\tfourth\", \"QA56_PUNCT\": \"雪,a=b==\\\"quoted\\\"\\\\literalX\", \"QA56_SPACES\": \"a  b\\t c\", \"QA56_TRIM\": \"padded\", \"QA56_MARKER\": \"qa56-f9a116\", \"QA56_ABSENT\": null}",
+          "decoded": {
+            "QA56_EMPTY": "",
+            "QA56_LINES": "first\nsecond\nthird\tfourth",
+            "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+            "QA56_SPACES": "a  b\t c",
+            "QA56_TRIM": "padded",
+            "QA56_MARKER": "qa56-f9a116",
+            "QA56_ABSENT": null
+          },
+          "matches": false
+        },
+        {
+          "at": "2026-10-09T14:54:54.154451+00:00",
+          "status": "200",
+          "curl_exit": 0,
+          "body": "{\"QA56_EMPTY\": \"\", \"QA56_LINES\": \"first\\nsecond\\nthird\\tfourth\", \"QA56_PUNCT\": \"雪,a=b==\\\"quoted\\\"\\\\literalX\", \"QA56_SPACES\": \"a  b\\t c\", \"QA56_TRIM\": \"padded\", \"QA56_MARKER\": \"qa56-f9a116\", \"QA56_ABSENT\": null}",
+          "decoded": {
+            "QA56_EMPTY": "",
+            "QA56_LINES": "first\nsecond\nthird\tfourth",
+            "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+            "QA56_SPACES": "a  b\t c",
+            "QA56_TRIM": "padded",
+            "QA56_MARKER": "qa56-f9a116",
+            "QA56_ABSENT": null
+          },
+          "matches": false
+        },
+        {
+          "at": "2026-10-09T14:57:09.601510+00:00",
+          "status": "200",
+          "curl_exit": 0,
+          "body": "{\"QA56_EMPTY\": \"\", \"QA56_LINES\": \"first\\r\\nsecond\\nthird\\tfourth\", \"QA56_PUNCT\": \"雪,a=b==\\\"quoted\\\"\\\\literalX\", \"QA56_SPACES\": \"a  b\\t c\", \"QA56_TRIM\": \"padded\", \"QA56_MARKER\": \"qa56-f9a116\", \"QA56_ABSENT\": null}",
+          "decoded": {
+            "QA56_EMPTY": "",
+            "QA56_LINES": "first\r\nsecond\nthird\tfourth",
+            "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+            "QA56_SPACES": "a  b\t c",
+            "QA56_TRIM": "padded",
+            "QA56_MARKER": "qa56-f9a116",
+            "QA56_ABSENT": null
+          },
+          "matches": true
+        }
+      ],
+      "api_env_checks": [
+        {
+          "at": "2026-10-09T14:48:33.492759+00:00",
+          "path": "/v1/services/srv-db4ft0393q6c73at03o0/env-vars",
+          "status": "200",
+          "synthetic_env_rows": [
+            {
+              "key": "QA56_EMPTY",
+              "value": "",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_LINES",
+              "value": "first\nsecond\nthird\tfourth",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_MARKER",
+              "value": "qa56-f9a116",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_PUNCT",
+              "value": "雪,a=b==\"quoted\"\\literalX",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_SPACES",
+              "value": "a  b\t c",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_TRIM",
+              "value": "padded",
+              "revision": "evr1_AAAAAAAAAAE"
+            }
+          ],
+          "pass": false,
+          "redaction": "only this fixture supplied QA56 keys retained; unrelated values excluded"
+        },
+        {
+          "at": "2026-10-09T14:55:25.792075+00:00",
+          "path": "/v1/services/srv-db4ft0393q6c73at03o0/env-vars",
+          "status": "200",
+          "synthetic_env_rows": [
+            {
+              "key": "QA56_EMPTY",
+              "value": "",
+              "revision": "evr1_AAAAAAAAAAI"
+            },
+            {
+              "key": "QA56_LINES",
+              "value": "first\r\nsecond\nthird\tfourth",
+              "revision": "evr1_AAAAAAAAAAI"
+            },
+            {
+              "key": "QA56_MARKER",
+              "value": "qa56-f9a116",
+              "revision": "evr1_AAAAAAAAAAI"
+            },
+            {
+              "key": "QA56_PUNCT",
+              "value": "雪,a=b==\"quoted\"\\literalX",
+              "revision": "evr1_AAAAAAAAAAI"
+            },
+            {
+              "key": "QA56_SPACES",
+              "value": "a  b\t c",
+              "revision": "evr1_AAAAAAAAAAI"
+            },
+            {
+              "key": "QA56_TRIM",
+              "value": "padded",
+              "revision": "evr1_AAAAAAAAAAI"
+            }
+          ],
+          "pass": true,
+          "redaction": "only this fixture supplied QA56 keys retained; unrelated values excluded"
+        }
+      ],
+      "api_only_crlf_control": {
+        "at": "2026-10-09T14:53:43.397459+00:00",
+        "method": "PUT",
+        "path": "/v1/services/srv-db4ft0393q6c73at03o0/env-vars/QA56_LINES",
+        "body": {
+          "value": "first\r\nsecond\nthird\tfourth"
+        },
+        "state": "response received; runtime/readback pending",
+        "result": {
+          "method": "PUT",
+          "path": "/v1/services/srv-db4ft0393q6c73at03o0/env-vars/QA56_LINES",
+          "body": "{\"value\": \"first\\r\\nsecond\\nthird\\tfourth\"}",
+          "status": "200",
+          "elapsed": 1.321,
+          "response": "{\"key\":\"QA56_LINES\",\"value\":\"first\\r\\nsecond\\nthird\\tfourth\"}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47e376ddbfe15b8-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        }
+      },
+      "delete_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db4ft0393q6c73at03o0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.093,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T14:47:29Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4ft0393q6c73at03o0\",\n    \"id\": \"srv-db4ft0393q6c73at03o0\",\n    \"name\": \"qa-20261009-f9a116-envbytes\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python -u -c 'import main,os,json; main.app.view_functions['\\\"'\\\"'root'\\\"'\\\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\\\"'\\\"'QA56_EMPTY'\\\"'\\\"', '\\\"'\\\"'QA56_LINES'\\\"'\\\"', '\\\"'\\\"'QA56_PUNCT'\\\"'\\\"', '\\\"'\\\"'QA56_SPACES'\\\"'\\\"', '\\\"'\\\"'QA56_TRIM'\\\"'\\\"', '\\\"'\\\"'QA56_MARKER'\\\"'\\\"', '\\\"'\\\"'QA56_ABSENT'\\\"'\\\"']},ensure_ascii=False),mimetype='\\\"'\\\"'application/json'\\\"'\\\"'); main.app.run(host='\\\"'\\\"'0.0.0.0'\\\"'\\\"',port=int(os.environ['\\\"'\\\"'PORT'\\\"'\\\"']))'\"\n      },\n      \"healthCheckPath\": \"/healthz\",\n      \"internalAddress\": \"qa-20261009-f9a116-envbytes:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261009-f9a116-envbytes.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-f9a116-envbytes\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-09T14:54:56Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4ft0393q6c73at03o0",
+        "body": null,
+        "status": "404",
+        "elapsed": 1.047,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47e3e7e4a0ac487-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "workspace_after_delete_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0"
+      ],
+      "runtime_after_delete_checks": [
+        {
+          "exit": 0,
+          "stdout": "404 page not found\n\n404",
+          "stderr": ""
+        }
+      ],
+      "quota_after_delete": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.565,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47e3e8fde69fa4e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0"
+    },
+    {
+      "client": "render",
+      "id": "srv-db4ft7393q6c73at03q0",
+      "name": "qa-20261009-ba5ba3-envbytes",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "time": "2026-10-09T14:47:55.283569+00:00",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261009-ba5ba3-envbytes",
+        "--type",
+        "web_service",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--root-directory",
+        "examples/hello-python",
+        "--build-command",
+        "pip install -r requirements.txt",
+        "--start-command",
+        "python -u -c 'import main,os,json; main.app.view_functions['\"'\"'root'\"'\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\"'\"'QA56_EMPTY'\"'\"', '\"'\"'QA56_LINES'\"'\"', '\"'\"'QA56_PUNCT'\"'\"', '\"'\"'QA56_SPACES'\"'\"', '\"'\"'QA56_TRIM'\"'\"', '\"'\"'QA56_MARKER'\"'\"', '\"'\"'QA56_ABSENT'\"'\"']},ensure_ascii=False),mimetype='\"'\"'application/json'\"'\"'); main.app.run(host='\"'\"'0.0.0.0'\"'\"',port=int(os.environ['\"'\"'PORT'\"'\"']))'",
+        "--health-check-path",
+        "/healthz",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json",
+        "--env-var",
+        "QA56_EMPTY=",
+        "--env-var",
+        "QA56_LINES=first\r\nsecond\nthird\tfourth",
+        "--env-var",
+        "QA56_PUNCT=雪,a=b==\"quoted\"\\literalX",
+        "--env-var",
+        "QA56_SPACES=a  b\t c",
+        "--env-var",
+        "QA56_TRIM=  padded  ",
+        "--env-var",
+        "QA56_MARKER=qa56-ba5ba3"
+      ],
+      "input_env_values": {
+        "QA56_EMPTY": "",
+        "QA56_LINES": "first\r\nsecond\nthird\tfourth",
+        "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+        "QA56_SPACES": "a  b\t c",
+        "QA56_TRIM": "  padded  ",
+        "QA56_MARKER": "qa56-ba5ba3"
+      },
+      "expected_runtime": {
+        "QA56_EMPTY": "",
+        "QA56_LINES": "first\r\nsecond\nthird\tfourth",
+        "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+        "QA56_SPACES": "a  b\t c",
+        "QA56_TRIM": "padded",
+        "QA56_MARKER": "qa56-ba5ba3",
+        "QA56_ABSENT": null
+      },
+      "create_result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "create",
+          "--name",
+          "qa-20261009-ba5ba3-envbytes",
+          "--type",
+          "web_service",
+          "--runtime",
+          "python",
+          "--repo",
+          "https://github.com/bex-co/bex",
+          "--root-directory",
+          "examples/hello-python",
+          "--build-command",
+          "pip install -r requirements.txt",
+          "--start-command",
+          "python -u -c 'import main,os,json; main.app.view_functions['\"'\"'root'\"'\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\"'\"'QA56_EMPTY'\"'\"', '\"'\"'QA56_LINES'\"'\"', '\"'\"'QA56_PUNCT'\"'\"', '\"'\"'QA56_SPACES'\"'\"', '\"'\"'QA56_TRIM'\"'\"', '\"'\"'QA56_MARKER'\"'\"', '\"'\"'QA56_ABSENT'\"'\"']},ensure_ascii=False),mimetype='\"'\"'application/json'\"'\"'); main.app.run(host='\"'\"'0.0.0.0'\"'\"',port=int(os.environ['\"'\"'PORT'\"'\"']))'",
+          "--health-check-path",
+          "/healthz",
+          "--plan",
+          "free",
+          "--region",
+          "frankfurt",
+          "--auto-deploy=false",
+          "--confirm",
+          "-o",
+          "json",
+          "--env-var",
+          "QA56_EMPTY=",
+          "--env-var",
+          "QA56_LINES=first\r\nsecond\nthird\tfourth",
+          "--env-var",
+          "QA56_PUNCT=雪,a=b==\"quoted\"\\literalX",
+          "--env-var",
+          "QA56_SPACES=a  b\t c",
+          "--env-var",
+          "QA56_TRIM=  padded  ",
+          "--env-var",
+          "QA56_MARKER=qa56-ba5ba3"
+        ],
+        "exit": 0,
+        "elapsed": 1.866,
+        "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-09T14:47:56Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4ft7393q6c73at03q0\",\n  \"id\": \"srv-db4ft7393q6c73at03q0\",\n  \"name\": \"qa-20261009-ba5ba3-envbytes\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/hello-python\",\n  \"serviceDetails\": {\n    \"env\": \"python\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"pip install -r requirements.txt\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"python -u -c 'import main,os,json; main.app.view_functions['\\\"'\\\"'root'\\\"'\\\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\\\"'\\\"'QA56_EMPTY'\\\"'\\\"', '\\\"'\\\"'QA56_LINES'\\\"'\\\"', '\\\"'\\\"'QA56_PUNCT'\\\"'\\\"', '\\\"'\\\"'QA56_SPACES'\\\"'\\\"', '\\\"'\\\"'QA56_TRIM'\\\"'\\\"', '\\\"'\\\"'QA56_MARKER'\\\"'\\\"', '\\\"'\\\"'QA56_ABSENT'\\\"'\\\"']},ensure_ascii=False),mimetype='\\\"'\\\"'application/json'\\\"'\\\"'); main.app.run(host='\\\"'\\\"'0.0.0.0'\\\"'\\\"',port=int(os.environ['\\\"'\\\"'PORT'\\\"'\\\"']))'\"\n    },\n    \"healthCheckPath\": \"/healthz\",\n    \"internalAddress\": \"qa-20261009-ba5ba3-envbytes:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"python\",\n    \"url\": \"https://qa-20261009-ba5ba3-envbytes.onbex.co\"\n  },\n  \"slug\": \"qa-20261009-ba5ba3-envbytes\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-09T14:47:56.462377884Z\"\n}",
+        "stderr": ""
+      },
+      "deploy_children": [
+        {
+          "commit": {
+            "id": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+            "message": "docs(pm): file HTTP health probe Host defect (w4/m190)"
+          },
+          "createdAt": "2026-10-09T14:47:56.327591Z",
+          "finishedAt": "2026-10-09T14:49:43.564308Z",
+          "id": "dep-db4ft7393q6c73at03qg",
+          "startedAt": "2026-10-09T14:48:43.565948Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-09T14:49:43.564309Z"
+        }
+      ],
+      "runtime_checks": [
+        {
+          "at": "2026-10-09T14:49:06.981087+00:00",
+          "status": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "decoded": null,
+          "matches": false
+        },
+        {
+          "at": "2026-10-09T14:51:51.594226+00:00",
+          "status": "200",
+          "curl_exit": 0,
+          "body": "{\"QA56_EMPTY\": \"\", \"QA56_LINES\": \"first\\nsecond\\nthird\\tfourth\", \"QA56_PUNCT\": \"雪,a=b==\\\"quoted\\\"\\\\literalX\", \"QA56_SPACES\": \"a  b\\t c\", \"QA56_TRIM\": \"padded\", \"QA56_MARKER\": \"qa56-ba5ba3\", \"QA56_ABSENT\": null}",
+          "decoded": {
+            "QA56_EMPTY": "",
+            "QA56_LINES": "first\nsecond\nthird\tfourth",
+            "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+            "QA56_SPACES": "a  b\t c",
+            "QA56_TRIM": "padded",
+            "QA56_MARKER": "qa56-ba5ba3",
+            "QA56_ABSENT": null
+          },
+          "matches": false
+        },
+        {
+          "at": "2026-10-09T14:54:56.004717+00:00",
+          "status": "200",
+          "curl_exit": 0,
+          "body": "{\"QA56_EMPTY\": \"\", \"QA56_LINES\": \"first\\nsecond\\nthird\\tfourth\", \"QA56_PUNCT\": \"雪,a=b==\\\"quoted\\\"\\\\literalX\", \"QA56_SPACES\": \"a  b\\t c\", \"QA56_TRIM\": \"padded\", \"QA56_MARKER\": \"qa56-ba5ba3\", \"QA56_ABSENT\": null}",
+          "decoded": {
+            "QA56_EMPTY": "",
+            "QA56_LINES": "first\nsecond\nthird\tfourth",
+            "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+            "QA56_SPACES": "a  b\t c",
+            "QA56_TRIM": "padded",
+            "QA56_MARKER": "qa56-ba5ba3",
+            "QA56_ABSENT": null
+          },
+          "matches": false
+        },
+        {
+          "at": "2026-10-09T14:57:11.080039+00:00",
+          "status": "200",
+          "curl_exit": 0,
+          "body": "{\"QA56_EMPTY\": \"\", \"QA56_LINES\": \"first\\nsecond\\nthird\\tfourth\", \"QA56_PUNCT\": \"雪,a=b==\\\"quoted\\\"\\\\literalX\", \"QA56_SPACES\": \"a  b\\t c\", \"QA56_TRIM\": \"padded\", \"QA56_MARKER\": \"qa56-ba5ba3\", \"QA56_ABSENT\": null}",
+          "decoded": {
+            "QA56_EMPTY": "",
+            "QA56_LINES": "first\nsecond\nthird\tfourth",
+            "QA56_PUNCT": "雪,a=b==\"quoted\"\\literalX",
+            "QA56_SPACES": "a  b\t c",
+            "QA56_TRIM": "padded",
+            "QA56_MARKER": "qa56-ba5ba3",
+            "QA56_ABSENT": null
+          },
+          "matches": false
+        }
+      ],
+      "api_env_checks": [
+        {
+          "at": "2026-10-09T14:48:34.499344+00:00",
+          "path": "/v1/services/srv-db4ft7393q6c73at03q0/env-vars",
+          "status": "200",
+          "synthetic_env_rows": [
+            {
+              "key": "QA56_EMPTY",
+              "value": "",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_LINES",
+              "value": "first\nsecond\nthird\tfourth",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_MARKER",
+              "value": "qa56-ba5ba3",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_PUNCT",
+              "value": "雪,a=b==\"quoted\"\\literalX",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_SPACES",
+              "value": "a  b\t c",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_TRIM",
+              "value": "padded",
+              "revision": "evr1_AAAAAAAAAAE"
+            }
+          ],
+          "pass": false,
+          "redaction": "only this fixture supplied QA56 keys retained; unrelated values excluded"
+        },
+        {
+          "at": "2026-10-09T14:55:26.703426+00:00",
+          "path": "/v1/services/srv-db4ft7393q6c73at03q0/env-vars",
+          "status": "200",
+          "synthetic_env_rows": [
+            {
+              "key": "QA56_EMPTY",
+              "value": "",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_LINES",
+              "value": "first\nsecond\nthird\tfourth",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_MARKER",
+              "value": "qa56-ba5ba3",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_PUNCT",
+              "value": "雪,a=b==\"quoted\"\\literalX",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_SPACES",
+              "value": "a  b\t c",
+              "revision": "evr1_AAAAAAAAAAE"
+            },
+            {
+              "key": "QA56_TRIM",
+              "value": "padded",
+              "revision": "evr1_AAAAAAAAAAE"
+            }
+          ],
+          "pass": false,
+          "redaction": "only this fixture supplied QA56 keys retained; unrelated values excluded"
+        }
+      ],
+      "delete_result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "delete",
+          "srv-db4ft7393q6c73at03q0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.411,
+        "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T14:47:56Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4ft7393q6c73at03q0\",\n    \"id\": \"srv-db4ft7393q6c73at03q0\",\n    \"name\": \"qa-20261009-ba5ba3-envbytes\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/hello-python\",\n    \"serviceDetails\": {\n      \"env\": \"python\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"pip install -r requirements.txt\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"python -u -c 'import main,os,json; main.app.view_functions['\\\"'\\\"'root'\\\"'\\\"']=lambda: main.app.response_class(json.dumps({k:os.environ.get(k) for k in ['\\\"'\\\"'QA56_EMPTY'\\\"'\\\"', '\\\"'\\\"'QA56_LINES'\\\"'\\\"', '\\\"'\\\"'QA56_PUNCT'\\\"'\\\"', '\\\"'\\\"'QA56_SPACES'\\\"'\\\"', '\\\"'\\\"'QA56_TRIM'\\\"'\\\"', '\\\"'\\\"'QA56_MARKER'\\\"'\\\"', '\\\"'\\\"'QA56_ABSENT'\\\"'\\\"']},ensure_ascii=False),mimetype='\\\"'\\\"'application/json'\\\"'\\\"'); main.app.run(host='\\\"'\\\"'0.0.0.0'\\\"'\\\"',port=int(os.environ['\\\"'\\\"'PORT'\\\"'\\\"']))'\"\n      },\n      \"healthCheckPath\": \"/healthz\",\n      \"internalAddress\": \"qa-20261009-ba5ba3-envbytes:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"python\",\n      \"url\": \"https://qa-20261009-ba5ba3-envbytes.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-ba5ba3-envbytes\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-09T14:49:39Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+        "stderr": ""
+      },
+      "detail_after_delete": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4ft7393q6c73at03q0",
+        "body": null,
+        "status": "404",
+        "elapsed": 1.19,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47e3d99ca31055e-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "workspace_after_delete_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0",
+        "srv-db4ft0393q6c73at03o0"
+      ],
+      "runtime_after_delete_checks": [
+        {
+          "exit": 0,
+          "stdout": "404 page not found\n\n404",
+          "stderr": ""
+        }
+      ],
+      "quota_after_delete": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.401,
+        "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47e3dabfdfaed40-SJC"
+        },
+        "curl_exit": 0,
+        "stderr": ""
+      },
+      "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0"
+    }
+  ],
+  "offline_probe": {
+    "label": "Offline actual pinned pflag/Render command parser/validator/request builder; no network or mocked parser",
+    "results": [
+      {
+        "actual_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "雪,a=b==\"quoted\"\\literalX"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "case": "unicode-punctuation",
+        "direct_slice_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "雪,a=b==\"quoted\"\\literalX"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "getter_exact": true,
+        "parsed_exact": true,
+        "pflag_getter": [
+          "QA_PROBE=雪,a=b==\"quoted\"\\literalX"
+        ],
+        "pflag_stored": [
+          "QA_PROBE=雪,a=b==\"quoted\"\\literalX"
+        ],
+        "raw": "QA_PROBE=雪,a=b==\"quoted\"\\literalX",
+        "render_parse_command": [
+          "QA_PROBE=雪,a=b==\"quoted\"\\literalX"
+        ],
+        "stored_exact": true
+      },
+      {
+        "actual_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "first\nsecond\nthird\tfourth"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "case": "crlf",
+        "direct_slice_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "first\r\nsecond\nthird\tfourth"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "getter_exact": false,
+        "parsed_exact": false,
+        "pflag_getter": [
+          "QA_PROBE=first\nsecond\nthird\tfourth"
+        ],
+        "pflag_stored": [
+          "QA_PROBE=first\r\nsecond\nthird\tfourth"
+        ],
+        "raw": "QA_PROBE=first\r\nsecond\nthird\tfourth",
+        "render_parse_command": [
+          "QA_PROBE=first\nsecond\nthird\tfourth"
+        ],
+        "stored_exact": true
+      },
+      {
+        "actual_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "first\nsecond"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "case": "lf",
+        "direct_slice_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "first\nsecond"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "getter_exact": true,
+        "parsed_exact": true,
+        "pflag_getter": [
+          "QA_PROBE=first\nsecond"
+        ],
+        "pflag_stored": [
+          "QA_PROBE=first\nsecond"
+        ],
+        "raw": "QA_PROBE=first\nsecond",
+        "render_parse_command": [
+          "QA_PROBE=first\nsecond"
+        ],
+        "stored_exact": true
+      },
+      {
+        "actual_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "first\rsecond"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "case": "lone-cr",
+        "direct_slice_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": "first\rsecond"
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "getter_exact": true,
+        "parsed_exact": true,
+        "pflag_getter": [
+          "QA_PROBE=first\rsecond"
+        ],
+        "pflag_stored": [
+          "QA_PROBE=first\rsecond"
+        ],
+        "raw": "QA_PROBE=first\rsecond",
+        "render_parse_command": [
+          "QA_PROBE=first\rsecond"
+        ],
+        "stored_exact": true
+      },
+      {
+        "actual_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": ""
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "case": "empty",
+        "direct_slice_request": {
+          "envVars": [
+            {
+              "key": "QA_PROBE",
+              "value": ""
+            }
+          ],
+          "name": "qa-offline-env",
+          "ownerId": "tea-offline-only",
+          "repo": "https://github.com/bex-co/bex",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "pip install -r requirements.txt",
+              "startCommand": "python main.py"
+            },
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "python"
+          },
+          "type": "web_service"
+        },
+        "getter_exact": true,
+        "parsed_exact": true,
+        "pflag_getter": [
+          "QA_PROBE="
+        ],
+        "pflag_stored": [
+          "QA_PROBE="
+        ],
+        "raw": "QA_PROBE=",
+        "render_parse_command": [
+          "QA_PROBE="
+        ],
+        "stored_exact": true
+      }
+    ]
+  },
+  "current_upstream_source": {
+    "sha": "5772e84f9b8ba99ba1b3890d73423a70ca68daf8",
+    "GetStringArray": true,
+    "source_only": true
+  },
+  "external_issue_searches": [
+    {
+      "repo": "render-oss/cli",
+      "term": "CRLF",
+      "count": 0
+    },
+    {
+      "repo": "render-oss/cli",
+      "term": "GetStringArray",
+      "count": 0
+    },
+    {
+      "repo": "spf13/pflag",
+      "term": "CRLF",
+      "count": 0
+    },
+    {
+      "repo": "spf13/pflag",
+      "term": "carriage return",
+      "count": 0
+    }
+  ],
+  "limits": "Native create wire not captured. Original flag store/getter/builder proven by offline actual pinned consumers. API-only PUT is labeled separately; actual Render production and other StringArray runtime surfaces untested."
+}

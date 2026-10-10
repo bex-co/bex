@@ -1,0 +1,11 @@
+import os,json,pathlib,subprocess,time
+p=pathlib.Path(__file__).parent;f=p/'sweep22-ungrouped-service-numeric.yaml';out=[];ws='tea-12345678901234567890';base={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};base.update(DO_NOT_TRACK='1',BROWSER='/usr/bin/true')
+for client,current in [('bex','known-qa'),('render',ws)]:
+ env=dict(base);prefix='BEX' if client=='bex' else 'RENDER';env.update({prefix+'_HOST':'https://fixture.invalid/v1/',prefix+'_WORKSPACE':current,prefix+'_NO_UPDATE_NOTIFIER':'1',prefix+'_CLI_DISABLE_ANALYTICS':'1',prefix+'_CLI_CONFIG_DIR':str(p/('sweep64-dummy-'+client))});env[prefix+('_ACCESS_TOKEN' if client=='bex' else '_API_KEY')]='fixture-only'
+ for label,flags in [('omitted',[]),('long-empty',['--workspace=']),('separate-empty',['--workspace','']),('short-empty',['-w','']),('explicit-id',['--workspace',ws]),('id-then-empty',['--workspace',ws,'--workspace=']),('empty-then-id',['--workspace=','--workspace',ws]),('cluster-short-id',['-cw'+ws])]:
+  args=['blueprints','validate',str(f),*flags,'--confirm','-o','json'];start=time.monotonic();r=subprocess.run([str(p/('sweep64-fixture-'+client)/(client+'-fixture')),*args],env=env,text=True,capture_output=True,timeout=15);wire=[];product=[]
+  for line in r.stderr.splitlines():
+   if line.startswith('QA_FIXTURE '):wire.append(json.loads(line[len('QA_FIXTURE '):]))
+   else:product.append(line)
+  z={'client':client,'current_workspace':current,'case':label,'command':[client,*args],'exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'stdout':r.stdout,'product_stderr':'\n'.join(product),'wire':wire,'scope':'Actual unmodified launcher or pinned cmd package with only injected offline transport; dummy credential; no live wire'};out.append(z);print(json.dumps({'client':client,'case':label,'exit':r.returncode,'ownerId':[x.get('ownerId') for x in wire if 'ownerId' in x],'owner_lookups':sum('/owners?' in x['url'] for x in wire)}),flush=True)
+(p/'sweep64-fixture-results.json').write_text(json.dumps(out,indent=2))

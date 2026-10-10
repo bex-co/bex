@@ -1,0 +1,982 @@
+{
+  "sweep": 41,
+  "at": "2026-10-09T11:52:33.127563+00:00",
+  "source_head": "1d717c68f1606e181ac0e710bdb503aee22ace97",
+  "deployed_revision": "unobserved",
+  "scope": "Native published Bex v0.3.2 Go cron control; run metadata API-only; numeric exit code and direct Kubernetes teardown unobserved",
+  "fixture": {
+    "sweep": 41,
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "cron_job",
+    "name": "qa-20261009-b60c50-gocron",
+    "nonce": "b60c50",
+    "role": "native Go scheduled command change/failure/recovery",
+    "time": "2026-10-09T11:39:05.655399+00:00",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/detail404/runs404/listabsent/baseline present/quota termination0; direct cluster teardown unobserved",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261009-b60c50-gocron",
+      "--type",
+      "cron_job",
+      "--runtime",
+      "go",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--root-directory",
+      "examples/cron-demo",
+      "--build-command",
+      "go build -o app .",
+      "--cron-command",
+      "./app",
+      "--cron-schedule",
+      "* * * * *",
+      "--env-var",
+      "MESSAGE=qa-cron-native-b60c50",
+      "--region",
+      "frankfurt",
+      "--plan",
+      "free",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.724,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47d1a4c59dcd883-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "expected_message": "qa-cron-native-b60c50",
+    "failure_marker": "qa-cron-fail-b60c50",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261009-b60c50-gocron",
+        "--type",
+        "cron_job",
+        "--runtime",
+        "go",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--root-directory",
+        "examples/cron-demo",
+        "--build-command",
+        "go build -o app .",
+        "--cron-command",
+        "./app",
+        "--cron-schedule",
+        "* * * * *",
+        "--env-var",
+        "MESSAGE=qa-cron-native-b60c50",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.17,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-09T11:39:06Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\n  \"id\": \"srv-db4d4mj4am4s73f094kg\",\n  \"name\": \"qa-20261009-b60c50-gocron\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/cron-demo\",\n  \"serviceDetails\": {\n    \"command\": \"./app\",\n    \"env\": \"go\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"go build -o app .\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"./app\"\n    },\n    \"nextRunAt\": \"2026-10-09T11:40:00Z\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"runtime\": \"go\",\n    \"schedule\": \"* * * * *\"\n  },\n  \"slug\": \"qa-20261009-b60c50-gocron\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"cron_job\",\n  \"updatedAt\": \"2026-10-09T11:39:06.595326484Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db4d4mj4am4s73f094kg",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-09T11:39:06Z",
+      "dashboardUrl": "https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg",
+      "id": "srv-db4d4mj4am4s73f094kg",
+      "name": "qa-20261009-b60c50-gocron",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/cron-demo",
+      "serviceDetails": {
+        "command": "./app",
+        "env": "go",
+        "envSpecificDetails": {
+          "buildCommand": "go build -o app .",
+          "preDeployCommand": "",
+          "startCommand": "./app"
+        },
+        "nextRunAt": "2026-10-09T11:40:00Z",
+        "numInstances": 1,
+        "plan": "free",
+        "region": "fsn1",
+        "runtime": "go",
+        "schedule": "* * * * *"
+      },
+      "slug": "qa-20261009-b60c50-gocron",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "cron_job",
+      "updatedAt": "2026-10-09T11:39:06.595326484Z"
+    },
+    "scheduled_observations": [
+      {
+        "at": "2026-10-09T11:40:11.763912+00:00",
+        "stage": "initial",
+        "deploys": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db4d4mj4am4s73f094kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.357,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:39:06.550447Z\",\n    \"id\": \"dep-db4d4mj4am4s73f094l0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T11:39:13.603258Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "runs_api": {
+          "method": "GET",
+          "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.598,
+          "response": "[]\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d1bf0cd162338-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "marker_logs": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db4d4mj4am4s73f094kg",
+            "--type",
+            "app",
+            "--text",
+            "b60c50",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 2.954,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-09T11:41:26.347975+00:00",
+        "stage": "initial",
+        "deploys": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db4d4mj4am4s73f094kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.389,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:39:06.550447Z\",\n    \"finishedAt\": \"2026-10-09T11:41:13.657359Z\",\n    \"id\": \"dep-db4d4mj4am4s73f094l0\",\n    \"startedAt\": \"2026-10-09T11:40:13.605381Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T11:41:13.65736Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "runs_api": {
+          "method": "GET",
+          "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.265,
+          "response": "[]\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d1dc34ca8e817-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "marker_logs": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db4d4mj4am4s73f094kg",
+            "--type",
+            "app",
+            "--text",
+            "b60c50",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 2.938,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-09T11:42:34.173857+00:00",
+        "stage": "initial",
+        "deploys": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db4d4mj4am4s73f094kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.657,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:39:06.550447Z\",\n    \"finishedAt\": \"2026-10-09T11:41:13.657359Z\",\n    \"id\": \"dep-db4d4mj4am4s73f094l0\",\n    \"startedAt\": \"2026-10-09T11:40:13.605381Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T11:41:13.65736Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "runs_api": {
+          "method": "GET",
+          "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.339,
+          "response": "[{\"cronJobRun\":{\"id\":\"crr-upind6l5up9ap5ol9623\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\"},\"cursor\":\"crr-upind6l5up9ap5ol9623\"}]\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d1f6cdb600995-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "marker_logs": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db4d4mj4am4s73f094kg",
+            "--type",
+            "app",
+            "--text",
+            "b60c50",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 2.707,
+          "stdout": "{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-l4f9ifjs6f52no8tdcoo-2026-10-09T11:42:05.053055769Z-8ef02224\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-l4f9ifjs6f52no8tdcoo\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:42:05Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:42:05.053055769Z\"\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-09T11:44:22.596723+00:00",
+        "stage": "failing-command",
+        "deploys": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db4d4mj4am4s73f094kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.418,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:43:06.716732Z\",\n    \"finishedAt\": \"2026-10-09T11:43:13.594348Z\",\n    \"id\": \"dep-db4d6ij93q6c73at01e0\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T11:43:13.594348Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:39:06.550447Z\",\n    \"finishedAt\": \"2026-10-09T11:41:13.657359Z\",\n    \"id\": \"dep-db4d4mj4am4s73f094l0\",\n    \"startedAt\": \"2026-10-09T11:40:13.605381Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T11:43:13.598356Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "service_readback": {
+          "method": "GET",
+          "path": "/v1/services/srv-db4d4mj4am4s73f094kg",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.38,
+          "response": "{\"id\":\"srv-db4d4mj4am4s73f094kg\",\"name\":\"qa-20261009-b60c50-gocron\",\"immutableName\":\"qa-20261009-b60c50-gocron\",\"slug\":\"qa-20261009-b60c50-gocron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\"createdAt\":\"2026-10-09T11:39:06Z\",\"updatedAt\":\"2026-10-09T11:44:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\"},\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:45:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"schedule\":\"* * * * *\",\"command\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\",\"runs\":[{\"id\":\"crr-7sqj4v5qu6qb4hbbgij1\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859104\",\"startedAt\":\"2026-10-09T11:44:00Z\",\"finishedAt\":\"2026-10-09T11:44:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859103\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\",\"status\":\"successful\"},{\"id\":\"crr-upind6l5up9ap5ol9623\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859102\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:45:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/cron-demo\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d22115fd47af2-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "runs_api": {
+          "method": "GET",
+          "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.323,
+          "response": "[{\"cronJobRun\":{\"id\":\"crr-7sqj4v5qu6qb4hbbgij1\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T11:44:00Z\",\"finishedAt\":\"2026-10-09T11:44:04Z\"},\"cursor\":\"crr-7sqj4v5qu6qb4hbbgij1\"},{\"cronJobRun\":{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\"},\"cursor\":\"crr-9dnuutep4ie3p9c44ku5\"},{\"cronJobRun\":{\"id\":\"crr-upind6l5up9ap5ol9623\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\"},\"cursor\":\"crr-upind6l5up9ap5ol9623\"}]\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d2213ec599440-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "marker_logs": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db4d4mj4am4s73f094kg",
+            "--type",
+            "app",
+            "--text",
+            "b60c50",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 2.368,
+          "stdout": "{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-l4f9ifjs6f52no8tdcoo-2026-10-09T11:42:05.053055769Z-8ef02224\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-l4f9ifjs6f52no8tdcoo\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:42:05Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:42:05.053055769Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-acgnfi04fhd1hj62288u-2026-10-09T11:43:02.322965363Z-ae7e0800\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-acgnfi04fhd1hj62288u\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:43:02Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:43:02.322965363Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5-2026-10-09T11:44:01.361231175Z-3f0cdefc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-fail-b60c50\",\n  \"timestamp\": \"2026-10-09T11:44:01.361231175Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5-2026-10-09T11:44:01.362980277Z-b690b41e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:44:01Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:44:01.362980277Z\"\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-09T11:47:09.022544+00:00",
+        "stage": "recovered",
+        "deploys": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db4d4mj4am4s73f094kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.343,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:46:06.073057Z\",\n    \"finishedAt\": \"2026-10-09T11:46:13.566603Z\",\n    \"id\": \"dep-db4d7vj4am4s73f094o0\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T11:46:13.566605Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:43:06.716732Z\",\n    \"finishedAt\": \"2026-10-09T11:43:13.594348Z\",\n    \"id\": \"dep-db4d6ij93q6c73at01e0\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T11:46:13.569197Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:39:06.550447Z\",\n    \"finishedAt\": \"2026-10-09T11:41:13.657359Z\",\n    \"id\": \"dep-db4d4mj4am4s73f094l0\",\n    \"startedAt\": \"2026-10-09T11:40:13.605381Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T11:43:13.598356Z\"\n  }\n]",
+          "stderr": ""
+        },
+        "service_readback": {
+          "method": "GET",
+          "path": "/v1/services/srv-db4d4mj4am4s73f094kg",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.267,
+          "response": "{\"id\":\"srv-db4d4mj4am4s73f094kg\",\"name\":\"qa-20261009-b60c50-gocron\",\"immutableName\":\"qa-20261009-b60c50-gocron\",\"slug\":\"qa-20261009-b60c50-gocron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\"createdAt\":\"2026-10-09T11:39:06Z\",\"updatedAt\":\"2026-10-09T11:47:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"./app\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"./app\"},\"lastSuccessfulRunAt\":\"2026-10-09T11:47:04Z\",\"nextRunAt\":\"2026-10-09T11:48:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-3\",\"schedule\":\"* * * * *\",\"command\":\"./app\",\"runs\":[{\"id\":\"crr-p8t5ite8bi12e3ogco4k\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859107\",\"startedAt\":\"2026-10-09T11:47:00Z\",\"finishedAt\":\"2026-10-09T11:47:04Z\",\"status\":\"successful\"},{\"id\":\"crr-qfo2975fel8jfnal0obu\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859106\",\"startedAt\":\"2026-10-09T11:46:00Z\",\"finishedAt\":\"2026-10-09T11:46:06Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-ltfeethfs74m5dp9fuhm\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859105\",\"startedAt\":\"2026-10-09T11:45:00Z\",\"finishedAt\":\"2026-10-09T11:45:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-7sqj4v5qu6qb4hbbgij1\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859104\",\"startedAt\":\"2026-10-09T11:44:00Z\",\"finishedAt\":\"2026-10-09T11:44:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859103\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\",\"status\":\"successful\"},{\"id\":\"crr-upind6l5up9ap5ol9623\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859102\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T11:47:04Z\",\"nextRunAt\":\"2026-10-09T11:48:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/cron-demo\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d262068eeed3f-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "runs_api": {
+          "method": "GET",
+          "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.289,
+          "response": "[{\"cronJobRun\":{\"id\":\"crr-p8t5ite8bi12e3ogco4k\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:47:00Z\",\"finishedAt\":\"2026-10-09T11:47:04Z\"},\"cursor\":\"crr-p8t5ite8bi12e3ogco4k\"},{\"cronJobRun\":{\"id\":\"crr-qfo2975fel8jfnal0obu\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T11:46:00Z\",\"finishedAt\":\"2026-10-09T11:46:06Z\"},\"cursor\":\"crr-qfo2975fel8jfnal0obu\"},{\"cronJobRun\":{\"id\":\"crr-ltfeethfs74m5dp9fuhm\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T11:45:00Z\",\"finishedAt\":\"2026-10-09T11:45:04Z\"},\"cursor\":\"crr-ltfeethfs74m5dp9fuhm\"},{\"cronJobRun\":{\"id\":\"crr-7sqj4v5qu6qb4hbbgij1\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T11:44:00Z\",\"finishedAt\":\"2026-10-09T11:44:04Z\"},\"cursor\":\"crr-7sqj4v5qu6qb4hbbgij1\"},{\"cronJobRun\":{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\"},\"cursor\":\"crr-9dnuutep4ie3p9c44ku5\"},{\"cronJobRun\":{\"id\":\"crr-upind6l5up9ap5ol9623\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\"},\"cursor\":\"crr-upind6l5up9ap5ol9623\"}]\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d26227a4b67d1-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "marker_logs": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db4d4mj4am4s73f094kg",
+            "--type",
+            "app",
+            "--text",
+            "b60c50",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.129,
+          "stdout": "{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-l4f9ifjs6f52no8tdcoo-2026-10-09T11:42:05.053055769Z-8ef02224\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-l4f9ifjs6f52no8tdcoo\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:42:05Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:42:05.053055769Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-acgnfi04fhd1hj62288u-2026-10-09T11:43:02.322965363Z-ae7e0800\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-acgnfi04fhd1hj62288u\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:43:02Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:43:02.322965363Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5-2026-10-09T11:44:01.361231175Z-3f0cdefc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-fail-b60c50\",\n  \"timestamp\": \"2026-10-09T11:44:01.361231175Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5-2026-10-09T11:44:01.362980277Z-b690b41e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-91r3kdq1pmis57o970t5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:44:01Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:44:01.362980277Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-b36lkjfobvrjmue5e5fs-2026-10-09T11:45:01.385552449Z-3f0cdefc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-b36lkjfobvrjmue5e5fs\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-fail-b60c50\",\n  \"timestamp\": \"2026-10-09T11:45:01.385552449Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-b36lkjfobvrjmue5e5fs-2026-10-09T11:45:01.386586879Z-21cb44f9\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-b36lkjfobvrjmue5e5fs\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:45:01Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:45:01.386586879Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-4da8ojev923be2jst35d-2026-10-09T11:46:03.114447308Z-3f0cdefc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-4da8ojev923be2jst35d\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-fail-b60c50\",\n  \"timestamp\": \"2026-10-09T11:46:03.114447308Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-4da8ojev923be2jst35d-2026-10-09T11:46:03.186359791Z-b8bd8212\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-4da8ojev923be2jst35d\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:46:03Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:46:03.186359791Z\"\n}{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-mfa04sq1o2o99n3na9li-2026-10-09T11:47:01.381036424Z-fe4ff737\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-mfa04sq1o2o99n3na9li\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:47:01Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:47:01.381036424Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "1d717c68f1606e181ac0e710bdb503aee22ace97",
+          "message": "docs(pm): file cron last-success header label (w4/227)"
+        },
+        "createdAt": "2026-10-09T11:46:06.073057Z",
+        "finishedAt": "2026-10-09T11:46:13.566603Z",
+        "id": "dep-db4d7vj4am4s73f094o0",
+        "status": "live",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-09T11:46:13.566605Z"
+      },
+      {
+        "commit": {
+          "id": "1d717c68f1606e181ac0e710bdb503aee22ace97",
+          "message": "docs(pm): file cron last-success header label (w4/227)"
+        },
+        "createdAt": "2026-10-09T11:43:06.716732Z",
+        "finishedAt": "2026-10-09T11:43:13.594348Z",
+        "id": "dep-db4d6ij93q6c73at01e0",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-09T11:46:13.569197Z"
+      },
+      {
+        "commit": {
+          "id": "1d717c68f1606e181ac0e710bdb503aee22ace97",
+          "message": "docs(pm): file cron last-success header label (w4/227)"
+        },
+        "createdAt": "2026-10-09T11:39:06.550447Z",
+        "finishedAt": "2026-10-09T11:41:13.657359Z",
+        "id": "dep-db4d4mj4am4s73f094l0",
+        "startedAt": "2026-10-09T11:40:13.605381Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-09T11:43:13.598356Z"
+      }
+    ],
+    "children_enumeration_evidence": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "srv-db4d4mj4am4s73f094kg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.335,
+      "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:46:06.073057Z\",\n    \"finishedAt\": \"2026-10-09T11:46:13.566603Z\",\n    \"id\": \"dep-db4d7vj4am4s73f094o0\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T11:46:13.566605Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:43:06.716732Z\",\n    \"finishedAt\": \"2026-10-09T11:43:13.594348Z\",\n    \"id\": \"dep-db4d6ij93q6c73at01e0\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T11:46:13.569197Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"1d717c68f1606e181ac0e710bdb503aee22ace97\",\n      \"message\": \"docs(pm): file cron last-success header label (w4/227)\"\n    },\n    \"createdAt\": \"2026-10-09T11:39:06.550447Z\",\n    \"finishedAt\": \"2026-10-09T11:41:13.657359Z\",\n    \"id\": \"dep-db4d4mj4am4s73f094l0\",\n    \"startedAt\": \"2026-10-09T11:40:13.605381Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T11:43:13.598356Z\"\n  }\n]",
+      "stderr": ""
+    },
+    "scheduled_run_children": [
+      {
+        "cronJobRun": {
+          "id": "crr-p8t5ite8bi12e3ogco4k",
+          "status": "successful",
+          "startedAt": "2026-10-09T11:47:00Z",
+          "finishedAt": "2026-10-09T11:47:04Z"
+        },
+        "cursor": "crr-p8t5ite8bi12e3ogco4k"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-qfo2975fel8jfnal0obu",
+          "status": "unsuccessful",
+          "startedAt": "2026-10-09T11:46:00Z",
+          "finishedAt": "2026-10-09T11:46:06Z"
+        },
+        "cursor": "crr-qfo2975fel8jfnal0obu"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-ltfeethfs74m5dp9fuhm",
+          "status": "unsuccessful",
+          "startedAt": "2026-10-09T11:45:00Z",
+          "finishedAt": "2026-10-09T11:45:04Z"
+        },
+        "cursor": "crr-ltfeethfs74m5dp9fuhm"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-7sqj4v5qu6qb4hbbgij1",
+          "status": "unsuccessful",
+          "startedAt": "2026-10-09T11:44:00Z",
+          "finishedAt": "2026-10-09T11:44:04Z"
+        },
+        "cursor": "crr-7sqj4v5qu6qb4hbbgij1"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-9dnuutep4ie3p9c44ku5",
+          "status": "successful",
+          "startedAt": "2026-10-09T11:43:00Z",
+          "finishedAt": "2026-10-09T11:43:05Z"
+        },
+        "cursor": "crr-9dnuutep4ie3p9c44ku5"
+      },
+      {
+        "cronJobRun": {
+          "id": "crr-upind6l5up9ap5ol9623",
+          "status": "successful",
+          "startedAt": "2026-10-09T11:42:00Z",
+          "finishedAt": "2026-10-09T11:42:08Z"
+        },
+        "cursor": "crr-upind6l5up9ap5ol9623"
+      }
+    ],
+    "cron_actions": [
+      {
+        "mode": "fail",
+        "at": "2026-10-09T11:43:05.832521+00:00",
+        "command": [
+          "bex",
+          "services",
+          "update",
+          "srv-db4d4mj4am4s73f094kg",
+          "--cron-command",
+          "sh -c \"echo qa-cron-fail-b60c50; ./app; exit 7\"",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "expected_saved_command": "sh -c \"echo qa-cron-fail-b60c50; ./app; exit 7\"",
+        "state": "result received; readback/runtime pending",
+        "prior_run_ids": [
+          "crr-upind6l5up9ap5ol9623"
+        ],
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "srv-db4d4mj4am4s73f094kg",
+            "--cron-command",
+            "sh -c \"echo qa-cron-fail-b60c50; ./app; exit 7\"",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.411,
+          "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T11:39:06Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\n    \"id\": \"srv-db4d4mj4am4s73f094kg\",\n    \"name\": \"qa-20261009-b60c50-gocron\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/cron-demo\",\n    \"serviceDetails\": {\n      \"command\": \"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\",\n      \"env\": \"go\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"go build -o app .\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\"\n      },\n      \"lastSuccessfulRunAt\": \"2026-10-09T11:43:05Z\",\n      \"nextRunAt\": \"2026-10-09T11:44:00Z\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"region\": \"fsn1\",\n      \"runtime\": \"go\",\n      \"schedule\": \"* * * * *\"\n    },\n    \"slug\": \"qa-20261009-b60c50-gocron\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"cron_job\",\n    \"updatedAt\": \"2026-10-09T11:43:06.695567329Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+          "stderr": ""
+        },
+        "readback": {
+          "method": "GET",
+          "path": "/v1/services/srv-db4d4mj4am4s73f094kg",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.276,
+          "response": "{\"id\":\"srv-db4d4mj4am4s73f094kg\",\"name\":\"qa-20261009-b60c50-gocron\",\"immutableName\":\"qa-20261009-b60c50-gocron\",\"slug\":\"qa-20261009-b60c50-gocron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\"createdAt\":\"2026-10-09T11:39:06Z\",\"updatedAt\":\"2026-10-09T11:43:07Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\"},\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:44:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"schedule\":\"* * * * *\",\"command\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\",\"runs\":[{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859103\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\",\"status\":\"successful\"},{\"id\":\"crr-upind6l5up9ap5ol9623\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859102\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:44:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/cron-demo\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d20374ca96d29-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        }
+      },
+      {
+        "mode": "bad-combination",
+        "at": "2026-10-09T11:45:41.193693+00:00",
+        "command": [
+          "bex",
+          "services",
+          "update",
+          "srv-db4d4mj4am4s73f094kg",
+          "--cron-command",
+          "sh -c \"echo qa-cron-unwanted-b60c50; ./app\"",
+          "--cron-schedule",
+          "61 * * * *",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "expected_saved_command": "sh -c \"echo qa-cron-unwanted-b60c50; ./app\"",
+        "state": "result received; readback/runtime pending",
+        "prior_run_ids": [
+          "crr-7sqj4v5qu6qb4hbbgij1",
+          "crr-9dnuutep4ie3p9c44ku5",
+          "crr-upind6l5up9ap5ol9623"
+        ],
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "srv-db4d4mj4am4s73f094kg",
+            "--cron-command",
+            "sh -c \"echo qa-cron-unwanted-b60c50; ./app\"",
+            "--cron-schedule",
+            "61 * * * *",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.937,
+          "stdout": "",
+          "stderr": "Error: received response code 400 (SCHEDULE_INVALID): schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\n"
+        },
+        "readback": {
+          "method": "GET",
+          "path": "/v1/services/srv-db4d4mj4am4s73f094kg",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.292,
+          "response": "{\"id\":\"srv-db4d4mj4am4s73f094kg\",\"name\":\"qa-20261009-b60c50-gocron\",\"immutableName\":\"qa-20261009-b60c50-gocron\",\"slug\":\"qa-20261009-b60c50-gocron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\"createdAt\":\"2026-10-09T11:39:06Z\",\"updatedAt\":\"2026-10-09T11:45:04Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\"},\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:46:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"schedule\":\"* * * * *\",\"command\":\"sh -c \\\"echo qa-cron-fail-b60c50; ./app; exit 7\\\"\",\"runs\":[{\"id\":\"crr-ltfeethfs74m5dp9fuhm\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859105\",\"startedAt\":\"2026-10-09T11:45:00Z\",\"finishedAt\":\"2026-10-09T11:45:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-7sqj4v5qu6qb4hbbgij1\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859104\",\"startedAt\":\"2026-10-09T11:44:00Z\",\"finishedAt\":\"2026-10-09T11:44:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859103\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\",\"status\":\"successful\"},{\"id\":\"crr-upind6l5up9ap5ol9623\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859102\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:46:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/cron-demo\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d23ff9b3efa92-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "atomicity_pass": true,
+        "correct_expected_saved_command": "sh -c \"echo qa-cron-fail-b60c50; ./app; exit 7\""
+      },
+      {
+        "mode": "recover",
+        "at": "2026-10-09T11:46:05.264934+00:00",
+        "command": [
+          "bex",
+          "services",
+          "update",
+          "srv-db4d4mj4am4s73f094kg",
+          "--cron-command",
+          "./app",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "expected_saved_command": "./app",
+        "state": "result received; readback/runtime pending",
+        "prior_run_ids": [
+          "crr-7sqj4v5qu6qb4hbbgij1",
+          "crr-9dnuutep4ie3p9c44ku5",
+          "crr-upind6l5up9ap5ol9623"
+        ],
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "update",
+            "srv-db4d4mj4am4s73f094kg",
+            "--cron-command",
+            "./app",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.354,
+          "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T11:39:06Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\n    \"id\": \"srv-db4d4mj4am4s73f094kg\",\n    \"name\": \"qa-20261009-b60c50-gocron\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/cron-demo\",\n    \"serviceDetails\": {\n      \"command\": \"./app\",\n      \"env\": \"go\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"go build -o app .\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"./app\"\n      },\n      \"lastSuccessfulRunAt\": \"2026-10-09T11:43:05Z\",\n      \"nextRunAt\": \"2026-10-09T11:47:00Z\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"region\": \"fsn1\",\n      \"runtime\": \"go\",\n      \"schedule\": \"* * * * *\"\n    },\n    \"slug\": \"qa-20261009-b60c50-gocron\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"cron_job\",\n    \"updatedAt\": \"2026-10-09T11:46:06.045708234Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+          "stderr": ""
+        },
+        "readback": {
+          "method": "GET",
+          "path": "/v1/services/srv-db4d4mj4am4s73f094kg",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.632,
+          "response": "{\"id\":\"srv-db4d4mj4am4s73f094kg\",\"name\":\"qa-20261009-b60c50-gocron\",\"immutableName\":\"qa-20261009-b60c50-gocron\",\"slug\":\"qa-20261009-b60c50-gocron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\"createdAt\":\"2026-10-09T11:39:06Z\",\"updatedAt\":\"2026-10-09T11:46:06.045708234Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"./app\",\"env\":\"go\",\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"preDeployCommand\":\"\",\"startCommand\":\"./app\"},\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:47:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"go\",\"schedule\":\"* * * * *\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-3\",\"schedule\":\"* * * * *\",\"command\":\"./app\",\"runs\":[{\"id\":\"crr-qfo2975fel8jfnal0obu\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859106\",\"startedAt\":\"2026-10-09T11:46:00Z\",\"finishedAt\":\"2026-10-09T11:46:06Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-ltfeethfs74m5dp9fuhm\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859105\",\"startedAt\":\"2026-10-09T11:45:00Z\",\"finishedAt\":\"2026-10-09T11:45:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-7sqj4v5qu6qb4hbbgij1\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859104\",\"startedAt\":\"2026-10-09T11:44:00Z\",\"finishedAt\":\"2026-10-09T11:44:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859103\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\",\"status\":\"successful\"},{\"id\":\"crr-upind6l5up9ap5ol9623\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859102\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T11:43:05Z\",\"nextRunAt\":\"2026-10-09T11:47:00Z\",\"idleTTLSeconds\":0,\"rootDir\":\"examples/cron-demo\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d24986d252284-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        }
+      }
+    ],
+    "last_readback": {
+      "id": "srv-db4d4mj4am4s73f094kg",
+      "name": "qa-20261009-b60c50-gocron",
+      "immutableName": "qa-20261009-b60c50-gocron",
+      "slug": "qa-20261009-b60c50-gocron",
+      "displayName": "",
+      "type": "cron_job",
+      "suspended": "not_suspended",
+      "dashboardUrl": "https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg",
+      "createdAt": "2026-10-09T11:39:06Z",
+      "updatedAt": "2026-10-09T11:47:04Z",
+      "owner": {
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "email": "puncsky@gmail.com",
+        "type": "team"
+      },
+      "serviceDetails": {
+        "command": "./app",
+        "env": "go",
+        "envSpecificDetails": {
+          "buildCommand": "go build -o app .",
+          "preDeployCommand": "",
+          "startCommand": "./app"
+        },
+        "lastSuccessfulRunAt": "2026-10-09T11:47:04Z",
+        "nextRunAt": "2026-10-09T11:48:00Z",
+        "numInstances": 1,
+        "plan": "free",
+        "region": "fsn1",
+        "runtime": "go",
+        "schedule": "* * * * *"
+      },
+      "suspenders": [],
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "phase": "Running",
+      "replicas": 1,
+      "revision": "rev-3",
+      "schedule": "* * * * *",
+      "command": "./app",
+      "runs": [
+        {
+          "id": "crr-p8t5ite8bi12e3ogco4k",
+          "name": "tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859107",
+          "startedAt": "2026-10-09T11:47:00Z",
+          "finishedAt": "2026-10-09T11:47:04Z",
+          "status": "successful"
+        },
+        {
+          "id": "crr-qfo2975fel8jfnal0obu",
+          "name": "tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859106",
+          "startedAt": "2026-10-09T11:46:00Z",
+          "finishedAt": "2026-10-09T11:46:06Z",
+          "status": "unsuccessful"
+        },
+        {
+          "id": "crr-ltfeethfs74m5dp9fuhm",
+          "name": "tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859105",
+          "startedAt": "2026-10-09T11:45:00Z",
+          "finishedAt": "2026-10-09T11:45:04Z",
+          "status": "unsuccessful"
+        },
+        {
+          "id": "crr-7sqj4v5qu6qb4hbbgij1",
+          "name": "tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859104",
+          "startedAt": "2026-10-09T11:44:00Z",
+          "finishedAt": "2026-10-09T11:44:04Z",
+          "status": "unsuccessful"
+        },
+        {
+          "id": "crr-9dnuutep4ie3p9c44ku5",
+          "name": "tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859103",
+          "startedAt": "2026-10-09T11:43:00Z",
+          "finishedAt": "2026-10-09T11:43:05Z",
+          "status": "successful"
+        },
+        {
+          "id": "crr-upind6l5up9ap5ol9623",
+          "name": "tea-daif693dqjvc73e7as3g-qa-20261009-b60c50-gocron-29859102",
+          "startedAt": "2026-10-09T11:42:00Z",
+          "finishedAt": "2026-10-09T11:42:08Z",
+          "status": "successful"
+        }
+      ],
+      "lastSuccessfulRunAt": "2026-10-09T11:47:04Z",
+      "nextRunAt": "2026-10-09T11:48:00Z",
+      "idleTTLSeconds": 0,
+      "rootDir": "examples/cron-demo",
+      "repo": "https://github.com/bex-co/bex",
+      "branch": "main",
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "pushDeliveryMethod": "manual_webhook",
+      "notifyOnFail": "default",
+      "notificationsToSend": "default"
+    },
+    "post_recovery_marker_logs": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db4d4mj4am4s73f094kg",
+        "--type",
+        "app",
+        "--text",
+        "b60c50",
+        "--start",
+        "2026-10-09T11:46:05.264934+00:00",
+        "--direction",
+        "forward",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.403,
+      "stdout": "{\n  \"id\": \"srv-db4d4mj4am4s73f094kg-mfa04sq1o2o99n3na9li-2026-10-09T11:47:01.381036424Z-fe4ff737\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4d4mj4am4s73f094kg-mfa04sq1o2o99n3na9li\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"[2026-10-09T11:47:01Z] cron-demo: qa-cron-native-b60c50\",\n  \"timestamp\": \"2026-10-09T11:47:01.381036424Z\"\n}",
+      "stderr": ""
+    },
+    "all_observed_scheduled_run_child_ids": [
+      "crr-27h2fe5im1rberdbiu5n",
+      "crr-7sqj4v5qu6qb4hbbgij1",
+      "crr-9dnuutep4ie3p9c44ku5",
+      "crr-ltfeethfs74m5dp9fuhm",
+      "crr-p8t5ite8bi12e3ogco4k",
+      "crr-qfo2975fel8jfnal0obu",
+      "crr-upind6l5up9ap5ol9623"
+    ],
+    "runs_before_delete": {
+      "method": "GET",
+      "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.294,
+      "response": "[{\"cronJobRun\":{\"id\":\"crr-27h2fe5im1rberdbiu5n\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:48:00Z\",\"finishedAt\":\"2026-10-09T11:48:04Z\"},\"cursor\":\"crr-27h2fe5im1rberdbiu5n\"},{\"cronJobRun\":{\"id\":\"crr-p8t5ite8bi12e3ogco4k\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:47:00Z\",\"finishedAt\":\"2026-10-09T11:47:04Z\"},\"cursor\":\"crr-p8t5ite8bi12e3ogco4k\"},{\"cronJobRun\":{\"id\":\"crr-qfo2975fel8jfnal0obu\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T11:46:00Z\",\"finishedAt\":\"2026-10-09T11:46:06Z\"},\"cursor\":\"crr-qfo2975fel8jfnal0obu\"},{\"cronJobRun\":{\"id\":\"crr-ltfeethfs74m5dp9fuhm\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T11:45:00Z\",\"finishedAt\":\"2026-10-09T11:45:04Z\"},\"cursor\":\"crr-ltfeethfs74m5dp9fuhm\"},{\"cronJobRun\":{\"id\":\"crr-7sqj4v5qu6qb4hbbgij1\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T11:44:00Z\",\"finishedAt\":\"2026-10-09T11:44:04Z\"},\"cursor\":\"crr-7sqj4v5qu6qb4hbbgij1\"},{\"cronJobRun\":{\"id\":\"crr-9dnuutep4ie3p9c44ku5\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:43:00Z\",\"finishedAt\":\"2026-10-09T11:43:05Z\"},\"cursor\":\"crr-9dnuutep4ie3p9c44ku5\"},{\"cronJobRun\":{\"id\":\"crr-upind6l5up9ap5ol9623\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T11:42:00Z\",\"finishedAt\":\"2026-10-09T11:42:08Z\"},\"cursor\":\"crr-upind6l5up9ap5ol9623\"}]\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47d27dc9a7c306f-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db4d4mj4am4s73f094kg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.474,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-09T11:39:06Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db4d4mj4am4s73f094kg\",\n    \"id\": \"srv-db4d4mj4am4s73f094kg\",\n    \"name\": \"qa-20261009-b60c50-gocron\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/cron-demo\",\n    \"serviceDetails\": {\n      \"command\": \"./app\",\n      \"env\": \"go\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"go build -o app .\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"./app\"\n      },\n      \"lastSuccessfulRunAt\": \"2026-10-09T11:48:04Z\",\n      \"nextRunAt\": \"2026-10-09T11:49:00Z\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"region\": \"fsn1\",\n      \"runtime\": \"go\",\n      \"schedule\": \"* * * * *\"\n    },\n    \"slug\": \"qa-20261009-b60c50-gocron\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"cron_job\",\n    \"updatedAt\": \"2026-10-09T11:48:04Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/services/srv-db4d4mj4am4s73f094kg",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.264,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47d27e85c17ce78-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "runs_after_delete": {
+      "method": "GET",
+      "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.361,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47d2aa129d13911-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "workspace_after_delete_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.357,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47d2aa3e98867a6-SJC"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "runtime_cleanup_limit": "cron has no public endpoint; direct Kubernetes descendant teardown unobserved; parent and scheduled-run API absence verified",
+    "cleanup_readonly_followups": [
+      {
+        "at": "2026-10-09T11:50:13.875574+00:00",
+        "mutation": "none; cleanup reads only",
+        "runs": {
+          "method": "GET",
+          "path": "/v1/cron-jobs/srv-db4d4mj4am4s73f094kg/runs",
+          "body": null,
+          "status": "404",
+          "elapsed": 0.361,
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d2aa129d13911-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        },
+        "quota": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "status": "200",
+          "elapsed": 0.357,
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a47d2aa3e98867a6-SJC"
+          },
+          "curl_exit": 0,
+          "stderr": ""
+        }
+      }
+    ]
+  }
+}

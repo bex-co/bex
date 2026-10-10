@@ -1,0 +1,15 @@
+{
+  "kind": "production replay of actual pinned clone loopback capture, not original CLI packet capture",
+  "result": {
+    "method": "POST",
+    "path": "/v1/services",
+    "body": "{\"autoDeploy\":\"no\",\"branch\":\"main\",\"buildFilter\":{\"ignoredPaths\":null,\"paths\":[\"examples/hello-go/**\"]},\"envVars\":[{\"key\":\"MESSAGE\",\"value\":\"qa-clone-198179\"}],\"name\":\"qa-20261009-198179-clone\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/hello-go\",\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"go build -o app .\",\"startCommand\":\"./app\"},\"healthCheckPath\":\"/\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":31,\"numInstances\":1,\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"go\"},\"type\":\"web_service\"}",
+    "status": "400",
+    "elapsed": 5.243,
+    "response": "{\"error\":\"invalid request body at /buildFilter/ignoredPaths\",\"id\":\"bad_request\",\"message\":\"invalid request body at /buildFilter/ignoredPaths\"}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47be7068ea5ed3e-SJC"
+    }
+  }
+}

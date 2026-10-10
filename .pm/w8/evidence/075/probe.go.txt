@@ -1,0 +1,45 @@
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "github.com/render-oss/cli/pkg/client"
+ "github.com/render-oss/cli/pkg/service"
+ "github.com/render-oss/cli/pkg/types"
+ st "github.com/render-oss/cli/pkg/types/service"
+)
+
+func ptr[T any](x T)*T{return &x}
+func main(){
+ results:=[]map[string]any{}
+ for _,name:=range []string{"static-same-type","static-to-web","static-to-private","static-to-worker","static-to-cron","static-to-web-explicit-publish","static-to-web-remove-inherited-publish","web-to-static-original","web-to-static-counterfactual-source-region","web-to-static-filter-inherited-fields"}{
+  kind:="static";if name[:3]=="web"{kind="web"}
+  raw,e:=os.ReadFile("source-"+kind+".json");if e!=nil{panic(e)}
+  if name=="web-to-static-counterfactual-source-region"||name=="web-to-static-filter-inherited-fields"{
+   var m map[string]any;if e=json.Unmarshal(raw,&m);e!=nil{panic(e)};m["serviceDetails"].(map[string]any)["region"]="frankfurt";raw,e=json.Marshal(m);if e!=nil{panic(e)}
+  }
+  var source client.Service;if e=json.Unmarshal(raw,&source);e!=nil{panic(e)}
+  input:=st.ServiceCreateInput{Name:"qa-offline-cross-clone",From:ptr(source.Name),AutoDeploy:ptr(false)}
+  if kind=="static"&&name!="static-same-type"{
+   input.Type=ptr(st.ServiceTypeWebService);input.Runtime=ptr(st.ServiceRuntimeGo);input.Region=ptr(types.RegionFrankfurt);input.Plan=ptr("free");input.RootDirectory=ptr("examples/hello-go");input.BuildCommand=ptr("go build -o app .");input.StartCommand=ptr("./app");input.HealthCheckPath=ptr("/")
+   if name=="static-to-private"{input.Type=ptr(st.ServiceTypePrivateService);input.Plan=ptr("starter");input.HealthCheckPath=nil}
+   if name=="static-to-worker"{input.Type=ptr(st.ServiceTypeBackgroundWorker);input.Plan=ptr("starter");input.HealthCheckPath=nil}
+   if name=="static-to-cron"{input.Type=ptr(st.ServiceTypeCronJob);input.HealthCheckPath=nil;input.StartCommand=nil;input.CronCommand=ptr("./app");input.CronSchedule=ptr("0 0 1 1 *")}
+   if name=="static-to-web-explicit-publish"{input.PublishDirectory=ptr("explicit-unwanted")}
+  }else if kind=="web"{input.Type=ptr(st.ServiceTypeStaticSite);input.RootDirectory=ptr("examples/static-site");input.PublishDirectory=ptr(".")}
+  input=st.NormalizeServiceCreateCLIInput(input);service.ServiceFromAPI(&input,&source)
+  merged,e:=json.Marshal(input);if e!=nil{panic(e)};var fields map[string]any;if e=json.Unmarshal(merged,&fields);e!=nil{panic(e)}
+  if name=="static-to-web-remove-inherited-publish"{input.PublishDirectory=nil}
+  if name=="web-to-static-filter-inherited-fields"{
+   input.Runtime=nil;input.Region=nil;input.Plan=nil;input.StartCommand=nil;input.BuildCommand=nil;input.PreDeployCommand=nil;input.HealthCheckPath=nil;input.NumInstances=nil;input.MaxShutdownDelay=nil;input.MaintenanceMode=nil;input.MaintenanceModeURI=nil
+  }
+  r:=map[string]any{"case":name,"source_kind":kind,"merged_input_before_counterfactual":fields}
+  input,e=st.NormalizeAndValidateCreateInput(input,false)
+  if e!=nil{r["validation_error"]=e.Error();r["request_constructed"]=false}else{
+   body,e:=service.BuildCreateRequest(input,"tea-offline-only");if e!=nil{r["builder_error"]=e.Error();r["request_constructed"]=false}else{r["request_constructed"]=true;r["request"]=body}
+  };results=append(results,r)
+ }
+ b,e:=json.MarshalIndent(results,"","  ");if e!=nil{panic(e)};if e=os.WriteFile("probe-result.json",append(b,'\n'),0600);e!=nil{panic(e)}
+ for _,r:=range results{fmt.Printf("%s: request_constructed=%v validation_error=%v\n",r["case"],r["request_constructed"],r["validation_error"])}
+}

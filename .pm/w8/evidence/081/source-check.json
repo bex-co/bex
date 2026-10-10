@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-09T18:32:11.077245+00:00",
+  "checkout": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+  "source_acquisition": "git archive HEAD lego/backend lego/types into private directory; no product edits",
+  "toolchain": "go1.27.0; GOWORK=off",
+  "command": "BEX_QA73_DIR=<PRIVATE_FIXTURE_DIRECTORY> GOWORK=off GOTOOLCHAIN=go1.27.0 go test ./internal/apps -run ^TestQA73ParsedAddressability$ -count=1 -v",
+  "scope": "actual parser/value projection only; no cluster, apply or external request",
+  "source_sha256": {
+    "lego/backend/internal/apps/deploy.go": "7d1e055be9be12f0d6cddb773d20c97de6a8b3843c82118db303ddd1d46fa4f0",
+    "lego/backend/internal/apps/blueprint.go": "5c552b744c422605cb64545d3fc743fbf79bcd4e18672c5526d860f77f18a57b",
+    "lego/types/v1alpha1/app_types.go": "f42d564bed001e2c2bf65e34e88d82ab313dc13dfa0db3533da65945e4b379b1"
+  },
+  "header_note": "Boilerplate header added after probe execution; executed body unchanged"
+}

@@ -1,0 +1,145 @@
+[
+  {
+    "path": "/disks",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/owners",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": null,
+    "explode": null
+  },
+  {
+    "path": "/registrycredentials",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/services",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/services/{serviceId}/headers",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/services/{serviceId}/custom-domains",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/key-value",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/redis",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/postgres",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/projects",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/environments",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/env-groups",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  },
+  {
+    "path": "/workflows",
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "style": "form",
+    "explode": false
+  }
+]

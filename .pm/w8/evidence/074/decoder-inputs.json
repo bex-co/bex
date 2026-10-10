@@ -1,0 +1,22 @@
+[
+  {
+    "label": "live-empty",
+    "status": 200,
+    "body": "{\"name\":\"qa-empty.txt\"}\n"
+  },
+  {
+    "label": "live-empty-offline-expected201",
+    "status": 201,
+    "body": "{\"name\":\"qa-empty.txt\"}\n"
+  },
+  {
+    "label": "live-nonempty",
+    "status": 200,
+    "body": "{\"name\":\"qa-text.txt\",\"content\":\"qa-bb245a\\n\"}\n"
+  },
+  {
+    "label": "live-nonempty-offline-expected201",
+    "status": 201,
+    "body": "{\"name\":\"qa-text.txt\",\"content\":\"qa-bb245a\\n\"}\n"
+  }
+]

@@ -1,0 +1,13 @@
+package main
+import("context";"encoding/json";"fmt";"io";"net/http";"os";"path/filepath";"strings";"github.com/render-oss/cli/pkg/tui/views")
+type fixtureTransport struct{}
+func(fixtureTransport)RoundTrip(r *http.Request)(*http.Response,error){
+ body:=`{"id":"dpg-12345678901234567890","name":"offline-qa","ownerId":"tea-12345678901234567890","ipAllowList":[{"cidrBlock":"203.0.113.5/32","description":"dummy fixture"}]}`
+ if r.URL.Host=="api.ipify.org"{body="203.0.113.5"}else if strings.HasSuffix(r.URL.Path,"/connection-info"){body=`{"externalConnectionString":"fixture-connection-argument"}`}
+ return &http.Response{StatusCode:200,Status:"200 fixture",Header:http.Header{"Content-Type":[]string{"application/json"}},Body:io.NopCloser(strings.NewReader(body)),Request:r},nil
+}
+func main(){
+ http.DefaultTransport=fixtureTransport{};d,err:=os.MkdirTemp("","qa-psql-child-");if err!=nil{panic(err)};defer os.RemoveAll(d)
+ cases:=[]struct{Name,Script string}{{"stdout-and-warning","printf 'row-data\\n'; printf 'WARNING: qa-offline-warning\\n' >&2; exit 0"},{"stderr-only-success","printf 'NOTICE: qa-offline-notice\\n' >&2; exit 0"},{"stdout-only","printf 'row-data\\n'; exit 0"},{"nonzero-error","printf 'ERROR: qa-offline-error\\n' >&2; exit 3"}}
+ for _,tc:=range cases{tool:=filepath.Join(d,"fake-psql");if err:=os.WriteFile(tool,[]byte("#!/bin/sh\n"+tc.Script+"\n"),0700);err!=nil{panic(err)};result,err:=views.ExecutePSQLNonInteractive(context.Background(),&views.PSQLInput{PostgresIDOrName:"dpg-12345678901234567890",Tool:views.PSQLTool(tool),Command:"fixture query; no SQL connection"});out:=map[string]any{"case":tc.Name,"result":result,"fake_child_script":tc.Script,"scope":"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"};if err!=nil{out["error"]=err.Error()};raw,_:=json.Marshal(out);fmt.Println(string(raw))}
+}

@@ -1,0 +1,91 @@
+[
+  {
+    "deferred_port": 3000,
+    "kind": "web",
+    "parse_accepted": true,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "projection_with_sample_slug": "qa73-probe-slug",
+    "property": "host"
+  },
+  {
+    "kind": "web",
+    "parse_accepted": true,
+    "parsed_environment_value": "3000",
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "property": "port"
+  },
+  {
+    "deferred_port": 3000,
+    "kind": "web",
+    "parse_accepted": true,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "projection_with_sample_slug": "qa73-probe-slug:3000",
+    "property": "hostport"
+  },
+  {
+    "error": "bad request: service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+    "kind": "worker",
+    "parse_accepted": false,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "property": "host"
+  },
+  {
+    "kind": "worker",
+    "parse_accepted": true,
+    "parsed_environment_value": "0",
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "property": "port"
+  },
+  {
+    "deferred_port": 0,
+    "kind": "worker",
+    "parse_accepted": true,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "projection_with_sample_slug": "qa73-probe-slug:0",
+    "property": "hostport"
+  },
+  {
+    "error": "bad request: service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+    "kind": "cron",
+    "parse_accepted": false,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "property": "host"
+  },
+  {
+    "kind": "cron",
+    "parse_accepted": true,
+    "parsed_environment_value": "0",
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "property": "port"
+  },
+  {
+    "deferred_port": 0,
+    "kind": "cron",
+    "parse_accepted": true,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "projection_with_sample_slug": "qa73-probe-slug:0",
+    "property": "hostport"
+  },
+  {
+    "error": "bad request: service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+    "kind": "static",
+    "parse_accepted": false,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "property": "host"
+  },
+  {
+    "kind": "static",
+    "parse_accepted": true,
+    "parsed_environment_value": "0",
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "property": "port"
+  },
+  {
+    "deferred_port": 0,
+    "kind": "static",
+    "parse_accepted": true,
+    "phase": "actual current checkout parser and reference value projection; no apply",
+    "projection_with_sample_slug": "qa73-probe-slug:0",
+    "property": "hostport"
+  }
+]

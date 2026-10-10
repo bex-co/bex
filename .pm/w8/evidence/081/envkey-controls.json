@@ -1,0 +1,453 @@
+{
+  "sweep": 73,
+  "surface": "Blueprint plain envVarKey copies from non-addressable service positive controls",
+  "nonce": "d34dae",
+  "at": "2026-10-09T18:30:39.454097+00:00",
+  "state": "complete",
+  "source_head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+  "native_wire": "not intercepted",
+  "mutation": "none; validation only; paid worker plan is a declaration, never created",
+  "results": [
+    {
+      "at": "2026-10-09T18:30:43.887421+00:00",
+      "client": "bex",
+      "kind": "worker",
+      "envVarKey": "COPY_LITERAL",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-d34dae-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-d34dae-target",
+                  "type": "worker",
+                  "envVarKey": "COPY_LITERAL"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-d34dae-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "COPY_LITERAL",
+                "value": "qa73-plain-marker"
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-envkey.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 4.367,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-d34dae-caller\",\n      \"qa-20261009-d34dae-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-d34dae-caller",
+            "qa-20261009-d34dae-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:30:52.371461+00:00",
+      "client": "bex",
+      "kind": "cron",
+      "envVarKey": "COPY_LITERAL",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-d34dae-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-d34dae-target",
+                  "type": "cron",
+                  "envVarKey": "COPY_LITERAL"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-d34dae-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'",
+            "envVars": [
+              {
+                "key": "COPY_LITERAL",
+                "value": "qa73-plain-marker"
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-envkey.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 8.425,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-d34dae-caller\",\n      \"qa-20261009-d34dae-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-d34dae-caller",
+            "qa-20261009-d34dae-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:30:53.879017+00:00",
+      "client": "bex",
+      "kind": "static",
+      "envVarKey": "COPY_LITERAL",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-d34dae-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-d34dae-target",
+                  "type": "web",
+                  "envVarKey": "COPY_LITERAL"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-d34dae-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": ".",
+            "envVars": [
+              {
+                "key": "COPY_LITERAL",
+                "value": "qa73-plain-marker"
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-envkey.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.449,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-d34dae-caller\",\n      \"qa-20261009-d34dae-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-d34dae-caller",
+            "qa-20261009-d34dae-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:30:55.523718+00:00",
+      "client": "render",
+      "kind": "worker",
+      "envVarKey": "COPY_LITERAL",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-d34dae-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-d34dae-target",
+                  "type": "worker",
+                  "envVarKey": "COPY_LITERAL"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-d34dae-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter",
+            "envVars": [
+              {
+                "key": "COPY_LITERAL",
+                "value": "qa73-plain-marker"
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-envkey.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.591,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-d34dae-caller\",\n      \"qa-20261009-d34dae-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-d34dae-caller",
+            "qa-20261009-d34dae-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:30:56.602538+00:00",
+      "client": "render",
+      "kind": "cron",
+      "envVarKey": "COPY_LITERAL",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-d34dae-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-d34dae-target",
+                  "type": "cron",
+                  "envVarKey": "COPY_LITERAL"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-d34dae-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'",
+            "envVars": [
+              {
+                "key": "COPY_LITERAL",
+                "value": "qa73-plain-marker"
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-envkey.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.027,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-d34dae-caller\",\n      \"qa-20261009-d34dae-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-d34dae-caller",
+            "qa-20261009-d34dae-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:30:57.701398+00:00",
+      "client": "render",
+      "kind": "static",
+      "envVarKey": "COPY_LITERAL",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-d34dae-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-d34dae-target",
+                  "type": "web",
+                  "envVarKey": "COPY_LITERAL"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-d34dae-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": ".",
+            "envVars": [
+              {
+                "key": "COPY_LITERAL",
+                "value": "qa73-plain-marker"
+              }
+            ]
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-envkey.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.044,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-d34dae-caller\",\n      \"qa-20261009-d34dae-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-d34dae-caller",
+            "qa-20261009-d34dae-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    }
+  ],
+  "all_pass": true
+}

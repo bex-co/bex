@@ -1,0 +1,7 @@
+image cron replace command: pass=false error="--build-command and --cron-command are only supported for native runtimes" body={}
+image cron clear command: pass=false error="--build-command and --cron-command are only supported for native runtimes" body={}
+image cron omitted command preserves schedule-only: pass=true error="" body={"serviceDetails":{"schedule":"0 * * * *"}}
+image cron build override still refused: pass=true error="--build-command and --cron-command are only supported for native runtimes" body={}
+docker cron command control: pass=true error="" body={"serviceDetails":{"envSpecificDetails":{"dockerCommand":"echo qa-marker"}}}
+native cron command control: pass=true error="" body={"serviceDetails":{"envSpecificDetails":{"startCommand":"echo qa-marker"}}}
+exit status 1

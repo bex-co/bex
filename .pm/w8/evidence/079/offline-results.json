@@ -1,0 +1,65 @@
+{
+  "exit": 0,
+  "stdout": "{\"case\":\"stdout-and-warning\",\"fake_child_script\":\"printf 'row-data\\\\n'; printf 'WARNING: qa-offline-warning\\\\n' \\u003e\\u00262; exit 0\",\"result\":{\"output\":\"row-data\\n\"},\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n{\"case\":\"stderr-only-success\",\"fake_child_script\":\"printf 'NOTICE: qa-offline-notice\\\\n' \\u003e\\u00262; exit 0\",\"result\":{\"output\":\"\"},\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n{\"case\":\"stdout-only\",\"fake_child_script\":\"printf 'row-data\\\\n'; exit 0\",\"result\":{\"output\":\"row-data\\n\"},\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n{\"case\":\"nonzero-error\",\"error\":\"exit status 3: ERROR: qa-offline-error\",\"fake_child_script\":\"printf 'ERROR: qa-offline-error\\\\n' \\u003e\\u00262; exit 3\",\"result\":null,\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n",
+  "stderr": "",
+  "scope": "actual pinned helper; offline transport; controlled child executable; dummy-only config",
+  "decoded_results": [
+    {
+      "case": "stdout-and-warning",
+      "fake_child_script": "printf 'row-data\\n'; printf 'WARNING: qa-offline-warning\\n' >&2; exit 0",
+      "result": {
+        "output": "row-data\n"
+      },
+      "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+    },
+    {
+      "case": "stderr-only-success",
+      "fake_child_script": "printf 'NOTICE: qa-offline-notice\\n' >&2; exit 0",
+      "result": {
+        "output": ""
+      },
+      "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+    },
+    {
+      "case": "stdout-only",
+      "fake_child_script": "printf 'row-data\\n'; exit 0",
+      "result": {
+        "output": "row-data\n"
+      },
+      "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+    },
+    {
+      "case": "nonzero-error",
+      "error": "exit status 3: ERROR: qa-offline-error",
+      "fake_child_script": "printf 'ERROR: qa-offline-error\\n' >&2; exit 3",
+      "result": null,
+      "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+    }
+  ],
+  "direct_controlled_child_results": [
+    {
+      "case": "stdout-and-warning",
+      "exit": 0,
+      "stdout": "row-data\n",
+      "stderr": "WARNING: qa-offline-warning\n"
+    },
+    {
+      "case": "stderr-only-success",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "NOTICE: qa-offline-notice\n"
+    },
+    {
+      "case": "stdout-only",
+      "exit": 0,
+      "stdout": "row-data\n",
+      "stderr": ""
+    },
+    {
+      "case": "nonzero-error",
+      "exit": 3,
+      "stdout": "",
+      "stderr": "ERROR: qa-offline-error\n"
+    }
+  ]
+}

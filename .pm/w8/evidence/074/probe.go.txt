@@ -1,0 +1,37 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+
+	"github.com/render-oss/cli/pkg/client"
+)
+
+type input struct {
+	Label string `json:"label"`
+	Status int `json:"status"`
+	Body string `json:"body"`
+}
+
+func response(in input) *http.Response {
+	return &http.Response{StatusCode: in.Status, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(in.Body))}
+}
+
+func main() {
+	var cases []input
+	if err := json.NewDecoder(os.Stdin).Decode(&cases); err != nil { panic(err) }
+	for _, in := range cases {
+		v, err := client.ParseAddOrUpdateSecretFileResponse(response(in))
+		out := map[string]any{"label": in.Label, "status": in.Status, "parse_error": nil, "JSON201_present": false}
+		if err != nil { out["parse_error"] = err.Error() }
+		if v != nil && v.JSON201 != nil { out["JSON201_present"] = true; out["name"] = v.JSON201.Name; out["content"] = v.JSON201.Content }
+		if err := json.NewEncoder(os.Stdout).Encode(out); err != nil { panic(err) }
+	}
+	get, err := client.ParseRetrieveSecretFileResponse(response(input{Status: 200, Body: `{"name":"qa-empty.txt"}`}))
+	if err != nil { panic(err) }
+	fmt.Printf("GET omitted-content decoder control: JSON200=%t, decodedContent=%q\n", get.JSON200 != nil, get.JSON200.Content)
+}

@@ -1,0 +1,243 @@
+{
+  "sweep": 38,
+  "at": "2026-10-09T10:51:46.252924+00:00",
+  "journey": "numeric Blueprint production recheck after image-pin advance and external closeout",
+  "source_head": "af4ac2641c046afd52f67448e8d3e03126b07811",
+  "deployed_revision": "unobserved",
+  "mutation": "none; validation only",
+  "results": [
+    {
+      "client": "bex",
+      "case": "integer",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-integer.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.634,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 47\n"
+    },
+    {
+      "client": "bex",
+      "case": "float",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-float.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.062,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 47.5\n"
+    },
+    {
+      "client": "bex",
+      "case": "scientific",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-scientific.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.734,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 1e3\n"
+    },
+    {
+      "client": "bex",
+      "case": "quoted-control",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-integer-quoted.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.46,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: \"47\"\n"
+    },
+    {
+      "client": "bex",
+      "case": "boolean-refusal",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-boolean.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.395,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"at '/services/0/envVars/0/value': got boolean, want string\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "expected_valid": false,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: true\n"
+    },
+    {
+      "client": "render",
+      "case": "integer",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-integer.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.978,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 47\n"
+    },
+    {
+      "client": "render",
+      "case": "float",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-float.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.474,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 47.5\n"
+    },
+    {
+      "client": "render",
+      "case": "scientific",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-scientific.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.528,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: 1e3\n"
+    },
+    {
+      "client": "render",
+      "case": "quoted-control",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-integer-quoted.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.361,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "expected_valid": true,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: \"47\"\n"
+    },
+    {
+      "client": "render",
+      "case": "boolean-refusal",
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-boolean.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.558,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"at '/services/0/envVars/0/value': got boolean, want string\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "expected_valid": false,
+      "pass": true,
+      "manifest_text": "services:\n  - type: web\n    name: qa-20261008-e37b64-bp\n    runtime: go\n    repo: https://github.com/bex-co/bex\n    rootDir: examples/hello-go\n    plan: free\n    buildCommand: go build -o app .\n    startCommand: ./app\n    envVars:\n      - key: QA_MARKER\n        value: true\n"
+    }
+  ],
+  "state": "complete",
+  "all_pass": true,
+  "limits": "No Blueprint apply/runtime/repeated sync or MCP/UI execution in this validation-only recheck; prior external closeout evidence remains separately attributed."
+}

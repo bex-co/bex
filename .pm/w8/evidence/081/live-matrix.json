@@ -1,0 +1,1621 @@
+{
+  "sweep": 73,
+  "surface": "Blueprint non-addressable sibling host/port/hostport references",
+  "nonce": "a428a5",
+  "at": "2026-10-09T18:24:53.161253+00:00",
+  "state": "complete",
+  "source_head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+  "native_wire": "not intercepted",
+  "mutation": "none; validation only; paid worker plan is a declaration, never created",
+  "results": [
+    {
+      "at": "2026-10-09T18:24:54.203823+00:00",
+      "client": "bex",
+      "kind": "web",
+      "property": "host",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-web-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.979,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:24:55.437296+00:00",
+      "client": "bex",
+      "kind": "web",
+      "property": "port",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-web-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.185,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:24:56.853749+00:00",
+      "client": "bex",
+      "kind": "web",
+      "property": "hostport",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-web-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.371,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:24:58.379994+00:00",
+      "client": "bex",
+      "kind": "worker",
+      "property": "host",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "worker",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.48,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"service \\\"qa-20261009-a428a5-caller\\\": fromService host references \\\"qa-20261009-a428a5-target\\\" which has no network address (only web/private services are addressable)\",\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:24:59.391141+00:00",
+      "client": "bex",
+      "kind": "worker",
+      "property": "port",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "worker",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.957,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:00.038595+00:00",
+      "client": "bex",
+      "kind": "worker",
+      "property": "hostport",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "worker",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.597,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:00.685644+00:00",
+      "client": "bex",
+      "kind": "cron",
+      "property": "host",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "cron",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.52,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"service \\\"qa-20261009-a428a5-caller\\\": fromService host references \\\"qa-20261009-a428a5-target\\\" which has no network address (only web/private services are addressable)\",\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:02.233335+00:00",
+      "client": "bex",
+      "kind": "cron",
+      "property": "port",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "cron",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.498,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:02.794190+00:00",
+      "client": "bex",
+      "kind": "cron",
+      "property": "hostport",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "cron",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'"
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.514,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:03.236452+00:00",
+      "client": "bex",
+      "kind": "static",
+      "property": "host",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": "."
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.397,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"service \\\"qa-20261009-a428a5-caller\\\": fromService host references \\\"qa-20261009-a428a5-target\\\" which has no network address (only web/private services are addressable)\",\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:04.125815+00:00",
+      "client": "bex",
+      "kind": "static",
+      "property": "port",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": "."
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.842,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:05.527300+00:00",
+      "client": "bex",
+      "kind": "static",
+      "property": "hostport",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": "."
+          }
+        ]
+      },
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.351,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:06.811904+00:00",
+      "client": "render",
+      "kind": "web",
+      "property": "host",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-web-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.238,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:07.774932+00:00",
+      "client": "render",
+      "kind": "web",
+      "property": "port",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-web-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.916,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:08.425076+00:00",
+      "client": "render",
+      "kind": "web",
+      "property": "hostport",
+      "expected_valid": true,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-web-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.605,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:10.018442+00:00",
+      "client": "render",
+      "kind": "worker",
+      "property": "host",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "worker",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.547,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"service \\\"qa-20261009-a428a5-caller\\\": fromService host references \\\"qa-20261009-a428a5-target\\\" which has no network address (only web/private services are addressable)\",\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:11.133291+00:00",
+      "client": "render",
+      "kind": "worker",
+      "property": "port",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "worker",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.068,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:12.139147+00:00",
+      "client": "render",
+      "kind": "worker",
+      "property": "hostport",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "worker",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "worker",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "starter"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-worker-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.957,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:13.375067+00:00",
+      "client": "render",
+      "kind": "cron",
+      "property": "host",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "cron",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.187,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"service \\\"qa-20261009-a428a5-caller\\\": fromService host references \\\"qa-20261009-a428a5-target\\\" which has no network address (only web/private services are addressable)\",\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:14.252353+00:00",
+      "client": "render",
+      "kind": "cron",
+      "property": "port",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "cron",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.831,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:15.834767+00:00",
+      "client": "render",
+      "kind": "cron",
+      "property": "hostport",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "cron",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "cron",
+            "runtime": "image",
+            "image": {
+              "url": "docker.io/traefik/whoami:v1.10.1"
+            },
+            "plan": "free",
+            "schedule": "0 0 1 1 *",
+            "dockerCommand": "printf 'qa73-no-apply\\n'"
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-cron-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.536,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:16.422697+00:00",
+      "client": "render",
+      "kind": "static",
+      "property": "host",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "host"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": "."
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-host.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.542,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"service \\\"qa-20261009-a428a5-caller\\\": fromService host references \\\"qa-20261009-a428a5-target\\\" which has no network address (only web/private services are addressable)\",\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "error": "service \"qa-20261009-a428a5-caller\": fromService host references \"qa-20261009-a428a5-target\" which has no network address (only web/private services are addressable)",
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-09T18:25:17.212860+00:00",
+      "client": "render",
+      "kind": "static",
+      "property": "port",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "port"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": "."
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-port.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.741,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-09T18:25:18.571993+00:00",
+      "client": "render",
+      "kind": "static",
+      "property": "hostport",
+      "expected_valid": false,
+      "document": {
+        "services": [
+          {
+            "name": "qa-20261009-a428a5-caller",
+            "type": "web",
+            "runtime": "go",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/hello-go",
+            "plan": "free",
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app",
+            "envVars": [
+              {
+                "key": "UPSTREAM",
+                "fromService": {
+                  "name": "qa-20261009-a428a5-target",
+                  "type": "web",
+                  "property": "hostport"
+                }
+              }
+            ]
+          },
+          {
+            "name": "qa-20261009-a428a5-target",
+            "type": "web",
+            "runtime": "static",
+            "repo": "https://github.com/bex-co/bex",
+            "rootDir": "examples/static-site",
+            "staticPublishPath": "."
+          }
+        ]
+      },
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep73-static-hostport.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.311,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261009-a428a5-caller\",\n      \"qa-20261009-a428a5-target\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa-20261009-a428a5-caller",
+            "qa-20261009-a428a5-target"
+          ],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "pass": false
+    }
+  ],
+  "all_pass": false
+}
