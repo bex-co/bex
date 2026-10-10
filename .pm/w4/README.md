@@ -236,6 +236,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **236** — [Metrics puts runtime service changes under Configuration](236.md) (55m) ← live qa-find-bugs 2026-10-10 pass a52; Lifecycle omits actual suspended/resumed facts that Configuration includes, on fresh desktop and mobile loads.
 - [ ] **235** — [Static rule fields collapse to a few characters on mobile](235.md) (55m) ← live qa-find-bugs 2026-10-10 pass a50; header fields shrink to 38px and redirect fields to 54px despite correct saved values.
 
 - [ ] **234** — [Renaming a file and replacing its old filename cannot be saved in one draft](234.md) (55m) ← live qa-find-bugs 2026-10-10 pass a49; shared patch bookkeeping rejects the freed rename source, while split saves preserve both files.
