@@ -93,7 +93,7 @@ func TestServicePatchFoldsMatchTheirVerbs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, cl := newService(nil, tc.app())
 			ctx := context.Background()
-			_, probe, err := svc.preflightServicePatch(withRequestMemo(ctx), "web", tc.patch, true)
+			_, _, probe, err := svc.preflightServicePatch(withRequestMemo(ctx), "web", tc.patch, true)
 			if err != nil {
 				t.Fatalf("dry-run preflight: %v", err)
 			}

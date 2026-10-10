@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"log"
 	"slices"
 	"strings"
 
@@ -581,14 +582,15 @@ func checkMaintenanceRow(ctx context.Context, s *Service, probe *appv1alpha1.App
 // mid-persistence failure cases).
 // It returns the context the apply pass must use — the caller's, carrying the
 // source the source row already probed so the apply pass does not repeat those
-// outbound calls — and the probe, which a dry-run answers with. A dry-run
-// authorizes through authorizeToChange's preview path instead.
-func (s *Service) preflightServicePatch(ctx context.Context, id string, p ServicePatch, dryRun bool) (context.Context, *appv1alpha1.App, error) {
+// outbound calls — the App as it was read, which the apply pass stages its
+// writes on, and the probe, which a dry-run answers with. A dry-run authorizes
+// through authorizeToChange's preview path instead.
+func (s *Service) preflightServicePatch(ctx context.Context, id string, p ServicePatch, dryRun bool) (context.Context, *appv1alpha1.App, *appv1alpha1.App, error) {
 	rows := presentServicePatchRows(p)
 	if len(rows) == 0 {
 		// No present field: ApplyServicePatch is a read-only no-op that
 		// authorizes can_view through Get. Nothing to preflight.
-		return ctx, nil, nil
+		return ctx, nil, nil, nil
 	}
 	relations := make([]string, 0, 2)
 	for _, row := range rows {
@@ -598,12 +600,12 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 	}
 	ctx, a, err := s.authorizeToChange(ctx, id, dryRun, relations...)
 	if err != nil {
-		return ctx, nil, err
+		return ctx, nil, nil, err
 	}
 	probe := a.DeepCopy()
 	for _, row := range rows {
 		if err := row.check(ctx, s, probe, id, p); err != nil {
-			return ctx, nil, err
+			return ctx, nil, nil, err
 		}
 	}
 	// The probe now holds the whole proposed spec, so the API server judges it
@@ -611,7 +613,7 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 	// field fails the patch here instead of at its own row's CR write, after
 	// the rows ahead of it have landed (w5/m116).
 	if err := s.PatchObject(ctx, probe.DeepCopy(), client.MergeFrom(a), true); err != nil {
-		return ctx, nil, err
+		return ctx, nil, nil, err
 	}
 	// The source row's check folded the source it probed onto probe, so the
 	// probe now carries exactly what the apply pass will resolve to. Publishing
@@ -623,7 +625,7 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 		image:                probe.Spec.Image,
 		branch:               probe.Spec.Branch,
 		registryCredentialID: clonePtr(probe.Spec.RegistryCredentialID),
-	}), probe, nil
+	}), a, probe, nil
 }
 
 // ApplyServicePatch runs the present fields of p against service id as an
@@ -637,25 +639,38 @@ func (s *Service) preflightServicePatch(ctx context.Context, id string, p Servic
 //
 // The preflight below is what makes a rejected multi-field patch leave the
 // service untouched; see preflightServicePatch for the boundary it does and
-// does not cover.
+// does not cover. The stage is what makes an accepted one reach the operator
+// as one configuration (w8/m56).
 func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePatch) (AppView, error) {
 	// Validating twice means asking the same request-invariant questions twice
 	// — and, within the preflight alone, asking some of them once per guarded
 	// row. Memoize them for this request so the guarantee costs round trips
 	// proportional to the patch, not to the number of rows in it.
 	ctx = withRequestMemo(ctx)
-	ctx, _, err := s.preflightServicePatch(ctx, id, p, false)
+	ctx, read, _, err := s.preflightServicePatch(ctx, id, p, false)
 	if err != nil {
 		return AppView{}, err
+	}
+	if read == nil {
+		return s.Get(ctx, id)
 	}
 	// One PATCH is one rollout. The table below applies each present field as
 	// its own setter, and every build-relevant setter opens a deploy row
 	// (w6/m51) — so without this a four-field save would read back as four
 	// deploys, three of them immediately canceled. Deferred rather than run on
-	// success only: a table that fails partway has still rolled the service for
+	// success only: a table that fails partway has still changed the service for
 	// the fields it did apply, and that rollout is still owed its row.
 	ctx, flushRollout := rollout.Batch(ctx)
 	defer flushRollout()
+	// Each setter would also commit its own App write, and the operator
+	// reconciles every one: clearing the health check and the pre-deploy
+	// command together released "health cleared, old command" first, which ran
+	// the command the request removed. The setters write to a stage instead;
+	// their combined change is published once, below. Their store and audit
+	// effects are unchanged, so a row failing partway still publishes the rows
+	// before it — the truthful partial outcome the setters always had.
+	stage := rollout.NewStage(s.Client, read)
+	staged := s.withClient(stage)
 	var ops core.PatchOps[AppView]
 	// The patch answers with the LAST row's view, so the allowlist row's
 	// proxied-domain warning (w1/m171) would be lost behind any later row;
@@ -663,18 +678,32 @@ func (s *Service) ApplyServicePatch(ctx context.Context, id string, p ServicePat
 	var proxied []string
 	for _, row := range presentServicePatchRows(p) {
 		ops.Add(true, func() (AppView, error) {
-			v, err := row.apply(ctx, s, id, p)
+			v, err := row.apply(ctx, staged, id, p)
 			if v.IPAllowListProxiedDomains != nil {
 				proxied = v.IPAllowListProxiedDomains
 			}
 			return v, err
 		})
 	}
-	v, err := ops.Run(func() (AppView, error) { return s.Get(ctx, id) })
-	if err == nil && v.IPAllowListProxiedDomains == nil {
+	// The rows' view already shows the configuration the publish writes.
+	v, err := ops.Run(func() (AppView, error) { return staged.Get(ctx, id) })
+	_, publishErr := stage.Publish(ctx)
+	if mapped, ok := core.InvalidFieldsError(publishErr); ok {
+		publishErr = mapped
+	}
+	if err != nil {
+		if publishErr != nil {
+			log.Printf("apps: publish %s after a failed patch: %v", id, publishErr)
+		}
+		return AppView{}, err
+	}
+	if publishErr != nil {
+		return AppView{}, publishErr
+	}
+	if v.IPAllowListProxiedDomains == nil {
 		v.IPAllowListProxiedDomains = proxied
 	}
-	return v, err
+	return v, nil
 }
 
 // ApplyServicePatchDryRun is ApplyServicePatch stopped before its first write
@@ -689,7 +718,7 @@ func (s *Service) ApplyServicePatchDryRun(ctx context.Context, id string, p Serv
 // names is the one the caller made (ApplyServicePatchDryRun or SetPlanDryRun).
 func (s *Service) applyServicePatchDryRun(ctx context.Context, id string, p ServicePatch) (AppView, error) {
 	ctx = withRequestMemo(ctx)
-	_, probe, err := s.preflightServicePatch(ctx, id, p, true)
+	_, _, probe, err := s.preflightServicePatch(ctx, id, p, true)
 	if err != nil {
 		return AppView{}, err
 	}

@@ -18,7 +18,10 @@ package apps
 
 import (
 	"context"
+	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -73,15 +76,31 @@ const (
 	pushDeliveryTimeout = 3 * time.Second
 )
 
-// pushDeliveryMemo returns the per-(workspace, repo) answer cache, built on
-// first use so every existing Service literal (tests included) keeps working
-// without construction ceremony. core.TTLCache is the module's shared
-// positive-cache primitive — same expiry-on-read and CacheMax sweep discipline
-// the auth gate and OpenFGA checker use, and it is paired with a
-// singleflight.Group here for the same reason they pair it: without coalescing,
-// every concurrent reader of one cold key fires its own GitHub round-trip.
-func (s *Service) pushDeliveryMemo() *core.TTLCache[string] {
-	s.pushDeliveryOnce.Do(func() { s.pushDelivery = core.NewTTLCache[string]() })
+// pushDeliveryState is the per-(workspace, repo) answer cache. core.TTLCache
+// is the module's shared positive-cache primitive — same expiry-on-read and
+// CacheMax sweep discipline the auth gate and OpenFGA checker use, and it is
+// paired with a singleflight.Group here for the same reason they pair it:
+// without coalescing, every concurrent reader of one cold key fires its own
+// GitHub round-trip.
+type pushDeliveryState struct {
+	memo   *core.TTLCache[string]
+	flight singleflight.Group
+}
+
+// pushDeliveryInit guards every Service's lazily built pushDelivery pointer.
+// One package lock rather than a per-Service one keeps Service free of locks,
+// so withClient can copy it.
+var pushDeliveryInit sync.Mutex
+
+// pushDeliveryCache returns the answer cache, built on first use so every
+// existing Service literal (tests included) keeps working without construction
+// ceremony.
+func (s *Service) pushDeliveryCache() *pushDeliveryState {
+	pushDeliveryInit.Lock()
+	defer pushDeliveryInit.Unlock()
+	if s.pushDelivery == nil {
+		s.pushDelivery = &pushDeliveryState{memo: core.NewTTLCache[string]()}
+	}
 	return s.pushDelivery
 }
 
@@ -109,7 +128,8 @@ func (s *Service) pushDeliveryMethod(ctx context.Context, a *appv1alpha1.App) st
 	// "\n" cannot occur in a workspace id, so the two fields can't run together
 	// into one key two different pairs share.
 	key := workspaceID + "\n" + repo
-	memo := s.pushDeliveryMemo()
+	cache := s.pushDeliveryCache()
+	memo := cache.memo
 	if method, ok := memo.Get(key); ok {
 		return method
 	}
@@ -118,7 +138,7 @@ func (s *Service) pushDeliveryMethod(ctx context.Context, a *appv1alpha1.App) st
 	// Waiters share the leader's answer, including an "unknown" the leader
 	// reached because ITS caller went away; that self-corrects in
 	// pushDeliveryUnknownTTL and is cheaper than every waiter re-asking GitHub.
-	answer, _, _ := s.pushDeliveryFlight.Do(key, func() (any, error) {
+	answer, _, _ := cache.flight.Do(key, func() (any, error) {
 		lookup, cancel := context.WithTimeout(ctx, pushDeliveryTimeout)
 		defer cancel()
 		granted, err := s.GitHub.RepoGranted(lookup, workspaceID, repo)

@@ -278,10 +278,12 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 type batchKey struct{}
 
 // batch holds the newest rollout recorded under a Batch context. Only the last
-// one survives: the operator reconciles the final spec, so the final release
-// generation is the one the row must be filed under for the reconciler to close
-// it. Earlier writes in the same request are steps toward it, not deploys of
-// their own.
+// one survives: the final release generation is the one the row must be filed
+// under for the reconciler to close it. Earlier writes in the same request are
+// steps toward it, not deploys of their own — which holds only because a Stage
+// keeps those steps off the API server; Batch alone collapses the rows, not the
+// writes the operator reconciles (w8/m56). Stage.Publish re-files the held row
+// under the generation its one write produced.
 type batch struct {
 	mu       sync.Mutex
 	tracker  *Tracker

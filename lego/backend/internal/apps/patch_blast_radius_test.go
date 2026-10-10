@@ -210,7 +210,7 @@ func TestPreflightItselfWritesNothing(t *testing.T) {
 
 	display, start, health := "Renamed", "bin/serve", "/livez"
 	delay, idle := int32(45), int32(600)
-	if _, _, err := svc.preflightServicePatch(context.Background(), "web", ServicePatch{
+	if _, _, _, err := svc.preflightServicePatch(context.Background(), "web", ServicePatch{
 		DisplayName: &display, StartCommand: &start, HealthCheckPath: &health,
 		MaxShutdownDelaySeconds: &delay, IdleTTLSeconds: &idle,
 	}, false); err != nil {
