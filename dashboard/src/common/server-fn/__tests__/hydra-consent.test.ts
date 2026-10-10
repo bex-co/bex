@@ -147,6 +147,7 @@ beforeEach(() => {
   process.env.BEX_OPS_ROLE_TOKEN = VERB_TOKEN;
   process.env.BEX_IDENTITY_CLAIMS_URL = CLAIMS_URL;
   delete process.env.BEX_REQUIRE_VERIFIED_EMAIL;
+  delete process.env.OAUTH_PROFILE_CLAIMS_CLIENTS;
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -158,6 +159,7 @@ afterEach(() => {
   delete process.env.BEX_OPS_ROLE_TOKEN;
   delete process.env.BEX_IDENTITY_CLAIMS_URL;
   delete process.env.BEX_REQUIRE_VERIFIED_EMAIL;
+  delete process.env.OAUTH_PROFILE_CLAIMS_CLIENTS;
 });
 
 /** A consent GET as the browser makes it: session cookie, challenge in the query. */
@@ -1181,10 +1183,10 @@ describe("verified-email gate (ADR075 D8 revision, w2/m168)", () => {
     expectVerificationReject(res, calls);
   });
 
-  it("rejects an unverified subject for a skip_consent client (forum, desktop, CLI)", async () => {
+  it("rejects an unverified subject for a skip_consent client (desktop, CLI, a first-party RP)", async () => {
     const calls = mockUpstreams({
       lookupBody: consentRequest({
-        client: { client_id: "bex-forum", skip_consent: true },
+        client: { client_id: "first-party-rp", skip_consent: true },
         requested_scope: ["openid", "profile", "email"],
         requested_access_token_audience: [],
       }),
@@ -1457,4 +1459,129 @@ describe("verified-email gate (ADR075 D8 revision, w2/m168)", () => {
       expectVerificationReject(res, calls);
     },
   );
+});
+
+// OAUTH_PROFILE_CLAIMS_CLIENTS (operator-registered first-party relying parties): the same
+// identity-claims lookup the verified-email gate makes also supplies the
+// id_token claims these clients need — scoped to what was requested, on both
+// entry points, and failing closed.
+describe("profile-claims clients", () => {
+  const RP_CLIENT = "first-party-rp";
+  const DENIED = "https://oauth.bex.co/denied";
+
+  const rpConsent = (overrides: Record<string, unknown> = {}) =>
+    consentRequest({
+      requested_scope: ["openid", "profile", "email"],
+      requested_access_token_audience: [],
+      client: {
+        client_id: RP_CLIENT,
+        client_name: "First-party app",
+        skip_consent: true,
+      },
+      ...overrides,
+    });
+
+  const claimsCalls = (calls: { url: string; init?: RequestInit }[]) =>
+    calls.filter((c) => c.url.startsWith(CLAIMS_URL));
+
+  beforeEach(() => {
+    process.env.OAUTH_PROFILE_CLAIMS_CLIENTS = RP_CLIENT;
+  });
+
+  it("stamps email, email_verified and name headlessly, from one lookup", async () => {
+    const calls = mockUpstreams({ lookupBody: rpConsent() });
+    const res = await handleConsent(
+      req(`?consent_challenge=${CHALLENGE}`, null),
+    );
+    expect((res as Response).status).toBe(302);
+    expect((res as Response).headers.get("Location")).toBe(
+      "https://oauth.bex.co/continue",
+    );
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body.session).toEqual({ id_token: VERIFIED_CLAIMS });
+    expect(claimsCalls(calls)).toHaveLength(1);
+    expect(new URL(claimsCalls(calls)[0].url).searchParams.get("subject")).toBe(
+      SUBJECT,
+    );
+  });
+
+  it("stamps the same claims on the human approve path", async () => {
+    const calls = mockUpstreams({
+      lookupBody: rpConsent({
+        client: { client_id: RP_CLIENT, skip_consent: false },
+      }),
+    });
+    const res = await handleConsentDecision(
+      decisionReq({
+        consent_challenge: CHALLENGE,
+        decision: "approve",
+        csrf_token: csrf(),
+      }),
+    );
+    expect(res.status).toBe(303);
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body.session).toEqual({ id_token: VERIFIED_CLAIMS });
+  });
+
+  it("stamps only the claims the requested scopes cover", async () => {
+    const calls = mockUpstreams({
+      lookupBody: rpConsent({ requested_scope: ["openid", "email"] }),
+    });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body.session).toEqual({
+      id_token: { email: VERIFIED_CLAIMS.email, email_verified: true },
+    });
+  });
+
+  it("still fetches claims when the verified-email gate is off", async () => {
+    process.env.BEX_REQUIRE_VERIFIED_EMAIL = "0";
+    const calls = mockUpstreams({
+      lookupBody: rpConsent(),
+      claimsBody: { ...VERIFIED_CLAIMS, email_verified: false },
+    });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body.session).toEqual({
+      id_token: { ...VERIFIED_CLAIMS, email_verified: false },
+    });
+  });
+
+  const failures: Array<[string, () => Parameters<typeof mockUpstreams>[0]]> = [
+    [
+      "the lookup has no email",
+      () => ({ claimsBody: { ...VERIFIED_CLAIMS, email: "" } }),
+    ],
+    [
+      "the lookup has no name key",
+      () => ({
+        claimsBody: { email: "dev@example.com", email_verified: true },
+      }),
+    ],
+  ];
+  for (const [why, opts] of failures) {
+    it(`rejects with access_denied when ${why}`, async () => {
+      const calls = mockUpstreams({ lookupBody: rpConsent(), ...opts() });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect((res as Response).headers.get("Location")).toBe(DENIED);
+      expect(accepts(calls)).toHaveLength(0);
+      expect(rejects(calls)).toHaveLength(1);
+    });
+  }
+
+  it("rejects when the lookup is unreachable with the gate off", async () => {
+    process.env.BEX_REQUIRE_VERIFIED_EMAIL = "0";
+    delete process.env.BEX_IDENTITY_CLAIMS_URL;
+    const calls = mockUpstreams({ lookupBody: rpConsent() });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).headers.get("Location")).toBe(DENIED);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("leaves an unlisted client's accept body without a session key", async () => {
+    const calls = mockUpstreams({ lookupBody: consentRequest({ skip: true }) });
+    await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect("session" in body).toBe(false);
+  });
 });
