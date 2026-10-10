@@ -1,6 +1,6 @@
 # w8 · m56 — Publish complete service settings before rolling a release
 
-**Worker:** worker8 **Goal:** A successful compound settings update deploys only its complete requested configuration. **Status:** in progress (t001, t002, t004, t005, t006 done; t003 live replay pending deploy)
+**Worker:** worker8 **Goal:** A successful compound settings update deploys only its complete requested configuration. **Status:** done
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | Publish complete CR-owned compound settings once — **DONE** | 80m | — |
 | t002 | Audit table rows, adapters and persistence boundaries — **DONE** | 45m | t001 |
-| t003 | Replay combined and single-field clears in both clients | 35m | t002 |
+| t003 | Replay combined and single-field clears in both clients — **DONE** | 35m | t002 |
 | t004 | Verify Render and cross-surface settings contracts — **DONE** | 25m | t003 |
 | t005 | Simplify the changed code — **DONE** | 15m | t004 |
 | t006 | Add meaningful publication and execution regressions — **DONE** | 45m | t004 |
-| t007 | Close out after the observable outcome holds | 10m | t005, t006 |
+| t007 | Close out after the observable outcome holds — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 
@@ -31,3 +31,14 @@
 - **Sizing:** seven tasks, 4h15m; configuration ownership spans 22 table rows and multiple persistence paths, with controller execution and live regression obligations.
 - **Scope:** server/runtime configuration publication. Render parity is included because REST/MCP compound updates and shared GraphQL/dashboard setters expose these settings. Preserve the actual pinned client, existing source-save semantics and individual setter contracts.
 - **Unverified:** actual Render backend, live MCP/GraphQL/browser, paid App kinds and direct production CR/Job generations. Source-only consumers are audit obligations, not passing claims.
+
+## Closeout (2026-10-10)
+
+Fix `57b6a410d` was deployed through image pin `aeb989795`. [Post-fix live evidence](evidence/post-fix-live.json) and the [fix audit](evidence/fix-audit.md) record the outcome.
+
+- **Combined clear, both clients.** Fresh owned Free Python web fixtures were used in `bex-canary`. Published bex v0.3.2 cleared `srv-db5alk97ddps73epgg90`, and the unmodified pinned render cleared `srv-db5aln17ddps73epggc0`. Each `services update --pre-deploy-command '' --health-check-path ''` exited 0 and opened one new deploy that went Live.
+- **No removed-command execution.** Both settings read back empty and HTTP 200 served each fixture's marker. A time-bounded log query found no execution of the removed marker; the only marker logs are the initial instances from before the clear.
+- **Controls.** The populated restore ran the restored marker in a new instance, which proves the log query catches real executions. The single-field pre-deploy clear ran nothing and kept `/healthz`.
+- **Cleanup.** Both fixtures were deleted natively. Detail reads return 404, the services are absent from the list, and their runtimes return 404. The six baseline services are intact.
+- **Unverified.** The actual Render backend, live MCP/GraphQL/browser, paid kinds, and direct production CR/Job inspection were not exercised. The deployed revision is inferred from the image pin, not observed directly.
+

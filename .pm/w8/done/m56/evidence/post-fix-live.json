@@ -1,0 +1,373 @@
+{
+ "milestone": "w8/m56 t003",
+ "date": "2026-10-10",
+ "api_origin": "https://api.bex.co/v1/",
+ "deployed_revision": "platform images pinned to 57b6a410d91f by aeb989795 (deploy.yml success); Argo sync not directly observed",
+ "workspace": "bex-canary tea-daif693dqjvc73e7as3g",
+ "auth": "isolated human device OAuth (QA user); credentials omitted",
+ "native_wire": "not intercepted; API readbacks are diagnostics",
+ "fixtures": {
+  "A": {
+   "id": "srv-db5alk97ddps73epgg90",
+   "client": "bex v0.3.2 (published release, sha256 6c897449\u2026544824)",
+   "initial": {
+    "marker_logs": [
+     {
+      "id": "srv-db5alk97ddps73epgg90-s725n6ec1hq4qpjbhb24-2026-10-10T21:16:59.0745478Z-0508eb0b",
+      "timestamp": "2026-10-10T21:16:59.0745478Z",
+      "instance": "srv-db5alk97ddps73epgg90-s725n6ec1hq4qpjbhb24",
+      "type": "build",
+      "container": "predeploy",
+      "message": "m56-predeploy-8a7dd8"
+     }
+    ],
+    "http": {
+     "url": "https://qa-20261010-8a7dd8-m56clear.onbex.co/",
+     "status": 200,
+     "body": "m56-request-8a7dd8\n",
+     "time": "2026-10-10T21:18:14.678529+00:00"
+    },
+    "detail": {
+     "preDeployCommand": "printf 'm56-predeploy-8a7dd8\\n'",
+     "healthCheckPath": "/healthz",
+     "time": "2026-10-10T21:18:15.858343+00:00"
+    },
+    "deploys": [
+     {
+      "id": "dep-db5alk97ddps73epgg9g",
+      "status": "live",
+      "trigger": "other",
+      "createdAt": "2026-10-10T21:14:57.463803Z",
+      "finishedAt": "2026-10-10T21:17:25.966526Z"
+     }
+    ]
+   },
+   "combined_clear": {
+    "start": "2026-10-10T21:18:43.478944+00:00",
+    "command": [
+     "bex",
+     "services",
+     "update",
+     "srv-db5alk97ddps73epgg90",
+     "--pre-deploy-command",
+     "",
+     "--health-check-path",
+     "",
+     "--confirm",
+     "-o",
+     "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.647,
+    "removed_marker_logs_since_start": [],
+    "all_marker_logs": [
+     {
+      "id": "srv-db5alk97ddps73epgg90-s725n6ec1hq4qpjbhb24-2026-10-10T21:16:59.0745478Z-0508eb0b",
+      "timestamp": "2026-10-10T21:16:59.0745478Z",
+      "instance": "srv-db5alk97ddps73epgg90-s725n6ec1hq4qpjbhb24",
+      "type": "build",
+      "container": "predeploy",
+      "message": "m56-predeploy-8a7dd8"
+     }
+    ],
+    "detail_after": {
+     "preDeployCommand": "",
+     "healthCheckPath": null,
+     "time": "2026-10-10T21:20:24.607442+00:00"
+    },
+    "http_after": {
+     "url": "https://qa-20261010-8a7dd8-m56clear.onbex.co/",
+     "status": 200,
+     "body": "m56-request-8a7dd8\n",
+     "time": "2026-10-10T21:20:24.026569+00:00"
+    },
+    "deploys_after": [
+     {
+      "id": "dep-db5and4k5ksc73ccppog",
+      "status": "live",
+      "trigger": "service_updated",
+      "createdAt": "2026-10-10T21:18:44.730062Z",
+      "finishedAt": "2026-10-10T21:19:09.735188Z"
+     },
+     {
+      "id": "dep-db5alk97ddps73epgg9g",
+      "status": "deactivated",
+      "trigger": "other",
+      "createdAt": "2026-10-10T21:14:57.463803Z",
+      "finishedAt": "2026-10-10T21:17:25.966526Z"
+     }
+    ]
+   },
+   "controls": {
+    "restore": {
+     "start": "2026-10-10T21:20:38.208748+00:00",
+     "command": [
+      "render",
+      "services",
+      "update",
+      "srv-db5alk97ddps73epgg90",
+      "--pre-deploy-command",
+      "printf 'm56-restored-8a7dd8\\n'",
+      "--health-check-path",
+      "/healthz",
+      "--confirm",
+      "-o",
+      "json"
+     ],
+     "exit": 0,
+     "elapsed": 1.794,
+     "marker_logs_since_start": [
+      {
+       "id": "srv-db5alk97ddps73epgg90-l0d6foopi7ir79idtqaf-2026-10-10T21:20:40.910355079Z-7e5c6237",
+       "timestamp": "2026-10-10T21:20:40.910355079Z",
+       "instance": "srv-db5alk97ddps73epgg90-l0d6foopi7ir79idtqaf",
+       "type": "build",
+       "container": "predeploy",
+       "message": "m56-restored-8a7dd8"
+      }
+     ],
+     "detail": {
+      "preDeployCommand": "printf 'm56-restored-8a7dd8\\n'",
+      "healthCheckPath": "/healthz",
+      "time": "2026-10-10T21:21:47.549667+00:00"
+     },
+     "http": {
+      "url": "https://qa-20261010-8a7dd8-m56clear.onbex.co/",
+      "status": 200,
+      "body": "m56-request-8a7dd8\n",
+      "time": "2026-10-10T21:21:48.099152+00:00"
+     },
+     "deploys": [
+      {
+       "id": "dep-db5ao9sk5ksc73ccppt0",
+       "status": "live",
+       "trigger": "service_updated",
+       "createdAt": "2026-10-10T21:20:39.581932Z",
+       "finishedAt": "2026-10-10T21:20:55.474234Z"
+      },
+      {
+       "id": "dep-db5and4k5ksc73ccppog",
+       "status": "deactivated",
+       "trigger": "service_updated",
+       "createdAt": "2026-10-10T21:18:44.730062Z",
+       "finishedAt": "2026-10-10T21:19:09.735188Z"
+      },
+      {
+       "id": "dep-db5alk97ddps73epgg9g",
+       "status": "deactivated",
+       "trigger": "other",
+       "createdAt": "2026-10-10T21:14:57.463803Z",
+       "finishedAt": "2026-10-10T21:17:25.966526Z"
+      }
+     ]
+    },
+    "single_clear": {
+     "start": "2026-10-10T21:21:48.399119+00:00",
+     "command": [
+      "render",
+      "services",
+      "update",
+      "srv-db5alk97ddps73epgg90",
+      "--pre-deploy-command",
+      "",
+      "--confirm",
+      "-o",
+      "json"
+     ],
+     "exit": 0,
+     "elapsed": 1.377,
+     "marker_logs_since_start": [],
+     "detail": {
+      "preDeployCommand": "",
+      "healthCheckPath": "/healthz",
+      "time": "2026-10-10T21:22:56.746148+00:00"
+     },
+     "http": {
+      "url": "https://qa-20261010-8a7dd8-m56clear.onbex.co/",
+      "status": 200,
+      "body": "m56-request-8a7dd8\n",
+      "time": "2026-10-10T21:22:57.267330+00:00"
+     },
+     "deploys": [
+      {
+       "id": "dep-db5aor97ddps73epgglg",
+       "status": "live",
+       "trigger": "service_updated",
+       "createdAt": "2026-10-10T21:21:49.479181Z",
+       "finishedAt": "2026-10-10T21:22:09.76758Z"
+      },
+      {
+       "id": "dep-db5ao9sk5ksc73ccppt0",
+       "status": "deactivated",
+       "trigger": "service_updated",
+       "createdAt": "2026-10-10T21:20:39.581932Z",
+       "finishedAt": "2026-10-10T21:20:55.474234Z"
+      },
+      {
+       "id": "dep-db5and4k5ksc73ccppog",
+       "status": "deactivated",
+       "trigger": "service_updated",
+       "createdAt": "2026-10-10T21:18:44.730062Z",
+       "finishedAt": "2026-10-10T21:19:09.735188Z"
+      },
+      {
+       "id": "dep-db5alk97ddps73epgg9g",
+       "status": "deactivated",
+       "trigger": "other",
+       "createdAt": "2026-10-10T21:14:57.463803Z",
+       "finishedAt": "2026-10-10T21:17:25.966526Z"
+      }
+     ]
+    }
+   }
+  },
+  "B": {
+   "id": "srv-db5aln17ddps73epggc0",
+   "client": "render (unmodified pin a764810a768202704e7206eb7b87a47211fcd98e, built from module)",
+   "initial": {
+    "marker_logs": [
+     {
+      "id": "srv-db5aln17ddps73epggc0-1orod3vov9b0q17ctb1g-2026-10-10T21:16:58.726359806Z-554a051b",
+      "timestamp": "2026-10-10T21:16:58.726359806Z",
+      "instance": "srv-db5aln17ddps73epggc0-1orod3vov9b0q17ctb1g",
+      "type": "build",
+      "container": "predeploy",
+      "message": "m56-predeploy-01a727"
+     }
+    ],
+    "http": {
+     "url": "https://qa-20261010-01a727-m56clear.onbex.co/",
+     "status": 200,
+     "body": "m56-request-01a727\n",
+     "time": "2026-10-10T21:18:19.743516+00:00"
+    },
+    "detail": {
+     "preDeployCommand": "printf 'm56-predeploy-01a727\\n'",
+     "healthCheckPath": "/healthz",
+     "time": "2026-10-10T21:18:20.687983+00:00"
+    },
+    "deploys": [
+     {
+      "id": "dep-db5aln17ddps73epggcg",
+      "status": "live",
+      "trigger": "other",
+      "createdAt": "2026-10-10T21:15:08.0539Z",
+      "finishedAt": "2026-10-10T21:17:26.065783Z"
+     }
+    ]
+   },
+   "combined_clear": {
+    "start": "2026-10-10T21:18:45.125731+00:00",
+    "command": [
+     "render",
+     "services",
+     "update",
+     "srv-db5aln17ddps73epggc0",
+     "--pre-deploy-command",
+     "",
+     "--health-check-path",
+     "",
+     "--confirm",
+     "-o",
+     "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.434,
+    "removed_marker_logs_since_start": [],
+    "all_marker_logs": [
+     {
+      "id": "srv-db5aln17ddps73epggc0-1orod3vov9b0q17ctb1g-2026-10-10T21:16:58.726359806Z-554a051b",
+      "timestamp": "2026-10-10T21:16:58.726359806Z",
+      "instance": "srv-db5aln17ddps73epggc0-1orod3vov9b0q17ctb1g",
+      "type": "build",
+      "container": "predeploy",
+      "message": "m56-predeploy-01a727"
+     }
+    ],
+    "detail_after": {
+     "preDeployCommand": "",
+     "healthCheckPath": null,
+     "time": "2026-10-10T21:20:29.024393+00:00"
+    },
+    "http_after": {
+     "url": "https://qa-20261010-01a727-m56clear.onbex.co/",
+     "status": 200,
+     "body": "m56-request-01a727\n",
+     "time": "2026-10-10T21:20:28.181759+00:00"
+    },
+    "deploys_after": [
+     {
+      "id": "dep-db5andh7ddps73epggig",
+      "status": "live",
+      "trigger": "service_updated",
+      "createdAt": "2026-10-10T21:18:46.244261Z",
+      "finishedAt": "2026-10-10T21:19:09.769695Z"
+     },
+     {
+      "id": "dep-db5aln17ddps73epggcg",
+      "status": "deactivated",
+      "trigger": "other",
+      "createdAt": "2026-10-10T21:15:08.0539Z",
+      "finishedAt": "2026-10-10T21:17:26.065783Z"
+     }
+    ]
+   }
+  }
+ },
+ "cleanup": {
+  "deletes": {
+   "A": {
+    "command": [
+     "bex",
+     "services",
+     "delete",
+     "srv-db5alk97ddps73epgg90",
+     "--confirm",
+     "-o",
+     "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.391
+   },
+   "B": {
+    "command": [
+     "bex",
+     "services",
+     "delete",
+     "srv-db5aln17ddps73epggc0",
+     "--confirm",
+     "-o",
+     "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.521
+   }
+  },
+  "final_list": [
+   "srv-dap3v694dm7c7390q930",
+   "srv-dap3umrbdpcs73f5eeug",
+   "srv-dap3r714dm7c7390q91g",
+   "srv-daif6dsmg29s73d1umvg",
+   "srv-db09vbgehcmc739j12i0",
+   "srv-db09u90ehcmc739j12cg"
+  ],
+  "baseline": [
+   "srv-dap3v694dm7c7390q930",
+   "srv-dap3umrbdpcs73f5eeug",
+   "srv-dap3r714dm7c7390q91g",
+   "srv-daif6dsmg29s73d1umvg",
+   "srv-db09vbgehcmc739j12i0",
+   "srv-db09u90ehcmc739j12cg"
+  ],
+  "baseline_intact": true,
+  "detail_after_delete": {
+   "srv-db5alk97ddps73epgg90": 404,
+   "srv-db5aln17ddps73epggc0": 404
+  },
+  "runtime_after_delete": {
+   "qa-20261010-8a7dd8-m56clear.onbex.co": 404,
+   "qa-20261010-01a727-m56clear.onbex.co": 404
+  },
+  "time": "2026-10-10T21:24:08.684803+00:00"
+ }
+}
