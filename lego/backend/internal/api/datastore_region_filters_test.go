@@ -134,8 +134,10 @@ func TestDatastoreRegionFiltersThroughREST(t *testing.T) {
 					}
 					// The first unfiltered resource is excluded by the combined
 					// predicates. Applying LIMIT before those predicates loses page 1.
+					// Names repeat the key: Encode() would escape a "bravo,charlie"
+					// value to one literal comma name (core.QueryNameList, w8/m55).
 					query := url.Values{
-						"region": {"frankfurt,oregon"}, "name": {"bravo,charlie"}, "environmentId": {"evm-prod"},
+						"region": {"frankfurt,oregon"}, "name": {"bravo", "charlie"}, "environmentId": {"evm-prod"},
 						"createdAfter": {"2026-01-01T12:00:00Z"}, "updatedAfter": {"2026-02-01T12:00:00Z"}, "limit": {"1"},
 					}
 					for _, want := range []string{"bravo", "charlie", ""} {

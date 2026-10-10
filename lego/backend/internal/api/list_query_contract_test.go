@@ -166,7 +166,7 @@ func listHandlerQueryReads(t *testing.T, pkg, root string) map[string]bool {
 						reads["cursor"], reads["limit"] = true, true
 					case "QueryLimit":
 						reads["limit"] = true
-					case "QueryList", "QueryTime", "QueryTimeWindow":
+					case "QueryList", "QueryNameList", "QueryTime", "QueryTimeWindow":
 						for _, arg := range call.Args[1:] {
 							addLiteral(arg)
 						}

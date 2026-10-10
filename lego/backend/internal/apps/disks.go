@@ -401,7 +401,7 @@ func (s *Service) registerDiskRoutes(mux *http.ServeMux) {
 		// (internal/keyvalue/rest.go) — one pattern for the estate, not two.
 		serviceIDs := core.QueryList(q, "serviceId")
 		diskIDs := core.QueryList(q, "diskId")
-		names := core.QueryList(q, "name")
+		names := core.QueryNameList(r.URL, "name")
 		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
 		if err != nil {
 			return nil, err

@@ -26,7 +26,8 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
-func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]EnvironmentView, error) {
+func filterEnvironmentList(environments []EnvironmentView, u *url.URL) ([]EnvironmentView, error) {
+	q := u.Query()
 	for _, key := range []string{"updatedBefore", "updatedAfter"} {
 		if q.Has(key) {
 			return nil, fmt.Errorf("%w: %s is unsupported because environments do not expose updatedAt", core.ErrBadRequest, key)
@@ -40,7 +41,7 @@ func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]Envi
 	if err != nil {
 		return nil, err
 	}
-	names := core.QueryList(q, "name")
+	names := core.QueryNameList(u, "name")
 	owners := core.QueryList(q, "ownerId")
 	environmentIDs := core.QueryList(q, "environmentId")
 	for i := range environmentIDs {
@@ -149,7 +150,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			}
 			environments = append(environments, es...)
 		}
-		environments, err := filterEnvironmentList(environments, q)
+		environments, err := filterEnvironmentList(environments, r.URL)
 		if err != nil {
 			return nil, err
 		}

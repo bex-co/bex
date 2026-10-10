@@ -242,7 +242,7 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 	// documented "Filter by name" — the official CLI resolves a bare
 	// name/id argument to a key-value id by calling this with ?name=, and
 	// requires it to narrow to exactly one match).
-	names := core.QueryList(q, "name")
+	names := core.QueryNameList(r.URL, "name")
 	envIDs := core.QueryList(q, "environmentId")
 	for i := range envIDs {
 		envIDs[i] = id.EnvironmentPublicID(envIDs[i])

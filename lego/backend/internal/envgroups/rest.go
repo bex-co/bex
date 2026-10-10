@@ -24,9 +24,10 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-func envGroupListFilter(q url.Values) (EnvGroupListFilter, error) {
+func envGroupListFilter(u *url.URL) (EnvGroupListFilter, error) {
+	q := u.Query()
 	filter := EnvGroupListFilter{
-		Names: core.QueryList(q, "name"), OwnerIDs: core.QueryList(q, "ownerId"),
+		Names: core.QueryNameList(u, "name"), OwnerIDs: core.QueryList(q, "ownerId"),
 		EnvironmentIDs: core.QueryList(q, "environmentId"),
 	}
 	var err error
@@ -71,7 +72,7 @@ func envGroupList(groups []renderEnvGroup) []envGroupWithCursor {
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/env-groups", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		filter, err := envGroupListFilter(q)
+		filter, err := envGroupListFilter(r.URL)
 		if err != nil {
 			return nil, err
 		}
