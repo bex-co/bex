@@ -331,7 +331,7 @@ func TestREST_SecretFiles(t *testing.T) {
 		t.Fatalf("PUT secret file shape: %+v", one)
 	}
 	// GET list => Render cursor envelope, names only.
-	var list []secretFileWithCursor[SecretFileName]
+	var list []secretFileWithCursor
 	listBody := serveREST(svc, "GET", "/v1/services/web/secret-files", "").Body.Bytes()
 	_ = json.Unmarshal(listBody, &list)
 	if len(list) != 1 || list[0].SecretFile.Name != "ca.pem" || list[0].Cursor == "" || strings.Contains(string(listBody), "content") {
@@ -350,7 +350,7 @@ func TestREST_SecretFiles(t *testing.T) {
 	seedSecretFiles(t, svc, "web", "db.pem")
 	// Requested pagination is cursor-exclusive; omitting both params remains the
 	// pre-pagination full-list behavior (the env-vars route's exact semantics).
-	var firstPage, secondPage []secretFileWithCursor[SecretFileName]
+	var firstPage, secondPage []secretFileWithCursor
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files?limit=1", "").Body.Bytes(), &firstPage)
 	if len(firstPage) != 1 {
 		t.Fatalf("first page = %+v, want one item", firstPage)
@@ -359,7 +359,7 @@ func TestREST_SecretFiles(t *testing.T) {
 	if len(secondPage) != 1 || secondPage[0].SecretFile.Name == firstPage[0].SecretFile.Name {
 		t.Fatalf("second page = %+v after %+v", secondPage, firstPage)
 	}
-	var unpaged []secretFileWithCursor[SecretFileName]
+	var unpaged []secretFileWithCursor
 	_ = json.Unmarshal(serveREST(svc, "GET", "/v1/services/web/secret-files", "").Body.Bytes(), &unpaged)
 	if len(unpaged) != 2 {
 		t.Fatalf("unpaged list = %+v, want the complete two-item set", unpaged)

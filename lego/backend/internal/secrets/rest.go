@@ -47,18 +47,25 @@ func toEnvVarList(vars []EnvVarView) []envVarWithCursor {
 	return out
 }
 
-// secretFileWithCursor is Render's secret-files envelope ({secretFile, cursor}):
-// GET wraps names only, the replace-all PUT wraps name + content.
-type secretFileWithCursor[F SecretFileName | SecretFileView] struct {
-	SecretFile F      `json:"secretFile"`
-	Cursor     string `json:"cursor"`
+// secretFileWithCursor is Render's secret-files list envelope ({secretFile:{name},
+// cursor}); GET returns an array of these.
+type secretFileWithCursor struct {
+	SecretFile SecretFileName `json:"secretFile"`
+	Cursor     string         `json:"cursor"`
+}
+
+// secretFileContentWithCursor is the same envelope around name + content, the
+// replace-all PUT's echo of the new set.
+type secretFileContentWithCursor struct {
+	SecretFile SecretFileView `json:"secretFile"`
+	Cursor     string         `json:"cursor"`
 }
 
 // toSecretFileList wraps name-sorted file names in Render's cursor envelope.
-func toSecretFileList(files []SecretFileName) []secretFileWithCursor[SecretFileName] {
-	out := make([]secretFileWithCursor[SecretFileName], 0, len(files))
+func toSecretFileList(files []SecretFileName) []secretFileWithCursor {
+	out := make([]secretFileWithCursor, 0, len(files))
 	for _, f := range files {
-		out = append(out, secretFileWithCursor[SecretFileName]{SecretFile: f, Cursor: f.Name})
+		out = append(out, secretFileWithCursor{SecretFile: f, Cursor: f.Name})
 	}
 	return out
 }
@@ -133,9 +140,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		out := make([]secretFileWithCursor[SecretFileView], 0, len(files))
+		out := make([]secretFileContentWithCursor, 0, len(files))
 		for _, f := range files {
-			out = append(out, secretFileWithCursor[SecretFileView]{SecretFile: f, Cursor: f.Name})
+			out = append(out, secretFileContentWithCursor{SecretFile: f, Cursor: f.Name})
 		}
 		return out, nil
 	}))
