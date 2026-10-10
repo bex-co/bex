@@ -102,6 +102,9 @@ type KeyValueIndex interface {
 type EnvGroupIndex interface {
 	ListEnvironmentMemberships(ctx context.Context, ownerID string) ([]envgroups.EnvironmentMembership, error)
 	SetEnvironmentID(ctx context.Context, id, environmentID string) error
+	// DetachEnvironment unscopes a group still in expectedEnvironmentID during
+	// that environment's teardown (w4/m187).
+	DetachEnvironment(ctx context.Context, id, expectedEnvironmentID string) error
 }
 
 // Service is the environments feature service. Store nil =>
@@ -382,6 +385,15 @@ func (g envGroupResources) join(ctx context.Context, e store.Environment, id str
 
 func (g envGroupResources) leave(ctx context.Context, id, _ string) error {
 	return g.SetEnvironmentID(ctx, id, "")
+}
+
+// envGroupTeardown leaves through the teardown seam instead of the public move:
+// the environment's linked services leave it in the same teardown, so the
+// standalone move guard would refuse a valid deletion (w4/m187).
+type envGroupTeardown struct{ envGroupResources }
+
+func (g envGroupTeardown) leave(ctx context.Context, id, expectedEnvironmentID string) error {
+	return g.DetachEnvironment(ctx, id, expectedEnvironmentID)
 }
 
 // databases/keyValues/envGroups adapt the optional feature indexes, returning
@@ -854,6 +866,18 @@ func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environme
 	if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
 		return err
 	}
+	// Env groups go first: their detach is the one step that can still refuse
+	// (group authorization, or a link into another environment), so a refusal
+	// lands before any App/datastore projection write. Env group writes
+	// authorize against the CONTEXT workspace (unlike the Database/KeyValue
+	// seams, which resolve it from the resource's own labels), so bind the
+	// environment's own workspace before touching them.
+	ctx = core.WithWorkspace(ctx, e.TenantID)
+	if s.EnvGroups != nil {
+		if err := leaveEnvironment(ctx, envGroupTeardown{envGroupResources{s.EnvGroups}}, e); err != nil {
+			return err
+		}
+	}
 	names, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
 		return err
@@ -864,25 +888,29 @@ func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environme
 	if err := s.applyAppAllowLists(ctx, names, nil); err != nil {
 		return err
 	}
-	// Env group writes authorize against the CONTEXT workspace (unlike the
-	// Database/KeyValue seams, which resolve it from the resource's own
-	// labels), so bind the environment's own workspace before touching them.
-	ctx = core.WithWorkspace(ctx, e.TenantID)
-	for _, idx := range []resourceIndex{s.databases(), s.keyValues(), s.envGroups()} {
+	for _, idx := range []resourceIndex{s.databases(), s.keyValues()} {
 		if idx == nil {
 			continue
 		}
-		members, err := idx.list(ctx, e.TenantID)
-		if err != nil {
+		if err := leaveEnvironment(ctx, idx, e); err != nil {
 			return err
 		}
-		for _, member := range members {
-			if member.environmentID != e.ID {
-				continue
-			}
-			if err := idx.leave(ctx, member.id, e.ID); err != nil {
-				return err
-			}
+	}
+	return nil
+}
+
+// leaveEnvironment removes every current idx member of e from it.
+func leaveEnvironment(ctx context.Context, idx resourceIndex, e store.Environment) error {
+	members, err := idx.list(ctx, e.TenantID)
+	if err != nil {
+		return err
+	}
+	for _, member := range members {
+		if member.environmentID != e.ID {
+			continue
+		}
+		if err := idx.leave(ctx, member.id, e.ID); err != nil {
+			return err
 		}
 	}
 	return nil
