@@ -242,7 +242,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **244** — [Key Value names push the status badge off the mobile page](244.md) (55m) ← functional QA 2026-10-10 a122; accepted 30-character name makes 390px page scroll 416px, fresh reload and desktop/bounded controls retained; owned fixture/session cleanup verified.
+- [ ] **244** — [Datastore names push the status badge off the mobile page](244.md) (55m) ← functional QA 2026-10-10 a122/a123; accepted 30-character names make Key Value/Postgres 390px pages scroll 416/412px, fresh loads and desktop/bounded controls retained; both owned fixtures/sessions cleaned up.
 
 - [ ] **243** — [Deleting and re-adding an environment key creates an unsavable draft](243.md) (55m) ← functional QA 2026-10-10 a118; generated and literal replacements submit duplicate target operations, fresh mobile replay and passing controls retained, owned fixture/session cleanup verified.
 
