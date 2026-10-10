@@ -1,0 +1,108 @@
+diff --git a/cmd/psql.go b/cmd/psql.go
+index 3ff0ae7..65b9a51 100644
+--- a/cmd/psql.go
++++ b/cmd/psql.go
+@@ -100,7 +100,7 @@ func init() {
+ 				return fmt.Errorf("postgres ID or name is required in non-interactive mode")
+ 			}
+ 
+-			result, err := views.ExecutePSQLNonInteractive(ctx, &input)
++			result, err := views.ExecutePSQLNonInteractive(ctx, &input, cmd.ErrOrStderr())
+ 			if err != nil {
+ 				return err
+ 			}
+diff --git a/pkg/tui/views/psql.go b/pkg/tui/views/psql.go
+index 0acd74d..8f7bf54 100644
+--- a/pkg/tui/views/psql.go
++++ b/pkg/tui/views/psql.go
+@@ -42,7 +42,11 @@ type PSQLResult struct {
+ 	Output string `json:"output"`
+ }
+ 
+-func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResult, error) {
++// ExecutePSQLNonInteractive runs input.Command and returns the tool's stdout.
++// Diagnostics the tool writes to stderr on success (WARNING/NOTICE) are
++// forwarded to diagnostics unchanged, so they are not lost while the
++// structured result stays stdout only.
++func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput, diagnostics io.Writer) (*PSQLResult, error) {
+ 	c, err := client.NewDefaultClient()
+ 	if err != nil {
+ 		return nil, err
+@@ -77,13 +81,15 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResu
+ 		args = append(args, arg)
+ 	}
+ 
+-	cmd := exec.CommandContext(ctx, string(input.Tool), args...)
++	return runPSQLCommand(exec.CommandContext(ctx, string(input.Tool), args...), diagnostics)
++}
+ 
++func runPSQLCommand(cmd *exec.Cmd, diagnostics io.Writer) (*PSQLResult, error) {
+ 	var stdout, stderr bytes.Buffer
+ 	cmd.Stdout = &stdout
+ 	cmd.Stderr = &stderr
+ 
+-	err = cmd.Run()
++	err := cmd.Run()
+ 	if err != nil {
+ 		errMsg := stderr.String()
+ 		if errMsg != "" {
+@@ -92,6 +98,11 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput) (*PSQLResu
+ 		return nil, err
+ 	}
+ 
++	if stderr.Len() > 0 && diagnostics != nil {
++		if _, err := diagnostics.Write(stderr.Bytes()); err != nil {
++			return nil, err
++		}
++	}
+ 	return &PSQLResult{Output: stdout.String()}, nil
+ }
+ 
+diff --git a/pkg/tui/views/psql_test.go b/pkg/tui/views/psql_test.go
+index 8d9ff6c..aa502c9 100644
+--- a/pkg/tui/views/psql_test.go
++++ b/pkg/tui/views/psql_test.go
+@@ -1,7 +1,9 @@
+ package views
+ 
+ import (
++	"bytes"
+ 	"encoding/json"
++	"os/exec"
+ 	"testing"
+ 
+ 	"github.com/stretchr/testify/require"
+@@ -48,3 +50,33 @@ func TestPSQLResult_YAMLMarshal(t *testing.T) {
+ 	require.Contains(t, string(b), "output:")
+ 	require.Contains(t, string(b), "hello world")
+ }
++
++func TestRunPSQLCommandForwardsSuccessfulDiagnostics(t *testing.T) {
++	tests := []struct {
++		name        string
++		script      string
++		output      string
++		diagnostics string
++		err         string
++	}{
++		{"stdout and warning", `printf 'DO\n'; printf 'WARNING:  careful\n' >&2`, "DO\n", "WARNING:  careful\n", ""},
++		{"notice only", `printf 'NOTICE:  fyi\n' >&2`, "", "NOTICE:  fyi\n", ""},
++		{"stdout only", `printf '1\n'`, "1\n", "", ""},
++		{"empty", `true`, "", "", ""},
++		{"error keeps stderr in the error", `printf 'ERROR:  boom\n' >&2; exit 3`, "", "", "exit status 3: ERROR:  boom"},
++	}
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			var diagnostics bytes.Buffer
++			result, err := runPSQLCommand(exec.Command("sh", "-c", tt.script), &diagnostics)
++			if tt.err != "" {
++				require.EqualError(t, err, tt.err)
++				require.Nil(t, result)
++			} else {
++				require.NoError(t, err)
++				require.Equal(t, tt.output, result.Output)
++			}
++			require.Equal(t, tt.diagnostics, diagnostics.String())
++		})
++	}
++}
