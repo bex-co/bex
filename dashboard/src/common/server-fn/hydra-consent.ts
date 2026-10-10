@@ -44,7 +44,8 @@ import { safeHttpHref } from "@/common/lib/external-url";
 // trio `OAUTH_OPS_CLIENTS` / `BEX_OPS_ROLE_URL` / `BEX_OPS_ROLE_TOKEN`
 // (docs/ADR088-platform-observability-ui.md §4), and the verified-email gate's
 // `BEX_IDENTITY_CLAIMS_URL` / `BEX_REQUIRE_VERIFIED_EMAIL` (docs/ADR075 D8
-// revision 2026-10-06, w2/m168), which shares `BEX_OPS_ROLE_TOKEN`.
+// revision 2026-10-06, w2/m168), which shares `BEX_OPS_ROLE_TOKEN`, plus the
+// profile-claims client registry `OAUTH_PROFILE_CLAIMS_CLIENTS`.
 
 /** How long Hydra remembers an accepted consent, so a returning user's client
  * isn't re-challenged within the window. */
@@ -151,6 +152,13 @@ function platformClients(): Set<string> {
  * in the pinned ops workspace. */
 function opsClients(): Set<string> {
   return clientIdSet(process.env.OAUTH_OPS_CLIENTS);
+}
+
+/** Profile-claims client registry: operator-registered first-party relying
+ * parties whose accept stamps the subject's email and name into the id_token. Hydra's id_token and userinfo otherwise
+ * carry only `sub`, which such a client cannot turn into an account. */
+function profileClaimsClients(): Set<string> {
+  return clientIdSet(process.env.OAUTH_PROFILE_CLAIMS_CLIENTS);
 }
 
 function consentRedirectOrigin(
@@ -306,6 +314,17 @@ type OpsIdTokenClaims = {
   ops_role: string;
 };
 
+/** id_token claims stamped onto a profile-claims accept, limited to what the
+ * requested scopes cover (OIDC Core §5.4: `email` → email + email_verified,
+ * `profile` → name). */
+type ProfileIdTokenClaims = {
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+};
+
+type IdTokenClaims = OpsIdTokenClaims | ProfileIdTokenClaims;
+
 type OpsGateResult =
   /** Not an ops-gated client: its accept body must stay byte-identical to the
    * pre-ADR088 shape — no claims, not even an empty `session` key. */
@@ -400,23 +419,57 @@ function verifiedEmailRequired(): boolean {
   return v !== "0" && v.toLowerCase() !== "false";
 }
 
+type SubjectGate =
+  /** Refuse: the subject's email is unverified (docs/ADR075 D8 revision). */
+  | { verdict: "unverified" }
+  /** Refuse: a profile-claims client whose claims could not be resolved. */
+  | { verdict: "deny" }
+  /** Proceed; `idToken` is set only for a profile-claims client. */
+  | { verdict: "pass"; idToken?: ProfileIdTokenClaims };
+
 /**
- * Whether consent must refuse this challenge's subject (docs/ADR075 D8
- * revision, w2/m168): a human whose Kratos trait email is unverified can't use
- * bex, including through an OAuth relying party. Resolved from
- * `consent.subject` via bex-api's identity-claims verb
- * (`BEX_IDENTITY_CLAIMS_URL`); anything short of `email_verified: true` counts
- * as unverified.
+ * The subject step every consent runs before the ops gate and any accept, on
+ * both entry points. One identity-claims lookup (`BEX_IDENTITY_CLAIMS_URL`,
+ * resolved from `consent.subject`) serves two purposes:
+ *
+ * - the verified-email gate (w2/m168): a human whose Kratos trait email is
+ *   unverified can't use bex, including through an OAuth relying party;
+ *   anything short of `email_verified: true` counts as unverified;
+ * - for an OAUTH_PROFILE_CLAIMS_CLIENTS client, the id_token claims to stamp.
+ *
+ * Fails closed: a listed identity client whose lookup fails or lacks an email
+ * is refused rather than accepted with a `sub`-only id_token. A client outside
+ * the registry with the gate off never fetches at all.
  */
-async function unverifiedSubject(
+async function resolveSubjectGate(
   consent: OAuth2ConsentRequest,
-): Promise<boolean> {
-  if (!verifiedEmailRequired()) return false;
+): Promise<SubjectGate> {
+  const gateOn = verifiedEmailRequired();
+  const profileClaimsClient = profileClaimsClients().has(
+    consent.client?.client_id ?? "",
+  );
+  if (!gateOn && !profileClaimsClient) return { verdict: "pass" };
   const claims = await fetchInternalVerb(
     process.env.BEX_IDENTITY_CLAIMS_URL ?? "",
     consent.subject ?? "",
   );
-  return claims?.email_verified !== true;
+  if (gateOn && claims?.email_verified !== true) {
+    return { verdict: "unverified" };
+  }
+  if (!profileClaimsClient) return { verdict: "pass" };
+  const email = claims?.email;
+  const name = claims?.name;
+  if (typeof email !== "string" || !email || typeof name !== "string") {
+    return { verdict: "deny" };
+  }
+  const scopes = consent.requested_scope ?? [];
+  const idToken: ProfileIdTokenClaims = {};
+  if (scopes.includes("email")) {
+    idToken.email = email;
+    idToken.email_verified = claims?.email_verified === true;
+  }
+  if (scopes.includes("profile") && name) idToken.name = name;
+  return { verdict: "pass", idToken };
 }
 
 /** The error_description an unverified subject's client receives. */
@@ -425,6 +478,16 @@ const UNVERIFIED_EMAIL_DESCRIPTION =
 
 /** The error_description a human's own deny click (and the ops gate) sends. */
 const USER_DENIED_DESCRIPTION = "The user denied the request";
+
+/** The id_token claims an accept stamps: the ops gate's for an ops-gated
+ * client, otherwise the subject step's for a profile-claims client. */
+function acceptedIdToken(
+  opsGate: OpsGateResult,
+  subjectGate: SubjectGate,
+): IdTokenClaims | undefined {
+  if (opsGate.verdict === "allow") return opsGate.idToken;
+  return subjectGate.verdict === "pass" ? subjectGate.idToken : undefined;
+}
 
 /** Grant the recognized vocabulary (dropping unknown strings and, for a
  *  third-party client, the bex.api umbrella alias), remembered for the window.
@@ -435,7 +498,7 @@ async function acceptConsent(
   hydra: OAuth2Api,
   consentChallenge: string,
   consent: OAuth2ConsentRequest,
-  opsIdToken?: OpsIdTokenClaims,
+  idToken?: IdTokenClaims,
 ): Promise<string> {
   const { redirect_to } = await hydra.acceptOAuth2ConsentRequest({
     consentChallenge,
@@ -448,11 +511,11 @@ async function acceptConsent(
         consent.requested_access_token_audience ?? [],
       remember: true,
       remember_for: REMEMBER_FOR_SECONDS,
-      // Only an ops-gated accept carries id_token claims (docs/ADR088 §4) —
-      // spread conditionally, never an always-present key, so every non-ops
-      // client's accept body stays byte-identical to the pre-ADR088 wire shape
-      // (no empty `session` field for Hydra to interpret).
-      ...(opsIdToken ? { session: { id_token: opsIdToken } } : {}),
+      // Only an ops-gated or profile-claims accept carries id_token claims
+      // (docs/ADR088 §4) — spread conditionally, never an always-present key,
+      // so every other client's accept body stays byte-identical to the
+      // pre-ADR088 wire shape (no empty `session` field for Hydra to interpret).
+      ...(idToken ? { session: { id_token: idToken } } : {}),
     },
   });
   return redirect_to;
@@ -554,15 +617,17 @@ export async function handleConsent(
   // docs/ADR075 D8 revision (w2/m168) and ADR088 §4: the verified-email and
   // ops-workspace gates run after the request-shape gates (PKCE,
   // audience⇒scope) but BEFORE the trusted accept below — the skip_consent
-  // clients (forum, desktop, mobile, CLI, Grafana) take that headless path, so
+  // clients (desktop, mobile, CLI, Grafana, first-party RPs) take that headless path, so
   // a later gate would never fire for them. A deny is a real Hydra reject
   // (access_denied back to the client), not a rendered error page: the relying
   // party sent this browser here and must get an answer to finish its flow.
   // For every non-ops client resolveOpsGate is an env-lookup no-op.
-  const unverified = await unverifiedSubject(consent);
-  const opsGate: OpsGateResult = unverified
-    ? { verdict: "deny" }
-    : await resolveOpsGate(consent);
+  const subjectGate = await resolveSubjectGate(consent);
+  const unverified = subjectGate.verdict === "unverified";
+  const opsGate: OpsGateResult =
+    subjectGate.verdict === "pass"
+      ? await resolveOpsGate(consent)
+      : { verdict: "deny" };
   if (opsGate.verdict === "deny") {
     try {
       return Response.redirect(
@@ -587,7 +652,7 @@ export async function handleConsent(
           hydra,
           consentChallenge,
           consent,
-          opsGate.verdict === "allow" ? opsGate.idToken : undefined,
+          acceptedIdToken(opsGate, subjectGate),
         ),
         302,
       );
@@ -735,16 +800,21 @@ export async function handleConsentDecision(
   // above to match the session's identity.
   // The verified-email gate (w2/m168) runs first, exactly as on the headless
   // path; an unverified approve becomes a reject carrying its own reason.
-  const unverified =
-    decision === "approve" && (await unverifiedSubject(consent));
+  const subjectGate: SubjectGate =
+    decision === "approve"
+      ? await resolveSubjectGate(consent)
+      : { verdict: "pass" };
+  const unverified = subjectGate.verdict === "unverified";
   const opsGate: OpsGateResult =
-    decision === "approve" && !unverified
+    decision === "approve" && subjectGate.verdict === "pass"
       ? await resolveOpsGate(consent)
       : { verdict: "ungated" };
 
   try {
     const redirectTo =
-      decision === "deny" || unverified || opsGate.verdict === "deny"
+      decision === "deny" ||
+      subjectGate.verdict !== "pass" ||
+      opsGate.verdict === "deny"
         ? await rejectConsent(
             hydra,
             consentChallenge,
@@ -754,7 +824,7 @@ export async function handleConsentDecision(
             hydra,
             consentChallenge,
             consent,
-            opsGate.verdict === "allow" ? opsGate.idToken : undefined,
+            acceptedIdToken(opsGate, subjectGate),
           );
     return Response.redirect(redirectTo, 303);
   } catch {

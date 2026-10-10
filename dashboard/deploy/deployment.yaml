@@ -100,6 +100,18 @@ spec:
             # closed, so every consent is rejected if this or the token is unset.
             - name: BEX_IDENTITY_CLAIMS_URL
               value: http://bex-api.bex-system.svc:8091/internal/identity-claims
+            # Profile-claims clients: operator-registered first-party relying
+            # parties whose id_token gets the subject's email/email_verified/
+            # name from the same lookup; a listed client whose lookup fails is
+            # rejected. Deployment-specific, so the comma-separated id list
+            # rides the out-of-band dashboard/oauth-profile-claims-clients Secret;
+            # absent => no client gets claims (the pre-existing behavior).
+            - name: OAUTH_PROFILE_CLAIMS_CLIENTS
+              valueFrom:
+                secretKeyRef:
+                  name: oauth-profile-claims-clients
+                  key: OAUTH_PROFILE_CLAIMS_CLIENTS
+                  optional: true
             - name: BEX_OPS_ROLE_TOKEN
               valueFrom:
                 secretKeyRef:
