@@ -681,7 +681,7 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		// name/id argument to a service id by calling this with ?name=, and
 		// requires it to narrow to exactly one match). environmentId and Render's
 		// serviceType enum (type=, w2/m52) OR the same way.
-		names := core.QueryList(q, "name")
+		names := core.QueryNameList(r.URL, "name")
 		environmentIDs := core.QueryList(q, "environmentId")
 		for i := range environmentIDs {
 			environmentIDs[i] = ids.EnvironmentPublicID(environmentIDs[i])
@@ -1119,7 +1119,7 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		names := core.QueryList(q, "name")
+		names := core.QueryNameList(r.URL, "name")
 		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
 		if err != nil {
 			return nil, err
@@ -1232,7 +1232,7 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 			return nil, err
 		}
 		q := r.URL.Query()
-		paths, names, values := core.QueryList(q, "path"), core.QueryList(q, "name"), core.QueryList(q, "value")
+		paths, names, values := core.QueryList(q, "path"), core.QueryNameList(r.URL, "name"), core.QueryList(q, "value")
 		headers := core.Filter(toRenderHeaderObjects(serviceID, views), func(h renderHeader) bool {
 			return matchesAny(paths, h.Path) && matchesAny(names, h.Name) && matchesAny(values, h.Value)
 		})

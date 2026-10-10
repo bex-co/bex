@@ -133,7 +133,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return nil, err
 		}
 		q := r.URL.Query()
-		names := core.QueryList(q, "name")
+		names := core.QueryNameList(r.URL, "name")
 		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
 		if err != nil {
 			return nil, err
