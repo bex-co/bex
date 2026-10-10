@@ -199,6 +199,13 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	"disconnect-blueprint": {"ownerId": {}},
 	"list-blueprint-syncs": {"ownerId": {}},
 
+	// textMode=display matches log text against the terminal-display message
+	// instead of raw bytes (w4/m189); omitted keeps Render's raw contract. The
+	// dashboard's service Logs tab sends it on history and its live tail.
+	"list-logs":        {"textMode": {}},
+	"list-logs-values": {"textMode": {}},
+	"subscribe-logs":   {"textMode": {}},
+
 	// Render's disk-capacity series covers only its own service disks, so its
 	// schema has no `kind`. Bex reads capacity for three resource kinds through
 	// one verb — a managed Postgres, a managed Key Value, and (since ADR082) a
