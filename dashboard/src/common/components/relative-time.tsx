@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useNow } from "@/common/hooks/use-now";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 import {
   formatRelativeAge,
@@ -30,8 +31,10 @@ function RelativeTime({
   className,
   title,
   as = "time",
-}: RelativeTimeProps & { format: (iso: string, now: number) => string }) {
+}: RelativeTimeProps & { format: typeof formatRelativeAge }) {
   const now = useNow();
+  // `t` changes with the language, so a language switch re-renders (w4/m188).
+  const { t } = useTranslations();
   // No usable instant: render the caller's fallback bare, so `dateTime` never
   // carries an empty or unparseable value.
   if (!value || Number.isNaN(Date.parse(value))) return <>{fallback}</>;
@@ -44,7 +47,7 @@ function RelativeTime({
   // timezone divergence, a different mechanism under the same error code). The
   // machine-readable instant in `dateTime` stays exact; only the human
   // rendering is allowed to differ.
-  const text = format(value, now);
+  const text = format(value, t, now);
   return as === "span" ? (
     <span className={className} title={title} suppressHydrationWarning>
       {text}
@@ -62,8 +65,9 @@ function RelativeTime({
 }
 
 /**
- * Compact age since a past instant ("now", "4m", "3h", "5d", "2mo"), with the
- * hydration guard baked in — the guarded counterpart of `formatRelativeAge`.
+ * Compact age since a past instant ("now", "4m", "3h", "5d", "2mo" — in the
+ * active dashboard language), with the hydration guard baked in — the guarded
+ * counterpart of `formatRelativeAge`.
  * Every UI call site should use this instead of calling the formatter directly.
  */
 export function RelativeAge(props: RelativeTimeProps) {
@@ -71,8 +75,9 @@ export function RelativeAge(props: RelativeTimeProps) {
 }
 
 /**
- * Compact time until a future instant ("in 5m", "in 3h", "in 2d"), with the
- * hydration guard baked in — the guarded counterpart of `formatRelativeUntil`.
+ * Compact time until a future instant ("in 5m", "in 3h", "in 2d" — in the
+ * active dashboard language), with the hydration guard baked in — the guarded
+ * counterpart of `formatRelativeUntil`.
  */
 export function RelativeUntil(props: RelativeTimeProps) {
   return <RelativeTime {...props} format={formatRelativeUntil} />;

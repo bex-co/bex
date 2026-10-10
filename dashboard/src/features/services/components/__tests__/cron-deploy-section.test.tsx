@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
+import i18n from "@/i18n/init";
 import userEvent from "@testing-library/user-event";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
 
@@ -187,6 +188,38 @@ describe("CronDeploySection", () => {
     expect(
       screen.getByText(/Every day at 06:00 · runs in UTC/i),
     ).toBeInTheDocument();
+  });
+
+  // w4/m188: the preview interpolated an English phrase into the translated
+  // "{description} · 使用 UTC" wrapper; the draft preview now follows the
+  // active language and typing it never saves.
+  it("localizes the persisted and draft schedule previews", async () => {
+    const user = userEvent.setup();
+    render(
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 0 1 1 *"
+        command={null}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
+    try {
+      await act(() => i18n.changeLanguage("zh"));
+      await user.clear(schedInput);
+      await user.type(schedInput, "*/5 * * * *");
+      expect(screen.getByText("每 5 分钟 · 使用 UTC")).toBeInTheDocument();
+      await user.clear(schedInput);
+      await user.type(schedInput, "0 0 * * MON");
+      expect(screen.getByText("每周一 00:00 · 使用 UTC")).toBeInTheDocument();
+      // Non-uniform step: no preview at all, and still saveable.
+      await user.clear(schedInput);
+      await user.type(schedInput, "*/40 * * * *");
+      expect(screen.queryByText(/· 使用 UTC/)).not.toBeInTheDocument();
+      expect(updateCronJob).not.toHaveBeenCalled();
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
   });
 
   it("blocks save and shows a required error for an empty schedule", async () => {

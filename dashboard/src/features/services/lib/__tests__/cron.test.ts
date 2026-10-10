@@ -7,6 +7,9 @@ import {
   describeCron,
   isValidCron,
 } from "@/features/services/lib/cron";
+import { translator } from "@/test/translator";
+
+const t = translator("en");
 
 // The one acceptance table for a cron schedule. bex-api's checkCronSchedule is
 // tested against the same file (lego/backend/internal/apps/
@@ -81,21 +84,23 @@ describe("cronScheduleProblem", () => {
 
 describe("describeCron", () => {
   it("names the common shapes", () => {
-    expect(describeCron("* * * * *")).toBe("Every minute");
-    expect(describeCron("*/5 * * * *")).toBe("Every 5 minutes");
-    expect(describeCron("0 * * * *")).toBe("Every hour");
-    expect(describeCron("30 * * * *")).toBe("Every hour at minute 30");
-    expect(describeCron("0 */2 * * *")).toBe("Every 2 hours");
-    expect(describeCron("0 0 * * *")).toBe("Every day at 00:00");
-    expect(describeCron("30 9 * * *")).toBe("Every day at 09:30");
-    expect(describeCron("0 8 * * 1")).toBe("Every Monday at 08:00");
-    expect(describeCron("0 0 1 * *")).toBe("On day 1 of every month at 00:00");
+    expect(describeCron("* * * * *", t)).toBe("Every minute");
+    expect(describeCron("*/5 * * * *", t)).toBe("Every 5 minutes");
+    expect(describeCron("0 * * * *", t)).toBe("Every hour");
+    expect(describeCron("30 * * * *", t)).toBe("Every hour at minute 30");
+    expect(describeCron("0 */2 * * *", t)).toBe("Every 2 hours");
+    expect(describeCron("0 0 * * *", t)).toBe("Every day at 00:00");
+    expect(describeCron("30 9 * * *", t)).toBe("Every day at 09:30");
+    expect(describeCron("0 8 * * 1", t)).toBe("Every Monday at 08:00");
+    expect(describeCron("0 0 1 * *", t)).toBe(
+      "On day 1 of every month at 00:00",
+    );
   });
 
   it("returns null for invalid input and unhandled shapes", () => {
-    expect(describeCron("99 99 * * *")).toBeNull();
-    expect(describeCron("not a cron")).toBeNull();
-    expect(describeCron("0 0 * * 1-5")).toBeNull();
+    expect(describeCron("99 99 * * *", t)).toBeNull();
+    expect(describeCron("not a cron", t)).toBeNull();
+    expect(describeCron("0 0 * * 1-5", t)).toBeNull();
   });
 
   // w9/061: both step branches interpolated the captured step into "Every N
@@ -104,31 +109,31 @@ describe("describeCron", () => {
   // names a uniform interval when it divides the field's width.
   it("does not promise a uniform interval for a non-divisor step", () => {
     // Minutes: fires at :00 and :40, so the gaps alternate 40 and 20.
-    expect(describeCron("*/40 * * * *")).toBeNull();
-    expect(describeCron("*/7 * * * *")).toBeNull();
+    expect(describeCron("*/40 * * * *", t)).toBeNull();
+    expect(describeCron("*/7 * * * *", t)).toBeNull();
     // Hours: fires at 0,5,10,15,20 — a four-hour gap across midnight.
-    expect(describeCron("0 */5 * * *")).toBeNull();
-    expect(describeCron("0 */7 * * *")).toBeNull();
+    expect(describeCron("0 */5 * * *", t)).toBeNull();
+    expect(describeCron("0 */7 * * *", t)).toBeNull();
   });
 
   it("collapses a step wider than its field to the unit it actually runs", () => {
     // Previously "Every 70 minutes" / "Every 100 minutes": only minute 0 fires.
-    expect(describeCron("*/70 * * * *")).toBe("Every hour");
-    expect(describeCron("*/100 * * * *")).toBe("Every hour");
+    expect(describeCron("*/70 * * * *", t)).toBe("Every hour");
+    expect(describeCron("*/100 * * * *", t)).toBe("Every hour");
     // Previously "Every 30 hours" — an interval cron cannot express at all.
-    expect(describeCron("0 */30 * * *")).toBe("Every day at 00:00");
-    expect(describeCron("15 */30 * * *")).toBe("Every day at 00:15");
+    expect(describeCron("0 */30 * * *", t)).toBe("Every day at 00:00");
+    expect(describeCron("15 */30 * * *", t)).toBe("Every day at 00:15");
   });
 
   it("keeps the exact-fit boundaries truthful", () => {
     // Both fire only at the field's start, and both intervals are exact.
-    expect(describeCron("*/60 * * * *")).toBe("Every hour");
-    expect(describeCron("0 */24 * * *")).toBe("Every day at 00:00");
+    expect(describeCron("*/60 * * * *", t)).toBe("Every hour");
+    expect(describeCron("0 */24 * * *", t)).toBe("Every day at 00:00");
     // Ordinary divisors keep their useful preview.
-    expect(describeCron("*/30 * * * *")).toBe("Every 30 minutes");
-    expect(describeCron("*/15 * * * *")).toBe("Every 15 minutes");
-    expect(describeCron("0 */12 * * *")).toBe("Every 12 hours");
-    expect(describeCron("0 */6 * * *")).toBe("Every 6 hours");
+    expect(describeCron("*/30 * * * *", t)).toBe("Every 30 minutes");
+    expect(describeCron("*/15 * * * *", t)).toBe("Every 15 minutes");
+    expect(describeCron("0 */12 * * *", t)).toBe("Every 12 hours");
+    expect(describeCron("0 */6 * * *", t)).toBe("Every 6 hours");
   });
 
   // The preview must never disagree with what the server accepts: every
@@ -166,21 +171,61 @@ describe("describeCron", () => {
       ["0 0 * * MON,WED", "0 0 * * 1,3"],
     ] as const)("describes %s identically to %s", (named, numeric) => {
       expect(isValidCron(named)).toBe(true);
-      expect(describeCron(named)).toBe(describeCron(numeric));
+      expect(describeCron(named, t)).toBe(describeCron(numeric, t));
     });
 
     it("produces the numeric path's exact phrases for named single tokens", () => {
-      expect(describeCron("0 0 * * MON")).toBe("Every Monday at 00:00");
-      expect(describeCron("0 0 * * SUN")).toBe("Every Sunday at 00:00");
+      expect(describeCron("0 0 * * MON", t)).toBe("Every Monday at 00:00");
+      expect(describeCron("0 0 * * SUN", t)).toBe("Every Sunday at 00:00");
     });
   });
 
   // w1/m145: 7 is not Sunday to bex-api, so it gets no Sunday preview; ? is
   // robfig's synonym for *, so it previews exactly like *.
   it("previews ? like * and gives 7 no preview", () => {
-    expect(describeCron("0 0 * * 7")).toBeNull();
-    expect(describeCron("0 0 ? * *")).toBe("Every day at 00:00");
-    expect(describeCron("0 8 ? * 1")).toBe("Every Monday at 08:00");
-    expect(describeCron("? ? ? ? ?")).toBe("Every minute");
+    expect(describeCron("0 0 * * 7", t)).toBeNull();
+    expect(describeCron("0 0 ? * *", t)).toBe("Every day at 00:00");
+    expect(describeCron("0 8 ? * 1", t)).toBe("Every Monday at 08:00");
+    expect(describeCron("? ? ? ? ?", t)).toBe("Every minute");
+  });
+});
+
+// w4/m188: the preview phrases and weekday names were English literals, so the
+// translated "{description} · 使用 UTC" wrapper interpolated an English
+// sentence. Every phrase branch now resolves through the caller's translator.
+describe("describeCron in Chinese", () => {
+  const zh = translator("zh");
+
+  it("localizes every phrase branch", () => {
+    expect(describeCron("* * * * *", zh)).toBe("每分钟");
+    expect(describeCron("*/5 * * * *", zh)).toBe("每 5 分钟");
+    expect(describeCron("0 * * * *", zh)).toBe("每小时");
+    expect(describeCron("*/70 * * * *", zh)).toBe("每小时");
+    expect(describeCron("30 * * * *", zh)).toBe("每小时第 30 分钟");
+    expect(describeCron("0 */2 * * *", zh)).toBe("每 2 小时");
+    expect(describeCron("15 */30 * * *", zh)).toBe("每天 00:15");
+    expect(describeCron("30 9 * * *", zh)).toBe("每天 09:30");
+    expect(describeCron("0 0 1 * *", zh)).toBe("每月 1 日 00:00");
+  });
+
+  it("localizes every weekday, numeric and named alike", () => {
+    const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const names = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    days.forEach((day, i) => {
+      expect(describeCron(`0 0 * * ${i}`, zh)).toBe(`每${day} 00:00`);
+      expect(describeCron(`0 0 * * ${names[i]}`, zh)).toBe(`每${day} 00:00`);
+    });
+    expect(describeCron("0 0 * * MON", t)).toBe("Every Monday at 00:00");
+  });
+
+  it("keeps the same null fallbacks in every language", () => {
+    for (const s of [
+      "*/40 * * * *",
+      "0 */5 * * *",
+      "99 99 * * *",
+      "0 0 * * 7",
+    ]) {
+      expect(describeCron(s, zh)).toBeNull();
+    }
   });
 });

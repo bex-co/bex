@@ -86,7 +86,7 @@ export function CronDeploySection({
             return null;
           }}
           describe={(value) => {
-            const description = describeCron(value);
+            const description = describeCron(value, t);
             return description
               ? t("services.deploySchedulePreview", { description })
               : null;

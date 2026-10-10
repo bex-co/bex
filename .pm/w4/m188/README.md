@@ -1,16 +1,16 @@
 # w4 · m188 — Translate hosting times and cron previews
 
-**Worker:** worker4 **Goal:** relative hosting ages/countdowns and cron schedule explanations follow the selected dashboard language while preserving the exact API instants and scheduling semantics. **Status:** todo
+**Worker:** worker4 **Goal:** relative hosting ages/countdowns and cron schedule explanations follow the selected dashboard language while preserving the exact API instants and scheduling semantics. **Status:** in progress (t001, t002, t003, t005 done; live acceptance pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Translate relative ages and countdowns with the active translator | 45m | — |
-| t002 | Translate supported cron preview phrases and weekdays in both forms | 35m | — |
-| t003 | Audit and verify the shared callers, direct session label and aliases | 25m | w4/m188/t001, w4/m188/t002 |
+| t001 | Translate relative ages and countdowns with the active translator — **DONE** | 45m | — |
+| t002 | Translate supported cron preview phrases and weekdays in both forms — **DONE** | 35m | — |
+| t003 | Audit and verify the shared callers, direct session label and aliases — **DONE** | 25m | w4/m188/t001, w4/m188/t002 |
 | t004 | Render parity: retain UTC schedule and API timestamp contracts | 15m | w4/m188/t003 |
-| t005 | Simplify the changed localization paths | 15m | w4/m188/t004 |
+| t005 | Simplify the changed localization paths — **DONE** | 15m | w4/m188/t004 |
 | t006 | Test locale changes, current English controls and existing guards | 40m | w4/m188/t004, w4/m188/t005 |
 | t007 | Closeout after live acceptance and cleanup | 10m | w4/m188/t006 |
 

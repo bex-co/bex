@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { ResourceTable } from "../resource-table";
 import type { ResourceRow } from "../../types";
 import { formatRelativeAge } from "@/features/services/lib/format";
+import { translator } from "@/test/translator";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => (
@@ -102,10 +103,11 @@ describe("ResourceTable", () => {
     expect(screen.getByText("Valkey 8.1")).toBeInTheDocument();
     expect(screen.getAllByLabelText("Not available").length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText(formatRelativeAge(updatedAt)).length,
+      screen.getAllByText(formatRelativeAge(updatedAt, translator("en")))
+        .length,
     ).toBeGreaterThan(0);
     expect(
-      screen.queryByText(formatRelativeAge(createdAt)),
+      screen.queryByText(formatRelativeAge(createdAt, translator("en"))),
     ).not.toBeInTheDocument();
   });
 

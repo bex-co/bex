@@ -10,6 +10,10 @@ import {
   formatRelativeAge,
   formatRelativeUntil,
 } from "@/features/services/lib/format";
+import i18n from "@/i18n/init";
+import { translator } from "@/test/translator";
+
+const t = translator("en");
 
 // w6/m102: formatRelativeAge/formatRelativeUntil measure elapsed time against a
 // fresh Date.now(), evaluated once on the SSR pass and again on hydration. A
@@ -38,7 +42,7 @@ describe("RelativeAge / RelativeUntil", () => {
   it("renders the same visible text as the bare formatter", () => {
     vi.spyOn(Date, "now").mockReturnValue(SERVER_NOW + 3 * 3600_000);
     render(<RelativeAge value={INSTANT} />);
-    expect(screen.getByText(formatRelativeAge(INSTANT))).toBeInTheDocument();
+    expect(screen.getByText(formatRelativeAge(INSTANT, t))).toBeInTheDocument();
   });
 
   it("renders the machine-readable instant in dateTime", () => {
@@ -53,7 +57,9 @@ describe("RelativeAge / RelativeUntil", () => {
     const future = new Date(CLIENT_NOW + 5 * 60_000).toISOString();
     vi.spyOn(Date, "now").mockReturnValue(CLIENT_NOW);
     render(<RelativeUntil value={future} />);
-    expect(screen.getByText(formatRelativeUntil(future))).toBeInTheDocument();
+    expect(
+      screen.getByText(formatRelativeUntil(future, t)),
+    ).toBeInTheDocument();
   });
 
   it("renders the fallback, with no <time>, for a missing or unparseable value", () => {
@@ -125,7 +131,7 @@ describe("RelativeAge / RelativeUntil", () => {
     // regression that dropped suppressHydrationWarning from the wrapper. The
     // formatter has to run inside a component so each pass re-reads Date.now().
     const BareAge = () => (
-      <time dateTime={INSTANT}>{formatRelativeAge(INSTANT)}</time>
+      <time dateTime={INSTANT}>{formatRelativeAge(INSTANT, t)}</time>
     );
     expect(recoverableErrors(<BareAge />).length).toBeGreaterThan(0);
   });
@@ -191,5 +197,52 @@ describe("RelativeTime mounted clock", () => {
     );
     unmount();
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+// w4/m188: the wrapper formatted without any language, so a Chinese page read
+// "now" / "2m" / "in 83d" beside translated labels. It now formats through the
+// active translator and follows a settled in-place language switch, while the
+// exact instant in dateTime/title stays untouched.
+describe("RelativeTime language", () => {
+  afterEach(async () => {
+    await act(() => i18n.changeLanguage("en"));
+  });
+
+  it("renders the recorded cron header buckets in Chinese and back in English", async () => {
+    const lastSuccess = "2026-10-09T11:33:46Z";
+    const nextRun = "2027-01-01T00:00:00Z";
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-09T11:34:00Z"));
+    const { container } = render(
+      <>
+        <RelativeAge value={lastSuccess} title="exact last" />
+        <RelativeUntil value={nextRun} />
+        <RelativeAge value={null} fallback="Never" />
+      </>,
+    );
+    const [age, until] = container.querySelectorAll("time");
+    expect(age).toHaveTextContent("now");
+    expect(until).toHaveTextContent("in 83d");
+
+    await act(() => i18n.changeLanguage("zh"));
+    expect(age).toHaveTextContent("刚刚");
+    expect(until).toHaveTextContent("83天后");
+    expect(age).toHaveAttribute("dateTime", lastSuccess);
+    expect(age).toHaveAttribute("title", "exact last");
+    expect(until).toHaveAttribute("dateTime", nextRun);
+    // A caller's fallback is the caller's copy, never reformatted.
+    expect(screen.getByText("Never")).toBeInTheDocument();
+
+    await act(() => i18n.changeLanguage("en"));
+    expect(age).toHaveTextContent("now");
+    expect(until).toHaveTextContent("in 83d");
+  });
+
+  it("renders a two-minute age as 2分钟 in a Chinese render", async () => {
+    await act(() => i18n.changeLanguage("zh"));
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse(INSTANT) + 2 * 60_000);
+    const { container } = render(<RelativeAge value={INSTANT} as="span" />);
+    expect(container.querySelector("span")).toHaveTextContent("2分钟");
+    expect(container.querySelector("time")).toBeNull();
   });
 });

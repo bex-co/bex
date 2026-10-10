@@ -4716,6 +4716,79 @@ const zhServices: Record<string, TranslationEntry> = {
       "工作区中还没有环境组。创建一个包含变量和文件、并预先选择此服务的环境组。",
     description: "Service group create-first empty state",
   },
+  "services.cronEveryMinute": {
+    message: "每分钟",
+    description: "Cron schedule preview phrase (w4/m188): fires every minute",
+  },
+  "services.cronEveryNMinutes": {
+    message: "每 {n} 分钟",
+    description:
+      "Cron schedule preview phrase (w4/m188): uniform minute step; n is the step",
+  },
+  "services.cronEveryHour": {
+    message: "每小时",
+    description:
+      "Cron schedule preview phrase (w4/m188): fires at minute 0 of every hour",
+  },
+  "services.cronEveryNHours": {
+    message: "每 {n} 小时",
+    description:
+      "Cron schedule preview phrase (w4/m188): uniform hour step; n is the step",
+  },
+  "services.cronHourlyAtMinute": {
+    message: "每小时第 {minute} 分钟",
+    description:
+      "Cron schedule preview phrase (w4/m188): fires once an hour at the given minute",
+  },
+  "services.cronDailyAt": {
+    message: "每天 {time}",
+    description: "Cron schedule preview phrase (w4/m188): daily at HH:MM (UTC)",
+  },
+  "services.cronWeeklyAt": {
+    message: "每{day} {time}",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekly; day is a services.cronDay* weekday name, time is HH:MM (UTC)",
+  },
+  "services.cronMonthlyAt": {
+    message: "每月 {day} 日 {time}",
+    description:
+      "Cron schedule preview phrase (w4/m188): monthly on a day of the month at HH:MM (UTC)",
+  },
+  "services.cronDaySunday": {
+    message: "周日",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayMonday": {
+    message: "周一",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayTuesday": {
+    message: "周二",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayWednesday": {
+    message: "周三",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayThursday": {
+    message: "周四",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDayFriday": {
+    message: "周五",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
+  "services.cronDaySaturday": {
+    message: "周六",
+    description:
+      "Cron schedule preview phrase (w4/m188): weekday name inserted into services.cronWeeklyAt",
+  },
 };
 
 export default zhServices;
