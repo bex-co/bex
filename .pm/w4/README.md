@@ -236,6 +236,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **238** — [Top queries loses timing columns on a narrow database page](238.md) (55m) ← live qa-find-bugs 2026-10-10 pass a54; the 320px query cell pushes Mean time outside a 390px viewport and collapses numeric columns.
 - [ ] **237** — [Trigger Run omits its replacement warning while cron history catches up](237.md) (45m) ← live qa-find-bugs 2026-10-10 pass a53; the accepted replacement is absent from the first history read, hiding its consequence in the next confirmation.
 - [ ] **236** — [Metrics puts runtime service changes under Configuration](236.md) (55m) ← live qa-find-bugs 2026-10-10 pass a52; Lifecycle omits actual suspended/resumed facts that Configuration includes, on fresh desktop and mobile loads.
 - [ ] **235** — [Static rule fields collapse to a few characters on mobile](235.md) (55m) ← live qa-find-bugs 2026-10-10 pass a50; header fields shrink to 38px and redirect fields to 54px despite correct saved values.
@@ -343,7 +344,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **178** — [Refresh log-filter discovery while the page remains open](blocked/178.md) — **BLOCKED (release pipeline deploys dashboard; QA replays open-page OPTIONS/TRACE discovery within one 30s poll on an owned service, then cleans up)**. Shared-hook polling, stale-answer retention and real-Apollo regressions done 2026-10-03.
 
-- [ ] **177** — [Report suspended Postgres SQL execution as unavailable](blocked/177.md) — **BLOCKED (release pipeline deploys backend + dashboard; QA replays owned Free suspend/SQL/resume across UI/REST/GraphQL/MCP, then cleans up)**. Server 503 guard, console suspension state (en/zh) and regressions done 2026-10-03.
+- [ ] **177** — [Report suspended Postgres SQL execution as unavailable](blocked/177.md) — **BLOCKED (release pipeline deploys backend + dashboard; QA replays owned Free suspend/SQL/resume across UI/REST/GraphQL/MCP, then cleans up)**. Server 503 guard, console suspension state (en/zh) and regressions done 2026-10-03. Follow-up 2026-10-10 a54: initial Creating still offers SQL and returns internal error; UI readiness work pending (45m + original live closeout 10m).
 
 - [x] **176** — [Correct environment-group link/unlink retention promises](done/176.md) — **Done 2026-10-04**, hosted replay on production (dashboard `8f6a69e9e` ⊇ `571ce3c08`). On fresh group pages in en and zh, the Linked Services warning and the link/unlink toasts say the service may restart even with auto-deploy off. That matched the observed automatic rev-2/3/4/5 and HTTP marker changes on an autoDeploy=false fixture. The content-only group write stayed gated (rev-4, old marker). Fixtures were deleted (404).
 
