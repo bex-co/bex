@@ -92,7 +92,7 @@ export function NewServicePage() {
       ? cronScheduleProblem(form.schedule)
       : null;
   const scheduleDescription = shape.isCronType
-    ? describeCron(form.schedule)
+    ? describeCron(form.schedule, t)
     : null;
   // Only a port-binding type reads the field, so a stale draft under a worker
   // never shows an error (or blocks Submit) for a value nothing will send.

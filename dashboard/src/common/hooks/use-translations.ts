@@ -55,3 +55,6 @@ export function useTranslations() {
 
   return { t, i18n };
 }
+
+/** The translator `useTranslations()` returns, for helpers that take the caller's `t`. */
+export type Translate = ReturnType<typeof useTranslations>["t"];

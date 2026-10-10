@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import i18n from "@/i18n/init";
 import {
   HeadContent,
   Outlet,
@@ -1392,6 +1393,37 @@ describe("NewServicePage", () => {
       expect(
         screen.getByText(/Every day at 00:00 · runs in UTC/i),
       ).toBeInTheDocument();
+    });
+
+    // w4/m188: the phrase inside the translated "{description} · 使用 UTC"
+    // wrapper was an English sentence; it now follows the active language.
+    it("localizes the schedule preview with the active language", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      const schedule = screen.getByLabelText("Schedule");
+      await user.type(schedule, "*/5 * * * *");
+      expect(
+        screen.getByText("Every 5 minutes · runs in UTC"),
+      ).toBeInTheDocument();
+      try {
+        await act(() => i18n.changeLanguage("zh"));
+        expect(screen.getByText("每 5 分钟 · 使用 UTC")).toBeInTheDocument();
+        await user.clear(schedule);
+        await user.type(schedule, "0 0 * * MON");
+        expect(screen.getByText("每周一 00:00 · 使用 UTC")).toBeInTheDocument();
+        // A non-uniform step keeps the generic hint, never an interval claim.
+        await user.clear(schedule);
+        await user.type(schedule, "*/40 * * * *");
+        expect(
+          screen.getByText(
+            "5 字段 crontab 表达式（分 时 日 月 周），使用 UTC。",
+          ),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/每 40 分钟/)).not.toBeInTheDocument();
+      } finally {
+        await act(() => i18n.changeLanguage("en"));
+      }
     });
 
     it("enables Deploy when schedule and start command are valid", async () => {
