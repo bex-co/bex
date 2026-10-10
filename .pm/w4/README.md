@@ -234,6 +234,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **232** — [Deploy history silently loses an older row after a new deployment arrives](232.md) (55m) ← live qa-find-bugs 2026-10-10 pass a44; a refreshed head leaves a gap before a retained tail, hides Load more, and reload restores the missing deployment.
+
 - [ ] **231** — [Created environment stays absent after the create refresh finishes](231.md) (55m) ← live qa-find-bugs 2026-10-10 pass a42; a naturally overlapping pre-save list read is accepted as the post-create refresh, while settled-page creation passes.
 
 - [ ] **230** — [Cron history Load more cannot recover older runs after a new arrival](230.md) (55m) ← live qa-find-bugs 2026-10-10 pass a40; successful older-page responses stay hidden after a shifted head, and reload recovers the identical response.
