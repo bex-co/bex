@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m56** — [Publish complete service settings before rolling a release](m56/README.md) (7 tasks; 4h15m) ← functional CLI QA, 2026-10-10; both clients execute a cleared pre-deploy command during a successful compound save.
+
 - [x] **m55** — [Preserve literal commas in service name filters](done/m55/README.md) (7 tasks; 3h45m) ← functional CLI QA, 2026-10-09; both clients fail named update/clone, actual pinned query encoding and runtime controls recorded. — **DONE 2026-10-10** (server fix `1899e517d`; live two-client replay passed)
 
 - [x] **m54** — [Accept one-sided CLI build filters](done/m54/README.md) (7 tasks; 2h20m) ← live CLI QA + exact-source gate probe, 2026-10-09 UTC; upstream serializer/schema mismatch documented. — **DONE 2026-10-09**
