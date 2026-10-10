@@ -1934,7 +1934,8 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	for _, p := range pendings {
 		svc, err := idx.classifyRefs(p.svc, p.refVars)
 		if err != nil {
-			return parsedStack{}, err
+			// Attributed to its service so validation can locate the env entry.
+			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceService, name: p.svc.req.Name, err: err}}
 		}
 		st.services = append(st.services, svc)
 	}
@@ -2046,16 +2047,21 @@ func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (par
 		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
 			return parsedService{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
 		}
+		// host, hostport and port all name a declared sibling's network address,
+		// which only web/private services have; a worker, cron job or static
+		// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
+		// An undeclared host target is resolved out-of-file at apply instead.
+		if r.FromService != nil && r.FromService.EnvVarKey == "" && idx.names[r.FromService.Name] && serviceRefProperty[r.FromService.Property] {
+			if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
+				return parsedService{}, fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+			}
+		}
 		// host/hostport inject the sibling's slug — minted at create (w4/m19),
-		// so resolution is deferred to apply like databaseRefs above.
-		// Addressability is validated here, all-or-nothing; the port half is
-		// already known and resolved into the ref now.
+		// so resolution is deferred to apply like databaseRefs above. The port
+		// half is already known and resolved into the ref now.
 		if r.FromService != nil && r.FromService.EnvVarKey == "" &&
 			(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
-			port, addressable := idx.servicePorts[r.FromService.Name]
-			if !addressable && r.FromService.Property == serviceRefPropertyHost && idx.names[r.FromService.Name] {
-				return parsedService{}, fmt.Errorf("%w: service %q: fromService host references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
-			}
+			port := idx.servicePorts[r.FromService.Name]
 			svc.hostRefs = append(svc.hostRefs, hostRef{
 				key: r.Key, target: r.FromService.Name, port: port,
 				hostport: r.FromService.Property == serviceRefPropertyHostPort,
