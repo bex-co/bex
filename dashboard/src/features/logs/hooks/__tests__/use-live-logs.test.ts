@@ -138,9 +138,7 @@ describe("useLiveLogs", () => {
   it("dedupes a reconnect replay whose timestamp lost sub-millisecond precision", () => {
     const { result } = renderHook(() => useLiveLogs(baseOpts()));
     act(() =>
-      last!.frame(
-        renderLog("01", "bv1", "2026-08-20T20:51:50.123456789Z"),
-      ),
+      last!.frame(renderLog("01", "bv1", "2026-08-20T20:51:50.123456789Z")),
     );
     flush();
     expect(result.current.lines).toHaveLength(1);
@@ -310,6 +308,30 @@ describe("useLiveLogs", () => {
       useLiveLogs(baseOpts({ startTime: "2026-08-27T01:00:00.000Z" })),
     );
     expect(params(last!.url).get("startTime")).toBe("2026-08-27T01:00:00.000Z");
+  });
+
+  it("sends an opted-in display textMode only alongside text (w4/m189)", () => {
+    renderHook(() =>
+      useLiveLogs(
+        baseOpts({ text: "QA_A31_ANSI_red_end", textMode: "display" }),
+      ),
+    );
+    expect(params(last!.url).get("textMode")).toBe("display");
+    renderHook(() => useLiveLogs(baseOpts({ textMode: "display" })));
+    expect(params(last!.url).has("textMode")).toBe(false);
+    renderHook(() => useLiveLogs(baseOpts({ text: "red" })));
+    expect(params(last!.url).has("textMode")).toBe(false);
+  });
+
+  it("reopens a fresh tail when only the text mode changes", () => {
+    const { rerender } = renderHook((props) => useLiveLogs(props), {
+      initialProps: baseOpts({ text: "red" }),
+    });
+    const raw = last!;
+    rerender(baseOpts({ text: "red", textMode: "display" }));
+    expect(raw.closed).toBe(true);
+    expect(last).not.toBe(raw);
+    expect(params(last!.url).get("textMode")).toBe("display");
   });
 
   it("omits startTime entirely when no window is given (the build tail)", () => {

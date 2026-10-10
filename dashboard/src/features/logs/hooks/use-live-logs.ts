@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { config } from "@/config/config";
 import { fromRenderLog, type RenderLog } from "../lib/map";
-import { LOG_TYPE_ALL, type LogLine, type LogTypeFilter } from "../types";
+import {
+  LOG_TYPE_ALL,
+  type LogLine,
+  type LogTextMode,
+  type LogTypeFilter,
+} from "../types";
 
 /*
  * DELIBERATE DIVERGENCE FROM RENDER — transport.
@@ -47,12 +52,14 @@ function subscribeUrl(
   resource: string,
   type: LogTypeFilter,
   text: string,
+  textMode: LogTextMode | undefined,
   instance: string,
   startTime: string,
 ): string {
   const params = new URLSearchParams({ resource });
   if (type !== LOG_TYPE_ALL) params.set("type", type);
   if (text) params.set("text", text);
+  if (text && textMode) params.set("textMode", textMode);
   if (instance) params.set("instance", instance);
   // The tail's lower bound: the selected history window's start (w6/m111). The
   // FIRST connect then follows the pod from the window edge instead of replaying
@@ -71,6 +78,8 @@ export interface UseLiveLogsOptions {
   enabled: boolean;
   type: LogTypeFilter;
   text: string;
+  /** Display-text matching for `text` (w4/m189); omitted keeps raw bytes. */
+  textMode?: LogTextMode;
   /** Replica filter — the one structured filter the tail honors (a pod name). */
   instance: string;
   /**
@@ -122,6 +131,7 @@ export function useLiveLogs({
   enabled,
   type,
   text,
+  textMode,
   instance,
   startTime = "",
   maxLines = DEFAULT_MAX_LINES,
@@ -142,7 +152,7 @@ export function useLiveLogs({
   // reconnects, and setState stays out of the effect body. The buffer carries
   // its subKey so a stale effect's final flush (cleanup ordering: the reset
   // lands first) can tell it no longer owns the buffer and drop its batch.
-  const subKey = `${resource}|${enabled}|${type}|${text}|${instance}`;
+  const subKey = `${resource}|${enabled}|${type}|${text}|${textMode}|${instance}`;
   const [buffer, setBuffer] = useState<{ key: string; lines: LogLine[] }>({
     key: subKey,
     lines: [],
@@ -190,7 +200,14 @@ export function useLiveLogs({
     let pending: LogLine[] = [];
     let flushTimer: ReturnType<typeof setTimeout> | undefined;
     const es = createEventSource(
-      subscribeUrl(resource, type, text, instance, startTimeRef.current),
+      subscribeUrl(
+        resource,
+        type,
+        text,
+        textMode,
+        instance,
+        startTimeRef.current,
+      ),
     );
 
     // Flush the pending batch into the ring buffer: dedupe against the key
@@ -277,8 +294,9 @@ export function useLiveLogs({
     enabled,
     type,
     text,
+    textMode,
     instance,
-    // Derived from the five above — listed for exhaustive-deps; it changes
+    // Derived from the six above — listed for exhaustive-deps; it changes
     // exactly when they do.
     subKey,
     maxLines,
