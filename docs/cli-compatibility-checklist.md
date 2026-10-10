@@ -217,7 +217,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--build-command`
     - [x] `--start-command`
     - [x] `--pre-deploy-command`
-    - [x] `--cron-command` — exact configured native-cron replacement
+    - [x] `--cron-command` — exact configured native-cron replacement. **Image-runtime crons: upstream limitation (w8/072, 2026-10-09).** The pinned client refuses locally (`--build-command and --cron-command are only supported for native runtimes`, `pkg/service/update.go:403-411`) and sends no PATCH, although image cron creation accepts a command and bex-api stores and runs an `envSpecificDetails.dockerCommand`/`startCommand` PATCH. Workaround: PATCH the API directly. Upstream fix prepared in `.pm/w8/blocked/072-upstream.patch`; no bex-side change.
     - [x] `--cron-schedule`
     - [x] `--health-check-path`
     - [x] `--auto-deploy`
