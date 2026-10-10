@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m193** — [Keep Key Value logical storage separate from physical PVC capacity](m193/README.md) (6 tasks) ← live qa-find-bugs 2026-10-10 pass a36; default Free catalog 1 GB but three APIs and Metrics read 10 GiB.
+
 - [ ] **m192** — [Keep paused logs visible and merge live rows chronologically](m192/README.md) (7 tasks) ← live qa-find-bugs 2026-10-10 cycle34; pause drops recent visible rows and Live replay appears below newer history.
 - [ ] **m191** — [Track TCP and HTTP root health changes as different releases](m191/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09–10 cycle33; a healthy mode change rolls an instance under the old revision and falsely cancels its deployment.
 - [ ] **m190** — [Send service hostnames in HTTP health probes](m190/README.md) (7 tasks) ← live qa-find-bugs 2026-10-09 cycle32; pod-IP Host prevents a publicly healthy hostname-restricted web app from completing HTTP-health deployment.
@@ -231,6 +233,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 - [x] **m107** — [Log history past the newest 100 lines is unreachable on GraphQL and MCP](done/m107/README.md) (8 tasks) ← from live `/qa-find-bugs` 2026-09-14 pass 37; done 2026-09-16 (REST next-page cursors followable; GraphQL/MCP return the Render envelope; dashboard pages on scroll-up + truncation notice; `get_postgres_logs`/`get_key_value_logs` stay bare by design — use `list_logs`)
 
 ## Inbox
+
+- [ ] **228** — [Datastore log text and instance filters disappear on reload](228.md) (55m) ← live qa-find-bugs 2026-10-10 pass a36; Key Value text/instance and Postgres text reset, while service text and datastore range persist.
 
 - [ ] **227** — [Cron “Last run” labels the last successful run](227.md) (30m) ← live `$qa-find-bugs w4`, 2026-10-09 pass a27; fresh English/Chinese failure repro with correct last-success API data and passing run controls.
 
