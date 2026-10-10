@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m194** — [Clear cron overrides without restoring an old command](m194/README.md) (7 tasks) ← live qa-find-bugs 2026-10-10 pass a48; two correct empty-command saves leave the legacy Blueprint fallback executing after the carrying deploy is Live.
+
 - [ ] **m193** — [Keep Key Value logical storage separate from physical PVC capacity](m193/README.md) (6 tasks) ← live qa-find-bugs 2026-10-10 pass a36; default Free catalog 1 GB but three APIs and Metrics read 10 GiB.
 
 - [ ] **m192** — [Keep paused logs visible and merge live rows chronologically](m192/README.md) (7 tasks) ← live qa-find-bugs 2026-10-10 cycle34; pause drops recent visible rows and Live replay appears below newer history.
