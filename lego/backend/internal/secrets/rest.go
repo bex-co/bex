@@ -143,7 +143,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	}))
-	mux.HandleFunc("PUT "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	// Render's add-or-update-secret-file declares 201 as its only success, for
+	// an update too; the pinned client fills its typed result only on 201 (w8/074).
+	mux.HandleFunc("PUT "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[struct {
 			Content string `json:"content"`
 		}](r)
