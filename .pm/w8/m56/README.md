@@ -1,17 +1,17 @@
 # w8 · m56 — Publish complete service settings before rolling a release
 
-**Worker:** worker8 **Goal:** A successful compound settings update deploys only its complete requested configuration. **Status:** todo
+**Worker:** worker8 **Goal:** A successful compound settings update deploys only its complete requested configuration. **Status:** in progress (t001, t002, t004, t005, t006 done; t003 live replay pending deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Publish complete CR-owned compound settings once | 80m | — |
-| t002 | Audit table rows, adapters and persistence boundaries | 45m | t001 |
+| t001 | Publish complete CR-owned compound settings once — **DONE** | 80m | — |
+| t002 | Audit table rows, adapters and persistence boundaries — **DONE** | 45m | t001 |
 | t003 | Replay combined and single-field clears in both clients | 35m | t002 |
-| t004 | Verify Render and cross-surface settings contracts | 25m | t003 |
-| t005 | Simplify the changed code | 15m | t004 |
-| t006 | Add meaningful publication and execution regressions | 45m | t004 |
+| t004 | Verify Render and cross-surface settings contracts — **DONE** | 25m | t003 |
+| t005 | Simplify the changed code — **DONE** | 15m | t004 |
+| t006 | Add meaningful publication and execution regressions — **DONE** | 45m | t004 |
 | t007 | Close out after the observable outcome holds | 10m | t005, t006 |
 
 ## Definition of done
