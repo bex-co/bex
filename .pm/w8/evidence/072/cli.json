@@ -1,0 +1,176 @@
+{
+  "context": {
+    "date": "2026-10-09 UTC",
+    "bex": "published v0.3.2",
+    "upstream": "v2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+    "source_head": "a668150912f4be248deab4d6b819df94d74f6182",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "api": "https://api.bex.co/v1/",
+    "deployed_revision": "unobserved"
+  },
+  "create": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261009-78c2a4-cron",
+      "--type",
+      "cron_job",
+      "--image",
+      "busybox:1.37",
+      "--runtime",
+      "image",
+      "--cron-schedule",
+      "* * * * *",
+      "--cron-command",
+      "printf '%s\\n' \"$QA_MARKER\"; exit 0",
+      "--region",
+      "frankfurt",
+      "--plan",
+      "free",
+      "--auto-deploy=false",
+      "--env-var",
+      "QA_MARKER=qa-cron-pass-78c2a4",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.843,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"createdAt\": \"2026-10-09T08:48:23Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db4aklrjrdls73co06lg\",\n  \"id\": \"srv-db4aklrjrdls73co06lg\",\n  \"imagePath\": \"busybox:1.37\",\n  \"name\": \"qa-20261009-78c2a4-cron\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"command\": \"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\",\n    \"env\": \"image\",\n    \"envSpecificDetails\": {\n      \"startCommand\": \"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\"\n    },\n    \"nextRunAt\": \"2026-10-09T08:49:00Z\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"runtime\": \"image\",\n    \"schedule\": \"* * * * *\"\n  },\n  \"slug\": \"qa-20261009-78c2a4-cron\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"cron_job\",\n  \"updatedAt\": \"2026-10-09T08:48:23.155200954Z\"\n}",
+    "stderr": ""
+  },
+  "updates": [
+    {
+      "stage": "failure",
+      "intent_at": "2026-10-09T08:51:29.224326+00:00",
+      "command": [
+        "bex",
+        "services",
+        "update",
+        "srv-db4aklrjrdls73co06lg",
+        "--cron-command",
+        "printf '%s\\n' qa-cron-fail-78c2a4; exit 23",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "expected_marker": "qa-cron-fail-78c2a4",
+      "expected_command": "printf '%s\\n' qa-cron-fail-78c2a4; exit 23",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "update",
+          "srv-db4aklrjrdls73co06lg",
+          "--cron-command",
+          "printf '%s\\n' qa-cron-fail-78c2a4; exit 23",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 3.507,
+        "stdout": "",
+        "stderr": "Error: --build-command and --cron-command are only supported for native runtimes\n"
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4aklrjrdls73co06lg",
+        "body": null,
+        "status": "200",
+        "elapsed": 1.023,
+        "response": "{\"id\":\"srv-db4aklrjrdls73co06lg\",\"name\":\"qa-20261009-78c2a4-cron\",\"immutableName\":\"qa-20261009-78c2a4-cron\",\"slug\":\"qa-20261009-78c2a4-cron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4aklrjrdls73co06lg\",\"createdAt\":\"2026-10-09T08:48:23Z\",\"updatedAt\":\"2026-10-09T08:51:07Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA email redacted]\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\"},\"lastSuccessfulRunAt\":\"2026-10-09T08:51:07Z\",\"nextRunAt\":\"2026-10-09T08:52:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\",\"runs\":[{\"id\":\"crr-tsjle9va5a2vvscl4llj\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858931\",\"startedAt\":\"2026-10-09T08:51:00Z\",\"finishedAt\":\"2026-10-09T08:51:07Z\",\"status\":\"successful\"},{\"id\":\"crr-ejsmsd3jcnur2u0dbfn5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858930\",\"startedAt\":\"2026-10-09T08:50:00Z\",\"finishedAt\":\"2026-10-09T08:50:06Z\",\"status\":\"successful\"},{\"id\":\"crr-u5f8krhtevbenkqsmre4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858929\",\"startedAt\":\"2026-10-09T08:49:00Z\",\"finishedAt\":\"2026-10-09T08:49:05Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T08:51:07Z\",\"nextRunAt\":\"2026-10-09T08:52:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"none\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c24e2df11ad84-SJC"
+        }
+      }
+    },
+    {
+      "stage": "invalid-schedule",
+      "intent_at": "2026-10-09T08:51:33.933982+00:00",
+      "command": [
+        "bex",
+        "services",
+        "update",
+        "srv-db4aklrjrdls73co06lg",
+        "--cron-schedule",
+        "60 * * * *",
+        "--name",
+        "qa-20261009-78c2a4-cron-bad",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "update",
+          "srv-db4aklrjrdls73co06lg",
+          "--cron-schedule",
+          "60 * * * *",
+          "--name",
+          "qa-20261009-78c2a4-cron-bad",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 2.489,
+        "stdout": "",
+        "stderr": "Error: received response code 400 (SCHEDULE_INVALID): schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\n"
+      },
+      "readback": {
+        "method": "GET",
+        "path": "/v1/services/srv-db4aklrjrdls73co06lg",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.64,
+        "response": "{\"id\":\"srv-db4aklrjrdls73co06lg\",\"name\":\"qa-20261009-78c2a4-cron\",\"immutableName\":\"qa-20261009-78c2a4-cron\",\"slug\":\"qa-20261009-78c2a4-cron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4aklrjrdls73co06lg\",\"createdAt\":\"2026-10-09T08:48:23Z\",\"updatedAt\":\"2026-10-09T08:51:07Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA email redacted]\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\"},\"lastSuccessfulRunAt\":\"2026-10-09T08:51:07Z\",\"nextRunAt\":\"2026-10-09T08:52:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"printf '%s\\\\n' \\\"$QA_MARKER\\\"; exit 0\",\"runs\":[{\"id\":\"crr-tsjle9va5a2vvscl4llj\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858931\",\"startedAt\":\"2026-10-09T08:51:00Z\",\"finishedAt\":\"2026-10-09T08:51:07Z\",\"status\":\"successful\"},{\"id\":\"crr-ejsmsd3jcnur2u0dbfn5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858930\",\"startedAt\":\"2026-10-09T08:50:00Z\",\"finishedAt\":\"2026-10-09T08:50:06Z\",\"status\":\"successful\"},{\"id\":\"crr-u5f8krhtevbenkqsmre4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858929\",\"startedAt\":\"2026-10-09T08:49:00Z\",\"finishedAt\":\"2026-10-09T08:49:05Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T08:51:07Z\",\"nextRunAt\":\"2026-10-09T08:52:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"none\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c24f9de59dfce-SJC"
+        }
+      }
+    },
+    {
+      "stage": "actual same-pin Render comparison",
+      "intent_at": "2026-10-09T08:54:04.509124+00:00",
+      "command": [
+        "render",
+        "services",
+        "update",
+        "srv-db4aklrjrdls73co06lg",
+        "--cron-command",
+        "echo qa-cron-render-fail-78c2a4; exit 23",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "result": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "update",
+          "srv-db4aklrjrdls73co06lg",
+          "--cron-command",
+          "echo qa-cron-render-fail-78c2a4; exit 23",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 2.396,
+        "stdout": "",
+        "stderr": "Error: --build-command and --cron-command are only supported for native runtimes\n"
+      }
+    }
+  ]
+}

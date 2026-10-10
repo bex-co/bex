@@ -1,0 +1,17 @@
+package main
+import ("encoding/json";"fmt";"io";"net/http";"os";"strings")
+type fixtureTransport struct{}
+func (fixtureTransport) RoundTrip(r *http.Request)(*http.Response,error){
+ status,body:=200,"[]"
+ z:=map[string]any{"method":r.Method,"url":r.URL.String(),"kind":"offline fixture; dummy credential; no network"}
+ if r.URL.Path=="/v1/owners" && r.URL.Query().Get("name")=="known-qa" {body=`[{"owner":{"id":"tea-12345678901234567890","name":"known-qa","type":"team"},"cursor":"tea-12345678901234567890"}]`}
+ if r.URL.Path=="/v1/blueprints/validate" {
+  mr,err:=r.MultipartReader();if err!=nil{return nil,err};owner:=""
+  for {part,err:=mr.NextPart();if err==io.EOF{break};if err!=nil{return nil,err};v,err:=io.ReadAll(part);if err!=nil{return nil,err};if part.FormName()=="ownerId"{owner=string(v)};if part.FormName()=="file"{z["fileName"]=part.FileName();z["fileBytes"]=len(v);z["fileContent"]=string(v)}}
+  z["ownerId"]=owner;body=`{"valid":true}`;if owner!="tea-12345678901234567890" {status=403;body=`{"message":"fixture expects resolved workspace ID"}`}
+ }
+ if r.Method=="POST" && (r.URL.Path=="/v1/postgres" || r.URL.Path=="/v1/key-value") {v,err:=io.ReadAll(r.Body);if err!=nil{return nil,err};z["requestBody"]=string(v);var request map[string]any;if json.Unmarshal(v,&request)==nil{z["ownerId"]=request["ownerId"]};status=400;body=`{"message":"fixture deliberately refuses create; no resource exists"}`}
+ z["status"]=status;z["response"]=body;encoded,_:=json.Marshal(z);fmt.Fprintln(os.Stderr,"QA_FIXTURE",string(encoded))
+ return &http.Response{StatusCode:status,Status:fmt.Sprintf("%d fixture",status),Header:http.Header{"Content-Type":[]string{"application/json"}},Body:io.NopCloser(strings.NewReader(body)),Request:r},nil
+}
+func init(){http.DefaultTransport=fixtureTransport{}}

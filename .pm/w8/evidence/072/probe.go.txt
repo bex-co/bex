@@ -1,0 +1,45 @@
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "os"
+
+    "github.com/render-oss/cli/pkg/client"
+    "github.com/render-oss/cli/pkg/pointers"
+    "github.com/render-oss/cli/pkg/service"
+    servicetypes "github.com/render-oss/cli/pkg/types/service"
+)
+
+func before(runtime client.ServiceRuntime) client.Service {
+    var details client.Service_ServiceDetails
+    if err := details.FromCronJobDetails(client.CronJobDetails{Runtime: runtime}); err != nil { panic(err) }
+    return client.Service{Type: client.CronJob, ServiceDetails: details}
+}
+
+func main() {
+    cases := []struct {
+        name string
+        runtime client.ServiceRuntime
+        input servicetypes.ServiceUpdateInput
+        wantError bool
+    }{
+        {"image cron replace command", client.ServiceRuntimeImage, servicetypes.ServiceUpdateInput{CronCommand: pointers.From("echo qa-marker")}, false},
+        {"image cron clear command", client.ServiceRuntimeImage, servicetypes.ServiceUpdateInput{CronCommand: pointers.From("")}, false},
+        {"image cron omitted command preserves schedule-only", client.ServiceRuntimeImage, servicetypes.ServiceUpdateInput{CronSchedule: pointers.From("0 * * * *")}, false},
+        {"image cron build override still refused", client.ServiceRuntimeImage, servicetypes.ServiceUpdateInput{BuildCommand: pointers.From("make")}, true},
+        {"docker cron command control", client.ServiceRuntimeDocker, servicetypes.ServiceUpdateInput{CronCommand: pointers.From("echo qa-marker")}, false},
+        {"native cron command control", client.ServiceRuntimeGo, servicetypes.ServiceUpdateInput{CronCommand: pointers.From("echo qa-marker")}, false},
+    }
+    failed := false
+    for _, tc := range cases {
+        body, err := service.BuildUpdateRequest(before(tc.runtime), tc.input)
+        ok := (err != nil) == tc.wantError
+        wire, _ := json.Marshal(body)
+        var msg string
+        if err != nil { msg = err.Error() }
+        fmt.Printf("%s: pass=%v error=%q body=%s\n", tc.name, ok, msg, wire)
+        failed = failed || !ok
+    }
+    if failed { os.Exit(1) }
+}

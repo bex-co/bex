@@ -1,0 +1,49 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+
+import (
+ "encoding/json"
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+)
+
+// Private observation probe only: no product fix, cluster, network or apply.
+func TestQA73ParsedAddressability(t *testing.T) {
+ root:=os.Getenv("BEX_QA73_DIR");if root==""{t.Fatal("missing private probe directory")}
+ results:=[]map[string]any{}
+ for _,kind:=range []string{"web","worker","cron","static"}{
+  for _,property:=range []string{"host","port","hostport"}{
+   raw,err:=os.ReadFile(filepath.Join(root,"sweep73-"+kind+"-"+property+".yaml"));if err!=nil{t.Fatal(err)}
+   st,err:=parseStack(DeployRequest{Manifest:string(raw)});r:=map[string]any{"kind":kind,"property":property,"parse_accepted":err==nil,"phase":"actual current checkout parser and reference value projection; no apply"}
+   if err!=nil{r["error"]=err.Error()}else{
+    found:=false
+    for _,svc:=range st.services{
+     if !strings.HasSuffix(svc.req.Name,"-caller"){continue};found=true
+     for _,e:=range svc.req.Env{if e.Name=="UPSTREAM"{r["parsed_environment_value"]=e.Value}}
+     for _,ref:=range svc.hostRefs{if ref.key=="UPSTREAM"{r["deferred_port"]=ref.port;r["projection_with_sample_slug"]=ref.env("qa73-probe-slug").Value}}
+    };if !found{t.Fatal("caller absent from parsed stack")}
+   }
+   results=append(results,r)
+  }
+ }
+ b,err:=json.MarshalIndent(results,"","  ");if err!=nil{t.Fatal(err)}
+ if err=os.WriteFile(filepath.Join(root,"sweep73-parser-results.json"),append(b,'\n'),0600);err!=nil{t.Fatal(err)}
+ for _,r:=range results{t.Logf("kind=%s property=%s accepted=%v parsed_value=%v deferred_port=%v sample=%v error=%v",r["kind"],r["property"],r["parse_accepted"],r["parsed_environment_value"],r["deferred_port"],r["projection_with_sample_slug"],r["error"])}
+}

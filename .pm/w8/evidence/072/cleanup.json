@@ -1,0 +1,116 @@
+{
+  "id": "srv-db4aklrjrdls73co06lg",
+  "name": "qa-20261009-78c2a4-cron",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "state": "deleted: CLIack/detail404/runs404/listabsent/baseline present/quota termination0; direct cluster teardown unobserved",
+  "all_observed_scheduled_run_child_ids": [
+    "crr-51qiksenp35bh0ggudv9",
+    "crr-9fj2sbfij23gbc58tkue",
+    "crr-c5duft5pf58orsst90f1",
+    "crr-c8qahbrjped6med40hj2",
+    "crr-ejsmsd3jcnur2u0dbfn5",
+    "crr-i1430iqo9ggm6a5ntveq",
+    "crr-n69m4v45jlc1uhfrusl2",
+    "crr-n9ipjldc2tfhj5tir9rn",
+    "crr-rblims43aprmdh83re4g",
+    "crr-sr4gfhsjcl098ck3jvaj",
+    "crr-tsjle9va5a2vvscl4llj",
+    "crr-u5f8krhtevbenkqsmre4"
+  ],
+  "deploy_children": [
+    {
+      "createdAt": "2026-10-09T08:58:38.359989Z",
+      "finishedAt": "2026-10-09T08:58:39.114794Z",
+      "id": "dep-db4apfllm2ps739a420g",
+      "image": {
+        "ref": "busybox:1.37"
+      },
+      "status": "live",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-09T08:58:39.114796Z"
+    },
+    {
+      "createdAt": "2026-10-09T08:56:25.088963Z",
+      "finishedAt": "2026-10-09T08:56:38.980165Z",
+      "id": "dep-db4aoedlm2ps739a41ug",
+      "image": {
+        "ref": "busybox:1.37"
+      },
+      "status": "deactivated",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-09T08:58:39.117223Z"
+    },
+    {
+      "createdAt": "2026-10-09T08:48:23.099871Z",
+      "finishedAt": "2026-10-09T08:48:24.505235Z",
+      "id": "dep-db4aklrjrdls73co06m0",
+      "image": {
+        "ref": "busybox:1.37"
+      },
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-09T08:56:38.98401Z"
+    }
+  ],
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db4aklrjrdls73co06lg",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 7.161,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"createdAt\": \"2026-10-09T08:48:23Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-db4aklrjrdls73co06lg\",\n    \"id\": \"srv-db4aklrjrdls73co06lg\",\n    \"imagePath\": \"busybox:1.37\",\n    \"name\": \"qa-20261009-78c2a4-cron\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"command\": \"echo qa-cron-api-recover-78c2a4; exit 0\",\n      \"env\": \"image\",\n      \"envSpecificDetails\": {\n        \"startCommand\": \"echo qa-cron-api-recover-78c2a4; exit 0\"\n      },\n      \"lastSuccessfulRunAt\": \"2026-10-09T09:00:06Z\",\n      \"nextRunAt\": \"2026-10-09T09:01:00Z\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"region\": \"fsn1\",\n      \"runtime\": \"image\",\n      \"schedule\": \"* * * * *\"\n    },\n    \"slug\": \"qa-20261009-78c2a4-cron\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"cron_job\",\n    \"updatedAt\": \"2026-10-09T09:00:06Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db4aklrjrdls73co06lg",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.971,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47c3215b82cd81b-SJC"
+    }
+  },
+  "runs_after_delete": {
+    "method": "GET",
+    "path": "/v1/cron-jobs/srv-db4aklrjrdls73co06lg/runs",
+    "body": null,
+    "status": "404",
+    "elapsed": 2.004,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47c32222abe1679-SJC"
+    }
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 1.233,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47c3231587567a3-SJC"
+    }
+  },
+  "runtime_cleanup_limit": "cron has no public endpoint; direct Kubernetes descendant teardown unobserved; parent and scheduled-run API absence verified"
+}

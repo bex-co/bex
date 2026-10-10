@@ -1,0 +1,98 @@
+[
+  {
+    "at": "2026-10-09T18:29:02.744750+00:00",
+    "case": "worker-port",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa73-49894e7f72c88d63d2e1051fe618e26a",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa73-49894e7f72c88d63d2e1051fe618e26a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa73-49894e7f72c88d63d2e1051fe618e26a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep73-worker-port.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa-20261009-a428a5-caller\",\n      \"type\": \"web\",\n      \"runtime\": \"go\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"plan\": \"free\",\n      \"buildCommand\": \"go build -o app .\",\n      \"startCommand\": \"./app\",\n      \"envVars\": [\n        {\n          \"key\": \"UPSTREAM\",\n          \"fromService\": {\n            \"name\": \"qa-20261009-a428a5-target\",\n            \"type\": \"worker\",\n            \"property\": \"port\"\n          }\n        }\n      ]\n    },\n    {\n      \"name\": \"qa-20261009-a428a5-target\",\n      \"type\": \"worker\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"docker.io/traefik/whoami:v1.10.1\"\n      },\n      \"plan\": \"starter\"\n    }\n  ]\n}\n\r\n--qa73-49894e7f72c88d63d2e1051fe618e26a--\r\n"
+    },
+    "status": "200",
+    "elapsed": 1.311,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47f72d14f670f27-LAX"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261009-a428a5-caller\",\"qa-20261009-a428a5-target\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261009-a428a5-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261009-a428a5-target\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"4.90\",\"lines\":[{\"name\":\"qa-20261009-a428a5-target\",\"resourceKind\":\"service\",\"tier\":\"starter\",\"tierLabel\":\"Starter\",\"monthlyUsd\":\"4.90\",\"instanceUsd\":\"4.90\"}],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-09T18:29:04.236759+00:00",
+    "case": "cron-hostport",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa73-8243060111664745ad3b9244b9f905a8",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa73-8243060111664745ad3b9244b9f905a8\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa73-8243060111664745ad3b9244b9f905a8\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep73-cron-hostport.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa-20261009-a428a5-caller\",\n      \"type\": \"web\",\n      \"runtime\": \"go\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"plan\": \"free\",\n      \"buildCommand\": \"go build -o app .\",\n      \"startCommand\": \"./app\",\n      \"envVars\": [\n        {\n          \"key\": \"UPSTREAM\",\n          \"fromService\": {\n            \"name\": \"qa-20261009-a428a5-target\",\n            \"type\": \"cron\",\n            \"property\": \"hostport\"\n          }\n        }\n      ]\n    },\n    {\n      \"name\": \"qa-20261009-a428a5-target\",\n      \"type\": \"cron\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"docker.io/traefik/whoami:v1.10.1\"\n      },\n      \"plan\": \"free\",\n      \"schedule\": \"0 0 1 1 *\",\n      \"dockerCommand\": \"printf 'qa73-no-apply\\\\n'\"\n    }\n  ]\n}\n\r\n--qa73-8243060111664745ad3b9244b9f905a8--\r\n"
+    },
+    "status": "200",
+    "elapsed": 1.491,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47f72d7b9b8e9e0-LAX"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261009-a428a5-caller\",\"qa-20261009-a428a5-target\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261009-a428a5-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261009-a428a5-target\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[{\"name\":\"qa-20261009-a428a5-target\",\"reason\":\"cron\"}]}}\n"
+  },
+  {
+    "at": "2026-10-09T18:29:05.106416+00:00",
+    "case": "web-port",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa73-ca9aea2dc5f961adcb722a8e665c1ca6",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa73-ca9aea2dc5f961adcb722a8e665c1ca6\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa73-ca9aea2dc5f961adcb722a8e665c1ca6\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep73-web-port.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa-20261009-a428a5-caller\",\n      \"type\": \"web\",\n      \"runtime\": \"go\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"plan\": \"free\",\n      \"buildCommand\": \"go build -o app .\",\n      \"startCommand\": \"./app\",\n      \"envVars\": [\n        {\n          \"key\": \"UPSTREAM\",\n          \"fromService\": {\n            \"name\": \"qa-20261009-a428a5-target\",\n            \"type\": \"web\",\n            \"property\": \"port\"\n          }\n        }\n      ]\n    },\n    {\n      \"name\": \"qa-20261009-a428a5-target\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"docker.io/traefik/whoami:v1.10.1\"\n      },\n      \"plan\": \"free\"\n    }\n  ]\n}\n\r\n--qa73-ca9aea2dc5f961adcb722a8e665c1ca6--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.868,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47f72de6cc8991f-LAX"
+    },
+    "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa-20261009-a428a5-caller\",\"qa-20261009-a428a5-target\"],\"totalActions\":2,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261009-a428a5-caller\",\"sourcePath\":\"#/services/0\"},{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa-20261009-a428a5-target\",\"sourcePath\":\"#/services/1\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+  },
+  {
+    "at": "2026-10-09T18:29:06.070422+00:00",
+    "case": "cron-host",
+    "api_only": true,
+    "native_wire": "not intercepted",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/validate",
+      "content_type": "multipart/form-data; boundary=qa73-010dfdc25e48501eab858b4b6c1bf2bb",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace_header": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]",
+      "multipart_body": "--qa73-010dfdc25e48501eab858b4b6c1bf2bb\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--qa73-010dfdc25e48501eab858b4b6c1bf2bb\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep73-cron-host.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"services\": [\n    {\n      \"name\": \"qa-20261009-a428a5-caller\",\n      \"type\": \"web\",\n      \"runtime\": \"go\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"plan\": \"free\",\n      \"buildCommand\": \"go build -o app .\",\n      \"startCommand\": \"./app\",\n      \"envVars\": [\n        {\n          \"key\": \"UPSTREAM\",\n          \"fromService\": {\n            \"name\": \"qa-20261009-a428a5-target\",\n            \"type\": \"cron\",\n            \"property\": \"host\"\n          }\n        }\n      ]\n    },\n    {\n      \"name\": \"qa-20261009-a428a5-target\",\n      \"type\": \"cron\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"docker.io/traefik/whoami:v1.10.1\"\n      },\n      \"plan\": \"free\",\n      \"schedule\": \"0 0 1 1 *\",\n      \"dockerCommand\": \"printf 'qa73-no-apply\\\\n'\"\n    }\n  ]\n}\n\r\n--qa73-010dfdc25e48501eab858b4b6c1bf2bb--\r\n"
+    },
+    "status": "200",
+    "elapsed": 0.962,
+    "curl_exit": 0,
+    "stderr": "",
+    "response_headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47f72e4e9ebfa92-SJC"
+    },
+    "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa-20261009-a428a5-caller\\\": fromService host references \\\"qa-20261009-a428a5-target\\\" which has no network address (only web/private services are addressable)\",\"path\":\"services[0]\"}]}\n"
+  }
+]

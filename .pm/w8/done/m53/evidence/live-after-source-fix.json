@@ -1,0 +1,105 @@
+{
+  "observed_at": "2026-10-09T08:41:31.260086+00:00",
+  "source_head": "b9c54e155436a717da79a9e93571de0e1cc679cc",
+  "source_fix_commit": "1608b22e83dfe9344e7e98a850dd8b61274dad59",
+  "deployed_revision": "unobserved",
+  "classification": "existing finding still reproducible in production; source fix has not been verified live",
+  "mutation": "none",
+  "results": [
+    {
+      "label": "float",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-float.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.561,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "label": "scientific",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-scientific.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.713,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "label": "boolean",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-boolean.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.362,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 16,\n      \"error\": \"at '/services/0/envVars/0/value': got boolean, want string\",\n      \"line\": 12,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "label": "integer",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-integer.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.416,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"decode compiled Blueprint: json: cannot unmarshal number into Go struct field bexEnvVar.services.envVars.value of type string\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "label": "quoted integer",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "sweep22-envvalue-integer-quoted.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.374,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261008-e37b64-bp\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      }
+    }
+  ]
+}

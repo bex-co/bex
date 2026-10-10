@@ -1,0 +1,35 @@
+{
+  "services": [
+    {
+      "name": "qa-20261009-a428a5-caller",
+      "type": "web",
+      "runtime": "go",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "plan": "free",
+      "buildCommand": "go build -o app .",
+      "startCommand": "./app",
+      "envVars": [
+        {
+          "key": "UPSTREAM",
+          "fromService": {
+            "name": "qa-20261009-a428a5-target",
+            "type": "cron",
+            "property": "host"
+          }
+        }
+      ]
+    },
+    {
+      "name": "qa-20261009-a428a5-target",
+      "type": "cron",
+      "runtime": "image",
+      "image": {
+        "url": "docker.io/traefik/whoami:v1.10.1"
+      },
+      "plan": "free",
+      "schedule": "0 0 1 1 *",
+      "dockerCommand": "printf 'qa73-no-apply\\n'"
+    }
+  ]
+}

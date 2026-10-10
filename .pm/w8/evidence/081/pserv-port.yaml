@@ -1,0 +1,33 @@
+{
+  "services": [
+    {
+      "name": "qa-20261009-9c014e-caller",
+      "type": "web",
+      "runtime": "go",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/hello-go",
+      "plan": "free",
+      "buildCommand": "go build -o app .",
+      "startCommand": "./app",
+      "envVars": [
+        {
+          "key": "UPSTREAM",
+          "fromService": {
+            "name": "qa-20261009-9c014e-target",
+            "type": "pserv",
+            "property": "port"
+          }
+        }
+      ]
+    },
+    {
+      "name": "qa-20261009-9c014e-target",
+      "type": "pserv",
+      "runtime": "image",
+      "image": {
+        "url": "docker.io/traefik/whoami:v1.10.1"
+      },
+      "plan": "starter"
+    }
+  ]
+}

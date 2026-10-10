@@ -1,0 +1,3294 @@
+{
+  "sweep": 66,
+  "date": "2026-10-09T16:40:58.525944+00:00",
+  "bex_release": "v0.3.2",
+  "head": "c5e413f38324fdff0a36f4c3edc0063e889ce639",
+  "render_release": "v2.27.0",
+  "render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "render_module": "v1.1.3-0.20260909214233-a764810a7682",
+  "api_origin": "https://api.bex.co/v1/",
+  "workspace": {
+    "name": "bex-canary",
+    "id": "tea-daif693dqjvc73e7as3g"
+  },
+  "auth": "isolated human device OAuth; no credentials included",
+  "deployed_revision": "unobserved",
+  "native_wire": "not intercepted; connection-info responses contain credentials and remain private",
+  "owned_fixture": {
+    "sweep": 66,
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "postgres",
+    "name": "qa-20261009-771c24-pglogs",
+    "nonce": "771c24",
+    "role": "native SQL markers and managed PostgreSQL log filters",
+    "time": "2026-10-09T16:27:30.912009+00:00",
+    "dependency_ids": [],
+    "state": "deleted: CLIack/detail404/listempty/baseline present/former SQL connection refused/quota0 termination0",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261009-771c24-pglogs",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--version",
+      "18",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa_exit_771c24",
+      "--database-user",
+      "qa_user_771c24",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "capacity_proof": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.928,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ec0ca3b7c9063-BOS"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "expected_database": "qa_exit_771c24",
+    "expected_user": "qa_user_771c24",
+    "marker": "qa-psql-771c24",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "create",
+        "--name",
+        "qa-20261009-771c24-pglogs",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--version",
+        "18",
+        "--connection-pool",
+        "none",
+        "--database-name",
+        "qa_exit_771c24",
+        "--database-user",
+        "qa_user_771c24",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.115,
+      "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-09T16:27:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0\",\n    \"databaseName\": \"qa_exit_771c24\",\n    \"databaseUser\": \"qa_user_771c24\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db4hbsr93q6c73at04e0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261009-771c24-pglogs\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-09T16:27:31.985343668Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+      "stderr": ""
+    },
+    "id": "dpg-db4hbsr93q6c73at04e0",
+    "create_response": {
+      "connectionPool": "none",
+      "createdAt": "2026-10-09T16:27:31Z",
+      "dashboardUrl": "https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0",
+      "databaseName": "qa_exit_771c24",
+      "databaseUser": "qa_user_771c24",
+      "diskAutoscalingEnabled": false,
+      "diskSizeGB": 1,
+      "highAvailabilityEnabled": false,
+      "id": "dpg-db4hbsr93q6c73at04e0",
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": ""
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": ""
+        }
+      ],
+      "name": "qa-20261009-771c24-pglogs",
+      "owner": {
+        "email": "puncsky@gmail.com",
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "type": "team"
+      },
+      "plan": "free",
+      "readReplicas": [],
+      "region": "fsn1",
+      "role": "",
+      "status": "creating",
+      "suspended": "not_suspended",
+      "suspenders": null,
+      "updatedAt": "2026-10-09T16:27:31.985343668Z",
+      "version": "18",
+      "projectId": null
+    },
+    "pg_observations": [
+      {
+        "at": "2026-10-09T16:28:20.351764+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "postgres",
+            "get",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.69,
+          "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-09T16:27:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0\",\n    \"databaseName\": \"qa_exit_771c24\",\n    \"databaseUser\": \"qa_user_771c24\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db4hbsr93q6c73at04e0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261009-771c24-pglogs\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-09T16:27:32Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-09T16:29:21.915109+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "postgres",
+            "get",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.419,
+          "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-09T16:27:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0\",\n    \"databaseName\": \"qa_exit_771c24\",\n    \"databaseUser\": \"qa_user_771c24\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db4hbsr93q6c73at04e0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261009-771c24-pglogs\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-09T16:28:38Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-09T16:29:48.796697+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "postgres",
+            "get",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.702,
+          "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-09T16:27:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0\",\n    \"databaseName\": \"qa_exit_771c24\",\n    \"databaseUser\": \"qa_user_771c24\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db4hbsr93q6c73at04e0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261009-771c24-pglogs\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-09T16:28:38Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "last_readback": {
+      "connectionPool": "none",
+      "createdAt": "2026-10-09T16:27:31Z",
+      "dashboardUrl": "https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0",
+      "databaseName": "qa_exit_771c24",
+      "databaseUser": "qa_user_771c24",
+      "diskAutoscalingEnabled": false,
+      "diskSizeGB": 1,
+      "highAvailabilityEnabled": false,
+      "id": "dpg-db4hbsr93q6c73at04e0",
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": ""
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": ""
+        }
+      ],
+      "name": "qa-20261009-771c24-pglogs",
+      "owner": {
+        "email": "puncsky@gmail.com",
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "type": "team"
+      },
+      "plan": "free",
+      "readReplicas": [],
+      "region": "fsn1",
+      "role": "",
+      "status": "available",
+      "suspended": "not_suspended",
+      "suspenders": null,
+      "updatedAt": "2026-10-09T16:28:38Z",
+      "version": "18",
+      "projectId": null
+    },
+    "manual_render_trust": {
+      "path": "<private QA directory>/sweep66-own-ca.pem",
+      "state": "own CA removed after cached SQL and connection teardown controls",
+      "captured_at": "2026-10-09T16:29:56.446148+00:00"
+    },
+    "log_marker_specs": [
+      {
+        "client": "bex",
+        "level": "error",
+        "marker": "qa_s66_771c24_error_bex"
+      },
+      {
+        "client": "bex",
+        "level": "warning",
+        "marker": "qa_s66_771c24_warning_bex"
+      },
+      {
+        "client": "render",
+        "level": "error",
+        "marker": "qa_s66_771c24_error_render"
+      },
+      {
+        "client": "render",
+        "level": "warning",
+        "marker": "qa_s66_771c24_warning_render"
+      }
+    ],
+    "pg_log_generators": [
+      {
+        "client": "bex",
+        "level": "identity",
+        "marker": "qa_s66_771c24_identity",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db4hbsr93q6c73at04e0",
+          "--command",
+          "SELECT current_database(),current_user,'qa_s66_771c24_identity';",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "at": "2026-10-09T16:30:01.249149+00:00",
+        "state": "captured",
+        "exit": 0,
+        "elapsed": 6.419,
+        "stdout": "{\n  \"output\": \"qa_exit_771c24|qa_user_771c24|qa_s66_771c24_identity\\n\"\n}",
+        "stderr": "",
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "level": "error",
+        "marker": "qa_s66_771c24_error_bex",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db4hbsr93q6c73at04e0",
+          "--command",
+          "SELECT * FROM qa_s66_771c24_error_bex;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "at": "2026-10-09T16:30:07.698727+00:00",
+        "state": "captured",
+        "exit": 1,
+        "elapsed": 5.522,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist\nLINE 1: SELECT * FROM qa_s66_771c24_error_bex;\n                      ^\n",
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "level": "warning",
+        "marker": "qa_s66_771c24_warning_bex",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db4hbsr93q6c73at04e0",
+          "--command",
+          "DO $$ BEGIN RAISE WARNING 'qa_s66_771c24_warning_bex'; END $$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "at": "2026-10-09T16:30:13.251310+00:00",
+        "state": "captured",
+        "exit": 0,
+        "elapsed": 4.503,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": "",
+        "pass": false,
+        "execution_pass": true,
+        "diagnostic_visible": false,
+        "server_log_marker_confirmed": true,
+        "classification": "Successful SQL executed; returned diagnostics omitted; separately reproduced upstream candidate"
+      },
+      {
+        "client": "render",
+        "level": "error",
+        "marker": "qa_s66_771c24_error_render",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db4hbsr93q6c73at04e0",
+          "--command",
+          "SELECT * FROM qa_s66_771c24_error_render;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "at": "2026-10-09T16:30:17.785513+00:00",
+        "state": "captured",
+        "exit": 1,
+        "elapsed": 3.758,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  relation \"qa_s66_771c24_error_render\" does not exist\nLINE 1: SELECT * FROM qa_s66_771c24_error_render;\n                      ^\n",
+        "pass": true
+      },
+      {
+        "client": "render",
+        "level": "warning",
+        "marker": "qa_s66_771c24_warning_render",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db4hbsr93q6c73at04e0",
+          "--command",
+          "DO $$ BEGIN RAISE WARNING 'qa_s66_771c24_warning_render'; END $$;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-At",
+          "--set",
+          "ON_ERROR_STOP=1"
+        ],
+        "at": "2026-10-09T16:30:21.572249+00:00",
+        "state": "captured",
+        "exit": 0,
+        "elapsed": 3.539,
+        "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+        "stderr": "",
+        "pass": false,
+        "execution_pass": true,
+        "diagnostic_visible": false,
+        "server_log_marker_confirmed": true,
+        "classification": "Successful SQL executed; returned diagnostics omitted; separately reproduced upstream candidate"
+      }
+    ],
+    "pg_log_observations": [
+      {
+        "at": "2026-10-09T16:31:31.768235+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.295,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "marker_counts": {
+          "qa_s66_771c24_error_bex": 1,
+          "qa_s66_771c24_warning_bex": 1,
+          "qa_s66_771c24_error_render": 1,
+          "qa_s66_771c24_warning_render": 1
+        }
+      }
+    ],
+    "pg_log_query_results": [
+      {
+        "client": "bex",
+        "case": "all",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 4.123,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "error",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.888,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          }
+        ],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "warning",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "warning",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.485,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "warning-error-or",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "warning,error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.903,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "warn-alias",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "warn",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.037,
+          "stdout": "",
+          "stderr": "Error: invalid argument \"warn\" for \"--level\" flag: must be one of \"debug\", \"info\", \"notice\", \"warning\", \"error\", \"critical\", \"alert\", \"emergency\"\nUsage:\n  bex logs [flags]\n\nExamples:\n  # Tail logs for a service\n  bex logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  bex logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  bex logs --resources srv-abc123 --output json\n\nFlags:\n      --direction enum        Set log query direction (backward or forward)\n      --end time              Filter logs at or before the specified end time\n  -h, --help                  help for logs\n      --host strings          Filter logs by comma-separated host values\n      --instance strings      Filter logs by comma-separated instance IDs\n      --level enum            Filter logs by comma-separated log levels\n      --limit int             Limit the number of logs returned (default 100)\n      --method enum           Filter logs by comma-separated HTTP methods\n      --path strings          Filter logs by comma-separated request paths\n  -r, --resources strings     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start time            Filter logs at or after the specified start time\n      --status-code strings   Filter logs by comma-separated status codes\n      --tail                  Stream new logs\n      --task-id strings       Filter logs by comma-separated task IDs\n      --task-run-id strings   Filter logs by comma-separated task run IDs\n      --text strings          Filter logs by comma-separated text values\n      --type enum             Filter logs by comma-separated log types\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n"
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true,
+        "original_harness_pass": false,
+        "expected_exit": 1,
+        "classification": "Expected pinned enum refusal; initial harness wrongly expected server alias acceptance"
+      },
+      {
+        "client": "bex",
+        "case": "critical-alias",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "critical",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 4.019,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          }
+        ],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "unknown-level",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "qa-missing-level",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.036,
+          "stdout": "",
+          "stderr": "Error: invalid argument \"qa-missing-level\" for \"--level\" flag: must be one of \"debug\", \"info\", \"notice\", \"warning\", \"error\", \"critical\", \"alert\", \"emergency\"\nUsage:\n  bex logs [flags]\n\nExamples:\n  # Tail logs for a service\n  bex logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  bex logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  bex logs --resources srv-abc123 --output json\n\nFlags:\n      --direction enum        Set log query direction (backward or forward)\n      --end time              Filter logs at or before the specified end time\n  -h, --help                  help for logs\n      --host strings          Filter logs by comma-separated host values\n      --instance strings      Filter logs by comma-separated instance IDs\n      --level enum            Filter logs by comma-separated log levels\n      --limit int             Limit the number of logs returned (default 100)\n      --method enum           Filter logs by comma-separated HTTP methods\n      --path strings          Filter logs by comma-separated request paths\n  -r, --resources strings     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start time            Filter logs at or after the specified start time\n      --status-code strings   Filter logs by comma-separated status codes\n      --tail                  Stream new logs\n      --task-id strings       Filter logs by comma-separated task IDs\n      --task-run-id strings   Filter logs by comma-separated task run IDs\n      --text strings          Filter logs by comma-separated text values\n      --type enum             Filter logs by comma-separated log types\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n"
+        },
+        "expected_ids": [],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true,
+        "original_harness_pass": false,
+        "expected_exit": 1,
+        "classification": "Expected pinned enum refusal; initial harness wrongly expected server alias acceptance"
+      },
+      {
+        "client": "bex",
+        "case": "text-and-error",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--text",
+            "qa_s66_771c24_warning_bex",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.728,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          }
+        ],
+        "pass": null,
+        "classification": "Initial harness sent OR prefix plus narrower text; results satisfy that command; corrected single-text control follows"
+      },
+      {
+        "client": "bex",
+        "case": "exact-error",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--text",
+            "qa_s66_771c24_error_bex",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.863,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          }
+        ],
+        "pass": null,
+        "classification": "Initial harness sent OR prefix plus narrower text; results satisfy that command; corrected single-text control follows"
+      },
+      {
+        "client": "bex",
+        "case": "exact-instance",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--instance",
+            "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.235,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "missing-instance",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--instance",
+            "dpg-db4hbsr93q6c73at04e0-qa-missing",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.781,
+          "stdout": "",
+          "stderr": ""
+        },
+        "expected_ids": [],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "backward",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--direction",
+            "backward",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.402,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true
+      },
+      {
+        "client": "bex",
+        "case": "text-and-error",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--text",
+            "qa_s66_771c24_warning_bex",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.376,
+          "stdout": "",
+          "stderr": ""
+        },
+        "expected_ids": [],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "bex",
+        "case": "exact-error",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--text",
+            "qa_s66_771c24_error_bex",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.824,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "all",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.696,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "error",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 5.304,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "warning",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "warning",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 4.189,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "warning-error-or",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "warning,error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 4.091,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "warn-alias",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "warn",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.032,
+          "stdout": "",
+          "stderr": "Error: invalid argument \"warn\" for \"--level\" flag: must be one of \"debug\", \"info\", \"notice\", \"warning\", \"error\", \"critical\", \"alert\", \"emergency\"\nUsage:\n  render logs [flags]\n\nExamples:\n  # Tail logs for a service\n  render logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  render logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  render logs --resources srv-abc123 --output json\n\nFlags:\n      --direction enum        Set log query direction (backward or forward)\n      --end time              Filter logs at or before the specified end time\n  -h, --help                  help for logs\n      --host strings          Filter logs by comma-separated host values\n      --instance strings      Filter logs by comma-separated instance IDs\n      --level enum            Filter logs by comma-separated log levels\n      --limit int             Limit the number of logs returned (default 100)\n      --method enum           Filter logs by comma-separated HTTP methods\n      --path strings          Filter logs by comma-separated request paths\n  -r, --resources strings     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start time            Filter logs at or after the specified start time\n      --status-code strings   Filter logs by comma-separated status codes\n      --tail                  Stream new logs\n      --task-id strings       Filter logs by comma-separated task IDs\n      --task-run-id strings   Filter logs by comma-separated task run IDs\n      --text strings          Filter logs by comma-separated text values\n      --type enum             Filter logs by comma-separated log types\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n"
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true,
+        "expected_exit": 1,
+        "classification": "Pinned enum refusal; server alias/source-only behavior is not a CLI input guarantee"
+      },
+      {
+        "client": "render",
+        "case": "critical-alias",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "critical",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.419,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "unknown-level",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--level",
+            "qa-missing-level",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.033,
+          "stdout": "",
+          "stderr": "Error: invalid argument \"qa-missing-level\" for \"--level\" flag: must be one of \"debug\", \"info\", \"notice\", \"warning\", \"error\", \"critical\", \"alert\", \"emergency\"\nUsage:\n  render logs [flags]\n\nExamples:\n  # Tail logs for a service\n  render logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  render logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  render logs --resources srv-abc123 --output json\n\nFlags:\n      --direction enum        Set log query direction (backward or forward)\n      --end time              Filter logs at or before the specified end time\n  -h, --help                  help for logs\n      --host strings          Filter logs by comma-separated host values\n      --instance strings      Filter logs by comma-separated instance IDs\n      --level enum            Filter logs by comma-separated log levels\n      --limit int             Limit the number of logs returned (default 100)\n      --method enum           Filter logs by comma-separated HTTP methods\n      --path strings          Filter logs by comma-separated request paths\n  -r, --resources strings     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start time            Filter logs at or after the specified start time\n      --status-code strings   Filter logs by comma-separated status codes\n      --tail                  Stream new logs\n      --task-id strings       Filter logs by comma-separated task IDs\n      --task-run-id strings   Filter logs by comma-separated task run IDs\n      --text strings          Filter logs by comma-separated text values\n      --type enum             Filter logs by comma-separated log types\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n"
+        },
+        "expected_ids": [],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true,
+        "expected_exit": 1,
+        "classification": "Pinned enum refusal; server alias/source-only behavior is not a CLI input guarantee"
+      },
+      {
+        "client": "render",
+        "case": "text-and-error",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--text",
+            "qa_s66_771c24_warning_bex",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 2.752,
+          "stdout": "",
+          "stderr": ""
+        },
+        "expected_ids": [],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "exact-error",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--text",
+            "qa_s66_771c24_error_bex",
+            "--level",
+            "error",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.396,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "exact-instance",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--instance",
+            "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.199,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "missing-instance",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--instance",
+            "dpg-db4hbsr93q6c73at04e0-qa-missing",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.763,
+          "stdout": "",
+          "stderr": ""
+        },
+        "expected_ids": [],
+        "actual_ids": [],
+        "rows": [],
+        "pass": true,
+        "expected_exit": 0
+      },
+      {
+        "client": "render",
+        "case": "backward",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--text",
+            "qa_s66_771c24",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--direction",
+            "backward",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.241,
+          "stdout": "{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \\\"qa_s66_771c24_error_bex\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:13.005603609Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex\",\n  \"timestamp\": \"2026-10-09T16:30:17.736289626Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \\\"qa_s66_771c24_error_render\\\" does not exist\",\n  \"timestamp\": \"2026-10-09T16:30:21.439131199Z\"\n}{\n  \"id\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"warning\"\n    }\n  ],\n  \"message\": \"2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render\",\n  \"timestamp\": \"2026-10-09T16:30:25.100370783Z\"\n}",
+          "stderr": ""
+        },
+        "expected_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "actual_ids": [
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+          "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd"
+        ],
+        "rows": [
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:13.005603609Z-3dba6d62",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:13.004 UTC [187] ERROR:  relation \"qa_s66_771c24_error_bex\" does not exist",
+            "timestamp": "2026-10-09T16:30:13.005603609Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:17.736289626Z-53375fd4",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:17.735 UTC [190] WARNING:  qa_s66_771c24_warning_bex",
+            "timestamp": "2026-10-09T16:30:17.736289626Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:21.439131199Z-973e1e0d",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "error"
+              }
+            ],
+            "message": "2026-10-09 16:30:21.438 UTC [192] ERROR:  relation \"qa_s66_771c24_error_render\" does not exist",
+            "timestamp": "2026-10-09T16:30:21.439131199Z"
+          },
+          {
+            "id": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7-2026-10-09T16:30:25.100370783Z-e43e2afd",
+            "labels": [
+              {
+                "name": "type",
+                "value": "postgres"
+              },
+              {
+                "name": "resource",
+                "value": "dpg-db4hbsr93q6c73at04e0"
+              },
+              {
+                "name": "instance",
+                "value": "dpg-db4hbsr93q6c73at04e0-qeen32m2v6ukt4t3m2p7"
+              },
+              {
+                "name": "container",
+                "value": "postgres"
+              },
+              {
+                "name": "level",
+                "value": "warning"
+              }
+            ],
+            "message": "2026-10-09 16:30:25.099 UTC [196] WARNING:  qa_s66_771c24_warning_render",
+            "timestamp": "2026-10-09T16:30:25.100370783Z"
+          }
+        ],
+        "pass": true,
+        "expected_exit": 0
+      }
+    ],
+    "cached_connection_before_delete": {
+      "exit": 0,
+      "returns_1": true,
+      "stderr_present": false,
+      "at": "2026-10-09T16:38:01.473235+00:00"
+    },
+    "dependent_inventory_before_delete": {
+      "method": "GET",
+      "path": "/v1/postgres/dpg-db4hbsr93q6c73at04e0",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.663,
+      "response": "{\"id\":\"dpg-db4hbsr93q6c73at04e0\",\"name\":\"qa-20261009-771c24-pglogs\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"qa_exit_771c24\",\"databaseUser\":\"qa_user_771c24\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-09T16:27:31Z\",\"updatedAt\":\"2026-10-09T16:28:38Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0\",\"externalHost\":\"dpg-db4hbsr93q6c73at04e0.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"puncsky@gmail.com\",\"type\":\"team\"}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ed0364871a11a-PDX"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "delete_intent": {
+      "at": "2026-10-09T16:38:02.251181+00:00",
+      "id": "dpg-db4hbsr93q6c73at04e0",
+      "workspace": "tea-daif693dqjvc73e7as3g"
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "delete",
+        "dpg-db4hbsr93q6c73at04e0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.086,
+      "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-09T16:27:31Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db4hbsr93q6c73at04e0\",\n    \"databaseName\": \"qa_exit_771c24\",\n    \"databaseUser\": \"qa_user_771c24\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db4hbsr93q6c73at04e0\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261009-771c24-pglogs\",\n    \"owner\": {\n      \"email\": \"puncsky@gmail.com\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-09T16:28:38Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "detail_after_delete": {
+      "method": "GET",
+      "path": "/v1/postgres/dpg-db4hbsr93q6c73at04e0",
+      "body": null,
+      "status": "404",
+      "elapsed": 0.671,
+      "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ed0437b8c282b-MAD"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "list_after_delete": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.994,
+      "stdout": "{\n  \"data\": []\n}",
+      "stderr": ""
+    },
+    "baseline_service_ids_after_pg_delete": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "cached_connection_after_delete": [
+      {
+        "exit": 2,
+        "returns_1": false,
+        "stderr_present": true,
+        "at": "2026-10-09T16:38:07.228593+00:00"
+      }
+    ],
+    "quota_after_delete": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "status": "200",
+      "elapsed": 0.37,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a47ed058ce15ff0f-PDX"
+      },
+      "curl_exit": 0,
+      "stderr": ""
+    },
+    "psql_warning_comparison": {
+      "owned_id": "dpg-db4hbsr93q6c73at04e0",
+      "marker": "qa_diag66_771c24_warning",
+      "sql": "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+      "results": [
+        {
+          "case": "direct-psql",
+          "command": [
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "-c",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;"
+          ],
+          "exit": 0,
+          "elapsed": 2.241,
+          "stdout": "DO\n",
+          "stderr": "WARNING:  qa_diag66_771c24_warning\n",
+          "marker_visible": true,
+          "at": "2026-10-09T16:33:53.333932+00:00"
+        },
+        {
+          "case": "bex-json",
+          "command": [
+            "psql",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--command",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1"
+          ],
+          "exit": 0,
+          "elapsed": 5.412,
+          "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+          "stderr": "",
+          "marker_visible": false,
+          "at": "2026-10-09T16:33:58.747516+00:00"
+        },
+        {
+          "case": "bex-yaml",
+          "command": [
+            "psql",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--command",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+            "--confirm",
+            "-o",
+            "yaml",
+            "--",
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1"
+          ],
+          "exit": 0,
+          "elapsed": 3.445,
+          "stdout": "output: |\n    DO\n",
+          "stderr": "",
+          "marker_visible": false,
+          "at": "2026-10-09T16:34:02.193114+00:00"
+        },
+        {
+          "case": "bex-text",
+          "command": [
+            "psql",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--command",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+            "--confirm",
+            "-o",
+            "text",
+            "--",
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1"
+          ],
+          "exit": 0,
+          "elapsed": 3.889,
+          "stdout": "DO\n",
+          "stderr": "",
+          "marker_visible": false,
+          "at": "2026-10-09T16:34:06.083357+00:00"
+        },
+        {
+          "case": "render-json",
+          "command": [
+            "psql",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--command",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1"
+          ],
+          "exit": 0,
+          "elapsed": 7.048,
+          "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+          "stderr": "",
+          "marker_visible": false,
+          "at": "2026-10-09T16:34:13.131936+00:00"
+        },
+        {
+          "case": "render-yaml",
+          "command": [
+            "psql",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--command",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+            "--confirm",
+            "-o",
+            "yaml",
+            "--",
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1"
+          ],
+          "exit": 0,
+          "elapsed": 4.793,
+          "stdout": "output: |\n    DO\n",
+          "stderr": "",
+          "marker_visible": false,
+          "at": "2026-10-09T16:34:17.926402+00:00"
+        },
+        {
+          "case": "render-text",
+          "command": [
+            "psql",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--command",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+            "--confirm",
+            "-o",
+            "text",
+            "--",
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1"
+          ],
+          "exit": 0,
+          "elapsed": 4.394,
+          "stdout": "DO\n",
+          "stderr": "",
+          "marker_visible": false,
+          "at": "2026-10-09T16:34:22.321647+00:00"
+        }
+      ],
+      "scope": "direct own-connection control; native Bex/Render output modes; no intercepted native wire"
+    },
+    "psql_warning_head_comparison": {
+      "owned_id": "dpg-db4hbsr93q6c73at04e0",
+      "marker": "qa_diag66_771c24_warning",
+      "sql": "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+      "results": [
+        {
+          "case": "direct-psql",
+          "command": [
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "-c",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;"
+          ],
+          "exit": 0,
+          "elapsed": 3.776,
+          "stdout": "DO\n",
+          "stderr": "WARNING:  qa_diag66_771c24_warning\n",
+          "marker_visible": true,
+          "at": "2026-10-09T16:35:16.466300+00:00"
+        },
+        {
+          "case": "bex-json",
+          "command": [
+            "psql",
+            "dpg-db4hbsr93q6c73at04e0",
+            "--command",
+            "DO $$ BEGIN RAISE WARNING 'qa_diag66_771c24_warning'; END $$;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-At",
+            "--set",
+            "ON_ERROR_STOP=1"
+          ],
+          "exit": 0,
+          "elapsed": 4.397,
+          "stdout": "{\n  \"output\": \"DO\\n\"\n}",
+          "stderr": "",
+          "marker_visible": false,
+          "at": "2026-10-09T16:35:20.865134+00:00"
+        }
+      ],
+      "scope": "direct own-connection control; native Bex/Render output modes; no intercepted native wire"
+    },
+    "psql_warning_offline_result": {
+      "exit": 0,
+      "stdout": "{\"case\":\"stdout-and-warning\",\"fake_child_script\":\"printf 'row-data\\\\n'; printf 'WARNING: qa-offline-warning\\\\n' \\u003e\\u00262; exit 0\",\"result\":{\"output\":\"row-data\\n\"},\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n{\"case\":\"stderr-only-success\",\"fake_child_script\":\"printf 'NOTICE: qa-offline-notice\\\\n' \\u003e\\u00262; exit 0\",\"result\":{\"output\":\"\"},\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n{\"case\":\"stdout-only\",\"fake_child_script\":\"printf 'row-data\\\\n'; exit 0\",\"result\":{\"output\":\"row-data\\n\"},\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n{\"case\":\"nonzero-error\",\"error\":\"exit status 3: ERROR: qa-offline-error\",\"fake_child_script\":\"printf 'ERROR: qa-offline-error\\\\n' \\u003e\\u00262; exit 3\",\"result\":null,\"scope\":\"actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network\"}\n",
+      "stderr": "",
+      "scope": "actual pinned helper; offline transport; controlled child executable; dummy-only config",
+      "decoded_results": [
+        {
+          "case": "stdout-and-warning",
+          "fake_child_script": "printf 'row-data\\n'; printf 'WARNING: qa-offline-warning\\n' >&2; exit 0",
+          "result": {
+            "output": "row-data\n"
+          },
+          "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+        },
+        {
+          "case": "stderr-only-success",
+          "fake_child_script": "printf 'NOTICE: qa-offline-notice\\n' >&2; exit 0",
+          "result": {
+            "output": ""
+          },
+          "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+        },
+        {
+          "case": "stdout-only",
+          "fake_child_script": "printf 'row-data\\n'; exit 0",
+          "result": {
+            "output": "row-data\n"
+          },
+          "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+        },
+        {
+          "case": "nonzero-error",
+          "error": "exit status 3: ERROR: qa-offline-error",
+          "fake_child_script": "printf 'ERROR: qa-offline-error\\n' >&2; exit 3",
+          "result": null,
+          "scope": "actual pinned helper; in-memory HTTP; dummy credential; controlled child streams; no real psql or network"
+        }
+      ],
+      "direct_controlled_child_results": [
+        {
+          "case": "stdout-and-warning",
+          "exit": 0,
+          "stdout": "row-data\n",
+          "stderr": "WARNING: qa-offline-warning\n"
+        },
+        {
+          "case": "stderr-only-success",
+          "exit": 0,
+          "stdout": "",
+          "stderr": "NOTICE: qa-offline-notice\n"
+        },
+        {
+          "case": "stdout-only",
+          "exit": 0,
+          "stdout": "row-data\n",
+          "stderr": ""
+        },
+        {
+          "case": "nonzero-error",
+          "exit": 3,
+          "stdout": "",
+          "stderr": "ERROR: qa-offline-error\n"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "Postgres WARNING was reproduced live; NOTICE only through the controlled offline child.",
+    "Both native clients tested json/yaml/text; current unmodified checkout json recheck also loses warning.",
+    "All 24 valid/correctly refused log cases passed; two original narrower-text controls incorrectly included an OR prefix and are retained as harness cases.",
+    "warn and qa-missing-level are refused by the pinned enum before a request; no API alias acceptance is claimed.",
+    "Database was deleted and original six baseline services remain."
+  ]
+}

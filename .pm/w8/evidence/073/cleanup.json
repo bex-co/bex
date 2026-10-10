@@ -1,0 +1,141 @@
+{
+  "id": "srv-db4bvtgec12s73fjue4g",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "state": "deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0",
+  "deploy_children": [
+    {
+      "createdAt": "2026-10-09T10:25:45.514877Z",
+      "finishedAt": "2026-10-09T10:26:25.215739Z",
+      "id": "dep-db4c2a92lq1s73csm0mg",
+      "image": {
+        "ref": "docker.io/mendhak/http-https-echo:35"
+      },
+      "startedAt": "2026-10-09T10:25:55.368901Z",
+      "status": "live",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-09T10:26:25.215739Z"
+    },
+    {
+      "createdAt": "2026-10-09T10:22:46.121768Z",
+      "finishedAt": "2026-10-09T10:23:14.190942Z",
+      "id": "dep-db4c0tlb00tc739pb57g",
+      "image": {
+        "ref": "docker.io/mendhak/http-https-echo:35"
+      },
+      "startedAt": "2026-10-09T10:23:01.134998Z",
+      "status": "deactivated",
+      "trigger": "api",
+      "updatedAt": "2026-10-09T10:26:25.224023Z"
+    },
+    {
+      "createdAt": "2026-10-09T10:22:44.028338Z",
+      "finishedAt": "2026-10-09T10:22:46.127502Z",
+      "id": "dep-db4c0t5b00tc739pb56g",
+      "image": {
+        "ref": "docker.io/mendhak/http-https-echo:35"
+      },
+      "status": "canceled",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-09T10:22:46.127521Z"
+    },
+    {
+      "createdAt": "2026-10-09T10:22:41.63198Z",
+      "finishedAt": "2026-10-09T10:23:01.096457Z",
+      "id": "dep-db4c0s8ec12s73fjue6g",
+      "image": {
+        "ref": "docker.io/mendhak/http-https-echo:35"
+      },
+      "startedAt": "2026-10-09T10:22:43.845475Z",
+      "status": "canceled",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-09T10:23:01.096458Z"
+    },
+    {
+      "createdAt": "2026-10-09T10:20:38.315874Z",
+      "finishedAt": "2026-10-09T10:21:01.022949Z",
+      "id": "dep-db4bvtgec12s73fjue50",
+      "image": {
+        "ref": "docker.io/mendhak/http-https-echo:35"
+      },
+      "startedAt": "2026-10-09T10:20:43.832244Z",
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-09T10:23:14.19808Z"
+    }
+  ],
+  "children_enumeration_evidence": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "deploys",
+      "list",
+      "srv-db4bvtgec12s73fjue4g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 0.791,
+    "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T10:25:45.514877Z\",\n    \"finishedAt\": \"2026-10-09T10:26:25.215739Z\",\n    \"id\": \"dep-db4c2a92lq1s73csm0mg\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:25:55.368901Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:26:25.215739Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:46.121768Z\",\n    \"finishedAt\": \"2026-10-09T10:23:14.190942Z\",\n    \"id\": \"dep-db4c0tlb00tc739pb57g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:23:01.134998Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-09T10:26:25.224023Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:44.028338Z\",\n    \"finishedAt\": \"2026-10-09T10:22:46.127502Z\",\n    \"id\": \"dep-db4c0t5b00tc739pb56g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"status\": \"canceled\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:22:46.127521Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:22:41.63198Z\",\n    \"finishedAt\": \"2026-10-09T10:23:01.096457Z\",\n    \"id\": \"dep-db4c0s8ec12s73fjue6g\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:22:43.845475Z\",\n    \"status\": \"canceled\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T10:23:01.096458Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T10:20:38.315874Z\",\n    \"finishedAt\": \"2026-10-09T10:21:01.022949Z\",\n    \"id\": \"dep-db4bvtgec12s73fjue50\",\n    \"image\": {\n      \"ref\": \"docker.io/mendhak/http-https-echo:35\"\n    },\n    \"startedAt\": \"2026-10-09T10:20:43.832244Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T10:23:14.19808Z\"\n  }\n]",
+    "stderr": ""
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db4bvtgec12s73fjue4g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 2.461,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"createdAt\": \"2026-10-09T10:20:38Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db4bvtgec12s73fjue4g\",\n    \"id\": \"srv-db4bvtgec12s73fjue4g\",\n    \"imagePath\": \"docker.io/mendhak/http-https-echo:35\",\n    \"name\": \"qa-20261009-bb245a-empty\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"env\": \"image\",\n      \"envSpecificDetails\": {\n        \"preDeployCommand\": \"sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261009-bb245a-empty:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 11,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"preDeployCommand\": \"sha256sum /etc/secrets/qa-empty.txt /etc/secrets/qa-text.txt\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"image\",\n      \"url\": \"https://qa-20261009-bb245a-empty.onbex.co\"\n    },\n    \"slug\": \"qa-20261009-bb245a-empty\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-09T10:26:13Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "detail_after_delete": {
+    "method": "GET",
+    "path": "/v1/services/srv-db4bvtgec12s73fjue4g",
+    "body": null,
+    "status": "404",
+    "elapsed": 0.722,
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47cb220dadf88fa-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  },
+  "workspace_after_delete_ids": [
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3v694dm7c7390q930",
+    "srv-db09u90ehcmc739j12cg",
+    "srv-db09vbgehcmc739j12i0"
+  ],
+  "runtime_after_delete_checks": [
+    {
+      "exit": 0,
+      "stdout": "404 page not found\n\n404",
+      "stderr": ""
+    }
+  ],
+  "quota_after_delete": {
+    "method": "GET",
+    "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+    "body": null,
+    "status": "200",
+    "elapsed": 0.344,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a47cb22d9d3bc528-SJC"
+    },
+    "curl_exit": 0,
+    "stderr": ""
+  }
+}

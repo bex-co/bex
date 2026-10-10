@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-10-09T16:40:58.528755+00:00",
+  "main_commit": "68dbfc3a715f658ccc37d59c5b49efebe8bca587",
+  "source_url": "https://github.com/render-oss/cli/blob/68dbfc3a715f658ccc37d59c5b49efebe8bca587/pkg/tui/views/psql.go",
+  "acquisition": "public GitHub contents API at exact commit; web raw fetch failed; no current-main binary executed",
+  "source_only": "still buffers child stderr and returns stdout-only on successful exit",
+  "targeted_public_issue_searches": [
+    {
+      "query": "repo:render-oss/cli is:issue psql stderr",
+      "total_count": 0
+    },
+    {
+      "query": "repo:render-oss/cli is:issue psql warning",
+      "total_count": 0
+    }
+  ],
+  "scope": "targeted search only; no issue/PR/message created",
+  "postgres_raise_docs": "https://www.postgresql.org/docs/18/plpgsql-errors-and-messages.html",
+  "helper_byte_identical_to_pin": true
+}

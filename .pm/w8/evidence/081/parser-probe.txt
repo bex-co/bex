@@ -1,0 +1,16 @@
+=== RUN   TestQA73ParsedAddressability
+    qa73_addressability_probe_test.go:32: kind=web property=host accepted=true parsed_value=<nil> deferred_port=3000 sample=qa73-probe-slug error=<nil>
+    qa73_addressability_probe_test.go:32: kind=web property=port accepted=true parsed_value=3000 deferred_port=<nil> sample=<nil> error=<nil>
+    qa73_addressability_probe_test.go:32: kind=web property=hostport accepted=true parsed_value=<nil> deferred_port=3000 sample=qa73-probe-slug:3000 error=<nil>
+    qa73_addressability_probe_test.go:32: kind=worker property=host accepted=false parsed_value=<nil> deferred_port=<nil> sample=<nil> error=bad request: service "qa-20261009-a428a5-caller": fromService host references "qa-20261009-a428a5-target" which has no network address (only web/private services are addressable)
+    qa73_addressability_probe_test.go:32: kind=worker property=port accepted=true parsed_value=0 deferred_port=<nil> sample=<nil> error=<nil>
+    qa73_addressability_probe_test.go:32: kind=worker property=hostport accepted=true parsed_value=<nil> deferred_port=0 sample=qa73-probe-slug:0 error=<nil>
+    qa73_addressability_probe_test.go:32: kind=cron property=host accepted=false parsed_value=<nil> deferred_port=<nil> sample=<nil> error=bad request: service "qa-20261009-a428a5-caller": fromService host references "qa-20261009-a428a5-target" which has no network address (only web/private services are addressable)
+    qa73_addressability_probe_test.go:32: kind=cron property=port accepted=true parsed_value=0 deferred_port=<nil> sample=<nil> error=<nil>
+    qa73_addressability_probe_test.go:32: kind=cron property=hostport accepted=true parsed_value=<nil> deferred_port=0 sample=qa73-probe-slug:0 error=<nil>
+    qa73_addressability_probe_test.go:32: kind=static property=host accepted=false parsed_value=<nil> deferred_port=<nil> sample=<nil> error=bad request: service "qa-20261009-a428a5-caller": fromService host references "qa-20261009-a428a5-target" which has no network address (only web/private services are addressable)
+    qa73_addressability_probe_test.go:32: kind=static property=port accepted=true parsed_value=0 deferred_port=<nil> sample=<nil> error=<nil>
+    qa73_addressability_probe_test.go:32: kind=static property=hostport accepted=true parsed_value=<nil> deferred_port=0 sample=qa73-probe-slug:0 error=<nil>
+--- PASS: TestQA73ParsedAddressability (0.01s)
+PASS
+ok  	github.com/bex-co/bex/lego/backend/internal/apps	0.647s

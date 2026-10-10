@@ -1,0 +1,24 @@
+{
+  "helper": "pkg/tui/views/psql.go:45 ExecutePSQLNonInteractive",
+  "production_direct_callers": [
+    {
+      "file": "cmd/psql.go",
+      "line": 103,
+      "count": 1
+    }
+  ],
+  "noninteractive_formats": [
+    "json",
+    "yaml",
+    "text"
+  ],
+  "result_type": "pkg/tui/views/psql.go:41-43 PSQLResult only Output",
+  "text_formatter": "pkg/text/psql.go:5 PSQLResultText",
+  "neighbors": {
+    "interactive_psql": "separate Bubble Tea execution path; unchanged",
+    "pgcli": "interactive-only separate command; no production call to ExecutePSQLNonInteractive",
+    "nonzero_child": "stderr folded into error; observed offline and live SQL-error controls",
+    "stdout_only": "unchanged JSON/YAML/text result contract"
+  },
+  "source_checks": "rg across actual pinned module; only one production helper call; existing result/formatter tests do not execute child stderr path"
+}

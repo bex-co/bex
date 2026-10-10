@@ -1,0 +1,44 @@
+{
+  "id": "srv-db4dvrb4am4s73f095o0",
+  "name": "qa-20261009-3191f8-xstatic",
+  "immutableName": "qa-20261009-3191f8-xstatic",
+  "slug": "qa-20261009-3191f8-xstatic",
+  "displayName": "",
+  "type": "static_site",
+  "suspended": "not_suspended",
+  "dashboardUrl": "https://dashboard.bex.co/static/srv-db4dvrb4am4s73f095o0",
+  "createdAt": "2026-10-09T12:37:01Z",
+  "updatedAt": "2026-10-09T12:37:14Z",
+  "owner": {
+    "id": "tea-daif693dqjvc73e7as3g",
+    "name": "bex-canary",
+    "email": "[EMAIL REDACTED]",
+    "type": "team"
+  },
+  "serviceDetails": {
+    "buildCommand": "",
+    "numInstances": 1,
+    "plan": "free",
+    "publishPath": ".",
+    "region": "fsn1",
+    "renderSubdomainPolicy": "enabled",
+    "url": "https://qa-20261009-3191f8-xstatic.onbex.co"
+  },
+  "suspenders": [],
+  "ownerId": "tea-daif693dqjvc73e7as3g",
+  "phase": "Running",
+  "replicas": 1,
+  "revision": "rev-1",
+  "urls": [
+    "https://qa-20261009-3191f8-xstatic.onbex.co"
+  ],
+  "idleTTLSeconds": 0,
+  "rootDir": "examples/static-site",
+  "repo": "https://github.com/bex-co/bex",
+  "branch": "main",
+  "autoDeploy": "no",
+  "autoDeployTrigger": "off",
+  "pushDeliveryMethod": "manual_webhook",
+  "notifyOnFail": "default",
+  "notificationsToSend": "default"
+}

@@ -1,0 +1,284 @@
+{
+  "api_only_controls": [
+    {
+      "stage": "API-only diagnostic failure command",
+      "intent_at": "2026-10-09T08:56:24.472544+00:00",
+      "method": "PATCH",
+      "path": "/v1/services/srv-db4aklrjrdls73co06lg",
+      "body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "echo qa-cron-api-fail-78c2a4; exit 23"
+          }
+        }
+      },
+      "expected_marker": "qa-cron-api-fail-78c2a4",
+      "expected_command": "echo qa-cron-api-fail-78c2a4; exit 23",
+      "result": {
+        "method": "PATCH",
+        "path": "/v1/services/srv-db4aklrjrdls73co06lg",
+        "body": "{\"serviceDetails\": {\"envSpecificDetails\": {\"startCommand\": \"echo qa-cron-api-fail-78c2a4; exit 23\"}}}",
+        "status": "200",
+        "elapsed": 1.977,
+        "response": "{\"id\":\"srv-db4aklrjrdls73co06lg\",\"name\":\"qa-20261009-78c2a4-cron\",\"immutableName\":\"qa-20261009-78c2a4-cron\",\"slug\":\"qa-20261009-78c2a4-cron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4aklrjrdls73co06lg\",\"createdAt\":\"2026-10-09T08:48:23Z\",\"updatedAt\":\"2026-10-09T08:56:25.048184747Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA email redacted]\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo qa-cron-api-fail-78c2a4; exit 23\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo qa-cron-api-fail-78c2a4; exit 23\"},\"lastSuccessfulRunAt\":\"2026-10-09T08:56:05Z\",\"nextRunAt\":\"2026-10-09T08:57:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"schedule\":\"* * * * *\",\"command\":\"echo qa-cron-api-fail-78c2a4; exit 23\",\"runs\":[{\"id\":\"crr-n69m4v45jlc1uhfrusl2\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858936\",\"startedAt\":\"2026-10-09T08:56:00Z\",\"finishedAt\":\"2026-10-09T08:56:05Z\",\"status\":\"successful\"},{\"id\":\"crr-c5duft5pf58orsst90f1\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858935\",\"startedAt\":\"2026-10-09T08:55:00Z\",\"finishedAt\":\"2026-10-09T08:55:05Z\",\"status\":\"successful\"},{\"id\":\"crr-51qiksenp35bh0ggudv9\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858934\",\"startedAt\":\"2026-10-09T08:54:00Z\",\"finishedAt\":\"2026-10-09T08:54:06Z\",\"status\":\"successful\"},{\"id\":\"crr-sr4gfhsjcl098ck3jvaj\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858933\",\"startedAt\":\"2026-10-09T08:53:00Z\",\"finishedAt\":\"2026-10-09T08:53:06Z\",\"status\":\"successful\"},{\"id\":\"crr-n9ipjldc2tfhj5tir9rn\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858932\",\"startedAt\":\"2026-10-09T08:52:00Z\",\"finishedAt\":\"2026-10-09T08:52:06Z\",\"status\":\"successful\"},{\"id\":\"crr-tsjle9va5a2vvscl4llj\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858931\",\"startedAt\":\"2026-10-09T08:51:00Z\",\"finishedAt\":\"2026-10-09T08:51:07Z\",\"status\":\"successful\"},{\"id\":\"crr-ejsmsd3jcnur2u0dbfn5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858930\",\"startedAt\":\"2026-10-09T08:50:00Z\",\"finishedAt\":\"2026-10-09T08:50:06Z\",\"status\":\"successful\"},{\"id\":\"crr-u5f8krhtevbenkqsmre4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858929\",\"startedAt\":\"2026-10-09T08:49:00Z\",\"finishedAt\":\"2026-10-09T08:49:05Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T08:56:05Z\",\"nextRunAt\":\"2026-10-09T08:57:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c2c024d1fcf1a-SJC"
+        }
+      }
+    },
+    {
+      "stage": "API-only canonical Docker-command recovery",
+      "intent_at": "2026-10-09T08:58:36.938812+00:00",
+      "method": "PATCH",
+      "path": "/v1/services/srv-db4aklrjrdls73co06lg",
+      "body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "dockerCommand": "echo qa-cron-api-recover-78c2a4; exit 0"
+          }
+        }
+      },
+      "expected_marker": "qa-cron-api-recover-78c2a4",
+      "expected_command": "echo qa-cron-api-recover-78c2a4; exit 0",
+      "result": {
+        "method": "PATCH",
+        "path": "/v1/services/srv-db4aklrjrdls73co06lg",
+        "body": "{\"serviceDetails\": {\"envSpecificDetails\": {\"dockerCommand\": \"echo qa-cron-api-recover-78c2a4; exit 0\"}}}",
+        "status": "200",
+        "elapsed": 1.843,
+        "response": "{\"id\":\"srv-db4aklrjrdls73co06lg\",\"name\":\"qa-20261009-78c2a4-cron\",\"immutableName\":\"qa-20261009-78c2a4-cron\",\"slug\":\"qa-20261009-78c2a4-cron\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/cron/srv-db4aklrjrdls73co06lg\",\"createdAt\":\"2026-10-09T08:48:23Z\",\"updatedAt\":\"2026-10-09T08:58:38.288350563Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"[QA email redacted]\",\"type\":\"team\"},\"serviceDetails\":{\"command\":\"echo qa-cron-api-recover-78c2a4; exit 0\",\"env\":\"image\",\"envSpecificDetails\":{\"startCommand\":\"echo qa-cron-api-recover-78c2a4; exit 0\"},\"lastSuccessfulRunAt\":\"2026-10-09T08:56:05Z\",\"nextRunAt\":\"2026-10-09T08:59:00Z\",\"numInstances\":1,\"plan\":\"free\",\"region\":\"fsn1\",\"runtime\":\"image\",\"schedule\":\"* * * * *\"},\"imagePath\":\"busybox:1.37\",\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-2\",\"schedule\":\"* * * * *\",\"command\":\"echo qa-cron-api-recover-78c2a4; exit 0\",\"runs\":[{\"id\":\"crr-9fj2sbfij23gbc58tkue\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858938\",\"startedAt\":\"2026-10-09T08:58:00Z\",\"finishedAt\":\"2026-10-09T08:58:04Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-rblims43aprmdh83re4g\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858937\",\"startedAt\":\"2026-10-09T08:57:00Z\",\"finishedAt\":\"2026-10-09T08:57:07Z\",\"status\":\"unsuccessful\"},{\"id\":\"crr-n69m4v45jlc1uhfrusl2\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858936\",\"startedAt\":\"2026-10-09T08:56:00Z\",\"finishedAt\":\"2026-10-09T08:56:05Z\",\"status\":\"successful\"},{\"id\":\"crr-c5duft5pf58orsst90f1\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858935\",\"startedAt\":\"2026-10-09T08:55:00Z\",\"finishedAt\":\"2026-10-09T08:55:05Z\",\"status\":\"successful\"},{\"id\":\"crr-51qiksenp35bh0ggudv9\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858934\",\"startedAt\":\"2026-10-09T08:54:00Z\",\"finishedAt\":\"2026-10-09T08:54:06Z\",\"status\":\"successful\"},{\"id\":\"crr-sr4gfhsjcl098ck3jvaj\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858933\",\"startedAt\":\"2026-10-09T08:53:00Z\",\"finishedAt\":\"2026-10-09T08:53:06Z\",\"status\":\"successful\"},{\"id\":\"crr-n9ipjldc2tfhj5tir9rn\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858932\",\"startedAt\":\"2026-10-09T08:52:00Z\",\"finishedAt\":\"2026-10-09T08:52:06Z\",\"status\":\"successful\"},{\"id\":\"crr-tsjle9va5a2vvscl4llj\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858931\",\"startedAt\":\"2026-10-09T08:51:00Z\",\"finishedAt\":\"2026-10-09T08:51:07Z\",\"status\":\"successful\"},{\"id\":\"crr-ejsmsd3jcnur2u0dbfn5\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858930\",\"startedAt\":\"2026-10-09T08:50:00Z\",\"finishedAt\":\"2026-10-09T08:50:06Z\",\"status\":\"successful\"},{\"id\":\"crr-u5f8krhtevbenkqsmre4\",\"name\":\"tea-daif693dqjvc73e7as3g-qa-20261009-78c2a4-cron-29858929\",\"startedAt\":\"2026-10-09T08:49:00Z\",\"finishedAt\":\"2026-10-09T08:49:05Z\",\"status\":\"successful\"}],\"lastSuccessfulRunAt\":\"2026-10-09T08:56:05Z\",\"nextRunAt\":\"2026-10-09T08:59:00Z\",\"idleTTLSeconds\":0,\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c2f441c379e53-SJC"
+        }
+      }
+    }
+  ],
+  "scheduled_observations": [
+    {
+      "at": "2026-10-09T08:49:04.301169+00:00",
+      "stage": "initial",
+      "deploys": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4aklrjrdls73co06lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.048,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T08:48:23.099871Z\",\n    \"finishedAt\": \"2026-10-09T08:48:24.505235Z\",\n    \"id\": \"dep-db4aklrjrdls73co06m0\",\n    \"image\": {\n      \"ref\": \"busybox:1.37\"\n    },\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T08:48:24.505237Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db4aklrjrdls73co06lg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.923,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-u5f8krhtevbenkqsmre4\",\"status\":\"pending\",\"startedAt\":\"2026-10-09T08:49:00Z\"},\"cursor\":\"crr-u5f8krhtevbenkqsmre4\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c214a78fdcf13-SJC"
+        }
+      },
+      "native_marker_logs": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db4aklrjrdls73co06lg",
+          "--type",
+          "app",
+          "--text",
+          "qa-cron-",
+          "--limit",
+          "100",
+          "--direction",
+          "forward",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.605,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-09T08:50:11.016350+00:00",
+      "stage": "scheduled-pass",
+      "deploys": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4aklrjrdls73co06lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.469,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T08:48:23.099871Z\",\n    \"finishedAt\": \"2026-10-09T08:48:24.505235Z\",\n    \"id\": \"dep-db4aklrjrdls73co06m0\",\n    \"image\": {\n      \"ref\": \"busybox:1.37\"\n    },\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T08:48:24.505237Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db4aklrjrdls73co06lg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 0.369,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-ejsmsd3jcnur2u0dbfn5\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:50:00Z\",\"finishedAt\":\"2026-10-09T08:50:06Z\"},\"cursor\":\"crr-ejsmsd3jcnur2u0dbfn5\"},{\"cronJobRun\":{\"id\":\"crr-u5f8krhtevbenkqsmre4\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:49:00Z\",\"finishedAt\":\"2026-10-09T08:49:05Z\"},\"cursor\":\"crr-u5f8krhtevbenkqsmre4\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c22e70d8ee196-SJC"
+        }
+      },
+      "native_marker_logs": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db4aklrjrdls73co06lg",
+          "--type",
+          "app",
+          "--text",
+          "qa-cron-",
+          "--limit",
+          "100",
+          "--direction",
+          "forward",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.385,
+        "stdout": "{\n  \"id\": \"srv-db4aklrjrdls73co06lg-jpapi15m9aqd36fq4dot-2026-10-09T08:49:03.56014178Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-jpapi15m9aqd36fq4dot\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:49:03.56014178Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-hlm39c09fcaoj653rptl-2026-10-09T08:50:03.280940041Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-hlm39c09fcaoj653rptl\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:50:03.280940041Z\"\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-09T08:57:31.451701+00:00",
+      "stage": "api-failure-runtime",
+      "deploys": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4aklrjrdls73co06lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 3.073,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T08:56:25.088963Z\",\n    \"finishedAt\": \"2026-10-09T08:56:38.980165Z\",\n    \"id\": \"dep-db4aoedlm2ps739a41ug\",\n    \"image\": {\n      \"ref\": \"busybox:1.37\"\n    },\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T08:56:38.980166Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T08:48:23.099871Z\",\n    \"finishedAt\": \"2026-10-09T08:48:24.505235Z\",\n    \"id\": \"dep-db4aklrjrdls73co06m0\",\n    \"image\": {\n      \"ref\": \"busybox:1.37\"\n    },\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T08:56:38.98401Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db4aklrjrdls73co06lg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 1.394,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-rblims43aprmdh83re4g\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T08:57:00Z\",\"finishedAt\":\"2026-10-09T08:57:07Z\"},\"cursor\":\"crr-rblims43aprmdh83re4g\"},{\"cronJobRun\":{\"id\":\"crr-n69m4v45jlc1uhfrusl2\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:56:00Z\",\"finishedAt\":\"2026-10-09T08:56:05Z\"},\"cursor\":\"crr-n69m4v45jlc1uhfrusl2\"},{\"cronJobRun\":{\"id\":\"crr-c5duft5pf58orsst90f1\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:55:00Z\",\"finishedAt\":\"2026-10-09T08:55:05Z\"},\"cursor\":\"crr-c5duft5pf58orsst90f1\"},{\"cronJobRun\":{\"id\":\"crr-51qiksenp35bh0ggudv9\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:54:00Z\",\"finishedAt\":\"2026-10-09T08:54:06Z\"},\"cursor\":\"crr-51qiksenp35bh0ggudv9\"},{\"cronJobRun\":{\"id\":\"crr-sr4gfhsjcl098ck3jvaj\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:53:00Z\",\"finishedAt\":\"2026-10-09T08:53:06Z\"},\"cursor\":\"crr-sr4gfhsjcl098ck3jvaj\"},{\"cronJobRun\":{\"id\":\"crr-n9ipjldc2tfhj5tir9rn\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:52:00Z\",\"finishedAt\":\"2026-10-09T08:52:06Z\"},\"cursor\":\"crr-n9ipjldc2tfhj5tir9rn\"},{\"cronJobRun\":{\"id\":\"crr-tsjle9va5a2vvscl4llj\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:51:00Z\",\"finishedAt\":\"2026-10-09T08:51:07Z\"},\"cursor\":\"crr-tsjle9va5a2vvscl4llj\"},{\"cronJobRun\":{\"id\":\"crr-ejsmsd3jcnur2u0dbfn5\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:50:00Z\",\"finishedAt\":\"2026-10-09T08:50:06Z\"},\"cursor\":\"crr-ejsmsd3jcnur2u0dbfn5\"},{\"cronJobRun\":{\"id\":\"crr-u5f8krhtevbenkqsmre4\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:49:00Z\",\"finishedAt\":\"2026-10-09T08:49:05Z\"},\"cursor\":\"crr-u5f8krhtevbenkqsmre4\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c2dbebcc0cf13-SJC"
+        }
+      },
+      "native_marker_logs": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db4aklrjrdls73co06lg",
+          "--type",
+          "app",
+          "--text",
+          "qa-cron-",
+          "--limit",
+          "100",
+          "--direction",
+          "forward",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 6.15,
+        "stdout": "{\n  \"id\": \"srv-db4aklrjrdls73co06lg-jpapi15m9aqd36fq4dot-2026-10-09T08:49:03.56014178Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-jpapi15m9aqd36fq4dot\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:49:03.56014178Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-hlm39c09fcaoj653rptl-2026-10-09T08:50:03.280940041Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-hlm39c09fcaoj653rptl\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:50:03.280940041Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-go6416ujmg8it7jnb4um-2026-10-09T08:51:04.267208327Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-go6416ujmg8it7jnb4um\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:51:04.267208327Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-jo89rad9kvu8cd14g7g2-2026-10-09T08:52:04.245368328Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-jo89rad9kvu8cd14g7g2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:52:04.245368328Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-3fceoec3dl7pk2j33p3k-2026-10-09T08:53:03.595846682Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-3fceoec3dl7pk2j33p3k\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:53:03.595846682Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-pfsklpndr0vkmekmh7lo-2026-10-09T08:54:03.622507084Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-pfsklpndr0vkmekmh7lo\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:54:03.622507084Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-k66dmi8sug5giauvpk4d-2026-10-09T08:55:03.010063264Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-k66dmi8sug5giauvpk4d\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:55:03.010063264Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-29mqibu77a0q1per2vfh-2026-10-09T08:56:02.202967758Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-29mqibu77a0q1per2vfh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:56:02.202967758Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-m48004j30md7k55hfdsc-2026-10-09T08:57:04.558058753Z-2f382082\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-m48004j30md7k55hfdsc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-api-fail-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:57:04.558058753Z\"\n}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-09T09:00:20.431168+00:00",
+      "stage": "api-recovery-runtime",
+      "deploys": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db4aklrjrdls73co06lg",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.797,
+        "stdout": "[\n  {\n    \"createdAt\": \"2026-10-09T08:58:38.359989Z\",\n    \"finishedAt\": \"2026-10-09T08:58:39.114794Z\",\n    \"id\": \"dep-db4apfllm2ps739a420g\",\n    \"image\": {\n      \"ref\": \"busybox:1.37\"\n    },\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T08:58:39.114796Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T08:56:25.088963Z\",\n    \"finishedAt\": \"2026-10-09T08:56:38.980165Z\",\n    \"id\": \"dep-db4aoedlm2ps739a41ug\",\n    \"image\": {\n      \"ref\": \"busybox:1.37\"\n    },\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-09T08:58:39.117223Z\"\n  },\n  {\n    \"createdAt\": \"2026-10-09T08:48:23.099871Z\",\n    \"finishedAt\": \"2026-10-09T08:48:24.505235Z\",\n    \"id\": \"dep-db4aklrjrdls73co06m0\",\n    \"image\": {\n      \"ref\": \"busybox:1.37\"\n    },\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-09T08:56:38.98401Z\"\n  }\n]",
+        "stderr": ""
+      },
+      "runs_api": {
+        "method": "GET",
+        "path": "/v1/cron-jobs/srv-db4aklrjrdls73co06lg/runs",
+        "body": null,
+        "status": "200",
+        "elapsed": 1.018,
+        "response": "[{\"cronJobRun\":{\"id\":\"crr-c8qahbrjped6med40hj2\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T09:00:00Z\",\"finishedAt\":\"2026-10-09T09:00:06Z\"},\"cursor\":\"crr-c8qahbrjped6med40hj2\"},{\"cronJobRun\":{\"id\":\"crr-i1430iqo9ggm6a5ntveq\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:59:00Z\",\"finishedAt\":\"2026-10-09T08:59:06Z\"},\"cursor\":\"crr-i1430iqo9ggm6a5ntveq\"},{\"cronJobRun\":{\"id\":\"crr-9fj2sbfij23gbc58tkue\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T08:58:00Z\",\"finishedAt\":\"2026-10-09T08:58:04Z\"},\"cursor\":\"crr-9fj2sbfij23gbc58tkue\"},{\"cronJobRun\":{\"id\":\"crr-rblims43aprmdh83re4g\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-09T08:57:00Z\",\"finishedAt\":\"2026-10-09T08:57:07Z\"},\"cursor\":\"crr-rblims43aprmdh83re4g\"},{\"cronJobRun\":{\"id\":\"crr-n69m4v45jlc1uhfrusl2\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:56:00Z\",\"finishedAt\":\"2026-10-09T08:56:05Z\"},\"cursor\":\"crr-n69m4v45jlc1uhfrusl2\"},{\"cronJobRun\":{\"id\":\"crr-c5duft5pf58orsst90f1\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:55:00Z\",\"finishedAt\":\"2026-10-09T08:55:05Z\"},\"cursor\":\"crr-c5duft5pf58orsst90f1\"},{\"cronJobRun\":{\"id\":\"crr-51qiksenp35bh0ggudv9\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:54:00Z\",\"finishedAt\":\"2026-10-09T08:54:06Z\"},\"cursor\":\"crr-51qiksenp35bh0ggudv9\"},{\"cronJobRun\":{\"id\":\"crr-sr4gfhsjcl098ck3jvaj\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:53:00Z\",\"finishedAt\":\"2026-10-09T08:53:06Z\"},\"cursor\":\"crr-sr4gfhsjcl098ck3jvaj\"},{\"cronJobRun\":{\"id\":\"crr-n9ipjldc2tfhj5tir9rn\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:52:00Z\",\"finishedAt\":\"2026-10-09T08:52:06Z\"},\"cursor\":\"crr-n9ipjldc2tfhj5tir9rn\"},{\"cronJobRun\":{\"id\":\"crr-tsjle9va5a2vvscl4llj\",\"status\":\"successful\",\"startedAt\":\"2026-10-09T08:51:00Z\",\"finishedAt\":\"2026-10-09T08:51:07Z\"},\"cursor\":\"crr-tsjle9va5a2vvscl4llj\"}]\n",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a47c31ca4b0c49fc-SJC"
+        }
+      },
+      "native_marker_logs": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db4aklrjrdls73co06lg",
+          "--type",
+          "app",
+          "--text",
+          "qa-cron-",
+          "--limit",
+          "100",
+          "--direction",
+          "forward",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 2.823,
+        "stdout": "{\n  \"id\": \"srv-db4aklrjrdls73co06lg-jpapi15m9aqd36fq4dot-2026-10-09T08:49:03.56014178Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-jpapi15m9aqd36fq4dot\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:49:03.56014178Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-hlm39c09fcaoj653rptl-2026-10-09T08:50:03.280940041Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-hlm39c09fcaoj653rptl\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:50:03.280940041Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-go6416ujmg8it7jnb4um-2026-10-09T08:51:04.267208327Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-go6416ujmg8it7jnb4um\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:51:04.267208327Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-jo89rad9kvu8cd14g7g2-2026-10-09T08:52:04.245368328Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-jo89rad9kvu8cd14g7g2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:52:04.245368328Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-3fceoec3dl7pk2j33p3k-2026-10-09T08:53:03.595846682Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-3fceoec3dl7pk2j33p3k\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:53:03.595846682Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-pfsklpndr0vkmekmh7lo-2026-10-09T08:54:03.622507084Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-pfsklpndr0vkmekmh7lo\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:54:03.622507084Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-k66dmi8sug5giauvpk4d-2026-10-09T08:55:03.010063264Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-k66dmi8sug5giauvpk4d\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:55:03.010063264Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-29mqibu77a0q1per2vfh-2026-10-09T08:56:02.202967758Z-a041649c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-29mqibu77a0q1per2vfh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-pass-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:56:02.202967758Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-m48004j30md7k55hfdsc-2026-10-09T08:57:04.558058753Z-2f382082\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-m48004j30md7k55hfdsc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-api-fail-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:57:04.558058753Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-cj1dg8mh4kn4h7b541lt-2026-10-09T08:58:01.966293576Z-2f382082\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-cj1dg8mh4kn4h7b541lt\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-api-fail-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:58:01.966293576Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-tddd0gp9gmpmiqhd6gu3-2026-10-09T08:59:03.626193587Z-6d8bccfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-tddd0gp9gmpmiqhd6gu3\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-api-recover-78c2a4\",\n  \"timestamp\": \"2026-10-09T08:59:03.626193587Z\"\n}{\n  \"id\": \"srv-db4aklrjrdls73co06lg-h9gcrhsm3d1sjrksfqk7-2026-10-09T09:00:04.404477781Z-6d8bccfe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db4aklrjrdls73co06lg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db4aklrjrdls73co06lg-h9gcrhsm3d1sjrksfqk7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"unknown\"\n    }\n  ],\n  \"message\": \"qa-cron-api-recover-78c2a4\",\n  \"timestamp\": \"2026-10-09T09:00:04.404477781Z\"\n}",
+        "stderr": ""
+      }
+    }
+  ]
+}

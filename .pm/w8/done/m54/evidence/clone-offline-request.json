@@ -1,0 +1,113 @@
+{
+  "kind": "actual unmodified same-pin clone against isolated loopback fixture; dummy API key; recorded Bex own-source metadata; not production packet capture",
+  "source_id": "srv-db49tnjjrdls73co05k0",
+  "source_name": "qa-20261009-944f02-clone-src-雪",
+  "source_readback": {
+    "id": "srv-db49tnjjrdls73co05k0",
+    "name": "qa-20261009-944f02-clone-src-雪",
+    "immutableName": "qa-20261009-944f02-clone-src",
+    "slug": "qa-20261009-944f02-clone-src",
+    "displayName": "qa-20261009-944f02-clone-src-雪",
+    "type": "web_service",
+    "suspended": "not_suspended",
+    "dashboardUrl": "https://dashboard.bex.co/web/srv-db49tnjjrdls73co05k0",
+    "createdAt": "2026-10-09T07:59:26Z",
+    "updatedAt": "2026-10-09T08:00:22.733272252Z",
+    "owner": {
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "email": "puncsky@gmail.com",
+      "type": "team"
+    },
+    "serviceDetails": {
+      "env": "go",
+      "envSpecificDetails": {
+        "buildCommand": "go build -o app .",
+        "preDeployCommand": "",
+        "startCommand": "./app"
+      },
+      "healthCheckPath": "/",
+      "internalAddress": "qa-20261009-944f02-clone-src:3000",
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "maxShutdownDelaySeconds": 31,
+      "numInstances": 1,
+      "plan": "free",
+      "port": 3000,
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "runtime": "go",
+      "url": "https://qa-20261009-944f02-clone-src.onbex.co"
+    },
+    "suspenders": [],
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "phase": "Building",
+    "replicas": 1,
+    "idleTTLSeconds": 0,
+    "rootDir": "examples/hello-go",
+    "buildFilter": {
+      "paths": [
+        "examples/hello-go/**"
+      ],
+      "ignoredPaths": []
+    },
+    "repo": "https://github.com/bex-co/bex",
+    "branch": "main",
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "pushDeliveryMethod": "manual_webhook",
+    "notifyOnFail": "default",
+    "notificationsToSend": "default",
+    "healthCheckPath": "/"
+  },
+  "get_paths": [
+    "/v1/services?name=qa-20261009-944f02-clone-src-%E9%9B%AA&ownerId=tea-daif693dqjvc73e7as3g&limit=100",
+    "/v1/services/srv-db49tnjjrdls73co05k0"
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/v1/services",
+      "body": {
+        "autoDeploy": "no",
+        "branch": "main",
+        "buildFilter": {
+          "ignoredPaths": null,
+          "paths": [
+            "examples/hello-go/**"
+          ]
+        },
+        "envVars": [
+          {
+            "key": "MESSAGE",
+            "value": "qa-clone-198179"
+          }
+        ],
+        "name": "qa-20261009-198179-clone",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "repo": "https://github.com/bex-co/bex",
+        "rootDir": "examples/hello-go",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "go build -o app .",
+            "startCommand": "./app"
+          },
+          "healthCheckPath": "/",
+          "maintenanceMode": {
+            "enabled": false,
+            "uri": ""
+          },
+          "maxShutdownDelaySeconds": 31,
+          "numInstances": 1,
+          "plan": "free",
+          "region": "frankfurt",
+          "runtime": "go"
+        },
+        "type": "web_service"
+      },
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+    }
+  ]
+}

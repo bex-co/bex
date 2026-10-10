@@ -1,0 +1,42 @@
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "strings"
+ "github.com/render-oss/cli/pkg/client"
+ "github.com/render-oss/cli/pkg/service"
+ "github.com/render-oss/cli/pkg/types"
+ st "github.com/render-oss/cli/pkg/types/service"
+)
+func ptr[T any](v T)*T{return &v}
+func main(){
+ raw,err:=os.ReadFile("source-web.json");if err!=nil{panic(err)};var source client.Service;if err=json.Unmarshal(raw,&source);err!=nil{panic(err)}
+ all:=[]map[string]any{}
+ for _,target:=range []st.ServiceType{st.ServiceTypeWebService,st.ServiceTypeCronJob,st.ServiceTypePrivateService,st.ServiceTypeBackgroundWorker}{
+  input:=st.ServiceCreateInput{Name:"qa-offline-clone-control",From:ptr(source.Id),Type:ptr(target),Region:ptr(types.RegionFrankfurt),Plan:ptr("free"),AutoDeploy:ptr(false)}
+  if target==st.ServiceTypeCronJob{input.CronCommand=ptr("printf 'qa72-offline\\n'");input.CronSchedule=ptr("0 0 1 1 *")}
+  input=st.NormalizeServiceCreateCLIInput(input);service.ServiceFromAPI(&input,&source);b,err:=json.Marshal(input);if err!=nil{panic(err)};var merged map[string]any;if err=json.Unmarshal(b,&merged);err!=nil{panic(err)}
+  cleared:=[]string{}
+  for step:=0;step<15;step++{
+   r:=map[string]any{"target":target,"step":step,"counterfactual":step>0,"cleared_inherited_fields":append([]string{},cleared...),"merged_original":merged};validated,e:=st.NormalizeAndValidateCreateInput(input,false)
+   if e==nil{body,e:=service.BuildCreateRequest(validated,"tea-offline-only");r["request_constructed"]=e==nil;r["request"]=body;if e!=nil{r["builder_error"]=e.Error()};all=append(all,r);break}
+   r["request_constructed"]=false;r["validation_error"]=e.Error();all=append(all,r)
+   flag:=strings.TrimSuffix(strings.TrimPrefix(e.Error(),"--")," is not supported for "+string(target))
+   switch flag{
+   case "health-check-path":input.HealthCheckPath=nil
+   case "start-command":input.StartCommand=nil
+   case "pre-deploy-command":input.PreDeployCommand=nil
+   case "num-instances":input.NumInstances=nil
+   case "max-shutdown-delay":input.MaxShutdownDelay=nil
+   case "previews":input.Previews=nil
+   case "maintenance-mode":input.MaintenanceMode=nil
+   case "maintenance-mode-uri":input.MaintenanceModeURI=nil
+   default:fmt.Printf("unhandled validation %s\n",e.Error());step=15;continue
+   };cleared=append(cleared,flag)
+  }
+ }
+ b,err:=json.MarshalIndent(all,"","  ");if err!=nil{panic(err)};if err=os.WriteFile("results.json",append(b,'\n'),0600);err!=nil{panic(err)}
+ for _,r:=range all{fmt.Printf("target=%s step=%v counterfactual=%v request_constructed=%v error=%v\n",r["target"],r["step"],r["counterfactual"],r["request_constructed"],r["validation_error"])}
+}

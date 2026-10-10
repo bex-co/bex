@@ -1,0 +1,13 @@
+ungrouped:
+  services:
+  - type: web
+    name: qa-20261008-e37b64-bp
+    runtime: go
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/hello-go
+    plan: free
+    buildCommand: go build -o app .
+    startCommand: ./app
+    envVars:
+    - key: ANSWER
+      value: 47

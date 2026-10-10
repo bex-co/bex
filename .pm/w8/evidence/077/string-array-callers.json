@@ -1,0 +1,87 @@
+[
+  {
+    "file": "cmd/workflowcreate.go",
+    "line": 105,
+    "source": "WorkflowCreateCmd.Flags().StringArray(\"env-var\", nil, \"Set environment variables in KEY=VALUE format (can be specified multiple times). Inline values override values loaded from --env-file.\")"
+  },
+  {
+    "file": "cmd/pgupdate.go",
+    "line": 84,
+    "source": "cmd.Flags().StringArray(\"ip-allow-list\", nil,"
+  },
+  {
+    "file": "cmd/kvcreate.go",
+    "line": 71,
+    "source": "cmd.Flags().StringArray(\"ip-allow-list\", nil,"
+  },
+  {
+    "file": "cmd/kvupdate.go",
+    "line": 85,
+    "source": "cmd.Flags().StringArray(\"ip-allow-list\", nil, ipAllowListDesc)"
+  },
+  {
+    "file": "cmd/sandboxsnapshotslist.go",
+    "line": 63,
+    "source": "cmd.Flags().StringArray(\"status\", nil, \"Filter by status (repeatable: \"+strings.Join(sandboxSnapshotStatusNames(), \", \")+\")\")"
+  },
+  {
+    "file": "cmd/pgcreate.go",
+    "line": 74,
+    "source": "cmd.Flags().StringArray(\"ip-allow-list\", nil,"
+  },
+  {
+    "file": "cmd/pgcreate.go",
+    "line": 76,
+    "source": "cmd.Flags().StringArray(\"read-replica\", nil,"
+  },
+  {
+    "file": "cmd/sandboxcreate.go",
+    "line": 107,
+    "source": "cmd.Flags().StringArray(\"env-var\", nil, \"Set environment variables in KEY=VALUE format (can be specified multiple times). Inline values override values loaded from --env-file.\")"
+  },
+  {
+    "file": "cmd/serviceupdate.go",
+    "line": 89,
+    "source": "cmd.Flags().StringArray(\"build-filter-path\", nil, \"Build filter path (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/serviceupdate.go",
+    "line": 90,
+    "source": "cmd.Flags().StringArray(\"build-filter-ignored-path\", nil, \"Build filter ignored path (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/serviceupdate.go",
+    "line": 109,
+    "source": "cmd.Flags().StringArray(\"ip-allow-list\", nil, \"IP allow list entry in cidr=..., description=... format (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/servicecreate.go",
+    "line": 82,
+    "source": "ServiceCreateCmd.Flags().StringArray(\"env-var\", nil, \"Set environment variables in KEY=VALUE format (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/servicecreate.go",
+    "line": 83,
+    "source": "ServiceCreateCmd.Flags().StringArray(\"secret-file\", nil, \"Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/servicecreate.go",
+    "line": 87,
+    "source": "ServiceCreateCmd.Flags().StringArray(\"build-filter-path\", nil, \"Set build filter paths (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/servicecreate.go",
+    "line": 88,
+    "source": "ServiceCreateCmd.Flags().StringArray(\"build-filter-ignored-path\", nil, \"Set build filter ignored paths (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/servicecreate.go",
+    "line": 95,
+    "source": "ServiceCreateCmd.Flags().StringArray(\"ip-allow-list\", nil, \"Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)\")"
+  },
+  {
+    "file": "cmd/sandboxlist.go",
+    "line": 34,
+    "source": "cmd.Flags().StringArray(\"status\", nil, \"Filter by status (repeatable: creating, running, errored, terminated)\")"
+  }
+]

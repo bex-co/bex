@@ -16,6 +16,8 @@
 
 ## Definition of done
 
+- Cloning an owned include-only or ignore-only source by a renamed name succeeds without supplying the other filter flag. Keep the documented region override and explicit harmless env marker; verify copied settings, HTTP 200 and cleanup.
+
 - Actual Bex and unmodified same-pin Render against Bex each exit 0 on include-only and ignore-only creates/updates. Fresh equivalent owned free fixtures serve a harmless marker with HTTP 200, then are deleted and absent from detail/list/runtime.
 - The unused list reads as []; the requested list is exact. One-sided updates replace the whole filter; omitted flags preserve it; both-list and all-empty behavior stays intact.
 - Compatibility is scoped to create-service/update-service. Embedded artifact and shared response schemas stay non-null; missing required fields and malformed lists/items retain named 400s. Request bytes are preserved.

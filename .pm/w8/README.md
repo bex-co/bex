@@ -15,9 +15,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m55** — [Preserve literal commas in service name filters](m55/README.md) (7 tasks; 3h45m) ← functional CLI QA, 2026-10-09; both clients fail named update/clone, actual pinned query encoding and runtime controls recorded.
+
 - [x] **m54** — [Accept one-sided CLI build filters](done/m54/README.md) (7 tasks; 2h20m) ← live CLI QA + exact-source gate probe, 2026-10-09 UTC; upstream serializer/schema mismatch documented. — **DONE 2026-10-09**
 
-- [x] **m53** — [Accept numeric Blueprint environment values](done/m53/README.md) (7 tasks; 2h30m) ← live CLI QA + exact-source typed-decoder probe, 2026-10-09 UTC; no product fix yet. — **DONE 2026-10-09**
+- [x] **m53** — [Accept numeric Blueprint environment values](done/m53/README.md) (7 tasks; 2h30m) ← live CLI QA + exact-source typed-decoder probe, 2026-10-09 UTC; source fix landed; production acceptance recorded. — **DONE 2026-10-09**
 
 - [x] **m52** — [Keep a new service out of stale orphan cleanup](done/m52/README.md) (7 tasks; 3h40m) ← live CLI QA + deterministic source probe, 2026-10-08; exact live deletion actor unobserved. — **DONE 2026-10-09**
 
@@ -82,6 +84,20 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **081** — [Blueprint validation accepts port links to services with no network address](081.md) (55m) ← functional CLI QA, 2026-10-09; both clients, multipart API controls and actual parser values; shared server addressability guard.
+
+- [ ] **079** — [Noninteractive psql silently drops warnings on successful SQL](079.md) (55m) ← functional CLI QA, 2026-10-09; both clients/all output modes, direct psql and actual-helper controls; upstream diagnostic forwarding prerequisite.
+
+- [ ] **078** — [Empty workspace flags bypass current-workspace name resolution](078.md) (55m) ← functional CLI QA, 2026-10-09; release and HEAD validation failures, exact offline captures across three commands; launcher fallback correction.
+
+- [ ] **077** — [Repeated environment flags silently convert interior CRLF to LF](077.md) (55m) ← functional CLI QA, 2026-10-09; both clients and live API control; upstream StringArray getter correction.
+
+- [ ] **076** — [Unicode descriptions hit a byte limit advertised as 255 characters](076.md) (45m) ← functional CLI QA, 2026-10-09; Bex/Render update and clone failures, exact controls and cleanup; upstream parser patch prerequisite.
+- [ ] **075** — [Clones inherit fields forbidden by the requested service type](075.md) (~1h) ← functional CLI QA, 2026-10-09; Bex/Render static→web and web→cron refusals, direct runtime controls, pinned merge diagnosis and exact cleanup; upstream applicability fix prerequisite.
+- [ ] **074** — [Service secret-file upserts return 200 instead of the pinned 201](074.md) (35m) ← functional CLI QA + API-only diagnostics, 2026-10-09; actual pinned typed success result is absent.
+- [ ] **073** — [Empty secret-file responses omit required content](073.md) (55m) ← functional CLI QA + API-only diagnostics, 2026-10-09; mounted bytes and GraphQL pass, item/bulk response fields do not.
+- [ ] **072** — [Image cron command updates fail in the pinned upstream CLI](072.md) (50m) ← functional CLI QA, 2026-10-09; native Bex/Render refusal, no-PATCH capture and scheduled API controls.
+
 - [x] **071** — [Namespace prune shares m52's stale-snapshot shape](done/071.md) ← filed 2026-10-09 from w8/m52 t002 — **DONE 2026-10-09** (fresh `GetTenant` + UID-bound delete)
 - [ ] **070** — [Upstream `pgcli --help` advertises flags that real pgcli refuses](blocked/070.md) — **BLOCKED (2026-10-09: upstream patch prepared and parser-checked — [`070-upstream.patch`](blocked/070-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 - [ ] **069** — [A native build's "==> Using <runtime> <line>" narration is sometimes missing from the build log](blocked/069.md) — **BLOCKED (2026-10-08: not reproduced in 3 fresh first builds — narration present in both kubelet and Loki; needs the next occurrence captured with build-Job events before the service is deleted; lead: a replaced build pod takes its log files with it)**
@@ -125,7 +141,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **036** — [Closed as already fixed](done/036.md) (2026-10-02): `280377a6b` routes release-snapshot Secret I/O through the uncached client; current code and passing namespace regression verified. Original blast-radius findings and the 2026-09-30 production re-check are retained; survivor `w4/171`.
 - [x] **035** — [Completed through m50](done/035.md) (2026-10-02); original production findings retained.
 
-
 > `031.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 45) and fixed 2026-09-27 — moved to `done/`. `bex logs --level warning|notice|critical|alert|emergency` now matches: queries map Render's level names onto the stored buckets, and the shipper emits `warning` (not `warn`) from now on.
 
 > `030.md` filed 2026-09-27 (`/qa-find-bugs-cli` sweep 44) and fixed 2026-09-27 — moved to `done/`. Postgres logs drop CNPG's instance-manager chatter and unwrap `logger=postgres` records into PostgreSQL's own line shape with a `level`, in the shipper (verified with a local Alloy v1.20.0 run) and in both direct-pod fallbacks.
@@ -158,11 +173,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 > `016.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`, sweep 2) — moved to `done/`. Four checklist rows named `ea sandbox <verb>`; the pinned CLI's group is plural (`sandboxes`, no alias). Ledger strings + pin-bump name re-diff + `ErrNoWorkspace` residual recorded; capability grades unchanged.
 
-> `015.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`) — moved to `done/`. `bex logs` panics (exit 2, raw Go stack trace) with no usable credential in every non-interactive output mode: upstream `cmd/logs.go` calls `deps.LogLoader()` in `RunE` before auth, and `(*Dependencies).APIConfig` (`pkg/dependencies/dependencies.go:281`) does `panic(err)` on `DefaultAPIConfig`'s `ErrLogin`. Upstream defect, not bex (no request is ever sent); reproduced live against the v2.27.0 pin (`panic: run \`render login\` to authenticate`, exit 2; `services` control is a clean `Error:`, exit 1). Graded in `docs/cli-compatibility-checklist.md`: new Real-gaps bullet beside the `skills` panic, `logs` header row re-graded `[x]`→`[~]`, both bullets pin-conditional (re-check on every pin move). The note's item 3 — a launcher-owned `recover()` around `cmd.Execute()` — was explicitly **not** implemented (needs a user decision: it would mask genuine panics).
+> `015.md` filed and implemented 2026-09-15 from the live CLI QA sweep (`/qa-find-bugs-cli`) — moved to `done/`. `bex logs` panics (exit 2, raw Go stack trace) with no usable credential in every non-interactive output mode: upstream `cmd/logs.go` calls `deps.LogLoader()` in `RunE` before auth, and `(*Dependencies).APIConfig` (`pkg/dependencies/dependencies.go:281`) does `panic(err)` on `DefaultAPIConfig`'s `ErrLogin`. Upstream defect, not bex (no request is ever sent); reproduced live against the v2.27.0 pin (`panic: run \`render login\` to authenticate`, exit 2; `services`control is a clean`Error:`, exit 1). Graded in `docs/cli-compatibility-checklist.md`: new Real-gaps bullet beside the `skills`panic,`logs`header row re-graded`[x]`→`[~]`, both bullets pin-conditional (re-check on every pin move). The note's item 3 — a launcher-owned `recover()`around`cmd.Execute()` — was explicitly **not** implemented (needs a user decision: it would mask genuine panics).
 
 > `013.md`/`014.md` filed and implemented 2026-09-15 from the triage of the security scan at `~/.local/state/bex-security-integration/20260915T200437Z` — moved to `done/`. `013` collapsed the operator's two disagreeing answers about `BEX_REGISTRY` transport into one exported `registry.ClusterLocal` (the build plane's predicate, moved next to `NormalizeBase`): a bare host now defaults to `https://` unless it is cluster-local, and `registry.CredentialedBase` fails closed rather than putting an Authorization header on a cleartext off-cluster wire (`ResolveDigest`, `ListTags`, and the `app_controller` repo teardown). `014` added the Standard Webhooks timestamp tolerance (`VerifyTolerance`, 5m, both directions) that `Verify` advertised but never applied, with the clock injected so the window itself is testable.
 
 > Scan finding 1 (platform Argo CD `AppProject` wildcard resource whitelists) was **triaged and not filed**: `deploy/gitops/base/appproject.yaml:1-7` documents the rationale — `sourceRepos` is the hard gate (the reviewed bex repo plus a digest-addressed OCI chart mirror), and the reviewed controller charts (cert-manager, CNPG, kpack, CAPI, OpenSandbox) genuinely need cluster-scoped CRDs/webhooks/RBAC. The stated precondition is write access to the platform GitOps source, which already owns the platform regardless of the whitelist; no tenant-reachable path authors Applications under this project. Enumerating kinds for a dozen upstream charts would also break on every chart upgrade. Accepted residual.
-
 
 > `010.md`/`011.md`/`012.md` implemented 2026-09-08 (outbound-IPs UI; narrow plan aliases; datastore DeletionStalled) — moved to `done/`. `001.md` retired 2026-08-16 after its production gate found only 1–2 represented workspaces, zero build minutes, a 1.46 TiB sole complete egress sample, and remaining hourly gaps — no evidence-safe cap can be selected. `007.md` retired after its one useful artifact was captured: the production unmodified-CLI validation re-grade is now in `docs/cli-compatibility-checklist.md`; the note mixed that finished evidence chore with disposable deployment experiments and an unrelated dev-host suggestion, so it is not retained as roadmap work. `008.md` implemented and moved to `done/` (env groups in `resources[]` + action plans). `009.md` implemented and moved to `done/` (ADR018 deliberate divergences). `002.md` promoted to **m9** 2026-07-13; note moved to `done/`. `004.md` (KeyValue `maxmemoryPolicy` underscore-vs-hyphen, filed by `w9/m2`'s Render CLI compatibility walk) fixed 2026-07-15 (`dfff3034`), re-verified live end to end (create/list/get/update/suspend/resume/delete) — note moved to `done/`. `005.md` (Postgres owner/options wire-shape, filed by `w9/m2`) retired 2026-07-15 — a parallel session independently found the same gap across Postgres/Service/KeyValue and filed it as `w6/016`; `005.md` moved to `done/` pointing there rather than duplicating it.

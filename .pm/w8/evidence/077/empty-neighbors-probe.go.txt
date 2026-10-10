@@ -1,0 +1,14 @@
+package main
+import("encoding/json";"fmt";"os";"github.com/spf13/cobra";"github.com/spf13/pflag";"github.com/render-oss/cli/pkg/command";"github.com/render-oss/cli/pkg/service";"github.com/render-oss/cli/pkg/types";st "github.com/render-oss/cli/pkg/types/service")
+func ptr[T any](v T)*T{return &v}
+func main(){
+ cases:=[]struct{Name string;Args []string}{{"default",nil},{"literal-empty-env",[]string{"--env-var="}},{"literal-empty-secret-file",[]string{"--secret-file="}},{"valid-empty-value",[]string{"--env-var=QA_EMPTY="}},{"repeated-values",[]string{"--env-var=FIRST=one\r\ntwo","--env-var=OTHER=comma,=quote\""}}};results:=[]map[string]any{}
+ for _,test:=range cases{
+  cmd:=&cobra.Command{Use:"probe"};cmd.Flags().StringArray("env-var",nil,"");cmd.Flags().StringArray("secret-file",nil,"");if e:=cmd.ParseFlags(test.Args);e!=nil{panic(e)}
+  var parsed struct{EnvVars []string `cli:"env-var"`;SecretFiles []string `cli:"secret-file"`};if e:=command.ParseCommand(cmd,nil,&parsed);e!=nil{panic(e)}
+  storedEnv:=cmd.Flags().Lookup("env-var").Value.(pflag.SliceValue).GetSlice();storedFiles:=cmd.Flags().Lookup("secret-file").Value.(pflag.SliceValue).GetSlice()
+  build:=func(env,files []string)map[string]any{input:=st.ServiceCreateInput{Name:"qa-offline-empty",Type:ptr(st.ServiceType("web_service")),Runtime:ptr(st.ServiceRuntime("python")),Repo:ptr("https://github.com/bex-co/bex"),BuildCommand:ptr("pip install -r requirements.txt"),StartCommand:ptr("python main.py"),Plan:ptr("free"),Region:ptr(types.Region("frankfurt")),EnvVars:env,SecretFiles:files};v,e:=st.NormalizeAndValidateCreateInput(input,false);if e!=nil{return map[string]any{"accepted":false,"error":e.Error()}};body,e:=service.BuildCreateRequest(v,"tea-offline-only");if e!=nil{return map[string]any{"accepted":false,"error":e.Error()}};return map[string]any{"accepted":true,"request":body}}
+  actual:=build(parsed.EnvVars,parsed.SecretFiles);direct:=build(storedEnv,storedFiles);r:=map[string]any{"case":test.Name,"args":test.Args,"stored_env":storedEnv,"stored_secret_file_args":storedFiles,"parsed_env":parsed.EnvVars,"parsed_secret_file_args":parsed.SecretFiles,"actual_consumer":actual,"direct_slice_consumer":direct};results=append(results,r);fmt.Printf("%s actual_accepted=%v direct_slice_accepted=%v stored_env=%d parsed_env=%d\n",test.Name,actual["accepted"],direct["accepted"],len(storedEnv),len(parsed.EnvVars))
+ }
+ raw,e:=json.MarshalIndent(map[string]any{"label":"Offline pinned actual pflag/Render parser/validator/builder; no network, fixture or product patch", "results":results},"","  ");if e!=nil{panic(e)};if e=os.WriteFile("probe-result.json",append(raw,'\n'),0600);e!=nil{panic(e)}
+}

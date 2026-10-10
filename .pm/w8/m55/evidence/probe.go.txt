@@ -1,0 +1,3 @@
+package main
+import("encoding/json";"fmt";"os";"github.com/render-oss/cli/pkg/client")
+func main(){out:=[]map[string]any{};for _,names:=range []client.NameParam{{"qa-literal,雪%+&="},{"qa-first","qa-second"},{"qa-first","qa-literal,雪%+&="},{"qa-literal%2C"}}{req,e:=client.NewListServicesRequest("https://api.bex.co/v1/",&client.ListServicesParams{Name:&names});if e!=nil{panic(e)};r:=map[string]any{"names":names,"raw_query":req.URL.RawQuery,"decoded_query":req.URL.Query()["name"]};out=append(out,r);fmt.Printf("Names %v raw_query %s\n",names,req.URL.RawQuery)};outRaw,e:=json.MarshalIndent(out,"","  ");if e!=nil{panic(e)};if e=os.WriteFile("probe-result.json",append(outRaw,'\n'),0600);e!=nil{panic(e)}}
