@@ -590,18 +590,24 @@ func TestSetSecretFilesReplacesTheWholeSet(t *testing.T) {
 // replace-all PUT must emit it, while the list stays names-only (w8/073).
 func TestREST_EmptySecretFileKeepsContent(t *testing.T) {
 	svc := newService(newFakeSecretStore(), sampleApp("web"))
-	for _, tc := range []struct{ method, path, body, want string }{
-		{"PUT", "/v1/services/web/secret-files/empty.txt", `{"content":""}`, `{"name":"empty.txt","content":""}`},
-		{"GET", "/v1/services/web/secret-files/empty.txt", "", `{"name":"empty.txt","content":""}`},
+	for _, tc := range []struct {
+		method, path, body string
+		code               int
+		want               string
+	}{
+		// The item upsert is 201 whether it adds or updates (w8/074).
+		{"PUT", "/v1/services/web/secret-files/empty.txt", `{"content":"x"}`, http.StatusCreated, `{"name":"empty.txt","content":"x"}`},
+		{"PUT", "/v1/services/web/secret-files/empty.txt", `{"content":""}`, http.StatusCreated, `{"name":"empty.txt","content":""}`},
+		{"GET", "/v1/services/web/secret-files/empty.txt", "", http.StatusOK, `{"name":"empty.txt","content":""}`},
 		{
-			"PUT", "/v1/services/web/secret-files", `[{"name":"empty.txt","content":""},{"name":"text.txt","content":"hi\n"}]`,
+			"PUT", "/v1/services/web/secret-files", `[{"name":"empty.txt","content":""},{"name":"text.txt","content":"hi\n"}]`, http.StatusOK,
 			`[{"secretFile":{"name":"empty.txt","content":""},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt","content":"hi\n"},"cursor":"text.txt"}]`,
 		},
-		{"GET", "/v1/services/web/secret-files", "", `[{"secretFile":{"name":"empty.txt"},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt"},"cursor":"text.txt"}]`},
+		{"GET", "/v1/services/web/secret-files", "", http.StatusOK, `[{"secretFile":{"name":"empty.txt"},"cursor":"empty.txt"},{"secretFile":{"name":"text.txt"},"cursor":"text.txt"}]`},
 	} {
 		rec := serveREST(svc, tc.method, tc.path, tc.body)
-		if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != tc.want {
-			t.Errorf("%s %s = %d %s, want 200 %s", tc.method, tc.path, rec.Code, rec.Body, tc.want)
+		if rec.Code != tc.code || strings.TrimSpace(rec.Body.String()) != tc.want {
+			t.Errorf("%s %s = %d %s, want %d %s", tc.method, tc.path, rec.Code, rec.Body, tc.code, tc.want)
 		}
 	}
 	if code := serveREST(svc, "GET", "/v1/services/web/secret-files/missing.txt", "").Code; code != http.StatusNotFound {
