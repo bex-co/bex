@@ -224,11 +224,14 @@ func TestMCPParityInventory(t *testing.T) {
 	// their accepted genuine differences (region / required publishPath).
 	// w1/m165 implemented upstream's list_events (1:1 10 → 11, total 188 →
 	// 189) against the d9a8abd re-pin; list_service_events stays as its alias.
+	// w4/m189 added the optional textMode extension to list_logs and
+	// list_log_label_values (1:1 11 → 9, Superset 3 → 5): Render-shaped calls
+	// are unchanged, omitted textMode keeps raw text matching.
 	// Update this table and ADR018's MCP inventory together — that pairing is
 	// the point.
 	want := map[mcpParityClass]int{
-		mcpParity1to1:      11,  // +list_events (w1/m165)
-		mcpParitySuperset:  3,   // +get_metrics (w2/m91 Render arg names)
+		mcpParity1to1:      9,   // +list_events (w1/m165); -list_logs -list_log_label_values (w4/m189)
+		mcpParitySuperset:  5,   // +get_metrics (w2/m91 Render arg names); +list_logs +list_log_label_values (w4/m189 textMode)
 		mcpParityDivergent: 6,   // -get_metrics (w2/m91)
 		mcpParityExtension: 169, // +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
 	}

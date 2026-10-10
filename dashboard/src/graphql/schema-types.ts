@@ -3127,6 +3127,7 @@ export type QueryLogLabelValuesArgs = {
   startTime?: InputMaybe<Scalars['String']['input']>;
   statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
   text?: InputMaybe<Scalars['String']['input']>;
+  textMode?: InputMaybe<Scalars['String']['input']>;
   type?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3144,6 +3145,7 @@ export type QueryLogsArgs = {
   startTime?: InputMaybe<Scalars['String']['input']>;
   statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
   text?: InputMaybe<Scalars['String']['input']>;
+  textMode?: InputMaybe<Scalars['String']['input']>;
   type?: InputMaybe<Scalars['String']['input']>;
 };
 

@@ -62,9 +62,12 @@ var logListGQLType = graphql.NewObject(graphql.ObjectConfig{
 func logFilterArgs() graphql.FieldConfigArgument {
 	list := gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String)))
 	return graphql.FieldConfigArgument{
-		"resource":   gqlutil.ReqArg(graphql.String),
-		"type":       gqlutil.Arg(graphql.String),
-		"text":       gqlutil.Arg(graphql.String),
+		"resource": gqlutil.ReqArg(graphql.String),
+		"type":     gqlutil.Arg(graphql.String),
+		"text":     gqlutil.Arg(graphql.String),
+		// textMode (w4/m189, a Bex extension): raw (default) | display — whether
+		// text matches the stored bytes or the terminal-display text.
+		"textMode":   gqlutil.Arg(graphql.String),
 		"level":      list,
 		"instance":   list,
 		"host":       list,
@@ -154,6 +157,7 @@ func logQueryFromArgs(args map[string]any) (LogQuery, error) {
 	if s, ok := args["text"].(string); ok {
 		q.Search = []string{s}
 	}
+	q.TextMode, _ = args["textMode"].(string) // vetted by LogQuery.validate
 	// Direction is validated by the verb (LogQuery.validate), not here — one
 	// enforcement point for all three surfaces.
 	q.Direction, _ = args["direction"].(string)

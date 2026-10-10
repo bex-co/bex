@@ -268,6 +268,25 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
   });
 });
 
+describe("LogViewer display-text search (w4/m189)", () => {
+  it("opts both history and the live tail into display matching", () => {
+    render(
+      <LogViewer
+        resource="web"
+        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "QA_A31_ANSI_red_end" }}
+      />,
+    );
+    expect(useHistorySpy.mock.calls.at(-1)?.[1]).toMatchObject({
+      text: "QA_A31_ANSI_red_end",
+    });
+    expect(useHistorySpy.mock.calls.at(-1)?.[4]).toBe("display");
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      text: "QA_A31_ANSI_red_end",
+      textMode: "display",
+    });
+  });
+});
+
 describe("LogViewer URL-backed filter state (w7/m42)", () => {
   it("derives the initial filter + live state from the URL and queries with it", () => {
     const onFiltersChange = vi.fn();

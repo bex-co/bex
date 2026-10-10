@@ -148,6 +148,9 @@ describe("DatastoreLogViewer", () => {
     expect(resource).toBe("red-example");
     // type "all" and every empty structured filter are sent as absent args.
     expect(filters).toEqual({ ...EMPTY_LOG_FILTERS, text: "", instance: "" });
+    // Datastore search keeps the raw text contract (w4/m189 scoped the
+    // display opt-in to the service viewer).
+    expect(useHistorySpy.mock.calls.at(-1)?.[4]).toBeUndefined();
     expect(Date.parse(window.endTime) - Date.parse(window.startTime)).toBe(
       60 * 60 * 1000,
     );

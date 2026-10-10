@@ -90,6 +90,38 @@ describe("useLogHistory paging (w4/m107, w4/m136)", () => {
     });
   });
 
+  it("sends an opted-in display textMode with text, on the first and older pages (w4/m189)", async () => {
+    mockClientQuery.mockResolvedValueOnce({ data: envelope([], false) });
+    const filters = { ...EMPTY_LOG_FILTERS, text: "QA_A31_ANSI_red_end" };
+    const { result } = renderHook(() =>
+      useLogHistory("srv-x", filters, WINDOW, undefined, "display"),
+    );
+    expect(mockUseQuery.mock.calls.at(-1)?.[1].variables).toMatchObject({
+      text: "QA_A31_ANSI_red_end",
+      textMode: "display",
+    });
+    await act(async () => result.current.loadOlder());
+    expect(mockClientQuery.mock.calls[0][0].variables).toMatchObject({
+      text: "QA_A31_ANSI_red_end",
+      textMode: "display",
+    });
+  });
+
+  it("omits textMode without text or without the opt-in (raw default)", () => {
+    renderHook(() =>
+      useLogHistory("srv-x", EMPTY_LOG_FILTERS, WINDOW, undefined, "display"),
+    );
+    expect(mockUseQuery.mock.calls.at(-1)?.[1].variables.textMode).toBe(
+      undefined,
+    );
+    renderHook(() =>
+      useLogHistory("srv-x", { ...EMPTY_LOG_FILTERS, text: "red" }, WINDOW),
+    );
+    expect(mockUseQuery.mock.calls.at(-1)?.[1].variables.textMode).toBe(
+      undefined,
+    );
+  });
+
   it("prepends older pages at the cursor without a seam duplicate, until hasMore is false", async () => {
     // The older page repeats the first page's oldest line at the seam.
     mockClientQuery.mockResolvedValueOnce({

@@ -22,6 +22,7 @@ import { mergeLogLines } from "../lib/map";
 import {
   EMPTY_LOG_FILTERS,
   LOG_PAGE_SIZE,
+  LOG_TEXT_MODE_DISPLAY,
   hasActiveLogFilters,
   usesStoreOnlyFilters,
   type LogFilters,
@@ -140,12 +141,16 @@ export function LogViewer({
     queryFilters,
     historyWindow,
     JSON.stringify(range),
+    // Search what the row shows: a colored message is found by its visible
+    // text, not only by raw bytes split by escapes (w4/m189).
+    LOG_TEXT_MODE_DISPLAY,
   );
   const stream = useLiveLogs({
     resource,
     enabled: live && liveSupported,
     type: queryFilters.type,
     text: debouncedText,
+    textMode: LOG_TEXT_MODE_DISPLAY,
     instance: queryFilters.instance,
     // Follow the pod from the selected window's edge, not kubelet offset 0, so a
     // narrow range no longer surfaces lines older than it on first connect
