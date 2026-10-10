@@ -236,6 +236,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **237** — [Trigger Run omits its replacement warning while cron history catches up](237.md) (45m) ← live qa-find-bugs 2026-10-10 pass a53; the accepted replacement is absent from the first history read, hiding its consequence in the next confirmation.
 - [ ] **236** — [Metrics puts runtime service changes under Configuration](236.md) (55m) ← live qa-find-bugs 2026-10-10 pass a52; Lifecycle omits actual suspended/resumed facts that Configuration includes, on fresh desktop and mobile loads.
 - [ ] **235** — [Static rule fields collapse to a few characters on mobile](235.md) (55m) ← live qa-find-bugs 2026-10-10 pass a50; header fields shrink to 38px and redirect fields to 54px despite correct saved values.
 
