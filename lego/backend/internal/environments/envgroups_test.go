@@ -59,6 +59,18 @@ func (f *fakeEnvGroupIndex) SetEnvironmentID(_ context.Context, id, environmentI
 	return core.ErrNotFound
 }
 
+func (f *fakeEnvGroupIndex) DetachEnvironment(_ context.Context, id, expectedEnvironmentID string) error {
+	for i := range f.groups {
+		if f.groups[i].ID == id {
+			if f.groups[i].EnvironmentID == expectedEnvironmentID {
+				f.groups[i].EnvironmentID = ""
+			}
+			return nil
+		}
+	}
+	return core.ErrNotFound
+}
+
 func envGroupFixture(t *testing.T) (*Service, *fakeEnvGroupIndex, EnvironmentView) {
 	t.Helper()
 	st := newFakeStore()

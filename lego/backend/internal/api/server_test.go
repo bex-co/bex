@@ -1229,7 +1229,7 @@ func sweepEveryVerb(t *testing.T, ctx context.Context, services []any, fn func(s
 // checks its walk against — shared so the sweeps' thresholds can't drift
 // apart (w4/087). Bump deliberately in the same commit that adds or removes a
 // verb; a loose floor would absorb silent filter regressions.
-const wantSweptVerbs = 344 // SetSecretFiles: Render's replace-all secret-file PUT (w8/063)
+const wantSweptVerbs = 345 // envgroups.DetachEnvironment: grouping-teardown scope clear (w4/m187)
 
 func assertSweptVerbCount(t *testing.T, swept int) {
 	t.Helper()

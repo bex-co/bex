@@ -563,11 +563,10 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 // SetServices replaces the full list of services in a project.
 // serviceIDs are the public ids returned by list_services (normally srv-...).
 // Legacy public names remain accepted by the store during the stable-id
-// transition. A service leaving the project that also carried a stale
-// environment membership has its App CR's environment-projected layer cleared
-// too (w4/m32) — the store
-// already NULLs apps.environment_id for it, but only a k8s Patch can clear
-// the CR spec fields that projection stamped.
+// transition. A service leaving the project, or arriving from another
+// project's environment, has its App CR's environment-projected layer cleared
+// too (w4/m32, w4/m187) — the store already NULLs apps.environment_id for it,
+// but only a k8s Patch can clear the CR spec fields that projection stamped.
 func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []string) (ProjectView, error) {
 	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
@@ -583,8 +582,8 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	// (w6/m134).
 	s.RecordServiceMoves(ctx, core.AuditVerbProjectServiceMoved, moves)
 	// The w4/m32 clear list, derived from the same diff: every row whose
-	// environment_id the replacement NULLed — departing members and kept
-	// members alike.
+	// environment_id the replacement NULLed — departing members and incoming
+	// members whose environment belonged to another project (w4/m187) alike.
 	var departedWithEnv []string
 	for _, mv := range moves {
 		if mv.EnvironmentFrom != nil && mv.EnvironmentTo == nil {

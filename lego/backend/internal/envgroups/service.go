@@ -781,6 +781,35 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 	return s.viewFromMeta(ctx, gid, m)
 }
 
+// DetachEnvironment returns a group still scoped to expectedEnvironmentID to
+// workspace scope while that environment is torn down (w4/m187), keeping its
+// contents and links. Links to services in the deleted environment are
+// accepted — the same teardown removes them from it — while a link into any
+// other environment still refuses. The CAS compare against the expected
+// environment leaves a concurrently moved group alone and makes retry a no-op.
+func (s *Service) DetachEnvironment(ctx context.Context, gid, expectedEnvironmentID string) error {
+	expected := id.EnvironmentStorageID(expectedEnvironmentID)
+	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
+	if err != nil {
+		return err
+	}
+	if expected == "" || m.environment != expected {
+		return nil
+	}
+	_, err = s.mutateMetaCAS(ctx, gid, m.workspace, func(cur meta) (meta, error) {
+		if cur.environment != expected {
+			return meta{}, errMetaUnchanged
+		}
+		if err := s.validateLinkedServiceEnvironments(ctx, cur.links, "", expected); err != nil {
+			return meta{}, err
+		}
+		cur.environment = ""
+		cur.updatedAt = s.now()
+		return cur, nil
+	})
+	return err
+}
+
 // SetGroupEnvironment assigns the named env group to an Environment, satisfying
 // the apps.EnvGroupApplier seam called by the Blueprint apply path when a group is
 // declared under projects[].environments[].envVarGroups. The lookup-by-name is
@@ -1382,7 +1411,10 @@ func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels 
 	)
 }
 
-func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links []string, environmentID string) error {
+// validateLinkedServiceEnvironments refuses a group scope change to
+// environmentID while any linked service sits elsewhere; departing names an
+// environment being torn down with the group, whose members count as compatible.
+func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links []string, environmentID string, departing ...string) error {
 	var incompatible []string
 	for _, serviceID := range links {
 		a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
@@ -1392,7 +1424,7 @@ func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links [
 		if err != nil {
 			return err
 		}
-		if a.Labels[core.LabelEnvironment] != environmentID {
+		if env := a.Labels[core.LabelEnvironment]; env != environmentID && !slices.Contains(departing, env) {
 			incompatible = append(incompatible, serviceID)
 		}
 	}

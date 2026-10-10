@@ -162,10 +162,19 @@ func (f *fakeProjectStore) SetProjectServices(_ context.Context, projectID, _ st
 	}
 	for _, n := range serviceNames {
 		if !slices.Contains(f.services[projectID], n) {
+			mv := core.ServiceMove{ProjectTo: &projectID}
+			if f.envAttached[n] {
+				// An incoming member's environment belongs to its former
+				// project, so the store NULLs it in the same transaction
+				// (w4/m187); a retained member's environment is compatible.
+				env := "env-" + n
+				mv.EnvironmentFrom = &env
+				delete(f.envAttached, n)
+			}
 			changes = append(changes, core.ServicePlacementChange{
 				ServiceID:   n,
 				ServiceName: n,
-				ServiceMove: core.ServiceMove{ProjectTo: &projectID},
+				ServiceMove: mv,
 			})
 		}
 	}
@@ -591,6 +600,25 @@ func TestSetServicesClearsEnvironmentLayerForDeparting(t *testing.T) {
 	}
 	if len(envIdx.clearedServices) != 1 || envIdx.clearedServices[0] != "web" {
 		t.Errorf("cleared services = %v, want [web] (worker stayed, web departed carrying environment_id)", envIdx.clearedServices)
+	}
+}
+
+// TestSetServicesClearsEnvironmentLayerForIncomingFromAnotherProject is
+// w4/m187: a service arriving from another project's environment leaves that
+// environment in the same store write, so its inherited App CR layer is
+// cleared too — once, from the one membership write — while a retained member
+// in a compatible environment is untouched.
+func TestSetServicesClearsEnvironmentLayerForIncomingFromAnotherProject(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-2", TenantID: "tea-a", Name: "target"}).withEnv("web", "worker")
+	st.services["prj-2"] = []string{"worker"}
+	envIdx := &recordingEnvironmentIndex{}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Environments: envIdx}
+
+	if _, err := svc.SetServices(ctxAs("user-a"), "prj-2", []string{"worker", "web"}); err != nil {
+		t.Fatalf("SetServices: %v", err)
+	}
+	if !slices.Equal(envIdx.clearedServices, []string{"web"}) {
+		t.Errorf("cleared services = %v, want [web] (web arrived carrying a foreign environment, worker stayed in its own)", envIdx.clearedServices)
 	}
 }
 

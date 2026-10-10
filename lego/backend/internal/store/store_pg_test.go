@@ -1016,6 +1016,7 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	if _, err := s.SetEnvironmentServices(ctx, prod.ID, proj.ID, ten.ID, []string{app.ID}); err != nil {
 		t.Fatalf("rejoin prod: %v", err)
 	}
+	assertIncomingProjectMoveClearsForeignEnvironment(ctx, t, s, pool, ten, app, proj.ID, prod.ID)
 
 	// Deleting an environment un-assigns its services but leaves their
 	// project membership untouched (only setProjectServices/deleting the
@@ -1043,6 +1044,90 @@ func assertProjectsAndEnvironments(ctx context.Context, t *testing.T, s *PGStore
 	}
 	if remaining != 0 {
 		t.Errorf("environments not cascaded on project delete: %d rows remain", remaining)
+	}
+}
+
+// assertIncomingProjectMoveClearsForeignEnvironment is w4/m187's native
+// regression: a target-only project replacement must move an incoming App from
+// (source, sourceEnv) to (target, NULL) in its one transaction and report that
+// complete diff — the EnvironmentFrom≠nil→nil shape the service layer's
+// inherited-layer clear consumes. A retained member in a target environment
+// keeps it, and a replay reports no change. app ends back in (sourceProject,
+// sourceEnv) for the caller's later assertions.
+func assertIncomingProjectMoveClearsForeignEnvironment(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool.Pool, ten Tenant, app App, sourceProject, sourceEnv string) {
+	t.Helper()
+	target, err := s.CreateProject(ctx, ten.ID, "move-target")
+	if err != nil {
+		t.Fatalf("create target project: %v", err)
+	}
+	defer func() {
+		if err := s.DeleteProject(ctx, target.ID); err != nil {
+			t.Errorf("delete target project: %v", err)
+		}
+	}()
+	targetEnv, err := s.CreateEnvironment(ctx, target.ID, ten.ID, "target-env")
+	if err != nil {
+		t.Fatalf("create target environment: %v", err)
+	}
+	placement := func() (projectID, environmentID *string) {
+		t.Helper()
+		if err := pool.QueryRow(ctx, `SELECT project_id, environment_id FROM apps WHERE id = $1`, app.ID).Scan(&projectID, &environmentID); err != nil {
+			t.Fatal(err)
+		}
+		return projectID, environmentID
+	}
+
+	moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID})
+	if err != nil {
+		t.Fatalf("SetProjectServices(incoming): %v", err)
+	}
+	if len(moves) != 1 || moves[0].ServiceID != app.ID || moves[0].ServiceName != app.Name ||
+		moves[0].ProjectFrom == nil || *moves[0].ProjectFrom != sourceProject ||
+		moves[0].EnvironmentFrom == nil || *moves[0].EnvironmentFrom != sourceEnv ||
+		moves[0].ProjectTo == nil || *moves[0].ProjectTo != target.ID || moves[0].EnvironmentTo != nil {
+		t.Fatalf("incoming placement diff = %+v, want one (%s,%s)→(%s,nil) change", moves, sourceProject, sourceEnv, target.ID)
+	}
+	if projectID, environmentID := placement(); projectID == nil || *projectID != target.ID || environmentID != nil {
+		t.Fatalf("after incoming move project=%v environment=%v, want %s and NULL", projectID, environmentID, target.ID)
+	}
+	if ids, err := s.ListEnvironmentServices(ctx, sourceEnv, sourceProject); err != nil || len(ids) != 0 {
+		t.Fatalf("source environment members after move = %v (err %v), want none", ids, err)
+	}
+
+	// A retained member already in a target environment is compatible: the
+	// same membership replacement keeps it there and reports no move.
+	if _, err := s.SetEnvironmentServices(ctx, targetEnv.ID, target.ID, ten.ID, []string{app.ID}); err != nil {
+		t.Fatalf("assign target environment: %v", err)
+	}
+	if moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.Name}); err != nil || len(moves) != 0 {
+		t.Fatalf("retained member replacement diff = %+v (err %v), want empty", moves, err)
+	}
+	if projectID, environmentID := placement(); projectID == nil || *projectID != target.ID || environmentID == nil || *environmentID != targetEnv.ID {
+		t.Fatalf("retained member placement project=%v environment=%v, want (%s,%s)", projectID, environmentID, target.ID, targetEnv.ID)
+	}
+
+	// Already-persisted drift (the pre-fix writer's (target, sourceEnv) row)
+	// is repaired by the next explicit membership write that names it: the
+	// retained row's foreign environment is NULLed with a truthful diff, and a
+	// second pass is a no-op.
+	if _, err := pool.Exec(ctx, `UPDATE apps SET project_id = $1, environment_id = $2 WHERE id = $3`, target.ID, sourceEnv, app.ID); err != nil {
+		t.Fatal(err)
+	}
+	moves, err = s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID})
+	if err != nil || len(moves) != 1 ||
+		moves[0].ProjectFrom == nil || *moves[0].ProjectFrom != target.ID || moves[0].ProjectTo == nil || *moves[0].ProjectTo != target.ID ||
+		moves[0].EnvironmentFrom == nil || *moves[0].EnvironmentFrom != sourceEnv || moves[0].EnvironmentTo != nil {
+		t.Fatalf("drift repair diff = %+v (err %v), want one (%s,%s)→(%s,nil) change", moves, err, target.ID, sourceEnv, target.ID)
+	}
+	if projectID, environmentID := placement(); projectID == nil || *projectID != target.ID || environmentID != nil {
+		t.Fatalf("after drift repair project=%v environment=%v, want %s and NULL", projectID, environmentID, target.ID)
+	}
+	if moves, err := s.SetProjectServices(ctx, target.ID, ten.ID, []string{app.ID}); err != nil || len(moves) != 0 {
+		t.Fatalf("second repair pass diff = %+v (err %v), want empty", moves, err)
+	}
+
+	if _, err := s.SetEnvironmentServices(ctx, sourceEnv, sourceProject, ten.ID, []string{app.ID}); err != nil {
+		t.Fatalf("restore source placement: %v", err)
 	}
 }
 
