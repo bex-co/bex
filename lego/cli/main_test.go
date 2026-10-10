@@ -1082,7 +1082,7 @@ func TestBexLoginReportsBexReleaseNotRenderCLI(t *testing.T) {
 func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	const teamID, dbID = "tea-12345678901234567890", "dpg-12345678901234567890"
 	var mu sync.Mutex
-	var nameLookups []string
+	var nameLookups, sentOwners []string
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1108,7 +1108,31 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		case "/v1/postgres/" + dbID:
 			_, _ = w.Write([]byte(`{"id":"` + dbID + `","name":"db","plan":"free","version":"18","status":"available","databaseName":"d","databaseUser":"u","ipAllowList":[],"readReplicas":[],"suspended":"not_suspended"}`))
 		case "/v1/blueprints/validate":
+			owner := r.FormValue("ownerId")
+			mu.Lock()
+			sentOwners = append(sentOwners, owner)
+			mu.Unlock()
+			if owner != teamID {
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"message":"fixture expects the resolved workspace id"}`))
+				return
+			}
 			_, _ = w.Write([]byte(`{"valid":true}`))
+		case "/v1/postgres", "/v1/key-value":
+			if r.Method != http.MethodPost {
+				_, _ = w.Write([]byte(`[]`))
+				return
+			}
+			var body struct {
+				OwnerID string `json:"ownerId"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			mu.Lock()
+			sentOwners = append(sentOwners, body.OwnerID)
+			mu.Unlock()
+			// Refuse every create: the test reads the request, never a resource.
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"message":"fixture refuses creates"}`))
 		default: // any other collection (services and its project/environment reads)
 			_, _ = w.Write([]byte(`[]`))
 		}
@@ -1135,13 +1159,14 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		}
 		return code, stderr.String()
 	}
-	lookups := func() int {
+	drain := func(recorded *[]string) []string {
 		mu.Lock()
 		defer mu.Unlock()
-		n := len(nameLookups)
-		nameLookups = nil
-		return n
+		out := *recorded
+		*recorded = nil
+		return out
 	}
+	lookups := func() int { return len(drain(&nameLookups)) }
 
 	for _, workspace := range []string{"stale-ws", "dup-ws"} {
 		for _, args := range [][]string{
@@ -1166,6 +1191,49 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 		}
 		if n := lookups(); n != 1 {
 			t.Errorf("BEX_WORKSPACE=%s typed-id read made %d name lookups, want it to try once", workspace, n)
+		}
+	}
+
+	// A final-empty --workspace falls back to the active workspace, so its
+	// name must still resolve to the ID upstream sends as ownerId; a final
+	// nonempty one is used as given (w8/078).
+	owners := func() []string { return drain(&sentOwners) }
+	_ = owners()
+	for _, tc := range []struct {
+		args    []string
+		lookups int
+	}{
+		{[]string{"blueprints", "validate", blueprint}, 1},
+		{[]string{"blueprints", "validate", blueprint, "--workspace="}, 1},
+		{[]string{"blueprints", "validate", blueprint, "--workspace", ""}, 1},
+		{[]string{"blueprints", "validate", blueprint, "-w", ""}, 1},
+		{[]string{"blueprints", "validate", blueprint, "--workspace", teamID, "--workspace="}, 1},
+		{[]string{"blueprints", "validate", blueprint, "--workspace=", "--workspace", teamID}, 0},
+	} {
+		args := append(tc.args, "-o", "json")
+		if code, stderr := run("known", args...); code != 0 {
+			t.Errorf("BEX_WORKSPACE=known bex %v exited %d: %s", args, code, stderr)
+		}
+		if n := lookups(); n != tc.lookups {
+			t.Errorf("BEX_WORKSPACE=known bex %v made %d name lookups, want %d", args, n, tc.lookups)
+		}
+		if got := owners(); len(got) != 1 || got[0] != teamID {
+			t.Errorf("BEX_WORKSPACE=known bex %v sent ownerId %q, want %s", args, got, teamID)
+		}
+	}
+	for _, create := range [][]string{
+		{"pg", "create", "--name", "db", "--plan", "free", "--version", "18"},
+		{"kv", "create", "--name", "kv", "--plan", "free"},
+	} {
+		for _, workspace := range [][]string{nil, {"--workspace="}} {
+			args := append(append(append([]string(nil), create...), workspace...), "--confirm", "-o", "json")
+			_, _ = run("known", args...) // the fixture refuses the create itself
+			if n := lookups(); n != 1 {
+				t.Errorf("BEX_WORKSPACE=known bex %v made %d name lookups, want 1", args, n)
+			}
+			if got := owners(); len(got) != 1 || got[0] != teamID {
+				t.Errorf("BEX_WORKSPACE=known bex %v sent ownerId %q, want %s", args, got, teamID)
+			}
 		}
 	}
 

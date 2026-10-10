@@ -242,7 +242,7 @@ var workspaceIndependent = []string{
 var typedResourceID = regexp.MustCompile(`^[a-z]{3}-[0-9a-z]{20}$`)
 
 // workspaceUse classifies the invoked command for ResolveWorkspaceName (w8/064).
-// A group command that only prints help, an explicit --workspace/-w selection
+// A group command that only prints help, a nonempty --workspace/-w selection
 // and the commands above need no active workspace; a command whose first
 // positional is a typed resource id reads that id directly. Everything else
 // consumes it.
@@ -260,7 +260,11 @@ func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
 			return bridge.WorkspaceUnused
 		}
 	}
-	if flag := target.Flags().Lookup("workspace"); flag != nil && selectsWorkspace(rest, flag.Shorthand) {
+	// Initializers run after cobra parses flags, so this is the final value:
+	// an empty one (`--workspace=`, `-w ""`, or an ID then an empty repeat)
+	// falls back to the active workspace upstream, which must then resolve
+	// (w8/078).
+	if flag := target.Flags().Lookup("workspace"); flag != nil && flag.Value.String() != "" {
 		return bridge.WorkspaceUnused
 	}
 	arity := pgtrust.ArityOf(root.PersistentFlags(), target.InheritedFlags(), target.Flags())
@@ -268,20 +272,4 @@ func workspaceUse(root *cobra.Command, args []string) bridge.WorkspaceUse {
 		return bridge.WorkspaceIfResolvable
 	}
 	return bridge.WorkspaceRequired
-}
-
-// selectsWorkspace reports whether args pass --workspace (or its shorthand,
-// attached or separate) before any `--` terminator.
-func selectsWorkspace(args []string, shorthand string) bool {
-	for _, arg := range args {
-		switch {
-		case arg == "--":
-			return false
-		case arg == "--workspace" || strings.HasPrefix(arg, "--workspace="):
-			return true
-		case shorthand != "" && strings.HasPrefix(arg, "-"+shorthand):
-			return true
-		}
-	}
-	return false
 }
