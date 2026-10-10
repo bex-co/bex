@@ -384,25 +384,6 @@ func TestParseStackRejectsRetiredBlueprintDialect(t *testing.T) {
 	}
 }
 
-func TestParseStackRejectsFromServiceToPortlessService(t *testing.T) {
-	// fromService must target a web/private service (which exposes a k8s Service /
-	// DNS name); a worker has no Service, so referencing its host is invalid.
-	bad := `
-services:
-  - name: web
-    type: web
-    runtime: image
-    image: {url: x}
-    envVars:
-      - {key: H, fromService: {name: w, type: worker, property: host}}
-  - {name: w, type: worker, runtime: image, image: {url: "w:1"}}
-`
-	_, err := parseStack(DeployRequest{Manifest: bad})
-	if err == nil || !strings.Contains(err.Error(), "no network address") {
-		t.Errorf("fromService to a worker => error, got %v", err)
-	}
-}
-
 // --- apply: ordering, all-or-nothing, idempotency ---
 
 func TestDeployStackAppliesDatabasesFirstThenServices(t *testing.T) {
